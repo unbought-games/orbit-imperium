@@ -209,6 +209,15 @@ export function hasUnreadReports(state: import('./game-store').GameState) {
   )
 }
 
+/** Count only current, visible inbox members; cached report details are not inbox entries. */
+export function unreadReportCount(state: import('./game-store').GameState) {
+  return Math.min(
+    99,
+    projectedReportInbox(state)?.items.filter((header) => !header.read)
+      .length ?? 0,
+  )
+}
+
 export function pendingReportVisibility(
   attempts: Iterable<Attempt>,
   report?: string,

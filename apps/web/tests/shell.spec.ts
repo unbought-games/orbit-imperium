@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -2248,13 +2249,16 @@ for (const width of [320, 390, 768]) {
     test(`unread reports light the menu and report link at ${width}px with ${textScale * 100}% text and reconcile`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       let unread = false
+      let count = 12
       let revision = 1
-      await shellFixture(page, {
+      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => shellFixture(page, {
         protocol: 4,
         extraCapabilities: ['Reports'],
         hasUnreadReports: () => unread,
+        unreadReportCount: () => unread ? count : 0,
+        missions: { fleets: [], incoming: [], fleet_slots: '8', score_value_micro: '0' },
         viewerRevision: () => String(revision),
-      })
+      }))
       await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
       const menu = page.getByRole('link', { name: 'Menu', exact: true })
       const alert = menu.getByRole('status', { name: 'Unread reports' })
@@ -2280,33 +2284,61 @@ for (const width of [320, 390, 768]) {
       await assertLayout()
       unread = true
       revision++
-      await page.evaluate(() => window.dispatchEvent(new Event('online')))
+      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => refreshGame(page))
       await expect(alert).toBeVisible()
       await expect(menu).toHaveAccessibleDescription('Unread reports')
       await diagnosticScreenshot(page, { path: `test-results/unread-reports-${width}-${textScale}.png` })
       await assertLayout()
       await menu.focus()
       await page.keyboard.press('Enter')
-      const reports = page.getByRole('link', { name: 'Reports — unread reports' })
+      const destinations = page.getByRole('navigation', { name: 'Menu destinations' })
+      const reports = destinations.getByRole('link', { name: 'Reports — unread reports' })
       await expect(reports).toBeVisible()
       await expect(reports.locator('svg')).toHaveCount(2)
-      await diagnosticScreenshot(page, { path: `test-results/unread-report-menu-${width}-${textScale}.png` })
+      const badge = reports.getByRole('status')
+      await expect(badge).toHaveText('12')
+      await expect(badge).toHaveAccessibleName('12 unread reports')
+      await expect(badge).toHaveCSS('background-color', 'rgb(203, 182, 141)')
+      const assertBadgeLayout = async () => {
+        const badgeBox = (await badge.boundingBox())!
+        const label = (await reports.getByText('Reports', {exact:true}).boundingBox())!
+        const chevron = (await reports.locator('svg').last().boundingBox())!
+        expect(label.x + label.width).toBeLessThanOrEqual(badgeBox.x)
+        expect(badgeBox.x + badgeBox.width + 4).toBeLessThanOrEqual(chevron.x)
+        expect(Math.abs(badgeBox.y + badgeBox.height / 2 - chevron.y - chevron.height / 2)).toBeLessThan(1)
+      }
+      await assertBadgeLayout()
+      await reports.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/current-menu-count-${width}x900-${textScale}.png` })
+      if (width === 390 && textScale === 1) {
+        await page.setViewportSize({width:1440, height:900})
+        await assertBadgeLayout()
+        await diagnosticScreenshot(page, {path:'test-results/current-menu-count-desktop-1440x900.png'})
+        await page.setViewportSize({width, height:900})
+      }
+      count = 125
+      revision++
+      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => refreshGame(page))
+      await expect(badge).toHaveText('99+')
+      await expect(badge).toHaveAccessibleName('99 or more unread reports')
+      await assertBadgeLayout()
+      await diagnosticScreenshot(page, { path: `test-results/current-menu-capped-${width}x900-${textScale}.png` })
       await reports.focus()
       await expect(reports).toBeFocused()
       await page.goBack()
       await expect(page.locator('main h1')).toBeFocused()
-      await page.reload()
+      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => page.reload())
       await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
       await expect(alert).toBeVisible()
       await assertLayout()
       unread = false
       revision++
-      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => refreshGame(page))
       await expect(alert).toHaveCount(0)
       await menu.click()
       await expect(page.getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Reports — unread reports' })).toHaveCount(0)
-      await page.keyboard.press('Escape')
+      await diagnosticScreenshot(page, {path:`test-results/current-menu-read-${width}x900-${textScale}.png`})
       await assertLayout()
     })
   }
