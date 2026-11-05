@@ -223,6 +223,14 @@ async fn filtered_pages_are_bounded_ordered_private_and_cursor_scoped() {
             .unwrap()
             .facts
             .data;
+        for header in &page.items {
+            if bad_ids.contains(&header.id.0.as_u128()) {
+                assert_eq!(
+                    header.preview.as_ref().unwrap()["resources"],
+                    json!({"visibility":"Unknown"})
+                );
+            }
+        }
         ids.extend(page.items.iter().map(|h| h.id.0.as_u128()));
         if !page.has_more {
             break;

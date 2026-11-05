@@ -234,3 +234,15 @@ resources, asserting complete ordering with invalid observations last.
 The focused database suite passed (3.73 seconds compilation, 5.19 seconds
 execution). This backend-only repair does not change the captured UI. Storage
 Clippy and formatting checks passed; the disposable database was removed.
+
+A follow-up review (`PRRT_kwDOVRgPYs60RHxe`) identified the remaining preview
+boundary: sorting safely in SQL still exposed malformed Known resource fields
+that the client parses with BigInt. The compact preview projection now emits
+Unknown for these resource sections, matching SQL ordering and preserving the
+historical payload. The database regression verifies this response shape for
+each malformed row; eight preview unit tests passed (20.66 seconds preparation,
+36 ms execution), including the new invalid-value and exact-i64 boundary cases.
+The report database suite passed again with the new response assertions
+(16.26 seconds preparation including build-lock wait, 4.68 seconds execution).
+Application/storage Clippy and formatting passed. Disposable database cleanup
+completed. No client presentation code or normal report output changed.
