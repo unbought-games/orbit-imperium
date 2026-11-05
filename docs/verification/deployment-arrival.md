@@ -67,3 +67,18 @@ No production timeout, assertion or retry policy changed; no test was removed.
 Repaired focused run: seven cases passed, preparation 1.760s, runner 23.7s, one
 worker, including both previously failing identity cases. Captures were refreshed.
 The full dispatch file is also checked in the implementation chat before handoff.
+
+## Base integration
+
+Head `9a49645b3148aaa1a4f8346f5761d44d96ded6e9` passed all required CI and
+Bugbot in run `42048622789`, with no review findings. Its full local dispatch
+file passed all 105 cases (preparation 3.220s, execution 4.0m, one worker).
+CI setup took 64–110s per browser job, browser execution 264–546s; build/unit
+setup took 89s and execution 287s. Workflow elapsed time was 757s, including
+waiting for the prior run to be cancelled. The initial failing run remains
+recorded above; no checks were retried without a repair.
+
+Main then advanced to `eb6a6104` (#348), creating a changelog-only conflict.
+Merged main and retained both contributor-credit entries. No deployment timing
+source or assertion changed during resolution. The integrated head is verified
+again in the implementation chat before handoff.

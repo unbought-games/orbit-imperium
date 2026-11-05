@@ -199,7 +199,9 @@ it('puts connection and action failures in one banner while preserving recovery'
     },
   )
   expect(html.match(/data-testid="game-error-banner"/g)).toHaveLength(1)
-  expect(html).toContain('Connection lost. Reconnecting')
+  expect(html).toContain(
+    'Unable to refresh your empire. Showing the last confirmed state. Reconnecting',
+  )
   expect(html).toContain('Unable to save action.')
   expect(html).toContain('Retry order')
   expect(html).toContain('Dismiss message')

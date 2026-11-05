@@ -1277,3 +1277,61 @@
   padding: 0;
   margin: 8px 0;
 }
+
+.researchIdle,
+.alliance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 8px 24px;
+}
+.researchIdle h3,
+.alliance h3 {
+  margin: 0;
+  font: 400 1.125rem/1.4 var(--font-editorial);
+  color: var(--champagne-light);
+}
+.researchIdle p,
+.alliance p {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.idleResearchLink,
+.allianceLink {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 44px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  text-decoration: none;
+}
+.idleResearchLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.alliance {
+  margin-top: 16px;
+  border: 1px solid var(--hud-border);
+  background: #07151f80;
+}
+.allianceCopy {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+  .researchIdle,
+  .alliance {
+    padding-inline: 16px;
+    gap: 8px 12px;
+  }
+  .allianceLink {
+    margin-left: auto;
+  }
+}

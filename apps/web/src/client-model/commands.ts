@@ -80,6 +80,7 @@ export interface ClientPlatform {
   newId(): string
   monotonicNowMs(): number
   isOnline(): boolean
+  isVisible?(): boolean
 }
 export const bindingKey = (b: Binding) =>
   JSON.stringify([b.account, b.player, b.universe, b.epoch])

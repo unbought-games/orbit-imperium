@@ -97,3 +97,20 @@ it('reports an unavailable old-server endpoint for fallback without inventing an
   expect(onUpdate).not.toHaveBeenCalled()
   expect(onDisconnect).toHaveBeenCalledOnce()
 })
+
+it('retains the server retry deadline when the stream is throttled', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response('', { status: 429, headers: { 'Retry-After': '60' } }),
+    ),
+  )
+  await expect(
+    createGameUpdatesPort().subscribe(binding, null, {
+      signal: new AbortController().signal,
+      onUpdate: vi.fn(),
+      onDisconnect: vi.fn(),
+    }),
+  ).rejects.toMatchObject({ status: 429, retryAfterMs: 60000 })
+})

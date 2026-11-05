@@ -877,3 +877,90 @@ than expanding feature scope or retrying unchanged intermittent cases.
   seven CI browser shards, native checks and all PostgreSQL groups passed on the
   preceding head; this was its only failed test. No production code changed in
   the repair.
+
+## 2026-11-05 — Discord #126 connection lifecycle
+
+Isolated base `e8a96d81`; implementation/evidence are in
+[connection-recovery-126.md](connection-recovery-126.md). No production mutations.
+No CI deadline, routine acceptance job, or scheduled monitor was added.
+
+- Preparation: locked npm install took 3 s (the host default Node 23 emitted engine
+  warnings; all validation then used pinned Node 24.18.0). Two-job Rust build took
+  122 s. Existing competing browsers/VM workloads were inspected; browser runs
+  used one worker. No other task's processes were stopped.
+- Baseline deployment/contract browser cases: 6 passed in 11.8 s.
+- First focused unit run: 94 passed, 2 failed in 0.697 s. New code unnecessarily
+  woke startup delivery and omitted exporting the shared Retry-After parser.
+  Inspected test history/ledger and repaired those implementation mistakes.
+- First full client run: 1,347 passed, 6 failed in 5.66 s. Five failures were a
+  broad helper edit accidentally spreading a nonexistent test variable; the
+  sixth was the old connection copy expectation. Removed the stray edits and
+  updated that expectation. The affected 72 tests passed in 0.615 s. These were
+  explained implementation/edit mistakes, not flaky retries; no tests deleted.
+- Subsequent full client runs passed (1,353 in 3.71 s; 1,354 in 3.65 s) as focused
+  lifecycle/selector coverage was added. Initial formatting check found one
+  unformatted long expectation; formatted it before the final check.
+- Desktop/mobile fixture recovery runs: 10 passed in 16.1 s, then 10 passed in
+  18.7 s after adding HUD portal/recovery assertions. Module preparation was
+  1.745 s and 1.709 s respectively. Existing shell disconnection/navigation
+  regression passed in 2.5 s (1.7 s test execution).
+- Real local setup initially failed because Docker's default network pools were
+  exhausted. Inspected allocated ranges and used a local Compose override for
+  `10.253.126.0/28`, scoped to this worktree's disposable project. No pruning or
+  changes to competing projects. The second setup succeeded.
+- Initial real Rust/PostgreSQL/built-client interruption run: 9.444 s total;
+  desktop warning after 615 ms and recovery in 2,517 ms; mobile warning after
+  500 ms and recovery in 2,438 ms. Same-build SIGTERM/restart and real browser
+  offline/online passed at both sizes with zero document reloads. All script-owned
+  browsers and servers exited in its finally cleanup.
+- Only final source revision/CI status establishes PR readiness. Exact head,
+  refreshed screenshot inspection, final validation, Compose cleanup, and CI
+  waiting are recorded in the originating implementation chat. No queue or merge
+  was authorized, so enqueue/merge delay and queue removals are not applicable.
+- Deeper retained auth-counter inspection found 62 read-unavailable results,
+  including intervals near the report. This led to the typed live-rotation
+  response; healthy public checks alone were not treated as proof of no failures.
+  HTTP tests: 71 passed, 24.0 s execution after 44.15 s preparation. OIDC database
+  suite: 12 passed, 1 existing explicit-only skip; 30.70 s compilation, 0.23 s
+  warm runner preparation, 6.745 s execution. Its disposable test database was
+  dropped by the existing script trap. Clippy passed in 56.67 s.
+- The new session-rotation browser case was interrupted after 2.3 minutes: its
+  paused clock advanced 1,001 ms, before the first 250 ms tick after the response's
+  one-second deadline, so it awaited an unscheduled snapshot indefinitely. Ten
+  earlier cases had passed, one was interrupted, and one had not run. History
+  and this ledger were checked. The single repair uses normal browser time and
+  response-gated recovery; precise deadline permutations remain in unit tests.
+  Both repaired viewport cases passed in 8.2 s. No timeout/retry setting changed.
+- Audited the added fake-clock sites: only these two new viewport variants used
+  that deadline assumption. Existing deployment tests use their own explicit
+  reload timer and response gate. No independent follow-up is required for this
+  local test-design defect. HUD capture preparation now waits for final opacity
+  only when screenshots are enabled; behavior assertions remain independent.
+- Latest full client run: 1,362 passed in 3.68 s. Build, lint, format, contract drift,
+  boundary checks and Rust formatting passed. Rebuilt the final Rust binary in
+  25.84 s after the server response change. Final screenshot/real-service checks
+  and PR CI are recorded against the committed revision in the chat.
+- Final combined fixture run: 13 passed in 29.8 s (one worker), covering the
+  recovery/update/rotation cases and existing shell navigation during failure.
+  Final real-service run after the Rust change: 12.191 s total; desktop detection
+  638 ms/recovery 1,635 ms and mobile detection 406 ms/recovery 2,447 ms, with
+  zero reloads. The script's server/browser cleanup completed. The isolated
+  Compose project, container, network and volume were then removed explicitly.
+  Screenshots are retained under `test-results/connection-126-evidence` locally.
+- PR #348 first head `dd26274f` received one valid automated finding: a prior
+  quiet SessionRefreshing deadline made `send` return without feedback. Added
+  explicit unsent-action feedback both before persistence and when a concurrent
+  deadline starts during persistence; background presence stays quiet. Two
+  deterministic tests cover the orderings. Coordinator tests passed (71 in
+  0.597 s); both desktop/mobile click-during-recovery browser cases passed in
+  3.2 s with a frozen clock and applied-state assertion, never advancing across
+  the retry deadline.
+- First PR CI run `42051661889` failed two report-cleanup viewport cases because
+  they still required the removed literal “Connection lost. Reconnecting…”.
+  Downloaded/retained failure artifacts, inspected history and this ledger, and
+  updated the expected notice while retaining countdown, explicit retry, portal
+  identity and live-region assertions. Both repaired cases passed in 18.8 s.
+  Audited all remaining old-copy references: updated the incompatible-data
+  negative assertion and the explicit-only malformed-response expectation.
+  The full explicit core suite was not rerun; HTTP/unit and fixture schema
+  coverage passed. No test was deleted, retried for luck, or given more time.

@@ -128,7 +128,7 @@ impl PgStore {
                 let mut tx = begin_refresh_transaction(&mut connection).await?;
                 let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,901324))")
                     .bind(digest).fetch_one(&mut *tx).await.map_err(db_error)?;
-                if !acquired { return Err(StoreError::Unavailable); }
+                if !acquired { return Err(StoreError::SessionRefreshing(1000)); }
                 let tokens = read_tokens(&mut *tx, digest, issuer, client).await?;
                 if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
                     tx.commit().await.map_err(db_error)?;
@@ -396,14 +396,16 @@ async fn read_tokens<'e, E: sqlx::Executor<'e, Database = sqlx::Postgres>>(
     let (value, now_ms) = row.ok_or(StoreError::Conflict)?;
     if value.get("rotation_claim_id").is_some() {
         return Err(
-            if value
+            match value
                 .get("rotation_deadline_ms")
                 .and_then(serde_json::Value::as_i64)
-                .is_some_and(|deadline| now_ms < deadline)
+                .filter(|deadline| now_ms < *deadline)
             {
-                StoreError::Unavailable
-            } else {
-                StoreError::Conflict
+                Some(deadline) => StoreError::SessionRefreshing(
+                    (deadline.saturating_sub(now_ms) as u64)
+                        .min(REVALIDATION_BUDGET.as_millis() as u64),
+                ),
+                None => StoreError::Conflict,
             },
         );
     }

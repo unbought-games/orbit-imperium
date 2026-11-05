@@ -4,7 +4,12 @@ import type {
   GameUpdate,
   GameUpdatesPort,
 } from './commands'
-export type DeliveryController = { stop(): void; wake(): void; pending(): void }
+export type DeliveryController = {
+  stop(): void
+  pause(): void
+  wake(): void
+  pending(): void
+}
 type Options = {
   binding: Binding
   platform: ClientPlatform
@@ -20,19 +25,20 @@ type Options = {
 export function startGameDelivery(options: Options): DeliveryController {
   const { platform } = options,
     schedule = platform.scheduleOnce?.bind(platform)
-  if (!schedule) return { stop() {}, wake() {}, pending() {} }
+  if (!schedule) return { stop() {}, pause() {}, wake() {}, pending() {} }
   let stopped = false,
+    paused = platform.isVisible?.() === false,
     connected = false,
-    streamRunning = false,
     polling = false
   let reconcileAgain = false
   let cursor: string | null = null,
     retry = 1000,
+    streamRetryAt = 0,
     pollAt = Infinity
   let cancelPoll: (() => void) | undefined,
     cancelStream: (() => void) | undefined
   let controller: AbortController | undefined
-  const current = () => !stopped && options.isCurrent()
+  const current = () => !stopped && !paused && options.isCurrent()
   const random = () =>
     Math.max(0, Math.min(1, platform.random?.() ?? Math.random()))
   const idleDelay = () => 30000 + Math.floor(random() * 30000)
@@ -77,19 +83,26 @@ export function startGameDelivery(options: Options): DeliveryController {
     }
   }
   async function open() {
-    if (!current() || streamRunning || !options.updates) return
+    if (!current() || controller || !options.updates) return
     if (!platform.isOnline()) {
       cancelStream = schedule!(() => void open(), 5000)
       return
     }
-    streamRunning = true
-    controller = new AbortController()
+    const cooldown = streamRetryAt - platform.monotonicNowMs()
+    if (cooldown > 0) {
+      cancelStream = schedule!(() => void open(), cooldown)
+      return
+    }
+    const stream = new AbortController()
+    controller = stream
+    const active = () => current() && controller === stream
     let unavailable = false
+    let retryAfterMs = 0
     try {
       await options.updates.subscribe(options.binding, cursor, {
-        signal: controller.signal,
+        signal: stream.signal,
         onConnect: () => {
-          if (!current()) return
+          if (!active()) return
           connected = true
           retry = 1000
           // A resumed stream may only send keepalives. Reconcile immediately,
@@ -98,34 +111,46 @@ export function startGameDelivery(options: Options): DeliveryController {
           else queuePoll(0)
         },
         onUpdate: async (update) => {
-          if (!current()) return
+          if (!active()) return
           await options.onUpdate(update)
-          if (!current()) return
+          if (!active()) return
           cursor = update.cursor ?? cursor
           connected = true
           retry = 1000
           queuePoll(nextPollDelay(), true)
         },
         onDisconnect: () => {
-          connected = false
+          if (active()) connected = false
         },
       })
     } catch (error) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'retryAfterMs' in error &&
+        typeof error.retryAfterMs === 'number' &&
+        Number.isFinite(error.retryAfterMs)
+      )
+        retryAfterMs = Math.max(0, error.retryAfterMs)
       unavailable =
         !!error &&
         typeof error === 'object' &&
         'status' in error &&
         [404, 426].includes(Number(error.status))
     } finally {
-      streamRunning = false
-      connected = false
-      if (current()) {
-        cancelStream = schedule!(
-          () => void open(),
-          (unavailable ? 60000 : retry) + Math.floor(random() * 1000),
-        )
-        retry = Math.min(30000, retry * 2)
-        queuePoll(nextPollDelay(), true)
+      if (controller === stream) {
+        controller = undefined
+        connected = false
+        if (current()) {
+          streamRetryAt = platform.monotonicNowMs() + retryAfterMs
+          cancelStream = schedule!(
+            () => void open(),
+            Math.max(retryAfterMs, unavailable ? 60000 : retry) +
+              Math.floor(random() * 1000),
+          )
+          retry = Math.min(30000, retry * 2)
+          queuePoll(nextPollDelay(), true)
+        }
       }
     }
   }
@@ -140,11 +165,22 @@ export function startGameDelivery(options: Options): DeliveryController {
       cancelStream?.()
       controller?.abort()
     },
+    pause() {
+      paused = true
+      connected = false
+      cancelPoll?.()
+      pollAt = Infinity
+      cancelStream?.()
+      const old = controller
+      controller = undefined
+      old?.abort()
+    },
     wake() {
+      paused = false
       if (!current()) return
       if (polling) reconcileAgain = true
       else queuePoll(0)
-      if (!streamRunning) {
+      if (!controller) {
         cancelStream?.()
         void open()
       }

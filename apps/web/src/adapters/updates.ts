@@ -5,7 +5,7 @@ import {
   type GameUpdatesPort,
 } from '../client-model/commands'
 import { validate } from '../client-model/schema'
-import { HttpError } from './http'
+import { HttpError, retryDelay } from './http'
 import { checkClientBuild } from './client-update'
 
 const maximumFrame = 256 * 1024
@@ -54,7 +54,11 @@ export function createGameUpdatesPort(baseUrl = ''): GameUpdatesPort {
         )
         checkClientBuild(response)
         if (!response.ok)
-          throw new HttpError(response.status, 'UpdateStreamUnavailable')
+          throw new HttpError(
+            response.status,
+            'UpdateStreamUnavailable',
+            retryDelay(response.headers.get('Retry-After')),
+          )
         if (
           !response.body ||
           !response.headers.get('Content-Type')?.startsWith('text/event-stream')
