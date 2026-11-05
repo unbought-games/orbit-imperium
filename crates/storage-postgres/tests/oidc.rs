@@ -458,7 +458,7 @@ async fn slow_refresh_is_isolated_and_rotates_once_across_replicas() {
     .await;
     assert!(matches!(
         contended,
-        Err(orbit_application::StoreError::Unavailable)
+        Err(orbit_application::StoreError::SessionRefreshing(1..=4000))
     ));
 
     // Both admission and fresh authentication on the blocked refresher's own

@@ -42,7 +42,10 @@ const view = (request_id: string, revision = '0'): BoundView => ({
   reports_truncated: false,
   destinations_truncated: false,
 })
-function setup(clock = () => 0) {
+function setup(
+  clock = () => 0,
+  lifecycle: { isOnline?(): boolean; isVisible?(): boolean } = {},
+) {
   const saved = new Map<string, Attempt>(),
     sent: string[] = []
   const storage: AttemptStorage = {
@@ -105,6 +108,7 @@ function setup(clock = () => 0) {
     newId: () => id(n++),
     monotonicNowMs: clock,
     isOnline: () => true,
+    ...lifecycle,
   })
   return { c, port, storage, saved, sent, receipts }
 }
@@ -1520,7 +1524,7 @@ it('does not erase a genuine connection failure when a concurrent request is thr
   c.tick()
   await c.refresh()
   expect(connectionStatus(c.store.getState())?.message).toContain(
-    'Connection lost.',
+    'Unable to refresh your empire.',
   )
   port.view = originalView
   await c.refresh()
@@ -1725,4 +1729,309 @@ it('retains an uncertain deletion ID when a retry needs recent authentication', 
   expect(sent).toEqual([commandId, commandId])
   expect(saved.size).toBe(1)
   expect([...c.ledger.values()][0].status).toBe('uncertain')
+})
+
+it('verifies a transient snapshot failure without ever announcing loss of service', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const original = port.view
+  let calls = 0
+  const notices: unknown[] = []
+  const stop = c.subscribe((state) => notices.push(connectionStatus(state)))
+  port.view = async (context) => {
+    if (++calls === 1) throw new TypeError('network handoff')
+    return original(context)
+  }
+  await c.refresh()
+  stop()
+  expect(calls).toBe(2)
+  expect(notices.every((notice) => notice === null)).toBe(true)
+  expect(c.stale).toBe(false)
+})
+
+it('keeps the last snapshot and warns when independent foreground verification also fails', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const previous = c.view,
+    original = port.view
+  let calls = 0
+  port.view = async () => {
+    calls++
+    throw { status: 503 }
+  }
+  await c.refresh()
+  expect(calls).toBe(2)
+  expect(c.view).toBe(previous)
+  expect(connectionStatus(c.store.getState())?.kind).toBe('connection')
+  port.view = original
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('fences a suspended snapshot failure and resumes quietly without waiting for it', async () => {
+  let visible = true
+  const { c, port } = setup(() => 0, { isVisible: () => visible })
+  await c.connect(binding.account, binding.universe)
+  const original = port.view
+  let reject!: (error: unknown) => void
+  port.view = () =>
+    new Promise((_, no) => {
+      reject = no
+    })
+  const old = c.refresh()
+  visible = false
+  c.resumeDelivery()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  port.view = original
+  visible = true
+  c.resumeDelivery()
+  await c.refresh()
+  reject(new TypeError('suspended network'))
+  await old
+  expect(c.stale).toBe(false)
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('distinguishes browser offline from failed service verification and clears on recovery', async () => {
+  let online = true
+  const { c, sent } = setup(() => 0, { isOnline: () => online })
+  await c.connect(binding.account, binding.universe)
+  online = false
+  c.resumeDelivery()
+  expect(connectionStatus(c.store.getState())?.message).toContain(
+    'You’re offline.',
+  )
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  expect(sent).toHaveLength(0)
+  expect(c.message).toBe('Connect before confirming an action.')
+  online = true
+  c.resumeDelivery()
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  // A failed player action is not silently dismissed by a healthy snapshot.
+  expect(c.message).toBe('Connect before confirming an action.')
+})
+
+it('keeps an uncertain order visible through healthy snapshot recovery without resending it', async () => {
+  const { c, port, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  port.submit = async (e) => {
+    sent.push(e.command_id)
+    throw new TypeError('lost acknowledgement')
+  }
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  const attempt = [...c.ledger.values()][0]
+  expect(attempt.status).toBe('uncertain')
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  await c.poll()
+  expect(sent).toEqual([attempt.envelope.command_id])
+  expect([...c.ledger.values()][0].status).toBe('uncertain')
+  expect(c.stale).toBe(false)
+})
+
+it.each([401, 403])(
+  'requires sign-in after snapshot access failure %s without a network retry',
+  async (status) => {
+    const { c, port } = setup()
+    await c.connect(binding.account, binding.universe)
+    let calls = 0
+    port.view = async () => {
+      calls++
+      throw { status }
+    }
+    await c.refresh()
+    expect(calls).toBe(1)
+    expect(c.accessLost).toBe(true)
+    expect(c.ready).toBe(false)
+    expect(c.message).toContain('Sign in again')
+  },
+)
+
+it('keeps hidden snapshots and presence quiet when a cooldown expires', async () => {
+  let now = 0,
+    visible = true
+  const { c, port, sent } = setup(() => now, { isVisible: () => visible })
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { session, snapshot } = readyFixture(4)
+  await c.initialize(session, snapshot)
+  let reads = 0
+  port.view = async (context) => {
+    reads++
+    return view(context.request_id)
+  }
+  visible = false
+  c.resumeDelivery()
+  c.store.setState({ retryAt: 1000, rateLimited: true })
+  now = 1000
+  c.tick()
+  await c.refresh()
+  await c.recordPresence('BodyVisit', null)
+  expect(reads).toBe(0)
+  expect(sent).toHaveLength(0)
+  expect(c.message).toBe('')
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('shows a service refusal with Retry-After without probing ahead of its deadline', async () => {
+  let now = 0
+  const { c, port } = setup(() => now)
+  await c.connect(binding.account, binding.universe)
+  const original = port.view
+  let reads = 0
+  port.view = async () => {
+    reads++
+    throw { status: 503, retryAfterMs: 5000 }
+  }
+  await c.refresh()
+  expect(reads).toBe(1)
+  expect(connectionStatus(c.store.getState())?.kind).toBe('connection')
+  await c.refresh()
+  expect(reads).toBe(1)
+  now = 5000
+  port.view = original
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('does not turn an announced client update into a connection failure', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  let reads = 0
+  port.view = async () => {
+    reads++
+    throw { code: 'ClientUpdateRequired', retryAfterMs: 30000 }
+  }
+  await c.refresh()
+  expect(reads).toBe(1)
+  expect(c.stale).toBe(true)
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('treats a live session rotation as coordination, then refreshes at its server deadline', async () => {
+  let now = 0
+  const { c, port } = setup(() => now)
+  await c.connect(binding.account, binding.universe)
+  const original = port.view
+  let reads = 0
+  port.view = async () => {
+    reads++
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
+  }
+  await c.refresh()
+  expect(c.stale).toBe(true)
+  expect(reads).toBe(1)
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  await c.poll()
+  expect(reads).toBe(1)
+  now = 4000
+  port.view = original
+  await c.poll()
+  expect(c.stale).toBe(false)
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('does not queue a gameplay action refused before admission by session rotation', async () => {
+  const { c, port, saved } = setup()
+  await c.connect(binding.account, binding.universe)
+  port.submit = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 1000 }
+  }
+  expect(
+    await c.send({ type: 'CancelConstruction', operation: id(40) }),
+  ).toBeUndefined()
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
+  expect(c.message).toBe(
+    'Your session is refreshing. This action was not sent. Try again.',
+  )
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('retains an older uncertain order when an explicit resend meets session rotation', async () => {
+  const { c, port, saved } = setup()
+  await c.connect(binding.account, binding.universe)
+  port.submit = async () => {
+    throw new TypeError('lost response')
+  }
+  const commandId = await c.send({
+    type: 'CancelConstruction',
+    operation: id(40),
+  })
+  port.submit = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 1000 }
+  }
+  await c.retryOrder(commandId!)
+  expect(saved.size).toBe(1)
+  expect([...c.ledger.values()][0]).toMatchObject({
+    status: 'uncertain',
+    envelope: { command_id: commandId },
+  })
+  expect(connectionStatus(c.store.getState())).toBeNull()
+})
+
+it('does not alarm for a background presence refusal during rotation, but expired claims still require sign-in', async () => {
+  let now = 0
+  const { c, port, saved } = setup(() => now)
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { session, snapshot } = readyFixture(4)
+  await c.initialize(session, snapshot)
+  port.submit = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
+  }
+  await c.recordPresence('BodyVisit', snapshot.view.bodies[0]?.id ?? null)
+  expect(saved.size).toBe(0)
+  expect(c.message).toBe('')
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  now = 4000
+  port.view = async () => {
+    throw { status: 401 }
+  }
+  await c.refresh()
+  expect(c.accessLost).toBe(true)
+  expect(c.message).toContain('Sign in again')
+})
+
+it('explains an action blocked by an earlier quiet session refresh without queueing it', async () => {
+  const { c, port, sent, saved } = setup()
+  await c.connect(binding.account, binding.universe)
+  port.view = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
+  }
+  await c.refresh()
+  expect(connectionStatus(c.store.getState())).toBeNull()
+  await c.send({ type: 'CancelConstruction', operation: id(40) })
+  expect(c.message).toBe('This action was not sent. Please try again shortly.')
+  expect(sent).toHaveLength(0)
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
+})
+
+it('explains a session refresh that starts while an unsent action is being saved', async () => {
+  const { c, port, storage, saved, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  const put = storage.put
+  let release!: () => void
+  let saving!: () => void
+  const started = new Promise<void>((resolve) => {
+    saving = resolve
+  })
+  storage.put = async (attempt) => {
+    saving()
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await put(attempt)
+  }
+  const send = c.send({ type: 'CancelConstruction', operation: id(40) })
+  await started
+  port.view = async () => {
+    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
+  }
+  await c.refresh()
+  release()
+  expect(await send).toBeUndefined()
+  expect(c.message).toBe('This action was not sent. Please try again shortly.')
+  expect(sent).toHaveLength(0)
+  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
 })

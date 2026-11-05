@@ -184,12 +184,35 @@ export class Coordinator {
       isCurrent: () => this.ready && this.current(generation, binding),
     })
     this.delivery = delivery
+    this.store.setState({
+      foreground: this.platform.isVisible?.() ?? true,
+      online: this.platform.isOnline(),
+    })
+    if (this.platform.isVisible?.() === false || !this.platform.isOnline())
+      this.resumeDelivery()
     return () => {
       delivery.stop()
       if (this.delivery === delivery) this.delivery = null
     }
   }
   resumeDelivery() {
+    const previous = this.store.getState()
+    const foreground = this.platform.isVisible?.() ?? true
+    const online = this.platform.isOnline()
+    this.store.setState({ foreground, online })
+    if (!foreground || !online) {
+      // Fence requests started before suspension/handoff. Their failures say
+      // nothing about service availability after the next foreground resume.
+      this.store.setState({ stale: true })
+      this.viewGeneration++
+      this.quoteGeneration++
+      this.delivery?.pause()
+      return
+    }
+    if ((!previous.foreground || !previous.online) && this.refreshWork) {
+      // Supersede a suspended snapshot without waiting for its HTTP timeout.
+      void this.refresh()
+    }
     this.delivery?.wake()
   }
   tick() {
@@ -197,7 +220,7 @@ export class Coordinator {
     const now = this.platform.monotonicNowMs()
     this.store.setState({ now })
     if (previous.now < previous.retryAt && now >= previous.retryAt)
-      this.delivery?.wake()
+      this.resumeDelivery()
   }
   dismissMessage() {
     this.message = ''
@@ -463,9 +486,7 @@ export class Coordinator {
         stale: true,
         ...(e instanceof ContractDataError
           ? { incompatibleSchema: e.schemaName, connectionInterrupted: false }
-          : f.status !== 429
-            ? { connectionInterrupted: true }
-            : {}),
+          : {}),
       })
       this.delivery?.pending()
     }
@@ -511,7 +532,9 @@ export class Coordinator {
       if (this.pendingMinimum !== undefined) this.delivery?.pending()
     }
   }
-  private async refreshOnce(minimumViewerRevision?: string) {
+  private async refreshOnce(minimumViewerRevision?: string, verifying = false) {
+    if (this.platform.isVisible?.() === false || !this.platform.isOnline())
+      return
     if (this.platform.monotonicNowMs() < this.retryAt) return
     const q = ++this.viewGeneration
     const request = this.captureRequest()
@@ -585,7 +608,33 @@ export class Coordinator {
       })
       await this.reconcile()
     } catch (e) {
-      if (q === this.viewGeneration) await this.problem(e, g, b)
+      if (q !== this.viewGeneration || !this.current(g, b)) return
+      await this.problem(e, g, b)
+      if (
+        q !== this.viewGeneration ||
+        !this.current(g, b) ||
+        !this.store.getState().foreground ||
+        !this.platform.isOnline() ||
+        e instanceof ContractDataError ||
+        failure(e).status === 429 ||
+        (failure(e).status === 503 &&
+          failure(e).code === 'SessionRefreshing') ||
+        failure(e).code === 'ClientUpdateRequired'
+      )
+        return
+      if (
+        verifying ||
+        this.store.getState().connectionInterrupted ||
+        this.platform.monotonicNowMs() < this.retryAt
+      )
+        // An explicit service Retry-After also establishes that a fresh read
+        // cannot be obtained now; respect it instead of issuing a probe.
+        this.store.setState({ connectionInterrupted: true })
+      else {
+        // One independent read distinguishes a failed request from inability
+        // to refresh the empire. No alert timer and no command resubmission.
+        await this.refreshOnce(minimumViewerRevision, true)
+      }
     }
   }
   async quote(request: QuoteRequest): Promise<BoundQuote | null> {
@@ -636,7 +685,12 @@ export class Coordinator {
     cause: 'Login' | 'BodyVisit' | 'AccountVisit' | 'Logout',
     body: string | null,
   ) {
-    if (this.protocol !== 4) return
+    if (
+      this.protocol !== 4 ||
+      !this.platform.isOnline() ||
+      this.platform.isVisible?.() === false
+    )
+      return
     await this.send({
       type: 'World',
       action: {
@@ -929,7 +983,10 @@ export class Coordinator {
       return
     }
     this.tick()
-    if (this.platform.monotonicNowMs() < this.retryAt) return
+    if (this.platform.monotonicNowMs() < this.retryAt) {
+      this.explainUnsentDuringRecovery(command)
+      return
+    }
     this.message = ''
     const state = this.store.getState()
     if (pendingCommand(state, command)) return
@@ -1042,11 +1099,22 @@ export class Coordinator {
       return false
     }
   }
+  private explainUnsentDuringRecovery(command: Command) {
+    if (
+      !this.store.getState().rateLimited &&
+      (command.type !== 'World' ||
+        command.action.type !== 'RecordForegroundPresence')
+    )
+      this.message = 'This action was not sent. Please try again shortly.'
+  }
   private async deliver(a: Attempt, g: number, firstDelivery = false) {
     // A concurrent request can start a cooldown while this order is being saved.
     // A brand-new order has not reached the server and must not be queued.
     if (this.platform.monotonicNowMs() < this.retryAt) {
-      if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+      if (firstDelivery && (await this.forgetUnsent(a, g))) {
+        this.explainUnsentDuringRecovery(a.envelope.command)
+        return false
+      }
       await this.uncertain(a, g)
       return true
     }
@@ -1071,6 +1139,24 @@ export class Coordinator {
         this.message =
           'Sign out and sign in again, then retry this action within five minutes.'
         if (firstDelivery && (await this.forgetUnsent(a, g))) return false
+        await this.uncertain(a, g)
+      } else if (
+        rejected.status === 503 &&
+        rejected.code === 'SessionRefreshing'
+      ) {
+        // Authentication refused this request before command admission. A
+        // previous uncertain send still needs its original durable identity.
+        await this.problem(e, g, a.envelope.binding)
+        if (firstDelivery && (await this.forgetUnsent(a, g))) {
+          const command = a.envelope.command
+          if (
+            command.type !== 'World' ||
+            command.action.type !== 'RecordForegroundPresence'
+          )
+            this.message =
+              'Your session is refreshing. This action was not sent. Try again.'
+          return false
+        }
         await this.uncertain(a, g)
       } else if (failure(e).status === 429) {
         // Apply the cooldown before awaiting local storage, so concurrent clicks
@@ -1193,6 +1279,8 @@ export class Coordinator {
       for (const attempt of [...this.attempts.values()]) {
         if (
           generation !== this.generation ||
+          this.platform.isVisible?.() === false ||
+          !this.platform.isOnline() ||
           this.platform.monotonicNowMs() < this.retryAt
         )
           return

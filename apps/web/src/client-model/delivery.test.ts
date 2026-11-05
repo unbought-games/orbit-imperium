@@ -266,3 +266,93 @@ it('reconciles due work on a healthy stream and retries until completion is conf
   expect(reconcile).toHaveBeenCalledTimes(2)
   delivery.stop()
 })
+
+it('pauses a locked/backgrounded tab and opens a fresh stream even if the old reader has not settled', async () => {
+  vi.useFakeTimers()
+  const streams: Parameters<GameUpdatesPort['subscribe']>[2][] = []
+  const releases: (() => void)[] = []
+  const reconcile = vi.fn(async () => {})
+  const onUpdate = vi.fn(async () => {})
+  const delivery = startGameDelivery({
+    binding,
+    platform,
+    reconcile,
+    onUpdate,
+    hasPending: () => false,
+    isCurrent: () => true,
+    updates: {
+      async subscribe(_, __, options) {
+        streams.push(options)
+        options.onConnect?.()
+        await new Promise<void>((resolve) => releases.push(resolve))
+        options.onDisconnect()
+      },
+    },
+  })
+  await vi.advanceTimersByTimeAsync(0)
+  delivery.pause()
+  expect(streams[0].signal.aborted).toBe(true)
+  await vi.advanceTimersByTimeAsync(120000)
+  expect(reconcile).toHaveBeenCalledTimes(1)
+  delivery.wake()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(streams).toHaveLength(2)
+  expect(reconcile).toHaveBeenCalledTimes(2)
+  await streams[0].onUpdate({
+    binding,
+    cursor: 'old',
+    event: { type: 'Reset' },
+  })
+  expect(onUpdate).not.toHaveBeenCalled()
+  releases[0]()
+  await vi.advanceTimersByTimeAsync(2000)
+  expect(streams).toHaveLength(2)
+  expect(streams[1].signal.aborted).toBe(false)
+  delivery.stop()
+  releases[1]()
+})
+
+it('respects a throttled stream Retry-After across focus and suspension', async () => {
+  vi.useFakeTimers()
+  const subscribe = vi.fn(async () => {
+    throw { status: 429, retryAfterMs: 60000 }
+  })
+  const delivery = startGameDelivery({
+    binding,
+    platform,
+    reconcile: async () => {},
+    onUpdate: async () => {},
+    hasPending: () => false,
+    isCurrent: () => true,
+    updates: { subscribe },
+  })
+  await vi.advanceTimersByTimeAsync(0)
+  delivery.wake()
+  delivery.pause()
+  delivery.wake()
+  await vi.advanceTimersByTimeAsync(59999)
+  expect(subscribe).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(subscribe).toHaveBeenCalledTimes(2)
+  delivery.stop()
+})
+
+it('does not open a stream or poll when delivery starts in a hidden document', async () => {
+  vi.useFakeTimers()
+  const subscribe = vi.fn(async () => {})
+  const reconcile = vi.fn(async () => {})
+  const delivery = startGameDelivery({
+    binding,
+    platform: { ...platform, isVisible: () => false },
+    reconcile,
+    onUpdate: async () => {},
+    hasPending: () => true,
+    needsSnapshot: () => true,
+    isCurrent: () => true,
+    updates: { subscribe },
+  })
+  await vi.advanceTimersByTimeAsync(60000)
+  expect(subscribe).not.toHaveBeenCalled()
+  expect(reconcile).not.toHaveBeenCalled()
+  delivery.stop()
+})
