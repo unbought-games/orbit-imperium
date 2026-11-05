@@ -47,6 +47,11 @@ test-client:
 test-http:
 	cargo nextest run -p orbit-transport-http
 
+.PHONY: test-universe-config
+test-universe-config:
+	cargo nextest run -p orbit-application --test universe_config
+	cargo nextest run -p orbit-server --bin orbit -E 'test(universe_cli::tests::) | test(setup_cli::tests::)'
+
 prepare-server:
 	$(SERVER_TESTS) --no-run
 	$(BRIDGE_TESTS) --no-run
