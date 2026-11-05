@@ -94,6 +94,15 @@ export function usePlayerDisplay(player: string) {
   )
 }
 
+/** Retain authored identity when a short-lived supporter observation expires. */
+export function usePlayerIdentity(player: string) {
+  const controller = useContext(PlayerProfilesContext)
+  return useStore(
+    controller?.store ?? emptyProfiles,
+    (state) => state.players[player],
+  )
+}
+
 /** Authoritative profile observations for pure compact-label projections. */
 export function usePlayerDisplays() {
   const controller = useContext(PlayerProfilesContext)

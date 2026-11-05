@@ -1,0 +1,61 @@
+.page {
+  max-width: 64rem;
+  padding: 2rem;
+  margin: auto;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.page h1,
+.page h2,
+.page h3 {
+  font-family: var(--font-editorial);
+}
+.page h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+.page h2 {
+  font-size: 1.3rem;
+  line-height: 1.4;
+}
+.page h3 {
+  font-size: 1.75rem;
+  line-height: 1.4;
+}
+.samples {
+  padding: 1.25rem;
+  margin-block: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.samples p {
+  margin-block: 1rem;
+}
+.rows > div {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 4rem;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.rows > div > :last-child {
+  text-align: right;
+}
+.small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.large {
+  font-size: 24px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .page {
+    padding: 1rem;
+  }
+  .samples {
+    padding: 1rem;
+  }
+}

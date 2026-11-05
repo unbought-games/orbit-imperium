@@ -1,12 +1,12 @@
 # Report pagination and query filtering
 
-Validated on 2026-11-05 against base revision
+Initial implementation validated on 2026-11-05 against base revision
 `2d6f226ac76cab528d6c820ea18ffa9eea87d2b7` plus the uncommitted implementation in
 this chat. The SHA-256 of the sorted changed-source manifest is
 `c15b1f93ef2816023605c51f813110f3d8c562903c4e6c7976f3f21502aa5676`;
 individual hashes are retained locally in `test-results/reports-tested-source.json`.
-This note is outside that source manifest. No production changes, PR, queue, or
-merge were requested or performed.
+This note is outside that initial source manifest. No production changes were
+performed. Subsequent PR and queue verification is recorded below.
 
 ## Behavior
 
@@ -26,7 +26,7 @@ merge were requested or performed.
   its explicitly loaded window. Its 20-row display batches can span 50-row API
   boundaries. Optimistic removals derive from shared headers/preferences.
 - Legacy requests without `filter` retain `include_hidden` behavior. Existing
-  chronological cursors receive a compatible default filter in migration 0037.
+  chronological cursors receive a compatible default filter in migration 0038.
   New cursors bind the filter, kind, recipient/session binding and ordering key.
 - Resource and investment ordering uses authorized historical observations and
   active unit costs. Unknown observations remain last; numeric values do not pass
@@ -39,13 +39,13 @@ recipient's history but cannot narrow it by hidden/read/starred preferences. The
 existing universe/time index does not itself scope recipient membership.
 
 The new recipient-first candidate query filters keys before building previews.
-Migration 0037 adds:
+Migration 0038 adds:
 
 - `mission_report_folder(recipient,hidden,read,report) INCLUDE(created_revision,starred)`.
 - `mission_report_starred(recipient,hidden,report) INCLUDE(created_revision,read) WHERE starred`.
 
 For a populated installation, run `scripts/prepare-report-indexes.sql` with psql
-and `ON_ERROR_STOP=1`, outside a transaction, before deploying migration 0037.
+and `ON_ERROR_STOP=1`, outside a transaction, before deploying migration 0038.
 It creates the indexes concurrently. Inspect `pg_index.indisvalid`; if preparation
 was interrupted, drop only an invalid listed index concurrently before retrying.
 Startup refuses missing/invalid indexes on retained membership and reports the
@@ -196,3 +196,26 @@ Local validation of the queue repair: all 23 report-state/cleanup unit cases
 passed (149 ms runner duration), and all 41 retained report-deletion browser
 cases passed (1.4 minutes, 1.82 seconds module preparation). GitHub removed the
 failed queue entry after the integration run finished. Queue removals so far: 1.
+
+### Integration with main
+
+The repaired PR head `89d4853f04f53fb217520c469200e37f8d4483c3` passed its full
+PR matrix and automated review. Its second queue entry was marked unmergeable
+behind PR #353: both changes appended API schema definitions and claimed
+migration number 0037. No second integration test run was created for this entry.
+After #353 merged as `c199b79841da35168101d4ec245ea058b10b39ee`, this branch
+merged that confirmed main revision. The schema resolution preserves the new
+identity definitions and the report-filter additions; TypeScript was regenerated
+from the combined OpenAPI document. The report migration is now **0038**, and
+its retained-data migration test includes the preceding identity migration.
+Queue removals so far: 2 (one failed test run, one integration conflict).
+
+Local integrated validation passed: 1,409 client cases (6.76 seconds), all 92
+report/HUD/glance browser cases (2.9 minutes; module preparation 5.26 seconds),
+and all 18 report-page/migration database cases (25.53 seconds compilation;
+15.35 seconds report execution and 33.78 seconds migration execution with two
+Make workers). TypeScript contract generation/checks, lint, formatting and
+Clippy also passed (27.89 seconds for the integrated storage Clippy check).
+The disposable PostgreSQL project was removed after these checks. The production frontend build passed (4.01 seconds client bundling and 0.32
+seconds prerender bundling). Current desktop/mobile screenshots were refreshed
+and inspected against the integrated main UI before publishing.

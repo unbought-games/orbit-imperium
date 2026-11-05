@@ -22,6 +22,7 @@ export async function readArchive<T>(
   const response = await fetch(path, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
     cache: 'no-store',
+    headers: { 'x-orbit-identity': '1' },
     credentials: 'same-origin',
   })
   if (!response.ok)

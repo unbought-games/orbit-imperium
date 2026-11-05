@@ -7710,6 +7710,8 @@ export interface components {
             alliance?: components["schemas"]["AllianceIdentity"];
             kind?: components["schemas"]["PlayerKind"];
             insignia?: components["schemas"]["InsigniaAppearance"];
+            identity?: components["schemas"]["EmpireIdentity"];
+            title?: components["schemas"]["TitleDisplay"];
         };
         PlayerProfiles: {
             binding: components["schemas"]["Binding"];
@@ -9071,6 +9073,9 @@ export interface components {
             entries: components["schemas"]["HistoryEntry"][];
             next: string | null;
             alliance?: components["schemas"]["AllianceIdentity"];
+            identity?: components["schemas"]["EmpireIdentity"];
+            title?: components["schemas"]["TitleDisplay"];
+            title_choices?: components["schemas"]["TitleChoice"][];
         };
         OrbitProfile: {
             /** Format: uuid */
@@ -9102,12 +9107,39 @@ export interface components {
             type: "Publish";
             /** Format: uuid */
             event: string;
+        } | {
+            /** @constant */
+            type: "Identity";
+            identity: components["schemas"]["EmpireIdentity"];
         };
         ProfileCommand: {
             /** Format: uuid */
             command_id: string;
             expected_revision: number;
             action: components["schemas"]["ProfileAction"];
+        };
+        EmpireIdentity: {
+            name: string;
+            tagline: string;
+            title_id: string;
+        };
+        EmpireTitle: {
+            id: string;
+            label: string;
+            address: string;
+            /** @enum {string} */
+            access: "free" | "supporter" | "earned";
+        };
+        TitleDisplay: {
+            id: string;
+            label: string;
+            address: string;
+            expires_at: number | null;
+        };
+        TitleChoice: {
+            title: components["schemas"]["EmpireTitle"];
+            /** @enum {string} */
+            availability: "available" | "supporter_required" | "earned_required" | "unavailable" | "not_installed";
         };
         ReportFilter4: {
             hidden?: boolean | null;

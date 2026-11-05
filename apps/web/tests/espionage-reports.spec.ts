@@ -398,6 +398,13 @@ test('long observed names wrap without moving levels or revealing hidden intelli
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      const owner = report.locator('a[href^="/profiles/empire/"]').first()
+      const scroll = await page.evaluate(() => scrollY)
+      await owner.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, { path: `test-results/identity-report-${width}x1000.png` })
+      await page.evaluate(y => scrollTo(0, y), scroll)
+    }
     await diagnosticScreenshot(sections[1], {
       path: `test-results/espionage-long-names-${width}.png`,
     })

@@ -997,7 +997,7 @@ async fn retained_report_filters_require_online_indexes_and_keep_legacy_cursors(
         migrations: all
             .migrations
             .iter()
-            .filter(|m| m.version < 37)
+            .filter(|m| m.version < 38)
             .cloned()
             .collect::<Vec<_>>()
             .into(),

@@ -211,3 +211,34 @@
 .page a:not([data-button-variant]) {
   color: var(--link);
 }
+
+.identityEditor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 2rem;
+  border: 1px solid var(--border);
+  padding: clamp(1rem, 3vw, 2rem);
+}
+.identityEditor h2 {
+  margin-top: 0;
+  font-family: var(--font-editorial);
+}
+.identityEditor form,
+.identityPreview {
+  min-width: 0;
+}
+.identityPreview {
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  align-self: start;
+}
+.identityEditor a {
+  color: var(--link);
+}
+@media (max-width: 640px) {
+  .identityEditor {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+}

@@ -25,7 +25,7 @@ impl PgStore {
         .map_err(db_error)?
         .flatten();
         let permanent_symbols = sqlx::query_scalar(
-            "SELECT symbol FROM insignia_grants WHERE account=$1 ORDER BY symbol",
+            "SELECT item_id FROM cosmetic_grants WHERE account=$1 AND kind='insignia' ORDER BY item_id",
         )
         .bind(b.account.0)
         .fetch_all(&mut *tx)
@@ -67,12 +67,13 @@ impl PgStore {
             .map_err(db_error)?
             .ok_or(StoreError::NotFound)?;
         crate::binding::check_read(&mut tx, b).await?;
-        let grants: Vec<String> =
-            sqlx::query_scalar("SELECT symbol FROM insignia_grants WHERE account=$1")
-                .bind(b.account.0)
-                .fetch_all(&mut *tx)
-                .await
-                .map_err(db_error)?;
+        let grants: Vec<String> = sqlx::query_scalar(
+            "SELECT item_id FROM cosmetic_grants WHERE account=$1 AND kind='insignia'",
+        )
+        .bind(b.account.0)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(db_error)?;
         // Real wall clock, not the accelerated simulation clock, governs membership evidence.
         let now: i64 =
             sqlx::query_scalar("SELECT floor(extract(epoch from clock_timestamp()))::bigint")
@@ -151,7 +152,7 @@ impl PgStore {
         universe: UniverseId,
         players: Vec<PlayerId>,
     ) -> Result<EquippedInsignias, StoreError> {
-        sqlx::query("SELECT m.player,d.recipe,ARRAY(SELECT symbol FROM insignia_grants g WHERE g.account=m.account) AS grants FROM universe_memberships m JOIN empire_insignias e ON e.universe=m.universe AND e.account=m.account JOIN insignia_designs d ON d.account=e.account AND d.id=e.design_id WHERE m.universe=$1 AND m.player=ANY($2)")
+        sqlx::query("SELECT m.player,d.recipe,ARRAY(SELECT item_id FROM cosmetic_grants g WHERE g.account=m.account AND g.kind='insignia') AS grants FROM universe_memberships m JOIN empire_insignias e ON e.universe=m.universe AND e.account=m.account JOIN insignia_designs d ON d.account=e.account AND d.id=e.design_id WHERE m.universe=$1 AND m.player=ANY($2)")
             .bind(universe.0).bind(players.iter().map(|p|p.0).collect::<Vec<_>>()).fetch_all(self.read_pool()?).await.map_err(db_error)?
             .into_iter().map(|r| Ok((PlayerId(r.try_get("player").map_err(db_error)?), (r.try_get::<sqlx::types::Json<InsigniaRecipe>,_>("recipe").map_err(db_error)?.0, r.try_get("grants").map_err(db_error)?)))).collect()
     }

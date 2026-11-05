@@ -1,4 +1,4 @@
--- Retained databases: run before deploying migration 0037, outside a transaction.
+-- Retained databases: run before deploying migration 0038, outside a transaction.
 -- psql -v ON_ERROR_STOP=1 -f scripts/prepare-report-indexes.sql
 -- If interrupted, inspect pg_index.indisvalid; drop only an invalid listed index
 -- with DROP INDEX CONCURRENTLY before rerunning.

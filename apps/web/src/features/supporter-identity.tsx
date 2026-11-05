@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { identityTextParts } from './identity-text'
 import { Diamond, Orbit, Sparkles, Star } from 'lucide-react'
 import styles from './supporter-identity.module.css'
 import { InfoTooltip } from '../ui/info-tooltip'
@@ -19,8 +21,10 @@ export function SupporterIdentity({
   palette = 'starlight',
   badge = 'star',
   badgeTooltip = false,
+  mark,
 }: {
   name: string
+  mark?: ReactNode
   tier?: SupporterTier
   palette?: SupporterPalette
   badgeTooltip?: boolean
@@ -34,28 +38,59 @@ export function SupporterIdentity({
         : tier === 2
           ? Diamond
           : Sparkles
+  const { first, middle, last } = identityTextParts(name)
+  const decoration = tier ? (
+    badgeTooltip ? (
+      <span className={styles.badge}>
+        <InfoTooltip
+          className={styles.badgeControl}
+          label={`Supporter · ${tierLabels[tier]} USD`}
+          description="This player supports Orbit Imperium. Supporter status does not affect gameplay strength or protection."
+        >
+          <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+        </InfoTooltip>
+      </span>
+    ) : (
+      <span
+        className={styles.badge}
+        role="img"
+        aria-label={`Supporter · ${tierLabels[tier]} USD`}
+        title={`Supporter · ${tierLabels[tier]} USD`}
+      >
+        <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+      </span>
+    )
+  ) : null
   return (
     <span className={styles.identity} data-palette={palette} data-tier={tier}>
-      <span className={styles.name}>{name}</span>
-      {tier &&
-        (badgeTooltip ? (
-          <InfoTooltip
-            className={styles.badge}
-            label={`Supporter · ${tierLabels[tier]} USD`}
-            description="This player supports Orbit Imperium. Supporter status does not affect gameplay strength or protection."
-          >
-            <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
-          </InfoTooltip>
-        ) : (
-          <span
-            className={styles.badge}
-            role="img"
-            aria-label={`Supporter · ${tierLabels[tier]} USD`}
-            title={`Supporter · ${tierLabels[tier]} USD`}
-          >
-            <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
-          </span>
-        ))}
+      <span className={styles.name}>
+        {first &&
+          (mark ? (
+            <span className={styles.attached}>
+              {mark}
+              {'\u00a0'}
+              {first}
+            </span>
+          ) : (
+            first
+          ))}
+        {middle}
+        <span className={styles.attached}>
+          {!first && mark && (
+            <>
+              {mark}
+              {'\u00a0'}
+            </>
+          )}
+          {last}
+          {decoration && (
+            <>
+              {'\u00a0'}
+              {decoration}
+            </>
+          )}
+        </span>
+      </span>
     </span>
   )
 }

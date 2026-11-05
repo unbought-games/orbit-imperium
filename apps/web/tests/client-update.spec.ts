@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/test'
 import { installGameFixture, body, refreshGame } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, trackFixtureResponses } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { reloadNoticeMs, reloadStorageKey } from '../src/client-model/client-update'
 
@@ -97,6 +97,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
   const size = `${viewport.width}x${viewport.height}`
   test(`foreground recovery preserves edits and only announces verified failures (${size})`, async ({ page }, info) => {
+    const settleOverview = trackFixtureResponses(page, request => request.method() === 'POST' && request.url().endsWith('/overview'))
     await page.setViewportSize(viewport)
     await installGameFixture(page, { protocol: 4 })
     await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
@@ -135,6 +136,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await expect(draft).toHaveValue('Homeward')
     expect(await page.evaluate(() => (window as unknown as { recoveryNotices: string[] }).recoveryNotices)).toEqual([])
 
+    await settleOverview()
     failures = Infinity
     const unavailable = page.waitForResponse(response => response.url().endsWith('/overview') && response.status() === 503)
     await refreshGame(page)
@@ -151,6 +153,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await expect(hud.getByText('SECURE CONNECTION', { exact: true })).toHaveCount(0)
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await expect(hud).toHaveCSS('opacity', '1')
     await diagnosticScreenshot(page, { path: info.outputPath(`hud-unavailable-${size}.png`) })
+    await settleOverview()
     failures = 0
     await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
     await expect(warning).toHaveCount(0)
@@ -207,6 +210,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
   test(`session rotation recovers quietly but a refused action remains explicit (${viewport.width}x${viewport.height})`, async ({ page }, info) => {
+    const settleOverview = trackFixtureResponses(page, request => request.method() === 'POST' && request.url().endsWith('/overview'))
     await page.setViewportSize(viewport)
     await installGameFixture(page, { protocol: 4 })
     await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
@@ -219,6 +223,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await refreshGame(page)
     expect(await (await pending).finished()).toBeNull()
     await expect(page.locator('[data-error-entry]')).toHaveCount(0)
+    await settleOverview()
     refreshing = false
     await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
     await expect(page.locator('[data-error-entry]')).toHaveCount(0)

@@ -201,7 +201,7 @@ async fn evidence<S: IdentityStore>(
     b: Binding,
     policy: CosmeticPolicy,
 ) -> Result<SupporterEvidence, ServiceError> {
-    if policy == CosmeticPolicy::Unrestricted {
+    if policy != CosmeticPolicy::Supporter {
         return Ok(SupporterEvidence::default());
     }
     let Some(profiles) = &s.profiles else {
@@ -327,7 +327,11 @@ fn project_state(
         request_id,
         library,
         catalog,
-        policy,
+        policy: if policy == CosmeticPolicy::All {
+            CosmeticPolicy::Unrestricted
+        } else {
+            policy
+        },
         composition_access: composition_access(policy, evidence, now),
         appearance: recipe.map(|r| appearance(installed, r)),
         expires_at,
@@ -608,6 +612,63 @@ mod tests {
             assert!(item.asset_url().contains(&item.sha256));
         }
     }
+    #[tokio::test]
+    async fn title_catalog_loads_without_external_artwork_and_all_keeps_legacy_insignia_wire_policy()
+     {
+        let store = Arc::new(Store::default());
+        let bytes = serde_json::to_vec(&serde_json::json!({"version":2,"insignias":[],"titles":[{"id":"fixture-patron","label":"Fixture patron","address":"Patron","access":"supporter"}]})).unwrap();
+        let key = format!(
+            "insignias/catalogs/{}.json",
+            hex::encode(Sha256::digest(&bytes))
+        );
+        store.write(&key, bytes).await.unwrap();
+        let installed = Customization::load(CosmeticPolicy::All, store.clone(), Some(&key))
+            .await
+            .unwrap();
+        assert_eq!(installed.catalog.titles().len(), 13);
+        assert_eq!(
+            title_access(
+                &installed.catalog,
+                "fixture-patron",
+                installed.policy,
+                &[],
+                SupporterEvidence::default(),
+                0
+            ),
+            TitleAccess::Available
+        );
+        let b = Binding {
+            account: AccountId(uuid::Uuid::new_v4()),
+            universe: UniverseId(uuid::Uuid::new_v4()),
+            player: PlayerId(uuid::Uuid::new_v4()),
+            epoch: orbit_engine::Epoch(uuid::Uuid::new_v4()),
+        };
+        let state = project_state(
+            b,
+            uuid::Uuid::new_v4(),
+            InsigniaLibrary {
+                designs: vec![],
+                equipped: None,
+                permanent_symbols: vec![],
+            },
+            &installed.catalog,
+            CosmeticPolicy::All,
+            SupporterEvidence::default(),
+            0,
+        );
+        assert_eq!(state.policy, CosmeticPolicy::Unrestricted);
+        let free = Customization::load(CosmeticPolicy::All, store.clone(), None)
+            .await
+            .unwrap();
+        assert!(free.catalog.title("fixture-patron").is_none());
+        store.write(&key, b"corrupt".to_vec()).await.unwrap();
+        assert!(
+            Customization::load(CosmeticPolicy::All, store, Some(&key))
+                .await
+                .is_err()
+        );
+    }
+
     #[test]
     fn media_paths_are_bounded_and_cannot_escape_storage() {
         assert!(media_digest("compass", &format!("{}.svg", "a".repeat(64))).is_some());
