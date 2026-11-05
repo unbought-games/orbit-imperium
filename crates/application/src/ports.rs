@@ -1,5 +1,23 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn empire_identities(
+        &self,
+        _players: Vec<PlayerId>,
+    ) -> impl std::future::Future<
+        Output = Result<std::collections::BTreeMap<PlayerId, EmpireIdentityRecord>, StoreError>,
+    > + Send {
+        async { Ok(Default::default()) }
+    }
+    fn edit_empire_identity(
+        &self,
+        _account: AccountId,
+        _player: uuid::Uuid,
+        _command: ProfileCommand,
+        _access: IdentityAccess<'_>,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+
     fn empire_profile(
         &self,
         _viewer: Option<AccountId>,

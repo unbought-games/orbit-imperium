@@ -1,3 +1,5 @@
+import { usePlayerIdentity } from '../../shell/player-profiles-context'
+import { useIdentityTitle } from '../../client-model/use-identity-title'
 import type { DispatchDraft } from '../missions'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -24,7 +26,9 @@ export function CommandHud({ body, onDraft }: HudProps) {
   ) : null
 }
 function LiveCommandHud({ body, onDraft }: HudProps) {
-  const { model, universeName } = useGameSession()
+  const { model, universeName, view } = useGameSession()
+  const identity = usePlayerIdentity(view.binding.player)
+  const title = useIdentityTitle(identity?.title)
   const hud = useCommandHud(model)
   const href = useLocation({ select: (location) => location.href })
   useEffect(() => {
@@ -43,7 +47,7 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
             <HudToast key={noticeKey(notice)} notice={notice} hud={hud} />
           ))}
         </div>
-        <CommandOrb hud={hud} />
+        <CommandOrb hud={hud} address={title.address} />
       </div>
       <HudPanel
         hud={hud}

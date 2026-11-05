@@ -1,3 +1,4 @@
+import { inlineBaseline } from './fixtures/identity-typography'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
@@ -387,12 +388,12 @@ test('player attachments align together and long identities stay within narrow r
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     const simple = table.getByRole('link', { name: 'steveish profile details' })
-    const name = await simple.getByText('steveish', { exact: true }).boundingBox()
-    const bot = await simple.getByLabel('Bot', { exact: true }).boundingBox()
+    const name = await simple.getByText('steveish', { exact: true }).evaluate(inlineBaseline)
+    const bot = await simple.getByLabel('Bot', { exact: true }).evaluate(inlineBaseline)
     expect(name).not.toBeNull()
     expect(bot).not.toBeNull()
-    // Short identities stay centered on one line even in the narrow table.
-    expect(Math.abs(name!.y + name!.height / 2 - bot!.y - bot!.height / 2)).toBeLessThan(1)
+    // Differently sized labels share a text baseline, including in narrow rows.
+    expect(Math.abs(name - bot)).toBeLessThan(0.15)
     await expect(simple.getByLabel('Bot', { exact: true })).toHaveCSS('font-size', '12px')
     for (const player of players) {
       const identity = table.getByRole('link', { name: `${player.username} profile details` })
@@ -418,11 +419,9 @@ test('player attachments align together and long identities stay within narrow r
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (width === 1440) {
-      const centers = await trigger.locator(':scope > span > *').evaluateAll(elements => elements.map(element => {
-        const rect = element.getBoundingClientRect()
-        return rect.y + rect.height / 2
-      }))
-      expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(1)
+      const baselines = []
+      for (const part of await trigger.locator(':scope > span > *').all()) baselines.push(await part.evaluate(inlineBaseline))
+      expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(0.15)
     }
     if (width < 1440) await table.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/player-alignment-rankings-${width}x1000.png` })

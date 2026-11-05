@@ -283,8 +283,6 @@
 }
 
 .targetName {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

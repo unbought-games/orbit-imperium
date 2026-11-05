@@ -179,3 +179,52 @@ it('refreshes affiliation after social changes and fences older in-flight respon
   await vi.advanceTimersByTimeAsync(0)
   expect(currentPlayer(c.store.getState(), 'other')?.alliance).toBeUndefined()
 })
+
+it('retains authored identity through an outage while expiring supporter decoration', async () => {
+  const response = result(2)
+  response.players[0].identity = {
+    name: 'Roman Empire',
+    tagline: 'Our story',
+    title_id: 'fixture-patron',
+  }
+  response.players[0].title = {
+    id: 'fixture-patron',
+    label: 'Fixture patron',
+    address: 'Patron',
+    expires_at: 115,
+  }
+  response.players[0].expires_at = 115
+  const c = start(
+    vi.fn().mockResolvedValueOnce(response).mockRejectedValue(Error('offline')),
+  )
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(currentPlayer(c.store.getState(), 'other')).toBeUndefined()
+  expect(c.store.getState().players.other.identity?.name).toBe('Roman Empire')
+})
+
+it('accepts fresh local identity after expired membership evidence even when Accounts is unavailable', async () => {
+  const first = result(2)
+  first.players[0].expires_at = 115
+  first.players[0].identity = {
+    name: 'Old empire',
+    tagline: '',
+    title_id: 'commander',
+  }
+  const fallback = result(undefined, 0)
+  fallback.players[0].expires_at = 175
+  fallback.players[0].identity = {
+    name: 'New empire',
+    tagline: '',
+    title_id: 'commander',
+  }
+  const c = start(
+    vi.fn().mockResolvedValueOnce(first).mockResolvedValue(fallback),
+  )
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(currentPlayer(c.store.getState(), 'other')?.identity?.name).toBe(
+    'New empire',
+  )
+  expect(
+    currentPlayer(c.store.getState(), 'other')?.supporter_tier,
+  ).toBeUndefined()
+})

@@ -51,6 +51,23 @@ patterns unless the user provides guidance to do so.
   full-width rows. Avoid a redundant visible page title when section headings
   already explain the content; retain an accessible page heading.
 
+## Player identity in text
+
+Use `PlayerName` for a game identity and `SupporterIdentity` for an account name.
+They participate in normal inline text layout and inherit the surrounding font and
+line height. Do not wrap names in flex boxes to align them with prose, set a minimum
+control height on their inline links, or apply screen-specific vertical offsets.
+Names must wrap across lines together with surrounding sentences.
+
+Inline insignias scale with the text. Supporter badges are capped at 16px. Each
+mark stays with the adjacent complete Unicode character; the rest of the name
+remains free to wrap. Badge tooltip hit targets extend outside the line box rather
+than changing paragraph spacing. Use baseline alignment for separate text items
+in a row; reserve center alignment for independent controls and artwork.
+
+The `/identity-playground` development page exercises short labels, paragraphs,
+long names, headings and narrow rows with the real components.
+
 ## Interaction and state
 
 - Keep the shell, controls, focus, and user edits stable as data loads or filters
@@ -127,5 +144,6 @@ its adjacent CSS module.
 | Empty or connection states     | [EmptyState](empty-state.tsx), [StatePanel](state-panel.tsx)                                                                                                  |
 | Resources and coordinates      | [ResourceMark](resource-mark.tsx), [resource amounts](resource-amount.tsx), [quantities](number-value.tsx), [CoordinateLink](../features/coordinate-link.tsx) |
 | Contextual details and actions | [Popover](popover.tsx), [ActionPopover](action-popover.tsx), [ActionSheet](action-sheet.tsx)                                                                  |
+| Player names and identity      | [PlayerName](../features/player-name.tsx), [SupporterIdentity](../features/supporter-identity.tsx), [EmpireInsignia](../features/empire-insignia.tsx)         |
 | Catalogs and decision pages    | [ImageCatalog](image-catalog.tsx), [CatalogStage](catalog-stage.tsx), [DetailLayout](../features/progression/detail-layout.tsx)                               |
 | Reduced motion                 | [Preference hook](use-reduced-motion.ts)                                                                                                                      |

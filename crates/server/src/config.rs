@@ -46,6 +46,10 @@ mod universe_config_tests {
                 _ => None,
             })
         };
+        assert_eq!(
+            parse(Some("all")).unwrap().cosmetic_policy,
+            orbit_application::CosmeticPolicy::All
+        );
         let local = parse(None).unwrap();
         assert_eq!(
             local.cosmetic_policy,
@@ -391,13 +395,18 @@ impl ServeConfig {
                 .unwrap_or("unrestricted")
             {
                 "unrestricted" => orbit_application::CosmeticPolicy::Unrestricted,
+                "all" => orbit_application::CosmeticPolicy::All,
                 "supporter" if profiles.is_some() => orbit_application::CosmeticPolicy::Supporter,
                 "supporter" => {
                     return Err(
                         "Supporter cosmetic access requires Accounts profile configuration".into(),
                     );
                 }
-                _ => return Err("ORBIT_COSMETIC_ACCESS must be unrestricted or supporter".into()),
+                _ => {
+                    return Err(
+                        "ORBIT_COSMETIC_ACCESS must be unrestricted, supporter or all".into(),
+                    );
+                }
             }
         } else {
             orbit_application::CosmeticPolicy::Unrestricted

@@ -1,3 +1,5 @@
+import { usePlayerIdentity } from '../shell/player-profiles-context'
+import { useIdentityTitle } from '../client-model/use-identity-title'
 import type { ReactNode, Ref } from 'react'
 import type { PlayerDisplay } from '../adapters/player-profiles'
 import { Popover } from '../ui/popover'
@@ -15,7 +17,6 @@ export function PlayerProfile({
   alliance,
   bot,
   historical,
-  density = 'normal',
   children,
   triggerRef,
 }: {
@@ -25,10 +26,12 @@ export function PlayerProfile({
   alliance?: AllianceIdentity | null
   bot: boolean
   historical: boolean
-  density?: 'normal' | 'compact'
   triggerRef?: Ref<HTMLElement>
   children: ReactNode
 }) {
+  const retained = usePlayerIdentity(player)
+  const identity = profile?.identity ?? retained?.identity
+  const title = useIdentityTitle(profile?.title ?? retained?.title)
   return (
     <Popover
       label={`${name} profile`}
@@ -42,18 +45,14 @@ export function PlayerProfile({
         ) : undefined
       }
       triggerRef={triggerRef}
-      className={
-        density === 'compact'
-          ? `${styles.trigger} ${styles.compact}`
-          : styles.trigger
-      }
+      className={styles.trigger}
       surfaceClassName={styles.profile}
       showTitle={false}
     >
       <div className={styles.heading}>
         <span className={styles.eyebrow}>EMPIRE DOSSIER</span>
         <span className={styles.kind}>
-          {bot ? 'Automated player' : 'Commander'}
+          {bot ? 'Automated player' : title.label}
         </span>
       </div>
       <div className={styles.identity}>
@@ -62,12 +61,19 @@ export function PlayerProfile({
         )}
         <div>
           <h3>
-            <SupporterIdentity name={name} tier={profile?.supporter_tier} />
+            {identity?.name || (
+              <SupporterIdentity name={name} tier={profile?.supporter_tier} />
+            )}
           </h3>
+          {identity?.name && (
+            <div>
+              <SupporterIdentity name={name} tier={profile?.supporter_tier} />
+            </div>
+          )}
           <span className={styles.subtitle}>
             {bot
               ? 'An automated empire in this universe.'
-              : 'An empire among the stars.'}
+              : identity?.tagline || 'An empire among the stars.'}
           </span>
         </div>
       </div>

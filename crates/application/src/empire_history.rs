@@ -33,6 +33,12 @@ pub struct EmpireProfile {
     pub epoch: Uuid,
     pub universe_name: String,
     pub username: String,
+    pub identity: EmpireIdentity,
+    pub title: TitleDisplay,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_choices: Option<Vec<TitleChoice>>,
+    #[serde(skip)]
+    pub title_grants: Vec<String>,
     pub display: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alliance: Option<AllianceIdentity>,
@@ -60,6 +66,9 @@ pub struct HistoricalDetail {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum ProfileAction {
+    Identity {
+        identity: EmpireIdentity,
+    },
     Visibility {
         public: bool,
     },
@@ -82,6 +91,11 @@ pub struct ProfileCommand {
 }
 impl ProfileCommand {
     pub fn validate(&self) -> Result<(), ServiceError> {
+        if let ProfileAction::Identity { identity } = &self.action
+            && !identity.valid()
+        {
+            return Err(ServiceError::Malformed);
+        }
         if self.expected_revision < 0 {
             return Err(ServiceError::Malformed);
         }

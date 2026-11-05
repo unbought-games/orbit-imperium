@@ -1,3 +1,5 @@
+mod empire_identity;
+pub use empire_identity::*;
 mod empire_history;
 pub use empire_history::*;
 mod insignia;
@@ -36,6 +38,8 @@ pub use ports::*;
 pub use session::*;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
+    #[error("cosmetic access denied")]
+    CosmeticDenied,
     #[error("session refresh in progress")]
     SessionRefreshing(u64),
     #[error("snapshot serialization retry")]
@@ -115,7 +119,7 @@ impl From<StoreError> for ServiceError {
             StoreError::GameRejected(e) => Self::GameRejected(e),
             StoreError::BotDenied(e) => Self::BotDenied(e),
             StoreError::UniverseNamesExhausted => Self::Unavailable,
-            StoreError::SignupClosed => Self::Forbidden,
+            StoreError::SignupClosed | StoreError::CosmeticDenied => Self::Forbidden,
             StoreError::UniverseFull => Self::UniverseFull,
             StoreError::InvalidCursor => Self::InvalidCursor,
             StoreError::UnsupportedProtocol => Self::UnsupportedProtocol,

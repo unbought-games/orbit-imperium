@@ -125,15 +125,26 @@ export class PlayerProfilesController {
         const players = { ...state.players }
         // Bound the cache to current snapshots, keeping no old-account or expired data.
         for (const [id, old] of Object.entries(players))
-          if (old.expires_at * 1000 <= now) delete players[id]
+          if (old.expires_at * 1000 <= now && !old.identity) delete players[id]
         for (const next of result.players) {
           const old = players[next.player]
           if (
             next.expires_at * 1000 > now &&
-            (!old || next.observed_at >= old.observed_at)
+            (!old ||
+              old.expires_at * 1000 <= now ||
+              next.observed_at >= old.observed_at)
           )
             players[next.player] = next
         }
+        // Retained authored text is bounded separately from expiring decoration.
+        const stale = Object.entries(players).filter(
+          ([, p]) => p.expires_at * 1000 <= now,
+        )
+        for (const [id] of stale.slice(
+          0,
+          Math.max(0, Object.keys(players).length - 1024),
+        ))
+          delete players[id]
         return { players, now }
       })
       delay = Math.max(

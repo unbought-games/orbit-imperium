@@ -1,3 +1,5 @@
+import { IdentityEditor } from './identity-editor'
+import { useIdentityTitle } from '../../client-model/use-identity-title'
 import { ShareLink } from './share-link'
 import { useEffect, useState } from 'react'
 import type { EmpireProfile } from '../../adapters/empire-history'
@@ -10,6 +12,7 @@ import { TimelineEntry } from './entry'
 import styles from './history.module.css'
 
 export function EmpireProfilePage({ player }: { player: string }) {
+  const [editingIdentity, setEditingIdentity] = useState(false)
   const [library, setLibrary] = useState(false)
   const [before, setBefore] = useState<string>()
   const query = new URLSearchParams({
@@ -28,9 +31,10 @@ export function EmpireProfilePage({ player }: { player: string }) {
     'EmpireProfile',
     `/api/v4/empire-profiles/${player}?${query}`,
   )
+  const title = useIdentityTitle(profile?.title)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    document.title = `${profile?.username ?? 'Empire profile'} · Orbit Imperium`
+    document.title = `${profile?.identity?.name || profile?.username || 'Empire profile'} · Orbit Imperium`
     const expires = profile?.display?.expires_at
     if (!expires) return
     const timer = setTimeout(
@@ -83,12 +87,26 @@ export function EmpireProfilePage({ player }: { player: string }) {
               {display?.insignia && (
                 <EmpireInsignia appearance={display.insignia} size="medium" />
               )}
-              <h1>
-                <SupporterIdentity
-                  name={display?.username ?? profile.username}
-                  tier={display?.supporter_tier}
-                />
-              </h1>
+              <div>
+                {profile.identity?.name && <h1>{profile.identity.name}</h1>}
+                {!profile.identity?.name && (
+                  <h1>
+                    <SupporterIdentity
+                      name={display?.username ?? profile.username}
+                      tier={display?.supporter_tier}
+                    />
+                  </h1>
+                )}
+                <p>
+                  {title.label}{' '}
+                  {profile.identity?.name && (
+                    <SupporterIdentity
+                      name={display?.username ?? profile.username}
+                      tier={display?.supporter_tier}
+                    />
+                  )}
+                </p>
+              </div>
             </div>
             {profile.alliance && (
               <p>
@@ -100,10 +118,22 @@ export function EmpireProfilePage({ player }: { player: string }) {
               </p>
             )}
             <p className={styles.lede}>
-              An empire’s story, told through the moments its commander chose to
-              keep.
+              {profile.identity?.tagline ||
+                'An empire’s story, told through the moments its commander chose to keep.'}
             </p>
             <div className={styles.actions}>
+              {profile.owner &&
+                !profile.removed &&
+                !profile.closed &&
+                profile.title_choices && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEditingIdentity(true)}
+                    disabled={editingIdentity || loading}
+                  >
+                    Edit identity
+                  </Button>
+                )}
               {profile.public && (
                 <ShareLink path={`/profiles/empire/${profile.player}`} />
               )}
@@ -137,6 +167,14 @@ export function EmpireProfilePage({ player }: { player: string }) {
               </ButtonLinkAnchor>
             </div>
           </header>
+          {editingIdentity && (
+            <IdentityEditor
+              profile={profile}
+              busy={busy || loading}
+              save={save}
+              cancel={() => setEditingIdentity(false)}
+            />
+          )}
           {profile.owner && (
             <section
               className={styles.controls}

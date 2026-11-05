@@ -363,3 +363,9 @@ test-lunar-industry-db:
 test-phalanx:
 	cargo nextest run -p orbit-engine --lib --test phalanx --test missions --test persistence --test debris --test replay
 	cargo nextest run -p orbit-application --lib
+
+.PHONY: test-empire-identity
+test-empire-identity:
+	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(empire_identity) | test(insignia)'
+	npm test -- deadline-timer empire-identity player-profiles
+	npm run test:ui -- empire-identity.spec.ts

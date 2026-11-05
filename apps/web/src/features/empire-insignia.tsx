@@ -7,7 +7,7 @@ export function EmpireInsignia({
   label,
 }: {
   appearance: InsigniaAppearance
-  size?: 'small' | 'medium' | 'large'
+  size?: 'inline' | 'small' | 'medium' | 'large'
   label?: string
 }) {
   return (

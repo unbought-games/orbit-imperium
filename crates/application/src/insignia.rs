@@ -23,6 +23,8 @@ pub enum CosmeticPolicy {
     #[default]
     Unrestricted,
     Supporter,
+    /// Operator override for all installed cosmetics, including earned items.
+    All,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -197,6 +199,8 @@ impl InsigniaSymbol {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InsigniaManifest {
+    #[serde(default)]
+    pub titles: Vec<EmpireTitle>,
     pub version: u8,
     pub insignias: Vec<InsigniaSymbol>,
 }
@@ -204,12 +208,14 @@ pub struct InsigniaManifest {
 /// Installed authoritative definitions; availability is always derived from these.
 #[derive(Clone, Debug)]
 pub struct InsigniaCatalog {
+    titles: Vec<EmpireTitle>,
     symbols: Vec<InsigniaSymbol>,
 }
 impl Default for InsigniaCatalog {
     fn default() -> Self {
         use sha2::Digest;
         Self {
+            titles: free_titles(),
             symbols: FREE_INSIGNIAS
                 .iter()
                 .map(|(id, name, bytes)| InsigniaSymbol {
@@ -246,6 +252,12 @@ fn bundled_group(id: &str) -> InsigniaGroup {
 }
 
 impl InsigniaCatalog {
+    pub fn titles(&self) -> &[EmpireTitle] {
+        &self.titles
+    }
+    pub fn title(&self, id: &str) -> Option<&EmpireTitle> {
+        self.titles.iter().find(|t| t.id == id)
+    }
     pub fn symbols(&self) -> &[InsigniaSymbol] {
         &self.symbols
     }
@@ -254,8 +266,24 @@ impl InsigniaCatalog {
     }
     pub fn with_manifest(manifest: InsigniaManifest) -> Result<Self, String> {
         let mut catalog = Self::default();
-        if manifest.version != 1 || manifest.insignias.len() > 256 {
+        if !matches!(manifest.version, 1 | 2)
+            || (manifest.version == 1 && !manifest.titles.is_empty())
+            || manifest.insignias.len() > 256
+            || manifest.titles.len() > 256
+        {
             return Err("Unsupported or oversized cosmetic catalog".into());
+        }
+        for title in manifest.titles {
+            if !valid_symbol_id(&title.id)
+                || title.label.trim().is_empty()
+                || title.address.trim().is_empty()
+                || !valid_identity_text(&title.label, 40)
+                || !valid_identity_text(&title.address, 40)
+                || catalog.title(&title.id).is_some()
+            {
+                return Err("Invalid or duplicate title".into());
+            }
+            catalog.titles.push(title);
         }
         for item in manifest.insignias {
             if !valid_symbol_id(&item.id)
@@ -371,7 +399,7 @@ pub fn composition_access(
     evidence: SupporterEvidence,
     now: i64,
 ) -> InsigniaAccess {
-    if policy == CosmeticPolicy::Unrestricted {
+    if policy != CosmeticPolicy::Supporter {
         InsigniaAccess::Available
     } else if !evidence.known || evidence.expires_at <= now {
         InsigniaAccess::Unavailable
@@ -393,9 +421,7 @@ pub fn insignia_access(
     let Some(item) = catalog.get(symbol) else {
         return InsigniaAccess::NotInstalled;
     };
-    if !item.supporter
-        || policy == CosmeticPolicy::Unrestricted
-        || grants.iter().any(|s| s == symbol)
+    if !item.supporter || policy != CosmeticPolicy::Supporter || grants.iter().any(|s| s == symbol)
     {
         return InsigniaAccess::Available;
     }
@@ -488,6 +514,7 @@ mod tests {
     use super::*;
     fn catalog() -> InsigniaCatalog {
         InsigniaCatalog::with_manifest(InsigniaManifest {
+            titles: vec![],
             version: 1,
             insignias: vec![InsigniaSymbol {
                 group: InsigniaGroup::Legacy,
@@ -556,6 +583,7 @@ mod tests {
             };
             assert!(
                 InsigniaCatalog::with_manifest(InsigniaManifest {
+                    titles: vec![],
                     version: 1,
                     insignias: vec![item]
                 })
@@ -565,6 +593,7 @@ mod tests {
         let item = catalog().get("test-star").unwrap().clone();
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                titles: vec![],
                 version: 1,
                 insignias: vec![item.clone(), item.clone()]
             })
@@ -572,13 +601,15 @@ mod tests {
         );
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
-                version: 2,
+                titles: vec![],
+                version: 3,
                 insignias: vec![]
             })
             .is_err()
         );
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                titles: vec![],
                 version: 1,
                 insignias: vec![InsigniaSymbol {
                     sha256: "bad".into(),
@@ -824,6 +855,7 @@ mod tests {
     #[test]
     fn stripe_slots_and_group_colors_are_not_client_assertions() {
         let c = InsigniaCatalog::with_manifest(InsigniaManifest {
+            titles: vec![],
             version: 1,
             insignias: ["sample-a", "sample-b", "sample-c"]
                 .into_iter()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
 import {
@@ -27,8 +27,10 @@ export function useArchive<T>(schema: string, path: string) {
     })),
   )
   const state = useStore(store)
+  const generation = useRef(0)
   const [revision, refresh] = useState(0)
   useEffect(() => {
+    const current = ++generation.current
     const controller = new AbortController()
     store.setState({ loading: true, error: '' })
     void Promise.all([
@@ -36,11 +38,11 @@ export function useArchive<T>(schema: string, path: string) {
       http.session().catch(() => null),
     ])
       .then(([data, session]) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && current === generation.current)
           store.setState({ data, session, loading: false })
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted && current === generation.current)
           store.setState({
             loading: false,
             ...(error instanceof ArchiveReadError &&
@@ -57,8 +59,11 @@ export function useArchive<T>(schema: string, path: string) {
   }, [schema, path, revision, store])
   const retry = () => refresh((n) => n + 1)
   const save = async (profile: EmpireProfile, action: ProfileAction) => {
-    if (!state.session || state.busy) return false
+    if (!state.session || store.getState().busy || store.getState().loading)
+      return false
+    const current = ++generation.current
     store.setState({ busy: true, error: '' })
+    let committed = false
     try {
       await editProfile(
         profile,
@@ -66,14 +71,26 @@ export function useArchive<T>(schema: string, path: string) {
         action,
         crypto.randomUUID(),
       )
-      retry()
+      committed = true
+      const data = await readArchive<T>(
+        schema,
+        path,
+        new AbortController().signal,
+      )
+      if (current === generation.current)
+        store.setState({ data, loading: false })
       return true
     } catch (error) {
       store.setState({
-        error:
-          error instanceof HttpError && error.status === 409
-            ? 'This profile changed in another window. Refresh before saving again.'
-            : 'Your change could not be saved. Refresh and try again.',
+        error: committed
+          ? 'Your change was saved, but the profile could not be refreshed. Refresh to see the saved version.'
+          : action.type === 'Identity' &&
+              error instanceof HttpError &&
+              [403, 404].includes(error.status)
+            ? 'This identity or selected title is no longer available. Refresh to check your choices.'
+            : error instanceof HttpError && error.status === 409
+              ? 'This profile changed in another window. Refresh before saving again.'
+              : 'Your change could not be saved. Refresh and try again.',
       })
       return false
     } finally {
