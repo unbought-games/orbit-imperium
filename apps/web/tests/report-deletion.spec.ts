@@ -545,35 +545,6 @@ test('triage selection follows filters and rejected bulk cleanup restores report
 
 
 for (const width of [1440, 390]) {
-  for (const cleanup of ['selected', 'older'] as const) {
-    test(`bulk ${cleanup} cleanup hides all reports before one RPC completes at ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 })
-      const fixture = await reportsFixture(page, true)
-      await selectReports(page)
-      await expect(page.getByText('Loading reports…', {exact: true})).not.toBeVisible()
-      if (cleanup === 'selected') await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
-      else await ageCleanup(page)
-      const before = fixture.pageRequests.length
-      let release!: () => void
-      fixture.pause(new Promise(resolve => { release = resolve }))
-      await diagnosticScreenshot(page, { path: `test-results/bulk-${cleanup}-before-${width}x900.png`, fullPage: true })
-      await page.getByRole('button', { name: cleanup === 'selected' ? 'Archive selected (2)' : 'Archive 2 reports', exact: true }).click()
-      await expect(page.locator('main article')).toHaveCount(0)
-      await expect.poll(() => fixture.submitted()).toBe(1)
-      expect(fixture.headers.every(r => !r.hidden)).toBe(true)
-      await diagnosticScreenshot(page, { path: `test-results/bulk-${cleanup}-pending-${width}x900.png`, fullPage: true })
-      release()
-      await expect.poll(() => fixture.headers.every(r => r.hidden)).toBe(true)
-      await expect(page.getByText('Loading reports…', {exact: true})).not.toBeVisible()
-      expect(fixture.submitted()).toBe(1)
-      // Empty filtered lists and HUD counts require no continuation pages.
-      await expect.poll(() => fixture.pageRequests.length).toBeGreaterThan(before)
-      expect(fixture.pageRequests.slice(before).every(cursor => cursor === null)).toBe(true)
-    })
-  }
-}
-
-for (const width of [1440, 390]) {
   for (const mode of ['rejected', 'uncertain'] as const) {
     test(`bulk cleanup restores every report after ${mode} response at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })

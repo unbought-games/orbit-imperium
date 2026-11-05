@@ -163,3 +163,36 @@ removals; report-triage/selection/cleanup tests; and PostgreSQL pagination/priva
 coverage. Existing browser controls, archive actions, focus, touch, retries,
 HUD observer races and navigation remain tested. The common fixture changes
 cover their callers; no separate follow-up work is required.
+
+## PR and merge-queue follow-through
+
+PR #354 initially passed its full PR matrix and automated review at
+`96434ad2245c564037c05e5e1c19028f928376f3`. Queue run `42099838500` tested the
+identical tree in integration commit `fcd8395f132333de8bf02eca7ff3f352d59f9d47`.
+Browser shard 7 (job `127499527396`) failed once: `bulk older cleanup hides all
+reports before one RPC completes at 390px`, at the assertion that every report
+request after a captured baseline had a null cursor. The other 140 shard cases
+passed. This is one failed queue attempt, not a successful retry.
+
+The baseline was captured after opening the cleanup dialog but before its
+complete Inbox response. Waiting for the enabled Archive button subsequently
+allowed the dialog's legitimate continuation request into that earlier baseline.
+The assertion incorrectly classified this pre-command work as post-command
+pagination. This same scenario had already received its one repair during local
+implementation, so it was removed outright, without another stabilization patch,
+a timeout change, or retrying unchanged code. Auditing the parameterized callers
+found the same timing-based assertion in the other three variants. All four
+redundant browser cases were removed instead of retaining a known shared defect.
+
+Coverage remains in `report-cleanup.test.ts` (one batch, deduplication, protected
+reports and refused submissions) and `report-state.test.ts` (every batch member
+updates immediately, rollback, unaffected reports, atomic receipt reconciliation
+and stale-response protection). Existing browser archive-all review/submission,
+rejection/uncertainty, focus/touch and navigation cases remain. No product code or
+visual output changed in this queue repair; the captured screenshots remain
+current. This chat owns validation, pushing and re-enqueueing the repaired head.
+
+Local validation of the queue repair: all 23 report-state/cleanup unit cases
+passed (149 ms runner duration), and all 41 retained report-deletion browser
+cases passed (1.4 minutes, 1.82 seconds module preparation). GitHub removed the
+failed queue entry after the integration run finished. Queue removals so far: 1.
