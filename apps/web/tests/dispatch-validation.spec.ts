@@ -215,7 +215,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
   })
   await playerProfilesFixture(page, () => [{ player: binding.player, username: 'Commander' }])
   await options.beforeNavigation?.()
-  await withFixtureResponse(page, response => response.url().endsWith('/overview'), () =>
+  await withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/bootstrap', () =>
     page.goto(`/u/andromeda/b/${body.id}/dispatch`),
   )
   // Cold route compilation can share the host with other fixture workers.
