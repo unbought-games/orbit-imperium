@@ -947,9 +947,13 @@ for (const width of [390, 1440]) {
       await expect(
         summary
           .locator('dt')
-          .filter({ hasText: /^Entire queue$/ })
+          .filter({ hasText: /^Until complete$/ })
           .locator('..'),
       ).toContainText('Pending')
+      await expect(summary.locator('dt')).toHaveText([
+        'Starts in',
+        'Until complete',
+      ])
       await expect(summary.getByRole('progressbar')).toHaveCount(0)
       await diagnosticScreenshot(summary, {
         path: `test-results/queue-${destination.toLowerCase()}-pending-${width}x900.png`,
