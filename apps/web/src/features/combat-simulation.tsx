@@ -11,6 +11,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import { Button } from '../ui/button'
 import { bodyName, coordinates, label } from '../ui/format'
 import { useGameScreen } from '../shell/screen-context'
+import { ownedDefenderImport } from './simulation-import'
 import { SimulationFields } from './simulation-fields'
 import { SimulationFlight } from './simulation-flight'
 import { SimulationPlanning } from './combat-simulation-planning'
@@ -127,50 +128,62 @@ function SimulationForm({
   const now = useStore(model.store, currentServerTime)
   const { body } = useGameScreen()
   const stale = useStore(model.store, (s) => s.stale)
-  const fields = simulationFields(
-    report,
-    view?.catalog ?? [],
-    view?.research ?? [],
-    body?.inventories,
-  )
+  const [includeShips, setIncludeShips] = useState(false)
   const scope = JSON.stringify([report, view?.research, view?.profile_hash])
   const {
     allies,
     addAlly,
     removeAlly,
     edits,
+    defenderSource,
+    replaceDefender,
     result,
     error,
     running,
     edit,
     run,
   } = useCombatSimulation(model, scope)
+  const defenderReport = defenderSource ? undefined : report
+  const fields = simulationFields(
+    defenderReport,
+    view?.catalog ?? [],
+    view?.research ?? [],
+    body?.inventories,
+  ).map((field) =>
+    defenderSource && field.side === 'defender'
+      ? { ...field, source: 'Imported plan' as const }
+      : field,
+  )
+  const worldImport = ownedDefenderImport(view, body?.id, includeShips, stale)
   const assumptions = unknownAssumptions(fields, edits)
   const prepared = withSimulationAllies(
-    simulationInputs(fields, edits, report?.resources),
+    simulationInputs(fields, edits, defenderReport?.resources),
     fields,
     allies,
     edits,
   )
-  const unsupported = report ? unsupportedReportUnits(report, fields) : []
+  const unsupported = defenderReport
+    ? unsupportedReportUnits(defenderReport, fields)
+    : []
   return (
     <div className={styles.content}>
-      {report ? (
-        <p>
-          Defender at [{report.target.coordinates.galaxy}:
-          {report.target.coordinates.system}:
-          {report.target.coordinates.position}] · observed{' '}
-          <time dateTime={new Date(report.observed_at).toISOString()}>
-            {new Date(report.observed_at).toLocaleString()}
-          </time>{' '}
-          ({reportAge(report.observed_at, now)}).
-        </p>
-      ) : (
-        <p>
-          No report imported. Enter defender assumptions or explicitly assume
-          zero.
-        </p>
-      )}
+      {!defenderSource &&
+        (report ? (
+          <p>
+            Defender at [{report.target.coordinates.galaxy}:
+            {report.target.coordinates.system}:
+            {report.target.coordinates.position}] · observed{' '}
+            <time dateTime={new Date(report.observed_at).toISOString()}>
+              {new Date(report.observed_at).toLocaleString()}
+            </time>{' '}
+            ({reportAge(report.observed_at, now)}).
+          </p>
+        ) : (
+          <p>
+            No report imported. Enter defender assumptions or explicitly assume
+            zero.
+          </p>
+        ))}
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -187,6 +200,62 @@ function SimulationForm({
                     ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
                     : 'Select a planet to see stationed ship availability.'}
                 </p>
+              )}
+              {side === 'defender' && (
+                <div className={styles.importControls}>
+                  <p>
+                    Load{' '}
+                    {body
+                      ? `${bodyName(body)} ${coordinates(body)}`
+                      : 'your selected world'}{' '}
+                    as defender. Replaces this defender’s research, defenses and
+                    ships. Attacker and allied fleets stay as entered.
+                  </p>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={includeShips}
+                      onChange={(event) =>
+                        setIncludeShips(event.target.checked)
+                      }
+                    />{' '}
+                    Include stationed ships
+                  </label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!worldImport.values}
+                    onClick={() => {
+                      if (worldImport.values)
+                        replaceDefender(worldImport.values, worldImport.source)
+                    }}
+                  >
+                    Replace defender from current{' '}
+                    {body?.kind === 'Moon' ? 'moon' : 'planet'}
+                  </Button>
+                  <small>
+                    Without stationed ships, all defender ship counts are set to
+                    zero.
+                  </small>
+                  {defenderSource && (
+                    <p role="status">
+                      Defender imported from {defenderSource}. Values stay as
+                      entered until you replace them.
+                      {report &&
+                        ' Report coordinates still apply to attack planning.'}
+                    </p>
+                  )}
+                  {worldImport.error && <p>{worldImport.error}</p>}
+                  {report && defenderSource && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => replaceDefender({}, null)}
+                    >
+                      Replace defender from report
+                    </Button>
+                  )}
+                </div>
               )}
               {side === 'defender' && Object.keys(assumptions).length > 0 && (
                 <Button

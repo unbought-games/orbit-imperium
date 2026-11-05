@@ -277,6 +277,7 @@ const sampleResponse = {
       rounds: 1,
       attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }],
       defender: [],
+      debris: { metal: '18000000', crystal: '6000000', deuterium: '0' },
       surviving_cargo_capacity: '400000000',
       estimated_loot: { metal: '99000000', crystal: '0', deuterium: '0' },
     },
@@ -285,6 +286,7 @@ const sampleResponse = {
       rounds: 6,
       attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }],
       defender: [],
+      debris: { metal: '18000000', crystal: '6000000', deuterium: '0' },
       surviving_cargo_capacity: '100000000',
       estimated_loot: { metal: '0', crystal: '0', deuterium: '0' },
     },
@@ -293,6 +295,7 @@ const sampleResponse = {
       rounds: 3,
       attacker: [],
       defender: [],
+      debris: { metal: '18000000', crystal: '6000000', deuterium: '0' },
       surviving_cargo_capacity: '0',
       estimated_loot: { metal: '0', crystal: '0', deuterium: '0' },
     },
@@ -366,4 +369,36 @@ it('starts standalone defenders unknown and only submits explicit assumptions wi
       },
     },
   )
+})
+
+it('aggregates new debris across every sample, including zero and losing outcomes', () => {
+  const samples = sampleResponse.samples.map((sample, index) => ({
+    ...sample,
+    debris: {
+      metal: String(index * 9_000_000),
+      crystal: String(index * 3_000_000),
+      deuterium: String(index * 1_000_000),
+    },
+  }))
+  expect(planningSummary({ ...sampleResponse, samples }).debris).toEqual([
+    {
+      resource: 'metal',
+      average: 9_000_000n,
+      minimum: 0n,
+      maximum: 18_000_000n,
+    },
+    {
+      resource: 'crystal',
+      average: 3_000_000n,
+      minimum: 0n,
+      maximum: 6_000_000n,
+    },
+    {
+      resource: 'deuterium',
+      average: 1_000_000n,
+      minimum: 0n,
+      maximum: 2_000_000n,
+    },
+  ])
+  expect(planningSummary({ ...sampleResponse, samples: [] }).debris).toEqual([])
 })

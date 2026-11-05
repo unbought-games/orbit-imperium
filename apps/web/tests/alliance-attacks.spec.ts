@@ -85,7 +85,7 @@ for (const width of [390,1440]) test(`allied simulation preserves separate techn
  const units:S['CatalogEntry3'][]=[{key:{kind:'Ship',id:'LightFighter'},body_kinds:['Planet'],requirements:[],enabled:true,mobile:true,ship_statistics:{propulsion:null,combat:{attack_ticks:'5000000',shield_ticks:'1000000',hull_ticks:'40000000',rapid_fire_against:[],rapid_fire_from:[]}}}]
  await installGameFixture(page,{protocol:4,catalog:units,sampledAt:now,missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'5'}})
  let submitted:S['SimulationInputs']|undefined
- await page.route('**/combat-simulation',async route=>{const r=route.request().postDataJSON();submitted=r.inputs;await route.fulfill({json:{...r.context,profile_hash:'a'.repeat(64),loot_rules_enabled:true,samples:Array.from({length:10},()=>({outcome:'AttackerVictory',rounds:1,attacker:[{item:{kind:'Ship',id:'LightFighter'},count:5}],defender:[],surviving_cargo_capacity:'250000000',estimated_loot:null}))}})})
+ await page.route('**/combat-simulation',async route=>{const r=route.request().postDataJSON();submitted=r.inputs;await route.fulfill({json:{...r.context,profile_hash:'a'.repeat(64),loot_rules_enabled:true,samples:Array.from({length:10},()=>({outcome:'AttackerVictory',rounds:1,attacker:[{item:{kind:'Ship',id:'LightFighter'},count:5}],defender:[],debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity:'250000000',estimated_loot:null}))}})})
  await page.goto('/u/andromeda/combat-simulator')
  await page.getByLabel('Attacker Light Fighter',{exact:true}).fill('2')
  await page.getByRole('button',{name:'Assume all unknown values are zero'}).click()

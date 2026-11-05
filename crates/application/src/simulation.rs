@@ -3,8 +3,8 @@
 use crate::*;
 use orbit_engine::{
     BattleInput, BattleOrigin, BattleParticipant, BattleSide, CombatRules, ManufacturedItem,
-    RandomStream, Resources, Ruleset, ShipStack, ShipType, payload_capacity, raid_loot,
-    resolve_battle,
+    RandomStream, Resources, Ruleset, ShipStack, ShipType, destroyed_ship_debris, payload_capacity,
+    raid_loot, resolve_battle,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -50,6 +50,8 @@ pub struct SimulationSample {
     pub defender: Vec<SimulationUnit>,
     pub surviving_cargo_capacity: String,
     pub estimated_loot: Option<ResourceDto>,
+    /// Newly generated debris only, using the live settlement loss valuation.
+    pub debris: ResourceDto,
 }
 #[derive(Debug, Serialize)]
 pub struct SimulationResponse {
@@ -263,6 +265,9 @@ impl SimulationJob {
                 attacker,
                 surviving_cargo_capacity,
                 estimated_loot,
+                debris: destroyed_ship_debris(&result.destroyed, &world.combat)
+                    .map_err(|_| ServiceError::InvariantFailure)?
+                    .into(),
                 defender: survivors(BattleSide::Defender),
                 outcome: result.outcome,
                 rounds: result.rounds.len(),
@@ -300,6 +305,93 @@ mod tests {
             },
         }
     }
+    fn context() -> QueryContext {
+        let id = uuid::Uuid::from_u128(10);
+        QueryContext {
+            binding: Binding {
+                account: AccountId(id),
+                player: PlayerId(id),
+                universe: UniverseId(id),
+                epoch: Epoch(id),
+            },
+            request_id: id,
+        }
+    }
+
+    #[test]
+    fn debris_uses_active_valuation_and_aggregate_rounding_without_defense_repairs() {
+        for (bps, deuterium, recovery, expected) in [
+            (3333, true, [1, 1], [1, 4, 7]),
+            (3333, false, [0, 1], [1, 4, 0]),
+            (10000, true, [0, 1], [6, 14, 22]),
+            (0, true, [1, 1], [0, 0, 0]),
+        ] {
+            let base = Ruleset::mvp_raids().unwrap();
+            let mut artifact = base.artifact.clone();
+            let combat = &mut artifact.world.as_mut().unwrap().combat;
+            combat.ship_debris_bps = bps;
+            combat.deuterium_in_debris = deuterium;
+            combat.defense_recovery_probability = recovery;
+            for unit in &mut combat.units {
+                unit.attack_hundredths = 0;
+                if unit.item == ManufacturedItem::Ship(ShipType::LightFighter) {
+                    unit.attack_hundredths = 1_000_000;
+                }
+                if unit.item == ManufacturedItem::Ship(ShipType::SmallCargo) {
+                    unit.cost = [3, 7, 11];
+                }
+            }
+            artifact
+                .progression
+                .as_mut()
+                .unwrap()
+                .unit_costs
+                .iter_mut()
+                .find(|unit| unit.item == ManufacturedItem::Ship(ShipType::SmallCargo))
+                .unwrap()
+                .cost = Resources::from_values([3, 7, 11]);
+            let rules = Ruleset::from_artifact(artifact, base.speed).unwrap();
+            let cargo = SimulationUnit {
+                item: ManufacturedItem::Ship(ShipType::SmallCargo),
+                count: 1,
+            };
+            let mut input = inputs();
+            input.attacker.units[0].count = 20;
+            input.defender.units = vec![
+                cargo.clone(),
+                SimulationUnit {
+                    item: ManufacturedItem::Defense(DefenseId::RocketLauncher),
+                    count: 1,
+                },
+            ];
+            input.defending_allies.push(SimulationSide {
+                technology: [1, 2, 3],
+                units: vec![cargo],
+            });
+            let result = SimulationJob {
+                context: context(),
+                rules,
+                inputs: input,
+            }
+            .run([19; 32])
+            .unwrap();
+            for sample in result.samples {
+                assert!(
+                    sample.defender.is_empty(),
+                    "fixture destroys all defenders before repairs"
+                );
+                assert_eq!(sample.attacker[0].count, 20);
+                assert_eq!(
+                    serde_json::to_value(sample.debris).unwrap(),
+                    serde_json::to_value(ResourceDto::from(Resources::from_values(
+                        expected.map(|n| n * orbit_engine::SCALE)
+                    )))
+                    .unwrap()
+                );
+            }
+        }
+    }
+
     #[test]
     fn allied_contingents_keep_distinct_technology_and_mobile_unit_guards() {
         let mut draft = inputs();
@@ -429,6 +521,10 @@ mod tests {
         for sample in result.samples {
             assert_eq!(sample.outcome, orbit_engine::BattleOutcome::AttackerVictory);
             assert_eq!(sample.rounds, 0);
+            assert_eq!(
+                serde_json::to_value(&sample.debris).unwrap(),
+                serde_json::json!({"metal":"0", "crystal":"0", "deuterium":"0"})
+            );
             assert_eq!(sample.attacker[0].count, 5);
             assert!(sample.defender.is_empty());
             assert_eq!(sample.surviving_cargo_capacity, "250000000");
@@ -629,6 +725,17 @@ mod tests {
             let capacity = survivors * 50 * orbit_engine::SCALE;
             assert_eq!(sample.surviving_cargo_capacity, capacity.to_string());
             capacities.insert(capacity);
+            let remaining_defenders: i64 = sample.defender.iter().map(|u| i64::from(u.count)).sum();
+            let destroyed = 18 - survivors - remaining_defenders;
+            assert_eq!(
+                sample.debris.metal,
+                (destroyed * 900 * orbit_engine::SCALE).to_string()
+            );
+            assert_eq!(
+                sample.debris.crystal,
+                (destroyed * 300 * orbit_engine::SCALE).to_string()
+            );
+            assert_eq!(sample.debris.deuterium, "0");
             let expected = if sample.outcome == orbit_engine::BattleOutcome::AttackerVictory {
                 raid_loot(stock, capacity).unwrap()
             } else {

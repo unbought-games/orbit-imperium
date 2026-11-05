@@ -35,7 +35,9 @@ export function SimulationFields({
                   {label(field.label)}
                   <small>
                     {edits[field.key] !== undefined
-                      ? `Player assumption${field.value !== null ? ` · ${field.source.toLowerCase()}: ${field.value}` : ' · not observed'}`
+                      ? field.source === 'Imported plan'
+                        ? 'Editable imported plan'
+                        : `Player assumption${field.value !== null ? ` · ${field.source.toLowerCase()}: ${field.value}` : ' · not observed'}`
                       : field.value === null
                         ? 'Unknown · not observed'
                         : field.source}

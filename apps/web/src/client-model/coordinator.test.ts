@@ -1287,6 +1287,7 @@ it('discards simulation responses from a changed identity, request or rules prof
         profile_hash: (mismatch === 'rules' ? 'b' : 'a').repeat(64),
         loot_rules_enabled: true,
         samples: Array.from({ length: 10 }, () => ({
+          debris: { metal: '18000000', crystal: '6000000', deuterium: '0' },
           surviving_cargo_capacity: '0',
           estimated_loot: null,
           outcome: 'AttackerVictory' as const,

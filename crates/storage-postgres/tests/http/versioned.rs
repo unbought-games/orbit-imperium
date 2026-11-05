@@ -337,6 +337,10 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                         assert_eq!(sample["defender"], json!([]));
                         assert_eq!(sample["surviving_cargo_capacity"], "250000000");
                         assert!(sample["estimated_loot"].is_null());
+                        assert_eq!(
+                            sample["debris"],
+                            json!({"metal": "0", "crystal": "0", "deuterium": "0"})
+                        );
                     }
                     assert!(result.get("target").is_none());
                 }

@@ -9,7 +9,7 @@ export type SimulationField = {
   side: 'attacker' | 'defender'
   label: string
   value: string | null
-  source: 'Report' | 'Your research' | 'Plan'
+  source: 'Report' | 'Your research' | 'Plan' | 'Imported plan'
   item?: S['ItemKey3']
   technology?: number
   available?: string
@@ -214,6 +214,12 @@ export function planningSummary(response: SimulationResponse) {
     response.samples.length > 0 &&
     response.samples.every((s) => s.estimated_loot !== null)
   return {
+    debris: response.samples.length
+      ? resourceNames.map((resource) => ({
+          resource,
+          ...sampledAmounts(response.samples.map((s) => s.debris[resource]))!,
+        }))
+      : [],
     cargo: sampledAmounts(
       response.samples.map((s) => s.surviving_cargo_capacity),
     ),

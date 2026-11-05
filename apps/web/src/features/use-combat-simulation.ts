@@ -1,4 +1,5 @@
 import type { SimulationAlly } from './simulation-allies'
+import { replaceDefenderEdits } from './simulation-import'
 import { useEffect, useRef, useState } from 'react'
 import type { Coordinator } from '../client-model/coordinator'
 import type {
@@ -12,6 +13,7 @@ type RunState =
 export function useCombatSimulation(model: Coordinator, scope: string) {
   const [allies, setAllies] = useState<SimulationAlly[]>([])
   const [edits, setEdits] = useState<Record<string, string>>({})
+  const [defenderSource, setDefenderSource] = useState<string | null>(null)
   const [state, setState] = useState<RunState | null>(null)
   const sequence = useRef(0)
   useEffect(
@@ -46,6 +48,16 @@ export function useCombatSimulation(model: Coordinator, scope: string) {
   }
   const current = state?.scope === scope ? state : null
   return {
+    defenderSource,
+    replaceDefender: (
+      values: Record<string, string>,
+      source: string | null,
+    ) => {
+      sequence.current++
+      setState(null)
+      setEdits((previous) => replaceDefenderEdits(previous, values))
+      setDefenderSource(source)
+    },
     allies,
     addAlly: (side: 'attacker' | 'defender') => {
       edit({})
