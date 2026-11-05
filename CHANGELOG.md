@@ -2,16 +2,16 @@
 
 ## Unreleased
 
+- Thanks to Brian Mick ([@bmick](https://github.com/bmick)), our first external
+  contributor, for the foundation and original implementation of the layered
+  insignia composer ([#302](https://github.com/unbought-games/orbit-imperium/pull/302)).
+  Read the [build note](docs/news/changes/2026-11-02-layered-insignia-composer.md).
+
 - Combat Simulator can load your selected planet or moon as defender and show
   sampled debris-field averages and ranges. Thanks to
   [Gh0stP1rate](https://discord.com/users/343178308164255744) for the
   [owned-world import request](https://discord.com/channels/1559681008532586586/1560363739818098738/1567803737630703627).
   Read the [build note](docs/news/changes/2026-11-05-simulator-imports-and-debris.md).
-
-- Thanks to Brian Mick ([@bmick](https://github.com/bmick)), our first external
-  contributor, for the foundation and original implementation of the layered
-  insignia composer ([#302](https://github.com/unbought-games/orbit-imperium/pull/302)).
-  Read the [build note](docs/news/changes/2026-11-02-layered-insignia-composer.md).
 
 ## 0.6.0
 
