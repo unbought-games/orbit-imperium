@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -131,7 +132,11 @@ test('Heavy Fighter exposes its missing Impulse Drive prerequisite', async ({
   page,
 }) => {
   await setup(page, 1)
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+  await withFixtureResponse(
+    page,
+    response => response.url().endsWith('/bootstrap'),
+    () => page.goto(`/u/andromeda/b/${body.id}/shipyard`),
+  )
   await page
     .getByRole('link', { name: 'Build Heavy Fighter', exact: true })
     .click()
@@ -167,7 +172,11 @@ test('Heavy Fighter submits the selected build quantity', async ({ page }) => {
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+  await withFixtureResponse(
+    page,
+    response => response.url().endsWith('/bootstrap'),
+    () => page.goto(`/u/andromeda/b/${body.id}/shipyard`),
+  )
   await page
     .getByRole('link', { name: 'Build Heavy Fighter', exact: true })
     .click()
@@ -248,7 +257,11 @@ test('Heavy Fighters can be selected, quoted and launched in an attack fleet', a
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withFixtureResponse(
+    page,
+    response => response.url().endsWith('/bootstrap'),
+    () => page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   await page
     .getByRole('radio', { name: 'Attack', exact: true }).check()
   await setDestination(page, { position: '8' })
@@ -337,7 +350,11 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard/heavy-fighter`)
+    await withFixtureResponse(
+      page,
+      response => response.url().endsWith('/bootstrap'),
+      () => page.goto(`/u/andromeda/b/${body.id}/shipyard/heavy-fighter`),
+    )
     const pane = page.getByRole('region', { name: 'Progression quote' })
     const build = pane.getByRole('button', { name: 'Build', exact: true })
     await page.getByLabel('Shipyard quantity').fill('3')
@@ -385,7 +402,11 @@ test('concurrent spending during validation recovers without a stale affordabili
     deuterium: '0',
   }
   await setup(page, 2, { bodies: [planet] })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/heavy-fighter`)
+  await withFixtureResponse(
+    page,
+    response => response.url().endsWith('/bootstrap'),
+    () => page.goto(`/u/andromeda/b/${body.id}/shipyard/heavy-fighter`),
+  )
   const pane = page.getByRole('region', { name: 'Progression quote' })
   const build = pane.getByRole('button', { name: 'Build', exact: true })
   await page.getByLabel('Shipyard quantity').fill('3')
@@ -443,7 +464,11 @@ test('manufacturing affordability follows the selected planet', async ({
     amounts: { ...rich.amounts, metal: '17999999999' },
   }
   await setup(page, 2, { bodies: [rich, poor] })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/heavy-fighter`)
+  await withFixtureResponse(
+    page,
+    response => response.url().endsWith('/bootstrap'),
+    () => page.goto(`/u/andromeda/b/${body.id}/shipyard/heavy-fighter`),
+  )
   const pane = page.getByRole('region', { name: 'Progression quote' })
   const build = pane.getByRole('button', { name: 'Build', exact: true })
   await page.getByLabel('Shipyard quantity').fill('3')

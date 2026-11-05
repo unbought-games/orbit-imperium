@@ -964,3 +964,43 @@ No CI deadline, routine acceptance job, or scheduled monitor was added.
   negative assertion and the explicit-only malformed-response expectation.
   The full explicit core suite was not rerun; HTTP/unit and fixture schema
   coverage passed. No test was deleted, retried for luck, or given more time.
+
+## November 5, 2026: response-gated shared shell startup
+
+PR #347 queue run `42065953092`, integration revision
+`5a143f0cc1e8e79f4994bbc664a4d2808d798404`, failed the existing `Heavy Fighter
+submits the selected build quantity` case before reaching manufacturing. Shard 6
+job `127380132646` reported no `main h1` within its unchanged five-second UI
+assertion in `shellFixture`; the captured page context and screenshot then showed
+the expected Empire heading and fully populated overview. The test entered that
+assertion after `page.goto` without awaiting bootstrap delivery. This is the
+shared missing-response-readiness pattern prohibited by AGENTS.md, not evidence
+of a combat or manufacturing arithmetic defect.
+
+Inspected the helper's history back to `88a55aa`, the scenario's history through
+`527fdd6f`, `b66dfdaa` and `c9b4f404`, and this repair ledger. No previous repair of
+this scenario's startup boundary was found; a separate owner Test Czar ledger was
+not available. Its one repair wraps the shared helper's overview navigation in
+`withFixtureResponse`, subscribing before navigation and checking successful,
+complete bootstrap delivery before the existing observable heading assertion.
+The six subsequent document navigations in the Heavy Fighter suite use the same
+helper. No timeout, sleep, retry, screenshot readiness, or assertion weakening
+was added.
+
+The caller audit found the shared ready-overview wrapper in 47 spec files (48
+files including its definition). Its contract already requires successful
+startup; intentional loading/error/race tests retain `installGameFixture` and
+their own controlled responses. This PR owns the shared repair and its focused
+Heavy Fighter/shell verification; no separate common-helper repair is deferred.
+Existing deterministic manufacturing quantity, affordability, authorization and
+replay coverage remains unchanged. If the repaired browser scenario fails again,
+remove it under AGENTS.md rather than applying another stabilization patch.
+
+The failed queue shard passed 142 other cases and failed one; its test step ran
+16:37:08–16:46:59 UTC (591s), after preparation from 16:35:34–16:37:08 (94s).
+The failure is retained as failed validation. Queue removal and fresh-head/queue
+results are recorded in the implementation chat's validation artifact.
+
+Focused validation after the single repair: all 84 Heavy Fighter/shell browser
+cases passed with one worker (2.466s module preparation, 2.9m runner). Static
+checks passed. The runner closed its server/browser and released its port.

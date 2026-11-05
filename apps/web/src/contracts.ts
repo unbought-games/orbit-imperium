@@ -7981,6 +7981,8 @@ export interface components {
             attacker: components["schemas"]["SimulationUnit"][];
             defender: components["schemas"]["SimulationUnit"][];
             surviving_cargo_capacity: components["schemas"]["Decimal"];
+            /** @description Newly generated debris from this battle sample under active universe rules, excluding existing debris and recovery. */
+            debris: components["schemas"]["Resources"];
             estimated_loot: components["schemas"]["Resources"] | null;
         };
         SimulationResponse: {

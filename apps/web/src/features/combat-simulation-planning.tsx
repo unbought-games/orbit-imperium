@@ -12,6 +12,31 @@ export function SimulationPlanning({ result }: { result: SimulationResponse }) {
   const summary = planningSummary(result)
   return (
     <div>
+      <section aria-label="New debris field">
+        <h4>New debris field</h4>
+        <dl className={styles.survivors}>
+          {summary.debris.map((row) => (
+            <div key={row.resource}>
+              <dt>
+                <ResourceValue resource={row.resource}>
+                  {amount(row.average)} average
+                </ResourceValue>
+              </dt>
+              <dd>
+                <ResourceValue resource={row.resource}>
+                  {amount(row.minimum)}–{amount(row.maximum)}
+                </ResourceValue>{' '}
+                range
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p>
+          Newly generated across {result.samples.length} sampled battles under
+          this universe’s debris rules. Existing debris is excluded; collection
+          is not simulated. Outcomes depend on your inputs and assumptions.
+        </p>
+      </section>
       <h4>Surviving cargo capacity and estimated loot</h4>
       {summary.cargo && (
         <p>

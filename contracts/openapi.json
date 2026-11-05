@@ -18171,6 +18171,10 @@
           "surviving_cargo_capacity": {
             "$ref": "#/components/schemas/Decimal"
           },
+          "debris": {
+            "$ref": "#/components/schemas/Resources",
+            "description": "Newly generated debris from this battle sample under active universe rules, excluding existing debris and recovery."
+          },
           "estimated_loot": {
             "oneOf": [
               {
@@ -18188,7 +18192,8 @@
           "attacker",
           "defender",
           "surviving_cargo_capacity",
-          "estimated_loot"
+          "estimated_loot",
+          "debris"
         ],
         "additionalProperties": false
       },

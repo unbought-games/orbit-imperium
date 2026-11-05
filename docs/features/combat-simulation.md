@@ -74,3 +74,33 @@ and mobile ships. The 2,000-unit limit applies to all forces combined. Results
 combine surviving unit counts only after resolving each contingent with its own
 stats. Changing or removing a contingent invalidates previous results; report
 attack planning still dispatches the primary attacking fleet only.
+
+## Owned-world defender imports and debris
+
+**Replace defender from current planet/moon** explicitly replaces the primary
+defender's research, defenses and ships from the authenticated owned-world view.
+**Include stationed ships** is off by default; without it, all defender ship
+counts are explicitly set to zero. Attacker and allied drafts remain independent.
+The source world, snapshot time and ship inclusion choice stay visible. Imported
+values are user draft inputs: changing world, receiving a new snapshot or editing
+research does not refresh them. Import again to replace the draft. Missing or
+stale owned data disables import; complete sparse research/inventory collections
+retain their normal zero semantics. Unsupported included forces block import,
+and oversized forces remain exact so normal simulation limits can reject them.
+Moons use their own inventories and the owner's research, never their parent's
+inventory or private enemy data.
+
+Replacing a report defender removes report resource observations from the
+hypothetical battle. **Replace defender from report** restores report defaults
+and their unknown boundaries. Report coordinates remain the attack-planning
+destination; importing your own world never changes that destination or bypasses
+Dispatch validation.
+
+Each `SimulationSample.debris` contains newly generated micro-resources computed
+by `destroyed_ship_debris`, the same function used by live encounter settlement.
+It aggregates destroyed ship construction costs across all participants before
+rounding with the active ship debris percentage and deuterium setting. The active
+engine excludes defenses, cargo and fuel; defense repair rolls cannot alter that
+pool. The simulator does not add existing debris, roll moon creation, collect
+resources or change live rules. The UI derives per-resource averages and ranges
+from all samples, including non-wins and zero outcomes, using exact integer sums.

@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './responses'
 import { productionFixture } from '../../src/test-support/production'
 import { universeSlug } from '../../src/client-model/universe-name'
 import { expect, type Page } from '@playwright/test'
@@ -368,8 +369,12 @@ export async function shellFixture(
   options: Parameters<typeof installGameFixture>[1] = {},
 ) {
   const purchases = await installGameFixture(page, options)
-  await page.goto(
-    `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+  await withFixtureResponse(
+    page,
+    (response) => response.url().endsWith('/bootstrap'),
+    () => page.goto(
+      `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+    ),
   )
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Empire —')
