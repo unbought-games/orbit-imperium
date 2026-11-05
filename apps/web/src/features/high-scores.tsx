@@ -56,7 +56,7 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
   )
   const opener = useRef<HTMLButtonElement | null>(null)
   const search = useRef<HTMLInputElement | null>(null)
-  const ownPlayer = useRef<HTMLButtonElement | null>(null)
+  const ownPlayer = useRef<HTMLElement | null>(null)
   const table = useRef<HTMLTableElement | null>(null)
   useEffect(() => {
     if (ranking.selectedId && !ranking.selected) {

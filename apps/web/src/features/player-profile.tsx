@@ -24,13 +24,21 @@ export function PlayerProfile({
   alliance?: AllianceIdentity | null
   bot: boolean
   historical: boolean
-  triggerRef?: Ref<HTMLButtonElement>
+  triggerRef?: Ref<HTMLElement>
   children: ReactNode
 }) {
   return (
     <Popover
       label={`${name} profile`}
       trigger={children}
+      link={
+        /^[0-9a-f-]{36}$/i.test(player) ? (
+          <a
+            href={`/profiles/empire/${player}`}
+            aria-label={`${name} profile details`}
+          />
+        ) : undefined
+      }
       triggerRef={triggerRef}
       className={styles.trigger}
       surfaceClassName={styles.profile}

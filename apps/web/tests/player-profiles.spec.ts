@@ -1,3 +1,4 @@
+import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { openNavigation } from './fixtures/navigation'
@@ -16,9 +17,9 @@ import {
 async function inspectIdentity(page: Page, screen: string, name: string) {
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
-    const trigger = page.getByRole('button', { name: `${name} profile details` }).first()
-    await trigger.click()
-    const popup = page.getByRole('dialog', { name: `${name} profile` })
+    const trigger = page.getByRole('link', { name: `${name} profile details` }).first()
+    await focusPlayerDetails(page, trigger)
+    const popup = page.getByRole('tooltip', { name: `${name} profile` })
     await expect(popup).toBeVisible()
     await expect(popup).not.toContainText('Activity')
     await diagnosticScreenshot(page, { path: `test-results/profile-${screen}-${width}x1000.png` })
@@ -335,10 +336,10 @@ for (const width of [1440, 390]) {
       expect(await response.finished()).toBeNull()
     }
     await withProfiles(() => page.goto('/u/andromeda/high-scores'))
-    const trigger = page.getByRole('button', { name: 'Harvester profile details' })
-    const profile = page.getByRole('dialog', { name: 'Harvester profile' })
+    const trigger = page.getByRole('link', { name: 'Harvester profile details' })
+    const profile = page.getByRole('tooltip', { name: 'Harvester profile' })
     await expect(trigger.getByLabel('Bot', { exact: true })).toBeVisible()
-    await trigger.click()
+    await focusPlayerDetails(page, trigger)
     await expect(profile).toBeVisible()
     await expect(profile).toContainText('Automated player')
     await page.keyboard.press('Escape')
@@ -348,7 +349,7 @@ for (const width of [1440, 390]) {
     await withProfiles(() => page.evaluate(() => window.dispatchEvent(new Event('pageshow'))))
     await expect(trigger.getByLabel('Bot', { exact: true })).toHaveCount(0)
     await expect(trigger).toContainText('Harvester')
-    await trigger.click()
+    await focusPlayerDetails(page, trigger)
     await expect(profile).toBeVisible()
     await expect(profile).toContainText('Commander')
     await expect(profile).not.toContainText(/automated|\bBot\b/i)
@@ -381,11 +382,11 @@ test('player attachments align together and long identities stay within narrow r
   } }))
   await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
-  const trigger = table.getByRole('button', { name: 'Aurelia profile details' })
+  const trigger = table.getByRole('link', { name: 'Aurelia profile details' })
   await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    const simple = table.getByRole('button', { name: 'steveish profile details' })
+    const simple = table.getByRole('link', { name: 'steveish profile details' })
     const name = await simple.getByText('steveish', { exact: true }).boundingBox()
     const bot = await simple.getByLabel('Bot', { exact: true }).boundingBox()
     expect(name).not.toBeNull()
@@ -394,7 +395,7 @@ test('player attachments align together and long identities stay within narrow r
     expect(Math.abs(name!.y + name!.height / 2 - bot!.y - bot!.height / 2)).toBeLessThan(1)
     await expect(simple.getByLabel('Bot', { exact: true })).toHaveCSS('font-size', '12px')
     for (const player of players) {
-      const identity = table.getByRole('button', { name: `${player.username} profile details` })
+      const identity = table.getByRole('link', { name: `${player.username} profile details` })
       const cell = identity.locator('..')
       const bounds = await cell.boundingBox()
       const parts = await identity.locator('span, svg').evaluateAll(elements => elements.map(element => {
@@ -426,9 +427,9 @@ test('player attachments align together and long identities stay within narrow r
     if (width < 1440) await table.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/player-alignment-rankings-${width}x1000.png` })
     if (width !== 320) {
-      if (width === 1440) await trigger.focus()
-      else await trigger.click()
-      const popup = page.getByRole('dialog', { name: 'Aurelia profile' })
+      if (width === 1440) await focusPlayerDetails(page, trigger)
+      else await focusPlayerDetails(page, trigger)
+      const popup = page.getByRole('tooltip', { name: 'Aurelia profile' })
       await expect(popup).toBeVisible()
       await diagnosticScreenshot(page, { path: `test-results/player-alignment-profile-${width}x1000.png` })
       await page.keyboard.press('Escape')

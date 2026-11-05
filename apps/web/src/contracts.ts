@@ -5294,6 +5294,258 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/empire-profiles/{player}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    library?: boolean;
+                    before?: string;
+                };
+                header?: never;
+                path: {
+                    player: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authorized archive projection; never records presence. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EmpireProfile"];
+                    };
+                };
+                /** @description Unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** @description Authenticated Origin/CSRF protected. Optimistic revision and immutable command ID. Publishing is permanent. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    player: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProfileCommand"];
+                };
+            };
+            responses: {
+                /** @description Applied or exact retry */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Revision or retry conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/orbit-profiles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authorized archive projection; never records presence. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrbitProfile"];
+                    };
+                };
+                /** @description Unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/my-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authorized archive projection; never records presence. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrbitProfile"];
+                    };
+                };
+                /** @description Unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/history/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authorized archive projection; never records presence. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HistoricalDetail"];
+                    };
+                };
+                /** @description Unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/commemorations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authorized archive projection; never records presence. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HistoricalDetail"];
+                    };
+                };
+                /** @description Unavailable */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8778,6 +9030,80 @@ export interface components {
         RecruitmentDirectory: {
             alliances: components["schemas"]["PublicAlliance"][];
             total: number;
+        };
+        HistoryEntry: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "Joined" | "Colonized" | "Abandoned" | "AllianceJoined" | "AllianceLeft" | "AllianceKicked" | "AllianceDisbanded" | "Battle" | "CampaignResult";
+            at_ms: number | null;
+            facts: {
+                [key: string]: unknown;
+            };
+            selected: boolean;
+            caption: string;
+            featured: boolean;
+            publication: string | null;
+            noteworthy: boolean;
+            correction?: string;
+        };
+        EmpireProfile: {
+            /** Format: uuid */
+            player: string;
+            /** Format: uuid */
+            profile: string;
+            /** Format: uuid */
+            universe: string;
+            /** Format: uuid */
+            epoch: string;
+            universe_name: string;
+            username: string;
+            display: components["schemas"]["PlayerDisplay"] | null;
+            owner: boolean;
+            public: boolean;
+            removed: boolean;
+            closed: boolean;
+            revision: number;
+            entries: components["schemas"]["HistoryEntry"][];
+            next: string | null;
+            alliance?: components["schemas"]["AllianceIdentity"];
+        };
+        OrbitProfile: {
+            /** Format: uuid */
+            id: string;
+            owner: boolean;
+            empires: components["schemas"]["EmpireProfile"][];
+        };
+        HistoricalDetail: {
+            entry: components["schemas"]["HistoryEntry"];
+            /** Format: uuid */
+            player: string;
+            universe_name: string;
+            report: components["schemas"]["SharedReport"] | null;
+        };
+        ProfileAction: {
+            /** @constant */
+            type: "Visibility";
+            public: boolean;
+        } | {
+            /** @constant */
+            type: "Select";
+            /** Format: uuid */
+            event: string;
+            selected: boolean;
+            caption: string;
+            featured: boolean;
+        } | {
+            /** @constant */
+            type: "Publish";
+            /** Format: uuid */
+            event: string;
+        };
+        ProfileCommand: {
+            /** Format: uuid */
+            command_id: string;
+            expected_revision: number;
+            action: components["schemas"]["ProfileAction"];
         };
     };
     responses: never;

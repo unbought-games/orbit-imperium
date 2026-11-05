@@ -1,5 +1,37 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn empire_profile(
+        &self,
+        _viewer: Option<AccountId>,
+        _player: uuid::Uuid,
+        _query: HistoryQuery,
+    ) -> impl std::future::Future<Output = Result<EmpireProfile, StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+    fn orbit_profile(
+        &self,
+        _viewer: Option<AccountId>,
+        _profile: Option<uuid::Uuid>,
+    ) -> impl std::future::Future<Output = Result<OrbitProfile, StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+    fn history_detail(
+        &self,
+        _viewer: Option<AccountId>,
+        _event: uuid::Uuid,
+        _publication: bool,
+    ) -> impl std::future::Future<Output = Result<HistoricalDetail, StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+    fn edit_empire_profile(
+        &self,
+        _account: AccountId,
+        _player: uuid::Uuid,
+        _command: ProfileCommand,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
+
     fn recent_authentication(
         &self,
         _digest: &str,

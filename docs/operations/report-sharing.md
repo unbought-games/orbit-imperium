@@ -48,3 +48,9 @@ this change.
 Validation: application projection tests, HTTP authentication/CSRF and public
 HTML tests, `make _db-report_sharing` with a disposable database, and the fixture
 browser suite `npm run test:ui -- report-sharing.spec.ts`.
+
+Commemorative publication is a separate action with a separate lasting URL.
+Inbox deletion continues to revoke these unlisted report shares; it does not
+erase a battle referenced by profile history. See [Empire profiles and lasting
+history](../features/empire-profiles.md) for selection, publication and withdrawal
+semantics. Existing unlisted sharing never opts an event into a public profile.

@@ -29,6 +29,38 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn empire_profile(
+        &self,
+        viewer: Option<AccountId>,
+        player: uuid::Uuid,
+        query: HistoryQuery,
+    ) -> Result<EmpireProfile, StoreError> {
+        self.read_empire_profile(viewer, player, query).await
+    }
+    async fn orbit_profile(
+        &self,
+        viewer: Option<AccountId>,
+        profile: Option<uuid::Uuid>,
+    ) -> Result<OrbitProfile, StoreError> {
+        self.read_orbit_profile(viewer, profile).await
+    }
+    async fn history_detail(
+        &self,
+        viewer: Option<AccountId>,
+        event: uuid::Uuid,
+        publication: bool,
+    ) -> Result<HistoricalDetail, StoreError> {
+        self.read_history_detail(viewer, event, publication).await
+    }
+    async fn edit_empire_profile(
+        &self,
+        account: AccountId,
+        player: uuid::Uuid,
+        command: ProfileCommand,
+    ) -> Result<(), StoreError> {
+        self.write_empire_profile(account, player, command).await
+    }
+
     async fn recent_authentication(&self, digest: &str) -> Result<bool, StoreError> {
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sessions WHERE digest=$1 AND authenticated_at>0 AND authenticated_at>=floor(extract(epoch FROM clock_timestamp())*1000)::bigint-300000 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint)")
             .bind(digest).fetch_one(&self.pool).await.map_err(db_error)

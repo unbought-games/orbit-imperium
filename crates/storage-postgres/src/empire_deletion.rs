@@ -270,6 +270,8 @@ pub(crate) async fn remove(
             Some(&before),
             (!disbanded).then_some(&after),
             i.at,
+            i.id.0,
+            None,
         )
         .await?;
         if disbanded {

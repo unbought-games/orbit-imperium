@@ -18,6 +18,7 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 - [Universe speed](architecture/server-speed.md): fixed creation-time speed and its domain effects.
 - [Deployment](architecture/deployment.md): process roles, persistence, migrations, and hosting requirements.
 - [Public universe API consumer and operator guide](operations/public-universe-api.md): requests, fields, caching, retries, resets and observability.
+- [Empire profiles and lasting history](features/empire-profiles.md): curated universe timelines, public profiles, permanent commemorations, archival retention and campaign integration.
 - [Public universe API specification](features/public-universe-api.md): unauthenticated hourly player rankings and daily planet ownership feeds, with explicit freshness and data boundaries.
 - [Branding](branding.md): original logo assets, palette, and export instructions.
 

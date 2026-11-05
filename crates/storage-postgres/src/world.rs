@@ -730,6 +730,8 @@ pub(crate) async fn save(
             continue;
         }
         if !old.abandonments.contains_key(id) {
+            crate::empire_history::append(tx, t.owner, format!("abandon:{}",t.input), "Abandoned", t.removed_at,
+                serde_json::json!({"body":t.body,"coordinates":t.coordinates,"name":s.bodies.get(&t.body).and_then(|b|b.name.clone())}),None).await?;
             for loss in &t.losses {
                 // Jobs were terminalized by the engine. Preserve their history,
                 // and explicitly remove resident assets inside this transaction.
@@ -894,6 +896,7 @@ pub(crate) async fn save(
             visible.into_iter().collect(),
         )
         .await?;
+        crate::empire_history::capture_report(tx, s, c, report).await?;
         for recipient in report.payloads.keys() {
             let revision:i64=sqlx::query_scalar("UPDATE mission_report_heads SET revision=revision+1 WHERE universe=$1 AND recipient=$2 RETURNING revision").bind(u.0).bind(recipient.0).fetch_one(&mut **tx).await.map_err(db_error)?;
             sqlx::query("INSERT INTO mission_report_recipients(report,recipient,created_revision) VALUES($1,$2,$3)").bind(id.0).bind(recipient.0).bind(revision).execute(&mut **tx).await.map_err(db_error)?;

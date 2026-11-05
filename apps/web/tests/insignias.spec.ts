@@ -1,3 +1,4 @@
+import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readdirSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { test, expect } from './fixtures/test'
@@ -434,10 +435,10 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole('region', { name: 'Galaxy positions' }),
     ).toBeVisible()
-    const trigger = page.getByRole('button', {
+    const trigger = page.getByRole('link', {
       name: 'Arcanis profile details',
     })
-    const popup = page.getByRole('dialog', { name: 'Arcanis profile' })
+    const popup = page.getByRole('tooltip', { name: 'Arcanis profile' })
     await expect(trigger.getByText('[ASTRA]')).toBeVisible()
     await expect(trigger.locator('[style*="--insignia-mask"]')).toHaveCount(1)
     await expect(trigger.locator('button, a')).toHaveCount(0)
@@ -451,7 +452,7 @@ for (const width of [1440, 390]) {
       path: `test-results/profile-galaxy-${width}x1000.png`,
     })
     if (width === 1440) await trigger.hover()
-    else await trigger.tap()
+    else await focusPlayerDetails(page, trigger)
     await expect(popup).toBeVisible()
     await expect(popup).toContainText('Automated player')
     await expect(
@@ -468,7 +469,7 @@ for (const width of [1440, 390]) {
     await page.keyboard.press('Escape')
     await expect(popup).toHaveCount(0)
     await page.mouse.move(0, 0)
-    await trigger.focus()
+    await focusPlayerDetails(page, trigger)
     await trigger.press('Tab')
     await page.keyboard.press('Shift+Tab')
     await expect(popup).toBeVisible()
@@ -476,9 +477,9 @@ for (const width of [1440, 390]) {
     await expect(popup).toHaveCount(0)
     const own = page
       .getByRole('region', { name: 'Galaxy positions' })
-      .getByRole('button', { name: 'Aurelia profile details' })
-    await own.click()
-    const plain = page.getByRole('dialog', { name: 'Aurelia profile' })
+      .getByRole('link', { name: 'Aurelia profile details' })
+    await focusPlayerDetails(page, own)
+    const plain = page.getByRole('tooltip', { name: 'Aurelia profile' })
     await expect(plain).toBeVisible()
     await expect(own.locator('[style*="--insignia-mask"]')).toHaveCount(0)
     await expect(

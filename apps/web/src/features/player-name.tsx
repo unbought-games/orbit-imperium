@@ -30,7 +30,7 @@ export function PlayerName({
   alliance?: AllianceIdentity | null
   linkAlliance?: boolean
   showInsignia?: boolean
-  triggerRef?: Ref<HTMLButtonElement>
+  triggerRef?: Ref<HTMLElement>
   interactive?: boolean
 }) {
   const profile = usePlayerDisplay(player)

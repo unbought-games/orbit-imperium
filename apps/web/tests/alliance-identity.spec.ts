@@ -1,3 +1,4 @@
+import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
 
@@ -17,8 +18,8 @@ test('reports show historical alliance tags even when current player profiles ha
   })
   await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
   const observation=page.getByRole('region',{name:'Report observation'})
-  await observation.getByRole('button', { name: 'Commander Vega profile details' }).click()
-  await expect(page.getByRole('dialog').getByRole('link',{name:'Alliance Original alliance [OLD]'})).toHaveAttribute('href',`/alliances/${binding.universe}/${affiliation.id}`)
+  await focusPlayerDetails(page, observation.getByRole('link', { name: 'Commander Vega profile details' }))
+  await expect(page.getByRole('tooltip').getByRole('link',{name:'Alliance Original alliance [OLD]'})).toHaveAttribute('href',`/alliances/${binding.universe}/${affiliation.id}`)
   await expect(observation).not.toContainText('[NEW]')
   await expect(observation).toContainText('Commander Vega')
 })

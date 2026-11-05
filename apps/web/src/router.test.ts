@@ -24,6 +24,13 @@ it('keeps only local game destinations in authentication return URLs', () => {
     ['/u/../../login', undefined],
     ['/u/../..//example.com', undefined],
     ['/signup', undefined],
+    ['/profile', '/profile'],
+    [
+      '/profiles/empire/00000000-0000-4000-8000-000000000031',
+      '/profiles/empire/00000000-0000-4000-8000-000000000031',
+    ],
+    ['/profiles/../../example.com', undefined],
+    ['/profile?redirect=https://example.com', undefined],
     [123, undefined],
     [undefined, undefined],
   ]) {

@@ -39,6 +39,34 @@ export async function startGame() {
     root.render(<DetailPlayground />)
     return
   }
+  const empireProfile = /^\/profiles\/empire\/([0-9a-f-]+)\/?$/i.exec(
+    location.pathname,
+  )
+  if (empireProfile) {
+    const { EmpireProfilePage } = await import(
+      './features/empire-history/profile-page'
+    )
+    root.render(<EmpireProfilePage player={empireProfile[1]} />)
+    return
+  }
+  const orbitProfile = /^\/profiles\/([0-9a-f-]+)\/?$/i.exec(location.pathname)
+  if (orbitProfile || location.pathname === '/profile') {
+    const { OrbitProfilePage } = await import(
+      './features/empire-history/overview-page'
+    )
+    root.render(<OrbitProfilePage profile={orbitProfile?.[1]} />)
+    return
+  }
+  const commemoration = /^\/commemorations\/([0-9a-f-]+)\/?$/i.exec(
+    location.pathname,
+  )
+  if (commemoration) {
+    const { CommemorationPage } = await import(
+      './features/empire-history/commemoration-page'
+    )
+    root.render(<CommemorationPage publication={commemoration[1]} />)
+    return
+  }
   const invitation = /^\/invite\/([^/]+)\/([^/]+)\/?$/i.exec(location.pathname)
   if (invitation) {
     const { PublicAlliancePage } = await import(

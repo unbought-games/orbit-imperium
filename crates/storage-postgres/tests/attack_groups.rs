@@ -370,6 +370,36 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
         assert_eq!(reports, 1);
         let recipients:i64=sqlx::query_scalar("SELECT count(*) FROM mission_report_recipients p JOIN mission_reports r ON r.id=p.report WHERE r.universe=$1 AND r.kind='Combat'").bind(u.0).fetch_one(&pool).await.unwrap();
         assert_eq!(recipients, 4);
+        for binding in [a, b, h, guard] {
+            let history = reopened
+                .empire_profile(
+                    Some(binding.account),
+                    binding.player.0,
+                    HistoryQuery {
+                        library: true,
+                        before: None,
+                    },
+                )
+                .await
+                .unwrap();
+            let battles: Vec<_> = history
+                .entries
+                .iter()
+                .filter(|e| e.kind == "Battle")
+                .collect();
+            assert_eq!(
+                battles.len(),
+                1,
+                "one retained observation per recipient in both runtimes"
+            );
+            assert!(battles[0].facts.get("valuation_before").is_none());
+            let detail = reopened
+                .history_detail(Some(binding.account), battles[0].id, false)
+                .await
+                .unwrap();
+            assert!(detail.report.is_some());
+        }
+
         let payload: serde_json::Value = sqlx::query_scalar(
             "SELECT data FROM mission_reports WHERE universe=$1 AND kind='Combat'",
         )

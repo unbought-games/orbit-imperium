@@ -125,6 +125,8 @@ pub(crate) async fn history(
     before: Option<&AllianceState>,
     after: Option<&AllianceState>,
     at: i64,
+    source: Uuid,
+    kicked: Option<PlayerId>,
 ) -> Result<(), StoreError> {
     if let Some(old) = before {
         for m in &old.members {
@@ -132,6 +134,25 @@ pub(crate) async fn history(
                 .is_some_and(|s| s.is_member(m.player) && s.name == old.name && s.tag == old.tag)
             {
                 continue;
+            }
+            if !after.is_some_and(|s| s.is_member(m.player)) {
+                let kind = if after.is_none() {
+                    "AllianceDisbanded"
+                } else if kicked == Some(m.player) {
+                    "AllianceKicked"
+                } else {
+                    "AllianceLeft"
+                };
+                crate::empire_history::append(
+                    tx,
+                    m.player,
+                    format!("alliance:{source}:leave"),
+                    kind,
+                    at,
+                    serde_json::json!({"alliance":old.id,"name":old.name,"tag":old.tag}),
+                    None,
+                )
+                .await?;
             }
             sqlx::query("UPDATE alliance_affiliation_history SET valid_until=$4 WHERE universe=$1 AND epoch=$2 AND player=$3 AND valid_until IS NULL").bind(b.universe.0).bind(b.epoch.0).bind(m.player.0).bind(at).execute(&mut **tx).await.map_err(db_error)?;
         }
@@ -142,6 +163,18 @@ pub(crate) async fn history(
                 .is_some_and(|s| s.is_member(m.player) && s.name == new.name && s.tag == new.tag)
             {
                 continue;
+            }
+            if !before.is_some_and(|s| s.is_member(m.player)) {
+                crate::empire_history::append(
+                    tx,
+                    m.player,
+                    format!("alliance:{source}:join"),
+                    "AllianceJoined",
+                    at,
+                    serde_json::json!({"alliance":new.id,"name":new.name,"tag":new.tag}),
+                    None,
+                )
+                .await?;
             }
             sqlx::query("INSERT INTO alliance_affiliation_history(universe,epoch,player,valid_from,alliance,tag,name) VALUES($1,$2,$3,$4,$5,$6,$7)").bind(b.universe.0).bind(b.epoch.0).bind(m.player.0).bind(at).bind(new.id).bind(&new.tag).bind(&new.name).execute(&mut **tx).await.map_err(db_error)?;
         }

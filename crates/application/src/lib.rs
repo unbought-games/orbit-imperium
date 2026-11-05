@@ -1,3 +1,5 @@
+mod empire_history;
+pub use empire_history::*;
 mod insignia;
 pub use insignia::*;
 mod bots;

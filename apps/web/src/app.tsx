@@ -1,3 +1,4 @@
+import { archivePath } from './client-model/empire-history-navigation'
 import { RecruitmentEntryPage } from './features/alliances/recruitment-entry'
 import { recruitmentEntry } from './client-model/recruitment'
 import { HostedJoin } from './features/hosted-join'
@@ -17,6 +18,10 @@ import { useAppSession } from './client-model/use-app-session'
 import { AuthContext } from './shell/auth-context'
 import { PlayerProfilesProvider } from './shell/player-profiles-context'
 export function App() {
+  const archiveReturn = useLocation({
+    select: (location) =>
+      location.pathname === '/login' && archivePath(location.search.redirect),
+  })
   const sharedLocation = useLocation({
     select: (location) =>
       /\/location\//.test(location.pathname) ||
@@ -35,7 +40,7 @@ export function App() {
   return (
     <AuthContext.Provider value={session}>
       <SkipLink />
-      {runtime.status === 'anonymous' ? (
+      {archiveReturn || runtime.status === 'anonymous' ? (
         <Outlet />
       ) : runtime.status === 'authenticated' && allianceEntry ? (
         <RecruitmentEntryPage

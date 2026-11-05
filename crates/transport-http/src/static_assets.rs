@@ -50,7 +50,10 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
     let public_document = path.starts_with("/reports/shared/")
         || path.starts_with("/alliances/")
         || path == "/alliances"
-        || path.starts_with("/invite/");
+        || path.starts_with("/invite/")
+        || path.starts_with("/profiles/")
+        || path.starts_with("/commemorations/")
+        || path == "/profile";
     let namespace = path.split('/').nth(1).unwrap_or_default();
     if matches!(namespace, "api" | "health")
         || matches!(path.as_ref(), "/homepage.html" | "/homepage-closed.html")
@@ -392,6 +395,10 @@ mod tests {
         );
         for path in [
             "/reports/shared/00000000-0000-4000-8000-000000000001",
+            "/profile",
+            "/profiles/00000000-0000-4000-8000-000000000001",
+            "/profiles/empire/00000000-0000-4000-8000-000000000001",
+            "/commemorations/00000000-0000-4000-8000-000000000001",
             "/alliances/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002",
         ] {
             let response = app
