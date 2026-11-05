@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Deployment shows an estimated arrival date and time instead of a duplicate
+  duration. Thanks to [Gh0stP1rate](https://discord.com/users/343178308164255744)
+  and [sumdeos](https://discord.com/users/181133185491402753) for independently
+  requesting it. Read the [build note](docs/news/changes/2026-11-05-deployment-arrival.md).
+
 - Thanks to Brian Mick ([@bmick](https://github.com/bmick)), our first external
   contributor, for the foundation and original implementation of the layered
   insignia composer ([#302](https://github.com/unbought-games/orbit-imperium/pull/302)).

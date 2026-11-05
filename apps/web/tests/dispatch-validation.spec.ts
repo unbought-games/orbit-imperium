@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
@@ -21,10 +22,11 @@ test('destination focus glow is desktop only', async ({ page }) => {
   }
 })
 
-async function setup(page: Page, options: { beforeNavigation?: () => Promise<void>; omitPlayerNames?: boolean } = {}) {
+async function setup(page: Page, options: { beforeNavigation?: () => Promise<void>; omitPlayerNames?: boolean; colonyKind?: 'Planet' | 'Moon' } = {}) {
   const colony = {
     ...structuredClone(body),
     id: id(6),
+    kind: options.colonyKind ?? 'Planet',
     colony: { diameter_km: 12000, min_temperature: 0, max_temperature: 40, created_at: 1000, profile: 'oi-redesign-reconstructed-v1' },
     coordinates: { galaxy: 1, system: 1, position: 2 },
   }
@@ -213,7 +215,9 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
   })
   await playerProfilesFixture(page, () => [{ player: binding.player, username: 'Commander' }])
   await options.beforeNavigation?.()
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withFixtureResponse(page, response => response.url().endsWith('/overview'), () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   // Cold route compilation can share the host with other fixture workers.
   await expect(page.locator('main h1')).toHaveText('Dispatch', { timeout: 30000 })
   await expect(
@@ -659,10 +663,17 @@ test('flight timing updates with speed and selected ships without opening review
   })
 })
 
+async function captureDeploymentTiming(page: Page, state: string, width: number) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+  await page.setViewportSize({ width, height: 950 })
+  await page.getByRole('group', { name: 'Speed and flight estimates' }).scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, { path: `test-results/deploy-${state}-${width}x950.png` })
+}
+
 for (const width of [320, 390, 1280]) {
-  test(`dispatch groups speed, timing and fuel below cargo at ${width}px`, async ({ page }) => {
+  test(`dispatch shows deployment arrival with speed and fuel below cargo at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 })
-    const state = await setup(page)
+    const state = await setup(page, { colonyKind: width === 390 ? 'Moon' : 'Planet' })
     const settings = page.getByRole('group', { name: 'Speed and flight estimates' })
     const speed = settings.getByRole('slider', { name: 'Speed', exact: true })
     const timing = settings.getByRole('region', { name: 'Flight timing' })
@@ -681,25 +692,41 @@ for (const width of [320, 390, 1280]) {
     await expect(fuel.locator('dd')).toHaveText('250')
     await expect(timing.locator('dd').nth(0)).toHaveText('3m 20s')
     await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
-    await setDestination(page, { position: '2' })
-    await expect(timing.locator('dt')).toHaveText(['To destination', 'Total flight', 'Deuterium consumed'])
-    await expect(timing.locator('time')).toHaveCount(0)
+    await selectDestinationPlanet(page, id(6))
+    await expect(timing.locator('dt')).toHaveText(['To destination', 'Arrives at', 'Deuterium consumed'])
+    await expect(timing.locator('time')).toBeVisible()
     await expect(timing.getByText('One-way', { exact: true })).toHaveCount(0)
-    await expect(timing.locator('dd').nth(1)).toHaveText('3m 20s')
+    await expect(timing.locator('dd').first()).toHaveText('3m 20s')
+    const arrival = Date.parse((await timing.locator('time').getAttribute('datetime'))!)
+    expect(Number.isFinite(arrival)).toBe(true)
     await expect(fuel.locator('dd')).toHaveText('250')
-    await diagnosticScreenshot(settings, { path: `test-results/dispatch-speed-fuel-${width}.png` })
+    await captureDeploymentTiming(page, 'arrival', width)
     await page.getByLabel('Small Cargo · 2 available').fill('')
     await expect(timing.locator('dd')).toHaveText(['—', '—', '—'])
     await expect(timing.getByText('Back at', { exact: true })).toHaveCount(0)
+    await expect(timing.locator('time')).toHaveCount(0)
+    await captureDeploymentTiming(page, 'empty', width)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1280) {
+      await selectBody(page, id(6))
+      await expect(timing.locator('time')).toHaveCount(0)
+      state.duration = 250000
+      await selectDestinationPlanet(page, body.id)
+      await page.getByLabel('Small Cargo · 2 available').fill('1')
+      await expect(timing.locator('dd').first()).toHaveText('8m 20s')
+      await expect(timing.locator('time')).toBeVisible()
+      expect(Date.parse((await timing.locator('time').getAttribute('datetime'))!)).toBeGreaterThan(arrival)
+    }
     expect(state.launches).toBe(0)
   })
 }
 
-test('late timing replies cannot replace a newer speed and failed estimates clear obsolete times', async ({
+test('deployment arrival clears while pending and ignores late or failed estimates', async ({
   page,
 }) => {
   const state = await setup(page)
+  await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
+  await selectDestinationPlanet(page, id(6))
   const timing = page.getByRole('region', { name: 'Flight timing' })
   await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
   let release!: () => void
@@ -716,6 +743,9 @@ test('late timing replies cannot replace a newer speed and failed estimates clea
   }
   await setSpeed(page, 50)
   await expect.poll(() => held).toBe(true)
+  await expect(timing.locator('time')).toHaveCount(0)
+  await expect(timing).toContainText('Updating flight times…')
+  for (const width of [390, 1280]) await captureDeploymentTiming(page, 'pending', width)
   await setSpeed(page, 20)
   await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
   const response = page.waitForResponse(
@@ -725,12 +755,13 @@ test('late timing replies cannot replace a newer speed and failed estimates clea
       response.request().postDataJSON().intent.speed_percent === 50,
   )
   release()
-  await response
+  expect(await (await response).finished()).toBeNull()
   await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
   state.estimateError = 'NotFound'
   await setSpeed(page, 10)
   await expect(timing).toContainText('no longer available')
   await expect(timing.locator('time')).toHaveCount(0)
+  for (const width of [390, 1280]) await captureDeploymentTiming(page, 'error', width)
   expect(state.launches).toBe(0)
 })
 
