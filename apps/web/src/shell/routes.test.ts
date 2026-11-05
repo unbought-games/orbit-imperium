@@ -233,3 +233,33 @@ it('keeps the menu available without a planet while rejecting foreign context', 
       .available,
   ).toBe(false)
 })
+
+it('keeps account pages available without planets and rejects explicit inaccessible context', () => {
+  const current = { ...view, protocol: 4 } as unknown as BoundView
+  for (const page of [
+    'messages',
+    'alliance',
+    'high-scores',
+    'settings',
+    'combat-simulator',
+  ] as const) {
+    expect(
+      resolveDestination({ universe: 'u', page }, { ...current, bodies: [] }),
+    ).toMatchObject({ available: true, body: null, page })
+    expect(
+      resolveDestination({ universe: 'u', page, body: 'foreign' }, current)
+        .available,
+    ).toBe(false)
+    expect(
+      resolveDestination({ universe: 'foreign', page, body: 'a' }, current)
+        .available,
+    ).toBe(false)
+    expect(
+      resolveDestination({ universe: 'u', page, body: 'b' }, current),
+    ).toMatchObject({ available: true, body: 'b', page })
+    if (page !== 'settings')
+      expect(
+        resolveDestination({ universe: 'u', page, body: 'b' }, view).available,
+      ).toBe(false)
+  }
+})

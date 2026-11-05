@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, binding, id } from './fixtures/game'
@@ -404,6 +405,7 @@ test('new messages arrive incrementally and hiding preserves history', async ({
     fullPage: true,
   })
 })
+
 
 
 for (const viewport of [

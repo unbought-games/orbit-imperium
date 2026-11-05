@@ -29,7 +29,8 @@ export async function menuDestination(page: Page, name: string) {
     await sidebar.getByRole('button', { name: 'Account menu', exact: true }).click()
     return page.getByRole('menuitem', { name: 'Settings', exact: true })
   }
-  return navigation.getByRole('link', { name, exact: false })
+  // Settings must not also match Resource settings in the mobile menu.
+  return navigation.getByRole('link', { name, exact: name === 'Settings' })
 }
 
 export async function navigate(page: Page, name: string) {

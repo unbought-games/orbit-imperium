@@ -120,7 +120,7 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
             ? 'Command uplink'
             : (content?.title ?? 'Intelligence')}
         </h2>
-        {!connection && (
+        {!connection && !hud.state.stale && (
           <div className={styles.signal}>
             <span />
             <span />

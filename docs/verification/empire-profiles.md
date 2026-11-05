@@ -143,3 +143,19 @@ notices; it completes successfully. Final workspace Clippy: 11.92s.
 Cleanup confirmed: no `orbit_test_*` databases remained in the task database;
 Compose removed `orbit-profile-validation-db-1`, its `orbit-db` volume, and its
 private network. The screenshots, manifest and verification record are retained.
+
+## PR integration
+
+PR #350 was authorized through the `pr` skill after implementation. Main had
+advanced to `eb6a61043b5cd9aee085c3f18e5e25b6d3bb5b3a`; GitHub reported conflicts.
+Merged that base without rebasing. Kept the recorded removal of the failed social
+shortcut test while retaining main's other route/readiness fixes, and included
+both profile and planet-route suites in the browser selection. No feature scope
+was expanded.
+
+The integrated source passes static/contract/boundary checks, production build,
+workspace Clippy, 1,364 client tests (4.65s), and 39 profile/navigation/planet-route
+browser tests (2.114s module preparation; 39.4s runner execution). A pre-existing
+unmocked overview request logged a proxy refusal during a routing fixture; all
+assertions passed and no test retry or timeout change was made. Relevant dossier
+and navigation captures were refreshed against this base.

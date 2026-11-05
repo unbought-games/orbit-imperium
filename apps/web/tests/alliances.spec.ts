@@ -177,7 +177,7 @@ test('public recruitment bypasses bootstrap, exposes only public data and opens 
   }
   await fixture(page, null)
   await page.getByRole('link', { name: 'Continue to this universe' }).click()
-  await expect(page).toHaveURL(new RegExp(`/u/andromeda/alliance\\?.*alliance=${alliance}`))
+  await expect(page).toHaveURL(new RegExp(`/u/andromeda/b/${id(5)}/alliance\\?.*alliance=${alliance}`))
   await expect(page.getByLabel('Application message')).toBeVisible()
 })
 

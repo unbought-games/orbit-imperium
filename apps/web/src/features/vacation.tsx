@@ -176,16 +176,18 @@ export function VacationSettings() {
 export function VacationNotice({
   vacation,
   universeName,
+  body,
 }: {
   vacation?: components['schemas']['VacationView4']
   universeName: string
+  body?: string
 }) {
   if (!vacation?.active) return null
   return (
     <Section aria-label="Vacation active" className={styles.notice}>
       <Text>
         Vacation mode · Base income only. Already-launched attacks still arrive.{' '}
-        <Link {...routeTarget(universeName, 'settings')}>
+        <Link {...routeTarget(universeName, 'settings', body)}>
           Manage vacation in Settings
         </Link>
       </Text>

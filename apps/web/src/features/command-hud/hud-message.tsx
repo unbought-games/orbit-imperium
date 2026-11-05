@@ -4,7 +4,7 @@ import type { Coordinator } from '../../client-model/coordinator'
 import { commandId } from '../../adapters/command-id'
 import { Markdown } from '../alliances/shared'
 import { Button, ButtonLink } from '../../ui/button'
-import { universeSlug } from '../../client-model/universe-name'
+import { routeTarget } from '../../shell/route-target'
 import type { HudTarget } from './model'
 import styles from './hud.module.css'
 export function HudMessage({
@@ -99,9 +99,8 @@ export function HudMessage({
           </Button>
         )}
         <ButtonLink
-          to="/u/$universe/messages"
-          params={{ universe: universeSlug(universe) }}
-          search={{ body, player: conversation?.contact.player }}
+          {...routeTarget(universe, 'messages', body)}
+          search={{ player: conversation?.contact.player }}
           onClick={close}
         >
           {conversation ? 'Open conversation' : 'Open Messages'}

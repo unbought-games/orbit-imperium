@@ -830,7 +830,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('button', { name: 'Connection details', exact: true })).toHaveCount(0)
     await expect(page.locator('main').getByText('Cleanup stopped.', { exact: false })).toHaveCount(0)
     await expect(page.getByText('Orders are coming in too fast. Try again in 60 seconds.', { exact: true })).toBeVisible()
-    await expect(page.getByText('Connection lost.', { exact: false })).toHaveCount(0)
+    await expect(page.getByText('Unable to refresh your empire.', { exact: false })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Retry order' })).toHaveCount(0)
     expect(fixture.headers.map(r => r.hidden)).toEqual([false, false])
     await expect(page.getByRole('button', { name: 'Archive selected (2)' })).toBeDisabled()
@@ -898,14 +898,14 @@ for (const width of [1280, 390]) {
     await page.route('**/overview', route => route.abort('failed'))
     await refreshGame(page)
     await page.clock.runFor(1000)
-    const disconnected = 'Connection lost. Reconnecting…'
+    const disconnected = 'Unable to refresh your empire. Showing the last confirmed state. Reconnecting…'
     await expect(page.locator('p[aria-live=off]').filter({ hasText: disconnected })).toBeVisible()
     expect(await primedAlert.getAttribute('aria-live')).toBe('assertive')
     expect(await primedAlert.textContent()).toBe(disconnected)
     await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-network-${width}x900.png`, fullPage: true })
     if (width < 768) {
       await page.getByTestId('command-orb').click()
-      await expect(page.getByRole('dialog').getByTestId('game-error-banner')).toContainText('Connection lost. Reconnecting…')
+      await expect(page.getByRole('dialog').getByTestId('game-error-banner')).toContainText('Unable to refresh your empire. Showing the last confirmed state. Reconnecting…')
       await page.clock.resume()
       await expect(page.getByRole('dialog')).toHaveCSS('opacity', '1')
       await diagnosticScreenshot(page, { path: `test-results/unified-rate-limit-network-hud-${width}x900.png` })
@@ -914,7 +914,7 @@ for (const width of [1280, 390]) {
     await page.unroute('**/overview')
     await refreshGame(page)
     await page.clock.runFor(1000)
-    await expect(page.getByText(/Connection lost. Reconnecting/)).toHaveCount(0)
+    await expect(page.getByText(/Unable to refresh your empire/)).toHaveCount(0)
   })
 }
 

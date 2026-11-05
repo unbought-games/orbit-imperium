@@ -27,6 +27,7 @@ export async function attachFailureScreenshots(
   pages: Page[],
   testInfo: TestInfo,
 ) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '0') return
   for (const [index, page] of pages.entries()) {
     if (page.isClosed()) continue
     try {

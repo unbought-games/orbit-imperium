@@ -4,6 +4,7 @@ import {
 } from '../client-model/client-update'
 
 export class ClientUpdateRequired extends Error {
+  readonly code = 'ClientUpdateRequired'
   readonly retryAfterMs = 30000
   constructor() {
     super('A different client build is available')

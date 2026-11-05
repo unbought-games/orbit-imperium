@@ -1443,7 +1443,7 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   )
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(
-    page.locator('[aria-live=assertive]').filter({ hasText: 'Connection lost. Reconnecting' }),
+    page.locator('[aria-live=assertive]').filter({ hasText: 'Unable to refresh your empire. Showing the last confirmed state. Reconnecting' }),
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)

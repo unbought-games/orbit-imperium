@@ -5998,7 +5998,7 @@ export interface components {
         /** @enum {unknown} */
         GameError: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired";
         /** @enum {unknown} */
-        ServiceCode: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "GameRejected" | "RateLimited" | "Unavailable" | "BodyTooLarge";
+        ServiceCode: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "GameRejected" | "RateLimited" | "Unavailable" | "BodyTooLarge" | "SessionRefreshing";
         Problem: {
             /** @constant */
             type: "about:blank";

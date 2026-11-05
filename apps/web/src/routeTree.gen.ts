@@ -34,16 +34,21 @@ import { Route as UUniverseFleetsItemRouteImport } from './routes/u.$universe.fl
 import { Route as UUniverseLocationCoordinatesRouteImport } from './routes/u.$universe.location.$coordinates'
 import { Route as UUniverseReportsIndexRouteImport } from './routes/u.$universe.reports.index'
 import { Route as UUniverseReportsItemRouteImport } from './routes/u.$universe.reports.$item'
+import { Route as UUniverseBBodyAllianceRouteImport } from './routes/u.$universe.b.$body.alliance'
+import { Route as UUniverseBBodyCombatSimulatorRouteImport } from './routes/u.$universe.b.$body.combat-simulator'
 import { Route as UUniverseBBodyDefenseRouteImport } from './routes/u.$universe.b.$body.defense'
 import { Route as UUniverseBBodyDispatchRouteImport } from './routes/u.$universe.b.$body.dispatch'
 import { Route as UUniverseBBodyFacilitiesRouteImport } from './routes/u.$universe.b.$body.facilities'
 import { Route as UUniverseBBodyFleetsRouteImport } from './routes/u.$universe.b.$body.fleets'
 import { Route as UUniverseBBodyGalaxyRouteImport } from './routes/u.$universe.b.$body.galaxy'
+import { Route as UUniverseBBodyHighScoresRouteImport } from './routes/u.$universe.b.$body.high-scores'
+import { Route as UUniverseBBodyMessagesRouteImport } from './routes/u.$universe.b.$body.messages'
 import { Route as UUniverseBBodyOverviewRouteImport } from './routes/u.$universe.b.$body.overview'
 import { Route as UUniverseBBodyReportsRouteImport } from './routes/u.$universe.b.$body.reports'
 import { Route as UUniverseBBodyResearchRouteImport } from './routes/u.$universe.b.$body.research'
 import { Route as UUniverseBBodyResourceSettingsRouteImport } from './routes/u.$universe.b.$body.resource-settings'
 import { Route as UUniverseBBodyResourcesRouteImport } from './routes/u.$universe.b.$body.resources'
+import { Route as UUniverseBBodySettingsRouteImport } from './routes/u.$universe.b.$body.settings'
 import { Route as UUniverseBBodyShipyardRouteImport } from './routes/u.$universe.b.$body.shipyard'
 import { Route as UUniverseBBodyDefenseItemRouteImport } from './routes/u.$universe.b.$body.defense.$item'
 import { Route as UUniverseBBodyFacilitiesItemRouteImport } from './routes/u.$universe.b.$body.facilities.$item'
@@ -182,6 +187,17 @@ const UUniverseReportsItemRoute = UUniverseReportsItemRouteImport.update({
   path: '/$item',
   getParentRoute: () => UUniverseReportsRoute,
 } as any)
+const UUniverseBBodyAllianceRoute = UUniverseBBodyAllianceRouteImport.update({
+  id: '/b/$body/alliance',
+  path: '/b/$body/alliance',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodyCombatSimulatorRoute =
+  UUniverseBBodyCombatSimulatorRouteImport.update({
+    id: '/b/$body/combat-simulator',
+    path: '/b/$body/combat-simulator',
+    getParentRoute: () => UUniverseRoute,
+  } as any)
 const UUniverseBBodyDefenseRoute = UUniverseBBodyDefenseRouteImport.update({
   id: '/b/$body/defense',
   path: '/b/$body/defense',
@@ -208,6 +224,17 @@ const UUniverseBBodyGalaxyRoute = UUniverseBBodyGalaxyRouteImport.update({
   path: '/b/$body/galaxy',
   getParentRoute: () => UUniverseRoute,
 } as any)
+const UUniverseBBodyHighScoresRoute =
+  UUniverseBBodyHighScoresRouteImport.update({
+    id: '/b/$body/high-scores',
+    path: '/b/$body/high-scores',
+    getParentRoute: () => UUniverseRoute,
+  } as any)
+const UUniverseBBodyMessagesRoute = UUniverseBBodyMessagesRouteImport.update({
+  id: '/b/$body/messages',
+  path: '/b/$body/messages',
+  getParentRoute: () => UUniverseRoute,
+} as any)
 const UUniverseBBodyOverviewRoute = UUniverseBBodyOverviewRouteImport.update({
   id: '/b/$body/overview',
   path: '/b/$body/overview',
@@ -232,6 +259,11 @@ const UUniverseBBodyResourceSettingsRoute =
 const UUniverseBBodyResourcesRoute = UUniverseBBodyResourcesRouteImport.update({
   id: '/b/$body/resources',
   path: '/b/$body/resources',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodySettingsRoute = UUniverseBBodySettingsRouteImport.update({
+  id: '/b/$body/settings',
+  path: '/b/$body/settings',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseBBodyShipyardRoute = UUniverseBBodyShipyardRouteImport.update({
@@ -320,16 +352,21 @@ export interface FileRoutesByFullPath {
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
+  '/u/$universe/b/$body/alliance': typeof UUniverseBBodyAllianceRoute
+  '/u/$universe/b/$body/combat-simulator': typeof UUniverseBBodyCombatSimulatorRoute
   '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
   '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
   '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
   '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
+  '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/reports': typeof UUniverseBBodyReportsRouteWithChildren
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
   '/u/$universe/b/$body/facilities/$item': typeof UUniverseBBodyFacilitiesItemRoute
@@ -364,14 +401,19 @@ export interface FileRoutesByTo {
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports': typeof UUniverseReportsIndexRoute
+  '/u/$universe/b/$body/alliance': typeof UUniverseBBodyAllianceRoute
+  '/u/$universe/b/$body/combat-simulator': typeof UUniverseBBodyCombatSimulatorRoute
   '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
   '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
   '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
+  '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
   '/u/$universe/b/$body/facilities/$item': typeof UUniverseBBodyFacilitiesItemRoute
@@ -410,16 +452,21 @@ export interface FileRoutesById {
   '/u/$universe/reports/$item': typeof UUniverseReportsItemRoute
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
+  '/u/$universe/b/$body/alliance': typeof UUniverseBBodyAllianceRoute
+  '/u/$universe/b/$body/combat-simulator': typeof UUniverseBBodyCombatSimulatorRoute
   '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
   '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
   '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
   '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
+  '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/reports': typeof UUniverseBBodyReportsRouteWithChildren
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/defense/$item': typeof UUniverseBBodyDefenseItemRoute
   '/u/$universe/b/$body/facilities/$item': typeof UUniverseBBodyFacilitiesItemRoute
@@ -459,16 +506,21 @@ export interface FileRouteTypes {
     | '/u/$universe/reports/$item'
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
+    | '/u/$universe/b/$body/alliance'
+    | '/u/$universe/b/$body/combat-simulator'
     | '/u/$universe/b/$body/defense'
     | '/u/$universe/b/$body/dispatch'
     | '/u/$universe/b/$body/facilities'
     | '/u/$universe/b/$body/fleets'
     | '/u/$universe/b/$body/galaxy'
+    | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/reports'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/defense/$item'
     | '/u/$universe/b/$body/facilities/$item'
@@ -503,14 +555,19 @@ export interface FileRouteTypes {
     | '/u/$universe/reports/$item'
     | '/u/$universe/fleets'
     | '/u/$universe/reports'
+    | '/u/$universe/b/$body/alliance'
+    | '/u/$universe/b/$body/combat-simulator'
     | '/u/$universe/b/$body/defense'
     | '/u/$universe/b/$body/dispatch'
     | '/u/$universe/b/$body/facilities'
     | '/u/$universe/b/$body/galaxy'
+    | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/defense/$item'
     | '/u/$universe/b/$body/facilities/$item'
@@ -548,16 +605,21 @@ export interface FileRouteTypes {
     | '/u/$universe/reports/$item'
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
+    | '/u/$universe/b/$body/alliance'
+    | '/u/$universe/b/$body/combat-simulator'
     | '/u/$universe/b/$body/defense'
     | '/u/$universe/b/$body/dispatch'
     | '/u/$universe/b/$body/facilities'
     | '/u/$universe/b/$body/fleets'
     | '/u/$universe/b/$body/galaxy'
+    | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/reports'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/defense/$item'
     | '/u/$universe/b/$body/facilities/$item'
@@ -756,6 +818,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseReportsItemRouteImport
       parentRoute: typeof UUniverseReportsRoute
     }
+    '/u/$universe/b/$body/alliance': {
+      id: '/u/$universe/b/$body/alliance'
+      path: '/b/$body/alliance'
+      fullPath: '/u/$universe/b/$body/alliance'
+      preLoaderRoute: typeof UUniverseBBodyAllianceRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/combat-simulator': {
+      id: '/u/$universe/b/$body/combat-simulator'
+      path: '/b/$body/combat-simulator'
+      fullPath: '/u/$universe/b/$body/combat-simulator'
+      preLoaderRoute: typeof UUniverseBBodyCombatSimulatorRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/defense': {
       id: '/u/$universe/b/$body/defense'
       path: '/b/$body/defense'
@@ -791,6 +867,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseBBodyGalaxyRouteImport
       parentRoute: typeof UUniverseRoute
     }
+    '/u/$universe/b/$body/high-scores': {
+      id: '/u/$universe/b/$body/high-scores'
+      path: '/b/$body/high-scores'
+      fullPath: '/u/$universe/b/$body/high-scores'
+      preLoaderRoute: typeof UUniverseBBodyHighScoresRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/messages': {
+      id: '/u/$universe/b/$body/messages'
+      path: '/b/$body/messages'
+      fullPath: '/u/$universe/b/$body/messages'
+      preLoaderRoute: typeof UUniverseBBodyMessagesRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/overview': {
       id: '/u/$universe/b/$body/overview'
       path: '/b/$body/overview'
@@ -824,6 +914,13 @@ declare module '@tanstack/react-router' {
       path: '/b/$body/resources'
       fullPath: '/u/$universe/b/$body/resources'
       preLoaderRoute: typeof UUniverseBBodyResourcesRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/settings': {
+      id: '/u/$universe/b/$body/settings'
+      path: '/b/$body/settings'
+      fullPath: '/u/$universe/b/$body/settings'
+      preLoaderRoute: typeof UUniverseBBodySettingsRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/b/$body/shipyard': {
@@ -1039,16 +1136,21 @@ interface UUniverseRouteChildren {
   UUniverseSettingsRoute: typeof UUniverseSettingsRoute
   UUniverseIndexRoute: typeof UUniverseIndexRoute
   UUniverseLocationCoordinatesRoute: typeof UUniverseLocationCoordinatesRoute
+  UUniverseBBodyAllianceRoute: typeof UUniverseBBodyAllianceRoute
+  UUniverseBBodyCombatSimulatorRoute: typeof UUniverseBBodyCombatSimulatorRoute
   UUniverseBBodyDefenseRoute: typeof UUniverseBBodyDefenseRouteWithChildren
   UUniverseBBodyDispatchRoute: typeof UUniverseBBodyDispatchRoute
   UUniverseBBodyFacilitiesRoute: typeof UUniverseBBodyFacilitiesRouteWithChildren
   UUniverseBBodyFleetsRoute: typeof UUniverseBBodyFleetsRouteWithChildren
   UUniverseBBodyGalaxyRoute: typeof UUniverseBBodyGalaxyRoute
+  UUniverseBBodyHighScoresRoute: typeof UUniverseBBodyHighScoresRoute
+  UUniverseBBodyMessagesRoute: typeof UUniverseBBodyMessagesRoute
   UUniverseBBodyOverviewRoute: typeof UUniverseBBodyOverviewRoute
   UUniverseBBodyReportsRoute: typeof UUniverseBBodyReportsRouteWithChildren
   UUniverseBBodyResearchRoute: typeof UUniverseBBodyResearchRouteWithChildren
   UUniverseBBodyResourceSettingsRoute: typeof UUniverseBBodyResourceSettingsRoute
   UUniverseBBodyResourcesRoute: typeof UUniverseBBodyResourcesRouteWithChildren
+  UUniverseBBodySettingsRoute: typeof UUniverseBBodySettingsRoute
   UUniverseBBodyShipyardRoute: typeof UUniverseBBodyShipyardRouteWithChildren
 }
 
@@ -1068,16 +1170,21 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseSettingsRoute: UUniverseSettingsRoute,
   UUniverseIndexRoute: UUniverseIndexRoute,
   UUniverseLocationCoordinatesRoute: UUniverseLocationCoordinatesRoute,
+  UUniverseBBodyAllianceRoute: UUniverseBBodyAllianceRoute,
+  UUniverseBBodyCombatSimulatorRoute: UUniverseBBodyCombatSimulatorRoute,
   UUniverseBBodyDefenseRoute: UUniverseBBodyDefenseRouteWithChildren,
   UUniverseBBodyDispatchRoute: UUniverseBBodyDispatchRoute,
   UUniverseBBodyFacilitiesRoute: UUniverseBBodyFacilitiesRouteWithChildren,
   UUniverseBBodyFleetsRoute: UUniverseBBodyFleetsRouteWithChildren,
   UUniverseBBodyGalaxyRoute: UUniverseBBodyGalaxyRoute,
+  UUniverseBBodyHighScoresRoute: UUniverseBBodyHighScoresRoute,
+  UUniverseBBodyMessagesRoute: UUniverseBBodyMessagesRoute,
   UUniverseBBodyOverviewRoute: UUniverseBBodyOverviewRoute,
   UUniverseBBodyReportsRoute: UUniverseBBodyReportsRouteWithChildren,
   UUniverseBBodyResearchRoute: UUniverseBBodyResearchRouteWithChildren,
   UUniverseBBodyResourceSettingsRoute: UUniverseBBodyResourceSettingsRoute,
   UUniverseBBodyResourcesRoute: UUniverseBBodyResourcesRouteWithChildren,
+  UUniverseBBodySettingsRoute: UUniverseBBodySettingsRoute,
   UUniverseBBodyShipyardRoute: UUniverseBBodyShipyardRouteWithChildren,
 }
 

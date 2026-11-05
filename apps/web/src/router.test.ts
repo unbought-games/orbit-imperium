@@ -1,4 +1,7 @@
-import { createMemoryHistory } from '@tanstack/react-router'
+import {
+  createMemoryHistory,
+  defaultStringifySearch,
+} from '@tanstack/react-router'
 import { expect, it } from 'vitest'
 import { createAppRouter } from './router'
 import { routeTarget } from './shell/route-target'
@@ -97,5 +100,79 @@ it('rejects invalid funding query values at the route boundary', async () => {
     expect(router.state.matches.some((match) => match.status === 'error')).toBe(
       true,
     )
+  }
+})
+
+const accountPages = [
+  'messages',
+  'alliance',
+  'high-scores',
+  'settings',
+  'combat-simulator',
+] as const
+it('builds canonical planet links for every account page, with planetless entry points', async () => {
+  for (const page of accountPages) {
+    const router = createAppRouter({
+      history: createMemoryHistory({ initialEntries: [`/u/u/b/mars/${page}`] }),
+    })
+    await router.load()
+    expect(router.state.matches.at(-1)).toMatchObject({
+      status: 'success',
+      staticData: { page },
+      params: { universe: 'u', body: 'mars' },
+    })
+    expect(router.buildLocation(routeTarget('u', page, 'mars')).href).toBe(
+      `/u/u/b/mars/${page}`,
+    )
+    expect(router.buildLocation(routeTarget('u', page)).href).toBe(
+      `/u/u/${page}`,
+    )
+  }
+})
+it('validates player and alliance queries on both canonical and legacy routes', async () => {
+  const id = '00000000-0000-4000-8000-000000000001'
+  for (const [page, key] of [
+    ['messages', 'player'],
+    ['alliance', 'alliance'],
+  ]) {
+    for (const prefix of ['', 'b/mars/']) {
+      for (const value of [id, 'invalid']) {
+        const router = createAppRouter({
+          history: createMemoryHistory({
+            initialEntries: [`/u/u/${prefix}${page}?${key}=${value}#details`],
+          }),
+        })
+        await router.load()
+        expect(
+          router.state.matches.some((match) => match.status === 'error'),
+        ).toBe(value === 'invalid')
+        if (value === id)
+          expect(router.state.matches.at(-1)?.search).toMatchObject({
+            [key]: id,
+          })
+        expect(router.state.location.hash).toBe('details')
+      }
+    }
+  }
+})
+
+it('retains alliance welcome and invitation intent on canonical and legacy routes', async () => {
+  const alliance = '00000000-0000-4000-8000-000000000001'
+  const invitation = '00000000-0000-4000-8000-000000000002'
+  for (const prefix of ['', 'b/mars/']) {
+    const router = createAppRouter({
+      history: createMemoryHistory({
+        initialEntries: [
+          `/u/u/${prefix}alliance${defaultStringifySearch({ alliance, welcome: '1', invitation })}`,
+        ],
+      }),
+    })
+    await router.load()
+    expect(router.state.matches.at(-1)?.search).toMatchObject({
+      alliance,
+      welcome: '1',
+      invitation,
+    })
+    expect(router.state.matches.at(-1)?.status).toBe('success')
   }
 })
