@@ -138,3 +138,14 @@ it.each([
     retryAfterMs: expected,
   })
 })
+
+it('classifies malformed successful JSON as unreadable data rather than a network failure', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response('{invalid', { status: 200 })),
+  )
+  await expect(request('/overview')).rejects.toMatchObject({
+    name: 'ContractDataError',
+    schemaName: 'JSON',
+  })
+})

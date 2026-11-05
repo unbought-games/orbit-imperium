@@ -443,6 +443,17 @@ impl From<ServiceError> for Problem {
 }
 impl IntoResponse for Problem {
     fn into_response(self) -> Response {
+        if let ServiceError::SessionRefreshing(ms) = &self.0 {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                [
+                    (header::CONTENT_TYPE, "application/problem+json".to_owned()),
+                    (header::CACHE_CONTROL, "no-store".to_owned()),
+                    (header::RETRY_AFTER, ms.div_ceil(1000).max(1).to_string()),
+                ],
+                Json(serde_json::json!({"type":"about:blank","status":503,"code":"SessionRefreshing"})),
+            ).into_response();
+        }
         if matches!(self.0, ServiceError::RateLimited) {
             return rate_limited(60);
         }
@@ -455,6 +466,7 @@ impl IntoResponse for Problem {
             None
         };
         let (status, code) = match self.0 {
+            ServiceError::SessionRefreshing(_) => unreachable!(),
             ServiceError::BotDenied(_) => unreachable!(),
             ServiceError::UniverseFull => (StatusCode::CONFLICT, "UniverseFull"),
             ServiceError::InvalidCursor => (StatusCode::BAD_REQUEST, "InvalidCursor"),
@@ -811,6 +823,23 @@ mod auth_worker_tests;
 #[cfg(test)]
 mod problem_tests {
     use super::*;
+    #[tokio::test]
+    async fn active_session_rotation_has_a_distinct_private_retry_response() {
+        for (milliseconds, seconds) in [(1, "1"), (1000, "1"), (1001, "2"), (4000, "4")] {
+            let response =
+                Problem(StoreError::SessionRefreshing(milliseconds).into()).into_response();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+            assert_eq!(response.headers()[header::RETRY_AFTER], seconds);
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+            let body = axum::body::to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap();
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+                serde_json::json!({"type":"about:blank","status":503,"code":"SessionRefreshing"})
+            );
+        }
+    }
     #[tokio::test]
     async fn bulk_progression_http_snapshot_matches_browser_contract_fixture() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!(

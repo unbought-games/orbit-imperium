@@ -59,6 +59,7 @@ export function browserDependencies(): RuntimeDependencies {
       newId: () => commandId(crypto),
       monotonicNowMs: () => performance.now(),
       isOnline: () => navigator.onLine,
+      isVisible: () => document.visibilityState !== 'hidden',
     },
     createPort: gamePort,
     createUpdates: createGameUpdatesPort,

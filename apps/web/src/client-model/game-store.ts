@@ -37,6 +37,8 @@ export type GameState = {
   retryAt: number
   rateLimited: boolean
   connectionInterrupted: boolean
+  foreground: boolean
+  online: boolean
   incompatibleSchema: string | null
 }
 
@@ -63,6 +65,8 @@ export function createGameStore() {
     retryAt: 0,
     rateLimited: false,
     connectionInterrupted: false,
+    foreground: true,
+    online: true,
     incompatibleSchema: null,
   }))
 }

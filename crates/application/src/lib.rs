@@ -34,6 +34,8 @@ pub use ports::*;
 pub use session::*;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
+    #[error("session refresh in progress")]
+    SessionRefreshing(u64),
     #[error("snapshot serialization retry")]
     SnapshotRetry,
     #[error("game rejected")]
@@ -71,6 +73,8 @@ pub enum StoreError {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
+    #[error("session refresh in progress")]
+    SessionRefreshing(u64),
     #[error(transparent)]
     BotDenied(BotDenial),
     #[error("persisted format or content unsupported by this binary")]
@@ -105,6 +109,7 @@ pub enum ServiceError {
 impl From<StoreError> for ServiceError {
     fn from(e: StoreError) -> Self {
         match e {
+            StoreError::SessionRefreshing(ms) => Self::SessionRefreshing(ms),
             StoreError::GameRejected(e) => Self::GameRejected(e),
             StoreError::BotDenied(e) => Self::BotDenied(e),
             StoreError::UniverseNamesExhausted => Self::Unavailable,

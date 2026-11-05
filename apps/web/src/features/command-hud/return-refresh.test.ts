@@ -55,7 +55,7 @@ it('waits through failure and the snapshot/stale recovery updates', () => {
   expect(tracker.observe({ ...fresh, stale: true })).toEqual([])
   expect(tracker.observe(fresh)).toHaveLength(1)
 })
-it('recovery confirms once, outranks reconnection, then expires without replay', () => {
+it('recovery confirms once without duplicating the connection banner, then expires without replay', () => {
   vi.useFakeTimers()
   try {
     const { tracker, state, advance } = fixture()
@@ -72,11 +72,11 @@ it('recovery confirms once, outranks reconnection, then expires without replay',
     advance(returnRefreshDelayMs)
     tracker.visibility(false, state)
     accept({ ...state, stale: true, connectionInterrupted: true })
-    expect(engine.snapshot()?.text).toBe('Connection lost.')
+    expect(engine.snapshot()).toBeNull()
     // Coordinator publishes the snapshot before clearing connection flags.
     const fresh = { ...previous, view: { ...state.view! } }
     accept(fresh)
-    expect(engine.snapshot()?.text).toBe('Connection lost.')
+    expect(engine.snapshot()).toBeNull()
     accept({ ...fresh, stale: false, connectionInterrupted: false })
     expect(engine.snapshot()?.text).toBe('Updated')
     expect(engine.snapshot()?.category).toBe('updated')

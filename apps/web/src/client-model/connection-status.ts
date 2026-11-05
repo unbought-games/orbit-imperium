@@ -3,6 +3,7 @@ import { incompatibleResponseMessage } from './contract-error'
 
 /** Keep transport failures separate from data freshness and server throttling. */
 export function connectionStatus(state: GameState) {
+  if (!state.foreground) return null
   if (state.incompatibleSchema)
     return {
       kind: 'incompatible' as const,
@@ -13,10 +14,12 @@ export function connectionStatus(state: GameState) {
   const cooldown = state.rateLimited && seconds > 0
   const paused =
     'Orders are coming in too fast. Wait for the countdown, then try again.'
-  const interrupted = 'Connection lost. Reconnecting…'
+  const interrupted = state.online
+    ? 'Unable to refresh your empire. Showing the last confirmed state. Reconnecting…'
+    : 'You’re offline. Showing the last confirmed state. Reconnecting when your network returns.'
   const checking = 'Cooldown over. Refreshing your empire…'
   const wait = `Orders are coming in too fast. Try again in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`
-  if (state.connectionInterrupted || (state.stale && !state.rateLimited))
+  if (!state.online || state.connectionInterrupted)
     return {
       kind: 'connection' as const,
       message: `${interrupted}${cooldown ? ` ${wait}` : ''}`,

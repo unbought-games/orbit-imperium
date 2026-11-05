@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import {
@@ -273,8 +274,9 @@ for (const width of [1440, 390]) {
     options.researchOperation = null
     revision = '2'
     // Load a fresh authoritative idle snapshot after the navigation checks.
-    await page.reload()
+    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.reload())
     await expect(card).toContainText('No research in progress.')
+    expect((await card.boundingBox())!.height).toBeLessThan(90)
     await expect(card.getByRole('progressbar')).toHaveCount(0)
     await expect(card.getByRole('button')).toHaveCount(0)
     await card.scrollIntoViewIfNeeded()

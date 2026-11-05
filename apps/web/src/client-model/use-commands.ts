@@ -16,15 +16,15 @@ export function useCommands(runtime: AuthenticatedRuntime | null) {
   useEffect(() => {
     if (!model || !state.ready) return
     const stop = model.startDelivery()
-    const wake = () => {
-      if (document.visibilityState !== 'hidden') model.resumeDelivery()
-    }
+    const wake = () => model.resumeDelivery()
     window.addEventListener('online', wake)
+    window.addEventListener('offline', wake)
     window.addEventListener('focus', wake)
     document.addEventListener('visibilitychange', wake)
     return () => {
       stop()
       window.removeEventListener('online', wake)
+      window.removeEventListener('offline', wake)
       window.removeEventListener('focus', wake)
       document.removeEventListener('visibilitychange', wake)
     }

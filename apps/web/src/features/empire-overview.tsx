@@ -14,7 +14,11 @@ import { PlanetActions } from './planet-actions'
 import { PlanetRename } from './planet-rename'
 import type { Coordinator } from '../client-model/coordinator'
 import { PlayerName } from './player-name'
-import { useProfileSource } from '../shell/player-profiles-context'
+import {
+  usePlayerDisplay,
+  useProfileSource,
+} from '../shell/player-profiles-context'
+import { researchProgress } from '../client-model/research-progress'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -707,6 +711,8 @@ export function EmpireOverview({
 }) {
   const flights = empireFlights(view)
   const state = useStore(model.store)
+  const researchActive = researchProgress(state) !== null
+  const profile = usePlayerDisplay(view.binding.player)
   const pendingCargo = pendingFleetCargo(state)
   const totals = empireTotals(view, pendingCargo)
   const planets = view.bodies.filter((b) => b.kind === 'Planet').length
@@ -801,19 +807,70 @@ export function EmpireOverview({
       <div className={styles.commandDeck}>
         <FleetBoard view={view} body={body} flights={flights} />
       </div>
-      <section className={styles.research} aria-label="Empire research">
+      <section
+        className={`${styles.research} ${researchActive ? '' : styles.researchIdle}`}
+        aria-label="Empire research"
+      >
         <div className={styles.researchLabel}>
-          <span className={styles.eyebrow}>Empire-wide research</span>
+          {researchActive && (
+            <span className={styles.eyebrow}>Empire-wide research</span>
+          )}
           <h3>Research directive</h3>
+          {!researchActive && <p>No research in progress.</p>}
         </div>
-        <WorkSummaries
-          view={view}
-          body={researchHost ?? body}
-          currentPage="overview"
-          only="research"
-          layout="directive"
-        />
+        {researchActive ? (
+          <WorkSummaries
+            view={view}
+            body={researchHost ?? body}
+            currentPage="overview"
+            only="research"
+            layout="directive"
+          />
+        ) : resolveDestination(
+            {
+              universe: view.binding.universe,
+              body: body.id,
+              page: 'research',
+            },
+            view,
+          ).available ? (
+          <Destination
+            view={view}
+            body={body.id}
+            page="research"
+            className={styles.idleResearchLink}
+          >
+            Open research <ArrowRight size={16} aria-hidden="true" />
+          </Destination>
+        ) : (
+          <p>Unavailable in this universe</p>
+        )}
       </section>
+      {view.protocol === 4 && (
+        <section className={styles.alliance} aria-label="Empire alliance">
+          <div className={styles.allianceCopy}>
+            <h3>Alliance</h3>
+            <p>
+              {profile?.alliance
+                ? `[${profile.alliance.tag}] ${profile.alliance.name}`
+                : 'Join forces with fellow commanders.'}
+            </p>
+          </div>
+          <Destination
+            view={view}
+            body={body.id}
+            page="alliance"
+            className={styles.allianceLink}
+          >
+            {profile?.alliance
+              ? 'Your alliance'
+              : profile
+                ? 'Find your alliance'
+                : 'Explore alliances'}
+            <ArrowRight size={16} aria-hidden="true" />
+          </Destination>
+        </section>
+      )}
       <div className={styles.sectionHeading}>
         <div>
           <p className={styles.eyebrow}>Planetary command</p>
