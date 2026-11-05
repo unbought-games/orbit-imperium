@@ -13,6 +13,7 @@ mod runtime;
 mod runtime_cli;
 mod serving;
 mod setup_cli;
+mod tutorial_cli;
 mod universe_cli;
 mod universe_serving;
 mod world_cli;
@@ -76,6 +77,12 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         println!("{}", bots_cli::HELP);
         return Ok(());
     }
+    if args.get(1).map(String::as_str) == Some("tutorial")
+        && args.get(2).map(String::as_str) == Some("--help")
+    {
+        println!("{}", tutorial_cli::HELP);
+        return Ok(());
+    }
     let selected = command(&args)?;
     let setup = (selected == "setup")
         .then(|| setup_cli::parse(&args, |key| env::var(key).ok()))
@@ -98,6 +105,10 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         connection_started.elapsed().as_millis()
     );
     match selected {
+        "tutorial" => {
+            store.migrate().await?;
+            tutorial_cli::run(&store, tutorial_cli::parse(&args)?).await?;
+        }
         "bots" => bots_cli::run(&store, bots_cli::parse(&args)?).await?,
         "setup" => setup_cli::run(&store, setup.ok_or("missing setup options")?).await?,
         "universe" => {
@@ -187,6 +198,7 @@ fn command(args: &[String]) -> Result<&str, Box<dyn Error>> {
         "bots" => { bots_cli::parse(args)?; Ok(name) },
         "universe" | "setup" => Ok(name),
         "runtime" => { runtime_cli::parse(args)?; Ok(name) },
+        "tutorial" => { tutorial_cli::parse(args)?; Ok(name) },
         "rules" => { rules_cli::parse_rules_cli(args)?; Ok(name) },
         "audit" => { audit_cli::parse(args)?; Ok(name) },
         "serve" | "db-init" | "db-init-progression" | "db-init-fleets" | "db-init-raids" if args.len() <= 2 => Ok(name),

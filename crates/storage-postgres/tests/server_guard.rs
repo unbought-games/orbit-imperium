@@ -14,6 +14,12 @@ async fn actual_fence_loss_is_rejected_without_reacquiring_it() {
     let store = store().await;
     let mut guard = store.acquire_server_guard().await.unwrap();
     guard.check().await.unwrap();
+    assert!(matches!(
+        store
+            .activate_tutorial(orbit_engine::UniverseId(uuid::Uuid::new_v4()), true)
+            .await,
+        Err(StoreError::Conflict)
+    ));
     sqlx::query("SELECT pg_advisory_unlock_all()")
         .execute(guard.test_connection())
         .await

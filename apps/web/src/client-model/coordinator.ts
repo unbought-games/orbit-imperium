@@ -1,3 +1,4 @@
+import { TutorialEngine } from './tutorial-engine'
 import {
   readStableMailbox,
   acceptMailboxAction,
@@ -71,6 +72,7 @@ export class Coordinator {
   private mailboxVersion = 0
   private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
+  readonly tutorial = new TutorialEngine(this.store, () => this.readTutorial())
   readonly reports = new ReportEngine(this.store, {
     page: (cursor) => this.readReportPage(cursor, true),
     detail: (id) => this.readReportDetail(id),
@@ -238,6 +240,7 @@ export class Coordinator {
     return write
   }
   invalidate() {
+    this.tutorial.invalidate()
     this.reports.invalidate()
     this.mailboxReads.clear()
     this.mailboxVersion++
@@ -789,6 +792,16 @@ export class Coordinator {
         await this.problem(error, pending.generation, pending.context.binding)
       throw error
     }
+  }
+  private async readTutorial() {
+    if (!this.port.world || this.protocol !== 4) return null
+    const request = this.captureRequest()
+    if (!request) return null
+    const result = validate<import('./commands').BoundWorld>(
+      'BoundWorld4',
+      await this.port.world(request.context, { type: 'Tutorial' }),
+    )
+    return this.responseMatches(request, result) ? result : null
   }
   async world(query: import('./commands').WorldQuery) {
     if (!this.port.world || this.protocol !== 4) return null

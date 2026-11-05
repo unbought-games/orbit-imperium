@@ -113,10 +113,9 @@ export function progressionContext(view: ProgressionProps['view']) {
   })
 }
 
-export function currentProgressionOptions(
-  proposal: BoundProgressionOptions,
-  view: ProgressionProps['view'],
-): BoundProgressionOptions | null {
+export function currentProgressionOptions<
+  T extends Pick<BoundProgressionOptions, 'request' | 'terms' | 'blockers'>,
+>(proposal: T, view: ProgressionProps['view']): T | null {
   const request = proposal.request
   const id = request.type === 'Research' ? request.host : request.body
   const body = view.bodies.find((body) => body.id === id)

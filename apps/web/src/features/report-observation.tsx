@@ -208,6 +208,7 @@ function Risk({ value }: { value: unknown }) {
   )
 }
 type ObservationProps = {
+  siteName?: string
   payload: RecordValue
   viewer?: string
   playerNames?: PlayerNames
@@ -225,6 +226,7 @@ export function ReportObservation(props: ObservationProps) {
 }
 function ReportObservationContent({
   payload,
+  siteName,
   viewer,
   playerNames,
   combatActions,
@@ -591,30 +593,34 @@ function ReportObservationContent({
                 target={payload.origin_kind === 'Moon' ? 'moon' : 'planet'}
                 label="origin"
               />
-              {' → '}
+              {kind === 'Returned' || kind === 'Recalled' ? ' ← ' : ' → '}
               {kind === 'Delivered' &&
                 typeof payload.target_name === 'string' &&
                 `${payload.target_name} `}
-              <CoordinateLink
-                at={
-                  kind === 'Delivered'
-                    ? payload.target
-                    : payload.destination_coordinates
-                }
-                target={
-                  payload.target_kind === 'Moon' ||
-                  (
-                    payload.destination as
-                      | { expected_kind?: string }
-                      | undefined
-                  )?.expected_kind === 'Moon'
-                    ? 'moon'
-                    : kind === 'Harvested'
-                      ? 'debris'
-                      : 'planet'
-                }
-                label="destination"
-              />
+              {record(payload.destination).type === 'Site' ? (
+                <span>{siteName ?? 'Personal site'} · private operation</span>
+              ) : (
+                <CoordinateLink
+                  at={
+                    kind === 'Delivered'
+                      ? payload.target
+                      : payload.destination_coordinates
+                  }
+                  target={
+                    payload.target_kind === 'Moon' ||
+                    (
+                      payload.destination as
+                        | { expected_kind?: string }
+                        | undefined
+                    )?.expected_kind === 'Moon'
+                      ? 'moon'
+                      : kind === 'Harvested'
+                        ? 'debris'
+                        : 'planet'
+                  }
+                  label="destination"
+                />
+              )}
             </>
           ) : payload.target ? (
             <>
@@ -640,12 +646,20 @@ function ReportObservationContent({
         {'cargo' in payload && (kind !== 'Harvested' || !payload.harvested) && (
           <>
             <Heading level={3}>
-              {kind === 'Delivered' || kind === 'Deployed'
+              {kind === 'Delivered' ||
+              kind === 'Deployed' ||
+              kind === 'Returned'
                 ? 'Delivered resources'
                 : 'Carried resources'}
             </Heading>
             <Resources value={payload.cargo} />
           </>
+        )}
+        {kind === 'Returned' && record(payload.destination).type === 'Site' && (
+          <Text>
+            This cargo reached the fleet’s return destination. Milestone grants
+            are separate homeworld payments; see opening reward history.
+          </Text>
         )}
         {'ships' in payload && (
           <>

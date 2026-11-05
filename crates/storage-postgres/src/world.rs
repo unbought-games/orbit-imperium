@@ -394,7 +394,7 @@ pub(crate) async fn load_selected(
     }
     let mut covered_reports: BTreeSet<ReportId> = report_ids.into_iter().collect();
     if let (Some(input_id), Some(fleet)) = (input_id, fleet_id) {
-        let ids: Vec<_> = [
+        let mut ids: Vec<_> = [
             "Delivered",
             "Returned",
             "Recalled",
@@ -410,6 +410,14 @@ pub(crate) async fn load_selected(
         .into_iter()
         .map(|kind| derived_id(input_id, &format!("report:{kind}:{fleet}")))
         .collect();
+        if fleets.iter().any(|f| {
+            f.id.0 == fleet && matches!(f.intent.destination, MissionDestination::Site { .. })
+        }) {
+            ids.push(derived_id(
+                input_id,
+                &format!("report:SiteEncounter:{fleet}"),
+            ));
+        }
         let exists: bool =
             sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM mission_reports WHERE id=ANY($1))")
                 .bind(&ids)
@@ -600,7 +608,33 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     .fetch_all(&mut **tx)
     .await
     .map_err(db_error)?;
+    let objective_runs = crate::objectives::load(tx, u, epoch, &owners).await?;
+    let mission_sites = crate::mission_sites::load(tx, u, epoch, &selected).await?;
+    let covered_sites = selected
+        .sites
+        .iter()
+        .copied()
+        .chain(mission_sites.keys().copied())
+        .collect();
+    let machine_players: Vec<uuid::Uuid> = sqlx::query_scalar(
+        "SELECT player FROM bot_participation WHERE universe=$1 AND player=ANY($2)",
+    )
+    .bind(u.0)
+    .bind(&owners)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?;
     s.world = Some(WorldFacts {
+        machine_players: machine_players.into_iter().map(PlayerId).collect(),
+        site_fleets_enabled: sqlx::query_scalar(
+            "SELECT site_fleets_enabled FROM universe_runtime WHERE universe=$1",
+        )
+        .bind(s.universe.0)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(db_error)?,
+        covered_sites,
+        covered_site_players: selected.owners.clone(),
         phalanx: None,
         covered_vacation_players: owners.iter().copied().map(PlayerId).collect(),
         alliance_leaders: Some(alliance_leaders.into_iter().map(PlayerId).collect()),
@@ -609,6 +643,9 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            mission_sites,
+            objective_runs,
+            tutorial_preferences: crate::tutorial::load(tx, u, epoch, &owners).await?,
             moons: moons.into_iter().map(|m| (m.body, m)).collect(),
             attack_groups: attack_groups.into_iter().map(|g| (g.id, g)).collect(),
             depot_supplies: depot_supplies.into_iter().map(|s| (s.id, s)).collect(),
@@ -715,6 +752,8 @@ pub(crate) async fn save(
 ) -> Result<(), StoreError> {
     let old = &s.world.as_ref().ok_or(StoreError::CorruptData)?.records;
     let u = i.universe;
+    crate::objectives::save(tx, i, old, &c.records).await?;
+    crate::tutorial::save(tx, i, old, &c.records).await?;
     for (id, supply) in &c.records.depot_supplies {
         if let Some(previous) = old.depot_supplies.get(id) {
             if previous != supply {
@@ -981,6 +1020,29 @@ impl PgStore {
         if matches!(
             &g,
             Command::World {
+                action: WorldAction::LaunchFleet {
+                    intent: FleetIntent {
+                        destination: MissionDestination::Site { .. },
+                        ..
+                    },
+                    ..
+                }
+            }
+        ) {
+            let enabled: bool = sqlx::query_scalar(
+                "SELECT site_fleets_enabled FROM universe_runtime WHERE universe=$1",
+            )
+            .bind(b.universe.0)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db_error)?;
+            if !enabled {
+                return Err(StoreError::GameRejected(GameError::UnavailableContent));
+            }
+        }
+        if matches!(
+            &g,
+            Command::World {
                 action: WorldAction::ScanPlanet { .. }
             }
         ) {
@@ -1004,7 +1066,10 @@ impl PgStore {
                 .try_get::<String, _>("executor_mode")
                 .map_err(db_error)?
                 == "preparing";
-        let presence_scopes = BTreeSet::from([ScopeKey::Player(b.player)]);
+        let mut presence_scopes = BTreeSet::from([ScopeKey::Player(b.player)]);
+        // Presence is admitted alongside gameplay and is revalidated by the
+        // same selector; enrolled players require their homeworld here too.
+        crate::admission::expand_player_scopes(&mut tx, b.universe, &mut presence_scopes).await?;
         let inherited = if indexed {
             let (command, scopes) =
                 crate::scope_references::resolve_command(&mut tx, b.universe, b.epoch, b.player, g)

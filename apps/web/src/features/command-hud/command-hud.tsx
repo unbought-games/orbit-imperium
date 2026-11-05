@@ -1,6 +1,5 @@
 import type { DispatchDraft } from '../missions'
 import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useLocation } from '@tanstack/react-router'
 import { useGameSession } from '../../shell/session-context'
 import { bindingKey } from '../../client-model/commands'
@@ -30,7 +29,7 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
   useEffect(() => {
     hud.select(null)
   }, [href])
-  return createPortal(
+  return (
     <div className={styles.surface} data-command-hud>
       <div className={styles.hudLayer} aria-label="Live command HUD">
         <div
@@ -52,7 +51,6 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
         body={body}
         onDraft={onDraft}
       />
-    </div>,
-    document.body,
+    </div>
   )
 }

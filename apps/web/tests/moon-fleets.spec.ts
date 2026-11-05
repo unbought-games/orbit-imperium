@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
@@ -116,7 +117,7 @@ async function fixture(page: Page, attackBlocker?: S['GameError4']) {
       'Reports',
     ],
   })
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const q = route.request().postDataJSON()
     let data: unknown
     if (q.type === 'Galaxy')
@@ -458,7 +459,7 @@ for (const width of [1440, 390]) {
       page,
     }) => {
       const state = await fixture(page)
-      await page.route('**/world', async (route) => {
+      await routeWorld(page, async (route) => {
         if (route.request().postDataJSON().type !== 'FleetQuote')
           return route.fallback()
         await route.fulfill({

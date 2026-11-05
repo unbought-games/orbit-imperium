@@ -263,6 +263,7 @@ pub(crate) async fn persist_changes(
 ) -> Result<Vec<String>, StoreError> {
     let rt = runtime(tx, i.universe).await?;
     let mut result_ids = Vec::new();
+    crate::objectives::validate_changes(i, facts, change, claimed_scopes)?;
     for body in &change.bodies {
         let Some(previous) = facts.bodies.get(&body.id) else {
             match body.kind {
@@ -377,6 +378,7 @@ pub(crate) async fn persist_changes(
         );
     }
     if let Some(world) = &change.world {
+        crate::mission_sites::save(tx, i, facts, &world.records, claimed_scopes, rules).await?;
         crate::world::save(tx, i, facts, world).await?;
         if crate::phalanx::target(&i.payload).is_some() {
             result_ids.extend(

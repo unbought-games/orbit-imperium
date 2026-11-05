@@ -1,3 +1,5 @@
+import { useTutorial } from '../features/tutorial/use-tutorial'
+import { tutorialPages } from '../features/tutorial/model'
 import { useUniverseName } from './session-context'
 import { PlayerName } from '../features/player-name'
 import { Menu as AccountMenu } from '@base-ui/react/menu'
@@ -63,6 +65,11 @@ export function Navigation({
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
+  const { data: tutorial } = useTutorial()
+  const visiblePages = tutorialPages(
+    tutorial,
+    view.protocol === 4 ? view : null,
+  )
   const dialog = useRef<HTMLDialogElement>(null)
   const sidebar = useRef<HTMLElement>(null)
   const mobileMenu = useRef<HTMLButtonElement>(null)
@@ -96,6 +103,7 @@ export function Navigation({
     Icon?: typeof Orbit,
     primary = false,
   ) => {
+    if (visiblePages && !visiblePages.has(p)) return null
     const working = !primary && activity.has(p)
     const blocked = !primary && !working ? blockers.get(p) : undefined
     const description = working ? 'Work in progress' : blocked

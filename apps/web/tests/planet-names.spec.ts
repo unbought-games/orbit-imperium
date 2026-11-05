@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { expect, test } from './fixtures/test'
@@ -121,7 +122,7 @@ for (const width of [1280, 390]) {
       fullPage: true,
     })
     let publicName = 'Other player’s world'
-    await page.route('**/world', async (route) => {
+    await routeWorld(page, async (route) => {
       const request = route.request().postDataJSON()
       await route.fulfill({
         json: {

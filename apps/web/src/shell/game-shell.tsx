@@ -1,3 +1,5 @@
+import { TutorialSync } from '../features/tutorial/use-tutorial'
+import { GuidanceBar } from '../features/tutorial/tutorial'
 import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
@@ -149,6 +151,12 @@ function GameShellContent() {
   ])
   useLayoutEffect(() => {
     document.title = `${available ? pageTitles[page] : 'Unavailable'} · ${universeName} · Orbit Imperium`
+    // Explicit opening anchors own disclosure and focus; do not steal it back.
+    if (
+      location.hash === 'opening-history' ||
+      location.hash === 'opening-guidance'
+    )
+      return
     // Browsing systems is an in-place interaction: keep the input/arrow focused.
     const browsingGalaxy =
       page === 'galaxy' &&
@@ -170,7 +178,14 @@ function GameShellContent() {
         heading.current?.scrollIntoView({ block: 'nearest' })
     })
     return () => cancelAnimationFrame(frame)
-  }, [location.pathname, location.searchStr, available, page, universeName])
+  }, [
+    location.pathname,
+    location.searchStr,
+    location.hash,
+    available,
+    page,
+    universeName,
+  ])
   function prepareDispatch(draft: DispatchDraft) {
     if (!body) return
     const origin =
@@ -225,6 +240,7 @@ function GameShellContent() {
       ref={pinned.shell}
       data-has-command-hud={view.protocol === 4 || undefined}
     >
+      <TutorialSync />
       <div className={styles['shell-columns']}>
         <div className={styles.header} ref={pinned.header}>
           <header className={styles.identity} data-touch-control="">
@@ -351,6 +367,7 @@ function GameShellContent() {
           </Navigation>
         </div>
         <div className={styles.center}>
+          <CommandHud body={body?.id} onDraft={prepareDispatch} />
           <ContentColumn
             as="main"
             width={page === 'dispatch' ? 'focused' : 'full'}
@@ -359,6 +376,7 @@ function GameShellContent() {
             className={styles['work-area']}
           >
             <ErrorBannerSlot model={model} />
+            <GuidanceBar page={page} body={body?.id} />
             {view.protocol === 4 && (
               <EmpireDeletionNotice
                 deletion={view.empire_deletion}
@@ -424,7 +442,6 @@ function GameShellContent() {
           </ContentColumn>
         </div>
       </div>
-      <CommandHud body={body?.id} onDraft={prepareDispatch} />
     </div>
   )
 }

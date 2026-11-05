@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, binding, id } from './fixtures/game'
@@ -409,7 +410,7 @@ test('Galaxy message shortcut preserves the selected player through route normal
   page,
 }) => {
   const f = await fixture(page)
-  await page.route('**/world', (route) => {
+  await routeWorld(page, (route) => {
     const q = route.request().postDataJSON()
     return route.fulfill({
       json: {

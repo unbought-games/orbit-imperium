@@ -12,7 +12,18 @@ export function reviewDestination(
   destination: S['MissionDestination4'],
   coordinates: S['Coordinates'],
   target?: DispatchTarget,
+  site?: S['TutorialSite4'],
 ) {
+  if (destination.type === 'Site') {
+    const matches =
+      site?.site.destination.selection.id === destination.selection.id
+    return {
+      name: matches ? site.title : 'Personal site',
+      coordinates: matches ? site.site.destination.coordinates : coordinates,
+      kind: 'site' as const,
+      owner: undefined,
+    }
+  }
   if (destination.type !== 'Body')
     return {
       name: destination.type === 'Debris' ? 'Debris field' : 'Empty position',

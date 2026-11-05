@@ -1,3 +1,6 @@
+import { useTutorial } from '../tutorial/use-tutorial'
+import { siteContext } from '../tutorial/model'
+import { SiteEncounterReport } from '../tutorial/site-report'
 import type { DispatchDraft } from '../missions'
 import { ReportAttackButton } from '../report-attack-button'
 import type { Coordinator } from '../../client-model/coordinator'
@@ -22,6 +25,7 @@ export function HudReport({
   close: () => void
   onDraft: (draft: DispatchDraft) => void
 }) {
+  const { data: tutorialData } = useTutorial()
   const { detail, loading, error, retry } = useReports(model, report)
   return (
     <>
@@ -33,23 +37,41 @@ export function HudReport({
         </>
       )}
       {detail && (
-        <ReportObservation
-          targetActions={
-            <ReportAttackButton
-              model={model}
+        <>
+          {detail.payload.kind === 'SiteEncounter' ? (
+            <SiteEncounterReport
               payload={detail.payload}
-              observedAt={detail.header.observed_at}
-              onDraft={(draft) => {
-                close()
-                onDraft(draft)
-              }}
+              viewer={model.binding?.player}
             />
-          }
-          payload={detail.payload}
-          viewer={model.binding?.player}
-          playerNames={detail.player_names}
-          playerAlliances={detail.player_alliances}
-        />
+          ) : (
+            <ReportObservation
+              siteName={
+                'destination' in detail.payload &&
+                detail.payload.destination.type === 'Site'
+                  ? siteContext(
+                      tutorialData,
+                      detail.payload.destination.selection.id,
+                    )?.title
+                  : undefined
+              }
+              targetActions={
+                <ReportAttackButton
+                  model={model}
+                  payload={detail.payload}
+                  observedAt={detail.header.observed_at}
+                  onDraft={(draft) => {
+                    close()
+                    onDraft(draft)
+                  }}
+                />
+              }
+              payload={detail.payload}
+              viewer={model.binding?.player}
+              playerNames={detail.player_names}
+              playerAlliances={detail.player_alliances}
+            />
+          )}
+        </>
       )}
       <div className={styles.panelActions}>
         <ButtonLink

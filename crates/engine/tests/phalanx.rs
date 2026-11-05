@@ -64,6 +64,7 @@ fn fleet(mission: Mission) -> MissionFleet {
     }
     .seal();
     MissionFleet {
+        raid: None,
         return_reason: None,
         id: FleetId(Uuid::from_u128(100)),
         owner,

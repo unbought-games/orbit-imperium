@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -1740,7 +1741,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expected_owner: id(9),
     expected_kind: 'Planet',
   }
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const query = route.request().postDataJSON()
     if (query.type === 'FleetQuote') quoteRequests++
     if (

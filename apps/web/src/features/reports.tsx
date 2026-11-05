@@ -1,3 +1,6 @@
+import { useTutorial } from './tutorial/use-tutorial'
+import { siteContext } from './tutorial/model'
+import { SiteEncounterReport } from './tutorial/site-report'
 import { useReportReturn } from './use-report-return'
 import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
@@ -125,6 +128,7 @@ export function Reports({
     model.view?.viewer_revision,
   )
   const failure = reportFailure(error)
+  const { data: tutorialData } = useTutorial()
   const combat = detail?.payload.kind === 'Combat' ? detail.payload : null
   const harvestAction =
     combat &&
@@ -271,21 +275,39 @@ export function Reports({
               />
             </div>
           </div>
-          <ReportObservation
-            payload={detail.payload}
-            viewer={model.binding?.player}
-            playerNames={detail.player_names}
-            playerAlliances={detail.player_alliances}
-            combatActions={harvestAction}
-            targetActions={
-              <ReportAttackButton
-                model={model}
+          <>
+            {detail.payload.kind === 'SiteEncounter' ? (
+              <SiteEncounterReport
                 payload={detail.payload}
-                observedAt={detail.header.observed_at}
-                onDraft={onDraft}
+                viewer={model.binding?.player}
               />
-            }
-          />
+            ) : (
+              <ReportObservation
+                siteName={
+                  'destination' in detail.payload &&
+                  detail.payload.destination.type === 'Site'
+                    ? siteContext(
+                        tutorialData,
+                        detail.payload.destination.selection.id,
+                      )?.title
+                    : undefined
+                }
+                payload={detail.payload}
+                viewer={model.binding?.player}
+                playerNames={detail.player_names}
+                playerAlliances={detail.player_alliances}
+                combatActions={harvestAction}
+                targetActions={
+                  <ReportAttackButton
+                    model={model}
+                    payload={detail.payload}
+                    observedAt={detail.header.observed_at}
+                    onDraft={onDraft}
+                  />
+                }
+              />
+            )}
+          </>
 
           {detail.payload.kind === 'MoonCreated' &&
             model.view?.bodies.some(

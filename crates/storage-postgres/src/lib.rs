@@ -218,3 +218,8 @@ mod world_edit;
 mod attack_groups;
 
 mod phalanx;
+
+mod objectives;
+mod tutorial;
+
+mod mission_sites;

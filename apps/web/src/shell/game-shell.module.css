@@ -243,12 +243,12 @@
 /* A floating command orb must never make the last row's controls unreachable. */
 @media (max-width: 1023px) {
   .game-shell[data-has-command-hud] {
-    padding-bottom: calc(230px + env(safe-area-inset-bottom));
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
   }
   .game-shell[data-has-command-hud]
     .work-area
     :where(button, a, input, select, textarea, [tabindex]) {
-    scroll-margin-block-end: calc(230px + env(safe-area-inset-bottom));
+    scroll-margin-block-end: calc(100px + env(safe-area-inset-bottom));
   }
 }
 

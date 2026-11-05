@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
@@ -102,7 +103,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
     launches: 0,
     hold: null as ((route: Route) => Promise<void>) | null,
   }
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const query = route.request().postDataJSON()
     const observedBlocker = state.blocker
     if (state.hold) await state.hold(route)
@@ -1087,7 +1088,7 @@ test('fresh destination ownership is checked even when it was not in the owned-p
 }) => {
   await setup(page)
   await page.getByRole('radio', { name: 'Attack', exact: true }).check()
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const q = route.request().postDataJSON()
     if (q.type !== 'ResolveDestination') return route.fallback()
     await route.fulfill({
@@ -1519,7 +1520,7 @@ test('late destination lookup cannot replace a selected colony and failures are 
   release()
   await response
   await expect(preview).toContainText('Haven Colony')
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     if (route.request().postDataJSON().type === 'Galaxy') return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     await route.fallback()
   })

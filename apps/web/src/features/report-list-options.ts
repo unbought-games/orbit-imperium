@@ -21,6 +21,7 @@ export const defaultReportOptions: ReportListOptions = {
 export const reportTypes = [
   'Phalanx',
   'Combat',
+  'SiteEncounter',
   'Espionage',
   'Returned',
   'Delivered',

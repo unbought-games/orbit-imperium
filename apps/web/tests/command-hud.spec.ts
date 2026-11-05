@@ -1362,6 +1362,9 @@ test('HUD dismissal keeps exiting content inert and modal, then restores focus a
   const panel=page.getByRole('dialog',{name:'Command uplink',exact:true})
   await expect(orb).toBeVisible()
   await page.evaluate(()=>window.scrollTo(0,150))
+  // The mobile control now occupies document space. Record the actual opening
+  // position after bringing it into view, not its former floating position.
+  await orb.scrollIntoViewIfNeeded()
   const originalY=await page.evaluate(()=>scrollY)
   for(const dismissal of ['button','escape','backdrop'] as const){
     await orb.click()

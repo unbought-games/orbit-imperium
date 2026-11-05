@@ -1281,3 +1281,60 @@
     max-height: calc(100dvh - 252px - env(safe-area-inset-bottom));
   }
 }
+
+/* Mobile command status has its own document space; it cannot cover page actions. */
+@media (max-width: 1023px) {
+  .surface {
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--border-accent);
+  }
+  .hudLayer {
+    position: relative;
+    inset: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    pointer-events: auto;
+    z-index: auto;
+  }
+  .orbDock {
+    width: 100%;
+    min-height: 48px;
+    flex-direction: row;
+    gap: 16px;
+  }
+  .orb {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+  .orbSymbol svg {
+    width: 22px;
+    height: 22px;
+  }
+  .orbCaption {
+    position: static;
+    order: 2;
+    max-width: none;
+    white-space: normal;
+  }
+  .slotBadge {
+    position: static;
+    order: 3;
+    margin-left: auto;
+  }
+  .toasts {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: none;
+  }
+  .toastSwipe,
+  .toast {
+    width: 100%;
+    max-width: none;
+  }
+}

@@ -1,3 +1,5 @@
+import { TutorialOverview } from './tutorial/tutorial'
+import { useTutorial } from './tutorial/use-tutorial'
 import { useSearch, useRouterState } from '@tanstack/react-router'
 import { draftFromSearch } from '../shell/dispatch-location'
 import {
@@ -18,15 +20,19 @@ import { Heading, Text } from '../ui/typography'
 import { label } from '../ui/format'
 
 export function OverviewScreen() {
+  const { data: tutorial } = useTutorial()
   const { view, body, model } = useGameScreen()
   return body ? (
     <>
-      <EmpireOverview
-        key={bindingKey(view.binding)}
-        view={view}
-        body={body}
-        model={model}
-      />
+      <TutorialOverview />
+      {!tutorial?.beginner && (
+        <EmpireOverview
+          key={bindingKey(view.binding)}
+          view={view}
+          body={body}
+          model={model}
+        />
+      )}
       {view.protocol === 2 && <OperationsScreen />}
     </>
   ) : null

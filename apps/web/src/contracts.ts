@@ -6362,6 +6362,10 @@ export interface components {
             type: "EmptyPosition";
             coordinates: components["schemas"]["Coordinates"];
             slot_revision: components["schemas"]["Decimal"];
+        } | {
+            /** @constant */
+            type: "Site";
+            selection: components["schemas"]["SiteSelection4"];
         };
         DestinationSelection4: {
             /** @constant */
@@ -6530,6 +6534,13 @@ export interface components {
             source_moon: string;
             /** Format: uuid */
             target_planet: string;
+        } | {
+            /** @constant */
+            type: "OpenTutorial";
+        } | {
+            /** @constant */
+            type: "SetTutorialPresentation";
+            beginner: boolean;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -6850,6 +6861,16 @@ export interface components {
             /** @constant */
             type: "DepotSupplyQuote";
             intent: components["schemas"]["DepotSupplyIntent4"];
+        } | {
+            /** @constant */
+            type: "MissionSites";
+        } | {
+            /** @constant */
+            type: "ResolveMissionSite";
+            selection: components["schemas"]["SiteSelection4"];
+        } | {
+            /** @constant */
+            type: "Tutorial";
         };
         WorldQuery4: {
             /** @constant */
@@ -6888,6 +6909,19 @@ export interface components {
             type: "DepotSupplyQuote";
             intent: components["schemas"]["DepotSupplyIntent4"];
             context: components["schemas"]["QueryContext"];
+        } | {
+            /** @constant */
+            type: "MissionSites";
+            context: components["schemas"]["QueryContext"];
+        } | {
+            /** @constant */
+            type: "ResolveMissionSite";
+            selection: components["schemas"]["SiteSelection4"];
+            context: components["schemas"]["QueryContext"];
+        } | {
+            /** @constant */
+            type: "Tutorial";
+            context: components["schemas"]["QueryContext"];
         };
         BoundWorld4: {
             /** @constant */
@@ -6898,7 +6932,7 @@ export interface components {
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
-            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"] | components["schemas"]["DepotSupplyQuote4"];
+            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"] | components["schemas"]["DepotSupplyQuote4"] | components["schemas"]["MissionSiteView4"][] | components["schemas"]["TutorialView4"];
             progress?: components["schemas"]["SnapshotProgress"];
         };
         ReportHeader4: {
@@ -7187,7 +7221,7 @@ export interface components {
             /** @enum {unknown} */
             target_kind?: "Planet" | "Moon" | null;
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"] | components["schemas"]["PhalanxPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"] | components["schemas"]["PhalanxPayload4"] | components["schemas"]["SiteEncounterPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -7597,6 +7631,22 @@ export interface components {
             at: number;
             /** @constant */
             cost: "5000000000";
+        } | {
+            /** @constant */
+            kind: "SiteEncounter";
+            /** Format: uuid */
+            site?: string;
+            /** Format: uuid */
+            fleet?: string;
+            coordinates?: components["schemas"]["Coordinates"];
+            /** @enum {unknown} */
+            debris_policy?: "None" | "RetainedSiteLocal";
+            debris?: components["schemas"]["Resources"];
+            loot?: components["schemas"]["Resources"];
+            cargo?: components["schemas"]["Resources"];
+            at?: number;
+            /** @enum {string} */
+            outcome?: "AttackerVictory" | "DefenderVictory" | "Draw";
         };
         RankingPlayer: {
             /** Format: uuid */
@@ -8714,6 +8764,211 @@ export interface components {
             /** @constant */
             kind: "Phalanx";
             observation: components["schemas"]["PhalanxReport4"];
+        };
+        SiteSelection4: {
+            /** Format: uuid */
+            id: string;
+            expected_revision: components["schemas"]["Decimal"];
+        };
+        MissionSiteView4: {
+            destination: {
+                selection: components["schemas"]["SiteSelection4"];
+                coordinates: components["schemas"]["Coordinates"];
+            };
+            definition_id: string;
+            definition_version: number;
+            remaining_stock: components["schemas"]["Resources"];
+            retired: boolean;
+        };
+        CombatIdentity4: {
+            /** Format: uuid */
+            Player: string;
+        } | {
+            /** Format: uuid */
+            Npc: string;
+        };
+        SiteBattleParticipant4: {
+            owner: components["schemas"]["CombatIdentity4"];
+            origin: {
+                /** Format: uuid */
+                Fleet: string;
+            } | {
+                /** Format: uuid */
+                Site: string;
+            };
+            /** @enum {unknown} */
+            side: "Attacker" | "Defender";
+            units: {
+                item: components["schemas"]["ItemKey3"];
+                count: components["schemas"]["Decimal"];
+            }[];
+            technology: number[];
+            /** @description Historical participant body at combat contact. Attackers use launch coordinates; defenders use the battle location. Body name and kind are captured at contact. Optional for legacy reports. */
+            location?: {
+                coordinates: components["schemas"]["Coordinates"];
+                name?: string | null;
+                /** @enum {unknown} */
+                kind?: "Planet" | "Moon" | null;
+            };
+        };
+        SiteBattleCounts4: {
+            owner: components["schemas"]["CombatIdentity4"];
+            origin: {
+                /** Format: uuid */
+                Fleet: string;
+            } | {
+                /** Format: uuid */
+                Site: string;
+            };
+            /** @enum {unknown} */
+            side: "Attacker" | "Defender";
+            units: {
+                item: components["schemas"]["ItemKey3"];
+                count: components["schemas"]["Decimal"];
+            }[];
+        };
+        SiteBattleRound4: {
+            number: number;
+            start: components["schemas"]["SiteBattleCounts4"][];
+            end: components["schemas"]["SiteBattleCounts4"][];
+            shots?: string;
+            raw_attack_ticks?: string;
+            shield_removed_ticks?: string;
+            hull_removed_ticks?: string;
+            explosions?: string;
+            fire?: components["schemas"]["SiteBattleFire4"][];
+        } & (unknown | unknown);
+        /** @description Fire attributed to the shooting participant. Shield and hull damage are inflicted on the opposing side. Explosions are triggered on opposing units; their remaining hull is not included in hull damage. */
+        SiteBattleFire4: {
+            owner: components["schemas"]["CombatIdentity4"];
+            origin: {
+                /** Format: uuid */
+                Fleet: string;
+            } | {
+                /** Format: uuid */
+                Site: string;
+            };
+            /** @enum {unknown} */
+            side: "Attacker" | "Defender";
+            shots: string;
+            raw_attack_ticks: string;
+            shield_removed_ticks: string;
+            hull_removed_ticks: string;
+            explosions: string;
+        };
+        SiteBattleResult4: {
+            /** @enum {unknown} */
+            outcome: "AttackerVictory" | "DefenderVictory" | "MutualDestruction" | "Draw";
+            participants: components["schemas"]["SiteBattleParticipant4"][];
+            rounds: components["schemas"]["SiteBattleRound4"][];
+            survivors: components["schemas"]["SiteBattleCounts4"][];
+            gross_losses: components["schemas"]["SiteBattleCounts4"][];
+        };
+        SiteEncounterPayload4: {
+            /** @constant */
+            kind: "SiteEncounter";
+            /** Format: uuid */
+            site: string;
+            coordinates: components["schemas"]["Coordinates"];
+            battle: components["schemas"]["SiteBattleResult4"];
+            /** @enum {unknown} */
+            debris_policy: "None" | "RetainedSiteLocal";
+            debris: components["schemas"]["Resources"];
+            loot: components["schemas"]["Resources"];
+            cargo: components["schemas"]["Resources"];
+            at: number;
+            /** Format: uuid */
+            fleet?: string;
+        };
+        TutorialInspection4: {
+            request: components["schemas"]["ProgressionQuoteRequest"];
+            terms: components["schemas"]["ProgressionMaterial"] | null;
+            terms_hash: string | null;
+            blockers: components["schemas"]["ProgressionBlocker"][];
+            estimates: components["schemas"]["ProgressionEstimate"] | null;
+            building_energy?: components["schemas"]["BuildingEnergy"];
+            building_benefit?: components["schemas"]["BuildingBenefit"];
+            building_production?: components["schemas"]["BuildingProduction"];
+        };
+        TutorialObjective4: {
+            id: string;
+            explanation: string;
+            completed: boolean;
+            minimum_level: number | null;
+            after_objective: string | null;
+            reward: components["schemas"]["Resources"];
+            inspection: components["schemas"]["TutorialInspection4"] | null;
+            next_action: components["schemas"]["TutorialNextAction4"] | null;
+        };
+        TutorialChapter4: {
+            id: string;
+            title: string;
+            completed: boolean;
+            objectives: components["schemas"]["TutorialObjective4"][];
+        };
+        TutorialPreference4: {
+            beginner: boolean;
+        };
+        MilestoneReceipt4: {
+            /** Format: uuid */
+            id: string;
+            program: string;
+            definition_version: number;
+            objective: string;
+            explanation: string;
+            /** Format: uuid */
+            beneficiary: string;
+            /** Format: uuid */
+            homeworld: string;
+            resources: components["schemas"]["Resources"];
+            /** Format: uuid */
+            granted_by: string;
+            granted_at: {
+                at_ms: number;
+                phase: number;
+                ordinal: components["schemas"]["Decimal"];
+            };
+        };
+        TutorialSite4: {
+            site: components["schemas"]["MissionSiteView4"];
+            title: string;
+            briefing: string;
+            recommended_ships: components["schemas"]["ShipId3"][];
+            remaining_forces: {
+                item: components["schemas"]["ItemKey3"];
+                count: components["schemas"]["Decimal"];
+            }[];
+            busy: boolean;
+            /** @constant */
+            allowed_mission: "Attack";
+        };
+        TutorialView4: {
+            enrolled: boolean;
+            program: string;
+            version: number;
+            preference: components["schemas"]["TutorialPreference4"] | null;
+            beginner: boolean;
+            completed: boolean;
+            homeworld: string | null;
+            chapters: components["schemas"]["TutorialChapter4"][];
+            receipts: components["schemas"]["MilestoneReceipt4"][];
+            sites: components["schemas"]["TutorialSite4"][];
+            recommended_objectives: string[];
+            human: boolean;
+        };
+        TutorialNextAction4: {
+            /** @constant */
+            type: "Progression";
+            request: components["schemas"]["ProgressionQuoteRequest"];
+        } | {
+            /** @constant */
+            type: "Attack";
+            site: components["schemas"]["SiteSelection4"] | null;
+            ships: components["schemas"]["ShipId3"][];
+        } | {
+            /** @constant */
+            type: "AwaitReturn";
+            fleets: string[];
         };
     };
     responses: never;

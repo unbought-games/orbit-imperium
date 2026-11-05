@@ -225,7 +225,10 @@ export function noticeContent(
     if (!header || header.hidden) return null
     const preview = reportPreview(header.preview, state.binding?.player)
     return {
-      title: `${label(header.kind)} report`,
+      title:
+        header.kind === 'SiteEncounter'
+          ? 'NPC encounter report'
+          : `${label(header.kind)} report`,
       detail: preview.location || 'New intelligence · Tap to read',
       tone: 'champagne',
       icon: header.kind === 'SpyContact' ? 'scan' : 'report',

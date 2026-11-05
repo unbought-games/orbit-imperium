@@ -104,3 +104,43 @@ readiness. Old journals remain unchanged and use an explicit legacy replay
 adapter. See the [Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
 for rolling deployment, explicit evidence classification and the activation gate
 required in part 2.
+
+## Private site fleet execution readiness
+
+Migration 0037 adds `universe_runtime.site_fleets_enabled`, default false. No
+production program, enrollment, site issuance or automatic activation accompanies
+this migration. This flag enables new Site fleet admission and raid provenance for
+new player-target contacts. Disabling it rejects new site launches; it does not
+cancel already accepted site flights or erase their evidence.
+
+Before explicitly setting it true for a universe, stop admission and workers,
+upgrade **every** reader/writer/worker to understand Site destinations, Site scopes,
+NPC combat identities, encounter history and optional raid provenance, and drain
+pre-enrollment work that lacks objective homeworld scopes. Enroll programs and
+issue sites only through authorized ordered changes under that barrier. Resume
+only compatible binaries. Old workers must never receive the new destination or
+scope records. This is a coordinated readiness boundary, not a mixed-version
+rolling activation or a claim that old writers preserve new fields. A rollback to
+old binaries requires draining accepted site work and a separately reviewed
+retained-record compatibility plan; flipping the flag alone is insufficient.
+
+Existing player `BattleInput`, participant/result identity types and ordering remain
+the default generic combat types. NPC execution uses `CombatIdentity` and a Site
+battle target, with no fake player/body IDs. Existing accepted FleetTerms JSON and
+hash material are unchanged; new Site terms use the existing immutable protocol-4
+seal. `MissionFleet.raid` is optional and omitted for historical/disabled activity;
+old unknown cargo never becomes proof of raid delivery. Empty/default readiness
+facts remain omitted. Site encounter reports cannot be publicly shared or scanned.
+Site-local destruction facts never become public debris, cargo or moons. NPC
+ship/defense losses persist without planetary defense recovery or replenishment.
+
+## Opening program activation
+
+Migration 0038 leaves `tutorial_enabled` false. The maintenance-only
+`tutorial activate --universe UUID --all-binaries-ready` operator path holds the
+existing exclusive server guard, enrolls current empires, composes objective
+homeworld and tutorial site scopes into every pending input, fences old attempts,
+and enables site fleet execution atomically. All API/worker binaries must already
+understand `RaidLoaded`, tutorial preferences, Tutorial queries and the two new
+world actions. New human/bot enrollment joins the same transaction as account/empire
+creation. See [opening chapters operator guide](operations/onboarding.md).

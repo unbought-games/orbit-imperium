@@ -175,6 +175,7 @@ pub(super) fn mission(
     w.fleets.insert(
         id,
         MissionFleet {
+            raid: None,
             return_reason: e.returning.then(|| {
                 e.return_reason
                     .unwrap_or(MissionReturnReason::MissionComplete)

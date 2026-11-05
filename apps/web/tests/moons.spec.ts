@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
@@ -81,7 +82,7 @@ for (const width of [1440, 390]) {
     // and creation reports had no readable presentation or body navigation.
     test('shows planet and moon together and opens the creation notice and combat outcome', async ({page}) => {
       await installGameFixture(page, {protocol: 4, bodies: [body, moon], catalog, sampledAt: now, missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}, extraCapabilities: ['Reports']})
-      await page.route('**/world', async route => {
+      await routeWorld(page, async route => {
         const request = route.request().postDataJSON()
         expect(request.type).toBe('Galaxy')
         const data: S['GalaxySystem4'] = {galaxy: 1, system: 371, observed_at: now, positions: [{coordinates: body.coordinates, body: {id: body.id, name: 'Nova Roma', kind: 'Planet', owner: binding.player, activity: {type: 'None'}, inactivity: 'Active', vacation: false, espionage_eligible: false}, moon: {id: moon.id, diameter_km: 8366}, debris: {field_identity: id(82), metal: '1500300', crystal: '500100', deuterium: '0'}}]}

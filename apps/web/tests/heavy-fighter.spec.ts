@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -209,7 +210,7 @@ test('Heavy Fighters can be selected, quoted and launched in an attack fleet', a
     expected_kind: 'Planet',
     expected_owner: id(91),
   }
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const request = route.request().postDataJSON()
     await route.fulfill({
       json: bound(

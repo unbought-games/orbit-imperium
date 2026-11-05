@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, refreshGame, body, binding, id } from './fixtures/game'
@@ -23,7 +24,7 @@ for(const width of [390,1440]) test(`create invite join and recall group ${width
  const missions:S['MissionView4']={fleets:[fleet],incoming:[],fleet_slots:'5',score_value_micro:'0'}
  await installGameFixture(page,{protocol:4,catalog,bodies:[{...body,name:'Hades'}],sampledAt:now,extraCapabilities:['Attack','AllianceAttacks'],attackGroups:groups,missions,viewerRevision:()=>String(revision),playerNames:{[binding.player]:'Commander',[id(92)]:'Cassiopeia'}})
  await page.route('**/rankings',route=>route.fulfill({json:{binding,request_id:route.request().postDataJSON().request_id,sampled_at:now,processing_pending:false,players:[{player:id(92),username:'Cassiopeia',rank:1,points:'1000',previous_rank:null}],alliances:[]}}))
- await page.route('**/world',async route=>{
+ await routeWorld(page,async route=>{
   const r=route.request().postDataJSON();let data
   if(r.type==='Galaxy') data={galaxy:r.galaxy,system:r.system,observed_at:now,positions:Array.from({length:15},(_,n)=>({coordinates:{galaxy:r.galaxy,system:r.system,position:n+1},body:n===7?{id:id(90),owner:id(91),kind:'Planet',name:'Orion',vacation:false,inactivity:'Active',activity:{type:'None'},espionage_eligible:true}:null,debris:null}))}
   else if(r.type==='ResolveDestination') data=target

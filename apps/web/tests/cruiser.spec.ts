@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
@@ -252,7 +253,7 @@ test('Cruisers can be selected, quoted and launched in an attack fleet', async (
     expected_kind: 'Planet',
     expected_owner: id(91),
   }
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const request = route.request().postDataJSON()
     await route.fulfill({
       json: bound(

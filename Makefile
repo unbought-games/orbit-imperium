@@ -368,3 +368,34 @@ test-lunar-industry-db:
 test-phalanx:
 	cargo nextest run -p orbit-engine --lib --test phalanx --test missions --test persistence --test debris --test replay
 	cargo nextest run -p orbit-application --lib
+
+.PHONY: test-objectives
+test-objectives:
+	cargo nextest run -p orbit-engine --test objectives --test persistence --test replay --lib -E 'binary(objectives) | binary(persistence) | binary(replay) | test(objectives::tests::)'
+
+.PHONY: test-mission-sites test-db-mission-sites
+test-mission-sites:
+	cargo nextest run -p orbit-engine --lib -E 'test(mission_sites::)'
+
+test-db-mission-sites:
+	$(MAKE) test-db DB_SUITES=mission_sites DB_JOBS=1
+
+.PHONY: test-site-fleets test-db-site-fleets
+test-site-fleets:
+	cargo nextest run -p orbit-engine --test missions -E 'test(site_execution::)'
+test-db-site-fleets:
+	$(MAKE) test-db DB_SUITES=site_fleets DB_JOBS=1
+
+.PHONY: experiment-tutorial experiment-tutorial-early-storage
+experiment-tutorial:
+	sh scripts/test-db.sh tutorial 'test(signup_economy_experiment)' --run-ignored=only
+
+experiment-tutorial-early-storage:
+	sh scripts/test-db.sh tutorial 'test(signup_early_storage_experiment)' --run-ignored=only
+
+.PHONY: test-tutorial test-db-tutorial
+test-tutorial:
+	cargo nextest run -p orbit-engine --lib --test objectives --test missions -E 'test(authored_sites_) | test(site_execution::) | test(tutorial::)'
+	cargo nextest run -p orbit-server --bin orbit -E 'test(tutorial_cli::)'
+test-db-tutorial:
+	$(MAKE) test-db DB_SUITES=tutorial DB_JOBS=1

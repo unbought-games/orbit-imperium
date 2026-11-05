@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { withFixtureResponse } from './fixtures/responses'
 import { menuDestination } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -123,7 +124,7 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
   let blocked = ''
   let changedTarget = false
   const destination = { type: 'Body', id: report.target.body, expected_kind: 'Planet', expected_owner: report.target.owner }
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     let data: any
     if (request.type === 'ResolveDestination') {
@@ -311,7 +312,7 @@ test('estimates manual hypothetical flights at 390px', async ({ page }) => {
   const selections: any[] = []
   let launches = 0
   page.on('request', r => { if (r.url().endsWith('/commands')) launches++ })
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     let data: any
     if (request.type === 'ResolveDestination') {

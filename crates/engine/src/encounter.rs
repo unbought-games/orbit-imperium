@@ -3,7 +3,7 @@ use crate::transition::{Fault, invariant};
 use crate::*;
 use serde_json::json;
 use std::collections::BTreeMap;
-fn technology(s: &GameState, p: PlayerId) -> Result<[u32; 3], InvariantError> {
+pub(crate) fn technology(s: &GameState, p: PlayerId) -> Result<[u32; 3], InvariantError> {
     let levels = &s
         .research
         .get(&p)
@@ -213,6 +213,7 @@ fn participant_observation(
                     "kind": body.map(|body| body.kind)})
             })
         }
+        BattleOrigin::Site(_) => None,
         BattleOrigin::Stationed(id) => s.bodies.get(&id).map(
             |body| json!({"coordinates": body.coordinates, "name": body.name, "kind": body.kind}),
         ),
@@ -451,6 +452,7 @@ fn combat_encounters(
                 _ => return Err(invariant("unsupported encounter unit")),
             };
             let location = match losses.origin {
+                BattleOrigin::Site(_) => return Err(invariant("NPC in player encounter")),
                 BattleOrigin::Fleet(id) => AssetLocation::Fleet(id),
                 BattleOrigin::Stationed(id) => AssetLocation::Body(id),
             };
@@ -599,6 +601,17 @@ fn combat_encounters(
         for f in attackers.iter_mut() {
             f.cargo =
                 crate::transition::resources(f.cargo, shares[&BattleOrigin::Fleet(f.id)], true)?;
+        }
+    }
+    if world_facts(s)?.site_fleets_enabled && attackers[0].intent.mission == Mission::Attack {
+        for f in attackers.iter_mut() {
+            f.raid = Some(RaidProvenance {
+                encounter: i.id,
+                loot: shares
+                    .get(&BattleOrigin::Fleet(f.id))
+                    .copied()
+                    .unwrap_or_default(),
+            });
         }
     }
     let f = &attackers[0];

@@ -154,6 +154,7 @@ pub(super) async fn add(
         .bind(sqlx::types::Json(manifest))
         .execute(&mut **tx)
         .await?;
+    crate::tutorial::enroll(tx, i.universe, i.epoch, binding.player, i.at, !bot, true).await?;
     sqlx::query("UPDATE world_heads SET revision=revision+1 WHERE universe=$1")
         .bind(i.universe.0)
         .execute(&mut **tx)

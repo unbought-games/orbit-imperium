@@ -21,6 +21,14 @@ fn target(
     r: &Ruleset,
 ) -> Result<(Coordinates, Option<PlayerId>), Fault> {
     match d {
+        MissionDestination::Site { selection } => {
+            let site = world_facts(s)?
+                .records
+                .mission_sites
+                .get(&selection.id)
+                .ok_or(GameError::NotFound)?;
+            Ok((site.creation.coordinates, None))
+        }
         MissionDestination::EmptyPosition { coordinates, .. } => {
             if !r
                 .artifact
@@ -244,6 +252,7 @@ pub fn estimate_fleet(
         if !s.coverage.research_players.contains(&owner) {
             return Err(invariant("incomplete estimate research"));
         }
+        crate::site_encounter::authorize(s, owner, intent)?;
         let (coordinates, _) = target(s, &intent.destination, r)?;
         let research = s
             .research
@@ -305,8 +314,13 @@ fn quote_inner(
     {
         return Err(invariant("incomplete fleet coverage"));
     }
+    crate::site_encounter::authorize(s, owner, intent)?;
     let (coords, target_owner) = target(s, &intent.destination, r)?;
-    check_mission_eligibility(s, owner, target_owner, intent.mission, at, r)?;
+    if matches!(intent.destination, MissionDestination::Site { .. }) {
+        check_site_attack_eligibility(s, owner, at, r)?;
+    } else {
+        check_mission_eligibility(s, owner, target_owner, intent.mission, at, r)?;
+    }
     if intent.mission == Mission::Hold
         && !matches!(
             intent.destination,
@@ -352,6 +366,7 @@ fn quote_inner(
                 true,
             )?;
         }
+        (Mission::Attack, MissionDestination::Site { .. }) => {}
         (Mission::Harvest, MissionDestination::Debris { .. })
             if intent
                 .ships
@@ -622,6 +637,7 @@ fn terminal_return(
             .checked_add(1)
             .ok_or(GameError::NumericRange)?;
     }
+    crate::site_encounter::settle_reference(w, i, f)?;
     f.leg = MissionLeg::Returned;
     signal(w, home.id, i, ActivityCause::Return);
     if !is_probe_only_espionage(f) {
@@ -764,6 +780,25 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action: WorldAction::OpenTutorial,
+        }) => {}
+        Input::Command(Command::World {
+            action: WorldAction::SetTutorialPresentation { beginner },
+        }) => {
+            let Actor::Player(player) = i.actor else {
+                return Err(GameError::InvalidInput.into());
+            };
+            let preference = w
+                .tutorial_preferences
+                .get_mut(&player)
+                .ok_or(GameError::UnavailableContent)?;
+            if *beginner && facts.machine_players.contains(&player) {
+                return Err(GameError::InvalidInput.into());
+            }
+            preference.beginner = *beginner;
+            c.affected_viewers.insert(player);
+        }
         Input::Command(Command::World {
             action: action @ (WorldAction::EnterVacation | WorldAction::ExitVacation),
         }) => {
@@ -936,6 +971,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 w.lots.extend(lots);
             }
             let f = MissionFleet {
+                raid: None,
                 return_reason: None,
                 id,
                 owner,
@@ -977,6 +1013,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                     .checked_add(1)
                     .ok_or(GameError::NumericRange)?;
             }
+            crate::site_encounter::accept(&mut w, i, &f)?;
             signal(&mut w, origin.id, i, ActivityCause::Launch);
             if f.intent.attack_group.is_none() {
                 schedule(&mut c, i, &f);
@@ -1197,6 +1234,14 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                     std::collections::BTreeMap::from([(f.owner, payload)]),
                                 );
                             }
+                            Mission::Attack
+                                if matches!(
+                                    f.intent.destination,
+                                    MissionDestination::Site { .. }
+                                ) =>
+                            {
+                                crate::site_encounter::arrive(s, i, &mut f, r, &mut w)?
+                            }
                             Mission::Attack => crate::encounter::attack_encounter(
                                 s,
                                 i,
@@ -1230,6 +1275,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 ) {
                     // The single consumed ship leaves no empty return obligation.
                 } else if f.ships.is_empty() {
+                    crate::site_encounter::settle_reference(&mut w, i, &f)?;
                     f.leg = MissionLeg::Destroyed;
                 } else {
                     f.leg = MissionLeg::Returning;

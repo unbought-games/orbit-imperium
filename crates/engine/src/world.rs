@@ -15,6 +15,9 @@ pub enum Mission {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum MissionDestination {
+    Site {
+        selection: SiteSelection,
+    },
     EmptyPosition {
         coordinates: Coordinates,
         #[serde(with = "decimal_wire")]
@@ -146,6 +149,8 @@ pub enum MissionReturnReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionFleet {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raid: Option<RaidProvenance>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub return_reason: Option<MissionReturnReason>,
     pub id: FleetId,
     pub owner: PlayerId,
@@ -162,6 +167,11 @@ pub struct MissionFleet {
     pub leg: MissionLeg,
     pub revision: i64,
 }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RaidProvenance {
+    pub encounter: InputId,
+    pub loot: Resources,
+}
 impl MissionFleet {
     pub fn active(&self) -> bool {
         matches!(
@@ -173,6 +183,10 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    SetTutorialPresentation {
+        beginner: bool,
+    },
+    OpenTutorial,
     ScanPlanet {
         source_moon: BodyId,
         target_planet: BodyId,
@@ -284,6 +298,12 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub tutorial_preferences: BTreeMap<PlayerId, TutorialPreference>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub mission_sites: BTreeMap<SiteId, MissionSite>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub objective_runs: BTreeMap<OperationId, ObjectiveRun>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub moons: BTreeMap<BodyId, MoonGenesis>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub attack_groups: BTreeMap<OperationId, AttackGroup>,
@@ -306,6 +326,14 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub machine_players: BTreeSet<PlayerId>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub site_fleets_enabled: bool,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub covered_sites: BTreeSet<SiteId>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub covered_site_players: BTreeSet<PlayerId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phalanx: Option<PhalanxScanFacts>,
     /// Complete own missiles and foreign holding fleets, including covered absence.

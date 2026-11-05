@@ -1,0 +1,2992 @@
+{
+  "initial": {
+    "beginner": true,
+    "chapters": [
+      {
+        "completed": false,
+        "id": "colony",
+        "objectives": [
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Your first mine begins paying for the colony. Build solar power and crystal production next.",
+            "id": "metal-1",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "MetalPerHour",
+                "target": "99000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 37000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "duration_ms": 36000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "15000000",
+                  "deuterium": "0",
+                  "metal": "60000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "6fc555918dc23077ff2445a3c48665710f34441069d0d72a0f46776fe6e1ab8e"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "100000000",
+              "deuterium": "0",
+              "metal": "200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Crystal supports power, research and ships. Keep both mines growing.",
+            "id": "crystal-1",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "CrystalPerHour",
+                "target": "66000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 35000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "duration_ms": 34000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "24000000",
+                  "deuterium": "0",
+                  "metal": "48000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "e038c209a422e1f0a0e140f98599f795b4ba3ec67d9783678219b85588277b36"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "100000000",
+              "deuterium": "0",
+              "metal": "200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Power feeds production. The energy balance shows when mines need more solar capacity.",
+            "id": "solar-2",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "Energy",
+                "target": "22000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 51000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "duration_ms": 50000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "30000000",
+                  "deuterium": "0",
+                  "metal": "75000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "c57d05e5e6e1c00ef56f0d330d935b4986718e6405862e383a64101816d9ee86"
+            },
+            "minimum_level": 2,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "200000000",
+              "deuterium": "0",
+              "metal": "400000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Higher production makes future investments easier. Add deuterium and more power.",
+            "id": "metal-4",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "MetalPerHour",
+                "target": "99000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 37000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "duration_ms": 36000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "15000000",
+                  "deuterium": "0",
+                  "metal": "60000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "6fc555918dc23077ff2445a3c48665710f34441069d0d72a0f46776fe6e1ab8e"
+            },
+            "minimum_level": 4,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "400000000",
+              "deuterium": "0",
+              "metal": "800000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Crystal production is catching up. Continue investing in your mines.",
+            "id": "crystal-3",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "CrystalPerHour",
+                "target": "66000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 35000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "duration_ms": 34000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "24000000",
+                  "deuterium": "0",
+                  "metal": "48000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "e038c209a422e1f0a0e140f98599f795b4ba3ec67d9783678219b85588277b36"
+            },
+            "minimum_level": 3,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "400000000",
+              "deuterium": "100000000",
+              "metal": "800000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Early fuel unlocks robotics. Build Robotics Factory level 2 to reduce every later construction wait.",
+            "id": "deuterium-1",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "DeuteriumPerHour",
+                "target": "39996000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "22000000"
+              },
+              "estimates": {
+                "final_due_at": 55000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "duration_ms": 54000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "75000000",
+                  "deuterium": "0",
+                  "metal": "225000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "15fd8e59b4bce4b01aadd5c054d20c0cb1edc43186c7232622fc0ee1e68a67b3"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "300000000",
+              "deuterium": "600000000",
+              "metal": "600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Deuterium fuels flights and research. Power demand grows with production.",
+            "id": "deuterium-2",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "DeuteriumPerHour",
+                "target": "39996000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "22000000"
+              },
+              "estimates": {
+                "final_due_at": 55000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "duration_ms": 54000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "75000000",
+                  "deuterium": "0",
+                  "metal": "225000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "15fd8e59b4bce4b01aadd5c054d20c0cb1edc43186c7232622fc0ee1e68a67b3"
+            },
+            "minimum_level": 2,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "600000000",
+              "deuterium": "200000000",
+              "metal": "1200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Robotics shortens ordinary construction and unlocks the shipyard.",
+            "id": "robotics-2",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "200000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 160000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "RoboticsFactory",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "RoboticsFactory",
+                "duration_ms": 159000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "120000000",
+                  "deuterium": "200000000",
+                  "metal": "400000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "92301579d0efcf84b2aa629ea65223d0bad8e8b0212f123d716624e167d3ab8e"
+            },
+            "minimum_level": 2,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "RoboticsFactory",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "300000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "The growing power grid supports your next mine upgrades.",
+            "id": "solar-4",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "Energy",
+                "target": "22000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 51000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "duration_ms": 50000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "30000000",
+                  "deuterium": "0",
+                  "metal": "75000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "c57d05e5e6e1c00ef56f0d330d935b4986718e6405862e383a64101816d9ee86"
+            },
+            "minimum_level": 4,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "0",
+              "metal": "1600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Reinvest this milestone in the final opening mine levels.",
+            "id": "metal-6",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "MetalPerHour",
+                "target": "99000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 37000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "duration_ms": 36000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "15000000",
+                  "deuterium": "0",
+                  "metal": "60000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "6fc555918dc23077ff2445a3c48665710f34441069d0d72a0f46776fe6e1ab8e"
+            },
+            "minimum_level": 6,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "200000000",
+              "metal": "2000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Expand power alongside production before the final colony milestones.",
+            "id": "solar-6",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "Energy",
+                "target": "22000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 51000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "duration_ms": 50000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "30000000",
+                  "deuterium": "0",
+                  "metal": "75000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "c57d05e5e6e1c00ef56f0d330d935b4986718e6405862e383a64101816d9ee86"
+            },
+            "minimum_level": 6,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1200000000",
+              "deuterium": "0",
+              "metal": "2500000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Your metal economy can support useful infrastructure.",
+            "id": "metal-8",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "MetalPerHour",
+                "target": "99000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 37000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "duration_ms": 36000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "15000000",
+                  "deuterium": "0",
+                  "metal": "60000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "6fc555918dc23077ff2445a3c48665710f34441069d0d72a0f46776fe6e1ab8e"
+            },
+            "minimum_level": 8,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "200000000",
+              "metal": "1600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "A productive crystal mine supports the first fleet.",
+            "id": "crystal-6",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "CrystalPerHour",
+                "target": "66000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 35000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "duration_ms": 34000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "24000000",
+                  "deuterium": "0",
+                  "metal": "48000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "e038c209a422e1f0a0e140f98599f795b4ba3ec67d9783678219b85588277b36"
+            },
+            "minimum_level": 6,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "CrystalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1200000000",
+              "deuterium": "300000000",
+              "metal": "1200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Fuel production will sustain operations after these grants end.",
+            "id": "deuterium-4",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "DeuteriumPerHour",
+                "target": "39996000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "22000000"
+              },
+              "estimates": {
+                "final_due_at": 55000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "duration_ms": 54000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "75000000",
+                  "deuterium": "0",
+                  "metal": "225000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "15fd8e59b4bce4b01aadd5c054d20c0cb1edc43186c7232622fc0ee1e68a67b3"
+            },
+            "minimum_level": 4,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "DeuteriumSynthesizer",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "500000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Reliable power keeps the opening economy productive.",
+            "id": "solar-9",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "Energy",
+                "target": "22000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 51000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "duration_ms": 50000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "30000000",
+                  "deuterium": "0",
+                  "metal": "75000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "c57d05e5e6e1c00ef56f0d330d935b4986718e6405862e383a64101816d9ee86"
+            },
+            "minimum_level": 9,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "SolarPlant",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "300000000",
+              "metal": "2000000000"
+            }
+          }
+        ],
+        "title": "Establish the colony"
+      },
+      {
+        "completed": false,
+        "id": "fleet",
+        "objectives": [
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Research unlocks ships. Start Energy Technology, then Combustion Drive.",
+            "id": "lab-1",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "200000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 199000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "ResearchLab",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "ResearchLab",
+                "duration_ms": 198000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "400000000",
+                  "deuterium": "200000000",
+                  "metal": "200000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "25239573a0cd7e09845b34dcde42799a93fd10dd0aa7bb6104cd3b59592a0971"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "ResearchLab",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1200000000",
+              "deuterium": "800000000",
+              "metal": "800000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Energy Technology unlocks the combustion research chain.",
+            "id": "energy-1",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "building": "ResearchLab",
+                    "level": 1,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "400000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "estimates": {
+                "final_due_at": 961000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "research": "EnergyTechnology",
+                "type": "Research"
+              },
+              "terms": {
+                "duration_ms": 960000,
+                "effective_lab": "0",
+                "formula": "ResearchClassic",
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "labs": [
+                  {
+                    "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                    "level": 0
+                  }
+                ],
+                "paid": {
+                  "crystal": "800000000",
+                  "deuterium": "400000000",
+                  "metal": "0"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "research": "EnergyTechnology",
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Research"
+              },
+              "terms_hash": "e61b1ec52dcba5e35dea8c44b9c997aafd901153d270216201826805e21bdf60"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "research": "EnergyTechnology",
+                "type": "Research"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "500000000",
+              "metal": "600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Your first drive unlocks a Light Fighter.",
+            "id": "combustion-1",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "building": "ResearchLab",
+                    "level": 1,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "level": 1,
+                    "research": "EnergyTechnology",
+                    "type": "PlayerResearch"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "600000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "estimates": {
+                "final_due_at": 481000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "research": "CombustionDrive",
+                "type": "Research"
+              },
+              "terms": {
+                "duration_ms": 480000,
+                "effective_lab": "0",
+                "formula": "ResearchClassic",
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "labs": [
+                  {
+                    "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                    "level": 0
+                  }
+                ],
+                "paid": {
+                  "crystal": "0",
+                  "deuterium": "600000000",
+                  "metal": "400000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "research": "CombustionDrive",
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Research"
+              },
+              "terms_hash": "e4b016a5fb02a3f7db326eba34568f2f42faaadb56873fa757c456def9a3774c"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "research": "CombustionDrive",
+                "type": "Research"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "600000000",
+              "deuterium": "300000000",
+              "metal": "1200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "The shipyard builds real ships. Manufacture a Light Fighter when its drive is ready.",
+            "id": "shipyard-1",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "2",
+                  "requirement": {
+                    "building": "RoboticsFactory",
+                    "level": 2,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "100000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 199000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "Shipyard",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "Shipyard",
+                "duration_ms": 198000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "200000000",
+                  "deuterium": "100000000",
+                  "metal": "400000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "835e00d1e32cffae9be931fd01b4fef9ff4d7e27434614d52352bed29c0f45a7"
+            },
+            "minimum_level": 1,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "Shipyard",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "300000000",
+              "metal": "2000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Your own fighter is ready. Inspect the first orbital briefing and send an attack.",
+            "id": "fighter",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "building": "Shipyard",
+                    "level": 1,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "level": 1,
+                    "research": "CombustionDrive",
+                    "type": "PlayerResearch"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "1000000000",
+                  "code": "InsufficientResources",
+                  "required": "3000000000",
+                  "requirement": null,
+                  "resource": "Metal",
+                  "unit": "MicroResource"
+                }
+              ],
+              "estimates": {
+                "final_due_at": 1921000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "item": {
+                  "id": "LightFighter",
+                  "kind": "Ship"
+                },
+                "quantity": "1",
+                "type": "Manufacture"
+              },
+              "terms": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "Shipyard",
+                    "level": 0
+                  }
+                ],
+                "formula": "ManufactureClassic",
+                "item": {
+                  "id": "LightFighter",
+                  "kind": "Ship"
+                },
+                "paid": {
+                  "crystal": "1000000000",
+                  "deuterium": "0",
+                  "metal": "3000000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "quantity": "1",
+                "type": "Manufacture",
+                "unit_cost": {
+                  "crystal": "1000000000",
+                  "deuterium": "0",
+                  "metal": "3000000000"
+                },
+                "unit_duration_ms": 1920000
+              },
+              "terms_hash": "e72bb5519c060399b0e0aa501d6681c12e45897074b37766dc06266753ee02e2"
+            },
+            "minimum_level": null,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "item": {
+                  "id": "LightFighter",
+                  "kind": "Ship"
+                },
+                "quantity": "1",
+                "type": "Manufacture"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "500000000",
+              "deuterium": "200000000",
+              "metal": "1000000000"
+            }
+          }
+        ],
+        "title": "Build the first fleet"
+      },
+      {
+        "completed": false,
+        "id": "operations",
+        "objectives": [
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Combat resolved. Read the report: ships, losses, stockpile loot and site-local debris are separate outcomes.",
+            "id": "contact",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": {
+              "ships": [
+                "LightFighter"
+              ],
+              "site": null,
+              "type": "Attack"
+            },
+            "reward": {
+              "crystal": "500000000",
+              "deuterium": "100000000",
+              "metal": "500000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "The improved drive unlocks Small Cargo and speeds new flights.",
+            "id": "combustion-2",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "building": "ResearchLab",
+                    "level": 1,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "1",
+                  "requirement": {
+                    "level": 1,
+                    "research": "EnergyTechnology",
+                    "type": "PlayerResearch"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "600000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "estimates": {
+                "final_due_at": 481000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "research": "CombustionDrive",
+                "type": "Research"
+              },
+              "terms": {
+                "duration_ms": 480000,
+                "effective_lab": "0",
+                "formula": "ResearchClassic",
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "labs": [
+                  {
+                    "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                    "level": 0
+                  }
+                ],
+                "paid": {
+                  "crystal": "0",
+                  "deuterium": "600000000",
+                  "metal": "400000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "research": "CombustionDrive",
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Research"
+              },
+              "terms_hash": "e4b016a5fb02a3f7db326eba34568f2f42faaadb56873fa757c456def9a3774c"
+            },
+            "minimum_level": 2,
+            "next_action": {
+              "request": {
+                "host": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "research": "CombustionDrive",
+                "type": "Research"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "300000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Small Cargo carries much more stockpile loot than a fighter.",
+            "id": "shipyard-2",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "2",
+                  "requirement": {
+                    "building": "RoboticsFactory",
+                    "level": 2,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "InsufficientResources",
+                  "required": "100000000",
+                  "requirement": null,
+                  "resource": "Deuterium",
+                  "unit": "MicroResource"
+                }
+              ],
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "0"
+              },
+              "estimates": {
+                "final_due_at": 199000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "Shipyard",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "Shipyard",
+                "duration_ms": 198000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "200000000",
+                  "deuterium": "100000000",
+                  "metal": "400000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "835e00d1e32cffae9be931fd01b4fef9ff4d7e27434614d52352bed29c0f45a7"
+            },
+            "minimum_level": 2,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "Shipyard",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "200000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "Bring a fighter and Small Cargo to the second outpost. Cargo collects stockpile loot; debris needs a Recycler later.",
+            "id": "cargo",
+            "inspection": {
+              "blockers": [
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "2",
+                  "requirement": {
+                    "building": "Shipyard",
+                    "level": 2,
+                    "type": "BodyBuilding"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "0",
+                  "code": "PrerequisiteMissing",
+                  "required": "2",
+                  "requirement": {
+                    "level": 2,
+                    "research": "CombustionDrive",
+                    "type": "PlayerResearch"
+                  },
+                  "resource": null,
+                  "unit": "Level"
+                },
+                {
+                  "actual": "1000000000",
+                  "code": "InsufficientResources",
+                  "required": "2000000000",
+                  "requirement": null,
+                  "resource": "Metal",
+                  "unit": "MicroResource"
+                },
+                {
+                  "actual": "1000000000",
+                  "code": "InsufficientResources",
+                  "required": "2000000000",
+                  "requirement": null,
+                  "resource": "Crystal",
+                  "unit": "MicroResource"
+                }
+              ],
+              "estimates": {
+                "final_due_at": 1921000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "quantity": "1",
+                "type": "Manufacture"
+              },
+              "terms": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "Shipyard",
+                    "level": 0
+                  }
+                ],
+                "formula": "ManufactureClassic",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "paid": {
+                  "crystal": "2000000000",
+                  "deuterium": "0",
+                  "metal": "2000000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "quantity": "1",
+                "type": "Manufacture",
+                "unit_cost": {
+                  "crystal": "2000000000",
+                  "deuterium": "0",
+                  "metal": "2000000000"
+                },
+                "unit_duration_ms": 1920000
+              },
+              "terms_hash": "c8d8a2e1c3f1631f3d39821fd76298df281572e6eeb37e5ccd5d7d561bb83af2"
+            },
+            "minimum_level": null,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "item": {
+                  "id": "SmallCargo",
+                  "kind": "Ship"
+                },
+                "quantity": "1",
+                "type": "Manufacture"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "0",
+              "deuterium": "100000000",
+              "metal": "0"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "A surviving fighter and cargo fleet loaded real raid loot. The opportunity closes; the loot remains aboard until return.",
+            "id": "loaded",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": {
+              "ships": [
+                "LightFighter",
+                "SmallCargo"
+              ],
+              "site": null,
+              "type": "Attack"
+            },
+            "reward": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "0"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": false,
+            "explanation": "The raid returned with surviving ships and loot. The cargo has now reached its committed return destination.",
+            "id": "haul",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": {
+              "fleets": [],
+              "type": "AwaitReturn"
+            },
+            "reward": {
+              "crystal": "250000000",
+              "deuterium": "0",
+              "metal": "500000000"
+            }
+          },
+          {
+            "after_objective": "haul",
+            "completed": false,
+            "explanation": "Complete another Metal Mine upgrade after your haul. Your production and ordinary operations now fund the next steps.",
+            "id": "reinvest",
+            "inspection": {
+              "blockers": [],
+              "building_benefit": {
+                "current": "0",
+                "kind": "MetalPerHour",
+                "target": "99000000"
+              },
+              "building_energy": {
+                "current_consumption": "0",
+                "target_consumption": "11000000"
+              },
+              "estimates": {
+                "final_due_at": 37000,
+                "first_start_at": 1000
+              },
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "terms": {
+                "action": "Upgrade",
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "duration_ms": 36000,
+                "facilities": [
+                  {
+                    "building": "NaniteFactory",
+                    "level": 0
+                  },
+                  {
+                    "building": "RoboticsFactory",
+                    "level": 0
+                  }
+                ],
+                "formula": "BuildingRedesign2011",
+                "paid": {
+                  "crystal": "15000000",
+                  "deuterium": "0",
+                  "metal": "60000000"
+                },
+                "profile_hash": "5ad8cf7656b87d8ba27161a7a7b5f68b89063f93efa9648c67adb860264e3e82",
+                "required_energy": "0",
+                "reserve_fields": 1,
+                "source_level": 0,
+                "target_level": 1,
+                "type": "Building"
+              },
+              "terms_hash": "6fc555918dc23077ff2445a3c48665710f34441069d0d72a0f46776fe6e1ab8e"
+            },
+            "minimum_level": 9,
+            "next_action": {
+              "request": {
+                "body": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+                "building": "MetalMine",
+                "type": "Upgrade"
+              },
+              "type": "Progression"
+            },
+            "reward": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "0"
+            }
+          }
+        ],
+        "title": "Operate and reinvest"
+      }
+    ],
+    "completed": false,
+    "enrolled": true,
+    "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+    "human": true,
+    "preference": {
+      "beginner": true
+    },
+    "program": "colony-opening-v1",
+    "receipts": [],
+    "recommended_objectives": [
+      "metal-1",
+      "energy-1",
+      "combustion-1",
+      "combustion-2",
+      "fighter",
+      "cargo",
+      "contact",
+      "loaded",
+      "haul",
+      "reinvest",
+      "crystal-1",
+      "solar-2",
+      "metal-4",
+      "crystal-3",
+      "deuterium-1",
+      "solar-4",
+      "metal-6",
+      "solar-6",
+      "deuterium-2",
+      "metal-8",
+      "crystal-6",
+      "deuterium-4",
+      "solar-9",
+      "robotics-2",
+      "lab-1",
+      "shipyard-1",
+      "shipyard-2"
+    ],
+    "sites": [],
+    "version": 1
+  },
+  "completed": {
+    "beginner": false,
+    "chapters": [
+      {
+        "completed": true,
+        "id": "colony",
+        "objectives": [
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Your first mine begins paying for the colony. Build solar power and crystal production next.",
+            "id": "metal-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "100000000",
+              "deuterium": "0",
+              "metal": "200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Crystal supports power, research and ships. Keep both mines growing.",
+            "id": "crystal-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "100000000",
+              "deuterium": "0",
+              "metal": "200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Power feeds production. The energy balance shows when mines need more solar capacity.",
+            "id": "solar-2",
+            "inspection": null,
+            "minimum_level": 2,
+            "next_action": null,
+            "reward": {
+              "crystal": "200000000",
+              "deuterium": "0",
+              "metal": "400000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Higher production makes future investments easier. Add deuterium and more power.",
+            "id": "metal-4",
+            "inspection": null,
+            "minimum_level": 4,
+            "next_action": null,
+            "reward": {
+              "crystal": "400000000",
+              "deuterium": "0",
+              "metal": "800000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Crystal production is catching up. Continue investing in your mines.",
+            "id": "crystal-3",
+            "inspection": null,
+            "minimum_level": 3,
+            "next_action": null,
+            "reward": {
+              "crystal": "400000000",
+              "deuterium": "100000000",
+              "metal": "800000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Early fuel unlocks robotics. Build Robotics Factory level 2 to reduce every later construction wait.",
+            "id": "deuterium-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "300000000",
+              "deuterium": "600000000",
+              "metal": "600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Deuterium fuels flights and research. Power demand grows with production.",
+            "id": "deuterium-2",
+            "inspection": null,
+            "minimum_level": 2,
+            "next_action": null,
+            "reward": {
+              "crystal": "600000000",
+              "deuterium": "200000000",
+              "metal": "1200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Robotics shortens ordinary construction and unlocks the shipyard.",
+            "id": "robotics-2",
+            "inspection": null,
+            "minimum_level": 2,
+            "next_action": null,
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "300000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "The growing power grid supports your next mine upgrades.",
+            "id": "solar-4",
+            "inspection": null,
+            "minimum_level": 4,
+            "next_action": null,
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "0",
+              "metal": "1600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Reinvest this milestone in the final opening mine levels.",
+            "id": "metal-6",
+            "inspection": null,
+            "minimum_level": 6,
+            "next_action": null,
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "200000000",
+              "metal": "2000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Expand power alongside production before the final colony milestones.",
+            "id": "solar-6",
+            "inspection": null,
+            "minimum_level": 6,
+            "next_action": null,
+            "reward": {
+              "crystal": "1200000000",
+              "deuterium": "0",
+              "metal": "2500000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Your metal economy can support useful infrastructure.",
+            "id": "metal-8",
+            "inspection": null,
+            "minimum_level": 8,
+            "next_action": null,
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "200000000",
+              "metal": "1600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "A productive crystal mine supports the first fleet.",
+            "id": "crystal-6",
+            "inspection": null,
+            "minimum_level": 6,
+            "next_action": null,
+            "reward": {
+              "crystal": "1200000000",
+              "deuterium": "300000000",
+              "metal": "1200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Fuel production will sustain operations after these grants end.",
+            "id": "deuterium-4",
+            "inspection": null,
+            "minimum_level": 4,
+            "next_action": null,
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "500000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Reliable power keeps the opening economy productive.",
+            "id": "solar-9",
+            "inspection": null,
+            "minimum_level": 9,
+            "next_action": null,
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "300000000",
+              "metal": "2000000000"
+            }
+          }
+        ],
+        "title": "Establish the colony"
+      },
+      {
+        "completed": true,
+        "id": "fleet",
+        "objectives": [
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Research unlocks ships. Start Energy Technology, then Combustion Drive.",
+            "id": "lab-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "1200000000",
+              "deuterium": "800000000",
+              "metal": "800000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Energy Technology unlocks the combustion research chain.",
+            "id": "energy-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "800000000",
+              "deuterium": "500000000",
+              "metal": "600000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Your first drive unlocks a Light Fighter.",
+            "id": "combustion-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "600000000",
+              "deuterium": "300000000",
+              "metal": "1200000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "The shipyard builds real ships. Manufacture a Light Fighter when its drive is ready.",
+            "id": "shipyard-1",
+            "inspection": null,
+            "minimum_level": 1,
+            "next_action": null,
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "300000000",
+              "metal": "2000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Your own fighter is ready. Inspect the first orbital briefing and send an attack.",
+            "id": "fighter",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": null,
+            "reward": {
+              "crystal": "500000000",
+              "deuterium": "200000000",
+              "metal": "1000000000"
+            }
+          }
+        ],
+        "title": "Build the first fleet"
+      },
+      {
+        "completed": true,
+        "id": "operations",
+        "objectives": [
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Combat resolved. Read the report: ships, losses, stockpile loot and site-local debris are separate outcomes.",
+            "id": "contact",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": null,
+            "reward": {
+              "crystal": "500000000",
+              "deuterium": "100000000",
+              "metal": "500000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "The improved drive unlocks Small Cargo and speeds new flights.",
+            "id": "combustion-2",
+            "inspection": null,
+            "minimum_level": 2,
+            "next_action": null,
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "300000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Small Cargo carries much more stockpile loot than a fighter.",
+            "id": "shipyard-2",
+            "inspection": null,
+            "minimum_level": 2,
+            "next_action": null,
+            "reward": {
+              "crystal": "1000000000",
+              "deuterium": "200000000",
+              "metal": "1000000000"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "Bring a fighter and Small Cargo to the second outpost. Cargo collects stockpile loot; debris needs a Recycler later.",
+            "id": "cargo",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": null,
+            "reward": {
+              "crystal": "0",
+              "deuterium": "100000000",
+              "metal": "0"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "A surviving fighter and cargo fleet loaded real raid loot. The opportunity closes; the loot remains aboard until return.",
+            "id": "loaded",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": null,
+            "reward": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "0"
+            }
+          },
+          {
+            "after_objective": null,
+            "completed": true,
+            "explanation": "The raid returned with surviving ships and loot. The cargo has now reached its committed return destination.",
+            "id": "haul",
+            "inspection": null,
+            "minimum_level": null,
+            "next_action": null,
+            "reward": {
+              "crystal": "250000000",
+              "deuterium": "0",
+              "metal": "500000000"
+            }
+          },
+          {
+            "after_objective": "haul",
+            "completed": true,
+            "explanation": "Complete another Metal Mine upgrade after your haul. Your production and ordinary operations now fund the next steps.",
+            "id": "reinvest",
+            "inspection": null,
+            "minimum_level": 9,
+            "next_action": null,
+            "reward": {
+              "crystal": "0",
+              "deuterium": "0",
+              "metal": "0"
+            }
+          }
+        ],
+        "title": "Operate and reinvest"
+      }
+    ],
+    "completed": true,
+    "enrolled": true,
+    "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+    "human": true,
+    "preference": {
+      "beginner": true
+    },
+    "program": "colony-opening-v1",
+    "receipts": [
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Your first mine begins paying for the colony. Build solar power and crystal production next.",
+        "granted_at": {
+          "at_ms": 37000,
+          "ordinal": "13",
+          "phase": 0
+        },
+        "granted_by": "8a205a29-e462-2e28-c912-e98457bf60c9",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "3908e384-caf8-b800-d558-200b2f2d3d78",
+        "objective": "metal-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "100000000",
+          "deuterium": "0",
+          "metal": "200000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Crystal supports power, research and ships. Keep both mines growing.",
+        "granted_at": {
+          "at_ms": 71000,
+          "ordinal": "16",
+          "phase": 0
+        },
+        "granted_by": "2349f59e-cf76-4ef0-3234-8ec3bc373bcd",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "d14e2d36-d060-bb76-db1d-3b07277cf5c2",
+        "objective": "crystal-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "100000000",
+          "deuterium": "0",
+          "metal": "200000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Power feeds production. The energy balance shows when mines need more solar capacity.",
+        "granted_at": {
+          "at_ms": 196000,
+          "ordinal": "22",
+          "phase": 0
+        },
+        "granted_by": "8e7f4d9b-2811-88e4-7dbb-f616e91ef58d",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "fabe0619-2919-9f7b-6475-dab8ed51ad23",
+        "objective": "solar-2",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "200000000",
+          "deuterium": "0",
+          "metal": "400000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Higher production makes future investments easier. Add deuterium and more power.",
+        "granted_at": {
+          "at_ms": 362000,
+          "ordinal": "31",
+          "phase": 0
+        },
+        "granted_by": "963e8a04-8c1e-d228-9147-7f908cb9ba54",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "b98d2500-3df0-43cd-4efe-c787485f203e",
+        "objective": "metal-4",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "400000000",
+          "deuterium": "0",
+          "metal": "800000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Crystal production is catching up. Continue investing in your mines.",
+        "granted_at": {
+          "at_ms": 505000,
+          "ordinal": "37",
+          "phase": 0
+        },
+        "granted_by": "8a9ceca1-046d-cf18-ef93-31c4d3c14696",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "77b61ae2-500a-0763-5e0b-6059caadc864",
+        "objective": "crystal-3",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "400000000",
+          "deuterium": "100000000",
+          "metal": "800000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Early fuel unlocks robotics. Build Robotics Factory level 2 to reduce every later construction wait.",
+        "granted_at": {
+          "at_ms": 559000,
+          "ordinal": "40",
+          "phase": 0
+        },
+        "granted_by": "33a77d83-9b06-c343-b02d-9424efea9072",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "b377c62a-5b41-fb02-46ea-6907884f21da",
+        "objective": "deuterium-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "300000000",
+          "deuterium": "600000000",
+          "metal": "600000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Deuterium fuels flights and research. Power demand grows with production.",
+        "granted_at": {
+          "at_ms": 685000,
+          "ordinal": "43",
+          "phase": 0
+        },
+        "granted_by": "ca11c511-94c5-ae45-fd2b-f5aa7fc51ca7",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "e68d3d3f-ce1d-23be-945b-fbef7254465e",
+        "objective": "deuterium-2",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "600000000",
+          "deuterium": "200000000",
+          "metal": "1200000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Robotics shortens ordinary construction and unlocks the shipyard.",
+        "granted_at": {
+          "at_ms": 1003000,
+          "ordinal": "49",
+          "phase": 0
+        },
+        "granted_by": "39568ca9-ebc9-0a7e-fb87-20b6d89c8f82",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "4c585a95-ef86-61bb-775c-97750c97b943",
+        "objective": "robotics-2",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "800000000",
+          "deuterium": "300000000",
+          "metal": "1000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Research unlocks ships. Start Energy Technology, then Combustion Drive.",
+        "granted_at": {
+          "at_ms": 1099000,
+          "ordinal": "52",
+          "phase": 0
+        },
+        "granted_by": "199a159c-3378-235d-fe68-1038e11e975e",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "92282a82-ac69-7d2f-d618-cdf91f4956bc",
+        "objective": "lab-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1200000000",
+          "deuterium": "800000000",
+          "metal": "800000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "The shipyard builds real ships. Manufacture a Light Fighter when its drive is ready.",
+        "granted_at": {
+          "at_ms": 1195000,
+          "ordinal": "55",
+          "phase": 0
+        },
+        "granted_by": "5165bf13-d889-3ba0-080d-96c71c20bc44",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "32b7dad7-eb38-059d-fa72-0f70f2c3ffce",
+        "objective": "shipyard-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1000000000",
+          "deuterium": "300000000",
+          "metal": "2000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Small Cargo carries much more stockpile loot than a fighter.",
+        "granted_at": {
+          "at_ms": 1297000,
+          "ordinal": "61",
+          "phase": 0
+        },
+        "granted_by": "3f3c66a4-3877-58d2-e1b8-886b4729ad3d",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "e0bb0838-6610-ec18-6715-115f63800cf2",
+        "objective": "shipyard-2",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1000000000",
+          "deuterium": "200000000",
+          "metal": "1000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "The growing power grid supports your next mine upgrades.",
+        "granted_at": {
+          "at_ms": 1390000,
+          "ordinal": "67",
+          "phase": 0
+        },
+        "granted_by": "1824f254-c017-cc12-19d9-d7ab8713a7d7",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "4045b7a7-d510-4eaf-3e4c-5ce18b073a65",
+        "objective": "solar-4",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "800000000",
+          "deuterium": "0",
+          "metal": "1600000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Reinvest this milestone in the final opening mine levels.",
+        "granted_at": {
+          "at_ms": 1541000,
+          "ordinal": "73",
+          "phase": 0
+        },
+        "granted_by": "46520b3a-5915-530c-8e60-dd2994031396",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "a71c327c-d85e-6602-6805-78e5bc520dc0",
+        "objective": "metal-6",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1000000000",
+          "deuterium": "200000000",
+          "metal": "2000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Energy Technology unlocks the combustion research chain.",
+        "granted_at": {
+          "at_ms": 1579000,
+          "ordinal": "58",
+          "phase": 0
+        },
+        "granted_by": "77c6853c-a93e-5c09-a4fd-85ffb6420ab6",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "b96e7f94-ff2b-3a85-4b67-8d870255ee7f",
+        "objective": "energy-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "800000000",
+          "deuterium": "500000000",
+          "metal": "600000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Expand power alongside production before the final colony milestones.",
+        "granted_at": {
+          "at_ms": 1710000,
+          "ordinal": "85",
+          "phase": 0
+        },
+        "granted_by": "ba2cbbf1-0a20-a675-9c49-5958b32bf43d",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "116171c1-4ec2-95a7-c2a0-3ad25ec0b584",
+        "objective": "solar-6",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1200000000",
+          "deuterium": "0",
+          "metal": "2500000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Your first drive unlocks a Light Fighter.",
+        "granted_at": {
+          "at_ms": 1819000,
+          "ordinal": "79",
+          "phase": 0
+        },
+        "granted_by": "d7c7bac0-293e-1087-21ca-7308f037e760",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "9919b4b3-ac8f-de81-8d02-b29f80243559",
+        "objective": "combustion-1",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "600000000",
+          "deuterium": "300000000",
+          "metal": "1200000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Your metal economy can support useful infrastructure.",
+        "granted_at": {
+          "at_ms": 1889000,
+          "ordinal": "94",
+          "phase": 0
+        },
+        "granted_by": "dcd1a243-0e90-69e2-6d21-1cbe3b8a4ee7",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "3a1ede5b-6310-30b4-ce7e-73717cb916f8",
+        "objective": "metal-8",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "800000000",
+          "deuterium": "200000000",
+          "metal": "1600000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "A productive crystal mine supports the first fleet.",
+        "granted_at": {
+          "at_ms": 1994000,
+          "ordinal": "106",
+          "phase": 0
+        },
+        "granted_by": "8c311796-f4a5-dc11-18ff-7ea0d466b42a",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "37e67a0c-1020-4909-16cb-63da7a2713cd",
+        "objective": "crystal-6",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1200000000",
+          "deuterium": "300000000",
+          "metal": "1200000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "The improved drive unlocks Small Cargo and speeds new flights.",
+        "granted_at": {
+          "at_ms": 2299000,
+          "ordinal": "97",
+          "phase": 0
+        },
+        "granted_by": "2fc7b08b-d527-f0f7-4c36-9ec9d05faa28",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "d8db6f2e-2853-76a1-a9ff-d9670c137e07",
+        "objective": "combustion-2",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1000000000",
+          "deuterium": "300000000",
+          "metal": "1000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Your own fighter is ready. Inspect the first orbital briefing and send an attack.",
+        "granted_at": {
+          "at_ms": 2459000,
+          "ordinal": "100",
+          "phase": 0
+        },
+        "granted_by": "3022b157-dcff-23c2-f775-4343d31c1a78",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "c97226d2-358f-23df-f7c8-63b9e7f34158",
+        "objective": "fighter",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "500000000",
+          "deuterium": "200000000",
+          "metal": "1000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Combat resolved. Read the report: ships, losses, stockpile loot and site-local debris are separate outcomes.",
+        "granted_at": {
+          "at_ms": 2530000,
+          "ordinal": "121",
+          "phase": 0
+        },
+        "granted_by": "5fde2853-4285-20c8-126d-81af196a3ed3",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "5d616a6e-5397-53ba-ff01-a17ccda87d46",
+        "objective": "contact",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "500000000",
+          "deuterium": "100000000",
+          "metal": "500000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Reliable power keeps the opening economy productive.",
+        "granted_at": {
+          "at_ms": 2632000,
+          "ordinal": "115",
+          "phase": 0
+        },
+        "granted_by": "197b1db8-0f86-f156-f5d8-c66b5ee261d5",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "e2000ee3-ca39-c43e-3b14-630e8852498b",
+        "objective": "solar-9",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "1000000000",
+          "deuterium": "300000000",
+          "metal": "2000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Fuel production will sustain operations after these grants end.",
+        "granted_at": {
+          "at_ms": 2704000,
+          "ordinal": "125",
+          "phase": 0
+        },
+        "granted_by": "fa2bb5bb-e9d3-7e6c-0195-456699e1cf04",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "b4acda34-a92b-fb14-a182-5dc9c93ed27d",
+        "objective": "deuterium-4",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "800000000",
+          "deuterium": "500000000",
+          "metal": "1000000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Bring a fighter and Small Cargo to the second outpost. Cargo collects stockpile loot; debris needs a Recycler later.",
+        "granted_at": {
+          "at_ms": 3099000,
+          "ordinal": "118",
+          "phase": 0
+        },
+        "granted_by": "2e576a9d-1554-db79-f9c0-8901fed1b7a8",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "61a92d04-4e33-2214-9a0b-e36107fd569b",
+        "objective": "cargo",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "0",
+          "deuterium": "100000000",
+          "metal": "0"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "A surviving fighter and cargo fleet loaded real raid loot. The opportunity closes; the loot remains aboard until return.",
+        "granted_at": {
+          "at_ms": 3209000,
+          "ordinal": "128",
+          "phase": 0
+        },
+        "granted_by": "4f0c87c6-e359-1ddd-46b9-f75e3874ccbb",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "6715fb22-a116-ceb6-a2b1-49026f60970e",
+        "objective": "loaded",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "0",
+          "deuterium": "0",
+          "metal": "0"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "The raid returned with surviving ships and loot. The cargo has now reached its committed return destination.",
+        "granted_at": {
+          "at_ms": 3319000,
+          "ordinal": "129",
+          "phase": 0
+        },
+        "granted_by": "1385f837-2c50-93e3-f500-6271a35770e7",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "f293538d-c129-dab6-34a6-9937107e0eb4",
+        "objective": "haul",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "250000000",
+          "deuterium": "0",
+          "metal": "500000000"
+        }
+      },
+      {
+        "beneficiary": "e7c7c65f-acac-4563-bfc7-e1194100beae",
+        "definition_version": 1,
+        "explanation": "Complete another Metal Mine upgrade after your haul. Your production and ordinary operations now fund the next steps.",
+        "granted_at": {
+          "at_ms": 3536000,
+          "ordinal": "132",
+          "phase": 0
+        },
+        "granted_by": "9f66c169-92fd-ee4b-f302-892fdd86a2fd",
+        "homeworld": "a8c368ce-de94-4335-8a6d-3d9e01f221f8",
+        "id": "bec69f70-4ef3-c877-915c-689f322af806",
+        "objective": "reinvest",
+        "program": "colony-opening-v1",
+        "resources": {
+          "crystal": "0",
+          "deuterium": "0",
+          "metal": "0"
+        }
+      }
+    ],
+    "recommended_objectives": [],
+    "sites": [
+      {
+        "allowed_mission": "Attack",
+        "briefing": "A finite introductory opportunity at ordinary orbital distance. One solar satellite, no combat technology. Send an Attack with your own ships. Stockpile loot uses ordinary half-plunder and cargo capacity; it arrives only when survivors return. Debris stays at this site and cannot be collected. Actual losses and depleted stock are never restored.",
+        "busy": false,
+        "recommended_ships": [
+          "LightFighter",
+          "SmallCargo"
+        ],
+        "remaining_forces": [],
+        "site": {
+          "definition_id": "opening-cargo",
+          "definition_version": 1,
+          "destination": {
+            "coordinates": {
+              "galaxy": 1,
+              "position": 6,
+              "system": 50
+            },
+            "selection": {
+              "expected_revision": "6",
+              "id": "85e6679c-7415-45f0-72b9-a149dca07d70"
+            }
+          },
+          "remaining_stock": {
+            "crystal": "1500000000",
+            "deuterium": "500000000",
+            "metal": "3634000000"
+          },
+          "retired": true
+        },
+        "title": "Orbital stockpile"
+      },
+      {
+        "allowed_mission": "Attack",
+        "briefing": "A finite introductory opportunity at ordinary orbital distance. One solar satellite, no combat technology. Send an Attack with your own ships. Stockpile loot uses ordinary half-plunder and cargo capacity; it arrives only when survivors return. Debris stays at this site and cannot be collected. Actual losses and depleted stock are never restored.",
+        "busy": false,
+        "recommended_ships": [
+          "LightFighter"
+        ],
+        "remaining_forces": [],
+        "site": {
+          "definition_id": "opening-contact",
+          "definition_version": 1,
+          "destination": {
+            "coordinates": {
+              "galaxy": 1,
+              "position": 6,
+              "system": 50
+            },
+            "selection": {
+              "expected_revision": "6",
+              "id": "fe14f781-74e3-5b23-46e8-031638725ebc"
+            }
+          },
+          "remaining_stock": {
+            "crystal": "20000000",
+            "deuterium": "10000000",
+            "metal": "21000000"
+          },
+          "retired": true
+        },
+        "title": "First contact"
+      }
+    ],
+    "version": 1
+  }
+}
