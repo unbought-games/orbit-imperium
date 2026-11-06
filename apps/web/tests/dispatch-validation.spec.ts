@@ -3,7 +3,7 @@ import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
-import { shellFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
+import { installGameFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
@@ -44,11 +44,13 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
       },
       { ...colony, name: 'Haven Colony' },
     ]
-  const capabilities: NonNullable<Parameters<typeof shellFixture>[1]>['extraCapabilities'] = [
+  const capabilities: NonNullable<Parameters<typeof installGameFixture>[1]>['extraCapabilities'] = [
     'Attack', 'Espionage', 'Harvest', 'Deploy', 'Reports', 'Colonize',
   ]
   let revision = 1
-  await shellFixture(page, {
+  // Install the fixture without loading an unrelated overview first. The direct
+  // Dispatch navigation below gates complete bootstrap delivery.
+  await installGameFixture(page, {
     viewerRevision: () => String(revision),
     protocol: 4,
     homeworldId: body.id,
@@ -1562,8 +1564,10 @@ test('late destination lookup cannot replace a selected colony and failures are 
 })
 
 test('destination picker includes a same-coordinate moon and excludes the origin', async ({ page }) => {
-  await shellFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await installGameFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
+  await withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/bootstrap', () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   await page.getByRole('combobox', { name: 'Your planets and moons' }).click()
   await page.getByRole('option', {name: /Home moon/}).click()
   await expect(page.getByLabel('Destination preview')).toContainText('Moon · Your moon')
@@ -1576,8 +1580,10 @@ test('planet renames, removal and origin changes update the picker and preview f
   const colony = { ...body, id: id(6), name: 'Colony', coordinates: { galaxy: 1, system: 1, position: 2 } }
   const bodies = [home, colony]
   let revision = 1
-  await shellFixture(page, { protocol: 4, bodies, viewerRevision: () => String(revision), extraCapabilities: ['Deploy'] })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await installGameFixture(page, { protocol: 4, bodies, viewerRevision: () => String(revision), extraCapabilities: ['Deploy'] })
+  await withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/bootstrap', () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
   const preview = page.getByLabel('Destination preview')
   await selectDestinationPlanet(page, colony.id)

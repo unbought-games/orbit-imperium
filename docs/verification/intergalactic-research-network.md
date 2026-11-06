@@ -134,3 +134,17 @@ both runtime modes, including restart, audit and operator restoration
 contract/boundary and diff checks passed. Fresh desktop/mobile images were
 captured and inspected. The disposable database project was removed afterward.
 The PR and merge-queue CI results are tracked in the originating chat.
+
+## Merge-queue fixture repair
+
+The first PR CI run passed, as did automated review with no findings. Queue run
+`42261264895` at integration commit `68981c1dea671dfb85aba8d3c440fd8dccfe07ea`
+failed an existing Dispatch disclosure test in unrelated overview startup.
+GitHub removed the entry once. The Dispatch fixtures now install data without
+that extra overview visit and retain response-gated direct Dispatch navigation.
+This changes test setup only; the research implementation and visual captures
+are unchanged. Full evidence, the two standalone-fixture editing failures,
+retained assertions, timings and caller audit are recorded in the November 6
+Dispatch entry in `docs/runbooks/test-performance-audit.md`. All 105 Dispatch cases
+passed across the full-file and targeted follow-up runs; the 13 deterministic
+ship-selection cases also passed. Fresh PR and queue CI must verify this repair.
