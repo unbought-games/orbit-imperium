@@ -3564,3 +3564,6 @@ mod lunar_base;
 
 #[path = "progression/lunar_industry.rs"]
 mod lunar_industry;
+
+#[path = "progression/research_network.rs"]
+mod research_network;

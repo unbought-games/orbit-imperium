@@ -22,6 +22,7 @@ import { catalogContent } from './catalog-content'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { components } from '../../contracts'
 import { ScrapMissiles, SiloSummary } from '../missile-inventory'
+import { ResearchLabs } from './research-labs'
 import { ResearchWorkDetails } from './research-work-details'
 import { researchProgress } from '../../client-model/research-progress'
 import { currentServerTime } from '../../client-model/game-projection'
@@ -180,12 +181,26 @@ export function TechnologyDetails({
               </DetailStat>
             </>
           ) : (
-            <DetailStat label="Current level">Level {count}</DetailStat>
+            <>
+              <DetailStat label="Current level">Level {count}</DetailStat>
+              {entry.key.id === 'IntergalacticResearchNetwork' && (
+                <DetailStat
+                  label="Remote lab capacity"
+                  hint="Eligible labs only; the origin is always included."
+                >
+                  {count} → {Number(count) + 1}
+                </DetailStat>
+              )}
+            </>
           )}
         </div>
       </DetailSection>
       {activeResearch ? (
-        <ResearchWorkDetails research={activeResearch} model={model} />
+        <ResearchWorkDetails
+          research={activeResearch}
+          model={model}
+          bodies={view.bodies}
+        />
       ) : (
         <DetailSection
           title={
@@ -278,6 +293,11 @@ export function TechnologyDetails({
                     forecast={forecast!}
                   />
                 </dl>
+                <ResearchLabs
+                  labs={material.labs}
+                  host={material.host}
+                  bodies={view.bodies}
+                />
                 {display?.blockers.some(
                   (blocker) => blocker.code === 'EnergyRequired',
                 ) && (

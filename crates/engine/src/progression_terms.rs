@@ -58,6 +58,7 @@ impl ProgressionRules {
                         | ResearchId::HyperspaceTechnology
                         | ResearchId::HyperspaceDrive
                         | ResearchId::Astrophysics
+                        | ResearchId::IntergalacticResearchNetwork
                 )
             {
                 return Err(RulesError::InvalidReference);
@@ -473,18 +474,18 @@ fn astrophysics_payment(raw: &[Rational; 3]) -> Result<Resources, GameError> {
     Ok(Resources::from_values(values))
 }
 
-pub fn research_terms(
-    body: &Body,
+/// The payment depends only on completed research and the saved rules, never labs.
+pub fn research_payment(
     levels: &ResearchLevels,
     research: ResearchId,
     rules: &Ruleset,
-) -> Result<ProgressionMaterial, GameError> {
+) -> Result<Resources, GameError> {
     enabled(rules, CatalogKey::Research(research))?;
     let source = *levels
         .levels
         .get(&research)
         .ok_or(GameError::InvalidInput)?;
-    let target = source.checked_add(1).ok_or(GameError::NumericRange)?;
+    source.checked_add(1).ok_or(GameError::NumericRange)?;
     let r = &rules
         .artifact
         .progression
@@ -493,16 +494,54 @@ pub fn research_terms(
         .research[&research];
     let growth = power(ratio(r.growth[0], r.growth[1])?, source)?;
     let raw = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
-    let cost = if research == ResearchId::Astrophysics {
-        astrophysics_payment(&raw)?
+    if research == ResearchId::Astrophysics {
+        astrophysics_payment(&raw)
     } else {
-        paid(&raw)?
-    };
-    let lab = level(body, Building::ResearchLab)?;
+        paid(&raw)
+    }
+}
+
+/// Single-lab formula primitive for legacy formula fixtures. Gameplay must select
+/// the complete network with `research_labs` and use `research_terms_with_labs`.
+pub fn research_terms(
+    body: &Body,
+    levels: &ResearchLevels,
+    research: ResearchId,
+    rules: &Ruleset,
+) -> Result<ProgressionMaterial, GameError> {
+    research_terms_with_labs(
+        body,
+        levels,
+        research,
+        rules,
+        vec![LabTerm {
+            body: body.id,
+            level: level(body, Building::ResearchLab)?,
+        }],
+    )
+}
+
+pub fn research_terms_with_labs(
+    body: &Body,
+    levels: &ResearchLevels,
+    research: ResearchId,
+    rules: &Ruleset,
+    labs: Vec<LabTerm>,
+) -> Result<ProgressionMaterial, GameError> {
+    let cost = research_payment(levels, research, rules)?;
+    let source = levels.levels[&research];
+    let target = source.checked_add(1).ok_or(GameError::NumericRange)?;
+    let effective_lab = labs
+        .iter()
+        .try_fold(0i64, |sum, lab| sum.checked_add(i64::from(lab.level)))
+        .ok_or(GameError::NumericRange)?;
+    let denominator = effective_lab
+        .checked_add(1)
+        .ok_or(GameError::NumericRange)?;
     let seconds = floor(
         integer(3600) * integer(add(cost.metal / SCALE, cost.crystal / SCALE)?)
             / integer(1000)
-            / integer(1 + i64::from(lab))
+            / integer(denominator)
             / integer(i64::from(rules.speed)),
     )?;
     Ok(ProgressionMaterial::Research {
@@ -519,11 +558,8 @@ pub fn research_terms(
             "ResearchClassic"
         }
         .into(),
-        labs: vec![LabTerm {
-            body: body.id,
-            level: lab,
-        }],
-        effective_lab: i64::from(lab),
+        labs,
+        effective_lab,
         required_energy: 0,
     })
 }

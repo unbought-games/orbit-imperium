@@ -899,3 +899,195 @@ async fn terraformer_expanded_planet_round_trips_original_fields_and_completed_l
         "{error}"
     );
 }
+
+// Regression: both gameplay and operator-created research must persist the same
+// remote lab selection, including after process restart and scenario restoration.
+#[tokio::test]
+async fn research_network_uses_remote_labs_in_both_runtimes_and_operator_imports() {
+    for scoped in [false, true] {
+        let (store, pool) = fresh().await;
+        let u = UniverseId(Uuid::new_v4());
+        store.apply_world_scenario(u, &document(json!([
+            {"op":"add-player","user":"alice","password":"password","planet":"1:1:8"},
+            {"op":"set","user":"alice","research":{"astrophysics":1,"computertechnology":8,"energytechnology":5,"shieldingtechnology":5,"hyperspacetechnology":8,"intergalacticresearchnetwork":1}},
+            {"op":"set","user":"alice","planet":"1:1:8","buildings":{"researchlab":10},"resources":{"metal":10000000,"crystal":10000000,"deuterium":10000000}},
+            {"op":"add-planet","user":"alice","planet":"1:2:8"},
+            {"op":"set","user":"alice","planet":"1:2:8","buildings":{"researchlab":12}}
+        ])), ScenarioMode::Create, Uuid::new_v4()).await.unwrap();
+        if scoped {
+            store.prepare_scoped_runtime(u, 1).await.unwrap();
+            store.activate_scoped_runtime(u).await.unwrap();
+        }
+        let auth = SessionService::new(store.clone())
+            .login("alice", "password", None)
+            .await
+            .unwrap();
+        let game = GameService::new(store.clone());
+        let binding = game
+            .current_binding(auth.session.account, u, Uuid::new_v4())
+            .await
+            .unwrap()
+            .binding;
+        let snapshot = store.bound_world(binding).await.unwrap().facts.0;
+        let origin = snapshot
+            .state
+            .bodies
+            .values()
+            .find(|b| b.coordinates.system == 1)
+            .unwrap()
+            .id;
+        let remote = snapshot
+            .state
+            .bodies
+            .values()
+            .find(|b| b.coordinates.system == 2)
+            .unwrap()
+            .id;
+        let research = ResearchId::IntergalacticResearchNetwork;
+        let options = inspect_progression(
+            &snapshot.state,
+            Actor::Player(binding.player),
+            &QuoteRequest::Research {
+                host: origin,
+                research,
+            },
+            snapshot.at,
+            &snapshot.rules,
+        )
+        .unwrap();
+        assert!(options.blockers.is_empty());
+        assert!(
+            matches!(options.terms.as_ref().unwrap(), ProgressionMaterial::Research { effective_lab: 22, labs, .. } if labs.len() == 2)
+        );
+        let id = CommandId(Uuid::new_v4());
+        store
+            .bound_admit4(ForegroundAction {
+                gameplay: CommandEnvelopeV4 {
+                    protocol: 4,
+                    binding,
+                    command_id: id,
+                    command: CommandDto3::Progression(Command::StartResearch {
+                        host: origin,
+                        research,
+                        expected_terms_hash: options.terms_hash.unwrap(),
+                    }),
+                },
+                presence: CommandEnvelopeV4 {
+                    protocol: 4,
+                    binding,
+                    command_id: CommandId(Uuid::new_v4()),
+                    command: CommandDto3::Progression(Command::World {
+                        action: WorldAction::RecordForegroundPresence {
+                            body: Some(origin),
+                            cause: PresenceCause::GameplayGesture,
+                            paired_command_id: Some(id),
+                        },
+                    }),
+                },
+            })
+            .await
+            .unwrap();
+        async fn drain(store: &PgStore, u: UniverseId, scoped: bool) {
+            let game = GameService::new(store.clone());
+            loop {
+                let result = if scoped {
+                    game.step_scoped(u, WorkerId(Uuid::new_v4()), &InlineEngine)
+                        .await
+                        .unwrap()
+                } else {
+                    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap()
+                };
+                match result {
+                    StepOutcome::Idle => break,
+                    StepOutcome::Committed { .. } => {}
+                    other => panic!("{other:?}"),
+                }
+            }
+        }
+        drain(&store, u, scoped).await;
+        let active = store.bound_world(binding).await.unwrap().facts.0;
+        let op = active
+            .state
+            .research_operations
+            .values()
+            .find(|op| op.status == ResearchStatus::Active)
+            .unwrap()
+            .clone();
+        assert_eq!(
+            op.labs,
+            vec![
+                LabContribution {
+                    body: origin,
+                    completed_level: 10
+                },
+                LabContribution {
+                    body: remote,
+                    completed_level: 12
+                }
+            ]
+        );
+        assert_eq!(
+            active.state.bodies[&remote].checkpoint.amounts,
+            snapshot.state.bodies[&remote].checkpoint.amounts
+        );
+        assert_eq!(
+            op.commitment.due_at - op.commitment.started_at,
+            options.terms.unwrap().duration()
+        );
+        let restarted = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+        restarted.set_test_time(op.commitment.due_at).await.unwrap();
+        drain(&restarted, u, scoped).await;
+        assert_eq!(
+            restarted
+                .bound_world(binding)
+                .await
+                .unwrap()
+                .facts
+                .0
+                .state
+                .research[&binding.player]
+                .levels[&research],
+            2
+        );
+        restarted.audit_universe(u).await.unwrap();
+        // Operator work uses the same selector and retains paid timing on export.
+        restarted.apply_world_scenario(u, &document(json!([
+            {"op":"queue","user":"alice","planet":"1:1:8","research":{"intergalacticresearchnetwork":3}}
+        ])), ScenarioMode::Patch, Uuid::new_v4()).await.unwrap();
+        let queued: sqlx::types::Json<ResearchOperation> = sqlx::query_scalar(
+            "SELECT data FROM research_operations WHERE universe=$1 AND data->>'status'='Active'",
+        )
+        .bind(u.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(queued.labs, op.labs);
+        let exported = restarted.export_world_scenario(u).await.unwrap();
+        let recipe: WorldScenario =
+            serde_json::from_slice(&serde_json::to_vec(&exported).unwrap()).unwrap();
+        restarted
+            .apply_world_scenario(u, &recipe, ScenarioMode::Replace, Uuid::new_v4())
+            .await
+            .unwrap();
+        let restored: sqlx::types::Json<ResearchOperation> = sqlx::query_scalar(
+            "SELECT data FROM research_operations WHERE universe=$1 AND data->>'status'='Active'",
+        )
+        .bind(u.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            restored
+                .labs
+                .iter()
+                .map(|lab| lab.completed_level)
+                .collect::<Vec<_>>(),
+            vec![10, 12]
+        );
+        assert_eq!(restored.commitment.due_at, queued.commitment.due_at);
+        assert_eq!(restored.commitment.paid, queued.commitment.paid);
+        restarted.audit_universe(u).await.unwrap();
+    }
+}

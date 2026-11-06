@@ -1079,3 +1079,80 @@ results are recorded in the implementation chat's validation artifact.
 Focused validation after the single repair: all 84 Heavy Fighter/shell browser
 cases passed with one worker (2.466s module preparation, 2.9m runner). Static
 checks passed. The runner closed its server/browser and released its port.
+
+## November 6, 2026: remove the Dispatch fixture's unrelated overview visit
+
+PR #358 queue run `42261264895`, integration revision
+`68981c1dea671dfb85aba8d3c440fd8dccfe07ea`, failed
+`Dispatch shows available ships with a reversible all-rows disclosure at 390px`
+in job `128041648092`. It failed in the shared Dispatch setup's call to
+`shellFixture`, waiting five seconds for the overview heading before the test
+navigated to Dispatch. The failure artifact already contains the correct Empire
+heading and populated overview. The test never reached its ship disclosure.
+The PR-head run had passed; that is evidence of intermittency, not a repair.
+
+Inspected the scenario history (`89096d8d`), Dispatch setup/navigation history
+(`#346`, `3c8613a1`), the November 5 shared-shell repair above and this ledger.
+No previous repair of this disclosure scenario was recorded. Its one repair
+replaces the shared Dispatch setup's ready-overview wrapper with the existing
+`installGameFixture`. All Dispatch handlers are now installed before its one
+navigation, whose existing `withFixtureResponse` still verifies successful,
+complete bootstrap delivery before the Dispatch assertion. This removes an
+unrelated screen and one full bootstrap from every caller. It does not add a
+wait, retry, sleep or timeout, nor weaken any Dispatch assertion.
+
+The caller audit covers every test using this file's shared `setup`, including
+both controlled `beforeNavigation` profile handlers. They all require Dispatch,
+not Overview; their intended target state and negative/race controls are retained.
+The generic `shellFixture` remains for actual shell/navigation tests. This PR owns
+the complete Dispatch fixture repair and full-file verification; no independent
+follow-up is deferred. Ship visibility and zero-inventory selection continue to
+have deterministic coverage in `client-model/ship-selection.test.ts`.
+
+Queue failure timing: runner requested at 17:23:55 UTC and started at 17:24:15
+(20 seconds allocation wait); setup completed at 17:25:57 (102 seconds); test step
+ended at 17:33:22 (445 seconds). It passed 144 cases and failed one. GitHub removed
+the PR from the queue once (first enrollment was 17:23:37). This remains failed
+validation; a changed revision must pass PR and queue CI before merge.
+
+Local repair validation: the full Dispatch file ran 105 cases in 1.2 minutes
+(1.975 seconds module preparation). The repaired desktop/mobile disclosure cases
+and 101 others passed. Two standalone fixtures failed with `ReferenceError:
+shellFixture is not defined` after the import changed; this was a repair editing
+error, not another intermittent scenario failure. Audited both and converted
+their same redundant overview/Dispatch sequence to direct, response-gated fixture
+navigation as well. Both passed on their single repair (3.3 seconds runner).
+The 13 deterministic ship-selection tests passed in 0.342 seconds. No assertions,
+scenario names or timeouts were changed. All fixture servers/browsers stopped
+with their runners. Final queue verification follows the new pushed revision.
+
+## November 6, 2026: await self-profile delivery after Dispatch reload
+
+PR #358's second queue run `42266085978`, integration revision
+`135135501254a122cbcd6e3a49448e6eca71f67b`, passed the repaired disclosure scenario
+but failed `Dispatch origin follows authoritative self identity through loading
+refresh and navigation at 1440px`. Job `128058356679` asserted Captain Nova directly
+after `page.reload()`. The assertion first saw the expected unresolved “You” state,
+then timed out; the captured page context already contains Captain Nova in both
+the shell and Dispatch origin. Reload/HTML completion did not establish delivery
+of the separately loaded self-profile response.
+
+Inspected this scenario's history back to `89096d8d` and this ledger; no earlier
+repair for its profile-reload boundary was recorded. Its one repair uses the
+shared `withFixtureResponse`, matching `source.type === 'SelfAccount'`, before
+releasing the deliberate loading gate, triggering pageshow refresh and reloading.
+It verifies successful complete delivery before the existing identity assertions.
+The initial “You” assertions remain deliberately before release; navigation,
+stale-name exclusion and layout assertions remain. The caller audit found this
+as the only reload in the Dispatch file; both viewport instances receive the
+same repair. Other profile tests already have source-specific response listeners.
+This PR owns the complete repair; no additional follow-up is deferred.
+
+Both viewport scenarios passed in 4.1 seconds; the 14 player-profile model/adapter
+tests passed in 0.231 seconds. No sleep, retry, timeout change, assertion removal
+or product change was made. Runners cleaned up their servers and browsers.
+
+Second queue failure timing: requested at 17:55:47 UTC, runner started at
+17:56:03 (16 seconds allocation); tests began at 17:57:25 (82 seconds setup),
+ended at 18:05:15 (470 seconds), with 144 passed and one failed. GitHub removed
+the PR a second time. The changed revision must pass fresh PR and queue CI.
