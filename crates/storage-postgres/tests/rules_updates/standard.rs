@@ -91,7 +91,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             .await
             .unwrap();
     let plan = service.prepare_upgrade(universe).await.unwrap();
-    assert_eq!(plan.release, "0.15.0");
+    assert_eq!(plan.release, "0.16.0");
     assert!(
         before
             .rules
@@ -108,7 +108,8 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
         vec![
             ResearchId::PlasmaTechnology,
             ResearchId::HyperspaceTechnology,
-            ResearchId::HyperspaceDrive
+            ResearchId::HyperspaceDrive,
+            ResearchId::IntergalacticResearchNetwork
         ]
     );
     assert_eq!(store.load_rules(universe).await.unwrap(), before.rules);
@@ -139,6 +140,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
     expected_research.insert(ResearchId::PlasmaTechnology, 0);
     expected_research.insert(ResearchId::HyperspaceTechnology, 0);
     expected_research.insert(ResearchId::HyperspaceDrive, 0);
+    expected_research.insert(ResearchId::IntergalacticResearchNetwork, 0);
     assert_eq!(
         after.state.research[&binding.player].levels,
         expected_research

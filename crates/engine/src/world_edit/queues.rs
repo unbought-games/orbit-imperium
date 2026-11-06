@@ -298,7 +298,8 @@ pub(super) fn start(
         if target != i64::from(levels.levels[&key]) + 1 {
             return Err("queued research must be the next level".into());
         }
-        let terms = research_terms(b, levels, key, r).map_err(error)?;
+        let labs = research_labs(s, b, key, r).map_err(error)?;
+        let terms = research_terms_with_labs(b, levels, key, r, labs.clone()).map_err(error)?;
         let at = deadline(i, e, &terms)?;
         c.research_operations.push(ResearchOperation {
             id: operation,
@@ -307,10 +308,13 @@ pub(super) fn start(
             research: key,
             source_level: levels.levels[&key],
             target_level: levels.levels[&key] + 1,
-            labs: vec![LabContribution {
-                body: id,
-                completed_level: b.levels[&Building::ResearchLab],
-            }],
+            labs: labs
+                .into_iter()
+                .map(|lab| LabContribution {
+                    body: lab.body,
+                    completed_level: lab.level,
+                })
+                .collect(),
             commitment: Commitment {
                 profile_hash: e.paid_rules_hash.clone().unwrap_or_else(|| r.hash.clone()),
                 terms_hash: hash(&terms),

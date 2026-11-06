@@ -369,3 +369,14 @@ test-empire-identity:
 	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(empire_identity) | test(insignia)'
 	npm test -- deadline-timer empire-identity player-profiles
 	npm run test:ui -- empire-identity.spec.ts
+
+# Linked lab arithmetic, persisted operation snapshots and responsive inspectors.
+.PHONY: test-research-network test-research-network-db
+test-research-network:
+	cargo nextest run -p orbit-engine -p orbit-application --all-targets
+	npm test
+	npm run test:ui -- research-network.spec.ts hyperspace-technology.spec.ts
+
+test-research-network-db:
+	sh scripts/test-db.sh rules_updates
+	sh scripts/test-db.sh world_edit 'test(research_network)'

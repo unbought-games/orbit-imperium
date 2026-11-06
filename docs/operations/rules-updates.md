@@ -334,3 +334,11 @@ Laser and Hyperspace research prerequisites and no inventory backfill.
 [Alliance attacks](alliance-attacks.md) adds coordinated attacking fleets through
 standard content bundle 0.15.0 and migration 0029. Deploy compatible processes
 before activation; existing holding and Depot commitments remain intact.
+
+## Intergalactic Research Network
+
+Standard content bundle 0.16.0 adds Intergalactic Research Network. Deploy the
+supporting code to all processes before activation. Existing players receive
+level 0; accepted research retains its payment, lab snapshot and deadline.
+See the [network activation guide](intergalactic-research-network.md) for selection,
+locks, customization conflicts and disabling future upgrades.
