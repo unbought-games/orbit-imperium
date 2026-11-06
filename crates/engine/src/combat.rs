@@ -113,21 +113,28 @@ pub enum BattleSide {
 pub enum BattleOrigin {
     Stationed(BodyId),
     Fleet(FleetId),
+    Site(SiteEncounterId),
+}
+/// NPCs never inhabit the player identity or asset ownership domain.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum CombatIdentity {
+    Player(PlayerId),
+    Npc(SiteEncounterId),
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleParticipant {
-    pub owner: PlayerId,
+pub struct BattleParticipant<I = PlayerId> {
+    pub owner: I,
     pub origin: BattleOrigin,
     pub side: BattleSide,
     pub technology: [u32; 3],
     pub units: Vec<(ManufacturedItem, i64)>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleInput {
+pub struct BattleInput<I = PlayerId, T = BodyId> {
     pub encounter_id: InputId,
     pub at: Timestamp,
-    pub target: BodyId,
-    pub participants: Vec<BattleParticipant>,
+    pub target: T,
+    pub participants: Vec<BattleParticipant<I>>,
     pub rules_hash: Hash,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -138,23 +145,23 @@ pub enum BattleOutcome {
     Draw,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleCounts {
-    pub owner: PlayerId,
+pub struct BattleCounts<I = PlayerId> {
+    pub owner: I,
     pub origin: BattleOrigin,
     pub side: BattleSide,
     pub units: Vec<(ManufacturedItem, i64)>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleRound {
+pub struct BattleRound<I = PlayerId> {
     pub number: u32,
-    pub start: Vec<BattleCounts>,
-    pub end: Vec<BattleCounts>,
-    pub fire: Vec<BattleFire>,
+    pub start: Vec<BattleCounts<I>>,
+    pub end: Vec<BattleCounts<I>>,
+    pub fire: Vec<BattleFire<I>>,
 }
 /// Historical firing observations; totals are derived from these per-origin facts.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleFire {
-    pub owner: PlayerId,
+pub struct BattleFire<I = PlayerId> {
+    pub owner: I,
     pub origin: BattleOrigin,
     pub side: BattleSide,
     pub shots: String,
@@ -173,8 +180,8 @@ struct FireCounters {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleDamage {
-    pub owner: PlayerId,
+pub struct BattleDamage<I = PlayerId> {
+    pub owner: I,
     pub origin: BattleOrigin,
     pub item: ManufacturedItem,
     pub instance: String,
@@ -182,13 +189,13 @@ pub struct BattleDamage {
     pub shield_ticks: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BattleResult {
-    pub damage: Vec<BattleDamage>,
+pub struct BattleResult<I = PlayerId> {
+    pub damage: Vec<BattleDamage<I>>,
     pub outcome: BattleOutcome,
-    pub participants: Vec<BattleParticipant>,
-    pub rounds: Vec<BattleRound>,
-    pub survivors: Vec<BattleCounts>,
-    pub destroyed: Vec<BattleCounts>,
+    pub participants: Vec<BattleParticipant<I>>,
+    pub rounds: Vec<BattleRound<I>>,
+    pub survivors: Vec<BattleCounts<I>>,
+    pub destroyed: Vec<BattleCounts<I>>,
     pub rng_cursor: (u64, u8),
 }
 struct Unit {
@@ -297,7 +304,7 @@ pub fn apply_combat_hit(
     out.explosion = left > 0 && (lhs < rhs || (r.explosion_inclusive && lhs == rhs));
     Ok(out)
 }
-fn counts(units: &[Unit], p: &[BattleParticipant]) -> Vec<BattleCounts> {
+fn counts<I: Copy>(units: &[Unit], p: &[BattleParticipant<I>]) -> Vec<BattleCounts<I>> {
     p.iter()
         .enumerate()
         .map(|(index, p)| {
@@ -325,11 +332,11 @@ fn add_total(sum: &mut BigUint, n: impl Into<BigUint>) -> Result<(), InvariantEr
         Ok(())
     }
 }
-pub fn resolve_battle(
-    input: &BattleInput,
+pub fn resolve_battle<I: Copy + Ord, T>(
+    input: &BattleInput<I, T>,
     r: &CombatRules,
     rng: &mut RandomStream,
-) -> Result<BattleResult, InvariantError> {
+) -> Result<BattleResult<I>, InvariantError> {
     r.validate()?;
     let mut p = input.participants.clone();
     p.sort_by_key(|p| (p.side, p.owner, p.origin));

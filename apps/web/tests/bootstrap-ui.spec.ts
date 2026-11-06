@@ -1,7 +1,7 @@
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { binding, body, shellFixture } from './fixtures/game'
+import { binding, body, shellFixture, inactiveTutorial } from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
@@ -513,6 +513,8 @@ for (const signup of [false, true]) {
       const request = route.request(),
         path = new URL(request.url()).pathname
       if (path === '/api/auth/config') return route.fallback()
+      if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
+        return inactiveTutorial(route, snapshot.view.viewer_revision)
       if (path === '/api/v1/bootstrap') {
         bootstrapReads++
         return route.fulfill({
@@ -662,6 +664,8 @@ for (const restoreDuringSubmit of [false, true]) {
       const request = route.request(),
         path = new URL(request.url()).pathname
       if (path === '/api/auth/config') return route.fallback()
+      if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
+        return inactiveTutorial(route, snapshot.view.viewer_revision)
       if (path === '/api/v1/bootstrap')
         return route.fulfill({
           json: {
@@ -1140,6 +1144,8 @@ test('mobile startup automatically recovers from a transient restart without sig
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
     if (path === '/api/auth/config') return route.fallback()
+    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
+      return inactiveTutorial(route, snapshot.view.viewer_revision)
     if (path === '/api/v1/bootstrap') {
       reads++
       if (reads === 2) {

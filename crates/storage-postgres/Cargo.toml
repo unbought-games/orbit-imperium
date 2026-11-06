@@ -153,3 +153,19 @@ required-features = ["test-support"]
 [[example]]
 name = "qualify_runtime"
 required-features = ["test-support"]
+
+[[test]]
+name = "onboarding_objectives"
+required-features = ["test-support"]
+
+[[test]]
+name = "mission_sites"
+required-features = ["test-support"]
+
+[[test]]
+name = "site_fleets"
+required-features = ["test-support"]
+
+[[test]]
+name = "tutorial"
+required-features = ["test-support"]

@@ -79,6 +79,8 @@ export function Dispatch({
   const occupiedSlots = useStore(model.store, occupiedFleetSlots)
   const recentlyCopied = useAtomValue(copiedLocationAtom)
   const {
+    site,
+    siteId,
     coordinateProblems,
     coordinatesValid,
     galaxy,
@@ -222,7 +224,7 @@ export function Dispatch({
             <MissionSelector
               value={mission}
               available={
-                draft?.attackGroup
+                draft?.attackGroup || siteId
                   ? ['Attack']
                   : view.capabilities
                       .filter((c) => c.enabled)
@@ -272,43 +274,72 @@ export function Dispatch({
                 </Text>
               </Field>
             )}
-            <DispatchDestinationPreview
-              readOnly={!!draft?.attackGroup}
-              coordinates={destinationCoordinates}
-              kind={targetKind}
-              target={target}
-              lookup={destination.lookup}
-              player={view.binding.player}
-              playerNames={playerNames}
-              value={destinationText}
-              universe={universeName}
-              error={Object.values(coordinateProblems).find(Boolean)}
-              bodies={
-                mission === 'Transport' || mission === 'Deploy'
-                  ? destination.bodies
-                  : undefined
-              }
-              selectedBody={destination.selectedBody?.id}
-              onSelectBody={(id) => {
-                const planet = destination.bodies.find(
-                  (candidate) => candidate.id === id,
-                )
-                if (!planet) return
-                setDestinationText(coordinateText(planet.coordinates))
-                setTargetKind(planet.kind === 'Moon' ? 'moon' : 'planet')
-                clear()
-              }}
-              onChange={(text, kind) => {
-                setDestinationText(text)
-                if (kind) {
-                  setTargetKind(kind)
-                  if (kind === 'debris') setMission('Harvest')
-                  else if (mission === 'Harvest') setMission('Transport')
+            {siteId ? (
+              <section aria-label="Personal site destination">
+                <Heading level={3}>
+                  {site?.title ?? 'Personal introductory site'}
+                </Heading>
+                <Text>
+                  Personal site · [
+                  {coordinateText(
+                    site?.site.destination.coordinates ?? draft!.coordinates,
+                  )}
+                  ]
+                </Text>
+                <Text>
+                  Stockpile loot travels aboard surviving ships. Site-local
+                  debris cannot be collected.
+                </Text>
+                <ButtonLink
+                  variant="secondary"
+                  {...routeTarget(
+                    universeName,
+                    'overview',
+                    view.homeworld_id ?? body.id,
+                  )}
+                >
+                  Return to guidance
+                </ButtonLink>
+              </section>
+            ) : (
+              <DispatchDestinationPreview
+                readOnly={!!draft?.attackGroup}
+                coordinates={destinationCoordinates}
+                kind={targetKind}
+                target={target}
+                lookup={destination.lookup}
+                player={view.binding.player}
+                playerNames={playerNames}
+                value={destinationText}
+                universe={universeName}
+                error={Object.values(coordinateProblems).find(Boolean)}
+                bodies={
+                  mission === 'Transport' || mission === 'Deploy'
+                    ? destination.bodies
+                    : undefined
                 }
-                clear()
-              }}
-            />
-            {recentlyCopied && !draft?.attackGroup && (
+                selectedBody={destination.selectedBody?.id}
+                onSelectBody={(id) => {
+                  const planet = destination.bodies.find(
+                    (candidate) => candidate.id === id,
+                  )
+                  if (!planet) return
+                  setDestinationText(coordinateText(planet.coordinates))
+                  setTargetKind(planet.kind === 'Moon' ? 'moon' : 'planet')
+                  clear()
+                }}
+                onChange={(text, kind) => {
+                  setDestinationText(text)
+                  if (kind) {
+                    setTargetKind(kind)
+                    if (kind === 'debris') setMission('Harvest')
+                    else if (mission === 'Harvest') setMission('Transport')
+                  }
+                  clear()
+                }}
+              />
+            )}
+            {recentlyCopied && !draft?.attackGroup && !siteId && (
               <Text>
                 Recently copied in game: [
                 {coordinateText(recentlyCopied.coordinates)}]{' '}
@@ -329,13 +360,16 @@ export function Dispatch({
                 </Button>
               </Text>
             )}
-            {mission === 'Attack' && !targetProblem && !attackWarning && (
-              <Text className={styles.destinationNotice}>
-                Beginner protection can prevent attacks between players of
-                different strengths. Eligibility is checked again at review and
-                departure.
-              </Text>
-            )}
+            {mission === 'Attack' &&
+              !siteId &&
+              !targetProblem &&
+              !attackWarning && (
+                <Text className={styles.destinationNotice}>
+                  Beginner protection can prevent attacks between players of
+                  different strengths. Eligibility is checked again at review
+                  and departure.
+                </Text>
+              )}
             {(targetProblem || attackWarning) && (
               <Text
                 className={styles.destinationNotice}
@@ -446,6 +480,33 @@ export function Dispatch({
               {error}
             </Text>
           )}
+          {siteId && (targetProblem || error) && (
+            <div className={styles.actions}>
+              <ButtonLink
+                variant="secondary"
+                {...routeTarget(universeName, 'fleets', body.id)}
+              >
+                View fleets
+              </ButtonLink>
+              <ButtonLink
+                variant="secondary"
+                {...routeTarget(universeName, 'shipyard', body.id)}
+              >
+                Open Shipyard
+              </ButtonLink>
+              <ButtonLink
+                variant="secondary"
+                {...routeTarget(
+                  universeName,
+                  'resources',
+                  body.id,
+                  'DeuteriumSynthesizer',
+                )}
+              >
+                Develop fuel production
+              </ButtonLink>
+            </div>
+          )}
           <DispatchFeedback
             model={model}
             attempt={submittedAttempt}
@@ -462,6 +523,7 @@ export function Dispatch({
       </div>
       {quote && (
         <DispatchReview
+          site={site}
           quote={quote}
           body={body}
           view={view}

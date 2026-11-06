@@ -148,6 +148,9 @@ pub fn phalanx_endpoints_from_origin(
         return Err(InvariantError("phalanx origin identity mismatch".into()));
     }
     let destination = match fleet.intent.destination {
+        MissionDestination::Site { .. } => {
+            return Err(InvariantError("private site is not scannable".into()));
+        }
         MissionDestination::Body {
             id, expected_kind, ..
         } => PhalanxEndpoint {

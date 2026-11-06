@@ -8,6 +8,7 @@ import {
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
 type Request = {
+  site?: S['SiteSelection4']
   observation?: {
     coordinates: S['Coordinates']
     target?: S['MissionDestination4']
@@ -41,14 +42,18 @@ export function useDispatchTiming(
       const input: Request = JSON.parse(key)
       void (async () => {
         try {
-          const destination = await model.world({
-            type: 'ResolveDestination',
-            selection: dispatchSelection(
-              input.intent.mission,
-              input.coordinates,
-              input.kind,
-            ),
-          })
+          const destination = await model.world(
+            input.site
+              ? { type: 'ResolveMissionSite', selection: input.site }
+              : {
+                  type: 'ResolveDestination',
+                  selection: dispatchSelection(
+                    input.intent.mission,
+                    input.coordinates,
+                    input.kind,
+                  ),
+                },
+          )
           if (!current) return
           if (!destination || !('type' in destination)) throw Error('NotFound')
           const problem = dispatchObservationError(

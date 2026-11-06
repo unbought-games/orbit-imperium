@@ -10,6 +10,7 @@ export type GalaxySearch = {
   system?: number
   position?: number
   target?: LocationKind
+  site?: string
 }
 const positiveInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0
@@ -38,6 +39,16 @@ export function validateGalaxySearch(
     if (!['planet', 'moon', 'debris'].includes(String(search.target)))
       throw Error('Invalid target kind.')
     result.target = search.target as LocationKind
+  }
+  if (search.site !== undefined) {
+    if (
+      typeof search.site !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        search.site,
+      )
+    )
+      throw Error('Invalid personal site address.')
+    result.site = search.site
   }
   return result
 }

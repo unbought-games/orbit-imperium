@@ -1,4 +1,5 @@
 import { inlineBaseline } from './fixtures/identity-typography'
+import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
@@ -55,7 +56,7 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
           { player: owners[3], username: 'RegularCommander' },
         ],
   )
-  await page.route('**/world', (route) => {
+  await routeWorld(page, (route) => {
     const q = route.request().postDataJSON()
     return route.fulfill({
       json: {

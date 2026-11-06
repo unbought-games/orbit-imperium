@@ -1,3 +1,5 @@
+import { useStore } from 'zustand'
+import { siteContext } from './tutorial/model'
 import { CheckCircle2, Clock3 } from 'lucide-react'
 import type { Attempt } from '../client-model/commands'
 import type { Coordinator } from '../client-model/coordinator'
@@ -6,6 +8,7 @@ import { CoordinateLink } from './coordinate-link'
 import styles from './missions.module.css'
 
 export function DispatchFeedback({
+  model,
   attempt,
   destination,
   origin,
@@ -15,6 +18,7 @@ export function DispatchFeedback({
   destination: components['schemas']['Coordinates'] | undefined
   origin: string
 }) {
+  const tutorial = useStore(model.store, (s) => s.tutorial.data)
   const command = attempt?.envelope.command
   if (
     !attempt ||
@@ -30,7 +34,9 @@ export function DispatchFeedback({
   const message =
     attempt.status === 'committed'
       ? attempt.reconciled
-        ? 'Fleet sent. You can prepare another fleet.'
+        ? command.action.intent.destination.type === 'Site'
+          ? 'Fleet sent. Follow its journey in Fleets.'
+          : 'Fleet sent. You can prepare another fleet.'
         : 'Fleet sent. Updating ships, resources and fleet activity…'
       : attempt.status === 'submitting'
         ? 'Sending fleet order…'
@@ -47,17 +53,27 @@ export function DispatchFeedback({
       <div>
         <strong>
           {command.action.intent.mission} to{' '}
-          <CoordinateLink
-            at={destination}
-            target={
-              command.action.intent.destination.type === 'Body' &&
-              command.action.intent.destination.expected_kind === 'Moon'
-                ? 'moon'
-                : command.action.intent.destination.type === 'Debris'
-                  ? 'debris'
-                  : 'planet'
-            }
-          />
+          {command.action.intent.destination.type === 'Site' ? (
+            <span>
+              {siteContext(
+                tutorial,
+                command.action.intent.destination.selection.id,
+              )?.title ?? 'Personal site'}{' '}
+              · private operation
+            </span>
+          ) : (
+            <CoordinateLink
+              at={destination}
+              target={
+                command.action.intent.destination.type === 'Body' &&
+                command.action.intent.destination.expected_kind === 'Moon'
+                  ? 'moon'
+                  : command.action.intent.destination.type === 'Debris'
+                    ? 'debris'
+                    : 'planet'
+              }
+            />
+          )}
         </strong>
         <p>{message}</p>
       </div>

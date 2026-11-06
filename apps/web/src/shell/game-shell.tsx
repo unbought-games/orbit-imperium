@@ -1,3 +1,5 @@
+import { TutorialExperienceAction } from '../features/tutorial/experience-action'
+import { TutorialSync } from '../features/tutorial/use-tutorial'
 import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
@@ -114,6 +116,7 @@ function GameShellContent() {
   }, [abandonment, requestedBody, view, navigate, universeName])
   const heading = useRef<HTMLHeadingElement>(null)
   const previousPathname = useRef(location.pathname)
+  const previousGalaxySite = useRef(location.search.site)
   const canonicalizing =
     available &&
     !params.coordinates &&
@@ -151,12 +154,15 @@ function GameShellContent() {
       page === 'galaxy' &&
       available &&
       previousPathname.current === location.pathname &&
-      document.activeElement?.closest('[data-galaxy-navigation]')
+      (document.activeElement?.closest('[data-galaxy-navigation]') ||
+        location.search.site ||
+        previousGalaxySite.current)
     const returningToReports =
       page === 'reports' &&
       /\/reports\/?$/.test(location.pathname) &&
       previousPathname.current?.startsWith(`${location.pathname}/`)
     previousPathname.current = location.pathname
+    previousGalaxySite.current = location.search.site
     if (browsingGalaxy) return
     heading.current?.focus({ preventScroll: !!returningToReports })
     if (returningToReports) return
@@ -167,7 +173,14 @@ function GameShellContent() {
         heading.current?.scrollIntoView({ block: 'nearest' })
     })
     return () => cancelAnimationFrame(frame)
-  }, [location.pathname, location.searchStr, available, page, universeName])
+  }, [
+    location.pathname,
+    location.searchStr,
+    location.hash,
+    available,
+    page,
+    universeName,
+  ])
   function prepareDispatch(draft: DispatchDraft) {
     if (!body) return
     const origin =
@@ -229,6 +242,7 @@ function GameShellContent() {
       ref={pinned.shell}
       data-has-command-hud={view.protocol === 4 || undefined}
     >
+      <TutorialSync />
       <div className={styles['shell-columns']}>
         <div className={styles.header} ref={pinned.header}>
           <header className={styles.identity} data-touch-control="">
@@ -357,7 +371,13 @@ function GameShellContent() {
         <div className={styles.center}>
           <ContentColumn
             as="main"
-            width={page === 'dispatch' ? 'focused' : 'full'}
+            width={
+              page === 'briefing'
+                ? 'reading'
+                : page === 'dispatch'
+                  ? 'focused'
+                  : 'full'
+            }
             id="main"
             tabIndex={-1}
             className={styles['work-area']}
@@ -389,6 +409,7 @@ function GameShellContent() {
               <Heading level={1} tabIndex={-1} ref={heading}>
                 {title}
               </Heading>
+              <TutorialExperienceAction page={page} />
             </div>
             {!available ? (
               <StatePanel title="Choose an available destination">

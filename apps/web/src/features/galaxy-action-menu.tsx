@@ -1,8 +1,8 @@
-import { Crosshair, Ellipsis, Recycle, Rocket, Truck } from 'lucide-react'
+import { Crosshair, Recycle, Rocket, Truck } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { MissileLaunchPresentation } from './missile-launch-action'
 import { Menu } from '@base-ui/react/menu'
-import { Button } from '../ui/button'
+import { GalaxyActionsTrigger } from './galaxy-actions-trigger'
 import type { components } from '../contracts'
 import type { DispatchDraft } from './missions'
 import type { galaxyMissionActions } from './galaxy-mission-actions'
@@ -56,7 +56,7 @@ export function GalaxyActionMenu({
       >
         <Menu.Trigger
           ref={trigger}
-          render={<Button variant="ghost" className={styles.actionTrigger} />}
+          render={<GalaxyActionsTrigger target={target} />}
           aria-label={`Actions for ${target}`}
           disabled={!enabled}
           title={
@@ -64,14 +64,7 @@ export function GalaxyActionMenu({
               ? `Actions for ${target}`
               : 'No applicable actions for this position'
           }
-        >
-          <span className={styles.actionText}>Actions</span>
-          <Ellipsis
-            className={styles.actionIcon}
-            size={18}
-            aria-hidden="true"
-          />
-        </Menu.Trigger>
+        />
         <Menu.Portal>
           <Menu.Positioner
             sideOffset={4}

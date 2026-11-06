@@ -223,4 +223,8 @@ mod attack_groups;
 
 mod phalanx;
 
+mod objectives;
 mod report_pages;
+mod tutorial;
+
+mod mission_sites;

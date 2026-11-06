@@ -1,0 +1,389 @@
+{
+  "detail": {
+    "as_of_ms": 111000,
+    "binding": {
+      "account": "8d5b9c93-4e8a-4f2e-b35c-4e25602b9760",
+      "epoch": "a43982a8-4d85-4567-af88-7788319b65f2",
+      "player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f",
+      "universe": "9bb31bb0-40a3-4074-a8b2-9d08950bd4e9"
+    },
+    "data": {
+      "header": {
+        "defense_investment": null,
+        "fleet_investment": null,
+        "hidden": false,
+        "id": "8d62be8e-f055-74dc-71ba-1e505b4a3bd9",
+        "kind": "SiteEncounter",
+        "observed_at": 111000,
+        "player_alliances": {},
+        "preview": {
+          "at": 111000,
+          "cargo": {
+            "crystal": "103000000",
+            "deuterium": "103000000",
+            "metal": "103000000"
+          },
+          "coordinates": {
+            "galaxy": 1,
+            "position": 8,
+            "system": 50
+          },
+          "debris": {
+            "crystal": "600000000",
+            "deuterium": "0",
+            "metal": "0"
+          },
+          "debris_policy": "RetainedSiteLocal",
+          "fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a",
+          "kind": "SiteEncounter",
+          "loot": {
+            "crystal": "100000000",
+            "deuterium": "100000000",
+            "metal": "100000000"
+          },
+          "outcome": "AttackerVictory",
+          "site": "134d5d1d-e66b-0f2f-105d-4af27f3807c6"
+        },
+        "read": false,
+        "shared": false,
+        "starred": false
+      },
+      "payload": {
+        "at": 111000,
+        "battle": {
+          "gross_losses": [
+            {
+              "origin": {
+                "Fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a"
+              },
+              "owner": {
+                "Player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f"
+              },
+              "side": "Attacker",
+              "units": []
+            },
+            {
+              "origin": {
+                "Site": "8843750f-5475-920b-8bae-409c13257b86"
+              },
+              "owner": {
+                "Npc": "8843750f-5475-920b-8bae-409c13257b86"
+              },
+              "side": "Defender",
+              "units": [
+                {
+                  "count": "1",
+                  "item": {
+                    "id": "SolarSatellite",
+                    "kind": "Ship"
+                  }
+                }
+              ]
+            }
+          ],
+          "outcome": "AttackerVictory",
+          "participants": [
+            {
+              "origin": {
+                "Fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a"
+              },
+              "owner": {
+                "Player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f"
+              },
+              "side": "Attacker",
+              "technology": [
+                0,
+                0,
+                0
+              ],
+              "units": [
+                {
+                  "count": "1",
+                  "item": {
+                    "id": "LightFighter",
+                    "kind": "Ship"
+                  }
+                },
+                {
+                  "count": "1",
+                  "item": {
+                    "id": "SmallCargo",
+                    "kind": "Ship"
+                  }
+                }
+              ]
+            },
+            {
+              "origin": {
+                "Site": "8843750f-5475-920b-8bae-409c13257b86"
+              },
+              "owner": {
+                "Npc": "8843750f-5475-920b-8bae-409c13257b86"
+              },
+              "side": "Defender",
+              "technology": [
+                0,
+                0,
+                0
+              ],
+              "units": [
+                {
+                  "count": "1",
+                  "item": {
+                    "id": "SolarSatellite",
+                    "kind": "Ship"
+                  }
+                }
+              ]
+            }
+          ],
+          "rounds": [
+            {
+              "end": [
+                {
+                  "origin": {
+                    "Fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a"
+                  },
+                  "owner": {
+                    "Player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f"
+                  },
+                  "side": "Attacker",
+                  "units": [
+                    {
+                      "count": "1",
+                      "item": {
+                        "id": "SmallCargo",
+                        "kind": "Ship"
+                      }
+                    },
+                    {
+                      "count": "1",
+                      "item": {
+                        "id": "LightFighter",
+                        "kind": "Ship"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "origin": {
+                    "Site": "8843750f-5475-920b-8bae-409c13257b86"
+                  },
+                  "owner": {
+                    "Npc": "8843750f-5475-920b-8bae-409c13257b86"
+                  },
+                  "side": "Defender",
+                  "units": []
+                }
+              ],
+              "fire": [
+                {
+                  "explosions": "1",
+                  "hull_removed_ticks": "14900000",
+                  "origin": {
+                    "Fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a"
+                  },
+                  "owner": {
+                    "Player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f"
+                  },
+                  "raw_attack_ticks": "25500000",
+                  "shield_removed_ticks": "100000",
+                  "shots": "6",
+                  "side": "Attacker"
+                },
+                {
+                  "explosions": "0",
+                  "hull_removed_ticks": "0",
+                  "origin": {
+                    "Site": "8843750f-5475-920b-8bae-409c13257b86"
+                  },
+                  "owner": {
+                    "Npc": "8843750f-5475-920b-8bae-409c13257b86"
+                  },
+                  "raw_attack_ticks": "100000",
+                  "shield_removed_ticks": "100000",
+                  "shots": "1",
+                  "side": "Defender"
+                }
+              ],
+              "number": 1,
+              "start": [
+                {
+                  "origin": {
+                    "Fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a"
+                  },
+                  "owner": {
+                    "Player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f"
+                  },
+                  "side": "Attacker",
+                  "units": [
+                    {
+                      "count": "1",
+                      "item": {
+                        "id": "SmallCargo",
+                        "kind": "Ship"
+                      }
+                    },
+                    {
+                      "count": "1",
+                      "item": {
+                        "id": "LightFighter",
+                        "kind": "Ship"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "origin": {
+                    "Site": "8843750f-5475-920b-8bae-409c13257b86"
+                  },
+                  "owner": {
+                    "Npc": "8843750f-5475-920b-8bae-409c13257b86"
+                  },
+                  "side": "Defender",
+                  "units": [
+                    {
+                      "count": "1",
+                      "item": {
+                        "id": "SolarSatellite",
+                        "kind": "Ship"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "survivors": [
+            {
+              "origin": {
+                "Fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a"
+              },
+              "owner": {
+                "Player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f"
+              },
+              "side": "Attacker",
+              "units": [
+                {
+                  "count": "1",
+                  "item": {
+                    "id": "SmallCargo",
+                    "kind": "Ship"
+                  }
+                },
+                {
+                  "count": "1",
+                  "item": {
+                    "id": "LightFighter",
+                    "kind": "Ship"
+                  }
+                }
+              ]
+            },
+            {
+              "origin": {
+                "Site": "8843750f-5475-920b-8bae-409c13257b86"
+              },
+              "owner": {
+                "Npc": "8843750f-5475-920b-8bae-409c13257b86"
+              },
+              "side": "Defender",
+              "units": []
+            }
+          ]
+        },
+        "cargo": {
+          "crystal": "103000000",
+          "deuterium": "103000000",
+          "metal": "103000000"
+        },
+        "coordinates": {
+          "galaxy": 1,
+          "position": 8,
+          "system": 50
+        },
+        "debris": {
+          "crystal": "600000000",
+          "deuterium": "0",
+          "metal": "0"
+        },
+        "debris_policy": "RetainedSiteLocal",
+        "fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a",
+        "kind": "SiteEncounter",
+        "loot": {
+          "crystal": "100000000",
+          "deuterium": "100000000",
+          "metal": "100000000"
+        },
+        "site": "134d5d1d-e66b-0f2f-105d-4af27f3807c6"
+      },
+      "player_alliances": {},
+      "player_names": {}
+    },
+    "protocol": 4,
+    "request_id": "9f956dad-33ed-4100-b743-20378cad0db3",
+    "sampled_at": 111000,
+    "viewer_revision": "8"
+  },
+  "inbox": {
+    "as_of_ms": 111000,
+    "binding": {
+      "account": "8d5b9c93-4e8a-4f2e-b35c-4e25602b9760",
+      "epoch": "a43982a8-4d85-4567-af88-7788319b65f2",
+      "player": "e1866d9b-c0ff-441b-9e95-38fee2c45f9f",
+      "universe": "9bb31bb0-40a3-4074-a8b2-9d08950bd4e9"
+    },
+    "data": {
+      "as_of_ms": 111000,
+      "has_more": false,
+      "items": [
+        {
+          "defense_investment": null,
+          "fleet_investment": null,
+          "hidden": false,
+          "id": "8d62be8e-f055-74dc-71ba-1e505b4a3bd9",
+          "kind": "SiteEncounter",
+          "observed_at": 111000,
+          "player_alliances": {},
+          "preview": {
+            "at": 111000,
+            "cargo": {
+              "crystal": "103000000",
+              "deuterium": "103000000",
+              "metal": "103000000"
+            },
+            "coordinates": {
+              "galaxy": 1,
+              "position": 8,
+              "system": 50
+            },
+            "debris": {
+              "crystal": "600000000",
+              "deuterium": "0",
+              "metal": "0"
+            },
+            "debris_policy": "RetainedSiteLocal",
+            "fleet": "9783b29c-81d0-a1eb-e2e6-a27c18c7533a",
+            "kind": "SiteEncounter",
+            "loot": {
+              "crystal": "100000000",
+              "deuterium": "100000000",
+              "metal": "100000000"
+            },
+            "outcome": "AttackerVictory",
+            "site": "134d5d1d-e66b-0f2f-105d-4af27f3807c6"
+          },
+          "read": false,
+          "shared": false,
+          "starred": false
+        }
+      ],
+      "next_cursor": null,
+      "player_names": {}
+    },
+    "protocol": 4,
+    "request_id": "c4b4207a-25a9-4003-8c6b-d2f9d4d57f91",
+    "sampled_at": 111000,
+    "viewer_revision": "8"
+  }
+}

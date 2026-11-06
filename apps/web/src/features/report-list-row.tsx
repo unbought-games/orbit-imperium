@@ -55,7 +55,9 @@ export function ReportListRow({
   const profiles = usePlayerDisplays()
   const preview = reportPreview(report.preview, model.binding?.player)
   const outcome =
-    report.preview?.kind === 'Combat' && report.preview.outcome
+    (report.preview?.kind === 'Combat' ||
+      report.preview?.kind === 'SiteEncounter') &&
+    report.preview.outcome
       ? reportListTitle(report, model.binding?.player)
       : undefined
   const identity = reportListIdentity(
@@ -158,19 +160,24 @@ export function ReportListRow({
               </span>
             )}
           </Link>
-          {preview.coordinates && !route && (
-            <CoordinateLink
-              at={preview.coordinates}
-              origin={origin}
-              target={
-                preview.targetKind ??
-                (report.kind === 'Harvested' ? 'debris' : 'planet')
-              }
-              className={styles.location}
-            >
-              {coordinates({ coordinates: preview.coordinates })}
-            </CoordinateLink>
+          {preview.coordinates && report.preview?.kind === 'SiteEncounter' && (
+            <span>{preview.location}</span>
           )}
+          {preview.coordinates &&
+            !route &&
+            report.preview?.kind !== 'SiteEncounter' && (
+              <CoordinateLink
+                at={preview.coordinates}
+                origin={origin}
+                target={
+                  preview.targetKind ??
+                  (report.kind === 'Harvested' ? 'debris' : 'planet')
+                }
+                className={styles.location}
+              >
+                {coordinates({ coordinates: preview.coordinates })}
+              </CoordinateLink>
+            )}
         </div>
         {(sort === 'fleet' || sort === 'defenses') && (
           <span className={styles.preview}>

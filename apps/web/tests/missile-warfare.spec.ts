@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -226,7 +227,7 @@ async function setup(page: Parameters<typeof shellFixture>[0]) {
       },
     })
   })
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const q = route.request().postDataJSON()
     const common = {
       protocol: 4,

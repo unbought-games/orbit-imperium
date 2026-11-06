@@ -198,6 +198,9 @@ pub struct WorldQuery {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldQueryKind {
+    Tutorial,
+    MissionSites,
+    ResolveMissionSite { selection: SiteSelection },
     DepotSupplyQuote { intent: DepotSupplyIntent },
     AbandonmentQuote { body: BodyId },
     MissileQuote { intent: MissileIntent },
@@ -276,7 +279,69 @@ pub enum ReportSort4 {
     Fleet,
     Defenses,
 }
+/// HTTP-safe projection; domain evidence and its numeric quantities stay server-side.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MilestoneReceiptView {
+    pub id: OperationId,
+    pub program: String,
+    pub definition_version: u32,
+    pub objective: String,
+    pub explanation: String,
+    pub beneficiary: PlayerId,
+    pub homeworld: BodyId,
+    pub resources: ResourceDto,
+    pub granted_by: InputId,
+    pub granted_at: OrderKey,
+}
+impl From<MilestoneReceipt> for MilestoneReceiptView {
+    fn from(receipt: MilestoneReceipt) -> Self {
+        Self {
+            id: receipt.id,
+            program: receipt.program,
+            definition_version: receipt.definition_version,
+            objective: receipt.objective,
+            explanation: receipt.explanation,
+            beneficiary: receipt.beneficiary,
+            homeworld: receipt.homeworld,
+            resources: receipt.resources.into(),
+            granted_by: receipt.granted_by,
+            granted_at: receipt.granted_at,
+        }
+    }
+}
+
 impl<S: GameStore> GameService<S> {
+    /// Authenticated private receipts; no public grant or claim action is exposed.
+    pub async fn milestone_receipts(
+        &self,
+        p: Principal,
+        context: QueryContext,
+    ) -> Result<ReadSnapshot<BoundWorld<Vec<MilestoneReceiptView>>>, ServiceError> {
+        Self::principal(p, context.binding)?;
+        self.store.bot_observe(context.binding).await?;
+        let ReadSnapshot {
+            facts: (facts, revision),
+            progress,
+        } = self.store.bound_world(context.binding).await?;
+        let data = objective_receipts(&facts.state, p.player)
+            .map_err(|_| ServiceError::InvariantFailure)?
+            .into_iter()
+            .map(MilestoneReceiptView::from)
+            .collect();
+        Ok(ReadSnapshot {
+            progress,
+            facts: BoundWorld {
+                protocol: 4,
+                binding: context.binding,
+                request_id: context.request_id,
+                viewer_revision: revision.to_string(),
+                sampled_at: facts.at,
+                as_of_ms: facts.at,
+                data,
+            },
+        })
+    }
+
     pub async fn world_presence(
         &self,
         p: Principal,
@@ -333,6 +398,47 @@ impl<S: GameStore> GameService<S> {
             .bound_world_query(q.context.binding, q.query.clone())
             .await?;
         let data = match q.query {
+            WorldQueryKind::Tutorial => serde_json::to_value(tutorial_view(
+                &facts.state,
+                &facts.rules,
+                p.player,
+                facts.at,
+            )?),
+            WorldQueryKind::MissionSites => {
+                let world =
+                    world_facts(&facts.state).map_err(|_| ServiceError::InvariantFailure)?;
+                let sites = world
+                    .records
+                    .mission_sites
+                    .values()
+                    .filter(|site| {
+                        site.creation.issuance.beneficiary == p.player
+                            && site.disclosed()
+                            && !site.retired()
+                    })
+                    .map(|site| {
+                        site.view(facts.state.universe, facts.state.epoch, p.player)
+                            .map(MissionSiteView::from)
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(crate::mission_sites::site_error)?;
+                serde_json::to_value(sites)
+            }
+            WorldQueryKind::ResolveMissionSite { selection } => {
+                let world =
+                    world_facts(&facts.state).map_err(|_| ServiceError::InvariantFailure)?;
+                if !world.site_fleets_enabled {
+                    return Err(ServiceError::GameRejected(GameError::UnavailableContent));
+                }
+                let site = world
+                    .records
+                    .mission_sites
+                    .get(&selection.id)
+                    .ok_or(ServiceError::NotFound)?;
+                site.resolve(facts.state.universe, facts.state.epoch, p.player, selection)
+                    .map_err(crate::mission_sites::site_error)?;
+                serde_json::to_value(MissionDestination::Site { selection })
+            }
             WorldQueryKind::Galaxy { galaxy, system } => {
                 let system = galaxy_system(
                     &facts.state,

@@ -8,6 +8,7 @@ import {
 
 it('keeps primary destinations and their details under the same mobile tabs', () => {
   expect(navigationAnchor('overview')).toBe('Empire')
+  expect(navigationAnchor('briefing')).toBe('Menu')
   for (const page of [...buildPages, 'resource-settings'] as const)
     expect(navigationAnchor(page)).toBe('Develop')
   for (const page of fleetPages) expect(navigationAnchor(page)).toBe('Fleets')

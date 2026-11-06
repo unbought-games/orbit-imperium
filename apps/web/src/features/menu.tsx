@@ -1,5 +1,16 @@
+import { useTutorial } from './tutorial/use-tutorial'
+import {
+  briefingEntryAvailable,
+  tutorialPages,
+  tutorialMorePages,
+} from './tutorial/model'
+import { Disclosure } from '../ui/disclosure'
 import {
   ChevronRight,
+  ClipboardList,
+  Radar,
+  Send,
+  Factory,
   LogOut,
   Mail,
   MessageCircle,
@@ -21,7 +32,11 @@ import { Button, ButtonLink } from '../ui/button'
 import { PlayerName } from './player-name'
 import styles from './menu.module.css'
 
-const icons = {
+const icons: Partial<Record<Page, typeof Settings>> = {
+  briefing: ClipboardList,
+  fleets: Radar,
+  dispatch: Send,
+  facilities: Factory,
   messages: MessageCircle,
   alliance: Shield,
   'high-scores': Trophy,
@@ -32,6 +47,19 @@ const icons = {
 
 export function MenuScreen() {
   const { universeName, view, body, model, logout } = useGameScreen()
+  const { data: tutorial } = useTutorial()
+  const visible = tutorialPages(tutorial, view.protocol === 4 ? view : null)
+  const more = tutorialMorePages(visible)
+  const groups: { title: string; pages: Page[] }[] = [
+    ...(briefingEntryAvailable(tutorial, view.protocol)
+      ? [{ title: 'Guidance', pages: ['briefing' as const] }]
+      : []),
+    ...navigationGroups.map((group) => ({
+      ...group,
+      pages: group.pages.filter((p) => !visible || visible.has(p)),
+    })),
+    ...(more.length ? [{ title: 'More', pages: more }] : []),
+  ]
   const unread = useStore(model.store, hasUnreadReports)
   const count = useStore(model.store, unreadReportCount)
   const available = (page: Page) =>
@@ -42,58 +70,65 @@ export function MenuScreen() {
   return (
     <div className={styles.page}>
       <nav aria-label="Menu destinations" className={styles.groups}>
-        {navigationGroups.map(({ title, pages }) => {
+        {groups.map(({ title, pages }) => {
           const destinations = pages.filter(available)
+          const links = destinations.map((page) => {
+            const Icon = icons[page] ?? ChevronRight
+            return (
+              <ButtonLink
+                key={page}
+                variant="ghost"
+                className={styles.row}
+                {...routeTarget(universeName, page, body?.id)}
+                aria-label={
+                  page === 'reports' && unread
+                    ? 'Reports — unread reports'
+                    : undefined
+                }
+                data-analytics={`navigate_${page}`}
+                onClick={(event) => {
+                  if (
+                    event.button === 0 &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.shiftKey &&
+                    !event.altKey
+                  )
+                    void model.recordPresence('AccountVisit', null)
+                }}
+              >
+                <Icon size={16} aria-hidden="true" />
+                <span className={styles.rowLabel}>{pageTitles[page]}</span>
+                {page === 'reports' && unread && (
+                  <span
+                    className={styles.unread}
+                    aria-label={
+                      count
+                        ? `${count === 99 ? '99 or more' : count} unread reports`
+                        : 'Unread reports'
+                    }
+                    role="status"
+                  >
+                    {count ? (count === 99 ? '99+' : count) : null}
+                  </span>
+                )}
+                <ChevronRight size={16} aria-hidden="true" />
+              </ButtonLink>
+            )
+          })
           return (
             destinations.length > 0 && (
               <section key={title} aria-label={title}>
-                <h2>{title}</h2>
-                {destinations.map((page) => {
-                  const Icon = icons[page]
-                  return (
-                    <ButtonLink
-                      key={page}
-                      variant="ghost"
-                      className={styles.row}
-                      {...routeTarget(universeName, page, body?.id)}
-                      aria-label={
-                        page === 'reports' && unread
-                          ? 'Reports — unread reports'
-                          : undefined
-                      }
-                      data-analytics={`navigate_${page}`}
-                      onClick={(event) => {
-                        if (
-                          event.button === 0 &&
-                          !event.metaKey &&
-                          !event.ctrlKey &&
-                          !event.shiftKey &&
-                          !event.altKey
-                        )
-                          void model.recordPresence('AccountVisit', null)
-                      }}
-                    >
-                      <Icon size={16} aria-hidden="true" />
-                      <span className={styles.rowLabel}>
-                        {pageTitles[page]}
-                      </span>
-                      {page === 'reports' && unread && (
-                        <span
-                          className={styles.unread}
-                          aria-label={
-                            count
-                              ? `${count === 99 ? '99 or more' : count} unread reports`
-                              : 'Unread reports'
-                          }
-                          role="status"
-                        >
-                          {count ? (count === 99 ? '99+' : count) : null}
-                        </span>
-                      )}
-                      <ChevronRight size={16} aria-hidden="true" />
-                    </ButtonLink>
-                  )
-                })}
+                {title === 'More' ? (
+                  <Disclosure summary="More">
+                    <nav aria-label="More navigation">{links}</nav>
+                  </Disclosure>
+                ) : (
+                  <>
+                    <h2>{title}</h2>
+                    {links}
+                  </>
+                )}
               </section>
             )
           )

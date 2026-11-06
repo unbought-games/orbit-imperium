@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readdirSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -214,7 +215,7 @@ for (const width of [1440, 390]) {
       path: `test-results/insignia-permanent-${width}x1000.png`,
     })
     expect(appearance()?.recipe.symbol).toBe('test-star')
-    await page.route('**/world', (route) => {
+    await routeWorld(page, (route) => {
       const q = route.request().postDataJSON()
       return route.fulfill({
         json: {
@@ -391,7 +392,7 @@ for (const width of [1440, 390]) {
       },
       { player: binding.player, username: 'Aurelia' },
     ])
-    await page.route('**/world', (route) => {
+    await routeWorld(page, (route) => {
       const q = route.request().postDataJSON()
       return route.fulfill({
         json: {

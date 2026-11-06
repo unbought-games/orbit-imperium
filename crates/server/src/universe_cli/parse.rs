@@ -48,7 +48,11 @@ pub(super) fn parse_for_mode(
             .transpose()?
             .unwrap_or_else(|| Uuid::new_v4().into());
         let immutable = UniverseImmutable {
-            speed: number(&mut values, "--speed", 5)? as i32,
+            speed: number(
+                &mut values,
+                "--speed",
+                UniverseImmutable::default().speed as u32,
+            )? as i32,
             galaxies: number(&mut values, "--galaxies", 1)?,
             systems_per_galaxy: number(&mut values, "--systems-per-galaxy", 100)?,
             positions_per_system: number(&mut values, "--positions-per-system", 15)?,

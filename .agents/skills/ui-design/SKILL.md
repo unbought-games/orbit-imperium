@@ -24,10 +24,13 @@ layout local. Avoid accumulating exceptions against another component's markup.
 ## Verify the result
 
 Exercise the changed flow in the running app, including relevant transitions and
-loading, empty, error, focus, and touch states. Check desktop and mobile. Inspect
-fresh rendered pixels after the final edit and correct visible defects before
-claiming completion. Use focused tests for behavior; they do not establish visual
-quality.
+loading, empty, error, focus, and touch states. For every UX change, capture
+screenshots of the changed screen and relevant states at desktop and mobile
+sizes, then look at the images. Ask: Does it look correct? Does it look good?
+What is wrong, and what could be better? Check alignment, sizing, hierarchy,
+spacing, readability, and clarity in context—not just the edited element.
+Fix visible defects and capture fresh screenshots after the final adjustment.
+Use focused tests for behavior; they do not establish visual quality.
 
 Follow AGENTS.md for screenshot capture and delivery. Respect explicit user
 overrides; if they prevent visual verification, state what remains unverified.

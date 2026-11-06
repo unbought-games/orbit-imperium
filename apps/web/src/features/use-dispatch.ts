@@ -1,3 +1,4 @@
+import { siteContext } from './tutorial/model'
 import { observedBody } from './galaxy-body'
 import { useDispatchDestination } from './use-dispatch-destination'
 import { coordinateFields } from '../ui/coordinate-input-model'
@@ -46,6 +47,13 @@ export function useDispatch({
   body: S['BodyV3']
   draft: DispatchDraft | null
 }) {
+  const tutorial = useStore(model.store, (s) => s.tutorial)
+  const siteId =
+    draft?.target?.type === 'Site' ? draft.target.selection.id : undefined
+  const site = siteContext(tutorial.data, siteId)
+  const siteSelection =
+    site?.site.destination.selection ??
+    (draft?.target?.type === 'Site' ? draft.target.selection : undefined)
   const [mission, setMission] = useState<DispatchDraft['mission']>(
       draft?.attackGroup ? 'Attack' : (draft?.mission ?? 'Transport'),
     ),
@@ -86,7 +94,7 @@ export function useDispatch({
     model,
     view,
     body.id,
-    destinationCoordinates,
+    siteId ? null : destinationCoordinates,
     targetKind,
     mission,
   )
@@ -113,7 +121,17 @@ export function useDispatch({
                 body.id,
               )
             : ''
-  const targetProblem = localTargetProblem || destination.problem
+  const targetProblem = siteId
+    ? !site
+      ? tutorial.loading
+        ? 'Receiving private site…'
+        : 'Site unavailable. Return to opening guidance and refresh the briefing.'
+      : site.site.retired
+        ? 'This introductory opportunity has ended. Follow accepted fleets or return to guidance.'
+        : site.busy
+          ? 'An operation is already in flight. Follow it in Fleets.'
+          : ''
+    : localTargetProblem || destination.problem
   const attackWarning = observedMissionWarning(
     mission,
     observedTarget ?? undefined,
@@ -146,6 +164,7 @@ export function useDispatch({
     model,
     timingReady
       ? {
+          site: siteSelection,
           kind: targetKind === 'moon' ? 'Moon' : 'Planet',
           coordinates: {
             galaxy: Number(galaxy),
@@ -222,6 +241,20 @@ export function useDispatch({
     setBusy(false)
     setSubmitted(null)
   }
+  useEffect(() => {
+    if (quote?.intent.destination.type !== 'Site' || !site) return
+    if (
+      site.site.retired ||
+      site.busy ||
+      quote.intent.destination.selection.expected_revision !==
+        site.site.destination.selection.expected_revision
+    ) {
+      setQuote(null)
+      setError(
+        'This site changed. Check its current briefing and review your fleet again.',
+      )
+    }
+  }, [quote, site])
   const quotedGroup = view.attack_groups?.find(
     (g) => g.id === quote?.intent.attack_group,
   )
@@ -302,12 +335,20 @@ export function useDispatch({
         targetKind === 'moon' ? 'Moon' : 'Planet',
       )
       const destination = await model
-        .world({
-          type: 'ResolveDestination',
-          selection,
-        })
+        .world(
+          siteSelection
+            ? { type: 'ResolveMissionSite', selection: siteSelection }
+            : {
+                type: 'ResolveDestination',
+                selection,
+              },
+        )
         .catch((failure: unknown) => {
-          throw Error(dispatchFailure(failure))
+          throw Error(
+            siteId && failure instanceof Error && failure.message === 'Conflict'
+              ? 'The site changed. Refresh the briefing in opening guidance, then review again.'
+              : dispatchFailure(failure),
+          )
         })
       if (requestGeneration !== generation.current) return
       if (!destination || !('type' in destination))
@@ -397,6 +438,7 @@ export function useDispatch({
         )
       } else setQuote(terms)
     } catch (e) {
+      if (siteId) void model.tutorial.ensure(true)
       if (requestGeneration === generation.current)
         setError(
           e instanceof Error ? e.message : 'Unable to quote this mission.',
@@ -406,6 +448,8 @@ export function useDispatch({
     }
   }
   return {
+    site,
+    siteId,
     target,
     playerNames: { ...observation?.player_names, ...view.player_names },
     submittedAttempt,

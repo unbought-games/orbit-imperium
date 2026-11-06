@@ -1433,6 +1433,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
     let terms = terms.seal();
     // Empty cargo/manifests isolate persistence from the separate asset-lot ledger.
     let mut fleet = MissionFleet {
+        raid: None,
         return_reason: None,
         id: FleetId(Uuid::new_v4()),
         owner: b.player,

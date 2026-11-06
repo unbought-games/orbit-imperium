@@ -95,7 +95,7 @@ pub struct UniverseImmutable {
 impl Default for UniverseImmutable {
     fn default() -> Self {
         Self {
-            speed: 5,
+            speed: 3,
             galaxies: 1,
             systems_per_galaxy: 100,
             positions_per_system: 15,

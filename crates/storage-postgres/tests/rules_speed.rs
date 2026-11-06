@@ -9,7 +9,11 @@ async fn create(store: &PgStore) -> UniverseId {
     store
         .create_universe(&UniverseCreate {
             universe,
-            immutable: UniverseImmutable::default(),
+            // This regression exercises a 5x -> 3x cutover, independently of creation defaults.
+            immutable: UniverseImmutable {
+                speed: 5,
+                ..Default::default()
+            },
             policy: UniversePolicy::default(),
         })
         .await
