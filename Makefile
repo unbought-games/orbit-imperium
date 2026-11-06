@@ -403,3 +403,8 @@ test-tutorial:
 	cargo nextest run -p orbit-engine --lib --test objectives --test missions -E 'test(authored_sites_) | test(site_execution::) | test(tutorial::)'
 test-db-tutorial:
 	$(MAKE) test-db DB_SUITES=tutorial DB_JOBS=1
+
+# Distinguish refresh contention without changing HTTP errors or token fencing.
+.PHONY: test-auth-telemetry
+test-auth-telemetry:
+	cargo nextest run -p orbit-application -p orbit-server -p orbit-transport-http --lib --bins -E 'test(auth_observation::tests::) | test(metrics::tests::) | test(bootstrap::tests::) | test(active_session_rotation_has_a_distinct_private_retry_response)'

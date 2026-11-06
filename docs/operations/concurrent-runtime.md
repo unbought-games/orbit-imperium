@@ -120,3 +120,18 @@ For a stranded scope, inspect its persisted diagnostic, the original pending inp
 After scoped activation, rollback is limited to binaries that understand scoped claims, fences, rules, and the retained schema. Do not set the executor back to serial or run a pre-bridge binary. Roll forward when the older executable cannot interpret the authority. A deliberate restore is a separate epoch-changing operation, never part of a rolling deployment.
 
 Update notifications retain seven days and are pruned in bounded batches. Expired cursors reset to snapshots plus durable receipts; another device consuming a stream never deletes its history. Canonical receipts/idempotency and transition evidence are retained independently. Monitor their storage cost at the target historical population; notification pruning is not permission to discard accepted-order identity.
+
+### Authentication contention evidence
+
+The fixed `orbit_auth_seconds` outcomes include `refreshing` for a typed
+`SessionRefreshing` result at the read, claim or bootstrap-auth phase. `unavailable`
+continues to count other failures; `cancelled` and `signin_required` remain
+separate. Each phase exports all outcomes, including zeroes. Older exporters lack
+`refreshing`; absence must not be interpreted as zero contention.
+
+This is diagnostic classification only. HTTP `SessionRefreshing` remains 503 with
+Retry-After, bootstrap unavailability remains a semantic failure, and proxy HTTP
+5xx monitoring continues to count these responses. A refresh outcome is not proof
+that the client's retry succeeded. Stream reauthorization and HTTP requests share
+authentication instrumentation, so phase counts are not a request ledger. No
+identity, request, URL or credential labels are emitted.
