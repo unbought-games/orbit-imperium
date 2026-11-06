@@ -213,6 +213,7 @@
   }
   .sidebarDestinations > a,
   .sidebarDevelop a,
+  .moreDestinations a,
   .sidebarDestinations button {
     position: relative;
     display: flex;
@@ -379,4 +380,13 @@
   .accountMenuItem {
     min-height: var(--control-size);
   }
+}
+
+.more {
+  border-top: 1px solid var(--border-navigation);
+  margin-top: 8px;
+}
+.moreDestinations {
+  display: flex;
+  flex-direction: column;
 }

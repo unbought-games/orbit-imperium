@@ -1,0 +1,441 @@
+{
+  "id": "colony-opening-v1",
+  "version": 1,
+  "objectives": [
+    {
+      "id": "solar-1",
+      "explanation": "Power your colony before starting its mines.",
+      "predicate": {
+        "kind": "Building",
+        "building": "SolarPlant",
+        "minimum": 1
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "metal-1",
+      "explanation": "Start producing metal to fund your colony.",
+      "predicate": {
+        "kind": "Building",
+        "building": "MetalMine",
+        "minimum": 1
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "crystal-1",
+      "explanation": "Produce crystal for construction, research, and ships.",
+      "predicate": {
+        "kind": "Building",
+        "building": "CrystalMine",
+        "minimum": 1
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "metal-2",
+      "explanation": "Increase metal income and see how growing mines use more energy.",
+      "predicate": {
+        "kind": "Building",
+        "building": "MetalMine",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "solar-2",
+      "explanation": "Restore enough power for your growing mines to run at full output.",
+      "predicate": {
+        "kind": "Building",
+        "building": "SolarPlant",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "production-settings",
+      "explanation": "Learn to balance resource output and energy demand. No adjustment required.",
+      "predicate": {
+        "kind": "ProductionSettingsReview"
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "crystal-2",
+      "explanation": "Use your expanded power supply to increase crystal production.",
+      "predicate": {
+        "kind": "Building",
+        "building": "CrystalMine",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "solar-3",
+      "explanation": "Create power capacity for the next mine upgrades.",
+      "predicate": {
+        "kind": "Building",
+        "building": "SolarPlant",
+        "minimum": 3
+      },
+      "reward": {
+        "metal": 600000000,
+        "crystal": 300000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "metal-3",
+      "explanation": "Turn available power into a stronger metal income.",
+      "predicate": {
+        "kind": "Building",
+        "building": "MetalMine",
+        "minimum": 3
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "crystal-3",
+      "explanation": "Increase crystal production to support your growing colony.",
+      "predicate": {
+        "kind": "Building",
+        "building": "CrystalMine",
+        "minimum": 3
+      },
+      "reward": {
+        "metal": 200000000,
+        "crystal": 100000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "metal-4",
+      "explanation": "Keep your solar and crystal mine's growing too.",
+      "predicate": {
+        "kind": "Building",
+        "building": "MetalMine",
+        "minimum": 4
+      },
+      "reward": {
+        "metal": 400000000,
+        "crystal": 200000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "solar-5",
+      "explanation": "Build power capacity for your mines and deuterium production.",
+      "predicate": {
+        "kind": "Building",
+        "building": "SolarPlant",
+        "minimum": 5
+      },
+      "reward": {
+        "metal": 800000000,
+        "crystal": 400000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "deuterium-1",
+      "explanation": "Begin producing deuterium for advanced construction and fuel.",
+      "predicate": {
+        "kind": "Building",
+        "building": "DeuteriumSynthesizer",
+        "minimum": 1
+      },
+      "reward": {
+        "metal": 600000000,
+        "crystal": 300000000,
+        "deuterium": 600000000
+      }
+    },
+    {
+      "id": "deuterium-2",
+      "explanation": "Increase fuel production for research and fleet operations.",
+      "predicate": {
+        "kind": "Building",
+        "building": "DeuteriumSynthesizer",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 1200000000,
+        "crystal": 600000000,
+        "deuterium": 200000000
+      }
+    },
+    {
+      "id": "crystal-4",
+      "explanation": "Complete your level-four production base.",
+      "predicate": {
+        "kind": "Building",
+        "building": "CrystalMine",
+        "minimum": 4
+      },
+      "reward": {
+        "metal": 400000000,
+        "crystal": 200000000,
+        "deuterium": 100000000
+      }
+    },
+    {
+      "id": "robotics-2",
+      "explanation": "Shorten construction times across your homeworld.",
+      "predicate": {
+        "kind": "Building",
+        "building": "RoboticsFactory",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 1000000000,
+        "crystal": 800000000,
+        "deuterium": 300000000
+      }
+    },
+    {
+      "id": "deuterium-5",
+      "explanation": "Establish a steady fuel supply for regular fleet operations.",
+      "predicate": {
+        "kind": "Building",
+        "building": "DeuteriumSynthesizer",
+        "minimum": 5
+      },
+      "reward": {
+        "metal": 1000000000,
+        "crystal": 800000000,
+        "deuterium": 500000000
+      }
+    },
+    {
+      "id": "crystal-6",
+      "explanation": "Support shipbuilding with a stronger crystal supply.",
+      "predicate": {
+        "kind": "Building",
+        "building": "CrystalMine",
+        "minimum": 6
+      },
+      "reward": {
+        "metal": 1200000000,
+        "crystal": 1200000000,
+        "deuterium": 300000000
+      }
+    },
+    {
+      "id": "metal-7",
+      "explanation": "Produce enough metal to support your colony’s infrastructure.",
+      "predicate": {
+        "kind": "Building",
+        "building": "MetalMine",
+        "minimum": 7
+      },
+      "reward": {
+        "metal": 3600000000,
+        "crystal": 1800000000,
+        "deuterium": 400000000
+      }
+    },
+    {
+      "id": "solar-9",
+      "explanation": "Support your established economy with a larger power supply.",
+      "predicate": {
+        "kind": "Building",
+        "building": "SolarPlant",
+        "minimum": 9
+      },
+      "reward": {
+        "metal": 4500000000,
+        "crystal": 2200000000,
+        "deuterium": 300000000
+      }
+    },
+    {
+      "id": "lab-2",
+      "explanation": "Expand your laboratory to research new technology faster.",
+      "predicate": {
+        "kind": "Building",
+        "building": "ResearchLab",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 800000000,
+        "crystal": 1200000000,
+        "deuterium": 800000000
+      }
+    },
+    {
+      "id": "energy-1",
+      "explanation": "Unlock the technology needed for combustion-drive research.",
+      "predicate": {
+        "kind": "Research",
+        "research": "EnergyTechnology",
+        "minimum": 1
+      },
+      "reward": {
+        "metal": 600000000,
+        "crystal": 800000000,
+        "deuterium": 500000000
+      }
+    },
+    {
+      "id": "combustion-1",
+      "explanation": "Develop the engine technology needed to build a Light Fighter.",
+      "predicate": {
+        "kind": "Research",
+        "research": "CombustionDrive",
+        "minimum": 1
+      },
+      "reward": {
+        "metal": 1200000000,
+        "crystal": 600000000,
+        "deuterium": 300000000
+      }
+    },
+    {
+      "id": "shipyard-2",
+      "explanation": "Expand your shipyard to build your first ships faster.",
+      "predicate": {
+        "kind": "Building",
+        "building": "Shipyard",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 3000000000,
+        "crystal": 2000000000,
+        "deuterium": 500000000
+      }
+    },
+    {
+      "id": "fighter",
+      "explanation": "Build your first combat ship for orbital operations.",
+      "predicate": {
+        "kind": "Manufacture",
+        "ship": "LightFighter",
+        "quantity": 1
+      },
+      "reward": {
+        "metal": 1000000000,
+        "crystal": 500000000,
+        "deuterium": 200000000
+      }
+    },
+    {
+      "id": "contact",
+      "explanation": "Send your fleet into its first battle and see the outcome.",
+      "predicate": {
+        "kind": "Attack"
+      },
+      "reward": {
+        "metal": 500000000,
+        "crystal": 500000000,
+        "deuterium": 100000000
+      }
+    },
+    {
+      "id": "combustion-2",
+      "explanation": "Unlock Small Cargo ships and increase the speed of new flights.",
+      "predicate": {
+        "kind": "Research",
+        "research": "CombustionDrive",
+        "minimum": 2
+      },
+      "reward": {
+        "metal": 1000000000,
+        "crystal": 1000000000,
+        "deuterium": 300000000
+      }
+    },
+    {
+      "id": "cargo",
+      "explanation": "Build a transport ship with room for substantially more loot.",
+      "predicate": {
+        "kind": "Manufacture",
+        "ship": "SmallCargo",
+        "quantity": 1
+      },
+      "reward": {
+        "metal": 0,
+        "crystal": 0,
+        "deuterium": 100000000
+      }
+    },
+    {
+      "id": "loaded",
+      "explanation": "Collect stockpile loot with a surviving fighter and cargo fleet.",
+      "predicate": {
+        "kind": "RaidLoaded",
+        "required_ships": [
+          "LightFighter",
+          "SmallCargo"
+        ]
+      },
+      "reward": {
+        "metal": 0,
+        "crystal": 0,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "haul",
+      "explanation": "Bring your returning fleet’s loot safely back to the colony.",
+      "predicate": {
+        "kind": "RaidReturn",
+        "required_ships": [
+          "LightFighter",
+          "SmallCargo"
+        ]
+      },
+      "reward": {
+        "metal": 500000000,
+        "crystal": 250000000,
+        "deuterium": 0
+      }
+    },
+    {
+      "id": "reinvest",
+      "explanation": "Turn your returned loot into lasting metal production.",
+      "predicate": {
+        "kind": "Reinvest",
+        "building": "MetalMine",
+        "minimum": 9,
+        "after_return": "haul"
+      },
+      "reward": {
+        "metal": 0,
+        "crystal": 0,
+        "deuterium": 0
+      }
+    }
+  ]
+}

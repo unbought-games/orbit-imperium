@@ -17,6 +17,7 @@ export type GalaxyFlight = {
 
 function targets(intent: S['FleetIntent4'], position: S['GalaxyPosition4']) {
   const destination = intent.destination
+  if (destination.type === 'Site') return false
   if (destination.type === 'Body') return destination.id === position.body?.id
   const a = destination.coordinates,
     b = position.coordinates

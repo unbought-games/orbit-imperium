@@ -37,6 +37,7 @@ impl PgStore {
 
 #[derive(Default)]
 pub(crate) struct Selection {
+    pub sites: BTreeSet<SiteId>,
     pub owners: BTreeSet<PlayerId>,
     pub coordinates: BTreeSet<Coordinates>,
     pub incoming_for: Option<PlayerId>,
@@ -50,6 +51,7 @@ impl Selection {
             .copied()
             .map(ScopeKey::Player)
             .chain(self.coordinates.iter().copied().map(ScopeKey::Location))
+            .chain(self.sites.iter().copied().map(ScopeKey::Site))
             .collect()
     }
 }
@@ -74,7 +76,7 @@ pub(crate) async fn select(
     {
         refs.empire = crate::empire_deletion::scopes(tx, u, player).await?;
     }
-    let scopes = match (actor, input) {
+    let mut scopes = match (actor, input) {
         (Actor::Player(player), Input::Command(command)) => {
             command_scopes(player, command, &refs).map_err(|_| StoreError::CorruptData)?
         }
@@ -83,12 +85,16 @@ pub(crate) async fn select(
         }
         _ => return Err(StoreError::CorruptData),
     };
+    crate::admission::expand_player_scopes(tx, u, &mut scopes).await?;
     Ok(from_scopes(&scopes))
 }
 pub(crate) fn from_scopes(scopes: &BTreeSet<ScopeKey>) -> Selection {
     let mut selected = Selection::default();
     for scope in scopes {
         match scope {
+            ScopeKey::Site(id) => {
+                selected.sites.insert(*id);
+            }
             ScopeKey::Player(player) => {
                 selected.owners.insert(*player);
             }
@@ -152,7 +158,10 @@ pub(crate) async fn select_query(
     let mut selected = Selection::default();
     selected.owners.insert(b.player);
     match query {
-        WorldQueryKind::AbandonmentQuote { .. } => {}
+        WorldQueryKind::Tutorial
+        | WorldQueryKind::MissionSites
+        | WorldQueryKind::ResolveMissionSite { .. }
+        | WorldQueryKind::AbandonmentQuote { .. } => {}
         WorldQueryKind::Galaxy { galaxy, system } => {
             let dimensions = rules
                 .artifact
@@ -213,6 +222,9 @@ pub(crate) async fn load_execution_with_rules(
     let mut selected = Selection::default();
     for scope in scopes {
         match scope {
+            ScopeKey::Site(id) => {
+                selected.sites.insert(*id);
+            }
             ScopeKey::Player(player) => {
                 selected.owners.insert(*player);
             }

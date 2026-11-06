@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
@@ -294,7 +295,7 @@ test('Large Cargos can be selected, quoted and launched in a transport fleet', a
     expected_kind: 'Planet',
     expected_owner: id(91),
   }
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const request = route.request().postDataJSON()
     await route.fulfill({
       json: bound(

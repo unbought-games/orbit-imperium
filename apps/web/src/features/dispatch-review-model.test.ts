@@ -108,3 +108,20 @@ describe('mission-specific review wording', () => {
     expect(missionReturn.Espionage.label).toBe('Return if surviving')
   })
 })
+
+it('labels a private selection explicitly instead of inventing a public planet', () => {
+  expect(
+    reviewDestination(
+      {
+        type: 'Site',
+        selection: { id: 'private-site', expected_revision: '1' },
+      },
+      at,
+    ),
+  ).toEqual({
+    name: 'Personal site',
+    coordinates: at,
+    kind: 'site',
+    owner: undefined,
+  })
+})

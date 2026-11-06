@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { setDestination } from './fixtures/coordinates'
@@ -463,7 +464,7 @@ for (const width of [390, 1440]) {
       expected_kind: 'Planet',
       expected_owner: id(91),
     }
-    await page.route('**/world', async (route) => {
+    await routeWorld(page, async (route) => {
       const request = route.request().postDataJSON()
       await route.fulfill({
         json: bound(

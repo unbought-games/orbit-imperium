@@ -2,7 +2,7 @@
 
 Run `orbit setup` against your PostgreSQL database, then `orbit serve`. Setup applies migrations and creates the first universe; repeating it preserves the existing world. Players then choose an account name and password in the browser, receive one starter planet and enter the game immediately. No accounts file, seed file, email service, verification or manual enrollment is needed.
 
-Follow [universe configuration operations](universe-configuration.md) for exact fresh-install commands, live policy edits, API routing and the required two-artifact bridge upgrade of retained worlds. A new universe defaults to 5× speed and 1×100×15 topology; historical worlds keep their saved values. `serve` prepares compatible schema migrations and validates existing worlds without creating or resetting them.
+Follow [universe configuration operations](universe-configuration.md) for exact fresh-install commands, live policy edits, API routing and the required two-artifact bridge upgrade of retained worlds. A new universe defaults to 3× speed and 1×100×15 topology; historical worlds keep their saved values. `serve` prepares compatible schema migrations and validates existing worlds without creating or resetting them.
 
 Set `ORBIT_ORIGIN` to the browser-facing origin. HTTPS origins always use Secure cookies, including behind a TLS-terminating proxy. To host over HTTP, explicitly set `ORBIT_ALLOW_INSECURE_HTTP=1` (the local wrapper does this). See [HTTP/HTTPS configuration and migration](../architecture/deployment.md#browser-origin-http-and-https) for valid origins, the retired flag and production implications.
 

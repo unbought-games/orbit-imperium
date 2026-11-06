@@ -1,5 +1,7 @@
 import { usePlayerIdentity } from '../../shell/player-profiles-context'
 import { useIdentityTitle } from '../../client-model/use-identity-title'
+import { TutorialAdvisor } from '../tutorial/advisor'
+import { BriefingLink } from '../tutorial/briefing-link'
 import type { DispatchDraft } from '../missions'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -47,7 +49,19 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
             <HudToast key={noticeKey(notice)} notice={notice} hud={hud} />
           ))}
         </div>
-        <CommandOrb hud={hud} address={title.address} />
+        <TutorialAdvisor
+          suspended={hud.selection !== null}
+          onOpenCommands={() => hud.select('inbox')}
+        >
+          {(triggerProps, speaking) => (
+            <CommandOrb
+              hud={hud}
+              address={title.address}
+              triggerProps={triggerProps}
+              showCaption={!speaking}
+            />
+          )}
+        </TutorialAdvisor>
       </div>
       <HudPanel
         hud={hud}
@@ -55,6 +69,9 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
         universe={universeName}
         body={body}
         onDraft={onDraft}
+        headingAction={
+          <BriefingLink appearance="button" onClick={() => hud.select(null)} />
+        }
       />
     </div>,
     document.body,

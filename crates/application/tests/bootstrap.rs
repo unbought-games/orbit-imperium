@@ -151,6 +151,10 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
     };
     let world = GameState {
         world: Some(WorldFacts {
+            machine_players: Default::default(),
+            site_fleets_enabled: false,
+            covered_sites: Default::default(),
+            covered_site_players: Default::default(),
             phalanx: None,
             covered_vacation_players: [player].into_iter().collect(),
             alliance_leaders: Some(Default::default()),

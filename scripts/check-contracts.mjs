@@ -131,3 +131,26 @@ for (const reports of [[], ['invalid'], [id, 123]])
  assert.equal(reportAction({type:'MarkReportsRead',reports}),false);
 assert.equal(reportAction({type:'MarkReportsRead',report:id}),false);
 console.log('Bulk read commands require report IDs and retain single-report compatibility.');
+
+const tutorialView = ajv.compile({components:schema.components,$ref:'#/components/schemas/TutorialView4'});
+const opening = JSON.parse(readFileSync('contracts/fixtures/tutorial-opening.json','utf8'));
+for (const phase of ['initial','completed']) assert.ok(tutorialView(opening[phase]), `${phase} tutorial projection: ${JSON.stringify(tutorialView.errors)}`);
+assert.equal(opening.initial.enrolled,true);
+assert.equal(opening.initial.recommended_objectives[0],'solar-1');
+assert.equal(opening.completed.completed,true);
+assert.equal(opening.completed.beginner,false);
+assert.equal(opening.completed.receipts.length,31);
+assert.equal(opening.completed.sites.length,2);
+assert.ok(opening.completed.sites.every(s=>s.site.retired));
+console.log('Opening and completed tutorial fixtures satisfy the generated contract.');
+assert.ok(opening.initial.chapters.flatMap(c=>c.objectives).find(o=>o.id==='contact').next_action.ships.includes('LightFighter'));
+const siteReports = JSON.parse(readFileSync('contracts/fixtures/site-encounter-http.json','utf8'));
+const siteDetail = ajv.compile({components:schema.components,$ref:'#/components/schemas/BoundReport4'});
+assert.ok(siteDetail(siteReports.detail), `SiteEncounter detail: ${JSON.stringify(siteDetail.errors)}`);
+const siteInbox = ajv.compile({components:schema.components,$ref:'#/components/schemas/BoundReports4'});
+assert.ok(siteInbox(siteReports.inbox), `SiteEncounter inbox: ${JSON.stringify(siteInbox.errors)}`);
+assert.equal(siteReports.detail.data.header.preview.kind,'SiteEncounter');
+assert.equal(siteReports.detail.data.header.preview.fleet,siteReports.detail.data.payload.fleet);
+assert.equal(siteReports.detail.data.header.preview.site,siteReports.detail.data.payload.site);
+assert.equal('battle' in siteReports.detail.data.header.preview,false);
+console.log('Authenticated SiteEncounter inbox/detail fixtures preserve typed private identity and compact observations.');

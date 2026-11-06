@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -57,7 +58,7 @@ async function setup(page: Page, leg: S['OwnMission4']['leg'] = 'Outbound') {
     },
   })
   const requests: { galaxy: number; system: number }[] = []
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const { context, galaxy, system } = route.request().postDataJSON()
     requests.push({ galaxy, system })
     await route.fulfill({

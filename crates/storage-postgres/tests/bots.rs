@@ -87,7 +87,15 @@ async fn drain(store: &PgStore, u: UniverseId) {
 #[tokio::test]
 async fn identity_tokens_admission_and_policy() {
     let (store, pool, u) = setup(5).await;
+
     let b = store.create_bot(u, "automaton", 0).await.unwrap();
+    let opening = store.bound_world(b).await.unwrap().facts.0.state;
+    assert!(orbit_engine::tutorial_run(&opening, b.player).is_some());
+    let world = opening.world.as_ref().unwrap();
+    assert!(world.machine_players.contains(&b.player));
+    assert!(!world.records.tutorial_preferences[&b.player].beginner);
+    assert!(world.records.mission_sites.is_empty());
+
     let token = store.issue_bot_token(u, b.player).await.unwrap();
     let session = store
         .authenticate_machine(&token_digest(&token))

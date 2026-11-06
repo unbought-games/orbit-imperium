@@ -1,3 +1,4 @@
+import { BriefingWelcome } from './tutorial/briefing-summary'
 import { useSearch, useRouterState } from '@tanstack/react-router'
 import { draftFromSearch } from '../shell/dispatch-location'
 import {
@@ -21,6 +22,7 @@ export function OverviewScreen() {
   const { view, body, model } = useGameScreen()
   return body ? (
     <>
+      <BriefingWelcome />
       <EmpireOverview
         key={bindingKey(view.binding)}
         view={view}

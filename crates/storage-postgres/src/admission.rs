@@ -175,9 +175,27 @@ pub(crate) async fn register(
     input: &OrderedInput,
     scopes: &BTreeSet<ScopeKey>,
 ) -> Result<(), StoreError> {
-    for key in ensure_scopes(tx, input.universe, scopes).await? {
+    let mut scopes = scopes.clone();
+    crate::admission::expand_player_scopes(tx, input.universe, &mut scopes).await?;
+    for key in ensure_scopes(tx, input.universe, &scopes).await? {
         sqlx::query("INSERT INTO input_scopes(universe,input_id,scope_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
             .bind(input.universe.0).bind(input.id.0).bind(key).execute(&mut **tx).await.map_err(db_error)?;
     }
     Ok(())
+}
+
+/// Shared dependency expansion for admission, successor registration, late
+/// participants and lifecycle work. Generic programs remain content-agnostic.
+pub(crate) async fn expand_player_scopes(
+    tx: &mut Tx<'_>,
+    u: UniverseId,
+    scopes: &mut BTreeSet<ScopeKey>,
+) -> Result<(), StoreError> {
+    // This boundary is nested in admission, commit and lifecycle futures. Keep
+    // its SQL state off their stack instead of multiplying those future sizes.
+    Box::pin(async {
+        crate::objectives::add_homeworld_scopes(tx, u, scopes).await?;
+        crate::tutorial::add_site_scopes(tx, u, scopes).await
+    })
+    .await
 }

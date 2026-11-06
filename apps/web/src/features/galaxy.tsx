@@ -24,6 +24,9 @@ import {
 } from '../client-model/game-projection'
 import { galaxyFlights } from '../client-model/galaxy-fleets'
 import { useGalaxyEspionage } from './use-galaxy-espionage'
+import { useTutorial } from './tutorial/use-tutorial'
+import { GalaxySite } from './tutorial/galaxy-sites'
+import { sitesAtPosition, siteLocation } from './tutorial/galaxy-sites-model'
 type System = components['schemas']['GalaxySystem4']
 export function Galaxy({
   model,
@@ -41,6 +44,7 @@ export function Galaxy({
   ) => void
 }) {
   const espionage = useGalaxyEspionage(model, origin)
+  const tutorial = useTutorial()
   const [harvestSelection, setHarvestSelection] = useState<{
     field: string
     galaxy: number
@@ -119,14 +123,14 @@ export function Galaxy({
       : null
   const loaded = !!data
   useEffect(() => {
-    if (loaded && position !== undefined) {
+    if (loaded && position !== undefined && !search.site) {
       const target = document.getElementById(`position-${position}`)
       // Focus the destination so the shell's deferred heading scroll cannot
       // hide a position selected within an already loaded system.
       target?.focus({ preventScroll: true })
       target?.scrollIntoView({ block: 'center' })
     }
-  }, [loaded, galaxy, system, position])
+  }, [loaded, galaxy, system, position, search.site])
   const harvestPosition =
     harvestSelection?.origin === origin
       ? data?.positions.find(
@@ -220,6 +224,36 @@ export function Galaxy({
           Loading system…
         </p>
       )}
+      {valid && tutorial.error && (
+        <div className={tutorial.data ? styles.loading : styles.error}>
+          <p role={tutorial.data ? 'status' : 'alert'}>
+            {tutorial.data
+              ? 'Personal site updates are delayed. Showing the last received information.'
+              : 'Personal sites unavailable. Your other Galaxy locations are still available.'}
+          </p>
+          <Button variant="secondary" onClick={tutorial.retry}>
+            Retry personal sites
+          </Button>
+        </div>
+      )}
+      {valid &&
+        search.site &&
+        !tutorial.error &&
+        !tutorial.loading &&
+        tutorial.data &&
+        !tutorial.data.sites.some((site) => {
+          const location = siteLocation(site)
+          return (
+            location.site === search.site &&
+            location.galaxy === galaxy &&
+            location.system === system &&
+            (position === undefined || location.position === position)
+          )
+        }) && (
+          <p role="status">
+            This personal site is not available at this location.
+          </p>
+        )}
       {data && (
         <section className={styles.positions} aria-label="Galaxy positions">
           <ul className={styles.positionList}>
@@ -228,22 +262,25 @@ export function Galaxy({
                 id={`position-${position.coordinates.position}`}
                 tabIndex={-1}
                 aria-current={
-                  position.coordinates.position === search.position
+                  position.coordinates.position === search.position &&
+                  !search.site
                     ? 'location'
                     : undefined
                 }
                 className={
-                  position.coordinates.position === search.position
+                  position.coordinates.position === search.position &&
+                  !search.site
                     ? styles.selectedPosition
                     : undefined
                 }
                 key={`${data.galaxy}:${data.system}:${position.coordinates.position}`}
               >
-                {position.coordinates.position === search.position && (
-                  <p className={styles.locationLabel}>
-                    Selected location [{galaxy}:{system}:{search.position}]
-                  </p>
-                )}
+                {position.coordinates.position === search.position &&
+                  !search.site && (
+                    <p className={styles.locationLabel}>
+                      Selected location [{galaxy}:{system}:{search.position}]
+                    </p>
+                  )}
                 <GalaxyPosition
                   position={position}
                   scanAction={
@@ -317,6 +354,30 @@ export function Galaxy({
                       : undefined
                   }
                 />
+                {sitesAtPosition(tutorial.data, position.coordinates).map(
+                  (site) => (
+                    <GalaxySite
+                      key={site.site.destination.selection.id}
+                      site={site}
+                      origin={origin}
+                      expanded={
+                        search.site === site.site.destination.selection.id
+                      }
+                      onToggle={() =>
+                        void navigate({
+                          ...galaxyTarget(
+                            universe,
+                            origin,
+                            search.site === site.site.destination.selection.id
+                              ? { galaxy, system }
+                              : siteLocation(site),
+                          ),
+                          resetScroll: false,
+                        })
+                      }
+                    />
+                  ),
+                )}
               </li>
             ))}
           </ul>

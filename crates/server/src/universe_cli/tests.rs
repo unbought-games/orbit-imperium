@@ -4,12 +4,12 @@ fn args(words: &[&str]) -> Vec<String> {
 }
 const ID: &str = "00000000-0000-4000-8000-000000000001";
 #[test]
-fn creation_defaults_to_five_and_bridge_requires_explicit_acknowledgement() {
+fn creation_defaults_to_three_and_bridge_requires_explicit_acknowledgement() {
     let words = args(&["orbit", "universe", "create", "--universe", ID]);
     let UniverseCli::Create(c) = parse_for_mode(&words, |_| None, false).unwrap() else {
         panic!()
     };
-    assert_eq!(c.immutable.speed, 5);
+    assert_eq!(c.immutable.speed, 3);
     assert_eq!(c.policy.max_players, None);
     assert!(
         parse_for_mode(&words, |_| None, true)
@@ -20,6 +20,16 @@ fn creation_defaults_to_five_and_bridge_requires_explicit_acknowledgement() {
     words.push("--acknowledge-bridge-rollout".into());
     assert!(parse_for_mode(&words, |_| None, true).is_ok());
     assert!(parse_for_mode(&words, |_| None, false).is_err());
+}
+#[test]
+fn explicit_creation_speed_overrides_default() {
+    for speed in ["2", "5"] {
+        let words = args(&["orbit", "universe", "create", "--speed", speed]);
+        let UniverseCli::Create(c) = parse_for_mode(&words, |_| None, false).unwrap() else {
+            panic!()
+        };
+        assert_eq!(c.immutable.speed, speed.parse::<i32>().unwrap());
+    }
 }
 #[test]
 fn malformed_creation_and_unknown_options_fail_before_connection() {
