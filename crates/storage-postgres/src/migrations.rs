@@ -359,6 +359,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn onboarding_definition_matches_new_enrollments() {
+        let sql = include_str!("../migrations/0039_onboarding.sql");
+        let data = sql.split("$program$").nth(1).expect("migration program");
+        let program: orbit_engine::ObjectiveProgram = serde_json::from_str(data).unwrap();
+        assert_eq!(program, orbit_engine::tutorial_program());
+    }
+
+    #[test]
     fn embedded_migration_bundle_is_valid() {
         validate_bundle(active_migrations()).expect("embedded migrations must form a valid bundle");
     }

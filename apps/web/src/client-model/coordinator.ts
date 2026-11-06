@@ -1,3 +1,4 @@
+import { TutorialEngine } from './tutorial-engine'
 import {
   readStableMailbox,
   acceptMailboxAction,
@@ -71,6 +72,7 @@ export class Coordinator {
   private mailboxVersion = 0
   private mailboxRequest: Promise<void> | null = null
   readonly store = createGameStore()
+  readonly tutorial = new TutorialEngine(this.store, () => this.readTutorial())
   readonly reports = new ReportEngine(this.store, {
     page: (cursor, query) => this.readReportPage(cursor, false, query),
     detail: (id) => this.readReportDetail(id),
@@ -261,6 +263,7 @@ export class Coordinator {
     return write
   }
   invalidate() {
+    this.tutorial.invalidate()
     this.reports.invalidate()
     this.mailboxReads.clear()
     this.mailboxVersion++
@@ -845,6 +848,24 @@ export class Coordinator {
       throw error
     }
   }
+  private async readTutorial() {
+    if (!this.port.world || this.protocol !== 4) return null
+    const request = this.captureRequest()
+    if (!request) return null
+    try {
+      const result = validate<import('./commands').BoundWorld>(
+        'BoundWorld4',
+        await this.port.world(request.context, { type: 'Tutorial' }),
+      )
+      return this.responseMatches(request, result) ? result : null
+    } catch (error) {
+      const f = failure(error)
+      if (f.code === 'EpochChanged' || [401, 403, 404].includes(f.status ?? 0))
+        await this.problem(error, request.generation, request.context.binding)
+      throw error
+    }
+  }
+
   async world(query: import('./commands').WorldQuery) {
     if (!this.port.world || this.protocol !== 4) return null
     const pending = this.captureRequest()

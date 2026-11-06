@@ -1,0 +1,112 @@
+.card {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+  grid-template-areas: 'art details action' 'reward reward reward';
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  margin-bottom: 28px;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-panel);
+  background:
+    linear-gradient(120deg, #cbb68d14, transparent 65%), var(--surface-raised);
+  box-shadow:
+    inset 3px 0 var(--champagne),
+    0 8px 24px #0003;
+}
+.art {
+  grid-area: art;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-page);
+}
+.details {
+  grid-area: details;
+  min-width: 0;
+}
+.eyebrow,
+.rewardLabel {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--champagne);
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.details h3 {
+  margin: 6px 0 8px;
+  font: 400 1.625rem/1.2 var(--font-editorial);
+  color: var(--champagne-light);
+}
+.details p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.details .status {
+  margin-top: 8px;
+  color: var(--text);
+}
+.action {
+  grid-area: action;
+  justify-self: end;
+}
+.reward {
+  grid-area: reward;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin-top: 8px;
+}
+.amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.amount strong {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--champagne-light);
+}
+@media (max-width: 767px) {
+  .card {
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-areas: 'art details' 'reward reward' 'action action';
+    padding: 20px;
+    gap: 16px;
+  }
+  .art {
+    width: 64px;
+    height: 64px;
+  }
+  .details h3 {
+    font-size: 1.375rem;
+  }
+}
+
+.reward[data-variant='inline'] {
+  padding: 0;
+  margin-top: 8px;
+  border: 0;
+}
+.reward[data-variant='inline'] .amounts {
+  margin: 0;
+  gap: 8px 16px;
+}
+.reward[data-variant='inline'] .amount {
+  gap: 6px;
+}
+.reward[data-variant='inline'] strong {
+  font-size: var(--font-size-sm);
+}

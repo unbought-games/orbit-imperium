@@ -3,6 +3,9 @@
   min-width: 0;
   margin-inline: auto;
 }
+.reading {
+  max-width: 60rem;
+}
 @media (min-width: 768px) {
   .focused {
     max-width: 40rem;

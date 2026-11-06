@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { setDestination } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -26,7 +27,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  const source={...body,inventories:[...body.inventories,{item:{kind:'Ship' as const,id:'ColonyShip' as const},count:'2'}]}
  await setup(page,[source,colony])
  let sent:unknown=null, launches=0
- await page.route('**/world',async route=>{
+ await routeWorld(page,async route=>{
   const request=route.request().postDataJSON()
   let data:unknown
   if(request.type==='Galaxy')data=emptyGalaxy(request.galaxy,request.system)
@@ -111,7 +112,7 @@ test('occupied colony positions retain the actionable error through shared dispa
   await setup(page, [source])
   let resolved = 0
   let observed = 0
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     if (request.type === 'Galaxy') {
       observed++
@@ -168,7 +169,7 @@ test('authoritative colony quote rejection explains the position research requir
   // The client snapshot allows the position, but the server still owns eligibility.
   await setup(page, [source], 4)
   const requests: string[] = []
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     requests.push(request.type)
     if (request.type === 'Galaxy') {

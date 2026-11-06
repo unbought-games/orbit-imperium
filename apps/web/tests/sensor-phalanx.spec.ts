@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
@@ -74,7 +75,7 @@ for (const width of [1440, 390]) {
         },
         debris: null,
       }
-      await page.route('**/world', async (route) => {
+      await routeWorld(page, async (route) => {
         const r = route.request().postDataJSON()
         await route.fulfill({
           json: bound(r.context.request_id, {

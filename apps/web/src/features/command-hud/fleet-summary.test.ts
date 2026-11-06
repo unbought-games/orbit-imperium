@@ -411,3 +411,21 @@ it.each(['Planet', 'Moon'] as const)(
     })
   },
 )
+
+it('retains fleet facts with explicit private site identity and no planet art', () => {
+  const state = fixture()
+  const siteFleet = fleet('private-flight', 5000)
+  siteFleet.intent = {
+    ...intent,
+    mission: 'Attack',
+    destination: {
+      type: 'Site',
+      selection: { id: 'private-site', expected_revision: '1' },
+    },
+  }
+  state.view.missions.fleets = [siteFleet]
+  const row = fleetSummaryRows(state)[0]
+  expect(row.target).toMatchObject({ kind: 'Site', name: 'Personal site' })
+  expect(row.target.art).toBeUndefined()
+  expect(row.ships).toEqual(siteFleet.ships)
+})

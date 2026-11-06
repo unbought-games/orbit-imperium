@@ -1,9 +1,9 @@
 # Intergalactic Research Network verification
 
 Date: 2026-11-06. Base revision: `5f61be6982cc9b396aa29ae63553c35faa83d323`.
-The implementation is an uncommitted working-tree change; no PR, queue, merge or
-production activation was requested. The final changed-file content fingerprint
-(excluding this verification record) is recorded below.
+At the implementation handoff, this was an uncommitted working-tree change and
+no PR or production activation had been requested. The implementation-handoff
+changed-file content fingerprint (excluding this record) is recorded below.
 
 ## Delivered behavior
 
@@ -116,3 +116,21 @@ The project's PostgreSQL container, volume and network were removed with
 Frontend fixture servers/browser processes stopped with their runners.
 
 Changed-file SHA-256: `14866adc42412c4b4dd724f0cd4a77c42a3a0ca7a2254ba58c87301436b1fbbf`.
+
+
+## PR integration validation
+
+PR #358 publishes implementation commit `b4977bba0d24545e5d3235cdb029e4c5ec71dba8`.
+GitHub reported conflicts with main `a967707842e57326e64a656963296bf95b8b55a3`.
+Integrated main by merging, preserving both additions to Make targets and the
+Playwright UI test list; no feature behavior required conflict edits.
+
+On the integrated tree, engine/application all-target tests passed 622/622
+(28.34 seconds preparation, 10.737 seconds execution), client tests passed
+1,449/1,449 (10.27 seconds runner duration), and all six network browser tests
+passed (7.6 seconds). The targeted PostgreSQL network scenario passed again in
+both runtime modes, including restart, audit and operator restoration
+(19.90 seconds preparation, 8.049 seconds execution). Build, lint, formatting,
+contract/boundary and diff checks passed. Fresh desktop/mobile images were
+captured and inspected. The disposable database project was removed afterward.
+The PR and merge-queue CI results are tracked in the originating chat.

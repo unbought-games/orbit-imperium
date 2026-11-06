@@ -1106,7 +1106,7 @@ async fn scan_candidate_indexes_do_not_read_unrelated_universe_traffic() {
     let query = source
         .split('"')
         .find(|s| {
-            s.starts_with("SELECT data FROM mission_fleets WHERE universe=$1 AND data->>'leg' IN")
+            s.starts_with("SELECT data FROM mission_fleets WHERE universe=$1 AND ")
                 && s.contains("origin")
         })
         .unwrap();

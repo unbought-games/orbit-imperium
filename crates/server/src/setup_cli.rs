@@ -9,7 +9,7 @@ Repeat safely: omitted options retain existing settings; explicit conflicts fail
 Prints JSON with status, universe UUID, name, and configuration.
 
   --name TEXT                 Universe name (default: automatic galaxy name)
-  --speed INTEGER             Creation speed, 1–100 (default: 5)
+  --speed INTEGER             Creation speed, 1–100 (default: 3)
   --universe UUID              Select identity; defaults to ORBIT_UNIVERSE_ID,
                               the sole existing universe, or a new UUID
   --galaxies INTEGER           Default: 1
@@ -125,6 +125,17 @@ mod tests {
     #[test]
     #[cfg(not(feature = "universe-config-bridge"))]
     fn setup_validates_options_and_preserves_omissions() {
+        let defaults = parse(&args(&[]), |_| None).unwrap();
+        assert_eq!(defaults.speed, None);
+        assert_eq!(
+            defaults
+                .creation(id("00000000-0000-4000-8000-000000000001").unwrap())
+                .immutable
+                .speed,
+            3
+        );
+        let slower = parse(&args(&["--speed", "2"]), |_| None).unwrap();
+        assert_eq!(slower.speed, Some(2));
         let request = parse(&args(&["--name", "Friends", "--speed", "3"]), |_| None).unwrap();
         assert_eq!(request.name.as_deref(), Some("Friends"));
         assert_eq!(request.speed, Some(3));

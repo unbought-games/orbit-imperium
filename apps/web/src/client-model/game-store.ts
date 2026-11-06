@@ -1,3 +1,4 @@
+import { emptyTutorial, type TutorialRead } from './tutorial-engine'
 import type { SocialMailbox } from './social-mailbox'
 import type { components } from '../contracts'
 import { createStore } from 'zustand/vanilla'
@@ -13,6 +14,7 @@ import type { ReportInbox } from './report-inbox'
 import type { SubmittedIntent } from './game-projection'
 
 export type GameState = {
+  tutorial: TutorialRead
   binding: Binding | null
   view: BoundView | null
   settings: BoundSettings | null
@@ -49,6 +51,7 @@ export type GameState = {
 // One store per session/coordinator; never share account state across sessions.
 export function createGameStore() {
   return createStore<GameState>()(() => ({
+    tutorial: emptyTutorial(),
     binding: null,
     view: null,
     settings: null,

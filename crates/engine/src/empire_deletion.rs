@@ -211,6 +211,21 @@ pub(crate) fn finalize(
         f.generation = f.generation.checked_add(1).ok_or(GameError::NumericRange)?;
         f.revision = f.revision.checked_add(1).ok_or(GameError::NumericRange)?;
         if f.owner == player {
+            if let MissionDestination::Site { selection } = f.intent.destination {
+                let site = w
+                    .mission_sites
+                    .get_mut(&selection.id)
+                    .ok_or_else(|| invariant("deleted fleet site missing"))?;
+                site.append(
+                    i,
+                    site.revision(),
+                    SiteEventKind::OperationSettled {
+                        operation: OperationId(f.id.0),
+                        fleet: f.id,
+                    },
+                )
+                .map_err(|_| invariant("deleted site reference settlement"))?;
+            }
             f.ships.clear();
             f.cargo = Resources::default();
             f.leg = MissionLeg::Destroyed;

@@ -603,3 +603,31 @@ it('forwards server filters for the visible list separately from the unread HUD 
   model.invalidate()
   expect(model.store.getState().reportQueries.size).toBe(0)
 })
+
+it.each([401, 403, 404])(
+  'tutorial status %s uses session recovery instead of leaving a retryable briefing error',
+  async (status) => {
+    const { model, port } = await setup()
+    port.world.mockRejectedValueOnce({ status })
+    await model.tutorial.ensure()
+    expect(model.accessLost).toBe(true)
+    expect(model.ready).toBe(false)
+    expect(model.store.getState().tutorial.error).toBeNull()
+  },
+)
+
+it('tutorial epoch changes rediscover the binding and discard the old guidance response', async () => {
+  const { model, port, snapshot } = await setup()
+  const next = { ...snapshot.view.binding, epoch: id(99) }
+  port.currentBinding.mockImplementation(async (_, request_id) => ({
+    ...snapshot.candidate,
+    binding: next,
+    request_id,
+  }))
+  port.world.mockRejectedValueOnce({ status: 409, code: 'EpochChanged' })
+  await model.tutorial.ensure()
+  expect(model.binding).toEqual(next)
+  expect(model.ready).toBe(true)
+  expect(model.accessLost).toBe(false)
+  expect(model.store.getState().tutorial.error).toBeNull()
+})

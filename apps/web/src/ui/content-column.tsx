@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef } from 'react'
 import { classes } from './classes'
 import styles from './content-column.module.css'
 
-/** Shared page width: focused forms opt in; mobile always uses available space. */
+/** Shared page widths; mobile always uses the available space. */
 export function ContentColumn({
   as: Element = 'div',
   width = 'full',
@@ -10,7 +10,7 @@ export function ContentColumn({
   ...props
 }: ComponentPropsWithoutRef<'div'> & {
   as?: 'div' | 'main' | 'section'
-  width?: 'full' | 'focused'
+  width?: 'full' | 'focused' | 'reading'
 }) {
   return (
     <Element
@@ -18,6 +18,7 @@ export function ContentColumn({
       className={classes(
         styles.column,
         width === 'focused' && styles.focused,
+        width === 'reading' && styles.reading,
         className,
       )}
     />

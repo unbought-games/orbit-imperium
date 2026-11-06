@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from './button'
+import { Button, type ButtonVariant } from './button'
 import styles from './confirmation-button.module.css'
 
 /** Native modal confirmation; the caller rechecks live eligibility on confirmation. */
@@ -15,6 +15,7 @@ export function ConfirmationButton({
   dialogTitle,
   review,
   confirmLabel,
+  confirmVariant = 'destructive',
   cancelLabel = 'Keep it',
   onConfirm,
   requiresConfirmation = () => true,
@@ -25,6 +26,7 @@ export function ConfirmationButton({
   dialogTitle: string
   review: ReactNode
   confirmLabel: string
+  confirmVariant?: ButtonVariant
   cancelLabel?: string
   requiresConfirmation?: () => boolean
   onConfirm: () => void
@@ -85,7 +87,7 @@ export function ConfirmationButton({
                 {cancelLabel}
               </Button>
               <Button
-                variant="destructive"
+                variant={confirmVariant}
                 type="button"
                 disabled={disabled}
                 onClick={() => {

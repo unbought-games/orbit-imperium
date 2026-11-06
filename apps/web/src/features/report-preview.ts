@@ -37,6 +37,18 @@ export function reportPreview(
   let at: S['Coordinates'] | undefined
   let identity = ''
   switch (preview.kind) {
+    case 'SiteEncounter':
+      at = preview.coordinates
+      identity = 'Personal NPC site'
+      if (preview.loot)
+        facts.push({ resources: preview.loot, label: 'Loot aboard' })
+      if (preview.debris)
+        facts.push({
+          resources: preview.debris,
+          label: 'Debris · cannot collect',
+          debris: true,
+        })
+      break
     case 'Phalanx':
       at = preview.target.coordinates
       facts.push({
@@ -171,10 +183,16 @@ export function reportAge(observedAt: number, now: number): string {
 }
 
 export const reportKindLabel = (kind: string) =>
-  kind === 'Returned' ? 'Fleet Returned' : label(kind)
+  kind === 'Returned'
+    ? 'Fleet Returned'
+    : kind === 'SiteEncounter'
+      ? 'NPC encounter'
+      : label(kind)
 
 export function reportListTitle(report: S['ReportHeader4'], viewer?: string) {
   const preview = report.preview
+  if (preview?.kind === 'SiteEncounter')
+    return combatOutcome(preview.outcome, 'Attacker')
   if (preview?.kind === 'Combat' && preview.outcome) {
     const side = preview.participants?.find(
       (participant) => participant.owner === viewer,

@@ -18,6 +18,7 @@ import { Route as UUniverseRouteImport } from './routes/u.$universe'
 import { Route as UUniverseIndexRouteImport } from './routes/u.$universe.index'
 import { Route as UUniverseSplatRouteImport } from './routes/u.$universe.$'
 import { Route as UUniverseAllianceRouteImport } from './routes/u.$universe.alliance'
+import { Route as UUniverseBriefingRouteImport } from './routes/u.$universe.briefing'
 import { Route as UUniverseCombatSimulatorRouteImport } from './routes/u.$universe.combat-simulator'
 import { Route as UUniverseDispatchRouteImport } from './routes/u.$universe.dispatch'
 import { Route as UUniverseFleetsRouteImport } from './routes/u.$universe.fleets'
@@ -35,6 +36,7 @@ import { Route as UUniverseLocationCoordinatesRouteImport } from './routes/u.$un
 import { Route as UUniverseReportsIndexRouteImport } from './routes/u.$universe.reports.index'
 import { Route as UUniverseReportsItemRouteImport } from './routes/u.$universe.reports.$item'
 import { Route as UUniverseBBodyAllianceRouteImport } from './routes/u.$universe.b.$body.alliance'
+import { Route as UUniverseBBodyBriefingRouteImport } from './routes/u.$universe.b.$body.briefing'
 import { Route as UUniverseBBodyCombatSimulatorRouteImport } from './routes/u.$universe.b.$body.combat-simulator'
 import { Route as UUniverseBBodyDefenseRouteImport } from './routes/u.$universe.b.$body.defense'
 import { Route as UUniverseBBodyDispatchRouteImport } from './routes/u.$universe.b.$body.dispatch'
@@ -103,6 +105,11 @@ const UUniverseSplatRoute = UUniverseSplatRouteImport.update({
 const UUniverseAllianceRoute = UUniverseAllianceRouteImport.update({
   id: '/alliance',
   path: '/alliance',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBriefingRoute = UUniverseBriefingRouteImport.update({
+  id: '/briefing',
+  path: '/briefing',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseCombatSimulatorRoute =
@@ -190,6 +197,11 @@ const UUniverseReportsItemRoute = UUniverseReportsItemRouteImport.update({
 const UUniverseBBodyAllianceRoute = UUniverseBBodyAllianceRouteImport.update({
   id: '/b/$body/alliance',
   path: '/b/$body/alliance',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodyBriefingRoute = UUniverseBBodyBriefingRouteImport.update({
+  id: '/b/$body/briefing',
+  path: '/b/$body/briefing',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseBBodyCombatSimulatorRoute =
@@ -335,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
+  '/u/$universe/briefing': typeof UUniverseBriefingRoute
   '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
@@ -353,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
   '/u/$universe/b/$body/alliance': typeof UUniverseBBodyAllianceRoute
+  '/u/$universe/b/$body/briefing': typeof UUniverseBBodyBriefingRoute
   '/u/$universe/b/$body/combat-simulator': typeof UUniverseBBodyCombatSimulatorRoute
   '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
   '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
@@ -386,6 +400,7 @@ export interface FileRoutesByTo {
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
+  '/u/$universe/briefing': typeof UUniverseBriefingRoute
   '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/galaxy': typeof UUniverseGalaxyRoute
@@ -402,6 +417,7 @@ export interface FileRoutesByTo {
   '/u/$universe/fleets': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports': typeof UUniverseReportsIndexRoute
   '/u/$universe/b/$body/alliance': typeof UUniverseBBodyAllianceRoute
+  '/u/$universe/b/$body/briefing': typeof UUniverseBBodyBriefingRoute
   '/u/$universe/b/$body/combat-simulator': typeof UUniverseBBodyCombatSimulatorRoute
   '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
   '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
@@ -435,6 +451,7 @@ export interface FileRoutesById {
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
+  '/u/$universe/briefing': typeof UUniverseBriefingRoute
   '/u/$universe/combat-simulator': typeof UUniverseCombatSimulatorRoute
   '/u/$universe/dispatch': typeof UUniverseDispatchRoute
   '/u/$universe/fleets': typeof UUniverseFleetsRouteWithChildren
@@ -453,6 +470,7 @@ export interface FileRoutesById {
   '/u/$universe/fleets/': typeof UUniverseFleetsIndexRoute
   '/u/$universe/reports/': typeof UUniverseReportsIndexRoute
   '/u/$universe/b/$body/alliance': typeof UUniverseBBodyAllianceRoute
+  '/u/$universe/b/$body/briefing': typeof UUniverseBBodyBriefingRoute
   '/u/$universe/b/$body/combat-simulator': typeof UUniverseBBodyCombatSimulatorRoute
   '/u/$universe/b/$body/defense': typeof UUniverseBBodyDefenseRouteWithChildren
   '/u/$universe/b/$body/dispatch': typeof UUniverseBBodyDispatchRoute
@@ -489,6 +507,7 @@ export interface FileRouteTypes {
     | '/u/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
+    | '/u/$universe/briefing'
     | '/u/$universe/combat-simulator'
     | '/u/$universe/dispatch'
     | '/u/$universe/fleets'
@@ -507,6 +526,7 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
     | '/u/$universe/b/$body/alliance'
+    | '/u/$universe/b/$body/briefing'
     | '/u/$universe/b/$body/combat-simulator'
     | '/u/$universe/b/$body/defense'
     | '/u/$universe/b/$body/dispatch'
@@ -540,6 +560,7 @@ export interface FileRouteTypes {
     | '/join/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
+    | '/u/$universe/briefing'
     | '/u/$universe/combat-simulator'
     | '/u/$universe/dispatch'
     | '/u/$universe/galaxy'
@@ -556,6 +577,7 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets'
     | '/u/$universe/reports'
     | '/u/$universe/b/$body/alliance'
+    | '/u/$universe/b/$body/briefing'
     | '/u/$universe/b/$body/combat-simulator'
     | '/u/$universe/b/$body/defense'
     | '/u/$universe/b/$body/dispatch'
@@ -588,6 +610,7 @@ export interface FileRouteTypes {
     | '/u/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
+    | '/u/$universe/briefing'
     | '/u/$universe/combat-simulator'
     | '/u/$universe/dispatch'
     | '/u/$universe/fleets'
@@ -606,6 +629,7 @@ export interface FileRouteTypes {
     | '/u/$universe/fleets/'
     | '/u/$universe/reports/'
     | '/u/$universe/b/$body/alliance'
+    | '/u/$universe/b/$body/briefing'
     | '/u/$universe/b/$body/combat-simulator'
     | '/u/$universe/b/$body/defense'
     | '/u/$universe/b/$body/dispatch'
@@ -704,6 +728,13 @@ declare module '@tanstack/react-router' {
       path: '/alliance'
       fullPath: '/u/$universe/alliance'
       preLoaderRoute: typeof UUniverseAllianceRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/briefing': {
+      id: '/u/$universe/briefing'
+      path: '/briefing'
+      fullPath: '/u/$universe/briefing'
+      preLoaderRoute: typeof UUniverseBriefingRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/combat-simulator': {
@@ -823,6 +854,13 @@ declare module '@tanstack/react-router' {
       path: '/b/$body/alliance'
       fullPath: '/u/$universe/b/$body/alliance'
       preLoaderRoute: typeof UUniverseBBodyAllianceRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/briefing': {
+      id: '/u/$universe/b/$body/briefing'
+      path: '/b/$body/briefing'
+      fullPath: '/u/$universe/b/$body/briefing'
+      preLoaderRoute: typeof UUniverseBBodyBriefingRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/b/$body/combat-simulator': {
@@ -1123,6 +1161,7 @@ const UUniverseBBodyShipyardRouteWithChildren =
 interface UUniverseRouteChildren {
   UUniverseSplatRoute: typeof UUniverseSplatRoute
   UUniverseAllianceRoute: typeof UUniverseAllianceRoute
+  UUniverseBriefingRoute: typeof UUniverseBriefingRoute
   UUniverseCombatSimulatorRoute: typeof UUniverseCombatSimulatorRoute
   UUniverseDispatchRoute: typeof UUniverseDispatchRoute
   UUniverseFleetsRoute: typeof UUniverseFleetsRouteWithChildren
@@ -1137,6 +1176,7 @@ interface UUniverseRouteChildren {
   UUniverseIndexRoute: typeof UUniverseIndexRoute
   UUniverseLocationCoordinatesRoute: typeof UUniverseLocationCoordinatesRoute
   UUniverseBBodyAllianceRoute: typeof UUniverseBBodyAllianceRoute
+  UUniverseBBodyBriefingRoute: typeof UUniverseBBodyBriefingRoute
   UUniverseBBodyCombatSimulatorRoute: typeof UUniverseBBodyCombatSimulatorRoute
   UUniverseBBodyDefenseRoute: typeof UUniverseBBodyDefenseRouteWithChildren
   UUniverseBBodyDispatchRoute: typeof UUniverseBBodyDispatchRoute
@@ -1157,6 +1197,7 @@ interface UUniverseRouteChildren {
 const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseSplatRoute: UUniverseSplatRoute,
   UUniverseAllianceRoute: UUniverseAllianceRoute,
+  UUniverseBriefingRoute: UUniverseBriefingRoute,
   UUniverseCombatSimulatorRoute: UUniverseCombatSimulatorRoute,
   UUniverseDispatchRoute: UUniverseDispatchRoute,
   UUniverseFleetsRoute: UUniverseFleetsRouteWithChildren,
@@ -1171,6 +1212,7 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseIndexRoute: UUniverseIndexRoute,
   UUniverseLocationCoordinatesRoute: UUniverseLocationCoordinatesRoute,
   UUniverseBBodyAllianceRoute: UUniverseBBodyAllianceRoute,
+  UUniverseBBodyBriefingRoute: UUniverseBBodyBriefingRoute,
   UUniverseBBodyCombatSimulatorRoute: UUniverseBBodyCombatSimulatorRoute,
   UUniverseBBodyDefenseRoute: UUniverseBBodyDefenseRouteWithChildren,
   UUniverseBBodyDispatchRoute: UUniverseBBodyDispatchRoute,

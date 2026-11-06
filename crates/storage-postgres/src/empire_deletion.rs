@@ -36,6 +36,9 @@ pub(crate) async fn scopes(
             ScopeKey::Location(f.destination_coordinates),
         ]);
         scopes.extend(f.authorization.target_owner.map(ScopeKey::Player));
+        if let MissionDestination::Site { selection } = f.intent.destination {
+            scopes.insert(ScopeKey::Site(selection.id));
+        }
     }
     let missiles: Vec<serde_json::Value> = sqlx::query_scalar("SELECT data FROM missile_flights WHERE universe=$1 AND owner=$2 AND data->>'status'='InFlight'")
         .bind(u.0).bind(player.0).fetch_all(&mut **tx).await.map_err(db_error)?;
@@ -71,6 +74,7 @@ pub(crate) async fn scopes(
     let members: Vec<Uuid> = sqlx::query_scalar("SELECT m.player FROM alliance_memberships m JOIN alliances a ON a.id=m.alliance WHERE a.universe=$1 AND a.leader=$2")
         .bind(u.0).bind(player.0).fetch_all(&mut **tx).await.map_err(db_error)?;
     scopes.extend(members.into_iter().map(|p| ScopeKey::Player(PlayerId(p))));
+    crate::admission::expand_player_scopes(tx, u, &mut scopes).await?;
     Ok(scopes)
 }
 
