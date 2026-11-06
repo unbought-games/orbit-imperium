@@ -39,13 +39,15 @@ pub enum AuthOutcome {
     Unavailable,
     SigninRequired,
     Cancelled,
+    Refreshing,
 }
 impl AuthOutcome {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::Success,
         Self::Unavailable,
         Self::SigninRequired,
         Self::Cancelled,
+        Self::Refreshing,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -53,12 +55,14 @@ impl AuthOutcome {
             Self::Unavailable => "unavailable",
             Self::SigninRequired => "signin_required",
             Self::Cancelled => "cancelled",
+            Self::Refreshing => "refreshing",
         }
     }
     pub fn from_store<T>(result: &Result<T, StoreError>) -> Self {
         match result {
             Ok(_) => Self::Success,
             Err(StoreError::Conflict | StoreError::NotFound) => Self::SigninRequired,
+            Err(StoreError::SessionRefreshing(_)) => Self::Refreshing,
             Err(_) => Self::Unavailable,
         }
     }
@@ -136,6 +140,30 @@ mod tests {
         fn auth_duration(&self, phase: AuthPhase, outcome: AuthOutcome, _: Duration) {
             self.0.lock().unwrap().push((phase.name(), outcome.name()));
         }
+    }
+    #[test]
+    fn refresh_contention_is_distinct_from_store_failure_and_signin() {
+        let observer = Arc::new(Observer::default());
+        for error in [
+            StoreError::SessionRefreshing(1000),
+            StoreError::Unavailable,
+            StoreError::NotFound,
+        ] {
+            let result: Result<(), StoreError> = futures::executor::block_on(observe_auth_store(
+                observer.clone(),
+                AuthPhase::Read,
+                async { Err(error) },
+            ));
+            assert!(result.is_err());
+        }
+        assert_eq!(
+            *observer.0.lock().unwrap(),
+            vec![
+                ("read", "refreshing"),
+                ("read", "unavailable"),
+                ("read", "signin_required"),
+            ]
+        );
     }
     #[test]
     fn cancelled_and_failed_phases_are_distinct() {
