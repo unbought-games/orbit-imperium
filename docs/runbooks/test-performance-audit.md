@@ -1125,3 +1125,34 @@ navigation as well. Both passed on their single repair (3.3 seconds runner).
 The 13 deterministic ship-selection tests passed in 0.342 seconds. No assertions,
 scenario names or timeouts were changed. All fixture servers/browsers stopped
 with their runners. Final queue verification follows the new pushed revision.
+
+## November 6, 2026: await self-profile delivery after Dispatch reload
+
+PR #358's second queue run `42266085978`, integration revision
+`135135501254a122cbcd6e3a49448e6eca71f67b`, passed the repaired disclosure scenario
+but failed `Dispatch origin follows authoritative self identity through loading
+refresh and navigation at 1440px`. Job `128058356679` asserted Captain Nova directly
+after `page.reload()`. The assertion first saw the expected unresolved “You” state,
+then timed out; the captured page context already contains Captain Nova in both
+the shell and Dispatch origin. Reload/HTML completion did not establish delivery
+of the separately loaded self-profile response.
+
+Inspected this scenario's history back to `89096d8d` and this ledger; no earlier
+repair for its profile-reload boundary was recorded. Its one repair uses the
+shared `withFixtureResponse`, matching `source.type === 'SelfAccount'`, before
+releasing the deliberate loading gate, triggering pageshow refresh and reloading.
+It verifies successful complete delivery before the existing identity assertions.
+The initial “You” assertions remain deliberately before release; navigation,
+stale-name exclusion and layout assertions remain. The caller audit found this
+as the only reload in the Dispatch file; both viewport instances receive the
+same repair. Other profile tests already have source-specific response listeners.
+This PR owns the complete repair; no additional follow-up is deferred.
+
+Both viewport scenarios passed in 4.1 seconds; the 14 player-profile model/adapter
+tests passed in 0.231 seconds. No sleep, retry, timeout change, assertion removal
+or product change was made. Runners cleaned up their servers and browsers.
+
+Second queue failure timing: requested at 17:55:47 UTC, runner started at
+17:56:03 (16 seconds allocation); tests began at 17:57:25 (82 seconds setup),
+ended at 18:05:15 (470 seconds), with 144 passed and one failed. GitHub removed
+the PR a second time. The changed revision must pass fresh PR and queue CI.

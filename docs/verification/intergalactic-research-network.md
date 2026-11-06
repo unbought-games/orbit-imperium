@@ -148,3 +148,12 @@ retained assertions, timings and caller audit are recorded in the November 6
 Dispatch entry in `docs/runbooks/test-performance-audit.md`. All 105 Dispatch cases
 passed across the full-file and targeted follow-up runs; the 13 deterministic
 ship-selection cases also passed. Fresh PR and queue CI must verify this repair.
+
+The second queue run `42266085978` passed the disclosure repair but failed a
+different existing Dispatch identity scenario at its ungated document reload.
+Its captured profile data arrived after the assertion boundary. Added self-profile
+response gates to that scenario's release/refresh/reload phases; initial loading
+and navigation assertions are retained. Both desktop/mobile scenarios and all
+14 deterministic player-profile tests passed. The November 6 self-profile entry
+in the performance audit records the history, evidence, timing and second queue
+removal. Research behavior and visual captures remain unchanged.
