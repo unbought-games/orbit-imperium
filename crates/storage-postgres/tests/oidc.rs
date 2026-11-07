@@ -514,6 +514,124 @@ async fn slow_refresh_is_isolated_and_rotates_once_across_replicas() {
 }
 
 #[tokio::test]
+async fn peers_wait_for_one_rotation_without_holding_connections_or_replaying_tokens() {
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let first = refresh_store(&url).await;
+    let second = refresh_store(&url).await;
+    first.migrate().await.unwrap();
+    let tokens = refresh_fixture();
+    let digest = Uuid::new_v4().to_string();
+    let session = first
+        .complete_oidc_login(tokens.clone(), &digest, "csrf", None)
+        .await
+        .unwrap();
+    let (entered, started) = tokio::sync::oneshot::channel();
+    let (release, held) = tokio::sync::oneshot::channel();
+    let running = {
+        let store = first.clone();
+        let digest = digest.clone();
+        let issuer = tokens.identity.issuer.clone();
+        tokio::spawn(async move {
+            store
+                .revalidate_oidc_for_test(&digest, &issuer, "orbit", |mut tokens| async move {
+                    entered.send(()).unwrap();
+                    held.await.unwrap();
+                    tokens.refresh_token = Some("rotated-refresh".into());
+                    tokens.validated_at = unbought_auth::now();
+                    Ok(tokens)
+                })
+                .await
+        })
+    };
+    started.await.unwrap();
+    let peer = |store: PgStore| {
+        let digest = digest.clone();
+        let issuer = tokens.identity.issuer.clone();
+        tokio::spawn(async move {
+            store
+                .revalidate_oidc_for_test(&digest, &issuer, "orbit", |_| async {
+                    panic!("peer must reuse committed rotation, never call provider")
+                })
+                .await
+        })
+    };
+    let cancelled = peer(second.clone());
+    let waiting = peer(second.clone());
+    responsive(async {
+        while second.oidc_refresh_waiter_count_for_test() < 2 {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await;
+    cancelled.abort();
+    assert!(cancelled.await.unwrap_err().is_cancelled());
+    assert_eq!(second.oidc_refresh_waiter_count_for_test(), 1);
+    assert!(
+        !waiting.is_finished(),
+        "peer is waiting on the held provider"
+    );
+
+    // Both admission and fresh authentication on the blocked refresher's own
+    // process remain usable with one connection reserved for each workload.
+    let fresh_digest = Uuid::new_v4().to_string();
+    let mut fresh = tokens.clone();
+    fresh.validated_at = unbought_auth::now();
+    responsive(first.complete_oidc_login(fresh, &fresh_digest, "csrf", None))
+        .await
+        .unwrap();
+    responsive(first.revalidate_oidc_for_test(
+        &fresh_digest,
+        &tokens.identity.issuer,
+        "orbit",
+        |_| async { panic!("fresh identities must not acquire exhausted refresh capacity") },
+    ))
+    .await
+    .unwrap();
+    responsive(first.create_session(session.account, &Uuid::new_v4().to_string(), "csrf", None))
+        .await
+        .unwrap();
+    // The peer's one ordinary read connection and one refresh connection are
+    // both available while it waits. This catches connection-holding polling.
+    responsive(second.oidc_refresh_pool_for_test().unwrap().acquire())
+        .await
+        .unwrap();
+    responsive(second.lookup_session(&digest)).await.unwrap();
+    release.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    assert!(responsive(waiting).await.unwrap().is_ok());
+    assert_eq!(second.oidc_refresh_waiter_count_for_test(), 0);
+    second
+        .revalidate_oidc_for_test(&digest, &tokens.identity.issuer, "orbit", |_| async {
+            panic!("a peer must reuse the already refreshed identity")
+        })
+        .await
+        .unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let saved: serde_json::Value =
+        sqlx::query_scalar("SELECT payload FROM oidc_session WHERE digest=$1")
+            .bind(&digest)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(saved["refresh_token"], "rotated-refresh");
+    sqlx::query("UPDATE oidc_session SET payload=jsonb_set(payload,'{validated_at}',to_jsonb($2::bigint)) WHERE digest=$1")
+        .bind(&digest).bind(unbought_auth::now()-61).execute(&pool).await.unwrap();
+    second
+        .revalidate_oidc_for_test(
+            &digest,
+            &tokens.identity.issuer,
+            "orbit",
+            |mut tokens| async move {
+                assert_eq!(tokens.refresh_token.as_deref(), Some("rotated-refresh"));
+                tokens.validated_at = unbought_auth::now();
+                Ok(tokens)
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn logout_wins_over_a_late_refresh_and_cancelled_refresh_releases_its_lock() {
     let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
     let first = refresh_store(&url).await;
@@ -545,6 +663,24 @@ async fn logout_wins_over_a_late_refresh_and_cancelled_refresh_releases_its_lock
             })
         };
         started.await.unwrap();
+        let peer = {
+            let store = second.clone();
+            let digest = digest.clone();
+            let issuer = tokens.identity.issuer.clone();
+            tokio::spawn(async move {
+                store
+                    .revalidate_oidc_for_test(&digest, &issuer, "orbit", |_| async {
+                        panic!("waiting peer cannot replay or resurrect a revoked rotation")
+                    })
+                    .await
+            })
+        };
+        responsive(async {
+            while second.oidc_refresh_waiter_count_for_test() == 0 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await;
         if cancel {
             running.abort();
             assert!(running.await.unwrap_err().is_cancelled());
@@ -587,6 +723,11 @@ async fn logout_wins_over_a_late_refresh_and_cancelled_refresh_releases_its_lock
             ));
             assert!(first.lookup_session(&digest).await.unwrap().is_none());
         }
+        assert!(matches!(
+            responsive(peer).await.unwrap(),
+            Err(orbit_application::StoreError::Conflict)
+        ));
+        assert_eq!(second.oidc_refresh_waiter_count_for_test(), 0);
     }
 }
 
