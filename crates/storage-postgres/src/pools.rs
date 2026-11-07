@@ -62,6 +62,7 @@ impl PgStore {
             },
             admission_limit: 60,
             legacy_universe_config: false,
+            refresh_waiters: Default::default(),
             update_hub: Default::default(),
             scan_cursors: Default::default(),
             observer: std::sync::Arc::new(orbit_application::NoopRuntimeObserver),

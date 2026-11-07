@@ -27,6 +27,7 @@ pub use migrations::MigrationError;
 mod analytics;
 mod identity;
 mod oidc;
+mod oidc_wait;
 #[cfg(feature = "test-support")]
 mod seed;
 #[derive(Clone)]
@@ -38,6 +39,7 @@ pub struct PgStore {
     scan_cursors: std::sync::Arc<scoped_ordering::ScanCursors>,
     observer: std::sync::Arc<dyn orbit_application::RuntimeObserver>,
     update_hub: std::sync::Arc<update_signals::UpdateHub>,
+    refresh_waiters: std::sync::Arc<oidc_wait::Waiters>,
 }
 impl PgStore {
     pub async fn connect(url: &str) -> Result<Self, StoreError> {
@@ -59,6 +61,7 @@ impl PgStore {
             pool,
             admission_limit: 60,
             legacy_universe_config: false,
+            refresh_waiters: Default::default(),
             update_hub: Default::default(),
             scan_cursors: Default::default(),
             observer: std::sync::Arc::new(orbit_application::NoopRuntimeObserver),
