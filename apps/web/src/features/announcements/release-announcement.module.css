@@ -1,0 +1,26 @@
+.bubble {
+  composes: bubble from '../tutorial/advisor.module.css';
+}
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--champagne);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.read {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
