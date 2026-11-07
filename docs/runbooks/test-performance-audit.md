@@ -1156,3 +1156,39 @@ Second queue failure timing: requested at 17:55:47 UTC, runner started at
 17:56:03 (16 seconds allocation); tests began at 17:57:25 (82 seconds setup),
 ended at 18:05:15 (470 seconds), with 144 passed and one failed. GitHub removed
 the PR a second time. The changed revision must pass fresh PR and queue CI.
+
+## RCA77 session-refresh coordination and CI follow-through — 2026-11-07 UTC
+
+Orbit PR360 initially tested `f24f67c4159558dd111848c4b266bf4d68d26de7`.
+Local real PostgreSQL OIDC coverage passed 13 tests (one existing opt-in provider
+cutpoint test skipped), with final preparation 9.70s and execution 8.097s; two
+wait-limiter unit tests passed in0.016s. Final storage all-target clippy took4.52s.
+One newly added assertion initially failed compilation because StoreError was
+unqualified; correcting its name preserved the assertion. Disposable Docker
+setup exhausted the default network pools; an inspected non-overlapping
+10.253.177.0/28 network was used for this task's own Compose project. No other
+containers, volumes or networks were changed.
+
+CI42329970501 passed Rust/unit/static, all PostgreSQL jobs and seven browser
+shards. Shard7/job128274052871 failed `incoming fleets and overview arrivals
+identify the same supporter` at the exact-text Visitor assertion. Its retained
+DOM explicitly contains the correct `Visitor profile details` link and supporter
+badge, but the rendered name is split into `Visito` and a final `r` grouped with
+the badge. The exact text locator assumes a different DOM structure; this is
+unrelated to the server authentication change.
+
+History was checked with `git log -L` and the repository repair ledger. The case
+originated in `f4a3dc24` and gained dossier/navigation assertions in `906e18a8`;
+no prior repair of these name assertions was found. The separate owner Test Czar
+ledger was not present in the available workspace. This is its one repair:
+assert the complete accessible profile-link name, retaining supporter, tooltip,
+desktop/mobile and navigation checks. The caller audit found the same pattern
+in three report-observer assertions; they were changed together. The alliance
+role named Observer is not a player identity and remains untouched. The existing
+plain-name baseline measurement remains a deliberate typography assertion.
+
+The two affected browser scenarios passed: module preparation2.281s, individual
+cases3.3s/4.1s, runner8.3s. No sleeps, retries, timeout increases, UI production
+changes or deleted tests. Vite/browser processes closed through the standard
+runner. The initial failed CI remains recorded; the new pushed revision requires
+fresh CI/review. Queue removals so far:0; merge/queue delay pending.
