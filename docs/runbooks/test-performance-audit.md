@@ -1249,3 +1249,55 @@ case still calls `withFixtureResponse`. Restored its import; no second repair or
 replacement of the retired journey was made. The remaining caller passed with
 2.042 s preparation, 2.3 s execution and 3.1 s runner time. This introduced error
 and its correction are recorded separately from the original flaky scenarios.
+
+
+## 2026-11-07: incident repair PR #359 browser recurrence
+
+Run `42263214249`, head `6f8f0e7d0ca3c5bee82db2fb858e208d2e3ee7dd`,
+failed both Dispatch origin/self-identity navigation cases (390px and 1440px)
+after reload: expected Captain Nova, received You, then the origin was absent.
+The Test Czar ledger records their consumed repair in PR #346 (`9a49645`),
+recurrence in PR #358 queue `42266085978`, and a second stabilization in
+`8ed04706`. That later green run does not restore the repair budget.
+
+Delete both width variants and their scenario-local profile-response predicate,
+per the one-repair policy. Preserve shared fixture response gates and all other
+Dispatch scenarios. Deterministic protection remains in
+`apps/web/src/client-model/player-profiles.test.ts` and
+`apps/web/src/adapters/player-profiles.test.ts`: source-bound identity, refresh,
+stale completion, cache invalidation and typed profile request contracts.
+No product behavior, network timeout or retry changed; UI captures do not apply.
+
+The existing Test Czar deletion handoff `01a1b220-cc7f-7491-bac6-8a777d0cbf82`
+was recorded as waiting for worktree creation through 00:32Z Nov 7. No separate
+deletion PR was open at reconciliation. This owned incident repair PR now carries
+the required removal; no second chat or edit to that operator's workspace was
+created. The PR's final source diff and this record provide the reconciliation
+point for the original handoff. Local/CI results are recorded in PR #359 and
+incident evidence; the original failed attempt remains counted.
+
+
+## 2026-11-07: PR #359 queue recurrence after the profile test repair
+
+Protected merge-group run `42343139593`, integration
+`71e9aabdbd05dae233bbf79e6264aab3fd0f0544` for PR head `b97597a`, passed all
+native and PostgreSQL checks and seven browser shards. Shard 7 failed the
+`incoming fleets and overview arrivals identify the same supporter` scenario
+at its overview profile-link assertion after reload; 144 shard cases passed.
+The retained synthetic DOM subsequently includes the Visitor profile link and
+supporter badge. This does not establish a production identity defect.
+
+The RCA77 audit above and commit `bb6d316a` record this scenario's one repair
+in PR #360, after run `42329970501`: replace the split exact-text locator with
+the accessible profile-link name. The new failure occurs after that repair.
+Per the repository's hard one-repair rule, remove this scenario outright; do not
+add another response gate, timeout, retry, or renamed copy. `inspectIdentity`,
+shared profile fixtures, report identity navigation, Galaxy supporter coverage
+and deliberate loading/error scenarios remain in use and unchanged.
+
+Deterministic protection remains in `client-model/player-profiles.test.ts`
+(profile refresh, support changes, source identity and stale-response fencing)
+and `adapters/player-profiles.test.ts` (source-bound transport contracts).
+No product source/UI changed and no new screenshot requirement is introduced.
+The original queue failure/removal is counted alongside the initial PR failure;
+fresh PR/review and integration checks are required for the updated head.

@@ -754,3 +754,140 @@ async fn production_review_preserves_history_and_pays_once() {
         );
     }
 }
+
+/// Regression: 0039's real JSON set ordering must support retained-world writes,
+/// not merely deserialize or pass schema/readiness checks.
+#[tokio::test]
+async fn migrated_objective_sets_commit_after_encoding_repair() {
+    let url = std::env::var("TEST_DATABASE_URL").unwrap();
+    let store = PgStore::connect(&url).await.unwrap();
+    store.migrate().await.unwrap();
+    store.set_test_time(1000).await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let migration = include_str!("../migrations/0039_onboarding.sql");
+    let program: serde_json::Value =
+        serde_json::from_str(migration.split("$program$").nth(1).unwrap()).unwrap();
+    let typed: ObjectiveProgram = serde_json::from_value(program.clone()).unwrap();
+    assert_ne!(program, serde_json::to_value(&typed).unwrap());
+    for scoped in [false, true] {
+        store.set_test_time(1000).await.unwrap();
+        let u = UniverseId(Uuid::new_v4());
+        let username = format!("migrated-{}", Uuid::new_v4());
+        let rules = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 3).unwrap();
+        let doc: WorldScenario = serde_json::from_value(json!({"version":1,"rules":rules,"edits":[
+            {"op":"add-player","user":username,"password":"password","planet":"1:50:8"},
+            {"op":"set","user":username,"planet":"1:50:8","buildings":{"SolarPlant":2}}
+        ]}))
+        .unwrap();
+        store
+            .apply_world_scenario(u, &doc, ScenarioMode::Create, Uuid::new_v4())
+            .await
+            .unwrap();
+        let auth = SessionService::new(store.clone())
+            .login(&username, "password", None)
+            .await
+            .unwrap();
+        let b = store
+            .current_binding(auth.session.account, u)
+            .await
+            .unwrap()
+            .0;
+        if scoped {
+            store.prepare_scoped_runtime(u, 100).await.unwrap();
+            store.activate_scoped_runtime(u).await.unwrap();
+        }
+        // Recreate the exact published migration's program representation.
+        sqlx::query(
+            "UPDATE objective_runs SET data=jsonb_set(data,'{program}',$2) WHERE universe=$1",
+        )
+        .bind(u.0)
+        .bind(&program)
+        .execute(&pool)
+        .await
+        .unwrap();
+        let before: serde_json::Value =
+            sqlx::query_scalar("SELECT data FROM objective_runs WHERE universe=$1")
+                .bind(u.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        store.set_test_time(2000).await.unwrap();
+        submit(
+            &store,
+            b,
+            None,
+            Command::World {
+                action: WorldAction::ReviewProductionSettings,
+            },
+        )
+        .await;
+        // Presence commits first; the objective-changing input retries forever.
+        let c = loop {
+            let c = claim(&store, u, scoped).await.unwrap();
+            let f = c.load(&store).await;
+            let outcome = c
+                .commit(&store, transition(&f.state, c.input(), &f.rules))
+                .await
+                .unwrap();
+            match outcome {
+                CommitOutcome::Committed { .. } => continue,
+                CommitOutcome::Conflict => break c,
+                other => panic!("unexpected result {other:?}"),
+            }
+        };
+        let original_input = c.input().clone();
+        sqlx::raw_sql(include_str!(
+            "../migrations/0040_objective_set_encoding.sql"
+        ))
+        .execute(&pool)
+        .await
+        .unwrap();
+        let repaired: serde_json::Value =
+            sqlx::query_scalar("SELECT data FROM objective_runs WHERE universe=$1")
+                .bind(u.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            serde_json::from_value::<ObjectiveRun>(before).unwrap(),
+            serde_json::from_value::<ObjectiveRun>(repaired.clone()).unwrap()
+        );
+        assert_eq!(
+            repaired,
+            serde_json::to_value(serde_json::from_value::<ObjectiveRun>(repaired.clone()).unwrap())
+                .unwrap()
+        );
+        assert_eq!(
+            sqlx::raw_sql(include_str!(
+                "../migrations/0040_objective_set_encoding.sql"
+            ))
+            .execute(&pool)
+            .await
+            .unwrap()
+            .rows_affected(),
+            0
+        );
+        let f = c.load(&store).await;
+        assert!(matches!(
+            c.commit(&store, transition(&f.state, c.input(), &f.rules))
+                .await
+                .unwrap(),
+            CommitOutcome::Committed { .. }
+        ));
+        assert_eq!(*c.input(), original_input);
+        let after = store.bound_world(b).await.unwrap().facts.0;
+        let run = tutorial_run(&after.state, b.player).unwrap();
+        assert_eq!(run.receipts.len(), 1);
+        assert!(run.receipts.contains_key("production-settings"));
+        let committed_input: serde_json::Value =
+            sqlx::query_scalar("SELECT input FROM transition_journal WHERE input_id=$1")
+                .bind(original_input.id.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            serde_json::from_value::<OrderedInput>(committed_input).unwrap(),
+            original_input
+        );
+    }
+}

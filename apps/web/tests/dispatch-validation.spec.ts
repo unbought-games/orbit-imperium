@@ -2,7 +2,7 @@ import { routeWorld } from './fixtures/game'
 import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { test, expect, type Page, type Route, type Response } from './fixtures/test'
+import { test, expect, type Page, type Route } from './fixtures/test'
 import { installGameFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
@@ -2292,42 +2292,7 @@ for (const width of [390, 1440]) {
     expect(state.launches).toBe(1)
   })
 
-  test(`Dispatch origin follows authoritative self identity through loading refresh and navigation at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    let release!: () => void
-    const gate = new Promise<void>(resolve => { release = resolve })
-    let username = 'Captain Vega'
-    const selfProfile = (response: Response) => response.url().endsWith('/player-profiles')
-      && response.request().postDataJSON()?.source?.type === 'SelfAccount'
-    try {
-      await setup(page, { beforeNavigation: async () => {
-        await playerProfilesFixture(page, () => [{ player: binding.player, username }])
-        await page.route('**/player-profiles', async route => { await gate; await route.fallback() })
-      } })
-      const origin = page.getByRole('group', { name: 'Origin', exact: true })
-      // The bound-view map says Commander; self identity is still unresolved.
-      await expect(origin).toContainText('Planet · You')
-      await expect(origin).not.toContainText(binding.player.slice(0, 8))
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-identity-loading-${width}x1000.png`, fullPage: width >= 768 })
-      await withFixtureResponse(page, selfProfile, async () => release())
-      await expect(origin).toContainText('Planet · Captain Vega')
-      username = 'Captain Nova'
-      await withFixtureResponse(page, selfProfile, () =>
-        page.evaluate(() => window.dispatchEvent(new Event('pageshow'))),
-      )
-      await expect(origin).toContainText('Planet · Captain Nova')
-      await page.getByRole('link', { name: 'Empire', exact: true }).click()
-      await page.goBack()
-      await expect(origin).toContainText('Planet · Captain Nova')
-      await withFixtureResponse(page, selfProfile, () => page.reload())
-      await expect(origin).toContainText('Planet · Captain Nova')
-      await expect(origin).not.toContainText('Commander')
-      await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
-      await page.evaluate(() => window.scrollTo(0, 0))
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-authoritative-identity-${width}x1000.png`, fullPage: width >= 768 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    } finally { release() }
-  })
+
 }
 
 test('zero-padded oversized ship counts retain server range rejection', async ({ page }) => {
