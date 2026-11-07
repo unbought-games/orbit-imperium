@@ -1216,3 +1216,29 @@ A recurrence of this repaired case must follow the repository deletion rule.
 The task's disposable database/container/network/volume were removed after OIDC
 validation. All unrelated Docker resources remain intact. Two CI failures and
 zero merge-queue removals are recorded so far; fresh CI is required for this push.
+
+Review `PRRT_kwDOVRgPYs60xblI` correctly invalidated the recruitment repair:
+Continue first navigates to login and obtains one bootstrap, then the recruitment
+entry performs another document navigation and bootstrap for the game. Matching
+the first response does not establish readiness of the final welcome route. The
+focused pass therefore did not close the demonstrated boundary defect.
+
+Removed `public recruitment bypasses bootstrap, exposes only public data and
+opens the authenticated alliance route` under the one-repair policy instead of
+making a second stabilization patch or renaming/recreating the scenario. This is
+an unsuccessful repair disposition, not another observed CI failure of that case.
+Retained deterministic protection: `recruitment.test.ts` checks safe auth return
+intent and welcome construction; `router.test.ts` checks canonical/legacy alliance
+query and welcome/invitation preservation; `markdown.test.ts` rejects scripts,
+embeds and unsafe URLs. Existing PostgreSQL alliance tests enforce the exact
+four-field public allowlist without leader/member data, discovery privacy and
+public preview/revocation. Existing recruitment browser cases retain desktop/mobile
+discovery and invitation-management wiring. No production routing or auth behavior
+changed. This removal does not claim an end-to-end replacement for the deleted
+multi-document journey.
+
+After removal, the retained recruitment/router/markdown unit checks passed all
+14 cases (2.96 s runner duration). The existing public-discovery browser cases
+passed at 1440 px and 390 px (2.099 s preparation, 2.0 s runner, individual
+0.697/0.413 s). Standard runners closed their resources. No replacement browser
+journey was added and the original review finding is addressed by removal.
