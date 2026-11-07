@@ -1192,3 +1192,27 @@ cases3.3s/4.1s, runner8.3s. No sleeps, retries, timeout increases, UI production
 changes or deleted tests. Vite/browser processes closed through the standard
 runner. The initial failed CI remains recorded; the new pushed revision requires
 fresh CI/review. Queue removals so far:0; merge/queue delay pending.
+
+Second CI run `42331233137` on `5f400ca3` passed the repaired profile scenario,
+all native checks, all database jobs and seven browser shards. Shard 1 failed
+`public recruitment bypasses bootstrap, exposes only public data and opens the
+authenticated alliance route`. The URL assertion began immediately after clicking
+Continue and spent its five-second window traversing login and the legacy welcome
+entry. The artifact shows the authenticated alliance welcome and application form;
+the test had not gated this navigation on bootstrap delivery before asserting the
+canonical address. No server authentication code is exercised by this fixture.
+
+History (`68aa2e78`, `9415a56a`, `e8a96d81`) and the local ledger were reviewed.
+The public-page fetch already has response readiness, but the authenticated
+continuation did not; no earlier repair of that boundary was found. Its one repair
+uses the existing `withFixtureResponse` helper around the click, requiring a
+successful, completely delivered bootstrap before the unchanged canonical URL and
+application-form assertions. The Continue-link caller audit found only this case.
+No sleeps, retries, timeout changes, production UI changes or removed assertions.
+The focused scenario passed: preparation 2.018 s, execution 1.6 s, runner 2.4 s.
+This is repair evidence, not a claim that an unchanged rerun fixed intermittency.
+A recurrence of this repaired case must follow the repository deletion rule.
+
+The task's disposable database/container/network/volume were removed after OIDC
+validation. All unrelated Docker resources remain intact. Two CI failures and
+zero merge-queue removals are recorded so far; fresh CI is required for this push.

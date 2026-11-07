@@ -176,7 +176,8 @@ test('public recruitment bypasses bootstrap, exposes only public data and opens 
     await diagnosticScreenshot(page, { path: `test-results/alliance-${width}-${page.url().includes('/alliances/') ? 'public' : 'board'}.png`, fullPage: true })
   }
   await fixture(page, null)
-  await page.getByRole('link', { name: 'Continue to this universe' }).click()
+  await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/bootstrap'),
+    () => page.getByRole('link', { name: 'Continue to this universe' }).click())
   await expect(page).toHaveURL(new RegExp(`/u/andromeda/b/${id(5)}/alliance\\?.*alliance=${alliance}`))
   await expect(page.getByLabel('Application message')).toBeVisible()
 })
