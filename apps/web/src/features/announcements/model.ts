@@ -1,47 +1,29 @@
-/** One curated release note, as built by `scripts/news.mjs` into `/updates/announcements.json`. */
+import type { ComponentType, LazyExoticComponent } from 'react'
+
+/**
+ * One curated announcement. The content is an ordinary React component, so an
+ * entry can use images, lists, links or any shared UI component.
+ */
 export type Announcement = {
+  /** Stable ID. Changing it shows the announcement again to everyone. */
   id: string
+  /** Shown as the bubble heading and its accessible name. */
   title: string
-  summary: string
+  /** ISO time when the announcement starts showing. */
   date: string
-  until: string
-  href: string
+  /** ISO time when it stops showing. Defaults to 30 days after `date`. */
+  until?: string
+  /** Optional full release note, usually `/updates/<news-id>.html`. */
+  href?: string
+  Content: LazyExoticComponent<ComponentType>
 }
 
-export const announcementsUrl = '/updates/announcements.json'
+export const announcementDays = 30
 
-const text = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim().length > 0
-const instant = (value: unknown): value is string =>
-  text(value) && Number.isFinite(Date.parse(value))
-
-/** Untrusted build output: keep only well-formed same-site entries. */
-export function parseAnnouncements(payload: unknown): Announcement[] {
-  if (!payload || typeof payload !== 'object') return []
-  const { version, announcements } = payload as {
-    version?: unknown
-    announcements?: unknown
-  }
-  if (version !== 1 || !Array.isArray(announcements)) return []
-  return announcements.flatMap((entry: unknown) => {
-    if (!entry || typeof entry !== 'object') return []
-    const { id, title, summary, date, until, href } = entry as Record<
-      string,
-      unknown
-    >
-    if (
-      !text(id) ||
-      !text(title) ||
-      !text(summary) ||
-      !instant(date) ||
-      !instant(until) ||
-      !text(href) ||
-      !href.startsWith('/updates/')
-    )
-      return []
-    return [{ id, title, summary, date, until, href }]
-  })
-}
+export const announcementEnd = (entry: Announcement) =>
+  entry.until
+    ? Date.parse(entry.until)
+    : Date.parse(entry.date) + announcementDays * 86_400_000
 
 /** The newest announcement inside its window that this account hasn't acknowledged. */
 export function currentAnnouncement(
@@ -54,7 +36,7 @@ export function currentAnnouncement(
       .filter(
         (entry) =>
           Date.parse(entry.date) <= now &&
-          now < Date.parse(entry.until) &&
+          now < announcementEnd(entry) &&
           !seen(entry.id),
       )
       .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))[0] ?? null
@@ -91,17 +73,3 @@ export function createAnnouncementHistory(
 }
 
 export const announcementHistory = createAnnouncementHistory(() => localStorage)
-
-let pending: Promise<Announcement[]> | null = null
-/** One request per page load; a failed request quietly shows nothing. */
-export function loadAnnouncements(
-  request: typeof fetch = (input, init) => fetch(input, init),
-) {
-  pending ??= request(announcementsUrl, { cache: 'no-cache' })
-    .then((response) => (response.ok ? response.json() : null))
-    .then(parseAnnouncements, () => [])
-  return pending
-}
-export function resetAnnouncementsForTest() {
-  pending = null
-}

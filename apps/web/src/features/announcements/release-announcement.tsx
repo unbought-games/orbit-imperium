@@ -1,4 +1,5 @@
 import {
+  Suspense,
   useRef,
   useState,
   type ComponentPropsWithRef,
@@ -104,17 +105,26 @@ export function ReleaseAnnouncement({
                 <Sparkles size={16} aria-hidden="true" /> Now available
               </span>
               <h2>{announcement.title}</h2>
-              <p>{announcement.summary}</p>
+              <div className={styles.body}>
+                <Suspense fallback={null}>
+                  <announcement.Content />
+                </Suspense>
+              </div>
               <div className={styles.actions}>
-                <a
-                  className={classes(linkStyles.link, styles.read)}
-                  href={announcement.href}
-                  target="_blank"
-                  rel="noopener"
-                  onClick={acknowledge}
-                >
-                  Read the update <ArrowUpRight size={16} aria-hidden="true" />
-                </a>
+                {announcement.href ? (
+                  <a
+                    className={classes(linkStyles.link, styles.read)}
+                    href={announcement.href}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={acknowledge}
+                  >
+                    Read the update{' '}
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </a>
+                ) : (
+                  <span />
+                )}
                 <Button variant="secondary" size="small" onClick={acknowledge}>
                   Got it
                 </Button>

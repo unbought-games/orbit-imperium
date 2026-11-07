@@ -10,23 +10,7 @@ export function readNote(source) {
   if (!match) throw new Error('News needs YAML frontmatter')
   const note=load(match[1],{schema:JSON_SCHEMA})
   if (!note || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(note.id) || typeof note.title!=='string' || !Number.isFinite(Date.parse(note.date))) throw new Error('Invalid news identity/title/date')
-  if (note.announce!==undefined && typeof note.announce!=='boolean') throw new Error(`${note.id}: announce must be true or false`)
-  if (note.announce && (typeof note.summary!=='string' || !note.summary.trim())) throw new Error(`${note.id}: announced notes need a summary`)
-  if (note.announce_until!==undefined && !(Date.parse(note.announce_until)>Date.parse(note.date))) throw new Error(`${note.id}: announce_until must be a date after date`)
   return {...note,body:match[2]}
-}
-/** Announcement window when a note does not set announce_until. */
-export const announcementDays=30
-/** Curated notes shown in the game's command orb, newest first. */
-export function announcements(notes) {
-  return notes.filter(n=>n.announce).map(n=>({
-    id:n.id,
-    title:n.title,
-    summary:n.summary.trim(),
-    date:new Date(Date.parse(n.date)).toISOString(),
-    until:new Date(n.announce_until===undefined?Date.parse(n.date)+announcementDays*86_400_000:Date.parse(n.announce_until)).toISOString(),
-    href:`/updates/${n.id}.html`,
-  }))
 }
 export function buildNews(root=process.cwd()) {
   const notes=[]
@@ -56,7 +40,6 @@ export function buildNews(root=process.cwd()) {
   }
   const historyFile=join(root,'docs/news/history.json')
   const history=existsSync(historyFile)?JSON.parse(readFileSync(historyFile,'utf8')):[]
-  writeFileSync(join(output,'announcements.json'),JSON.stringify({version:1,announcements:announcements(notes)})+'\n')
   writeFileSync(join(output,'index.html'),page("What's new",`<h1>What's new</h1><p>Changes and release notes included in this build.</p>${notes.map(n=>`<article><p class="meta">${escape(n.date.slice(0,10))}${n.version?' · Version '+escape(n.version):''}</p><h2><a href="/updates/${n.id}.html">${escape(n.title)}</a></h2>${n.summary?`<p>${escape(n.summary)}</p>`:''}</article>`).join('')}${history.length?'<p><a href="/updates/history-1.html">Browse the full change history →</a></p>':''}`))
   for(let start=0;start<history.length;start+=30){
     const pageNumber=start/30+1,total=Math.ceil(history.length/30)
