@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'

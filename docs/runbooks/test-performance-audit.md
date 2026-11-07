@@ -1242,3 +1242,10 @@ After removal, the retained recruitment/router/markdown unit checks passed all
 passed at 1440 px and 390 px (2.099 s preparation, 2.0 s runner, individual
 0.697/0.413 s). Standard runners closed their resources. No replacement browser
 journey was added and the original review finding is addressed by removal.
+
+Review `PRRT_kwDOVRgPYs60xg1v` found a cleanup error in that removal: the remaining
+`discovery applications preserve rejected drafts, withdraw and create an alliance`
+case still calls `withFixtureResponse`. Restored its import; no second repair or
+replacement of the retired journey was made. The remaining caller passed with
+2.042 s preparation, 2.3 s execution and 3.1 s runner time. This introduced error
+and its correction are recorded separately from the original flaky scenarios.
