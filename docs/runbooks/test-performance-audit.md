@@ -1079,3 +1079,173 @@ results are recorded in the implementation chat's validation artifact.
 Focused validation after the single repair: all 84 Heavy Fighter/shell browser
 cases passed with one worker (2.466s module preparation, 2.9m runner). Static
 checks passed. The runner closed its server/browser and released its port.
+
+## November 6, 2026: remove the Dispatch fixture's unrelated overview visit
+
+PR #358 queue run `42261264895`, integration revision
+`68981c1dea671dfb85aba8d3c440fd8dccfe07ea`, failed
+`Dispatch shows available ships with a reversible all-rows disclosure at 390px`
+in job `128041648092`. It failed in the shared Dispatch setup's call to
+`shellFixture`, waiting five seconds for the overview heading before the test
+navigated to Dispatch. The failure artifact already contains the correct Empire
+heading and populated overview. The test never reached its ship disclosure.
+The PR-head run had passed; that is evidence of intermittency, not a repair.
+
+Inspected the scenario history (`89096d8d`), Dispatch setup/navigation history
+(`#346`, `3c8613a1`), the November 5 shared-shell repair above and this ledger.
+No previous repair of this disclosure scenario was recorded. Its one repair
+replaces the shared Dispatch setup's ready-overview wrapper with the existing
+`installGameFixture`. All Dispatch handlers are now installed before its one
+navigation, whose existing `withFixtureResponse` still verifies successful,
+complete bootstrap delivery before the Dispatch assertion. This removes an
+unrelated screen and one full bootstrap from every caller. It does not add a
+wait, retry, sleep or timeout, nor weaken any Dispatch assertion.
+
+The caller audit covers every test using this file's shared `setup`, including
+both controlled `beforeNavigation` profile handlers. They all require Dispatch,
+not Overview; their intended target state and negative/race controls are retained.
+The generic `shellFixture` remains for actual shell/navigation tests. This PR owns
+the complete Dispatch fixture repair and full-file verification; no independent
+follow-up is deferred. Ship visibility and zero-inventory selection continue to
+have deterministic coverage in `client-model/ship-selection.test.ts`.
+
+Queue failure timing: runner requested at 17:23:55 UTC and started at 17:24:15
+(20 seconds allocation wait); setup completed at 17:25:57 (102 seconds); test step
+ended at 17:33:22 (445 seconds). It passed 144 cases and failed one. GitHub removed
+the PR from the queue once (first enrollment was 17:23:37). This remains failed
+validation; a changed revision must pass PR and queue CI before merge.
+
+Local repair validation: the full Dispatch file ran 105 cases in 1.2 minutes
+(1.975 seconds module preparation). The repaired desktop/mobile disclosure cases
+and 101 others passed. Two standalone fixtures failed with `ReferenceError:
+shellFixture is not defined` after the import changed; this was a repair editing
+error, not another intermittent scenario failure. Audited both and converted
+their same redundant overview/Dispatch sequence to direct, response-gated fixture
+navigation as well. Both passed on their single repair (3.3 seconds runner).
+The 13 deterministic ship-selection tests passed in 0.342 seconds. No assertions,
+scenario names or timeouts were changed. All fixture servers/browsers stopped
+with their runners. Final queue verification follows the new pushed revision.
+
+## November 6, 2026: await self-profile delivery after Dispatch reload
+
+PR #358's second queue run `42266085978`, integration revision
+`135135501254a122cbcd6e3a49448e6eca71f67b`, passed the repaired disclosure scenario
+but failed `Dispatch origin follows authoritative self identity through loading
+refresh and navigation at 1440px`. Job `128058356679` asserted Captain Nova directly
+after `page.reload()`. The assertion first saw the expected unresolved “You” state,
+then timed out; the captured page context already contains Captain Nova in both
+the shell and Dispatch origin. Reload/HTML completion did not establish delivery
+of the separately loaded self-profile response.
+
+Inspected this scenario's history back to `89096d8d` and this ledger; no earlier
+repair for its profile-reload boundary was recorded. Its one repair uses the
+shared `withFixtureResponse`, matching `source.type === 'SelfAccount'`, before
+releasing the deliberate loading gate, triggering pageshow refresh and reloading.
+It verifies successful complete delivery before the existing identity assertions.
+The initial “You” assertions remain deliberately before release; navigation,
+stale-name exclusion and layout assertions remain. The caller audit found this
+as the only reload in the Dispatch file; both viewport instances receive the
+same repair. Other profile tests already have source-specific response listeners.
+This PR owns the complete repair; no additional follow-up is deferred.
+
+Both viewport scenarios passed in 4.1 seconds; the 14 player-profile model/adapter
+tests passed in 0.231 seconds. No sleep, retry, timeout change, assertion removal
+or product change was made. Runners cleaned up their servers and browsers.
+
+Second queue failure timing: requested at 17:55:47 UTC, runner started at
+17:56:03 (16 seconds allocation); tests began at 17:57:25 (82 seconds setup),
+ended at 18:05:15 (470 seconds), with 144 passed and one failed. GitHub removed
+the PR a second time. The changed revision must pass fresh PR and queue CI.
+
+## RCA77 session-refresh coordination and CI follow-through — 2026-11-07 UTC
+
+Orbit PR360 initially tested `f24f67c4159558dd111848c4b266bf4d68d26de7`.
+Local real PostgreSQL OIDC coverage passed 13 tests (one existing opt-in provider
+cutpoint test skipped), with final preparation 9.70s and execution 8.097s; two
+wait-limiter unit tests passed in0.016s. Final storage all-target clippy took4.52s.
+One newly added assertion initially failed compilation because StoreError was
+unqualified; correcting its name preserved the assertion. Disposable Docker
+setup exhausted the default network pools; an inspected non-overlapping
+10.253.177.0/28 network was used for this task's own Compose project. No other
+containers, volumes or networks were changed.
+
+CI42329970501 passed Rust/unit/static, all PostgreSQL jobs and seven browser
+shards. Shard7/job128274052871 failed `incoming fleets and overview arrivals
+identify the same supporter` at the exact-text Visitor assertion. Its retained
+DOM explicitly contains the correct `Visitor profile details` link and supporter
+badge, but the rendered name is split into `Visito` and a final `r` grouped with
+the badge. The exact text locator assumes a different DOM structure; this is
+unrelated to the server authentication change.
+
+History was checked with `git log -L` and the repository repair ledger. The case
+originated in `f4a3dc24` and gained dossier/navigation assertions in `906e18a8`;
+no prior repair of these name assertions was found. The separate owner Test Czar
+ledger was not present in the available workspace. This is its one repair:
+assert the complete accessible profile-link name, retaining supporter, tooltip,
+desktop/mobile and navigation checks. The caller audit found the same pattern
+in three report-observer assertions; they were changed together. The alliance
+role named Observer is not a player identity and remains untouched. The existing
+plain-name baseline measurement remains a deliberate typography assertion.
+
+The two affected browser scenarios passed: module preparation2.281s, individual
+cases3.3s/4.1s, runner8.3s. No sleeps, retries, timeout increases, UI production
+changes or deleted tests. Vite/browser processes closed through the standard
+runner. The initial failed CI remains recorded; the new pushed revision requires
+fresh CI/review. Queue removals so far:0; merge/queue delay pending.
+
+Second CI run `42331233137` on `5f400ca3` passed the repaired profile scenario,
+all native checks, all database jobs and seven browser shards. Shard 1 failed
+`public recruitment bypasses bootstrap, exposes only public data and opens the
+authenticated alliance route`. The URL assertion began immediately after clicking
+Continue and spent its five-second window traversing login and the legacy welcome
+entry. The artifact shows the authenticated alliance welcome and application form;
+the test had not gated this navigation on bootstrap delivery before asserting the
+canonical address. No server authentication code is exercised by this fixture.
+
+History (`68aa2e78`, `9415a56a`, `e8a96d81`) and the local ledger were reviewed.
+The public-page fetch already has response readiness, but the authenticated
+continuation did not; no earlier repair of that boundary was found. Its one repair
+uses the existing `withFixtureResponse` helper around the click, requiring a
+successful, completely delivered bootstrap before the unchanged canonical URL and
+application-form assertions. The Continue-link caller audit found only this case.
+No sleeps, retries, timeout changes, production UI changes or removed assertions.
+The focused scenario passed: preparation 2.018 s, execution 1.6 s, runner 2.4 s.
+This is repair evidence, not a claim that an unchanged rerun fixed intermittency.
+A recurrence of this repaired case must follow the repository deletion rule.
+
+The task's disposable database/container/network/volume were removed after OIDC
+validation. All unrelated Docker resources remain intact. Two CI failures and
+zero merge-queue removals are recorded so far; fresh CI is required for this push.
+
+Review `PRRT_kwDOVRgPYs60xblI` correctly invalidated the recruitment repair:
+Continue first navigates to login and obtains one bootstrap, then the recruitment
+entry performs another document navigation and bootstrap for the game. Matching
+the first response does not establish readiness of the final welcome route. The
+focused pass therefore did not close the demonstrated boundary defect.
+
+Removed `public recruitment bypasses bootstrap, exposes only public data and
+opens the authenticated alliance route` under the one-repair policy instead of
+making a second stabilization patch or renaming/recreating the scenario. This is
+an unsuccessful repair disposition, not another observed CI failure of that case.
+Retained deterministic protection: `recruitment.test.ts` checks safe auth return
+intent and welcome construction; `router.test.ts` checks canonical/legacy alliance
+query and welcome/invitation preservation; `markdown.test.ts` rejects scripts,
+embeds and unsafe URLs. Existing PostgreSQL alliance tests enforce the exact
+four-field public allowlist without leader/member data, discovery privacy and
+public preview/revocation. Existing recruitment browser cases retain desktop/mobile
+discovery and invitation-management wiring. No production routing or auth behavior
+changed. This removal does not claim an end-to-end replacement for the deleted
+multi-document journey.
+
+After removal, the retained recruitment/router/markdown unit checks passed all
+14 cases (2.96 s runner duration). The existing public-discovery browser cases
+passed at 1440 px and 390 px (2.099 s preparation, 2.0 s runner, individual
+0.697/0.413 s). Standard runners closed their resources. No replacement browser
+journey was added and the original review finding is addressed by removal.
+
+Review `PRRT_kwDOVRgPYs60xg1v` found a cleanup error in that removal: the remaining
+`discovery applications preserve rejected drafts, withdraw and create an alliance`
+case still calls `withFixtureResponse`. Restored its import; no second repair or
+replacement of the retired journey was made. The remaining caller passed with
+2.042 s preparation, 2.3 s execution and 3.1 s runner time. This introduced error
+and its correction are recorded separately from the original flaky scenarios.

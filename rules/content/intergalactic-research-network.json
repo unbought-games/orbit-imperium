@@ -1,0 +1,8 @@
+{
+  "research": { "base": [240000, 400000, 160000], "growth": [2, 1] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "ResearchLab", "level": 10 },
+    { "type": "PlayerResearch", "research": "ComputerTechnology", "level": 8 },
+    { "type": "PlayerResearch", "research": "HyperspaceTechnology", "level": 8 }
+  ]
+}

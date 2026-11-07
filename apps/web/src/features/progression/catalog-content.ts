@@ -35,6 +35,8 @@ const content: Record<string, string> = {
     'Hosts research projects and unlocks new technologies. Laboratory construction and research cannot overlap.',
   EnergyTechnology:
     'Improves Fusion Reactor energy output and unlocks more advanced systems.',
+  IntergalacticResearchNetwork:
+    'Links laboratories across your planets to shorten research time. Each completed level allows one additional eligible lab to contribute. The initiating lab always participates, and every lab must individually meet the technology’s lab requirement. Researching the network itself uses its previous completed level.',
   ComputerTechnology:
     'Improves fleet coordination and increases the number of fleet missions you can operate.',
   EspionageTechnology:

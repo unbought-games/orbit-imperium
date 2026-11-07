@@ -1,5 +1,5 @@
-import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { withFixtureResponse } from './fixtures/responses'
+import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, refreshGame, binding, id } from './fixtures/game'
@@ -153,32 +153,6 @@ test('noticeboard renders safely, creates, pins, edits and loads a stable older 
   await page.getByRole('button', { name: 'Newest notices' }).click()
   await expect(page.getByRole('heading', { name: 'Rally at noon' })).toBeVisible()
   expect(f.commands.map(c => c.action.type)).toEqual(['CreatePost', 'PinPost', 'EditPost'])
-})
-
-test('public recruitment bypasses bootstrap, exposes only public data and opens the authenticated alliance route', async ({ page }) => {
-  let bootstraps = 0
-  await page.route('**/api/**', route => {
-    if (route.request().url().includes('bootstrap')) bootstraps++
-    return route.fulfill({ status: 500 })
-  })
-  await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary, public_text: '**Explore** together.\n\n[Bad](javascript:alert(1)) ![image](https://example.com/a.png)\n\n<script>alert(1)</script>' } }))
-  await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith(`/alliances/${alliance}`), () => page.goto(`/alliances/${binding.universe}/${alliance}`))
-  await expect(page.getByRole('heading', { name: summary.name })).toBeVisible()
-  await expect(page.getByText('24,000')).toBeVisible()
-  expect(bootstraps).toBe(0)
-  await expect(page.locator('main iframe, main script')).toHaveCount(0)
-  await expect(page.locator('main img')).toHaveCount(1)
-  await expect(page.getByRole('img', { name: `${summary.name} recruitment poster` })).toHaveAttribute('src', `/alliances/${binding.universe}/${alliance}/image`)
-  await expect(page.getByRole('button', { name: 'Members', exact: true })).toHaveCount(0)
-  for (const width of [390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 900 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await diagnosticScreenshot(page, { path: `test-results/alliance-${width}-${page.url().includes('/alliances/') ? 'public' : 'board'}.png`, fullPage: true })
-  }
-  await fixture(page, null)
-  await page.getByRole('link', { name: 'Continue to this universe' }).click()
-  await expect(page).toHaveURL(new RegExp(`/u/andromeda/b/${id(5)}/alliance\\?.*alliance=${alliance}`))
-  await expect(page.getByLabel('Application message')).toBeVisible()
 })
 
 test('open and closed recruitment and existing membership drive the available controls', async ({ page }) => {

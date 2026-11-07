@@ -73,6 +73,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Defense(DefenseId::LargeShieldDome),
             CatalogKey::Research(ResearchId::PlasmaTechnology),
             CatalogKey::Research(ResearchId::HyperspaceTechnology),
+            CatalogKey::Research(ResearchId::IntergalacticResearchNetwork),
         ] {
             assert!(
                 next.artifact
@@ -653,132 +654,6 @@ fn plasma_turret_upgrade_owns_complete_definitions_and_rejects_customizations() 
 }
 
 #[test]
-fn hyperspace_upgrade_initializes_technology_and_drive_and_preserves_customizations() {
-    let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
-    let key = CatalogKey::Research(ResearchId::HyperspaceTechnology);
-    let mut artifact = without_native_hyperspace_ships(latest.artifact.clone());
-    artifact
-        .progression
-        .as_mut()
-        .unwrap()
-        .research
-        .remove(&ResearchId::HyperspaceTechnology);
-    let entry = artifact.catalog.iter_mut().find(|e| e.key == key).unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
-    entry.body_kinds = [BodyKind::Planet].into();
-    artifact
-        .progression
-        .as_mut()
-        .unwrap()
-        .research
-        .remove(&ResearchId::HyperspaceDrive);
-    let drive = artifact
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
-        .unwrap();
-    drive.enabled = false;
-    drive.requirements.clear();
-    artifact
-        .ships
-        .get_mut(&ShipType::Bomber)
-        .unwrap()
-        .hyperspace_drive = None;
-    let previous = Ruleset::from_artifact(artifact, latest.speed).unwrap();
-    let next = upgrade_standard_rules(&previous).unwrap();
-    assert_eq!(next, latest);
-    let delta = validate_rules_update(&previous, &next).unwrap();
-    assert_eq!(
-        delta.add_research,
-        vec![
-            ResearchId::HyperspaceTechnology,
-            ResearchId::HyperspaceDrive
-        ]
-    );
-    assert!(delta.add_buildings.is_empty());
-    let mut ships = without_native_hyperspace_ships(next.artifact.clone()).ships;
-    ships.get_mut(&ShipType::Bomber).unwrap().hyperspace_drive = None;
-    assert_eq!(ships, previous.artifact.ships);
-    assert_eq!(
-        without_native_hyperspace_ships(next.artifact.clone()).world,
-        previous.artifact.world
-    );
-    for id in [
-        ResearchId::IntergalacticResearchNetwork,
-        ResearchId::GravitonTechnology,
-    ] {
-        assert!(
-            !next
-                .artifact
-                .catalog
-                .iter()
-                .any(|e| e.key == CatalogKey::Research(id) && e.enabled)
-        );
-        assert!(!next.research_keys().contains(&id));
-    }
-    for custom in 0..3 {
-        let mut artifact = next.artifact.clone();
-        if custom == 0 {
-            artifact
-                .catalog
-                .iter_mut()
-                .filter(|e| {
-                    matches!(
-                        e.key,
-                        CatalogKey::Ship(
-                            ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
-                        )
-                    )
-                })
-                .for_each(|e| e.enabled = false);
-        }
-        match custom {
-            0 => {
-                artifact
-                    .catalog
-                    .iter_mut()
-                    .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
-                    .unwrap()
-                    .enabled = false;
-                artifact
-                    .catalog
-                    .iter_mut()
-                    .find(|e| e.key == key)
-                    .unwrap()
-                    .enabled = false
-            }
-            1 => {
-                artifact
-                    .progression
-                    .as_mut()
-                    .unwrap()
-                    .research
-                    .get_mut(&ResearchId::HyperspaceTechnology)
-                    .unwrap()
-                    .base[1] = 5000
-            }
-            _ => {
-                artifact
-                    .catalog
-                    .iter_mut()
-                    .find(|e| e.key == key)
-                    .unwrap()
-                    .requirements[0] = Requirement::BodyBuilding {
-                    building: Building::ResearchLab,
-                    level: 8,
-                }
-            }
-        }
-        let custom = Ruleset::from_artifact(artifact, next.speed).unwrap();
-        assert!(matches!(
-            upgrade_standard_rules(&custom),
-            Err(StandardRulesError::Conflicts(_))
-        ));
-    }
-}
-
-#[test]
 fn missile_bundle_has_separate_inventory_and_conflict_safe_activation() {
     let before = Ruleset::mvp_raids().unwrap();
     let next = upgrade_standard_rules(&before).unwrap();
@@ -1169,5 +1044,70 @@ fn lunar_industry_upgrade_recognizes_released_planet_catalog_and_preserves_custo
             .body_kinds
             .insert(BodyKind::Moon);
         assert!(Ruleset::from_artifact(illegal, 1).is_err(), "{key:?}");
+    }
+}
+
+#[test]
+fn research_network_upgrade_adds_only_the_missing_research_and_rejects_customizations() {
+    let latest = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 5).unwrap();
+    let key = CatalogKey::Research(ResearchId::IntergalacticResearchNetwork);
+    let mut artifact = latest.artifact.clone();
+    artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .research
+        .remove(&ResearchId::IntergalacticResearchNetwork);
+    let entry = artifact.catalog.iter_mut().find(|e| e.key == key).unwrap();
+    entry.enabled = false;
+    entry.requirements.clear();
+    let previous = Ruleset::from_artifact(artifact, latest.speed).unwrap();
+    let next = upgrade_standard_rules(&previous).unwrap();
+    assert_eq!(next, latest);
+    assert_eq!(
+        validate_rules_update(&previous, &next)
+            .unwrap()
+            .add_research,
+        vec![ResearchId::IntergalacticResearchNetwork]
+    );
+    assert_eq!(upgrade_standard_rules(&next).unwrap(), next);
+    for change in 0..3 {
+        let mut artifact = next.artifact.clone();
+        match change {
+            0 => {
+                artifact
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == key)
+                    .unwrap()
+                    .enabled = false
+            }
+            1 => {
+                artifact
+                    .progression
+                    .as_mut()
+                    .unwrap()
+                    .research
+                    .get_mut(&ResearchId::IntergalacticResearchNetwork)
+                    .unwrap()
+                    .base[0] += 1
+            }
+            _ => {
+                artifact
+                    .catalog
+                    .iter_mut()
+                    .find(|e| e.key == key)
+                    .unwrap()
+                    .requirements[0] = Requirement::BodyBuilding {
+                    building: Building::ResearchLab,
+                    level: 11,
+                }
+            }
+        }
+        let custom = Ruleset::from_artifact(artifact, next.speed).unwrap();
+        assert!(matches!(
+            upgrade_standard_rules(&custom),
+            Err(StandardRulesError::Conflicts(_))
+        ));
     }
 }

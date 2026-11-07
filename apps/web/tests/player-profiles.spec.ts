@@ -174,12 +174,12 @@ test('incoming fleets and overview arrivals identify the same supporter', async 
   ])
   await page.reload()
   const arrivals = page.getByRole('region', { name: 'Fleet movements' })
-  await expect(arrivals.getByText('Visitor', { exact: true })).toBeVisible()
+  await expect(arrivals.getByRole('link', { name: 'Visitor profile details', exact: true })).toBeVisible()
   await expect(arrivals.getByRole('img', { name: /Supporter/ })).toBeVisible()
   await inspectIdentity(page, 'empire', 'Visitor')
   await page.goto(`/u/andromeda/b/${body.id}/fleets`)
   const incoming = page.getByRole('region', { name: 'Incoming fleets' })
-  await expect(incoming.getByText('Visitor', { exact: true })).toBeVisible()
+  await expect(incoming.getByRole('link', { name: 'Visitor profile details', exact: true })).toBeVisible()
   await expect(incoming.getByRole('img', { name: /Supporter/ })).toBeVisible()
   await inspectIdentity(page, 'fleets', 'Visitor')
 })
@@ -235,7 +235,7 @@ test('espionage and combat observations use current public identities without ch
     page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`),
   ])
   const observation = page.getByRole('region', { name: 'Report observation' })
-  await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
+  await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
   await expect(
     observation.getByRole('img', { name: /Supporter/ }),
   ).toBeVisible()
@@ -258,7 +258,7 @@ test('espionage and combat observations use current public identities without ch
     },
   }
   await Promise.all([reportProfiles(), page.reload()])
-  await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
+  await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
   await inspectIdentity(page, 'espionage', 'Observer')
   payload = {
     kind: 'Combat',
@@ -295,7 +295,7 @@ test('espionage and combat observations use current public identities without ch
   await expect(
     observation
       .getByRole('region', { name: 'Forces and losses' })
-      .getByText('Observer', { exact: true }),
+      .getByRole('link', { name: 'Observer profile details', exact: true }),
   ).toBeVisible()
   await expect(
     observation.getByRole('heading', { name: 'Defender profile details', exact: true }),

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Intergalactic Research Network links eligible labs across your planets to shorten
+  research time. Research details show contributing planets and their lab levels.
+  Read the [build note](docs/news/changes/2026-11-06-research-network.md).
+
 - Deployment shows an estimated arrival date and time instead of a duplicate
   duration. Thanks to [Gh0stP1rate](https://discord.com/users/343178308164255744)
   and [sumdeos](https://discord.com/users/181133185491402753) for independently

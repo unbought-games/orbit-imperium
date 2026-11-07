@@ -250,6 +250,15 @@ pub(super) fn patches() -> Vec<Patch> {
         hyperspace["research"].clone(),
         hyperspace["requirements"].clone(),
     );
+    let network = read(include_bytes!(
+        "../../../../rules/content/intergalactic-research-network.json"
+    ));
+    research(
+        &mut out,
+        "IntergalacticResearchNetwork",
+        network["research"].clone(),
+        network["requirements"].clone(),
+    );
     let drive = read(include_bytes!(
         "../../../../rules/content/hyperspace-drive.json"
     ));
