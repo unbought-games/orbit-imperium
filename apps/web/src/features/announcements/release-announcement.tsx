@@ -1,7 +1,6 @@
 import {
   Suspense,
   useRef,
-  useState,
   type ComponentPropsWithRef,
   type ReactNode,
 } from 'react'
@@ -33,8 +32,9 @@ type Trigger = (
 ) => ReactNode
 
 /**
- * Lowest-priority orb bubble. It opens by itself for a new curated release and
- * waits while Command uplink or a tutorial tip owns the orb.
+ * Lowest-priority orb bubble. It opens by itself for a curated announcement and
+ * waits while the caller suspends it (threats, tutorial tips, Command uplink).
+ * Any way of closing it counts as seen; afterwards the orb behaves normally.
  */
 export function ReleaseAnnouncement({
   account,
@@ -46,12 +46,19 @@ export function ReleaseAnnouncement({
   children: Trigger
 }) {
   const { announcement, acknowledge } = useReleaseAnnouncement(account)
-  const [hidden, setHidden] = useState(false)
-  const open = !!announcement && !hidden && !suspended
+  const open = !!announcement && !suspended
   const arrow = useRef<SVGSVGElement>(null)
+  const close = () => {
+    // The bubble unmounts with focus inside it. Return focus to the orb.
+    const trigger = floating.refs.domReference.current
+    if (trigger instanceof HTMLElement) trigger.focus({ preventScroll: true })
+    acknowledge()
+  }
   const floating = useFloating({
     open,
-    onOpenChange: (next) => setHidden(!next),
+    onOpenChange: (next) => {
+      if (!next) close()
+    },
     placement: 'top-end',
     strategy: 'fixed',
     middleware: [
@@ -74,7 +81,7 @@ export function ReleaseAnnouncement({
           ? undefined
           : {
               ...interactions.getReferenceProps({
-                'aria-label': `${open ? 'Hide' : 'Show'} what's new`,
+                'aria-label': `Hide announcement: ${announcement.title}`,
               }),
               ref: floating.refs.setReference,
             },
@@ -117,7 +124,7 @@ export function ReleaseAnnouncement({
                     href={announcement.href}
                     target="_blank"
                     rel="noopener"
-                    onClick={acknowledge}
+                    onClick={close}
                   >
                     Read the update{' '}
                     <ArrowUpRight size={16} aria-hidden="true" />
@@ -125,7 +132,7 @@ export function ReleaseAnnouncement({
                 ) : (
                   <span />
                 )}
-                <Button variant="secondary" size="small" onClick={acknowledge}>
+                <Button variant="secondary" size="small" onClick={close}>
                   Got it
                 </Button>
               </div>
