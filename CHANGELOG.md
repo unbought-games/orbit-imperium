@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The command orb can announce selected new features in game. Each announcement
+  shows once and links to its full update.
+
 - Intergalactic Research Network links eligible labs across your planets to shorten
   research time. Research details show contributing planets and their lab levels.
   Read the [build note](docs/news/changes/2026-11-06-research-network.md).

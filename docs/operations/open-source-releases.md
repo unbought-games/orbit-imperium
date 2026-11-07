@@ -174,6 +174,10 @@ pages included in every application build. No Git checkout,
 website API, external account, or Unbought service is required at runtime. These
 pages describe the installed build, not the official server's deployment history.
 
+A few changes also deserve an in-game announcement that opens from the command
+orb. These are curated React components, not generated from notes; see the
+[announcement guide](../../apps/web/src/features/announcements/README.md).
+
 ## Website integration
 
 `WWW_PUBLISH_KEY` is a write deploy key limited to `unbought-games/www`.
