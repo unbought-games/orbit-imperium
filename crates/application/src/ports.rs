@@ -329,6 +329,37 @@ pub trait GameStore: Send + Sync {
         async { Err(StoreError::Unavailable) }
     }
 
+    /// The viewer's arrival status, join time, and chosen looks for `bodies`.
+    fn arrival_presentation(
+        &self,
+        _binding: Binding,
+        _bodies: Vec<BodyId>,
+    ) -> impl std::future::Future<Output = Result<ArrivalPresentation, StoreError>> + Send {
+        async { Ok(ArrivalPresentation::default()) }
+    }
+    /// Public chosen looks for bodies already exposed by an authorized projection.
+    fn body_appearances(
+        &self,
+        _binding: Binding,
+        _bodies: Vec<BodyId>,
+    ) -> impl std::future::Future<Output = Result<BodyAppearances, StoreError>> + Send {
+        async { Ok(BodyAppearances::new()) }
+    }
+    fn set_body_appearance(
+        &self,
+        _binding: Binding,
+        _body: BodyId,
+        _slot: u8,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+    fn complete_arrival(
+        &self,
+        _binding: Binding,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+
     /// Public usernames only, for IDs already exposed by an authorized projection.
     fn public_player_names(
         &self,

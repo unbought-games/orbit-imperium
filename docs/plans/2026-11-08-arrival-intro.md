@@ -106,8 +106,8 @@ the voice described below; final copy is the owner's call.
 A quiet "Skip intro" control is available throughout. Skipping saves any choice
 the player already confirmed, uses defaults for the rest (Commander, the
 planet's slot art, and a random name rather than "Planet"), records completion
-and opens Briefing. (Claude's call; awaiting the owner's confirmation that a
-skip should exist at all.)
+and opens Briefing. Owner decision: keep the skip subtle, for players who want
+to get straight into the action.
 
 ### Title step
 

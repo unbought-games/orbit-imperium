@@ -9,6 +9,7 @@ pub(super) struct NamedGalaxy {
     #[serde(flatten)]
     pub system: GalaxySystem,
     pub player_names: PublicPlayerNames,
+    pub body_appearances: BodyAppearances,
 }
 
 impl<S: GameStore> GameService<S> {

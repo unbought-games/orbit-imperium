@@ -185,6 +185,12 @@ pub struct BoundView4 {
     pub has_unread_reports: bool,
     #[serde(default)]
     pub player_names: PublicPlayerNames,
+    #[serde(default)]
+    pub arrival_pending: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub joined_at_ms: Option<i64>,
+    #[serde(default)]
+    pub body_appearances: BodyAppearances,
     #[serde(flatten)]
     pub progression: BoundView3,
     pub missions: MissionView,
@@ -455,9 +461,22 @@ impl<S: GameStore> GameService<S> {
                     .filter_map(|p| p.body.as_ref().map(|b| b.owner))
                     .collect();
                 let names = self.public_names(q.context.binding, ids).await?;
+                let bodies = system
+                    .positions
+                    .iter()
+                    .filter_map(|p| p.body.as_ref().map(|b| b.id))
+                    .collect::<Vec<_>>();
+                let body_appearances = if bodies.is_empty() {
+                    BodyAppearances::new()
+                } else {
+                    self.store
+                        .body_appearances(q.context.binding, bodies)
+                        .await?
+                };
                 serde_json::to_value(public_players::NamedGalaxy {
                     system,
                     player_names: names,
+                    body_appearances,
                 })
             }
             WorldQueryKind::ResolveDestination { selection } => serde_json::to_value(
@@ -564,6 +583,22 @@ impl<S: GameStore> GameService<S> {
                     .collect(),
             )
             .await?;
+        let arrival = self
+            .store
+            .arrival_presentation(
+                binding,
+                projected
+                    .facts
+                    .progression
+                    .bodies
+                    .iter()
+                    .map(|body| body.id)
+                    .collect(),
+            )
+            .await?;
+        projected.facts.arrival_pending = arrival.pending;
+        projected.facts.joined_at_ms = arrival.joined_at_ms;
+        projected.facts.body_appearances = arrival.appearances;
         Ok(projected)
     }
     pub async fn reports4(
