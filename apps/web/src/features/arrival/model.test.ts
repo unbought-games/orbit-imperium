@@ -83,4 +83,9 @@ describe('arrival scene', () => {
       skippedChoices({ ...draft, name: 'Calder' }, () => 'unused').name,
     ).toBe('Calder')
   })
+
+  it('skips with a random name instead of a draft the server would reject', () => {
+    const draft = { title: 'admiral', slot: 7, name: 'x'.repeat(41) }
+    expect(skippedChoices(draft, () => 'Lumen Deep').name).toBe('Lumen Deep')
+  })
 })

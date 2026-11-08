@@ -1,5 +1,5 @@
 import type { TitleChoice } from '../../client-model/empire-identity'
-import { trimmedPlanetName } from '../planet-name'
+import { planetNameError, trimmedPlanetName } from '../planet-name'
 
 export const arrivalSteps = ['title', 'planet', 'name', 'farewell'] as const
 export type ArrivalStep = (typeof arrivalSteps)[number]
@@ -59,12 +59,10 @@ export function arrivalSaves(
   ]
 }
 
-/** Choices for Skip: keep what was confirmed, defaults for the rest. */
+/** Choices for Skip: keep valid choices, defaults for the rest. */
 export function skippedChoices(
   draft: ArrivalChoices,
   randomName: () => string,
 ): ArrivalChoices {
-  return trimmedPlanetName(draft.name)
-    ? draft
-    : { ...draft, name: randomName() }
+  return planetNameError(draft.name) ? { ...draft, name: randomName() } : draft
 }
