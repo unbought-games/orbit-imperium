@@ -69,7 +69,7 @@ it('keeps exact integer probability context alongside floored percentages', () =
   ).toContain('Counterespionage: 5% (53584 parts per million)')
 })
 
-it('renders only observed building levels under catalog group headings', () => {
+it('renders only observed building levels under their subsection headings', () => {
   const text = render({
     kind: 'Espionage',
     buildings: {
@@ -78,9 +78,10 @@ it('renders only observed building levels under catalog group headings', () => {
     },
   })
   expect(text).toContain(
-    'BuildingsResource buildingsObserved levelMinesMetal MineLevel UnknownFacility buildingsObserved levelInfrastructureResearch LabLevel 2Other buildingsObserved levelLegacy BuildingLevel 0',
+    'BuildingsMinesMetal MineLevel UnknownInfrastructureResearch LabLevel 2Other buildingsLegacy BuildingLevel 0',
   )
   expect(text).not.toContain('Crystal Mine')
+  expect(text).not.toContain('Observed level')
 })
 
 it('keeps hidden buildings distinct from an observed empty section', () => {
@@ -91,7 +92,7 @@ it('keeps hidden buildings distinct from an observed empty section', () => {
   expect(hidden).toContain(
     'BuildingsUnknown — this observation did not reveal this section.',
   )
-  expect(hidden).not.toContain('Resource buildings')
+  expect(hidden).not.toContain('Mines')
   expect(hidden).not.toContain('Metal Mine')
   expect(
     render({

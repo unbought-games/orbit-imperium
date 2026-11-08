@@ -208,70 +208,45 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
         await expect(buildings.locator('h4, dt')).toHaveCount(0)
       } else {
         await expect(buildings.locator('h4')).toHaveText([
-          'Resource buildings',
-          'Facility buildings',
+          'Mines',
+          'Power',
+          'Storage',
+          'Production',
+          'Infrastructure',
         ])
-        const resources = buildings.locator('div').filter({has: page.getByRole('heading', {name: 'Resource buildings', exact: true})}).first()
-        const facilities = buildings.locator('div').filter({has: page.getByRole('heading', {name: 'Facility buildings', exact: true})}).first()
-        await expect(resources.locator('dt')).toHaveText([
-          'Metal Mine',
-          'Crystal Mine',
-          'Deuterium Synthesizer',
-          'Solar Plant',
-          ...(variant === 'expanded' ? ['Fusion Reactor'] : []),
-          'Metal Storage',
-          'Crystal Storage',
-          'Deuterium Tank',
-        ])
-        await expect(resources.locator('dd')).toHaveText([
-          'Level 7',
-          'Level 6',
-          'Level 0',
-          'Level 9',
-          ...(variant === 'expanded' ? ['Level 3'] : []),
-          'Level 0',
-          'Level 0',
-          'Level 0',
-        ])
-        await expect(facilities.locator('dt')).toHaveText([
-          'Robotics Factory',
-          ...(variant === 'expanded' ? ['Nanite Factory'] : []),
-          'Shipyard',
-          'Research Lab',
-        ])
-        await expect(facilities.locator('dd')).toHaveText([
-          'Level 0',
-          ...(variant === 'expanded' ? ['Level 1'] : []),
-          'Level 0',
-          'Level 2',
-        ])
-        await expect(resources.locator('dl')).toHaveCount(3)
-        await expect(facilities.locator('dl')).toHaveCount(2)
-        await expect(resources.locator('dl').nth(0).locator('dt')).toHaveText(['Metal Mine', 'Crystal Mine', 'Deuterium Synthesizer'])
-        await expect(resources.locator('dl').nth(1).locator('dt')).toHaveText(['Solar Plant', ...(variant === 'expanded' ? ['Fusion Reactor'] : [])])
-        await expect(resources.locator('dl').nth(2).locator('dt')).toHaveText(['Metal Storage', 'Crystal Storage', 'Deuterium Tank'])
+        await expect(buildings).not.toContainText('Observed level')
+        const buildingRow = (name: string) => buildings.locator('div').filter({has: page.getByRole('heading', {name, exact: true})}).first()
+        const expectRow = async (name: string, levels: [string, string][]) => {
+          await expect(buildingRow(name).locator('dt')).toHaveText(levels.map(([building]) => building))
+          await expect(buildingRow(name).locator('dd')).toHaveText(levels.map(([, level]) => level))
+        }
+        await expectRow('Mines', [['Metal Mine', 'Level 7'], ['Crystal Mine', 'Level 6'], ['Deuterium Synthesizer', 'Level 0']])
+        await expectRow('Power', [['Solar Plant', 'Level 9'], ...(variant === 'expanded' ? [['Fusion Reactor', 'Level 3'] as [string, string]] : [])])
+        await expectRow('Storage', [['Metal Storage', 'Level 0'], ['Crystal Storage', 'Level 0'], ['Deuterium Tank', 'Level 0']])
+        await expectRow('Production', [['Robotics Factory', 'Level 0'], ...(variant === 'expanded' ? [['Nanite Factory', 'Level 1'] as [string, string]] : [])])
+        await expectRow('Infrastructure', [['Shipyard', 'Level 0'], ['Research Lab', 'Level 2']])
         for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
           await expect(buildings.getByText(name, {exact: true})).toHaveCount(0)
         // Desktop rows must retain their semantic boundary even with empty slots.
         if (width === 1440) {
-          for (const grid of [...await resources.locator('dl').all(), ...await facilities.locator('dl').all()]) {
+          for (const grid of await buildings.locator('dl').all()) {
             const boxes = await grid.locator('dt').evaluateAll(nodes => nodes.map(el => el.getBoundingClientRect().y))
             expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThanOrEqual(1)
           }
         }
-        const observed = resources.locator('[data-level-state="known"]').first()
-        const zero = resources.locator('[data-level-state="zero"]').first()
+        const observed = buildings.locator('[data-level-state="known"]').first()
+        const zero = buildings.locator('[data-level-state="zero"]').first()
         await expect(observed.locator('dd')).toHaveCSS('color', 'rgb(203, 182, 141)')
         await expect(observed.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
         await expect(zero.locator('dd')).toHaveCSS('color', 'rgb(182, 198, 214)')
         await expect(zero.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
         await expect(zero.locator('dd strong')).toHaveText('0')
         await expectAlignedLevels([buildings, research])
-        const resourceBounds = await resources.boundingBox()
-        const facilityBounds = await facilities.boundingBox()
-        expect(resourceBounds!.y + resourceBounds!.height).toBeLessThan(
-          facilityBounds!.y,
-        )
+        const rows = await buildings.locator('dl').all()
+        for (let index = 1; index < rows.length; index++) {
+          const previous = (await rows[index - 1].boundingBox())!
+          expect((await rows[index].boundingBox())!.y).toBeGreaterThan(previous.y + previous.height)
+        }
       }
       expect(
         await page.evaluate(
