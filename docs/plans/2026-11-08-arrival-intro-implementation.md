@@ -25,10 +25,10 @@ choices in order, then opens Briefing.
 
 1. **Migration `0041_arrival.sql`**
    - `empire_arrivals(player uuid PRIMARY KEY REFERENCES players ON DELETE
-     CASCADE, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE,
-     completed_at_ms bigint)`. NULL means pending. No backfill.
+CASCADE, universe uuid NOT NULL REFERENCES universes ON DELETE CASCADE,
+completed_at_ms bigint)`. NULL means pending. No backfill.
    - `body_appearances(body uuid PRIMARY KEY REFERENCES bodies ON DELETE
-     CASCADE, art_slot smallint NOT NULL CHECK (art_slot BETWEEN 1 AND 15))`.
+CASCADE, art_slot smallint NOT NULL CHECK (art_slot BETWEEN 1 AND 15))`.
 2. **Bands** in `crates/application/src/arrival.rs`:
    `pub fn appearance_band(position: u32) -> RangeInclusive<u8>` with unit tests
    for positions 1, 4, 5, 8, 9, 12, 15.
