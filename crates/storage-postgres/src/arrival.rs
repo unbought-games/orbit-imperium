@@ -3,13 +3,19 @@ use crate::{ordering::Tx, *};
 use orbit_application::*;
 use sqlx::Row;
 
-pub(crate) async fn enroll(tx: &mut Tx<'_>, u: UniverseId, player: PlayerId) -> Result<(), StoreError> {
-    sqlx::query("INSERT INTO empire_arrivals(player,universe) VALUES($1,$2) ON CONFLICT DO NOTHING")
-        .bind(player.0)
-        .bind(u.0)
-        .execute(&mut **tx)
-        .await
-        .map_err(db_error)?;
+pub(crate) async fn enroll(
+    tx: &mut Tx<'_>,
+    u: UniverseId,
+    player: PlayerId,
+) -> Result<(), StoreError> {
+    sqlx::query(
+        "INSERT INTO empire_arrivals(player,universe) VALUES($1,$2) ON CONFLICT DO NOTHING",
+    )
+    .bind(player.0)
+    .bind(u.0)
+    .execute(&mut **tx)
+    .await
+    .map_err(db_error)?;
     Ok(())
 }
 
@@ -103,7 +109,9 @@ impl PgStore {
             .ok_or(StoreError::NotFound)?;
         let band = appearance_band(u32::try_from(position).map_err(|_| StoreError::CorruptData)?);
         if !band.contains(&slot) {
-            return Err(StoreError::GameRejected(orbit_engine::GameError::InvalidInput));
+            return Err(StoreError::GameRejected(
+                orbit_engine::GameError::InvalidInput,
+            ));
         }
         sqlx::query("INSERT INTO body_appearances(body,art_slot) VALUES($1,$2) ON CONFLICT(body) DO UPDATE SET art_slot=excluded.art_slot")
             .bind(body.0)

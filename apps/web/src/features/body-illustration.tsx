@@ -1,4 +1,5 @@
 import { resolveBodyArt, type BodyArtIdentity } from '../ui/artwork'
+import { useBodyAppearance } from './body-appearance'
 
 /** Decorative only: identity and mission facts remain selectable HTML. */
 export function BodyIllustration({
@@ -10,7 +11,10 @@ export function BodyIllustration({
   className: string
   sizes: string
 }) {
-  const art = resolveBodyArt(body)
+  const appearance = useBodyAppearance('id' in body ? body.id : undefined)
+  const art = resolveBodyArt(
+    body.kind === 'Planet' && appearance ? { ...body, appearance } : body,
+  )
   return (
     <img
       data-touch-control=""

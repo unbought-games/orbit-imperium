@@ -55,7 +55,11 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
         )
         .await
         .unwrap();
-    let b = store.current_binding(auth.session.account, u).await.unwrap().0;
+    let b = store
+        .current_binding(auth.session.account, u)
+        .await
+        .unwrap()
+        .0;
     let veteran_auth = sessions.login(&veteran, "password", None).await.unwrap();
     let peer = store
         .current_binding(veteran_auth.session.account, u)
@@ -64,9 +68,20 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
         .0;
     let game = GameService::new(store.clone());
 
-    let peer_view = game.world_view(principal(peer), context(peer)).await.unwrap().facts;
-    assert!(!peer_view.arrival_pending, "scenario players never see the scene");
-    let view = game.world_view(principal(b), context(b)).await.unwrap().facts;
+    let peer_view = game
+        .world_view(principal(peer), context(peer))
+        .await
+        .unwrap()
+        .facts;
+    assert!(
+        !peer_view.arrival_pending,
+        "scenario players never see the scene"
+    );
+    let view = game
+        .world_view(principal(b), context(b))
+        .await
+        .unwrap()
+        .facts;
     assert!(view.arrival_pending);
     assert!(view.joined_at_ms.is_some());
     assert!(view.body_appearances.is_empty());
@@ -85,7 +100,13 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
     let rejected = game
         .arrival(
             principal(b),
-            request(b, ArrivalAction::SetAppearance { body: home, slot: outside }),
+            request(
+                b,
+                ArrivalAction::SetAppearance {
+                    body: home,
+                    slot: outside,
+                },
+            ),
         )
         .await;
     assert!(matches!(
@@ -96,7 +117,13 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
     let foreign = game
         .arrival(
             principal(b),
-            request(b, ArrivalAction::SetAppearance { body: peer_home, slot: 5 }),
+            request(
+                b,
+                ArrivalAction::SetAppearance {
+                    body: peer_home,
+                    slot: 5,
+                },
+            ),
         )
         .await;
     assert!(matches!(foreign, Err(ServiceError::NotFound)));
@@ -106,7 +133,13 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
         let state = game
             .arrival(
                 principal(b),
-                request(b, ArrivalAction::SetAppearance { body: home, slot: chosen }),
+                request(
+                    b,
+                    ArrivalAction::SetAppearance {
+                        body: home,
+                        slot: chosen,
+                    },
+                ),
             )
             .await
             .unwrap();
@@ -119,7 +152,11 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
             .unwrap();
         assert!(!state.pending);
     }
-    let view = game.world_view(principal(b), context(b)).await.unwrap().facts;
+    let view = game
+        .world_view(principal(b), context(b))
+        .await
+        .unwrap()
+        .facts;
     assert!(!view.arrival_pending);
     assert_eq!(view.body_appearances.get(&home), Some(&chosen));
 
@@ -145,5 +182,8 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
         .unwrap()
         .facts
         .data;
-    assert_eq!(galaxy["body_appearances"][home.0.to_string()], json!(chosen));
+    assert_eq!(
+        galaxy["body_appearances"][home.0.to_string()],
+        json!(chosen)
+    );
 }

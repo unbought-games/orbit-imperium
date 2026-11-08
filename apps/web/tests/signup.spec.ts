@@ -16,7 +16,11 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  expect((await page.request.get('/api/v1/session')).status()).toBe(200);
  await page.unroute('**/api/v1/registration?bootstrap=true');
  await page.getByRole('button',{name:'Retry connection'}).click();
- await expect(page.getByRole('heading',{name:/^Empire —/,exact:true})).toBeVisible();
+ const arrival=page.getByRole('main',{name:'Arrival'});
+ await expect(arrival).toBeVisible();
+ await arrival.getByRole('button',{name:'Skip intro'}).click();
+ await expect(arrival).toBeHidden();
+ await expect(page).toHaveURL(/\/briefing$/);
  const session=await(await page.request.get('/api/v1/session')).json();
  expect(session.memberships).toHaveLength(1);
  await page.getByRole('link',{name:'Develop',exact:true}).click();

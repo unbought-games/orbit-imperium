@@ -3,10 +3,13 @@ import { announcements } from './catalog'
 import { announcementHistory, currentAnnouncement } from './model'
 
 /** Stores only acknowledgement choices; never game state. */
-export function useReleaseAnnouncement(account: string) {
+export function useReleaseAnnouncement(account: string, joinedAt?: number) {
   const [, setAcknowledged] = useState(0)
-  const announcement = currentAnnouncement(announcements, Date.now(), (id) =>
-    announcementHistory.seen(account, id),
+  const announcement = currentAnnouncement(
+    announcements,
+    Date.now(),
+    (id) => announcementHistory.seen(account, id),
+    joinedAt,
   )
   return {
     announcement,
