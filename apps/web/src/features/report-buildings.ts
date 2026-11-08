@@ -1,7 +1,6 @@
 import { facilityIds } from './progression/catalog-content'
 
 export type ObservedLevel = [name: string, level: unknown]
-export type ObservedLevelGroup = { title: string; rows: ObservedLevel[][] }
 export type ObservedLevelRow = { title: string; levels: ObservedLevel[] }
 
 const moonBuildings = ['LunarBase', 'SensorPhalanx', 'JumpGate'] as const

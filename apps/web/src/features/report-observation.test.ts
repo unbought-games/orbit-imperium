@@ -118,9 +118,10 @@ it('renders observed research in report groups without inventing missing levels'
     },
   })
   expect(text).toContain(
-    'ResearchCombat and espionageObserved levelWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchObserved levelCombustion DriveLevel 3Basic researchObserved levelEnergy TechnologyLevel UnknownAdvanced researchObserved levelComputer TechnologyLevel 2Other researchObserved levelFuture ResearchLevel 1',
+    'ResearchCombat and espionageWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchCombustion DriveLevel 3Basic researchEnergy TechnologyLevel UnknownAdvanced researchComputer TechnologyLevel 2Other researchFuture ResearchLevel 1',
   )
   expect(text).not.toContain('Shielding Technology')
+  expect(text).not.toContain('Observed level')
 })
 
 it.each([
@@ -235,6 +236,8 @@ it('places historical target identity first and activity and detection after all
   expect(text.indexOf('Research')).toBeLessThan(
     text.indexOf('Counterespionage: 0%'),
   )
+  expect(text).toContain('Activity before contact: 20 minutes.Counterespionage')
+  expect(text).not.toContain('Fleet contact may cause activity')
   expect(markup.match(/<svg[^>]+data-resource=/g)).toHaveLength(3)
   expect(text).toContain('18,76310,441560')
 })

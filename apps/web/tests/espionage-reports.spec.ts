@@ -179,6 +179,9 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
           'Basic research',
           'Advanced research',
         ])
+        await expect(research).not.toContainText('Observed level')
+        await expect(research.locator('h4').first()).toHaveCSS('text-transform', 'uppercase')
+        await expect(buildings.locator('h4').first()).toHaveCSS('text-transform', 'uppercase')
         await expect(research.locator('dt')).toHaveText([
           'Weapons Technology', 'Shielding Technology', 'Armour Technology', 'Espionage Technology',
           'Combustion Drive', 'Impulse Drive', ...(variant === 'expanded' ? ['Hyperspace Drive'] : []),
