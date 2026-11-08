@@ -859,7 +859,7 @@ export function EmpireOverview({
           <Destination
             view={view}
             body={body.id}
-            page="alliance"
+            page={profile?.alliance ? 'alliance' : 'alliance-discover'}
             className={styles.allianceLink}
           >
             {profile?.alliance

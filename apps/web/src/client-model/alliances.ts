@@ -164,16 +164,7 @@ export class AlliancesController {
           ))
       )
         this.ports.onAccessLost?.()
-      const directoryResponse =
-        query.type === 'Directory'
-          ? response
-          : !view.alliance
-            ? await this.ports.read({
-                type: 'Directory',
-                search: '',
-                offset: 0,
-              })
-            : null
+      const directoryResponse = query.type === 'Directory' ? response : null
       if (generation !== this.generation) return false
       const directory = directoryResponse
         ? {

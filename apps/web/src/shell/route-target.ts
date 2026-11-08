@@ -121,6 +121,30 @@ export function routeTarget(
             search: {},
           })
         : linkOptions({ to: '/u/$universe/messages', params, search: {} })
+    case 'alliance-discover':
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/alliance/discover',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/alliance/discover',
+            params,
+            search: {},
+          })
+    case 'alliance-create':
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/alliance/create',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({
+            to: '/u/$universe/alliance/create',
+            params,
+            search: {},
+          })
     case 'alliance':
       return body
         ? linkOptions({

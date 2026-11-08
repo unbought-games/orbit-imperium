@@ -10,6 +10,27 @@ export function Field({ className, ...props }: ComponentPropsWithRef<'label'>) {
 export function Input({ className, ...props }: ComponentPropsWithRef<'input'>) {
   return <input className={classes(styles.control, className)} {...props} />
 }
+/** Compose leading/trailing accessories around an input, sharing one control frame. */
+export function InputGroup({
+  className,
+  ...props
+}: ComponentPropsWithRef<'div'>) {
+  return (
+    <div
+      className={classes(styles.control, styles.inputGroup, className)}
+      {...props}
+    />
+  )
+}
+export function InputAccessory({
+  className,
+  ...props
+}: ComponentPropsWithRef<'span'>) {
+  return (
+    <span className={classes(styles.inputAccessory, className)} {...props} />
+  )
+}
+
 // Keep text selection and exact string values, with a numeric keyboard on mobile.
 export function NumberInput({
   onFocus,

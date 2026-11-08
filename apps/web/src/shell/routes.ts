@@ -18,6 +18,8 @@ export type Page =
   | 'galaxy'
   | 'high-scores'
   | 'alliance'
+  | 'alliance-create'
+  | 'alliance-discover'
   | 'messages'
 export type Destination = {
   universe?: string
@@ -81,7 +83,12 @@ export function resolveDestination(
     )
   if (page === 'combat-simulator' && view.protocol !== 4)
     return unavailable('Combat Simulator is unavailable in this universe.')
-  if (page === 'alliance' && view.protocol !== 4)
+  if (
+    (page === 'alliance' ||
+      page === 'alliance-create' ||
+      page === 'alliance-discover') &&
+    view.protocol !== 4
+  )
     return unavailable('Alliances are unavailable in this universe.')
   if (page === 'messages' && view.protocol !== 4)
     return unavailable('Messages are unavailable in this universe.')
@@ -135,6 +142,8 @@ export function resolveDestination(
     page !== 'combat-simulator' &&
     page !== 'high-scores' &&
     page !== 'alliance' &&
+    page !== 'alliance-create' &&
+    page !== 'alliance-discover' &&
     page !== 'messages'
   )
     return unavailable('No planet is available for this membership.')

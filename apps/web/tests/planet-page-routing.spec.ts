@@ -81,25 +81,27 @@ for (const width of [1440, 390]) {
         page,
       }) => {
         const purchases = await fixture(page)
+        const destinationSlug = slug === 'alliance' ? 'alliance/discover' : slug
+        const destinationTitle = slug === 'alliance' ? 'Discover alliances' : title
         // TanStack serializes the validated welcome string as JSON, while the legacy input is numeric.
         const canonicalQuery = query.replace('welcome=1', 'welcome=%221%22')
         const suffix = `${canonicalQuery ? `?${canonicalQuery}` : ''}#details`
         const canonical = (planet: string) =>
-          `/u/andromeda/b/${planet}/${slug}${suffix}`
+          `/u/andromeda/b/${planet}/${destinationSlug}${suffix}`
         await boot(page, () =>
           page.goto(
             `/u/andromeda/${slug}?body=${body.id}${query ? `&${query}` : ''}#details`,
           ),
         )
         await expect(page).toHaveURL(canonical(body.id))
-        await expect(page.locator('main h1')).toHaveText(title)
+        await expect(page.locator('main h1')).toHaveText(destinationTitle)
         const selector = page.getByRole('combobox', { name: 'Selected body' })
         await expect(selector).toHaveAttribute('data-value', body.id)
         await selector.click()
         await page.getByRole('option', { name: /Beta/ }).click()
         await expect(page).toHaveURL(canonical(id(6)))
         await expect(selector).toHaveAttribute('data-value', id(6))
-        await expect(page.locator('main h1')).toHaveText(title)
+        await expect(page.locator('main h1')).toHaveText(destinationTitle)
         await page.goBack()
         await expect(page).toHaveURL(canonical(body.id))
         await expect(selector).toHaveAttribute('data-value', body.id)
@@ -109,7 +111,7 @@ for (const width of [1440, 390]) {
         await boot(page, () => page.reload())
         await expect(page).toHaveURL(canonical(id(6)))
         await expect(selector).toHaveAttribute('data-value', id(6))
-        await expect(page.locator('main h1')).toHaveText(title)
+        await expect(page.locator('main h1')).toHaveText(destinationTitle)
         // Menu navigation must generate the canonical path directly, without a redirect.
         const link = await menuDestination(page, title)
         await expect(link).toHaveAttribute(
@@ -204,7 +206,7 @@ test('public alliance entry keeps its query and hash when resolving the universe
     ),
   )
   await expect(page).toHaveURL(
-    `/u/andromeda/b/${id(6)}/alliance?alliance=${id(900)}#details`,
+    `/u/andromeda/b/${id(6)}/alliance/discover?alliance=${id(900)}#details`,
   )
   await expect(page.getByText('Explore together.')).toBeVisible()
 })

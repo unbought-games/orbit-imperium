@@ -165,14 +165,54 @@ impl PgStore {
                 alliance,
                 post_before,
             } => (Some(alliance), post_before),
-            AllianceQuery::Directory { search, offset } => {
-                if search.chars().count() > 48 || offset > i64::MAX as u64 {
-                    return Err(StoreError::Conflict);
+            AllianceQuery::Directory {
+                search,
+                offset,
+                recruiting_only,
+                language,
+                beginners,
+                activity,
+            } => {
+                RecruitmentSearch {
+                    search: search.clone(),
+                    offset,
+                    language: language.clone(),
+                    beginners,
+                    activity,
                 }
+                .validate()?;
                 let search = search.trim().to_lowercase();
-                let count:i64=sqlx::query_scalar("SELECT count(*) FROM alliances WHERE universe=$1 AND epoch=$2 AND (strpos(lower(name),$3)>0 OR strpos(lower(tag),$3)>0)").bind(b.universe.0).bind(b.epoch.0).bind(&search).fetch_one(&mut *tx).await.map_err(db_error)?;
+                let beginners = beginners.map(|value| {
+                    serde_json::to_value(value)
+                        .expect("enum")
+                        .as_str()
+                        .expect("string")
+                        .to_owned()
+                });
+                let activity = activity.map(|value| {
+                    serde_json::to_value(value)
+                        .expect("enum")
+                        .as_str()
+                        .expect("string")
+                        .to_owned()
+                });
+                let filter = "a.universe=$1 AND a.epoch=$2 AND (strpos(lower(a.name),$3)>0 OR strpos(lower(a.tag),$3)>0) AND (NOT $4::boolean OR a.recruitment<>'Closed') AND ($5::text IS NULL OR (a.recruitment_profile->'languages') ? $5) AND ($6::text IS NULL OR a.recruitment_profile->>'beginners'=$6) AND ($7::text IS NULL OR a.recruitment_profile->>'activity'=$7)";
+                let count: i64 =
+                    sqlx::query_scalar(&format!("SELECT count(*) FROM alliances a WHERE {filter}"))
+                        .bind(b.universe.0)
+                        .bind(b.epoch.0)
+                        .bind(&search)
+                        .bind(recruiting_only)
+                        .bind(&language)
+                        .bind(&beginners)
+                        .bind(&activity)
+                        .fetch_one(&mut *tx)
+                        .await
+                        .map_err(db_error)?;
                 view.directory_count = count as u64;
-                let rows=sqlx::query("SELECT a.id,a.name,a.tag,a.recruitment,a.recruitment_profile,(SELECT count(*) FROM alliance_memberships m WHERE m.alliance=a.id) AS member_count FROM alliances a WHERE a.universe=$1 AND a.epoch=$2 AND (strpos(lower(a.name),$3)>0 OR strpos(lower(a.tag),$3)>0) ORDER BY lower(a.name),a.id LIMIT 20 OFFSET $4").bind(b.universe.0).bind(b.epoch.0).bind(&search).bind(offset as i64).fetch_all(&mut *tx).await.map_err(db_error)?;
+                let rows=sqlx::query(&format!("SELECT a.id,a.name,a.tag,a.recruitment,a.recruitment_profile,(SELECT count(*) FROM alliance_memberships m WHERE m.alliance=a.id) AS member_count FROM alliances a WHERE {filter} ORDER BY lower(a.name),a.id LIMIT 20 OFFSET $8"))
+                    .bind(b.universe.0).bind(b.epoch.0).bind(&search).bind(recruiting_only).bind(&language).bind(&beginners).bind(&activity).bind(offset as i64)
+                    .fetch_all(&mut *tx).await.map_err(db_error)?;
                 view.directory = rows
                     .iter()
                     .map(|r| summary(r, b.universe))
