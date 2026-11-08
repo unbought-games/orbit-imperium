@@ -59,7 +59,8 @@ pub struct RuntimeMetrics {
     publication_scan_failures: AtomicU64,
     durations: [Histogram; 10],
     events: [AtomicU64; 8],
-    auth: [[Histogram; 4]; 6],
+    auth: [[Histogram; orbit_application::AuthOutcome::ALL.len()];
+        orbit_application::AuthPhase::ALL.len()],
     bootstrap: [AtomicU64; 4],
 }
 impl RuntimeMetrics {
@@ -361,6 +362,11 @@ mod tests {
             AuthOutcome::Cancelled,
             Duration::from_millis(5),
         );
+        metrics.auth_duration(
+            AuthPhase::Read,
+            AuthOutcome::Refreshing,
+            Duration::from_millis(2),
+        );
         metrics.bootstrap(BootstrapOutcome::AuthUnavailable);
         let text = metrics.render();
         assert!(text.contains(
@@ -369,12 +375,16 @@ mod tests {
         assert!(
             text.contains("orbit_auth_seconds_count{phase=\"persist\",outcome=\"cancelled\"} 1")
         );
+        assert!(text.contains("orbit_auth_seconds_count{phase=\"read\",outcome=\"refreshing\"} 1"));
+        assert!(
+            text.contains("orbit_auth_seconds_count{phase=\"read\",outcome=\"unavailable\"} 0")
+        );
         assert!(text.contains("orbit_bootstrap_total{outcome=\"auth_unavailable\"} 1"));
         assert_eq!(
             text.lines()
                 .filter(|line| line.starts_with("orbit_auth_seconds_count{"))
                 .count(),
-            24
+            30
         );
     }
     #[test]

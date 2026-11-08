@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { selectBody } from './fixtures/body-selector'
 import { coordinatePattern } from './fixtures/coordinates'
@@ -41,7 +42,7 @@ async function setup(
     ...options,
   })
   let fail = false
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const { context, galaxy, system } = route.request().postDataJSON()
     const sampledAt =
       typeof options.sampledAt === 'function'
@@ -932,7 +933,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
     releaseLaunch = resolve
   })
   const intents: components['schemas']['FleetIntent4'][] = []
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const request = route.request().postDataJSON()
     if (request.type !== 'FleetQuote') return route.fallback()
     quotes++
@@ -1001,7 +1002,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   const target = rows.nth(1)
   const originalRows = await rows.elementHandles()
   const pendingRefreshes: (() => void)[] = []
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     if (route.request().postDataJSON().type !== 'Galaxy')
       return route.fallback()
     await new Promise<void>((resolve) => {
@@ -1111,7 +1112,7 @@ test('galaxy espionage explains quote failures in the banner without navigating 
   page,
 }) => {
   await setup(page)
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     if (route.request().postDataJSON().type !== 'FleetQuote')
       return route.fallback()
     await route.fulfill({
@@ -1326,7 +1327,7 @@ test('a delayed response never replaces a newer typed destination', async ({
     release = resolve
   })
   let pending = false
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const request = route.request().postDataJSON()
     if (request.type === 'Galaxy' && request.system === 24) {
       pending = true
@@ -1457,7 +1458,7 @@ for (const width of [390, 1280])
     const gate = new Promise<void>((resolve) => {
       release = resolve
     })
-    await page.route('**/world', async (route) => {
+    await routeWorld(page, async (route) => {
       const request = route.request().postDataJSON()
       if (request.type !== 'FleetQuote') return route.fallback()
       quotes++
@@ -1502,7 +1503,7 @@ test('a rejected launch clears the optimistic check and reports the authoritativ
   await page.clock.install({ time: now - 1000 })
   await page.clock.pauseAt(now)
   await setup(page, null, { sampledAt: now })
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const request = route.request().postDataJSON()
     if (request.type !== 'FleetQuote') return route.fallback()
     await route.fulfill({
@@ -1675,7 +1676,7 @@ test('mobile harvest quotes and sends one departure, stays in Galaxy and reserve
   let quotes = 0, launches = 0
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     if (request.type !== 'FleetQuote') return route.fallback()
     quotes++
@@ -1708,7 +1709,7 @@ test('closing mobile harvest while quoting never launches a stale selection', as
   await setupHarvest(page)
   let release!: () => void, quotes = 0, launches = 0
   const gate = new Promise<void>(resolve => { release = resolve })
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     if (request.type !== 'FleetQuote') return route.fallback()
     quotes++
@@ -1783,7 +1784,7 @@ test(`coordinate Harvest shares the quick form and restores its opener at ${widt
 test('mobile harvest displays fuel quote failures without creating a departure', async ({ page }) => {
   await setupHarvest(page)
   let launches = 0
-  await page.route('**/world', route => route.request().postDataJSON().type === 'FleetQuote' ? route.fulfill({ status: 409, json: { code: 'InsufficientResources' } }) : route.fallback())
+  await routeWorld(page, route => route.request().postDataJSON().type === 'FleetQuote' ? route.fulfill({ status: 409, json: { code: 'InsufficientResources' } }) : route.fallback())
   page.on('request', request => { if (request.url().endsWith('/commands') && request.postDataJSON().gameplay?.command?.action?.type === 'LaunchFleet') launches++ })
   const sheet = await openHarvest(page)
   await sheet.getByRole('button', { name: 'Send', exact: true }).click()
@@ -1827,7 +1828,7 @@ test('desktop Harvest sends the edited quantity with Enter through the shared la
   await setupHarvest(page)
   await page.setViewportSize({ width: 1280, height: 900 })
   let launches = 0
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     const request = route.request().postDataJSON()
     if (request.type !== 'FleetQuote') return route.fallback()
     expect(request.intent.ships).toEqual([{ owner: binding.player, ship_type: 'Recycler', count: '2' }])
@@ -2036,7 +2037,7 @@ for (const mission of ['Espionage', 'Harvest'] as const) {
       if (mission === 'Harvest') await setupHarvest(page)
       else await setup(page)
       await page.setViewportSize({ width, height: 900 })
-      await page.route('**/world', async route => {
+      await routeWorld(page, async route => {
         const request = route.request().postDataJSON()
         if (request.type !== 'FleetQuote') return route.fallback()
         await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { ...harvestTerms(request.intent), speeds: [[mission === 'Harvest' ? 'Recycler' : 'EspionageProbe', '100000000']] } } })

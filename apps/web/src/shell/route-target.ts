@@ -15,6 +15,12 @@ export function routeTarget(
     return { universe, body }
   }
   switch (page) {
+    case 'briefing':
+      return linkOptions({
+        to: '/u/$universe/b/$body/briefing',
+        params: planetParams(),
+        search: {},
+      })
     case 'overview':
       return body
         ? linkOptions({

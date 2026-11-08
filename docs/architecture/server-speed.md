@@ -1,6 +1,6 @@
 # Universe game speed
 
-A universe chooses one dimensionless integer speed from 1 through 100 at creation. New production universes default to **5×**. Operators can change speed through an ordered rules activation; existing paid work keeps its committed timing. Existing worlds and historical fixtures retain their saved speed, including pinned 10× MVP worlds and the earlier first-slice defaults.
+A universe chooses one dimensionless integer speed from 1 through 100 at creation. New production universes default to **3×**. Operators can change speed through an ordered rules activation; existing paid work keeps its committed timing. Existing worlds and historical fixtures retain their saved speed, including pinned 10× MVP worlds and the earlier first-slice defaults.
 
 Speed is part of [database-owned universe configuration](../operations/universe-configuration.md). Use `rules export`, edit `speed`, then `rules diff` and `rules apply`. There is no retiming workflow or manual SQL conversion.
 

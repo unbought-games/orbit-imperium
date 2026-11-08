@@ -92,7 +92,7 @@ export function DetailRow({
   warning = false,
   hint,
 }: {
-  label: string
+  label: ReactNode
   children: ReactNode
   warning?: boolean
   hint?: ReactNode

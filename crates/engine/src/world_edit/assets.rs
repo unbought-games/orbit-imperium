@@ -220,12 +220,6 @@ pub(super) fn edit_research(
         body.checkpoint = checkpoint;
         body.revision += 1;
     }
-    let b = s
-        .bodies
-        .values()
-        .find(|b| b.owner == owner)
-        .ok_or("player has no planets")?
-        .clone();
     let mut research = s.research[&owner].clone();
     for (key, n) in canonical_map(&e.research, r.research_keys())? {
         let old = research.levels[&key];
@@ -234,7 +228,7 @@ pub(super) fn edit_research(
             return Err("research level exceeds supported range".into());
         }
         for level in old + 1..=target {
-            let paid = research_terms(&b, &research, key, r).map_err(error)?.paid();
+            let paid = research_payment(&research, key, r).map_err(error)?;
             lot(
                 s,
                 i,

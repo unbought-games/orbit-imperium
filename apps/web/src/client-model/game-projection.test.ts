@@ -1304,6 +1304,25 @@ describe('galaxy fleet actions', () => {
     can_recall: true,
   }
 
+  it('does not match a private site to a public body sharing its anchor', () => {
+    const s = spyState(),
+      v = s.view as S['BoundView4']
+    v.missions.fleets = [
+      {
+        ...structuredClone(fleet),
+        intent: {
+          ...spyIntent,
+          mission: 'Attack',
+          destination: {
+            type: 'Site',
+            selection: { id: 'private-site', expected_revision: '1' },
+          },
+        },
+      },
+    ]
+    expect(galaxyFlights(s, at)).toEqual([])
+  })
+
   it('marks confirmed outbound fleets at their destination and return legs only at home', () => {
     const s = spyState(),
       v = s.view as S['BoundView4']

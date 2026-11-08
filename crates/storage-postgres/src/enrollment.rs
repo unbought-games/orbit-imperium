@@ -315,6 +315,7 @@ impl PgStore {
                 .await?;
             }
             let player = PlayerId(member.player);
+            let enrollment_epoch = manifest.epoch;
             manifest.members.push(member);
             sqlx::query("UPDATE mvp_bootstraps SET manifest=$2 WHERE universe=$1")
                 .bind(u.0)
@@ -322,6 +323,15 @@ impl PgStore {
                 .execute(&mut *tx)
                 .await
                 .map_err(db_error)?;
+            crate::tutorial::enroll(
+                &mut tx,
+                u,
+                enrollment_epoch,
+                player,
+                at,
+                machine_sleep.is_none(),
+            )
+            .await?;
             if !scoped {
                 sqlx::query("UPDATE world_heads SET revision=revision+1 WHERE universe=$1")
                     .bind(u.0)

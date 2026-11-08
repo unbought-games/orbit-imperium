@@ -387,7 +387,10 @@ impl PgStore {
         if !bot
             || matches!(
                 q.query,
-                WorldQueryKind::FleetQuote { .. }
+                WorldQueryKind::Tutorial
+                    | WorldQueryKind::MissionSites
+                    | WorldQueryKind::ResolveMissionSite { .. }
+                    | WorldQueryKind::FleetQuote { .. }
                     | WorldQueryKind::FleetEstimate { .. }
                     | WorldQueryKind::DepotSupplyQuote { .. }
                     | WorldQueryKind::MissileQuote { .. }
@@ -465,7 +468,10 @@ impl PgStore {
                 orbit_engine::resolve_destination(&facts.state, selection, &facts.rules)
                     .map(|d| serde_json::to_value(d).expect("destination"))
             }
-            WorldQueryKind::FleetQuote { .. }
+            WorldQueryKind::Tutorial
+            | WorldQueryKind::MissionSites
+            | WorldQueryKind::ResolveMissionSite { .. }
+            | WorldQueryKind::FleetQuote { .. }
             | WorldQueryKind::FleetEstimate { .. }
             | WorldQueryKind::DepotSupplyQuote { .. }
             | WorldQueryKind::MissileQuote { .. }
@@ -582,7 +588,11 @@ pub(crate) async fn unmetered_world_query(
         return Ok(());
     }
     match q {
-        WorldQueryKind::DepotSupplyQuote { .. } | WorldQueryKind::AbandonmentQuote { .. } => Ok(()),
+        WorldQueryKind::Tutorial
+        | WorldQueryKind::MissionSites
+        | WorldQueryKind::ResolveMissionSite { .. }
+        | WorldQueryKind::DepotSupplyQuote { .. }
+        | WorldQueryKind::AbandonmentQuote { .. } => Ok(()),
         WorldQueryKind::MissileQuote { intent } => {
             require_destination_observation(
                 tx,

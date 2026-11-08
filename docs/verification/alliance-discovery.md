@@ -145,3 +145,9 @@ Final implementation keeps Filters on the **left** of search and Discover allian
 - PostgreSQL filter behavior retains the earlier 11-test pass; backend filter code has not changed since that run.
 - Browser and build subprocesses cleaned up by their native runners. No separate runner queue delay was measured locally.
 - Implementation screenshots remain deferred under the user's explicit instruction. Generated concept images are not implementation verification and are not bundled in the PR.
+
+### Main integration before PR
+
+Integrated main `017997bf` because the merge check found conflicts. Preserved the new Briefing route guard alongside the Alliance routes and combined the browser suite registrations. Kept main's deliberate removal of the unreliable public recruitment navigation scenario from PR #360; its prior failure and retained deterministic coverage are recorded in the test-performance audit. Did not resurrect the removed scenario. Generated contracts and routes were refreshed.
+
+Tested code tree before this documentation append: `a2ff527af984fbec0cfa8acb2e75787574ad743b`. Integrated checks: `make _static` passed; 35 focused units passed in 216ms; production build passed in 25.21s; 44 browser tests passed with 1.889s preparation, 47.6s runner and 50.41s total command time. PostgreSQL alliances: 11 passed; compilation 54.83s, execution 38.380s, total command 95.31s. Disposable database cleanup is owned by the test-db shell trap. No integration test failures.

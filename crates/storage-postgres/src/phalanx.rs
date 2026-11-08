@@ -50,7 +50,7 @@ pub(crate) async fn load(
     for body in crate::views::bodies(tx, rows).await? {
         state.bodies.insert(body.id, body);
     }
-    let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>("SELECT data FROM mission_fleets WHERE universe=$1 AND data->>'leg' IN ('Outbound','Holding','Returning') AND (data->'intent'->>'origin'=$2 OR data->'intent'->'destination'->>'id'=$2) ORDER BY id")
+    let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>("SELECT data FROM mission_fleets WHERE universe=$1 AND data->'intent'->'destination'->>'type' <> 'Site' AND data->>'leg' IN ('Outbound','Holding','Returning') AND (data->'intent'->>'origin'=$2 OR data->'intent'->'destination'->>'id'=$2) ORDER BY id")
         .bind(u.0).bind(target.to_string()).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode_supported).collect::<Result<_,_>>()?;
     let missiles: Vec<MissileFlight> = sqlx::query_scalar::<_, serde_json::Value>("SELECT data FROM missile_flights WHERE universe=$1 AND data->>'status'='InFlight' AND data->'terms'->'intent'->'target'->>'id'=$2 ORDER BY id")
         .bind(u.0).bind(target.to_string()).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode_supported).collect::<Result<_,_>>()?;
@@ -183,7 +183,7 @@ pub(crate) async fn readiness(
     tx: &mut Tx<'_>,
     u: UniverseId,
 ) -> Result<(), orbit_application::RulesUpdateError> {
-    let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>("SELECT data FROM mission_fleets WHERE universe=$1 AND data->>'leg' IN ('Outbound','Holding','Returning') ORDER BY id")
+    let fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>("SELECT data FROM mission_fleets WHERE universe=$1 AND data->'intent'->'destination'->>'type' <> 'Site' AND data->>'leg' IN ('Outbound','Holding','Returning') ORDER BY id")
         .bind(u.0).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode_supported).collect::<Result<_,_>>()?;
     validate_phalanx_scan_readiness(true, &fleets)
         .map_err(orbit_application::RulesUpdateError::PhalanxActivationBlocked)

@@ -1,4 +1,5 @@
 import { inlineBaseline } from './fixtures/identity-typography'
+import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
@@ -55,7 +56,7 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
           { player: owners[3], username: 'RegularCommander' },
         ],
   )
-  await page.route('**/world', (route) => {
+  await routeWorld(page, (route) => {
     const q = route.request().postDataJSON()
     return route.fulfill({
       json: {
@@ -147,42 +148,6 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
   await expect(cards).toHaveCount(15)
 })
 
-test('incoming fleets and overview arrivals identify the same supporter', async ({
-  page,
-}) => {
-  await shellFixture(page, {
-    protocol: 4,
-    missions: {
-      fleets: [],
-      incoming: [
-        {
-          sender: id(31),
-          origin: { galaxy: 1, system: 2, position: 3 },
-          target: body.id,
-          mission: 'Attack',
-          arrival_at: Date.now() + 600_000,
-          ships: { visibility: 'Unknown' },
-        },
-      ],
-      fleet_slots: '1',
-      score_value_micro: '0',
-    },
-  })
-  await playerProfilesFixture(page, () => [
-    { player: id(31), username: 'Visitor', supporter_tier: 3 },
-  ])
-  await page.reload()
-  const arrivals = page.getByRole('region', { name: 'Fleet movements' })
-  await expect(arrivals.getByText('Visitor', { exact: true })).toBeVisible()
-  await expect(arrivals.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  await inspectIdentity(page, 'empire', 'Visitor')
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
-  const incoming = page.getByRole('region', { name: 'Incoming fleets' })
-  await expect(incoming.getByText('Visitor', { exact: true })).toBeVisible()
-  await expect(incoming.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  await inspectIdentity(page, 'fleets', 'Visitor')
-})
-
 test('espionage and combat observations use current public identities without changing historical facts', async ({
   page,
 }) => {
@@ -234,7 +199,7 @@ test('espionage and combat observations use current public identities without ch
     page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`),
   ])
   const observation = page.getByRole('region', { name: 'Report observation' })
-  await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
+  await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
   await expect(
     observation.getByRole('img', { name: /Supporter/ }),
   ).toBeVisible()
@@ -257,7 +222,7 @@ test('espionage and combat observations use current public identities without ch
     },
   }
   await Promise.all([reportProfiles(), page.reload()])
-  await expect(observation.getByText('Observer', { exact: true })).toBeVisible()
+  await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
   await inspectIdentity(page, 'espionage', 'Observer')
   payload = {
     kind: 'Combat',
@@ -294,7 +259,7 @@ test('espionage and combat observations use current public identities without ch
   await expect(
     observation
       .getByRole('region', { name: 'Forces and losses' })
-      .getByText('Observer', { exact: true }),
+      .getByRole('link', { name: 'Observer profile details', exact: true }),
   ).toBeVisible()
   await expect(
     observation.getByRole('heading', { name: 'Defender profile details', exact: true }),

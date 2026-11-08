@@ -134,7 +134,7 @@ export function MissionFleetCard({
   const [showShips, setShowShips] = useState(detail)
   const shipsId = useId()
   const { linkRef, rowProps } = useRowLink(!detail && linkEnabled)
-  const row = ownFleetSummary(view, fleet)
+  const row = ownFleetSummary(view, fleet, state.tutorial.data)
   const count = fleetShipCount(fleet.ships)
   return (
     <Container
@@ -217,26 +217,32 @@ export function MissionFleetCard({
           >
             {fleet.leg === 'Returning' ? '←' : '→'}
           </span>{' '}
-          <CoordinateLink
-            at={fleet.destination}
-            target={
-              fleet.intent.destination.type === 'Body' &&
-              fleet.intent.destination.expected_kind === 'Moon'
-                ? 'moon'
-                : fleet.intent.destination.type === 'Debris'
-                  ? 'debris'
-                  : 'planet'
-            }
-            label="destination"
-          >
-            {missionLocation(
-              view,
-              fleet.intent.destination.type === 'Body'
-                ? fleet.intent.destination.id
-                : undefined,
-              fleet.destination,
-            )}
-          </CoordinateLink>
+          {fleet.intent.destination.type === 'Site' ? (
+            <span>
+              {row.target.name} {row.target.address} · personal site
+            </span>
+          ) : (
+            <CoordinateLink
+              at={fleet.destination}
+              target={
+                fleet.intent.destination.type === 'Body' &&
+                fleet.intent.destination.expected_kind === 'Moon'
+                  ? 'moon'
+                  : fleet.intent.destination.type === 'Debris'
+                    ? 'debris'
+                    : 'planet'
+              }
+              label="destination"
+            >
+              {missionLocation(
+                view,
+                fleet.intent.destination.type === 'Body'
+                  ? fleet.intent.destination.id
+                  : undefined,
+                fleet.destination,
+              )}
+            </CoordinateLink>
+          )}
         </div>
       </div>
       <div className={fleetStyles.actions}>

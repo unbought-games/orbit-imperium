@@ -47,6 +47,11 @@ test-client:
 test-http:
 	cargo nextest run -p orbit-transport-http
 
+.PHONY: test-universe-config
+test-universe-config:
+	cargo nextest run -p orbit-application --test universe_config
+	cargo nextest run -p orbit-server --bin orbit -E 'test(universe_cli::tests::) | test(setup_cli::tests::)'
+
 prepare-server:
 	$(SERVER_TESTS) --no-run
 	$(BRIDGE_TESTS) --no-run
@@ -369,3 +374,49 @@ test-empire-identity:
 	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(empire_identity) | test(insignia)'
 	npm test -- deadline-timer empire-identity player-profiles
 	npm run test:ui -- empire-identity.spec.ts
+
+# Linked lab arithmetic, persisted operation snapshots and responsive inspectors.
+.PHONY: test-research-network test-research-network-db
+test-research-network:
+	cargo nextest run -p orbit-engine -p orbit-application --all-targets
+	npm test
+	npm run test:ui -- research-network.spec.ts hyperspace-technology.spec.ts
+
+test-research-network-db:
+	sh scripts/test-db.sh rules_updates
+	sh scripts/test-db.sh world_edit 'test(research_network)'
+
+.PHONY: test-objectives
+test-objectives:
+	cargo nextest run -p orbit-engine --test objectives --test persistence --test replay --lib -E 'binary(objectives) | binary(persistence) | binary(replay) | test(objectives::tests::)'
+
+.PHONY: test-mission-sites test-db-mission-sites
+test-mission-sites:
+	cargo nextest run -p orbit-engine --lib -E 'test(mission_sites::)'
+
+test-db-mission-sites:
+	$(MAKE) test-db DB_SUITES=mission_sites DB_JOBS=1
+
+.PHONY: test-site-fleets test-db-site-fleets
+test-site-fleets:
+	cargo nextest run -p orbit-engine --test missions -E 'test(site_execution::)'
+test-db-site-fleets:
+	$(MAKE) test-db DB_SUITES=site_fleets DB_JOBS=1
+
+.PHONY: experiment-tutorial experiment-tutorial-early-storage
+experiment-tutorial:
+	sh scripts/test-db.sh tutorial 'test(signup_economy_experiment)' --run-ignored=only
+
+experiment-tutorial-early-storage:
+	sh scripts/test-db.sh tutorial 'test(signup_early_storage_experiment)' --run-ignored=only
+
+.PHONY: test-tutorial test-db-tutorial
+test-tutorial:
+	cargo nextest run -p orbit-engine --lib --test objectives --test missions -E 'test(authored_sites_) | test(site_execution::) | test(tutorial::)'
+test-db-tutorial:
+	$(MAKE) test-db DB_SUITES=tutorial DB_JOBS=1
+
+# Distinguish refresh contention without changing HTTP errors or token fencing.
+.PHONY: test-auth-telemetry
+test-auth-telemetry:
+	cargo nextest run -p orbit-application -p orbit-server -p orbit-transport-http --lib --bins -E 'test(auth_observation::tests::) | test(metrics::tests::) | test(bootstrap::tests::) | test(active_session_rotation_has_a_distinct_private_retry_response)'

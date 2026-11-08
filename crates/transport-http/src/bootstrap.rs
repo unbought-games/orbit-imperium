@@ -45,6 +45,7 @@ where
         timer.finish(match &result {
             Ok(Ok(_)) => AuthOutcome::Success,
             Ok(Err(ServiceError::Unauthenticated)) => AuthOutcome::SigninRequired,
+            Ok(Err(ServiceError::SessionRefreshing(_))) => AuthOutcome::Refreshing,
             _ => AuthOutcome::Unavailable,
         });
         result
@@ -278,6 +279,35 @@ mod tests {
         let value: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(value["result"]["status"], "unavailable");
         assert_eq!(*observer.0.lock().unwrap(), vec!["auth_unavailable"]);
+    }
+    #[tokio::test]
+    async fn refreshing_bootstrap_keeps_failure_semantics_and_records_contention() {
+        #[derive(Default)]
+        struct AuthObserver(std::sync::Mutex<Vec<(&'static str, &'static str)>>);
+        impl RuntimeObserver for AuthObserver {
+            fn duration(&self, _: RuntimeStage, _: Duration) {}
+            fn event(&self, _: RuntimeEvent) {}
+            fn auth_duration(&self, phase: AuthPhase, outcome: AuthOutcome, _: Duration) {
+                self.0.lock().unwrap().push((phase.name(), outcome.name()));
+            }
+        }
+        let observer = std::sync::Arc::new(AuthObserver::default());
+        let bootstrap = assemble_observed(
+            false,
+            async { Err(ServiceError::SessionRefreshing(1000)) },
+            |_| async { panic!("refresh contention cannot load game state") },
+            Deadline::now() + BUDGET,
+            observer.clone(),
+        )
+        .await;
+        assert!(matches!(
+            bootstrap.result,
+            BootstrapResult::Unavailable { .. }
+        ));
+        assert_eq!(
+            *observer.0.lock().unwrap(),
+            vec![("bootstrap_auth", "refreshing")]
+        );
     }
     #[tokio::test(start_paused = true)]
     async fn optional_metadata_failure_or_timeout_preserves_authenticated_bootstrap() {

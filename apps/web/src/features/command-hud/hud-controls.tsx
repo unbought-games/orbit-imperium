@@ -1,5 +1,5 @@
 import { addressCaption } from '../../client-model/empire-identity'
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ComponentPropsWithRef } from 'react'
 import {
   Atom,
   Check,
@@ -173,9 +173,13 @@ function OrbSymbol({ kind }: { kind: HudIcon | null }) {
 export function CommandOrb({
   hud,
   address = 'Commander',
+  triggerProps,
+  showCaption = true,
 }: {
   hud: CommandHudState
   address?: string
+  triggerProps?: ComponentPropsWithRef<'button'>
+  showCaption?: boolean
 }) {
   const [pressed, setPressed] = useState(false)
   const appearance = orbAppearance(hud.state, hud.recent)
@@ -200,7 +204,7 @@ export function CommandOrb({
       >
         {caption?.category === 'updated' ? captionText : ''}
       </span>
-      {caption && (
+      {caption && showCaption && (
         <span
           key={caption.id}
           className={`${styles.orbCaption} ${styles.typedCaption}`}
@@ -227,15 +231,17 @@ export function CommandOrb({
         aria-haspopup="dialog"
         aria-expanded={hud.selection !== null}
         aria-label={`${appearance.tone === 'red' ? 'Threat detected. ' : ''}${unreadCount ? `${unreadCount === 99 ? '99 or more' : unreadCount} unread items. ` : unread ? 'Unread intelligence. ' : ''}Open command HUD`}
+        {...triggerProps}
         onPointerDown={() => setPressed(true)}
         onPointerUp={() => setPressed(false)}
         onPointerCancel={() => setPressed(false)}
         onPointerLeave={() => setPressed(false)}
         onLostPointerCapture={() => setPressed(false)}
         onBlur={() => setPressed(false)}
-        onClick={() => {
+        onClick={(event) => {
           setPressed(false)
-          hud.select('inbox')
+          if (triggerProps?.onClick) triggerProps.onClick(event)
+          else hud.select('inbox')
         }}
       >
         {caption?.category === 'updated' && (

@@ -1,3 +1,5 @@
+import { siteContext } from '../tutorial/model'
+import type { TutorialData } from '../../client-model/tutorial-engine'
 import type { GameState } from '../../client-model/game-store'
 import {
   activeAttempt,
@@ -16,7 +18,7 @@ export type FleetEndpoint = {
   name: string
   address: string
   art?: BodyArtIdentity
-  kind: 'Planet' | 'Moon' | 'Debris' | 'EmptyPosition' | 'Unknown'
+  kind: 'Planet' | 'Moon' | 'Debris' | 'EmptyPosition' | 'Site' | 'Unknown'
 }
 export type FleetSummaryRow = {
   key: string
@@ -72,6 +74,7 @@ function endpoint(
 export function ownFleetSummary(
   view: S['BoundView4'],
   fleet: S['OwnMission4'],
+  tutorial: TutorialData | null = null,
 ): FleetSummaryRow {
   return {
     key: fleet.id,
@@ -81,16 +84,23 @@ export function ownFleetSummary(
     leg: fleet.leg,
     ships: fleet.ships,
     home: endpoint(view, fleet.intent.origin, fleet.origin, 'Planet'),
-    target: endpoint(
-      view,
-      fleet.intent.destination.type === 'Body'
-        ? fleet.intent.destination.id
-        : undefined,
-      fleet.destination,
-      fleet.intent.destination.type === 'Body'
-        ? fleet.intent.destination.expected_kind
-        : fleet.intent.destination.type,
-    ),
+    target:
+      fleet.intent.destination.type === 'Site'
+        ? siteEndpoint(
+            tutorial,
+            fleet.intent.destination.selection.id,
+            fleet.destination,
+          )
+        : endpoint(
+            view,
+            fleet.intent.destination.type === 'Body'
+              ? fleet.intent.destination.id
+              : undefined,
+            fleet.destination,
+            fleet.intent.destination.type === 'Body'
+              ? fleet.intent.destination.expected_kind
+              : fleet.intent.destination.type,
+          ),
     dueAt: fleet.due_at,
     duration: fleet.duration_ms,
   }
@@ -101,7 +111,7 @@ export function fleetSummaryRows(state: GameState): FleetSummaryRow[] {
   const view = state.view
   if (view?.protocol !== 4) return []
   const confirmed = view.missions.fleets.map((fleet) =>
-    ownFleetSummary(view, fleet),
+    ownFleetSummary(view, fleet, state.tutorial.data),
   )
   const pending = [...state.attempts.values()].flatMap(
     (attempt): FleetSummaryRow[] => {
@@ -129,18 +139,24 @@ export function fleetSummaryRows(state: GameState): FleetSummaryRow[] {
           leg: 'Launching',
           ships: intent.ships,
           home: endpoint(view, intent.origin, undefined, 'Unknown'),
-          target: endpoint(
-            view,
-            intent.destination.type === 'Body'
-              ? intent.destination.id
-              : undefined,
-            intent.destination.type === 'Body'
-              ? undefined
-              : intent.destination.coordinates,
-            intent.destination.type === 'Body'
-              ? intent.destination.expected_kind
-              : intent.destination.type,
-          ),
+          target:
+            intent.destination.type === 'Site'
+              ? siteEndpoint(
+                  state.tutorial.data,
+                  intent.destination.selection.id,
+                )
+              : endpoint(
+                  view,
+                  intent.destination.type === 'Body'
+                    ? intent.destination.id
+                    : undefined,
+                  'coordinates' in intent.destination
+                    ? intent.destination.coordinates
+                    : undefined,
+                  intent.destination.type === 'Body'
+                    ? intent.destination.expected_kind
+                    : intent.destination.type,
+                ),
           dueAt: null,
           duration: null,
           status: recalling
@@ -224,4 +240,20 @@ export function enemyAttackRows(state: GameState) {
   return incomingAttacks(state)
     .map((fleet) => ({ fleet, row: incomingFleetSummary(view, fleet) }))
     .sort((a, b) => a.fleet.arrival_at - b.fleet.arrival_at)
+}
+
+export function siteEndpoint(
+  data: TutorialData | null,
+  id: string,
+  at?: S['Coordinates'],
+): FleetEndpoint {
+  const site = siteContext(data, id),
+    anchor = site?.site.destination.coordinates ?? at
+  return {
+    kind: 'Site',
+    name: site?.title ?? 'Personal site',
+    address: anchor
+      ? coordinates({ coordinates: anchor })
+      : 'Personal operation',
+  }
 }

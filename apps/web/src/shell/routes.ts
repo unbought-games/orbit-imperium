@@ -4,6 +4,7 @@ import type { BoundView } from '../client-model/commands'
 export type Page =
   | 'menu'
   | 'overview'
+  | 'briefing'
   | 'resources'
   | 'resource-settings'
   | 'facilities'
@@ -36,6 +37,7 @@ export type Route = {
 }
 export const bodyPages: Page[] = [
   'overview',
+  'briefing',
   'resources',
   'resource-settings',
   'facilities',
@@ -83,6 +85,8 @@ export function resolveDestination(
     )
   if (page === 'combat-simulator' && view.protocol !== 4)
     return unavailable('Combat Simulator is unavailable in this universe.')
+  if (page === 'briefing' && view.protocol !== 4)
+    return unavailable('Briefing is unavailable in this universe.')
   if (
     (page === 'alliance' ||
       page === 'alliance-create' ||

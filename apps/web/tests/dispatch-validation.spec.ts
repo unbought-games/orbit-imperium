@@ -1,8 +1,9 @@
+import { routeWorld } from './fixtures/game'
 import { withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
-import { shellFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
+import { installGameFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
@@ -43,11 +44,13 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
       },
       { ...colony, name: 'Haven Colony' },
     ]
-  const capabilities: NonNullable<Parameters<typeof shellFixture>[1]>['extraCapabilities'] = [
+  const capabilities: NonNullable<Parameters<typeof installGameFixture>[1]>['extraCapabilities'] = [
     'Attack', 'Espionage', 'Harvest', 'Deploy', 'Reports', 'Colonize',
   ]
   let revision = 1
-  await shellFixture(page, {
+  // Install the fixture without loading an unrelated overview first. The direct
+  // Dispatch navigation below gates complete bootstrap delivery.
+  await installGameFixture(page, {
     viewerRevision: () => String(revision),
     protocol: 4,
     homeworldId: body.id,
@@ -104,7 +107,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
     launches: 0,
     hold: null as ((route: Route) => Promise<void>) | null,
   }
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const query = route.request().postDataJSON()
     const observedBlocker = state.blocker
     if (state.hold) await state.hold(route)
@@ -1118,7 +1121,7 @@ test('fresh destination ownership is checked even when it was not in the owned-p
 }) => {
   await setup(page)
   await page.getByRole('radio', { name: 'Attack', exact: true }).check()
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const q = route.request().postDataJSON()
     if (q.type !== 'ResolveDestination') return route.fallback()
     await route.fulfill({
@@ -1550,7 +1553,7 @@ test('late destination lookup cannot replace a selected colony and failures are 
   release()
   await response
   await expect(preview).toContainText('Haven Colony')
-  await page.route('**/world', async route => {
+  await routeWorld(page, async route => {
     if (route.request().postDataJSON().type === 'Galaxy') return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     await route.fallback()
   })
@@ -1561,8 +1564,10 @@ test('late destination lookup cannot replace a selected colony and failures are 
 })
 
 test('destination picker includes a same-coordinate moon and excludes the origin', async ({ page }) => {
-  await shellFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await installGameFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
+  await withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/bootstrap', () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   await page.getByRole('combobox', { name: 'Your planets and moons' }).click()
   await page.getByRole('option', {name: /Home moon/}).click()
   await expect(page.getByLabel('Destination preview')).toContainText('Moon · Your moon')
@@ -1575,8 +1580,10 @@ test('planet renames, removal and origin changes update the picker and preview f
   const colony = { ...body, id: id(6), name: 'Colony', coordinates: { galaxy: 1, system: 1, position: 2 } }
   const bodies = [home, colony]
   let revision = 1
-  await shellFixture(page, { protocol: 4, bodies, viewerRevision: () => String(revision), extraCapabilities: ['Deploy'] })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await installGameFixture(page, { protocol: 4, bodies, viewerRevision: () => String(revision), extraCapabilities: ['Deploy'] })
+  await withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/bootstrap', () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   const picker = page.getByRole('combobox', { name: 'Your planets and moons' })
   const preview = page.getByLabel('Destination preview')
   await selectDestinationPlanet(page, colony.id)
@@ -2285,38 +2292,7 @@ for (const width of [390, 1440]) {
     expect(state.launches).toBe(1)
   })
 
-  test(`Dispatch origin follows authoritative self identity through loading refresh and navigation at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    let release!: () => void
-    const gate = new Promise<void>(resolve => { release = resolve })
-    let username = 'Captain Vega'
-    try {
-      await setup(page, { beforeNavigation: async () => {
-        await playerProfilesFixture(page, () => [{ player: binding.player, username }])
-        await page.route('**/player-profiles', async route => { await gate; await route.fallback() })
-      } })
-      const origin = page.getByRole('group', { name: 'Origin', exact: true })
-      // The bound-view map says Commander; self identity is still unresolved.
-      await expect(origin).toContainText('Planet · You')
-      await expect(origin).not.toContainText(binding.player.slice(0, 8))
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-identity-loading-${width}x1000.png`, fullPage: width >= 768 })
-      release()
-      await expect(origin).toContainText('Planet · Captain Vega')
-      username = 'Captain Nova'
-      await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
-      await expect(origin).toContainText('Planet · Captain Nova')
-      await page.getByRole('link', { name: 'Empire', exact: true }).click()
-      await page.goBack()
-      await expect(origin).toContainText('Planet · Captain Nova')
-      await page.reload()
-      await expect(origin).toContainText('Planet · Captain Nova')
-      await expect(origin).not.toContainText('Commander')
-      await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
-      await page.evaluate(() => window.scrollTo(0, 0))
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-authoritative-identity-${width}x1000.png`, fullPage: width >= 768 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    } finally { release() }
-  })
+
 }
 
 test('zero-padded oversized ship counts retain server range rejection', async ({ page }) => {

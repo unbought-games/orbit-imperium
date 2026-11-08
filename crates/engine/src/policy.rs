@@ -132,7 +132,7 @@ pub fn check_mission_eligibility(
     if mission == Mission::Hold {
         can_hold(s, actor, target.ok_or(GameError::InvalidInput)?)?;
     }
-    check_action_policy(s, actor, target, Some(mission), at, r)
+    check_action_policy(s, actor, target, Some(mission), at, r, false)
 }
 /// Missile hostility uses the same player protections independently of fleet slots and missions.
 pub fn check_missile_eligibility(
@@ -145,7 +145,19 @@ pub fn check_missile_eligibility(
     if missile_rules(r).is_none() {
         return Err(GameError::UnavailableContent);
     }
-    check_action_policy(s, actor, Some(target), None, at, r)
+    check_action_policy(s, actor, Some(target), None, at, r, false)
+}
+/// NPC sites are authorized separately by stable identity, never by a fake player.
+pub fn check_site_attack_eligibility(
+    s: &GameState,
+    actor: PlayerId,
+    at: Timestamp,
+    r: &Ruleset,
+) -> Result<(), GameError> {
+    if !r.attacks() {
+        return Err(GameError::UnavailableContent);
+    }
+    check_action_policy(s, actor, None, Some(Mission::Attack), at, r, true)
 }
 fn check_action_policy(
     s: &GameState,
@@ -154,6 +166,7 @@ fn check_action_policy(
     mission: Option<Mission>,
     at: Timestamp,
     r: &Ruleset,
+    npc: bool,
 ) -> Result<(), GameError> {
     let w = world_facts(s).map_err(|_| GameError::PolicyUnavailable)?;
     let p = w
@@ -213,7 +226,7 @@ fn check_action_policy(
                 return Err(GameError::BeginnerProtected);
             }
         }
-    } else if !matches!(mission, Some(Mission::Harvest | Mission::Colonize)) {
+    } else if !npc && !matches!(mission, Some(Mission::Harvest | Mission::Colonize)) {
         return Err(GameError::InvalidInput);
     }
     Ok(())

@@ -104,7 +104,7 @@ try {
   execFileSync(current, ['db-init'], { env, stdio: 'pipe' })
   db = new pg.Client({ connectionString: url }); await db.connect()
   await db.query('CREATE TABLE orbit_test_clock(at_ms bigint NOT NULL); INSERT INTO orbit_test_clock VALUES(1000000)')
-  const made = operator(['universe', 'create', '--universe', universe, '--commands-per-minute', '10000'])
+  const made = operator(['universe', 'create', '--universe', universe, '--speed', '5', '--commands-per-minute', '10000'])
   assert.equal(made.configuration.immutable.speed, 5)
   active = await start()
   for (const account of accounts) await signup(account)

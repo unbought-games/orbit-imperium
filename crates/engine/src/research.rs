@@ -85,3 +85,79 @@ pub fn validate_research_catalog(
     }
     Ok(())
 }
+
+/// Select from completely covered, live owned planets. The origin always stays;
+/// only independently eligible remote labs lend capability, never resources.
+pub fn research_labs(
+    state: &GameState,
+    origin: &Body,
+    research: ResearchId,
+    rules: &Ruleset,
+) -> Result<Vec<LabTerm>, InvariantError> {
+    if !state.coverage.owned_body_players.contains(&origin.owner) {
+        return Err(InvariantError("incomplete research lab candidates".into()));
+    }
+    let lab_level = |body: &Body| {
+        body.levels
+            .get(&Building::ResearchLab)
+            .copied()
+            .ok_or_else(|| InvariantError("missing research lab level".into()))
+    };
+    let mut labs = vec![LabTerm {
+        body: origin.id,
+        level: lab_level(origin)?,
+    }];
+    // A saved rules artifact without IRN keeps its historical one-lab behavior.
+    // Disabling new IRN upgrades does not revoke previously completed levels.
+    let network = if rules
+        .research_keys()
+        .contains(&ResearchId::IntergalacticResearchNetwork)
+    {
+        research_level(
+            state,
+            origin.owner,
+            ResearchId::IntergalacticResearchNetwork,
+        )?
+    } else {
+        0
+    };
+    if network == 0 {
+        return Ok(labs);
+    }
+    let minimum = rules
+        .artifact
+        .catalog
+        .iter()
+        .find(|entry| entry.key == CatalogKey::Research(research))
+        .ok_or_else(|| InvariantError("missing research catalog entry".into()))?
+        .requirements
+        .iter()
+        .filter_map(|requirement| match requirement {
+            Requirement::BodyBuilding {
+                building: Building::ResearchLab,
+                level,
+            } => Some(*level),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(0);
+    let mut remote = Vec::new();
+    for body in state.bodies.values().filter(|body| {
+        body.owner == origin.owner
+            && body.universe == origin.universe
+            && body.kind == BodyKind::Planet
+            && body.id != origin.id
+    }) {
+        validate_body(state, body.id, rules)?;
+        let level = lab_level(body)?;
+        if level >= minimum {
+            remote.push(LabTerm {
+                body: body.id,
+                level,
+            });
+        }
+    }
+    remote.sort_by_key(|lab| (std::cmp::Reverse(lab.level), lab.body));
+    labs.extend(remote.into_iter().take(network as usize));
+    Ok(labs)
+}

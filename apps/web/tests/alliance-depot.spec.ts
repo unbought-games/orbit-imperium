@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
@@ -119,7 +120,7 @@ for (const width of [390, 1440]) {
     })
     let supplies = 0,
       recalls = 0
-    await page.route('**/world', async (route) => {
+    await routeWorld(page, async (route) => {
       const r = route.request().postDataJSON()
       if (r.type !== 'DepotSupplyQuote') return route.fallback()
       expect(r.intent).toEqual({
@@ -254,7 +255,7 @@ for (const width of [390, 1440]) {
         fleet_slots: '3',
       },
     })
-    await page.route('**/world', async (route) => {
+    await routeWorld(page, async (route) => {
       const r = route.request().postDataJSON()
       let data: unknown
       if (r.type === 'Galaxy')

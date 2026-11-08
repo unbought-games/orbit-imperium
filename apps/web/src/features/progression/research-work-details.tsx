@@ -1,3 +1,5 @@
+import { ResearchLabs } from './research-labs'
+import type { ProgressionProps } from './shared'
 import type { Coordinator } from '../../client-model/coordinator'
 import { AlertTriangle } from 'lucide-react'
 import type { researchProgress } from '../../client-model/research-progress'
@@ -11,9 +13,11 @@ import noticeStyles from './quote-review.module.css'
 export function ResearchWorkDetails({
   research,
   model,
+  bodies,
 }: {
   research: NonNullable<ReturnType<typeof researchProgress>>
   model: Coordinator
+  bodies: ProgressionProps['view']['bodies']
 }) {
   const verb = 'Researching'
   const target = `${verb} ${label(research.research)} to level ${research.targetLevel}`
@@ -36,6 +40,21 @@ export function ResearchWorkDetails({
       dueAt={research.dueAt}
       status={research.status}
       paid={research.paid}
+      summary={
+        <>
+          <dl className={styles.compare}>
+            <DetailRow label="Effective laboratory level">
+              {research.effectiveLab}
+            </DetailRow>
+          </dl>
+          <ResearchLabs
+            labs={research.labs}
+            host={research.host}
+            bodies={bodies}
+            active
+          />
+        </>
+      }
     >
       <WorkCancellationButton
         model={model}

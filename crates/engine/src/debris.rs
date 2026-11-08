@@ -97,8 +97,8 @@ pub fn next_debris_cleanup(at: Timestamp) -> Result<Timestamp, GameError> {
 
 /// Aggregate gross ship construction losses across all participants before rounding.
 /// Cargo, fuel, and defenses never enter this pool.
-pub fn destroyed_ship_debris(
-    destroyed: &[BattleCounts],
+pub fn destroyed_ship_debris<I>(
+    destroyed: &[BattleCounts<I>],
     rules: &CombatRules,
 ) -> Result<Resources, InvariantError> {
     let mut costs = [0i128; 3];

@@ -415,9 +415,13 @@ pub fn inspect_progression(
         QuoteRequest::Demolition { building, .. } => {
             building_terms(b, *building, BuildingAction::Demolition, r)
         }
-        QuoteRequest::Research { research, .. } => {
-            research_terms(b, &s.research[&b.owner], *research, r)
-        }
+        QuoteRequest::Research { research, .. } => research_terms_with_labs(
+            b,
+            &s.research[&b.owner],
+            *research,
+            r,
+            research_labs(s, b, *research, r)?,
+        ),
         QuoteRequest::Manufacture { item, quantity, .. } => {
             manufacture_terms(b, *item, *quantity, r)
         }

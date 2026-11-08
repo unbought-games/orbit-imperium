@@ -104,3 +104,19 @@ readiness. Old journals remain unchanged and use an explicit legacy replay
 adapter. See the [Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
 for rolling deployment, explicit evidence classification and the activation gate
 required in part 2.
+
+## Opening objectives and private sites
+
+Migration 0039 introduces objectives, private mission sites and tutorial preferences
+as one transactional release. Existing members retain the full interface, receive
+no historical grants, and progress through new ordinary accomplishments. Pending
+inputs and paid terms are preserved while their homeworld/site scope declarations
+are extended. Normal startup applies the migration; no separate activation is
+required. See [onboarding operations](operations/onboarding.md).
+
+Existing player battle identities remain unchanged. Private sites use explicit NPC
+combat identities, immutable protocol-4 fleet terms and optional raid provenance.
+Old cargo is never inferred to be raid loot. Site reports cannot be publicly shared
+or scanned; debris remains site-local, with no planetary defense restoration,
+replenishment or moon creation. Deploy the matching application with the schema;
+older binaries do not understand site destinations or scopes.

@@ -1,3 +1,10 @@
+import { useTutorial } from '../features/tutorial/use-tutorial'
+import {
+  briefingEntryAvailable,
+  tutorialPages,
+  tutorialMorePages,
+} from '../features/tutorial/model'
+import { Disclosure } from '../ui/disclosure'
 import { useUniverseName } from './session-context'
 import { PlayerName } from '../features/player-name'
 import { Menu as AccountMenu } from '@base-ui/react/menu'
@@ -12,6 +19,8 @@ import {
   LogOut,
   ChevronsUpDown,
   Settings,
+  ClipboardList,
+  ArrowUpRight,
 } from 'lucide-react'
 import styles from './navigation.module.css'
 import { Button } from '../ui/button'
@@ -55,6 +64,12 @@ export function Navigation({
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
+  const { data: tutorial } = useTutorial()
+  const visiblePages = tutorialPages(
+    tutorial,
+    view.protocol === 4 ? view : null,
+  )
+  const morePages = tutorialMorePages(visiblePages)
   const mobileMenu = useRef<HTMLAnchorElement>(null)
   const [accountOpen, setAccountOpen] = useState(false)
   useEffect(() => {
@@ -65,13 +80,18 @@ export function Navigation({
     desktop.addEventListener('change', closeHiddenNavigation)
     return () => desktop.removeEventListener('change', closeHiddenNavigation)
   }, [])
-  const selected = navigationAnchor(page)
+  const selected = morePages.includes(page) ? 'Menu' : navigationAnchor(page)
   const destination = (
     p: Page,
     title = pageTitles[p],
     Icon?: typeof Orbit,
     primary = false,
+    inMore = false,
   ) => {
+    if (p === 'briefing' && !briefingEntryAvailable(tutorial, view.protocol))
+      return null
+    if (!inMore && p !== 'menu' && visiblePages && !visiblePages.has(p))
+      return null
     const working = !primary && activity.has(p)
     const blocked = !primary && !working ? blockers.get(p) : undefined
     const description = working ? 'Work in progress' : blocked
@@ -201,6 +221,7 @@ export function Navigation({
           data-touch-control=""
         >
           {destination('overview', 'Empire', Orbit, true)}
+          {destination('briefing', 'Briefing', ClipboardList)}
           {destination('resources', 'Develop', Blocks, true)}
           <nav
             className={styles.sidebarDevelop}
@@ -212,10 +233,29 @@ export function Navigation({
           {destination('fleets', 'Fleets', Radar, true)}
           {destination('reports', 'Reports', Mail)}
           {destination('combat-simulator', 'Combat Simulator', Swords)}
-          <h2 className={styles.sidebarLabel}>Community</h2>
+          {(!visiblePages ||
+            ['alliance', 'messages', 'high-scores'].some((p) =>
+              visiblePages.has(p as Page),
+            )) && <h2 className={styles.sidebarLabel}>Community</h2>}
           {destination('alliance')}
           {destination('messages')}
           {destination('high-scores')}
+          {morePages.length > 0 && (
+            <Disclosure
+              className={styles.more}
+              summary="More"
+              open={morePages.includes(page) || undefined}
+            >
+              <nav
+                aria-label="More navigation"
+                className={styles.moreDestinations}
+              >
+                {morePages.map((p) =>
+                  destination(p, pageTitles[p], ArrowUpRight, false, true),
+                )}
+              </nav>
+            </Disclosure>
+          )}
         </nav>
         <div className={styles.sidebarAccount}>
           <AccountMenu.Root open={accountOpen} onOpenChange={setAccountOpen}>

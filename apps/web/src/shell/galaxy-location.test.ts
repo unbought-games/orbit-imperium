@@ -41,6 +41,13 @@ it('accepts recorded coordinates independently of a current entity', () => {
 })
 
 it('validates optional galaxy search and rejects malformed or unsafe URL values', () => {
+  expect(
+    validateGalaxySearch({ site: '00000000-0000-4000-8000-000000000001' }),
+  ).toEqual({ site: '00000000-0000-4000-8000-000000000001' })
+  for (const site of [null, '', 'not-a-site', {}, 123])
+    expect(() => validateGalaxySearch({ site })).toThrow(
+      'Invalid personal site address',
+    )
   expect(validateGalaxySearch({ body: 'origin' })).toEqual({})
   expect(
     validateGalaxySearch({

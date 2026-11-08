@@ -186,7 +186,12 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
             data.fact("Industrial lock", "Factory upgrades and demolition cannot overlap any unfinished manufacturing on this planet, including waiting ships, defenses and missiles. Self-upgrades use the old completed Nanite level.");
         }
         Building::RoboticsFactory if rules.progression() => data.fact("Construction time", "The raw construction duration is divided by (1 + Robotics Factory level). Upgrades use the universe’s construction formula and rounding; this is not a fixed percentage reduction per level."),
-        Building::ResearchLab if rules.progression() => data.fact("Research time", "Research duration is divided by (1 + this planet’s Research Lab level), rounded down to whole seconds with a one-second minimum. Only this planet’s lab contributes."),
+        Building::ResearchLab if rules.progression() => {
+            let text = if rules.research_keys().contains(&ResearchId::IntergalacticResearchNetwork) {
+                "Research duration is divided by (1 + the sum of contributing lab levels), rounded down to whole seconds with a one-second minimum. Each completed Intergalactic Research Network level links one additional eligible planet. Every lab must individually meet the research requirement. Lab upgrades and demolition anywhere in your empire cannot overlap research."
+            } else { "Research duration is divided by (1 + this planet’s Research Lab level), rounded down to whole seconds with a one-second minimum. Only this planet’s lab contributes." };
+            data.fact("Research time", text);
+        },
         Building::Shipyard if rules.progression() => data.fact("Manufacturing time", "Ship and defense duration per unit is divided by (1 + Shipyard level), rounded down to whole seconds with a one-second minimum."),
         _ => {}
     }
@@ -232,6 +237,11 @@ fn research_data(data: &mut TechnicalData, research: ResearchId, rules: &Ruleset
                     data.fact(&format!("Colonization at level {level}"), format!("Positions {}.", positions.join(", ")));
                 }
             } else { data.fact("Colonization", "Colonization missions are unavailable in this universe."); }
+        }
+        IntergalacticResearchNetwork => {
+            data.fact("Linked laboratories", "Each completed level allows one additional owned planet’s Research Lab to contribute. The initiating lab always participates; the highest eligible remote labs are selected automatically. Every lab must independently meet the technology’s lab requirement.");
+            data.fact("Research time", "Contributing levels are summed, with one +1 in the duration denominator. Only the initiating planet pays. Labs and duration are fixed at the start; researching the network itself uses its previous completed level.");
+            data.fact("Lab locks", "Research blocks all Research Lab upgrades and demolition in your empire. Active lab construction blocks research. Participating planets cannot be abandoned until research finishes or is cancelled.");
         }
         EspionageTechnology => {
             data.fact("Report detail", "Disclosure score = arriving probes + sign(level difference) × level difference². The difference is your completed espionage level minus the target’s. Higher scores reveal more categories.");
@@ -619,5 +629,54 @@ mod tests {
                 .any(|f| f.value.contains("1 base slot + 1 per completed level"))
         );
         assert_eq!(fleet_slot_limit(6), 7);
+    }
+}
+
+#[cfg(test)]
+mod research_network_tests {
+    use super::*;
+
+    #[test]
+    fn network_and_lab_descriptions_follow_the_saved_rules_capability() {
+        let old = Ruleset::mvp_raids().unwrap();
+        let current = upgrade_standard_rules(&old).unwrap();
+        for (rules, linked) in [(&old, false), (&current, true)] {
+            let entry = rules
+                .artifact
+                .catalog
+                .iter()
+                .find(|e| e.key == CatalogKey::Building(Building::ResearchLab))
+                .unwrap();
+            let data = technical_data(rules, entry).unwrap().unwrap();
+            assert_eq!(
+                data.facts
+                    .iter()
+                    .any(|f| f.value.contains("one additional eligible planet")),
+                linked
+            );
+            assert_eq!(
+                data.facts
+                    .iter()
+                    .any(|f| f.value.contains("Only this planet’s lab contributes")),
+                !linked
+            );
+        }
+        let entry = current
+            .artifact
+            .catalog
+            .iter()
+            .find(|e| e.key == CatalogKey::Research(ResearchId::IntergalacticResearchNetwork))
+            .unwrap();
+        let data = technical_data(&current, entry).unwrap().unwrap();
+        assert!(
+            data.facts
+                .iter()
+                .any(|f| f.value.contains("previous completed level"))
+        );
+        assert!(
+            data.facts
+                .iter()
+                .any(|f| f.value.contains("cannot be abandoned"))
+        );
     }
 }

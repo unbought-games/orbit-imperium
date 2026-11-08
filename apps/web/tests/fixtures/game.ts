@@ -1,7 +1,7 @@
 import { withFixtureResponse } from './responses'
 import { productionFixture } from '../../src/test-support/production'
 import { universeSlug } from '../../src/client-model/universe-name'
-import { expect, type Page } from '@playwright/test'
+import { expect, type Page, type Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
 
 export const id = (n: number) =>
@@ -45,10 +45,22 @@ export const body: components['schemas']['BodyV3'] = {
   energy: { supply: '48400000', demand: '22000000', utilization: '1000000' },
   inventories: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '2' }],
 }
+const fixtureWorldRevisions = new WeakMap<Page, () => string>()
+export function inactiveTutorial(route: Route, revision: string) {
+  const query = route.request().postDataJSON()
+  return route.fulfill({json:{protocol:4,binding:query.context.binding,request_id:query.context.request_id,viewer_revision:revision,sampled_at:Date.now(),as_of_ms:Date.now(),data:{enrolled:false,human:true,program:'colony-opening-v1',version:1,preference:null,beginner:false,completed:false,homeworld:null,chapters:[],recommended_objectives:[],receipts:[],sites:[]}}})
+}
+/** World-specific fixtures leave the unrelated, inactive opening query intact. */
+export function routeWorld(page:Page, handler:(route:Route)=>unknown|Promise<unknown>, options?:{times?:number}) {
+ return page.route('**/world',route=>route.request().postDataJSON()?.type==='Tutorial'
+  ? inactiveTutorial(route,fixtureWorldRevisions.get(page)?.() ?? '1') : handler(route),options)
+}
+
 /** Install HTTP fixtures before navigating directly to the page under test. */
 export async function installGameFixture(
   page: Page,
   options: {
+    speed?: number
     snapshotHeaders?: () => Record<string, string>
     vacation?: () => components['schemas']['VacationView4']
     universeName?: string
@@ -91,6 +103,7 @@ export async function installGameFixture(
     >
   } = {},
 ) {
+  fixtureWorldRevisions.set(page, options.viewerRevision ?? (() => '1'))
   const protocol = options.protocol ?? 3
   let purchases = 0
   // Fixtures own initial auth/data even when this suite runs against production HTML.
@@ -130,6 +143,7 @@ export async function installGameFixture(
         },
       })
     const context = request.postDataJSON()
+    if (url.pathname.endsWith('/world') && context?.type === 'Tutorial') return inactiveTutorial(route, options.viewerRevision?.() ?? '1')
     if (url.pathname.endsWith('/player-profiles'))
       return route.fulfill({
         json: {
@@ -174,7 +188,7 @@ export async function installGameFixture(
       })
     const settings = {
       ...common,
-      speed: 1,
+      speed: options.speed ?? 1,
       profile_id:
         protocol === 4
           ? 'mvp-v1-slice-4'
@@ -210,7 +224,7 @@ export async function installGameFixture(
       },
       sampled_at: sampledAt,
       as_of_ms: sampledAt,
-      speed: 1,
+      speed: options.speed ?? 1,
       ...(protocol === 4 && options.homeworldId ? { homeworld_id: options.homeworldId } : {}),
       bodies: bodies.map((b) =>
         protocol === 2

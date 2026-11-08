@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { openNavigation } from './fixtures/navigation'
 import { withFixtureResponse } from './fixtures/responses'
 import { test, expect, type Locator, type Page } from './fixtures/test'
@@ -63,7 +64,7 @@ async function selectionIs(target: Locator, disabled: boolean) {
 }
 
 async function galaxyFixture(page: Page) {
-  await page.route('**/world', async (route) => {
+  await routeWorld(page, async (route) => {
     const { context, galaxy, system } = route.request().postDataJSON()
     const now = Date.now()
     await route.fulfill({

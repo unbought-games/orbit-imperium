@@ -171,6 +171,18 @@ pub(crate) async fn load(
             action: WorldAction::LaunchFleet { intent, .. },
         }) => {
             bodies.insert(intent.origin.0);
+            if let MissionDestination::Site { selection } = intent.destination
+                && let Some(value) =
+                    sqlx::query_scalar("SELECT data FROM mission_sites WHERE universe=$1 AND id=$2")
+                        .bind(u.0)
+                        .bind(selection.id.0)
+                        .fetch_optional(&mut **tx)
+                        .await
+                        .map_err(db_error)?
+            {
+                let site: MissionSite = decode_supported(value)?;
+                refs.sites.insert(selection.id, site.creation.coordinates);
+            }
             if let MissionDestination::Body { id, .. } = intent.destination {
                 bodies.insert(id.0);
                 if matches!(
@@ -240,6 +252,9 @@ pub(crate) async fn load(
                 && let MissionDestination::Body { id, .. } = f.intent.destination
             {
                 holding_target = Some(id);
+            }
+            if let MissionDestination::Site { selection } = f.intent.destination {
+                refs.fleet_sites.insert(id, selection.id);
             }
             refs.fleets.insert(
                 id,

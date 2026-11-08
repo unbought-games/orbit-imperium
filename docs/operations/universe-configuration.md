@@ -1,6 +1,6 @@
 # Universe configuration operations
 
-Universes own their saved configuration in PostgreSQL. New production worlds default to **5× speed**, topology **1 galaxy × 100 systems × 15 positions**, open signup, no additional player ceiling, five signup attempts per minute and 60 gameplay commands per minute. Existing worlds keep their saved speed, identity, rules hashes, secrets and paid work.
+Universes own their saved configuration in PostgreSQL. New production worlds default to **3× speed**, topology **1 galaxy × 100 systems × 15 positions**, open signup, no additional player ceiling, five signup attempts per minute and 60 gameplay commands per minute. Existing worlds keep their saved speed, identity, rules hashes, secrets and paid work.
 
 Speed is one integer from 1 through 100; change it with the ordered [rules activation workflow](rules-updates.md#changing-universe-speed). Galaxies (1–100), systems per galaxy (1–1000) and positions per system (exactly 15) are creation-only. Signup availability, optional player ceiling, signup attempts and command admission limits support live policy edits. Capacity is derived as `galaxies × systems × 9`; only the optional ceiling is stored. Lowering the ceiling below the existing population prevents further admission without removing players.
 

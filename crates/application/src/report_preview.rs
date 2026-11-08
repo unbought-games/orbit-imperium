@@ -7,6 +7,28 @@ pub fn report_preview(payload: &Value) -> Value {
         let report = &payload["observation"]["report"];
         return serde_json::json!({"kind":"Phalanx", "source":report["source"], "target":report["target"], "at":report["at"], "cost":report["cost"]});
     }
+    if payload["kind"] == "SiteEncounter" {
+        let mut preview = Map::new();
+        for key in [
+            "kind",
+            "site",
+            "fleet",
+            "coordinates",
+            "debris_policy",
+            "debris",
+            "loot",
+            "cargo",
+            "at",
+        ] {
+            if let Some(value) = payload.get(key) {
+                preview.insert(key.into(), value.clone());
+            }
+        }
+        if let Some(outcome) = payload["battle"].get("outcome") {
+            preview.insert("outcome".into(), outcome.clone());
+        }
+        return Value::Object(preview);
+    }
     if payload["kind"] == "PlanetAbandoned" {
         return serde_json::json!({"kind":"PlanetAbandoned", "coordinates":payload["abandonment"]["coordinates"], "release_at":payload["abandonment"]["release_at"]});
     }

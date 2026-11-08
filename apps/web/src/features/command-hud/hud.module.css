@@ -569,6 +569,18 @@
 .dialogHeader .backToList:focus-visible {
   outline-offset: -2px;
 }
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.titleRow h2 {
+  min-width: 0;
+}
+.headingAction {
+  flex-shrink: 0;
+}
 .dialog h2 {
   font: 400 29px/1.2 var(--font-editorial);
   margin: 10px 0;

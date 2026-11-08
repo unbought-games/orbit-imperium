@@ -64,7 +64,11 @@ pub fn transition(state: &GameState, input: &OrderedInput, rules: &Ruleset) -> T
     if rules.progression() {
         execution.profile_hash = rules.hash.clone();
     }
-    match resolve(state, &execution, rules) {
+    match resolve(state, &execution, rules).and_then(|mut c| {
+        crate::objectives::apply_completion_objectives(state, &execution, rules, &mut c)?;
+        crate::tutorial::apply_tutorial_progress(state, &execution, rules, &mut c)?;
+        Ok(c)
+    }) {
         Ok(change) => TransitionResult::Applied(Box::new(change)),
         Err(Fault::Game(e)) if rules.world() && matches!(input.payload, Input::Event(_)) => {
             TransitionResult::InvalidState(InvariantError(format!(

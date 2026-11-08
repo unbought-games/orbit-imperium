@@ -44,6 +44,7 @@ it('keeps only local game destinations in authentication return URLs', () => {
 it('matches concrete file routes and decodes planet and item parameters', async () => {
   for (const [href, page, params] of [
     ['/u/u/b/earth/resources', 'resources', { universe: 'u', body: 'earth' }],
+    ['/u/u/b/mars/briefing', 'briefing', { universe: 'u', body: 'mars' }],
     ['/u/u/research?body=mars', 'research', { universe: 'u' }],
     ['/u/u/galaxy?body=mars', 'galaxy', { universe: 'u' }],
     [
@@ -70,6 +71,9 @@ it('builds browser-history links and preserves funding context', () => {
   ).toBe('/u/u/b/earth/resources')
   expect(router.buildLocation(routeTarget('u', 'research', 'mars')).href).toBe(
     '/u/u/b/mars/research',
+  )
+  expect(router.buildLocation(routeTarget('u', 'briefing', 'mars')).href).toBe(
+    '/u/u/b/mars/briefing',
   )
   expect(
     router.buildLocation(routeTarget('u', 'fleets', 'mars', 'fleet-1')).href,

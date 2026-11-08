@@ -132,3 +132,15 @@ pub use phalanx_readiness::*;
 
 mod phalanx_command;
 pub use phalanx_command::*;
+
+mod tutorial;
+pub use tutorial::*;
+mod objectives;
+pub use objectives::*;
+
+mod mission_sites;
+pub use mission_sites::*;
+
+mod site_encounter;
+
+pub use site_encounter::validate_site_execution;

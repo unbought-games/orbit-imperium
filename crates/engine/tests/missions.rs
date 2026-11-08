@@ -138,6 +138,10 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        machine_players: Default::default(),
+        site_fleets_enabled: false,
+        covered_sites: Default::default(),
+        covered_site_players: Default::default(),
         phalanx: None,
         covered_vacation_players: s.players.keys().copied().collect(),
         alliance_leaders: Some(Default::default()),
@@ -215,7 +219,9 @@ fn run(
                 body: if matches!(
                     i.payload,
                     Input::Command(Command::World {
-                        action: WorldAction::EnterVacation
+                        action: WorldAction::OpenTutorial
+                            | WorldAction::SetTutorialPresentation { .. }
+                            | WorldAction::EnterVacation
                             | WorldAction::ExitVacation
                             | WorldAction::CreateAttackGroup { .. }
                             | WorldAction::InviteAttackGroup { .. }
@@ -3518,3 +3524,6 @@ fn bulk_report_reads_are_atomic_recipient_scoped_and_idempotent() {
         assert!(archived.hidden && archived.starred);
     }
 }
+
+#[path = "missions/site_execution.rs"]
+mod site_execution;

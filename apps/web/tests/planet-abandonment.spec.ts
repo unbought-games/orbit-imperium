@@ -1,3 +1,4 @@
+import { routeWorld } from './fixtures/game'
 import { test, expect } from './fixtures/test'
 import { body, binding, id, shellFixture } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
@@ -23,7 +24,7 @@ for (const width of [1280, 390]) {
     }
     const release = Date.UTC(2026, 10, 1)
     await shellFixture(page, { protocol: 4, bodies, homeworldId: body.id, viewerRevision: () => String(revision), sampledAt: now, missions: { fleets: [], incoming: [], fleet_slots: '1', score_value_micro: '0' }, extraCapabilities: ['Reports', 'Colonize'] })
-    await page.route('**/world', async (route) => {
+    await routeWorld(page, async (route) => {
       const request = route.request().postDataJSON()
       let data: unknown
       if (request.type === 'AbandonmentQuote') {

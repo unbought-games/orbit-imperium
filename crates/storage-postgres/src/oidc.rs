@@ -112,9 +112,24 @@ impl PgStore {
         F: FnOnce(Tokens) -> Fut + Send,
         Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
     {
+        let mut refresh = Some(refresh);
         tokio::time::timeout(REVALIDATION_BUDGET, async {
-            let tokens = observe_auth_store(self.observer.clone(), AuthPhase::Read,
-                read_tokens(self.read_pool()?, digest, issuer, client)).await?;
+            let mut waiting = None;
+            loop {
+            let tokens = observe_auth_store(self.observer.clone(), AuthPhase::Read, async {
+                loop {
+                    let read = read_tokens(self.read_pool()?, digest, issuer, client);
+                    let result = if let Some(wait) = waiting.as_ref() {
+                        crate::oidc_wait::read_before_deadline(wait, read).await
+                    } else { read.await };
+                    match result {
+                        Err(StoreError::SessionRefreshing(ms)) => {
+                            crate::oidc_wait::retry(&self.refresh_waiters, digest, &mut waiting, ms).await?;
+                        }
+                        result => return result,
+                    }
+                }
+            }).await?;
             if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
                 return Ok(tokens.identity);
             }
@@ -128,15 +143,25 @@ impl PgStore {
                 let mut tx = begin_refresh_transaction(&mut connection).await?;
                 let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,901324))")
                     .bind(digest).fetch_one(&mut *tx).await.map_err(db_error)?;
-                if !acquired { return Err(StoreError::SessionRefreshing(1000)); }
-                let tokens = read_tokens(&mut *tx, digest, issuer, client).await?;
+                let tokens = if acquired { read_tokens(&mut *tx, digest, issuer, client).await }
+                    else { Err(StoreError::SessionRefreshing(1000)) };
+                let tokens = match tokens {
+                    Err(StoreError::SessionRefreshing(ms)) => {
+                        // Release BOTH the transaction and reserved refresh slot before
+                        // waiting. Peers must never starve the rotation's owner.
+                        drop(tx);
+                        drop(connection);
+                        return Err(StoreError::SessionRefreshing(ms));
+                    }
+                    result => result?,
+                };
                 if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
                     tx.commit().await.map_err(db_error)?;
                     return Ok(tokens.identity);
                 }
                 if activity {
                     if let Some(mut timer) = claim_timer.take() { timer.finish(AuthOutcome::Success); }
-                    return self.finish_oidc_refresh(digest, tx, None, refresh(tokens)).await;
+                    return self.finish_oidc_refresh(digest, tx, None, refresh.take().ok_or(StoreError::Conflict)?(tokens)).await;
                 }
                 let claim = uuid::Uuid::new_v4().to_string();
                 // Remove the capability, not just an advisory flag: even an old
@@ -150,10 +175,16 @@ impl PgStore {
                 // connection. No token-row lock survives to delay logout.
                 let tx = begin_refresh_transaction(&mut connection).await?;
                 if let Some(mut timer) = claim_timer.take() { timer.finish(AuthOutcome::Success); }
-                self.finish_oidc_refresh(digest, tx, Some(claim), refresh(tokens)).await
+                self.finish_oidc_refresh(digest, tx, Some(claim), refresh.take().ok_or(StoreError::Conflict)?(tokens)).await
             }.await;
             if let Some(mut timer) = claim_timer { timer.finish(AuthOutcome::from_store(&result)); }
-            result
+            match result {
+                Err(StoreError::SessionRefreshing(ms)) => {
+                    crate::oidc_wait::retry(&self.refresh_waiters, digest, &mut waiting, ms).await?;
+                }
+                result => return result,
+            }
+            }
         }).await.map_err(|_| StoreError::Unavailable)?
     }
 
@@ -324,6 +355,12 @@ impl PgStore {
     {
         self.oidc_revalidate_using(digest, issuer, client, true, refresh)
             .await
+    }
+
+    /// Observe peer admission without timing sleeps in concurrency tests.
+    #[cfg(feature = "test-support")]
+    pub fn oidc_refresh_waiter_count_for_test(&self) -> usize {
+        self.refresh_waiters.count()
     }
 
     /// Controlled pool queue boundary for deterministic reservation tests.

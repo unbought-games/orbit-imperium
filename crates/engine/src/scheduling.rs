@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "key")]
 pub enum ScopeKey {
+    Site(SiteId),
     Player(PlayerId),
     Location(Coordinates),
 }
@@ -19,6 +20,8 @@ pub struct OrderKey {
 
 #[derive(Clone, Debug, Default)]
 pub struct ScopeReferences {
+    pub sites: BTreeMap<SiteId, Coordinates>,
+    pub fleet_sites: BTreeMap<FleetId, SiteId>,
     pub empire: BTreeSet<ScopeKey>,
     pub attack_groups: BTreeSet<ScopeKey>,
     pub holding: BTreeSet<ScopeKey>,
@@ -37,6 +40,7 @@ fn fleet_scopes(fleet: FleetId, refs: &ScopeReferences) -> Option<BTreeSet<Scope
         ScopeKey::Location(*destination),
     ]);
     scopes.extend(target.map(ScopeKey::Player));
+    scopes.extend(refs.fleet_sites.get(&fleet).copied().map(ScopeKey::Site));
     Some(scopes)
 }
 fn location(body: BodyId, refs: &ScopeReferences, scopes: &mut BTreeSet<ScopeKey>) {
@@ -100,6 +104,15 @@ pub fn command_scopes(
         } => {
             location(intent.origin, refs, &mut scopes);
             match &intent.destination {
+                MissionDestination::Site { selection } => {
+                    scopes.insert(ScopeKey::Site(selection.id));
+                    scopes.extend(
+                        refs.sites
+                            .get(&selection.id)
+                            .copied()
+                            .map(ScopeKey::Location),
+                    );
+                }
                 MissionDestination::Body {
                     id, expected_owner, ..
                 } => {

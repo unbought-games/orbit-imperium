@@ -190,3 +190,8 @@ fn test_rules(draft: &orbit_engine::RulesData) -> orbit_engine::Ruleset {
 
 mod auth_observation;
 pub use auth_observation::*;
+
+mod tutorial;
+pub use tutorial::*;
+mod mission_sites;
+pub use mission_sites::MissionSiteView;

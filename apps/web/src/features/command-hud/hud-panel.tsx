@@ -1,7 +1,7 @@
 import { ErrorBannerSlot } from '../../ui/error-banner'
 import { connectionStatus } from '../../client-model/connection-status'
 import type { DispatchDraft } from '../missions'
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { AnimatePresence, motion, useIsPresent } from 'motion/react'
 import { ArrowLeft, Radio, Shield, X } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
@@ -25,6 +25,7 @@ type HudPanelProps = {
   universe: string
   body?: string
   onDraft: (draft: DispatchDraft) => void
+  headingAction?: ReactNode
 }
 export function HudPanel(props: HudPanelProps) {
   return (
@@ -33,7 +34,14 @@ export function HudPanel(props: HudPanelProps) {
     </AnimatePresence>
   )
 }
-function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
+function OpenHudPanel({
+  hud,
+  model,
+  universe,
+  body,
+  onDraft,
+  headingAction,
+}: HudPanelProps) {
   const connection = connectionStatus(hud.state)
   const present = useIsPresent()
   const reducedMotion = useReducedMotion()
@@ -115,11 +123,16 @@ function OpenHudPanel({ hud, model, universe, body, onDraft }: HudPanelProps) {
             <X size={20} />
           </button>
         </header>
-        <h2 id="command-hud-title" ref={title} tabIndex={-1}>
-          {selected === 'inbox'
-            ? 'Command uplink'
-            : (content?.title ?? 'Intelligence')}
-        </h2>
+        <div className={styles.titleRow}>
+          <h2 id="command-hud-title" ref={title} tabIndex={-1}>
+            {selected === 'inbox'
+              ? 'Command uplink'
+              : (content?.title ?? 'Intelligence')}
+          </h2>
+          {headingAction && (
+            <div className={styles.headingAction}>{headingAction}</div>
+          )}
+        </div>
         {!connection && !hud.state.stale && (
           <div className={styles.signal}>
             <span />

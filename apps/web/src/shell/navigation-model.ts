@@ -16,6 +16,7 @@ export const navigationGroups = [
 export const pageTitles: Record<Page, string> = {
   menu: 'Menu',
   overview: 'Empire',
+  briefing: 'Briefing',
   resources: 'Resources',
   'resource-settings': 'Resource settings',
   facilities: 'Facilities',

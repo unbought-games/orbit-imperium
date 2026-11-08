@@ -33,6 +33,7 @@ export function DispatchReview({
   body,
   view,
   target,
+  site,
   playerNames,
   coordinates,
   now,
@@ -45,6 +46,7 @@ export function DispatchReview({
   quote: S['FleetTerms4']
   body: S['BodyV3']
   view: S['BoundView4']
+  site?: S['TutorialSite4']
   target?: DispatchTarget
   playerNames?: S['PublicPlayerNames4']
   coordinates: S['Coordinates']
@@ -61,6 +63,7 @@ export function DispatchReview({
     quote.intent.destination,
     coordinates,
     target,
+    site,
   )
   useProfileSource(
     destination.owner
@@ -140,20 +143,30 @@ export function DispatchReview({
           </div>
           <div>
             <strong>{destination.name}</strong>
-            <CoordinateLink
-              compact
-              at={destination.coordinates}
-              label="destination"
-              target={destination.kind}
-              known={{
-                owner: destination.owner,
-                empty: quote.intent.destination.type === 'EmptyPosition',
-                debris: destination.kind === 'debris',
-              }}
-            />
+            {destination.kind === 'site' ? (
+              <span>
+                Personal site · [{destination.coordinates.galaxy}:
+                {destination.coordinates.system}:
+                {destination.coordinates.position}]
+              </span>
+            ) : (
+              <CoordinateLink
+                compact
+                at={destination.coordinates}
+                label="destination"
+                target={destination.kind}
+                known={{
+                  owner: destination.owner,
+                  empty: quote.intent.destination.type === 'EmptyPosition',
+                  debris: destination.kind === 'debris',
+                }}
+              />
+            )}
             <span>
               {destination.owner ? (
                 <PlayerName player={destination.owner} names={playerNames} />
+              ) : destination.kind === 'site' ? (
+                'NPC encounter'
               ) : (
                 'Unowned'
               )}

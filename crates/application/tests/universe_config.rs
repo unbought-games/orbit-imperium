@@ -18,7 +18,7 @@ fn creation_defaults_and_capacity_are_derived() {
     assert_eq!(
         d.immutable,
         UniverseImmutable {
-            speed: 5,
+            speed: 3,
             galaxies: 1,
             systems_per_galaxy: 100,
             positions_per_system: 15
@@ -223,7 +223,10 @@ fn config_diff_checks_stale_revisions_and_explains_capacity_changes() {
 
 #[test]
 fn duplicate_fields_and_incomplete_creation_are_rejected() {
-    let raw = serde_json::to_string(&document()).unwrap();
+    // Duplicate-key validation must not depend on the current creation default.
+    let mut duplicate_document = document();
+    duplicate_document.immutable.speed = 5;
+    let raw = serde_json::to_string(&duplicate_document).unwrap();
     for (needle, duplicate) in [
         ("\"version\":1", "\"version\":1,\"version\":1"),
         (
@@ -232,6 +235,10 @@ fn duplicate_fields_and_incomplete_creation_are_rejected() {
         ),
         ("\"speed\":5", "\"speed\":5,\"speed\":5"),
     ] {
+        assert!(
+            raw.contains(needle),
+            "missing duplicate-key fixture: {needle}"
+        );
         assert!(
             serde_json::from_str::<UniverseConfigDocument>(&raw.replace(needle, duplicate))
                 .is_err()
