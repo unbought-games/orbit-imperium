@@ -2,6 +2,7 @@ import { usePlayerIdentity } from '../../shell/player-profiles-context'
 import { useIdentityTitle } from '../../client-model/use-identity-title'
 import { TutorialAdvisor } from '../tutorial/advisor'
 import { BriefingLink } from '../tutorial/briefing-link'
+import { ReleaseAnnouncement } from '../announcements/release-announcement'
 import type { DispatchDraft } from '../missions'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -11,7 +12,7 @@ import { bindingKey } from '../../client-model/commands'
 import { useCommandHud } from './use-command-hud'
 import { CommandOrb, HudToast } from './hud-controls'
 import { HudPanel } from './hud-panel'
-import { noticeKey } from './model'
+import { incomingThreats, noticeKey } from './model'
 import styles from './hud.module.css'
 type HudProps = {
   body?: string
@@ -53,13 +54,25 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
           suspended={hud.selection !== null}
           onOpenCommands={() => hud.select('inbox')}
         >
-          {(triggerProps, speaking) => (
-            <CommandOrb
-              hud={hud}
-              address={title.address}
-              triggerProps={triggerProps}
-              showCaption={!speaking}
-            />
+          {(tutorialProps, tutorialSpeaking) => (
+            // Threats, tutorial guidance and Command uplink take priority over news.
+            <ReleaseAnnouncement
+              account={view.binding.account}
+              suspended={
+                hud.selection !== null ||
+                tutorialProps !== undefined ||
+                incomingThreats(hud.state).length > 0
+              }
+            >
+              {(announcementProps, announcing) => (
+                <CommandOrb
+                  hud={hud}
+                  address={title.address}
+                  triggerProps={tutorialProps ?? announcementProps}
+                  showCaption={!tutorialSpeaking && !announcing}
+                />
+              )}
+            </ReleaseAnnouncement>
           )}
         </TutorialAdvisor>
       </div>
