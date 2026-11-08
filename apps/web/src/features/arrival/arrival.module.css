@@ -81,9 +81,11 @@
   margin: 0;
   color: var(--danger);
 }
+/* Wider than the text column; equal negative margins keep it on the page's center. */
 .carousel {
-  width: 100vw;
-  max-width: 44rem;
+  --carousel: min(100vw, 44rem);
+  width: var(--carousel);
+  margin-inline: calc((100% - var(--carousel)) / 2);
   display: grid;
   gap: var(--space-3);
 }

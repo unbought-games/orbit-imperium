@@ -106,6 +106,11 @@ for (const width of [1280, 390]) {
       list.scrollBy({ left: list.children[0].clientWidth })
     })
     await expect(looks).toHaveAccessibleName('Planet look 4 of 7')
+    const offCenter = await looks.evaluate((list) => {
+      const r = list.querySelector('[data-selected]')!.getBoundingClientRect()
+      return Math.abs(r.left + r.width / 2 - innerWidth / 2)
+    })
+    expect(offCenter).toBeLessThanOrEqual(1)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
