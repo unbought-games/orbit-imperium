@@ -12,6 +12,7 @@ import {
   type HudTarget,
 } from './model'
 import type { CommandHudState } from './use-command-hud'
+import { useMarkAllReportsRead } from '../use-mark-all-reports-read'
 import { useHudInbox } from './use-hud-inbox'
 import styles from './hud.module.css'
 
@@ -32,10 +33,32 @@ export function HudInbox({
   onSelect: (target: HudTarget) => void
   close: () => void
 }) {
+  const markAll = useMarkAllReportsRead(model)
   const visible = hud.selection === 'inbox'
   const inbox = useHudInbox(model, hud.state, visible, scrollRoot)
   return (
     <div hidden={!visible}>
+      <div className={styles.panelActions}>
+        <ButtonLink {...routeTarget(universe, 'reports', body)} onClick={close}>
+          All reports
+        </ButtonLink>
+        <ButtonLink
+          {...routeTarget(universe, 'messages', body)}
+          onClick={close}
+        >
+          Messages
+        </ButtonLink>
+        <Button
+          variant="secondary"
+          disabled={markAll.busy}
+          title="All reports, including archived reports, regardless of filters"
+          onClick={() => void markAll.markAllRead()}
+        >
+          {markAll.busy ? 'Marking reports…' : 'Mark all as read'}
+        </Button>
+      </div>
+      {markAll.feedback && <p role="status">{markAll.feedback}</p>}
+      {markAll.error && <p role="alert">{markAll.error}</p>}
       <HudEnemyAttacks state={hud.state} onSelect={onSelect} />
       <HudFleets
         state={hud.state}
@@ -100,17 +123,6 @@ export function HudInbox({
               : 'No new intelligence. All channels clear.'}
         </p>
       )}
-      <div className={styles.panelActions}>
-        <ButtonLink {...routeTarget(universe, 'reports', body)} onClick={close}>
-          All reports
-        </ButtonLink>
-        <ButtonLink
-          {...routeTarget(universe, 'messages', body)}
-          onClick={close}
-        >
-          Messages
-        </ButtonLink>
-      </div>
     </div>
   )
 }

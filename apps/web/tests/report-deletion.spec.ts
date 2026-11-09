@@ -92,6 +92,7 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
               },
             }
           : {
+              unread_count: Math.min(99, headers.filter(row => !row.read && !row.hidden).length),
               items: rows.slice(index, index + pageSize),
               has_more: index + pageSize < rows.length,
               next_cursor: index + pageSize < rows.length ? id(71 + pageSize + index) : null,
@@ -116,9 +117,10 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON().gameplay
     expect(envelope.command.type).toBe('World')
-    if (envelope.command.action.type === 'MarkReportRead') {
-      readRequests.push(envelope.command.action.report)
-      headers.find(r => r.id === envelope.command.action.report)!.read = true
+    if (['MarkReportRead', 'MarkReportsRead'].includes(envelope.command.action.type)) {
+      const ids = envelope.command.action.reports ?? [envelope.command.action.report]
+      readRequests.push(...ids)
+      for (const report of ids) headers.find(r => r.id === report)!.read = true
       revision++
       return route.fulfill({ json: {
         protocol: 4, binding, command_id: envelope.command_id,
@@ -983,7 +985,7 @@ for (const width of [1280, 390]) {
     await trigger.click()
     const menu = page.getByRole('menu', {name: 'Report actions'})
     await expect(menu.getByRole('menuitem', {name: 'Archive…', exact: true})).toBeVisible()
-    await expect(menu.getByRole('menuitem')).toHaveCount(width < 768 ? 2 : 1)
+    await expect(menu.getByRole('menuitem')).toHaveCount(width < 768 ? 3 : 2)
     if (width < 768)
       await expect(menu.getByRole('menuitem', {name: 'Select reports', exact: true})).toBeVisible()
     await diagnosticScreenshot(page, {path: `test-results/reports-archive-all-menu-${width}x900.png`})
@@ -1174,3 +1176,64 @@ test('leaving detail during archive does not pull the player back after acceptan
   await expect(page).toHaveURL(new RegExp(`${id(71)}$`))
   await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
 })
+
+for (const width of [1280, 390]) {
+  test(`archive age survives navigation and reopening without submitting at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const fixture = await reportsFixture(page, true)
+    const dialog = page.getByRole('dialog', {name: 'Archive reports', exact: true})
+    await ageCleanup(page)
+    await expect(dialog.getByRole('combobox', {name: 'Older than'})).toBeEnabled()
+    await dialog.getByRole('combobox', {name: 'Older than'}).selectOption('24')
+    await page.keyboard.press('Escape')
+    await ageCleanup(page)
+    await expect(dialog.getByRole('combobox', {name: 'Older than'})).toHaveValue('24')
+    await dialog.getByRole('combobox', {name: 'Older than'}).selectOption('custom')
+    await dialog.getByRole('spinbutton', {name: 'Hours'}).fill('36.5')
+    await page.keyboard.press('Escape')
+    await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().method() === 'POST', () => page.reload())
+    await ageCleanup(page)
+    await expect(dialog.getByRole('combobox', {name: 'Older than'})).toHaveValue('custom')
+    await expect(dialog.getByRole('spinbutton', {name: 'Hours'})).toHaveValue('36.5')
+    expect(fixture.submitted()).toBe(0)
+    await diagnosticScreenshot(page, {path: `test-results/reports-age-${width}x900.png`})
+  })
+  for (const surface of ['reports', 'orb']) {
+    test(`mark all read from ${surface} includes unloaded and archived reports at ${width}px`, async ({page}) => {
+      await page.setViewportSize({width, height: 900})
+      await page.emulateMedia({reducedMotion: 'reduce'})
+      const fixture = await reportsFixture(page, true, 2, 20)
+      fixture.headers[0].read = false
+      for (let index = 2; index < 78; index++) fixture.headers.push({
+        ...fixture.headers[0], id: id(70 + index), observed_at: fixture.headers[0].observed_at - index * 1000,
+        hidden: index === 77, starred: index === 76, shared: index === 76,
+      })
+      fixture.bumpRevision()
+      await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().method() === 'POST' && response.request().postDataJSON().filter?.unread_only === false, () => page.reload())
+      await expect(page.locator('main article').first()).toBeVisible()
+      expect(await page.locator('main article').count()).toBeLessThan(77)
+      if (surface === 'orb') {
+        await page.getByRole('button', {name: 'Open command HUD'}).click()
+        const dialog = page.getByRole('dialog', {name: 'Command uplink'})
+        const all = dialog.getByRole('link', {name: 'All reports', exact: true})
+        await expect(all).toBeInViewport()
+        const first = dialog.locator('[aria-label="Intelligence list"] button').first()
+        await expect(first).toBeVisible()
+        expect((await all.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y)
+      } else {
+        await page.getByRole('button', {name: 'More report actions'}).click()
+      }
+      await diagnosticScreenshot(page, {path: `test-results/reports-${surface}-actions-${width}x900.png`})
+      await page.getByRole(surface === 'orb' ? 'button' : 'menuitem', {name: 'Mark all as read', exact: true}).click()
+      await expect(page.getByText('All reports marked as read.', {exact: true})).toBeVisible()
+      expect(fixture.readRequests).toHaveLength(78)
+      expect(fixture.headers.every(row => row.read)).toBe(true)
+      expect(fixture.headers[76]).toMatchObject({starred: true, shared: true, hidden: false})
+      expect(fixture.headers[77].hidden).toBe(true)
+      await expect(page.getByTestId('unread-count')).toHaveCount(0)
+      if (surface === 'orb') await expect(page.locator('[aria-label="Intelligence list"] button')).toHaveCount(0)
+      await diagnosticScreenshot(page, {path: `test-results/reports-${surface}-read-${width}x900.png`})
+    })
+  }
+}

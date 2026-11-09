@@ -1,6 +1,5 @@
 import {
   useRef,
-  useState,
   type Dispatch,
   type SetStateAction,
   type ReactNode,
@@ -26,6 +25,9 @@ import {
   reportTypes,
   type ReportListOptions,
 } from './report-list-options'
+import { useReportAgePreference } from './report-age-preference'
+import type { useMarkAllReportsRead } from './use-mark-all-reports-read'
+import { MailCheck } from 'lucide-react'
 import { ReportAgeCleanup } from './report-age-cleanup'
 import { ReportArchiveAll } from './report-archive-all'
 import type { useReportCleanup } from './use-report-cleanup'
@@ -47,6 +49,7 @@ export function ReportTriageControls({
   reports,
   cleanup,
   now,
+  markAll,
 }: {
   panel: ReportPanel
   setPanel: Dispatch<SetStateAction<ReportPanel>>
@@ -61,10 +64,11 @@ export function ReportTriageControls({
   reports: components['schemas']['ReportHeader4'][]
   cleanup: ReturnType<typeof useReportCleanup>
   now: number
+  markAll: ReturnType<typeof useMarkAllReportsRead>
 }) {
   const filterTrigger = useRef<HTMLButtonElement>(null)
   const moreTrigger = useRef<HTMLButtonElement>(null)
-  const [age, setAge] = useState({ preset: '168', customHours: '24' })
+  const [age, setAge] = useReportAgePreference()
   const filtered = options.kind !== 'all' || options.status !== 'all'
   const close = (target: ReportPanel) =>
     setPanel((current) => (current === target ? null : current))
@@ -184,7 +188,7 @@ export function ReportTriageControls({
             render={<Button variant="ghost" size="icon" />}
             aria-label="More report actions"
             title="More report actions"
-            disabled={disabled || (!allowSelectionMode && archived)}
+            disabled={disabled}
           >
             <Ellipsis size={16} aria-hidden="true" />
           </Menu.Trigger>
@@ -199,6 +203,15 @@ export function ReportTriageControls({
                 aria-label="Report actions"
                 finalFocus={panel === 'cleanup' ? false : undefined}
               >
+                <Menu.Item
+                  className={styles.menuItem}
+                  disabled={markAll.busy}
+                  title="All reports, including archived reports, regardless of filters"
+                  onClick={() => void markAll.markAllRead()}
+                >
+                  <MailCheck size={16} aria-hidden="true" />
+                  Mark all as read
+                </Menu.Item>
                 {allowSelectionMode && (
                   <Menu.Item
                     className={styles.menuItem}
