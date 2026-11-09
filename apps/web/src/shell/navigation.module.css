@@ -235,9 +235,15 @@
     background: var(--surface-navigation-selected);
     box-shadow: inset 2px 0 var(--accent);
   }
-  .sidebarDestinations > a > svg {
+  .sidebarDestinations > :is(a, button) > svg,
+  .moreDestinations :is(a, button) > svg {
     width: 19px;
     height: 19px;
+    flex-shrink: 0;
+  }
+  .sidebarDevelop :is(a, button) > svg {
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
   }
   .sidebarDevelop {
