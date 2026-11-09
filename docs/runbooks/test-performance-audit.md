@@ -18,6 +18,7 @@ validation: both viewport variants passed with two workers and no retries.
 
 About 25 other report navigations in fixture browser specs still assert after a
 bare `page.goto`. Auditing them is independent follow-up outside PR #373.
+
 ## November 9, 2026: retire report-glance after its one repair
 
 The readiness repair above passed locally but did not establish reliability.
