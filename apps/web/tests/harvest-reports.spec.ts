@@ -2,6 +2,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withReportListResponse } from './fixtures/responses'
 
 test('harvest reports distinguish new collections, zero collections and historical cargo at desktop and mobile sizes', async ({ page }) => {
   const now = new Date('2026-10-27T12:00:00Z').getTime()
@@ -35,7 +36,7 @@ test('harvest reports distinguish new collections, zero collections and historic
   })
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await withReportListResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/reports`))
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(3)
     await expect(rows.first()).toContainText('Harvested:')

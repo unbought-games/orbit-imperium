@@ -2,6 +2,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { body, id, refreshGame, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { expect, test } from './fixtures/test'
+import { withBootstrapResponse } from './fixtures/responses'
 
 const examples = [
   ['mine-zero', 'Metal Mine', 'Confirm upgrade'],
@@ -214,7 +215,7 @@ test('a completed operation removes its open cancellation confirmation without s
   const sent: unknown[] = []
   await shellFixture(page, { bodies: [planet], constructions, catalog: [{ key: { kind: 'Building', id: 'MetalMine' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] }] })
   page.on('request', request => { if (request.url().endsWith('/commands')) sent.push(request.postDataJSON()) })
-  await page.goto(`/u/andromeda/b/${planet.id}/resources/metal-mine`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${planet.id}/resources/metal-mine`))
   await page.clock.runFor(3000)
   await expect(page.getByRole('button', { name: 'Completion time details', exact: true })).toContainText('Checking completion…')
   await expect(page.getByText('Level 1', { exact: true })).toBeVisible()
@@ -382,7 +383,7 @@ test.describe('scheduled completion dates', () => {
           { key: { kind: 'Research', id: 'EnergyTechnology' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
         ],
       })
-      await page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`))
       await page.getByRole('button', { name: 'Completion time details', exact: true }).click()
       const details = page.getByRole('dialog', { name: 'Completion time', exact: true })
       await expect(details).toContainText('Jan 2, 2027')

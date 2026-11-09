@@ -1,6 +1,7 @@
 import { expect, test, type Page } from './fixtures/test'
 import { installGameFixture, body, binding } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { withBootstrapResponse } from './fixtures/responses'
 
 // Browser wiring only: windows, ordering and storage live in model.test.ts.
 test.use({ announcements: 'unseen' })
@@ -24,7 +25,7 @@ async function openGame(page: Page, threat = false) {
     sampledAt: now,
     ...(threat ? {} : { missions: quiet }),
   })
-  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   await expect(page.getByTestId('command-orb')).toBeVisible()
 }
 
@@ -69,7 +70,7 @@ for (const [width, height] of [
     await expect(
       page.getByRole('dialog', { name: 'Command uplink', exact: true }),
     ).toBeVisible()
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(orb).toBeVisible()
     await expect(page.getByRole('dialog', { name: title })).toHaveCount(0)
   })
@@ -83,7 +84,7 @@ test('Escape counts as seen and returns focus to the orb', async ({ page }) => {
   await page.keyboard.press('Escape')
   await expect(bubble).toHaveCount(0)
   await expect(page.getByTestId('command-orb')).toBeFocused()
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await expect(page.getByTestId('command-orb')).toBeVisible()
   await expect(bubble).toHaveCount(0)
 })

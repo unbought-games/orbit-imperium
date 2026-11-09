@@ -1,4 +1,4 @@
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withReportListResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
@@ -47,10 +47,7 @@ for (const width of [1280, 390]) {
       const {context} = route.request().postDataJSON()
       await route.fulfill({json: {protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: now, as_of_ms: now, data: {items, has_more: false, next_cursor: null, as_of_ms: now}}})
     })
-    await withFixtureResponse(
-      page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
-      () => page.goto(`/u/andromeda/b/${body.id}/reports`),
-    )
+    await withReportListResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/reports`))
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(5)
     const tools = page.getByRole('group', {name: 'Report tools'})

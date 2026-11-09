@@ -1,4 +1,4 @@
-import { withFixtureResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
 import { body, id, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
@@ -54,7 +54,7 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
     await expect(page).toHaveURL(new RegExp(`/b/${bodies[8].id}/research$`))
     await page.goBack()
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/research$`))
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% }` })
     await expect(develop.getByRole('link', { name: 'Research', exact: true })).toHaveAttribute('aria-current', 'page')
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))

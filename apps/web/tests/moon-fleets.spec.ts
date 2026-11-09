@@ -4,6 +4,8 @@ import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { withGalaxyResponse } from './fixtures/galaxy'
 type S = components['schemas']
 const now = 1793667600000
 const catalog: S['CatalogEntry3'][] = JSON.parse(
@@ -236,7 +238,7 @@ for (const width of [1440, 390]) {
       page,
     }) => {
       const state = await fixture(page)
-      await page.goto(`/u/andromeda/b/${moon.id}/fleets`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${moon.id}/fleets`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')
@@ -275,7 +277,7 @@ for (const width of [1440, 390]) {
         source_planet: parent.id,
         fleet: id(81),
       })
-      await page.goto(`/u/andromeda/b/${moon.id}/dispatch`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${moon.id}/dispatch`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')
@@ -304,7 +306,7 @@ for (const width of [1440, 390]) {
         origin: moon.id,
         destination: { id: parent.id, expected_kind: 'Planet' },
       })
-      await page.goto(`/u/andromeda/b/${parent.id}/dispatch`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${parent.id}/dispatch`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')
@@ -330,7 +332,7 @@ for (const width of [1440, 390]) {
       page,
     }) => {
       const state = await fixture(page)
-      await page.goto(`/u/andromeda/b/${moon.id}/galaxy`)
+      await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${moon.id}/galaxy`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')
@@ -430,7 +432,7 @@ for (const width of [1440, 390]) {
           },
         })
       })
-      await page.goto(`/u/andromeda/reports/${report}?body=${moon.id}`)
+      await withReportResponse(page, report, () => page.goto(`/u/andromeda/reports/${report}?body=${moon.id}`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')
@@ -467,7 +469,7 @@ for (const width of [1440, 390]) {
           json: { code: 'GameRejected', game_code: 'InsufficientResources' },
         })
       })
-      await page.goto(`/u/andromeda/b/${moon.id}/galaxy`)
+      await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${moon.id}/galaxy`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')
@@ -489,9 +491,9 @@ for (const width of [1440, 390]) {
       page,
     }) => {
       const state = await fixture(page, 'BeginnerProtected')
-      await page.goto(
+      await withBootstrapResponse(page, () => page.goto(
         `/u/andromeda/b/${moon.id}/dispatch?galaxy=1&system=371&position=9&target=moon&mission=Attack`,
-      )
+      ))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')

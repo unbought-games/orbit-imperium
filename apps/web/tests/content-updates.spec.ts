@@ -1,5 +1,6 @@
 import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
+import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import schema from '../../../contracts/openapi.json' with { type: 'json' }
 
@@ -27,16 +28,16 @@ test('expanded espionage survives direct navigation, reload and historical obser
   await reports(page, () => historical ? {
     ...observation, research: { visibility: 'Unknown' },
   } : observation)
-  await page.goto(reportUrl)
+  await withReportResponse(page, id(62), () => page.goto(reportUrl))
   await expect(page).toHaveURL(canonicalReportUrl)
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('Astrophysics')
   await expect(report).toContainText('Impulse Drive')
   await expect(report).toContainText('12345678901234567890')
-  await page.reload()
+  await withReportResponse(page, id(62), () => page.reload())
   await expect(report).toContainText('Astrophysics')
   historical = true
-  await page.reload()
+  await withReportResponse(page, id(62), () => page.reload())
   await expect(report).toContainText('this observation did not reveal this section')
   await expect(report).not.toContainText('Astrophysics')
 })
@@ -45,9 +46,9 @@ for (const protocol of [3, 4] as const) {
   test(`protocol ${protocol} game opens with expanded buildings`, async ({ page }) => {
     const levels = { ...body.levels, ...Object.fromEntries(schema.components.schemas.BuildingId3.enum.map(key => [key, 0])) }
     await shellFixture(page, { protocol, bodies: [{ ...body, levels }] })
-    await page.goto(`/u/andromeda/overview?body=${body.id}`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/overview?body=${body.id}`))
     await expect(page.getByRole('heading', { name: /^Empire/, level: 1 })).toBeVisible()
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(page.getByRole('heading', { name: /^Empire/, level: 1 })).toBeVisible()
   })
 }

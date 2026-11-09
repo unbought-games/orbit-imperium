@@ -6,6 +6,7 @@ import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 type S = components['schemas']
 const item = { kind: 'Ship', id: 'Bomber' } as const
 const catalog = JSON.parse(
@@ -233,7 +234,7 @@ for (const [label, levels] of [
 ] as const) {
   test(`Bomber exposes its missing ${label} prerequisite`, async ({ page }) => {
     await setup(page, levels)
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`))
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(
       pane.getByRole('button', { name: 'Build', exact: true }),
@@ -246,7 +247,7 @@ test('Bomber stays unavailable before its universe enables it', async ({
   page,
 }) => {
   await setup(page, { enabled: false })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`))
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Unavailable in this universe.')
   await expect(
@@ -278,7 +279,7 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
     await page.getByRole('link', { name: 'Build Bomber', exact: true }).click()
     await expect(pane).toContainText('An impulse-powered siege ship')
     await expect(pane.locator('img').first()).toHaveAttribute('src', /bomber/)
@@ -366,7 +367,7 @@ test('Bombers can be selected, quoted and launched in an attack fleet', async ({
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   await page
     .getByRole('radio', { name: 'Attack', exact: true }).check()
   await setDestination(page, { position: '8' })
@@ -397,7 +398,7 @@ for (const width of [390, 1440]) {
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await setup(page, { hyperspace: 8, upgradedUniverse: true })
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/bomber`))
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await pane.getByText('Technical data', { exact: true }).click()
     const stats = pane.getByRole('region', {
@@ -420,7 +421,7 @@ for (const width of [390, 1440]) {
         fullPage: true,
       })
     }
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
     await page.locator('summary').filter({ hasText: 'Compare ships' }).click()
     await page
       .getByRole('checkbox', { name: 'Light Fighter', exact: true })

@@ -9,6 +9,7 @@ import {
   resources,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const now = 1793275200000
@@ -78,7 +79,7 @@ for (const width of [320, 390, 1280]) {
       viewerRevision: () => String(revision),
     })
     const path = `/u/andromeda/b/${body.id}/fleets`
-    await page.goto(path)
+    await withBootstrapResponse(page, () => page.goto(path))
     const cards = page.getByRole('article', { name: / fleet$/ })
     await expect(cards.getByRole('heading')).toHaveText([
       'Transport Returning',
@@ -297,7 +298,7 @@ async function interactiveFixture(
     },
   })
   const path = `/u/andromeda/b/${body.id}/${screen}`
-  await page.goto(path)
+  await withBootstrapResponse(page, () => page.goto(path))
   const row = page.getByRole(screen === 'fleets' ? 'article' : 'listitem', {
     name: 'Attack fleet',
     exact: true,
@@ -552,7 +553,7 @@ for (const screen of ['fleets', 'overview'] as const) {
         },
       })
       const path = `/u/andromeda/b/${body.id}/${screen}`
-      await page.goto(path)
+      await withBootstrapResponse(page, () => page.goto(path))
       const incoming = page.getByRole(
         screen === 'fleets' ? 'article' : 'listitem',
         { name: 'Incoming attack fleet', exact: true },
@@ -688,7 +689,7 @@ for (const screen of ['fleets', 'overview'] as const) {
       missions,
       viewerRevision: () => String(revision),
     })
-    await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${screen}`))
     const toggle = page.getByRole('button', {
       name: 'Incoming Attack ship composition: 30 ships',
       exact: true,

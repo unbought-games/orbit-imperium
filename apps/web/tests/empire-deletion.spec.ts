@@ -2,6 +2,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import { binding, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 for (const width of [1280, 390]) {
   test(`request and cancel empire deletion ${width}px`, async ({ page }) => {
@@ -45,7 +46,7 @@ for (const width of [1280, 390]) {
         },
       })
     })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', {
       name: 'Delete empire',
       exact: true,
@@ -97,7 +98,7 @@ for (const width of [1280, 390]) {
     await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-pending-${width}x900.png`,
     })
-    await page.goto('/u/andromeda/overview')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/overview'))
     await expect(
       page.getByRole('region', { name: 'Empire deletion scheduled' }),
     ).toBeVisible()
@@ -138,7 +139,7 @@ for (const width of [1280, 390]) {
         fleet_slots: '1',
       },
     })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', {
       name: 'Delete empire',
       exact: true,
@@ -177,7 +178,7 @@ for (const width of [1280, 390]) {
         },
       }),
     )
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', {
       name: 'Delete empire',
       exact: true,
@@ -221,7 +222,7 @@ for (const width of [1280, 390]) {
         fleet_slots: '1',
       },
     })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', {
       name: 'Delete empire',
       exact: true,
