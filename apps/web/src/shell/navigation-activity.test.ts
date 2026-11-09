@@ -93,6 +93,29 @@ it('marks account-wide research on either planet and independently marks produci
   expect([...developmentActivity(state, 'home')]).toEqual([])
 })
 
+it('marks missile production in defense, where missiles are built', () => {
+  const { state, view } = fixture()
+  view.progression.manufacturing = [
+    {
+      id: 'missile',
+      body: 'home',
+      item: { kind: 'Missile', id: 'AntiBallisticMissile' },
+      state: 'Producing',
+      quantity: '2',
+      remaining: '2',
+      completed_prefix: '0',
+      paid,
+      accepted_at: 1,
+      first_start_at: 1,
+      next_due_at: 2,
+      final_due_at: 3,
+      unit_duration_ms: 1,
+      can_cancel: false,
+    },
+  ]
+  expect([...developmentActivity(state, 'home')]).toEqual(['defense'])
+})
+
 it('includes unresolved submitted work and removes rejected work without storing badge state', () => {
   const { state, view } = fixture()
   const quote: BoundProgressionOptions = {
