@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import { ExternalLink, MailCheck, MessageSquare } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
 import { Button, ButtonLink } from '../../ui/button'
 import { routeTarget } from '../../shell/route-target'
@@ -12,8 +13,10 @@ import {
   type HudTarget,
 } from './model'
 import type { CommandHudState } from './use-command-hud'
+import { useMarkAllReportsRead } from '../use-mark-all-reports-read'
 import { useHudInbox } from './use-hud-inbox'
 import styles from './hud.module.css'
+import inboxStyles from './hud-inbox.module.css'
 
 export function HudInbox({
   hud,
@@ -32,6 +35,7 @@ export function HudInbox({
   onSelect: (target: HudTarget) => void
   close: () => void
 }) {
+  const markAll = useMarkAllReportsRead(model)
   const visible = hud.selection === 'inbox'
   const inbox = useHudInbox(model, hud.state, visible, scrollRoot)
   return (
@@ -43,6 +47,57 @@ export function HudInbox({
         body={body}
         close={close}
       />
+      <div className={inboxStyles.header}>
+        <h3 className={inboxStyles.heading}>Reports &amp; messages</h3>
+        <div
+          className={inboxStyles.actions}
+          role="group"
+          aria-label="Report and message actions"
+        >
+          <ButtonLink
+            {...routeTarget(universe, 'reports', body)}
+            variant="ghost"
+            size="icon-touch"
+            aria-label="All reports"
+            title="All reports"
+            onClick={close}
+          >
+            <ExternalLink size={16} aria-hidden="true" />
+          </ButtonLink>
+          <ButtonLink
+            {...routeTarget(universe, 'messages', body)}
+            variant="ghost"
+            size="icon-touch"
+            aria-label="Messages"
+            title="Messages"
+            onClick={close}
+          >
+            <MessageSquare size={16} aria-hidden="true" />
+          </ButtonLink>
+          <Button
+            variant="ghost"
+            size="icon-touch"
+            aria-label={
+              markAll.busy ? 'Marking reports as read' : 'Mark all as read'
+            }
+            disabled={markAll.busy}
+            title="Mark all reports as read, including archived reports"
+            onClick={() => void markAll.markAllRead()}
+          >
+            <MailCheck size={16} aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+      {markAll.feedback && (
+        <p role="status" className={styles.noticeText}>
+          {markAll.feedback}
+        </p>
+      )}
+      {markAll.error && (
+        <p role="alert" className={styles.noticeText}>
+          {markAll.error}
+        </p>
+      )}
       {hud.inboxError && (
         <>
           <p role="alert">{hud.inboxError}</p>
@@ -100,17 +155,6 @@ export function HudInbox({
               : 'No new intelligence. All channels clear.'}
         </p>
       )}
-      <div className={styles.panelActions}>
-        <ButtonLink {...routeTarget(universe, 'reports', body)} onClick={close}>
-          All reports
-        </ButtonLink>
-        <ButtonLink
-          {...routeTarget(universe, 'messages', body)}
-          onClick={close}
-        >
-          Messages
-        </ButtonLink>
-      </div>
     </div>
   )
 }
