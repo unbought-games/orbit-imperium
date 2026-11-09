@@ -215,6 +215,22 @@ for (const width of [390, 1440])
     await expect(page.getByRole('textbox', { name: 'Share link' })).toHaveValue(
       new RegExp(`/reports/shared/${token}$`),
     )
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {writeText: () => Promise.reject(new DOMException('Denied', 'NotAllowedError'))}})
+      document.execCommand = () => false
+    })
+    await page.getByRole('button', {name: 'Copy link', exact: true}).click()
+    await expect(page.getByRole('dialog', {name: 'Share an unlisted report'}).getByRole('status')).toContainText('Automatic copying is unavailable.')
+    const shareLink = page.getByRole('textbox', {name: 'Share link'})
+    await expect(shareLink).toBeFocused()
+    expect(await shareLink.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])).toEqual([0, (await shareLink.inputValue()).length])
+    await diagnosticScreenshot(page, {path: `test-results/report-copy-fallback-${width}x1000.png`})
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', {configurable: true, value: undefined})
+      document.execCommand = (command) => command === 'copy'
+    })
+    await page.getByRole('button', {name: 'Copy link', exact: true}).click()
+    await expect(page.getByRole('dialog', {name: 'Share an unlisted report'}).getByRole('status')).toContainText('Link copied.')
     await page.getByRole('button', { name: 'Close sharing' }).click()
     await expect(
       page.getByRole('button', { name: 'Unstar report', exact: true }),

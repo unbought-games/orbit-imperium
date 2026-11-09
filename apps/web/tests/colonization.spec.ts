@@ -3,7 +3,7 @@ import { withGalaxyResponse } from './fixtures/galaxy'
 import { setDestination } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { shellFixture, body, binding, id } from './fixtures/game'
+import { installGameFixture, shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 type S = components['schemas']
@@ -13,8 +13,9 @@ const catalog: S['CatalogEntry3'][] = [
  {key:{kind:'Ship',id:'ColonyShip'},body_kinds:['Planet'],enabled:true,mobile:true,requirements:[{type:'BodyBuilding',building:'Shipyard',level:4},{type:'PlayerResearch',research:'ImpulseDrive',level:3}]},
  {key:{kind:'Ship',id:'SmallCargo'},body_kinds:['Planet'],enabled:true,mobile:true,requirements:[]},
 ]
+const fixtureOptions = (bodies = [body], astrophysics = 1): Parameters<typeof shellFixture>[1] => ({protocol:4,bodies,catalog,research:[{research:'Astrophysics',level:astrophysics}],extraCapabilities:['Colonize','Deploy','Transport'],missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'2'}})
 async function setup(page: Parameters<typeof shellFixture>[0], bodies = [body], astrophysics = 1) {
- await shellFixture(page,{protocol:4,bodies,catalog,research:[{research:'Astrophysics',level:astrophysics}],extraCapabilities:['Colonize','Deploy','Transport'],missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'2'}})
+ await shellFixture(page,fixtureOptions(bodies,astrophysics))
 }
 const bound = (request_id:string,data:unknown)=>({protocol:4,binding,request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data})
 const emptyGalaxy = (galaxy: number, system: number): S['GalaxySystem4'] => ({
@@ -78,7 +79,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
 })
 
 for(const success of [true,false])test(`colonization ${success?'success links to a usable colony':'failure explains conserved return'}`,async({page})=>{
- await setup(page,success?[body,colony]:[body])
+ await installGameFixture(page,fixtureOptions(success?[body,colony]:[body]))
  const kind=success?'Colonized':'ColonizationFailed'
  const payload=success?{kind,body:colony.id,fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,fields:230,diameter_km:15191,min_temperature:24,max_temperature:64,resources:{metal:'1500000000',crystal:'500000000',deuterium:'0'},return_at:null}
  :{kind,reason:'Occupied',fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,return_at:120000}
