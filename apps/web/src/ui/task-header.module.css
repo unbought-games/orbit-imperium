@@ -11,3 +11,19 @@
   color: var(--champagne-light);
   font: 400 1.5rem / 1.2 var(--font-editorial);
 }
+.withLeading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.centered {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 1fr) minmax(0, auto) minmax(5.5rem, 1fr);
+  gap: var(--space-2);
+}
+.centered h2 {
+  grid-column: 2;
+  text-align: center;
+}
+.leading {
+  justify-self: start;
+}

@@ -137,7 +137,7 @@ for (const [scene, label] of [['mine-active', 'Cancel construction'], ['research
     await expect(page.getByRole('button', { name: label, exact: true })).toBeFocused()
     await expect(page.getByText(/Preview only:/)).toHaveCount(0)
     await page.getByRole('button', { name: label, exact: true }).click()
-    await dialog.getByRole('button', { name: 'Confirm cancellation', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Yes, cancel', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     await expect(page.getByText(`Preview only: ${scene === 'mine-active' ? 'CancelConstruction' : 'CancelResearch'}`)).toBeVisible()
     await expect(page.getByRole('button', { name: label, exact: true })).toHaveCount(0)

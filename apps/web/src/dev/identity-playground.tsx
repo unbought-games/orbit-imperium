@@ -5,6 +5,7 @@ import { PlayerProfilesController } from '../client-model/player-profiles'
 import { PlayerProfilesContext } from '../shell/player-profiles-context'
 import styles from './identity-playground.module.css'
 import symbol from '../../../../crates/application/assets/insignias/compass.svg?url'
+import triads from '../../../../crates/application/assets/insignias/forge-triads.svg?url'
 
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -32,15 +33,37 @@ function controller() {
             ? {}
             : {
                 supporter_tier: 2 as const,
-                insignia: {
-                  recipe: {
-                    version: 1,
-                    symbol: 'compass',
-                    foreground: '#cbb68d',
-                    background: '#152b40',
-                  },
-                  asset_url: symbol,
-                },
+                insignia:
+                  n === 1
+                    ? {
+                        recipe: {
+                          version: 1,
+                          symbol: 'forge-triads',
+                          foreground: '#0f3d2c',
+                          background: '#3f9d6b',
+                          shape: 'rounded_square' as const,
+                          layers: [
+                            { symbol: 'forge-triads', color: '#0f3d2c' },
+                          ],
+                        },
+                        asset_url: triads,
+                        layers: [
+                          {
+                            symbol: 'forge-triads',
+                            color: '#0f3d2c',
+                            asset_url: triads,
+                          },
+                        ],
+                      }
+                    : {
+                        recipe: {
+                          version: 1,
+                          symbol: 'compass',
+                          foreground: '#cbb68d',
+                          background: '#152b40',
+                        },
+                        asset_url: symbol,
+                      },
                 alliance: {
                   id: id(20),
                   universe: id(30),

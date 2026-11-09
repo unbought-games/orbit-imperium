@@ -15,10 +15,12 @@
   background: var(--insignia-foreground);
   mask: var(--insignia-mask) center / contain no-repeat;
 }
-/* Inline identities use a text-sized mark, leaving line height to the text. */
+/* Text-sized mark centered on capital letters, leaving line height to the text. */
 .inline {
   width: 1em;
   height: 1em;
+  top: -0.09em;
+  top: calc((1ex - 1cap) / 2);
 }
 .small {
   width: 26px;

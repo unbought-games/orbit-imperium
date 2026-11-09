@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { components } from '../contracts'
 import type { buildingProgress } from '../client-model/building-progress'
 import type { researchProgress } from '../client-model/research-progress'
@@ -17,6 +18,7 @@ export function LevelWorkSummary({
   target,
   host,
   percent,
+  cancel,
 }: {
   item: components['schemas']['CatalogKey3']
   work: NonNullable<
@@ -25,6 +27,7 @@ export function LevelWorkSummary({
   target: ReturnType<typeof routeTarget>
   host: string | null
   percent: number | null
+  cancel?: ReactNode
 }) {
   const active = work.status === 'In progress'
   const verb =
@@ -58,6 +61,7 @@ export function LevelWorkSummary({
         percent={percent}
         progressLabel={`${label(item.id)} estimated progress`}
         moving={active && work.secondsRemaining !== null}
+        progressAction={cancel}
       >
         <WorkTimers>
           <WorkTimer

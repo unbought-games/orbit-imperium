@@ -232,6 +232,9 @@ function GameShellContent() {
       (page === 'dispatch' && view.protocol === 4) ||
       page === 'settings' ||
       page === 'menu' ||
+      page === 'alliance' ||
+      page === 'alliance-create' ||
+      page === 'alliance-discover' ||
       (view.protocol === 4 && (page === 'reports' || page === 'messages')))
   const title = !available
     ? 'Destination unavailable'

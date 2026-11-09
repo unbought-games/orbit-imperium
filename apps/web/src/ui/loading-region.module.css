@@ -1,0 +1,72 @@
+.region {
+  display: grid;
+  min-width: 0;
+  min-height: 20rem;
+}
+.content,
+.indicator {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.content[data-loading] {
+  visibility: hidden;
+}
+.content {
+  align-self: start;
+}
+.indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  min-height: 20rem;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+.orbit {
+  width: 80px;
+  height: 80px;
+  fill: none;
+  overflow: visible;
+}
+.track {
+  stroke: var(--ice);
+  stroke-opacity: 0.16;
+  stroke-width: 1;
+}
+.arc {
+  stroke: var(--ice);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.satellite,
+.core {
+  fill: var(--champagne-light);
+}
+.core {
+  filter: drop-shadow(0 0 7px var(--planet-glow));
+}
+.outer,
+.inner {
+  transform-origin: 40px 40px;
+  animation: revolve 2.4s linear infinite;
+}
+.inner {
+  animation-duration: 3.6s;
+  animation-direction: reverse;
+}
+@keyframes revolve {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .outer,
+  .inner {
+    animation: none;
+  }
+}

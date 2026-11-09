@@ -53,6 +53,9 @@
   border-top: 1px solid #263c4b88;
   padding-top: 4px;
 }
+.actions:empty {
+  display: none;
+}
 .actions button {
   font-size: 0.6875rem;
   padding: 4px 10px;

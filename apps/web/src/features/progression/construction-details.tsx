@@ -3,8 +3,7 @@ import type { Coordinator } from '../../client-model/coordinator'
 import type { buildingProgress } from '../../client-model/building-progress'
 import { WorkCancellationButton } from '../work-cancellation-button'
 import { label } from '../../ui/format'
-import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
-import { DetailRow } from './detail-layout'
+import { ActiveWorkDetails, CancellationReview } from './active-work-details'
 import styles from './detail-layout.module.css'
 
 export function ConstructionDetails({
@@ -37,20 +36,11 @@ export function ConstructionDetails({
         variant="secondary"
         className={styles.cancelWork}
         dialogTitle="Cancel construction?"
-        confirmLabel="Confirm cancellation"
-        cancelLabel="Keep construction"
         review={
-          <>
-            <p>
-              Cancel {verb.toLowerCase()} {label(work.building)} to level{' '}
-              {work.targetLevel}?
-            </p>
-            <dl className={styles.compare}>
-              <DetailRow label="Full refund">
-                <RefundAmounts paid={work.paid} />
-              </DetailRow>
-            </dl>
-          </>
+          <CancellationReview
+            question={`Cancel ${verb.toLowerCase()} ${label(work.building)} to level ${work.targetLevel}?`}
+            paid={work.paid}
+          />
         }
         disabled={!work.canCancel}
         onConfirm={() => {

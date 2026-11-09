@@ -130,8 +130,33 @@
 .totalTimer dd {
   font-weight: 650;
 }
-.progress {
+.progressTrack {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.progressAction {
+  display: flex;
+  flex-shrink: 0;
+  /* The hit area may exceed the track; only the 4px bar sets the row height. */
+  margin-block: -10px;
+  margin-inline-start: auto;
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  /* Touch-sized hit area keeps the icon aligned with the desktop position. */
+  .progressTrack {
+    gap: 2px;
+  }
+  .progressAction {
+    margin-block: -16px;
+    margin-inline-end: -10px;
+  }
+}
+.progress {
+  flex: 1;
+  min-width: 0;
   height: 4px;
   background: #a4dbef1c;
   overflow: hidden;

@@ -115,6 +115,9 @@ jobs:
     env:
       COMPOSE_PROJECT_NAME: orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
       ORBIT_DB_PUBLISHED_PORT: '0'
+      # Four simultaneous cold-schema migrations exhausted the functional startup
+      # deadline on shared runners. Bound database pressure without relaxing it.
+      DB_JOBS: '2'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
