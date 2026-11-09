@@ -15,12 +15,18 @@ export async function withFixtureResponse(
   matches: (response: Response) => boolean,
   navigate: () => Promise<unknown>,
 ) {
-  const [response] = await Promise.all([
-    page.waitForResponse(matches),
+  // A matching response from the page being replaced can be cancelled by the
+  // navigation; only a delivered body ('requestfinished') is the boundary.
+  const [request] = await Promise.all([
+    page.waitForEvent('requestfinished', {
+      predicate: async (request) => {
+        const response = await request.response()
+        return response !== null && matches(response)
+      },
+    }),
     navigate(),
   ])
-  expect(response.ok()).toBe(true)
-  expect(await response.finished()).toBeNull()
+  expect((await request.response())?.ok()).toBe(true)
 }
 
 export function withProgressionResponse(

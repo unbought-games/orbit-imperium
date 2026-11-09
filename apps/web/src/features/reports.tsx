@@ -8,6 +8,7 @@ import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
 import { useMobileLayout } from '../ui/use-mobile-layout'
+import { useMarkAllReportsRead } from './use-mark-all-reports-read'
 import { useReportSelection } from './use-report-selection'
 import { ReportStarButton } from './report-star-button'
 import {
@@ -65,6 +66,7 @@ export function Reports({
   const [selecting, setSelecting] = useState(false)
   const [panel, setPanel] = useState<ReportPanel>(null)
   const [options, setOptions] = useState(defaultReportOptions)
+  const markAll = useMarkAllReportsRead(model)
   const selection = useReportSelection(model)
   const { selected, select: setSelected } = selection
   const cleanup = useReportCleanup(model, () => setSelected(new Set()))
@@ -119,7 +121,11 @@ export function Reports({
     page?.items.filter((r) => r.hidden === archived).length ?? 0
   // Selection operates on loaded rows and stays usable during background reads.
   const complete = !!page
-  const busy = cleanup.submitting || changingVisibility || selection.markingRead
+  const busy =
+    cleanup.submitting ||
+    changingVisibility ||
+    selection.markingRead ||
+    markAll.busy
   const selectionBar = (
     <ReportSelectionBar
       visible={visible}
@@ -188,6 +194,7 @@ export function Reports({
             {!mobile && selectionBar}
           </div>
           <ReportTriageControls
+            markAll={markAll}
             panel={panel}
             setPanel={setPanel}
             options={options}
@@ -440,6 +447,8 @@ export function Reports({
             </div>
           )}
           {mobile && selecting && selectionBar}
+          {markAll.feedback && <p role="status">{markAll.feedback}</p>}
+          {markAll.error && <p role="alert">{markAll.error}</p>}
           {selection.error && (
             <Text tone="danger" role="alert">
               {selection.error}
