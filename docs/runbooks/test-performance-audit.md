@@ -1,5 +1,51 @@
 # PR and main test performance audit
 
+## November 9, 2026: retire report-glance after its one repair
+
+The readiness repair above passed locally but did not establish reliability.
+PR-head run [42659657516](https://github.com/unbought-games/orbit-imperium/actions/runs/42659657516)
+at `8c1de6c83f041e0d7b7f73508e280a8f0449b15c` stalled in browser shard 7/8.
+The authenticated live job log and subsequently downloaded log contain successful
+completion for all 145 other cases (test numbers 1–146 except 76), but no
+completion for `report glances expose historical mission facts in compact rows
+on desktop and phone`. Its four neighboring report-glance cases completed.
+The last other case finished at 17:04:57 UTC; cancellation at 17:20:39 UTC
+ended more than fifteen minutes of no progress. This is failed validation, not
+a pass, even though all other PR jobs and automated review passed.
+
+Removed that entire browser scenario under the one-repair rule. It is not
+renamed, skipped, recreated, given a longer timeout, or stabilized again.
+The previous section records its first failure, history search and repair.
+No root cause beyond the stalled scenario is claimed for this second failure.
+The four independent delivered-detail/report-tools browser cases remain with
+their response gates, and existing report-deletion tests retain row navigation,
+keyboard actions, selection and archive interactions.
+
+Retained deterministic protection in report-preview, report-fleet-summary,
+combat-report-model and resource-mark tests covers historical report facts,
+known/unknown data, names, fleet counts, viewer-relative outcomes and canonical
+resource symbols/colors. Added a focused reportListTitle test for selecting the
+viewer's participant when another participant appears first, historical reports
+without participant/outcome knowledge, and the Contact Lost fallback. The
+removed broad visual scenario's exact layout/contrast permutations are no
+longer claimed as covered. No product UI changes were needed.
+
+Validation: `8c1de6c8` plus the two test-file diff SHA-256
+`cf8d2bdafc760bc2ac42269e5a43e9772a263c41b96197a185fec49b6eee105c` (this audit entry is documentation-only).
+All 55 deterministic tests passed in 0.259s. All four retained browser cases
+passed in 10.9s after 1.903s module preparation, one worker, no retries or local
+runner queue. ESLint, TypeScript and whitespace checks passed. The runner
+closed its browser/Vite server and released its port; no Docker was used.
+
+Counts so far: one original integration assertion failure, one post-repair
+PR-head stall canceled after inspection, one canceled superseded integration
+run, and one failed queue entry removal. The stalled job prepared its runner
+from 16:57:54 to 16:58:58 UTC; test execution ran until cancellation at
+17:20:39 UTC, followed by GitHub cleanup of its orphan processes. No unchanged
+CI retry was requested. The implementation owner retains this repair/removal
+and latest-revision follow-through in PR #374; no independent follow-up is
+unassigned. Final CI and merge timing are recorded on that PR.
+
 ## November 9, 2026: report-glance lazy-response readiness
 
 PR #374 merge-group run [42653338937](https://github.com/unbought-games/orbit-imperium/actions/runs/42653338937)
