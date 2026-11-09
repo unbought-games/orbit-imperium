@@ -1487,3 +1487,84 @@ async fn recruitment_http_previews_use_current_public_identity_and_revoke_old_li
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
+
+#[tokio::test]
+async fn alliance_directory_combines_language_and_recruitment_without_hiding_closed_or_unlisted_groups()
+ {
+    let f = Fixture::new().await;
+    let open = f.create(0, "Alpha English", "ENG").await;
+    let closed = f.create(1, "Beta English", "BET").await;
+    let french = f.create(2, "French Stars", "FRE").await;
+    for (player, alliance, language) in [(0, open, "en"), (1, closed, "en"), (2, french, "fr")] {
+        let detail = f.detail(player, alliance).await;
+        f.command(
+            player,
+            AllianceAction::SetRecruitmentProfile {
+                alliance,
+                profile: RecruitmentProfile {
+                    listed: false,
+                    languages: Some(vec![language.into()]),
+                    beginners: Some(RecruitmentExperience::Welcome),
+                    activity: Some(RecruitmentActivity::Weekly),
+                },
+            },
+            Some(detail.revision),
+        )
+        .await;
+    }
+    f.update(1, closed, AllianceRecruitment::Closed).await;
+    for (filter, expected, count) in [
+        (json!({}), vec![open, closed, french], 3),
+        (json!({"language":"en"}), vec![open, closed], 2),
+        (
+            json!({"language":"en", "recruiting_only":true}),
+            vec![open],
+            1,
+        ),
+        (json!({"language":"en", "offset":1}), vec![closed], 2),
+        (
+            json!({"language":"fr", "beginners":"Welcome", "activity":"Weekly"}),
+            vec![french],
+            1,
+        ),
+        (json!({"language":"en", "activity":"Daily"}), vec![], 0),
+        (json!({"language":"en", "search":"BET"}), vec![closed], 1),
+    ] {
+        let mut query = json!({"type":"Directory", "search":"", "offset":0});
+        query
+            .as_object_mut()
+            .unwrap()
+            .extend(filter.as_object().unwrap().clone());
+        let response = f
+            .store
+            .alliance_query(AllianceQueryRequest {
+                context: QueryContext {
+                    binding: f.bindings[0],
+                    request_id: Uuid::new_v4(),
+                },
+                query: serde_json::from_value(query).unwrap(),
+            })
+            .await
+            .unwrap();
+        assert_eq!(response.directory_count, count);
+        assert_eq!(
+            response
+                .directory
+                .iter()
+                .map(|entry| entry.id)
+                .collect::<Vec<_>>(),
+            expected
+        );
+        assert!(response.alliance.is_none());
+    }
+    // Public recruitment remains opt-in even though authenticated discovery can find all groups.
+    assert_eq!(
+        f.store
+            .recruitment_directory(f.bindings[0].universe, RecruitmentSearch::default())
+            .await
+            .unwrap()
+            .total,
+        0
+    );
+    f.pool.close().await;
+}

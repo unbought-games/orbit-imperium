@@ -1,5 +1,17 @@
-import { useState } from 'react'
-import { useRecruitmentDirectory } from '../../client-model/use-recruitment-directory'
+import { useRef, useState } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Search,
+  SlidersHorizontal,
+  Users,
+} from 'lucide-react'
+import { useAllianceDirectory } from '../../client-model/use-alliance-directory'
+import {
+  defaultAllianceSearch,
+  type AllianceSearch,
+} from '../../client-model/alliance-directory'
+import type { Coordinator } from '../../client-model/coordinator'
 import { useOidcConfig } from '../../client-model/use-oidc'
 import {
   activityOptions,
@@ -7,147 +19,377 @@ import {
   languageOptions,
 } from '../../client-model/recruitment'
 import { Button, ButtonLinkAnchor } from '../../ui/button'
-import { Field, Input, Select } from '../../ui/form'
-import { Markdown, Summary } from './shared'
-import styles from './alliances.module.css'
+import { Field, Input, InputGroup, InputAccessory, Select } from '../../ui/form'
+import { EmptyState } from '../../ui/empty-state'
+import { LoadingRegion } from '../../ui/loading-region'
+import { ActionPopover } from '../../ui/action-popover'
+import { ActionSheet } from '../../ui/action-sheet'
+import { useMobileLayout } from '../../ui/use-mobile-layout'
+import { RecruitmentPreferences } from './recruitment-fields'
+import styles from './discovery.module.css'
+import allianceStyles from './alliances.module.css'
+
 export function RecruitmentDirectory({
   universe,
+  model,
   onSelect,
 }: {
   universe: string
+  model?: Coordinator
   onSelect?: (id: string) => void
 }) {
-  const [query, setQuery] = useState('')
-  const { data, loading, error, retry } = useRecruitmentDirectory(
+  const [query, setQuery] = useState<AllianceSearch>(() => ({
+    ...defaultAllianceSearch,
+    all: !!model,
+  }))
+  const [search, setSearch] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterTrigger = useRef<HTMLButtonElement>(null)
+  const mobile = useMobileLayout()
+  const { result, loading, error, retry } = useAllianceDirectory(
     universe,
     query,
+    model,
   )
-  const offset = Number(new URLSearchParams(query).get('offset') ?? 0)
-  function page(next: number) {
-    const params = new URLSearchParams(query)
-    params.set('offset', String(next))
-    setQuery(params.toString())
+  const summaries =
+    result?.kind === 'all'
+      ? result.data.directory
+      : (result?.data.alliances.map((entry) => entry.summary) ?? [])
+  const total =
+    result?.kind === 'all'
+      ? result.data.directory_count
+      : (result?.data.total ?? 0)
+  const filtered = !!(
+    query.search ||
+    query.language ||
+    query.beginners ||
+    query.activity ||
+    (model && !query.all)
+  )
+  const filterCount = [
+    query.language,
+    query.beginners,
+    query.activity,
+    model && !query.all,
+  ].filter(Boolean).length
+  const change = (patch: Partial<AllianceSearch>) =>
+    setQuery((current) => ({ ...current, ...patch, offset: 0 }))
+  const reset = () => {
+    setSearch('')
+    setQuery({ ...defaultAllianceSearch, all: !!model })
   }
-  return (
-    <section className={styles.stack} aria-label="Recruiting alliances">
-      <form
-        className={styles.filters}
-        onSubmit={(event) => {
-          event.preventDefault()
-          const params = new URLSearchParams()
-          for (const [key, value] of new FormData(event.currentTarget))
-            if (String(value)) params.set(key, String(value))
-          setQuery(params.toString())
-        }}
-      >
-        <Field>
-          Alliance name or tag
-          <Input name="search" type="search" maxLength={48} />
-        </Field>
-        <Field>
-          Language
-          <Select aria-label="Language" name="language">
-            <option value="">Any language</option>
-            {languageOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field>
-          New players
-          <Select aria-label="New players" name="beginners">
-            <option value="">Any experience</option>
-            {experienceOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field>
-          Activity expectations
-          <Select aria-label="Activity expectations" name="activity">
-            <option value="">Any activity</option>
-            {activityOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Button type="submit">Find recruiting alliances</Button>
-      </form>
-      {loading && <p role="status">Loading recruiting alliances…</p>}
-      {error && (
-        <div>
-          <p role="alert">{error}</p>
-          <Button onClick={retry}>Retry recruitment search</Button>
-        </div>
+  const filters = (
+    <div className={styles.filterFields}>
+      {model && (
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={!query.all}
+            onChange={(e) => change({ all: !e.target.checked })}
+          />
+          Only show recruiting
+        </label>
       )}
-      {data && (
-        <div aria-busy={loading} className={styles.stack}>
-          {!loading && !error && data.alliances.length === 0 && (
-            <p>
-              No recruiting alliances match. Try fewer filters or check back as
-              more groups join.
-            </p>
-          )}
-          {data.alliances.map((alliance) => (
-            <article key={alliance.summary.id} className={styles.card}>
-              <Summary summary={alliance.summary} />
-              <Markdown
-                compact
-                text={
-                  alliance.public_text.length > 240
-                    ? `${alliance.public_text.slice(0, 240)}…`
-                    : alliance.public_text ||
-                      'Read this alliance’s page to learn more.'
+      <Field>
+        Language
+        <Select
+          aria-label="Language"
+          value={query.language}
+          onChange={(e) => change({ language: e.target.value })}
+        >
+          <option value="">Any language</option>
+          {languageOptions.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field>
+        New players
+        <Select
+          aria-label="New players"
+          value={query.beginners}
+          onChange={(e) =>
+            change({ beginners: e.target.value as AllianceSearch['beginners'] })
+          }
+        >
+          <option value="">Any experience</option>
+          {experienceOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field>
+        Activity expectations
+        <Select
+          aria-label="Activity expectations"
+          value={query.activity}
+          onChange={(e) =>
+            change({ activity: e.target.value as AllianceSearch['activity'] })
+          }
+        >
+          <option value="">Any activity</option>
+          {activityOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Button
+        variant="secondary"
+        onClick={() =>
+          change({ language: '', beginners: '', activity: '', all: !!model })
+        }
+        disabled={!filterCount}
+      >
+        Reset filters
+      </Button>
+    </div>
+  )
+  return (
+    <section className={styles.directory} aria-label="Alliance directory">
+      <div className={styles.toolbar}>
+        <Button
+          ref={filterTrigger}
+          variant="ghost"
+          size={mobile ? 'icon-touch' : 'small'}
+          aria-label={`Filters${filterCount > 0 ? ` (${filterCount})` : ''}`}
+          title={`Filters${filterCount > 0 ? ` (${filterCount})` : ''}`}
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          {!mobile && <>Filters{filterCount > 0 ? ` (${filterCount})` : ''}</>}
+        </Button>
+        <form
+          className={styles.search}
+          role="search"
+          aria-label="Search alliances"
+          onSubmit={(e) => {
+            e.preventDefault()
+            change({ search: search.trim() })
+          }}
+        >
+          <InputGroup>
+            <InputAccessory>
+              <Search size={16} aria-hidden="true" />
+            </InputAccessory>
+            <Input
+              aria-label="Search alliances"
+              type="search"
+              placeholder="Search by name or tag"
+              maxLength={48}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </InputGroup>
+          <Button
+            type="submit"
+            size="small"
+            className={styles.searchSubmit}
+            variant="secondary"
+            aria-label="Search alliances"
+          >
+            Search
+          </Button>
+        </form>
+        {filtered && summaries.length > 0 && (
+          <Button
+            className={styles.clearFilters}
+            variant="ghost"
+            onClick={reset}
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
+      {mobile ? (
+        <ActionSheet
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          returnFocusRef={filterTrigger}
+          title="Alliance filters"
+        >
+          {filters}
+        </ActionSheet>
+      ) : (
+        <ActionPopover
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          anchorRef={filterTrigger}
+          title="Alliance filters"
+        >
+          {filters}
+        </ActionPopover>
+      )}
+      <LoadingRegion
+        loading={loading}
+        label="Loading alliances…"
+        className={styles.results}
+      >
+        {error ? (
+          <div className={styles.error}>
+            <p role="alert">{error}</p>
+            <Button variant="secondary" onClick={retry}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <>
+            {result && !summaries.length && (
+              <EmptyState
+                icon={filtered ? Search : Users}
+                title={
+                  filtered
+                    ? 'No alliances match your search.'
+                    : query.all
+                      ? 'No alliances yet.'
+                      : 'No alliances are recruiting right now.'
+                }
+                description={
+                  filtered
+                    ? 'Try another name or tag, or clear your filters.'
+                    : query.all
+                      ? 'Be the first to bring commanders together. Create an alliance to get started.'
+                      : model
+                        ? 'Check back later, or browse all alliances to find a group you know.'
+                        : 'Check back later to find a group looking for new members.'
+                }
+                actions={
+                  filtered ? (
+                    <Button variant="secondary" onClick={reset}>
+                      Clear filters
+                    </Button>
+                  ) : !query.all && model ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => change({ all: true })}
+                    >
+                      Show all alliances
+                    </Button>
+                  ) : undefined
                 }
               />
-              {onSelect ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => onSelect(alliance.summary.id)}
-                >
-                  View {alliance.summary.tag}
-                </Button>
-              ) : (
-                <ButtonLinkAnchor
-                  variant="secondary"
-                  href={`/alliances/${universe}/${alliance.summary.id}`}
-                >
-                  View {alliance.summary.tag}
-                </ButtonLinkAnchor>
-              )}
-            </article>
-          ))}
-          <nav
-            className={styles.actions}
-            aria-label="Recruitment directory pages"
-          >
-            <Button
-              variant="secondary"
-              disabled={loading || offset === 0}
-              onClick={() => page(Math.max(0, offset - 20))}
-            >
-              Previous
-            </Button>
-            <span>
-              {data.total} recruiting{' '}
-              {data.total === 1 ? 'alliance' : 'alliances'}
-            </span>
-            <Button
-              variant="secondary"
-              disabled={loading || offset + 20 >= data.total}
-              onClick={() => page(offset + 20)}
-            >
-              Next
-            </Button>
-          </nav>
-        </div>
-      )}
+            )}
+            {!!summaries.length && (
+              <>
+                <p className={styles.resultCount}>
+                  {total.toLocaleString()}{' '}
+                  {total === 1 ? 'alliance' : 'alliances'}
+                </p>
+                <ul className={styles.list} aria-label="Alliances">
+                  {summaries.map((summary) => (
+                    <li key={summary.id} className={styles.row}>
+                      <div className={styles.identity}>
+                        <span className={styles.tag}>[{summary.tag}]</span>
+                        <h3>
+                          {onSelect ? (
+                            <button
+                              className={styles.name}
+                              disabled={loading}
+                              onClick={() => onSelect(summary.id)}
+                            >
+                              {summary.name}
+                            </button>
+                          ) : (
+                            <a
+                              className={styles.name}
+                              href={`/alliances/${universe}/${summary.id}`}
+                            >
+                              {summary.name}
+                            </a>
+                          )}
+                        </h3>
+                        <span className={styles.members}>
+                          {summary.member_count.toLocaleString()}{' '}
+                          {summary.member_count === 1 ? 'member' : 'members'}
+                        </span>
+                        <RecruitmentPreferences
+                          profile={summary.recruitment_profile}
+                        />
+                      </div>
+                      <span
+                        className={styles.status}
+                        data-recruiting={summary.recruitment !== 'Closed'}
+                      >
+                        {summary.recruitment === 'Open'
+                          ? 'Open to join'
+                          : summary.recruitment === 'Application'
+                            ? 'Accepting applications'
+                            : 'Recruitment closed'}
+                      </span>
+                      {onSelect ? (
+                        <Button
+                          variant="ghost"
+                          size="icon-touch"
+                          aria-label={`View ${summary.tag}`}
+                          disabled={loading}
+                          onClick={() => onSelect(summary.id)}
+                        >
+                          <ArrowRight size={16} aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <ButtonLinkAnchor
+                          variant="ghost"
+                          size="icon-touch"
+                          aria-label={`View ${summary.tag}`}
+                          href={`/alliances/${universe}/${summary.id}`}
+                        >
+                          <ArrowRight size={16} aria-hidden="true" />
+                        </ButtonLinkAnchor>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {total > 20 && (
+                  <nav
+                    className={styles.pagination}
+                    aria-label="Alliance directory pages"
+                  >
+                    <span>
+                      {query.offset + 1}–
+                      {Math.min(query.offset + summaries.length, total)} of{' '}
+                      {total.toLocaleString()}
+                    </span>
+                    <div>
+                      <Button
+                        variant="ghost"
+                        disabled={loading || query.offset === 0}
+                        onClick={() =>
+                          setQuery((current) => ({
+                            ...current,
+                            offset: Math.max(0, current.offset - 20),
+                          }))
+                        }
+                      >
+                        <ArrowLeft size={16} aria-hidden="true" />
+                        Previous
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={loading || query.offset + 20 >= total}
+                        onClick={() =>
+                          setQuery((current) => ({
+                            ...current,
+                            offset: current.offset + 20,
+                          }))
+                        }
+                      >
+                        Next
+                        <ArrowRight size={16} aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </nav>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </LoadingRegion>
     </section>
   )
 }
@@ -162,8 +404,8 @@ export function PublicRecruitmentDirectory({
       ? state.config.universes.find((u) => u.universe === universe)?.name
       : undefined
   return (
-    <main id="main-content" className={styles.publicPage}>
-      <a className={styles.brand} href="/">
+    <main id="main-content" className={allianceStyles.publicPage}>
+      <a className={allianceStyles.brand} href="/">
         Orbit Imperium
       </a>
       <h1>Find your alliance</h1>
@@ -175,41 +417,44 @@ export function PublicRecruitmentDirectory({
         <>
           <h2>{name ?? 'Recruiting in this universe'}</h2>
           <RecruitmentDirectory key={universe} universe={universe} />
-          <a className={styles.brand} href="/alliances">
+          <a className={allianceStyles.brand} href="/alliances">
             Choose another universe
           </a>
         </>
       ) : (
         <>
           <h2>Choose a universe</h2>
-          {state.status === 'loading' && (
-            <p role="status">Loading universes…</p>
-          )}
-          {state.status === 'error' && (
-            <>
-              <p role="alert">Unable to load universes.</p>
-              <Button onClick={retry}>Try again</Button>
-            </>
-          )}
-          {state.status === 'ready' && (
-            <div className={styles.actions}>
-              {state.config.universes.length ? (
-                state.config.universes.map((u) => (
-                  <ButtonLinkAnchor
-                    key={u.universe}
-                    href={`/alliances/${u.universe}`}
-                  >
-                    {u.name}
-                  </ButtonLinkAnchor>
-                ))
-              ) : (
-                <p>
-                  No universes are accepting new players right now. An existing
-                  alliance link can still take you to its public page.
-                </p>
-              )}
-            </div>
-          )}
+          <LoadingRegion
+            loading={state.status === 'loading'}
+            label="Loading universes…"
+          >
+            {state.status === 'error' && (
+              <>
+                <p role="alert">Unable to load universes.</p>
+                <Button onClick={retry}>Try again</Button>
+              </>
+            )}
+            {state.status === 'ready' && (
+              <div className={allianceStyles.actions}>
+                {state.config.universes.length ? (
+                  state.config.universes.map((u) => (
+                    <ButtonLinkAnchor
+                      key={u.universe}
+                      href={`/alliances/${u.universe}`}
+                    >
+                      {u.name}
+                    </ButtonLinkAnchor>
+                  ))
+                ) : (
+                  <p>
+                    No universes are accepting new players right now. An
+                    existing alliance link can still take you to its public
+                    page.
+                  </p>
+                )}
+              </div>
+            )}
+          </LoadingRegion>
         </>
       )}
     </main>

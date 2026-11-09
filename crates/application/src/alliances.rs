@@ -164,6 +164,11 @@ pub enum AllianceQuery {
     Directory {
         search: String,
         offset: u64,
+        #[serde(default)]
+        recruiting_only: bool,
+        language: Option<String>,
+        beginners: Option<RecruitmentExperience>,
+        activity: Option<RecruitmentActivity>,
     },
     Mine,
     Detail {

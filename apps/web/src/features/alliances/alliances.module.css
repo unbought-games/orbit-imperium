@@ -238,6 +238,7 @@
   font-size: clamp(2rem, 4vw, 3rem);
 }
 .publicPage > p,
+.publicCopy > p,
 .welcome > p {
   margin: 0;
   line-height: 1.6;
