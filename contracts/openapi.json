@@ -18431,6 +18431,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "cost": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            },
+            "description": "Whole resource units per defense: metal, crystal, deuterium, from active manufacturing rules."
           }
         },
         "required": [

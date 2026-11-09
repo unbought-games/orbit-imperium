@@ -9,6 +9,9 @@ pub struct TechnicalData {
     pub facts: Vec<TechnicalFact>,
     pub bonuses: Vec<TechnicalBonus>,
     pub combat: Option<ShipCombatStatistics>,
+    /// Whole resource units per defense, from active manufacturing rules.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<[String; 3]>,
     /// Whole resource units by completed level; clients select, never extrapolate.
     pub storage_capacities: Option<Vec<String>>,
 }
@@ -116,6 +119,16 @@ pub(crate) fn technical_data(
             }
         }
         CatalogKey::Defense(defense) => {
+            data.cost = rules
+                .artifact
+                .progression
+                .as_ref()
+                .and_then(|p| {
+                    p.unit_costs
+                        .iter()
+                        .find(|u| u.item == ManufacturedItem::Defense(defense))
+                })
+                .map(|u| u.cost.values().map(|n| n.to_string()));
             data.combat = combat_statistics(rules, ManufacturedItem::Defense(defense))?;
             if let Some(world) = &rules.artifact.world {
                 let [n, d] = world.combat.defense_recovery_probability;
@@ -353,6 +366,39 @@ mod tests {
         assert_eq!(large.hull_ticks, "1000000000");
         assert!(large.rapid_fire_against.is_empty());
         assert!(large.rapid_fire_from.is_empty());
+    }
+    #[test]
+    fn defense_costs_follow_active_rules_and_preserve_missing_data() {
+        let mut r = (*rules()).clone();
+        let key = CatalogKey::Defense(DefenseId::RocketLauncher);
+        let item = ManufacturedItem::Defense(DefenseId::RocketLauncher);
+        let costs = &mut r.artifact.progression.as_mut().unwrap().unit_costs;
+        let cost = &mut costs.iter_mut().find(|u| u.item == item).unwrap().cost;
+        *cost = Resources::from_values([1234, 567, 89]);
+        assert_eq!(
+            data(&crate::test_rules(&r), key).cost,
+            Some(["1234".into(), "567".into(), "89".into()])
+        );
+        r.artifact
+            .progression
+            .as_mut()
+            .unwrap()
+            .unit_costs
+            .retain(|u| u.item != item);
+        assert!(data(&crate::test_rules(&r), key).cost.is_none());
+        let mut entry = r
+            .artifact
+            .catalog
+            .iter()
+            .find(|e| e.key == key)
+            .unwrap()
+            .clone();
+        entry.enabled = false;
+        assert!(
+            technical_data(&crate::test_rules(&r), &entry)
+                .unwrap()
+                .is_none()
+        );
     }
     #[test]
     fn heavy_laser_projects_base_stats_from_active_rules() {

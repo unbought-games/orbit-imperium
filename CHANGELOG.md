@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Defenses now have a comparison table with costs, combat statistics and completed
+  research bonuses. Thanks to [Churak](https://discord.com/users/162718073336365056)
+  for requesting it. Read the [build note](docs/news/changes/2026-11-09-defense-comparison.md).
+
 - New empires begin with an arrival scene: choose a title, a planet look that suits
   your orbit, and a name for your world before your Briefing. Existing empires are
   unchanged. Read the [build note](docs/news/changes/2026-11-08-arrival.md).

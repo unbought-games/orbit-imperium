@@ -594,8 +594,8 @@ for (const width of [1440, 390, 320]) {
       await expect(page.locator('main h1')).toHaveText(tab)
       // Work summaries can have their own headings; the repeated page header is gone.
       await expect(page.locator('main > header').getByRole('heading', { name: tab, exact: true })).toHaveCount(0)
-      await expect(page.locator('main details')).toHaveCount(tab === 'Shipyard' ? 1 : 0)
-      await expect(page.locator('main summary')).toHaveText(tab === 'Shipyard' ? ['Compare ships'] : [])
+      await expect(page.locator('main details')).toHaveCount(['Shipyard', 'Defense'].includes(tab) ? 1 : 0)
+      await expect(page.locator('main summary')).toHaveText(tab === 'Shipyard' ? ['Compare ships'] : tab === 'Defense' ? ['Compare defenses'] : [])
       if (tab === 'Resources') {
         await expect(page.getByText(/Production, storage and energy/)).toHaveCount(0)
         await expect(page.getByRole('button', { name: 'Resource settings', exact: true })).toHaveCount(0)
@@ -2688,5 +2688,70 @@ for (const width of [1440, 390]) {
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
     await expect(page.getByRole('heading', { name: 'Recycler', exact: true })).toBeInViewport()
     await diagnosticScreenshot(page, { path: `test-results/deuterium-recycler-${width}x1000.png`, fullPage: true })
+  })
+}
+
+// Regression: defense comparison must be reachable from both catalog and detail,
+// preserve selection across research refresh, and remain keyboard/touch usable.
+for (const width of [1280, 390]) {
+  test(`defense comparison supports selection, research and detail navigation at ${width}px`, async ({ page }) => {
+    const capture = async (target: Page, options: Parameters<Page['screenshot']>[0]) => {
+      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+      await target.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(target, options)
+    }
+    const height = 950
+    await page.setViewportSize({ width, height })
+    const defense = (id: 'RocketLauncher' | 'LightLaser' | 'SmallShieldDome', cost: string[], attack: string): S['CatalogEntry3'] => ({
+      key: { kind: 'Defense', id }, enabled: true, mobile: false, requirements: [], body_kinds: ['Planet', 'Moon'],
+      technical_data: {
+        cost, bonuses: [], storage_capacities: null,
+        combat: { attack_ticks: attack, shield_ticks: '2000000', hull_ticks: '20000000', technology_bonus: ['1', '10'], rapid_fire_against: [], rapid_fire_from: [{ unit: { kind: 'Ship', id: 'Bomber' }, factor: '20' }] },
+        facts: [
+          { label: 'Recovery after combat', value: '7 / 10 chance for each destroyed defense to recover independently; not a guaranteed fraction of losses.', subject: null },
+          ...(id === 'SmallShieldDome' ? [{ label: 'Body limit', value: 'One completed or queued dome of this type per planet or moon. Its shield protects itself, not other units.', subject: null }] : []),
+        ],
+      },
+    })
+    const options = {
+      catalog: [defense('RocketLauncher', ['2000', '0', '0'], '8000000'), defense('LightLaser', ['1500', '500', '0'], '10000000'), defense('SmallShieldDome', ['10000', '10000', '0'], '100000')],
+      research: [{ research: 'WeaponsTechnology' as const, level: 3 }, { research: 'ShieldingTechnology' as const, level: 2 }, { research: 'ArmourTechnology' as const, level: 1 }],
+    }
+    await setup(page, false, undefined, options)
+    // Same-app navigation retains the response-gated bootstrap catalog.
+    await navigate(page, 'Defense')
+    const summary = page.locator('summary').filter({ hasText: 'Compare defenses' })
+    await summary.focus()
+    await page.keyboard.press('Enter')
+    const region = page.getByRole('region', { name: 'Defense comparison table' })
+    await expect(region.getByRole('row', { name: 'Attack strength 104 130', exact: true })).toBeVisible()
+    await expect(region.getByRole('img', { name: 'Metal', exact: true })).toHaveCount(2)
+    await expect(page.getByRole('rowheader', { name: 'Cargo capacity' })).toHaveCount(0)
+    options.research[0].level = 4
+    await refreshGame(page)
+    await expect(region.getByRole('row', { name: 'Attack strength 112 140', exact: true })).toBeVisible()
+    await page.getByRole('radio', { name: 'Base stats', exact: true }).check()
+    await expect(region.getByRole('row', { name: 'Attack strength 80 100', exact: true })).toBeVisible()
+    await region.focus()
+    await expect(region).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await capture(page, { path: `test-results/defense-catalog-base-${width}x${height}.png`, fullPage: true })
+    await page.getByRole('checkbox', { name: 'Small Shield Dome', exact: true }).check()
+    await expect(page.getByText('Body limit · Small Shield Dome', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Its shield protects itself, not other units/)).toBeVisible()
+    if (width === 390) {
+      await region.evaluate(el => { el.scrollLeft = el.scrollWidth })
+      expect(await region.evaluate(el => el.scrollLeft)).toBeGreaterThan(0)
+    }
+    await capture(page, { path: `test-results/defense-catalog-dome-${width}x${height}.png`, fullPage: true })
+    for (const name of ['Rocket Launcher', 'Light Laser', 'Small Shield Dome']) await page.getByRole('checkbox', { name, exact: true }).uncheck()
+    await expect(page.getByText('Select defenses to compare.', { exact: true })).toBeVisible()
+    await capture(page, { path: `test-results/defense-catalog-empty-${width}x${height}.png`, fullPage: true })
+    await withFixtureResponse(page, response => response.url().endsWith('/progression-options'), () => page.getByRole('link', { name: 'Build Small Shield Dome', exact: true }).click())
+    await summary.click()
+    await expect(region.getByRole('columnheader', { name: 'Small Shield Dome', exact: true })).toBeVisible()
+    await expect(region.getByRole('columnheader', { name: 'Light Laser', exact: true })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'My current stats', exact: true })).toBeChecked()
+    await capture(page, { path: `test-results/defense-detail-current-${width}x${height}.png`, fullPage: true })
   })
 }
