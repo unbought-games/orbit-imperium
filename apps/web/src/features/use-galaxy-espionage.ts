@@ -7,38 +7,46 @@ import { pendingProbe, probeAvailability } from '../client-model/galaxy-fleets'
 import { attemptKey } from '../client-model/commands'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 
+type Target = NonNullable<components['schemas']['GalaxyPosition4']['body']>
+
+function withEntry<V>(map: ReadonlyMap<string, V>, key: string, value: V) {
+  return new Map(map).set(key, value)
+}
+
+function withoutEntry<V>(map: ReadonlyMap<string, V>, key: string) {
+  const next = new Map(map)
+  next.delete(key)
+  return next
+}
+
+/** Probes to different targets are independent; only a repeat click on one target waits. */
 export function useGalaxyEspionage(model: Coordinator, origin: string) {
   const state = useStore(model.store)
   const context = useRef({})
-  const lock = useRef(false)
-  const [sending, setSending] = useState<string | null>(null)
-  const [lastCommand, setLastCommand] = useState<{
-    id: string
-    target: string
-  } | null>(null)
-  const [error, setError] = useState<{
-    target: string
-    message: string
-  } | null>(null)
+  const locks = useRef(new Set<string>())
+  const [sending, setSending] = useState<ReadonlySet<string>>(new Set())
+  const [commands, setCommands] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  )
+  const [errors, setErrors] = useState<ReadonlyMap<string, string>>(new Map())
   useEffect(() => {
     context.current = {}
-    lock.current = false
-    setSending(null)
-    setError(null)
-    setLastCommand(null)
+    locks.current = new Set()
+    setSending(new Set())
+    setErrors(new Map())
+    setCommands(new Map())
     return () => {
       context.current = {}
     }
   }, [model, origin])
-  const send = async (
-    target: NonNullable<components['schemas']['GalaxyPosition4']['body']>,
-  ) => {
-    if (lock.current) return
+  const send = async (target: Target) => {
+    if (locks.current.has(target.id)) return
     const token = context.current
-    lock.current = true
-    setSending(target.id)
-    setError(null)
-    setLastCommand(null)
+    const held = locks.current
+    held.add(target.id)
+    setSending((current) => new Set(current).add(target.id))
+    setErrors((current) => withoutEntry(current, target.id))
+    setCommands((current) => withoutEntry(current, target.id))
     try {
       const id = await sendGalaxyProbe(
         model,
@@ -47,55 +55,49 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
         () => context.current === token,
       )
       if (id && context.current === token)
-        setLastCommand({ id, target: target.id })
+        setCommands((current) => withEntry(current, target.id, id))
     } catch (failure) {
       if (context.current === token)
-        setError({
-          target: target.id,
-          message:
+        setErrors((current) =>
+          withEntry(
+            current,
+            target.id,
             failure instanceof Error
               ? failure.message
               : 'Unable to send the probe.',
-        })
+          ),
+        )
     } finally {
-      if (context.current === token) {
-        lock.current = false
-        setSending(null)
-      }
+      held.delete(target.id)
+      if (context.current === token)
+        setSending((current) => {
+          const next = new Set(current)
+          next.delete(target.id)
+          return next
+        })
     }
   }
-  const attempt =
-    lastCommand && state.binding
-      ? state.attempts.get(attemptKey(state.binding, lastCommand.id))
-      : undefined
-  const rejection =
-    lastCommand &&
-    attempt?.status === 'rejected' &&
-    attempt.receipt?.status === 'Rejected'
-      ? {
-          target: lastCommand.target,
-          message: dispatchFailure(attempt.receipt.code),
-        }
+  const rejection = (target: string) => {
+    const command = commands.get(target)
+    const attempt =
+      command && state.binding
+        ? state.attempts.get(attemptKey(state.binding, command))
+        : undefined
+    return attempt?.status === 'rejected' &&
+      attempt.receipt?.status === 'Rejected'
+      ? dispatchFailure(attempt.receipt.code)
       : null
+  }
+  const reason = probeAvailability(state, origin)
   return {
     state,
-    sending,
-    error: rejection ?? error,
-    localError: error,
-    reason: probeAvailability(state, origin),
-    send,
-    forTarget: (
-      target: NonNullable<components['schemas']['GalaxyPosition4']['body']>,
-    ) => ({
+    forTarget: (target: Target) => ({
       send: () => void send(target),
       paused: state.rateLimited,
-      busy: sending === target.id || pendingProbe(state, origin, target.id),
-      reason: sending ? 'Sending a probe…' : probeAvailability(state, origin),
-      error:
-        (rejection ?? error)?.target === target.id
-          ? (rejection ?? error)!.message
-          : null,
-      notice: error?.target === target.id ? error.message : null,
+      busy: sending.has(target.id) || pendingProbe(state, origin, target.id),
+      reason,
+      error: rejection(target.id) ?? errors.get(target.id) ?? null,
+      notice: errors.get(target.id) ?? null,
     }),
   }
 }
