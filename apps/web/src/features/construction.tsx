@@ -328,8 +328,6 @@ export function Economy({
             key={active.id}
             disabled={busy}
             dialogTitle="Cancel construction?"
-            confirmLabel="Confirm cancellation"
-            cancelLabel="Keep construction"
             review={
               <CancellationReview
                 question="Stop this construction?"

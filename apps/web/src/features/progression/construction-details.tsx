@@ -36,8 +36,6 @@ export function ConstructionDetails({
         variant="secondary"
         className={styles.cancelWork}
         dialogTitle="Cancel construction?"
-        confirmLabel="Confirm cancellation"
-        cancelLabel="Keep construction"
         review={
           <CancellationReview
             question={`Cancel ${verb.toLowerCase()} ${label(work.building)} to level ${work.targetLevel}?`}

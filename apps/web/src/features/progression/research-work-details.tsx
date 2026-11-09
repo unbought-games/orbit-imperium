@@ -64,8 +64,6 @@ export function ResearchWorkDetails({
         variant="secondary"
         className={styles.cancelWork}
         dialogTitle="Cancel research?"
-        confirmLabel="Confirm cancellation"
-        cancelLabel="Keep research"
         review={
           <CancellationReview
             question={`Cancel ${verb.toLowerCase()} ${label(research.research)} to level ${research.targetLevel}?`}

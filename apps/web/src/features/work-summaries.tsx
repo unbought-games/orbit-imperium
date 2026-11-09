@@ -203,8 +203,6 @@ export function WorkSummaries({
                       ? 'Cancel construction?'
                       : 'Cancel research?'
                   }
-                  confirmLabel="Confirm cancellation"
-                  cancelLabel="Keep working"
                   review={
                     <CancellationReview
                       question={`Stop ${name}?`}

@@ -176,6 +176,16 @@ for (const width of [390, 1440]) {
         await expect(
           refund.getByRole('img', { name: 'Deuterium' }),
         ).toHaveCount(0)
+        const [keep, confirm] = await Promise.all(
+          ['Keep working', 'Yes, cancel'].map(
+            async (name) =>
+              (await dialog
+                .getByRole('button', { name, exact: true })
+                .boundingBox())!,
+          ),
+        )
+        expect(keep.y).toBe(confirm.y)
+        expect(keep.x + keep.width).toBeLessThan(confirm.x)
         await page.keyboard.press('Escape')
         await expect(cancel).toBeFocused()
       }

@@ -31,3 +31,20 @@
   gap: 12px;
   margin-top: 24px;
 }
+@media (max-width: 599px) {
+  /* Keep and confirm stay side by side; long labels wrap inside their button. */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+@media (max-width: 359px) {
+  .dialog {
+    padding: 20px 16px;
+  }
+  .actions > button {
+    padding-inline: 10px;
+    font-size: var(--font-size-sm);
+  }
+}
