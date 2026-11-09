@@ -10,9 +10,9 @@ import { useLocation } from '@tanstack/react-router'
 import { useGameSession } from '../../shell/session-context'
 import { bindingKey } from '../../client-model/commands'
 import { useCommandHud } from './use-command-hud'
-import { CommandOrb, HudToast } from './hud-controls'
+import { CommandOrb, HudToasts } from './hud-controls'
 import { HudPanel } from './hud-panel'
-import { incomingThreats, noticeKey } from './model'
+import { incomingThreats } from './model'
 import styles from './hud.module.css'
 type HudProps = {
   body?: string
@@ -40,16 +40,7 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
   return createPortal(
     <div className={styles.surface} data-command-hud>
       <div className={styles.hudLayer} aria-label="Live command HUD">
-        <div
-          className={styles.toasts}
-          aria-label="Recent game events"
-          aria-live="polite"
-          aria-relevant="additions"
-        >
-          {hud.toasts.map((notice) => (
-            <HudToast key={noticeKey(notice)} notice={notice} hud={hud} />
-          ))}
-        </div>
+        <HudToasts hud={hud} />
         <TutorialAdvisor
           suspended={hud.selection !== null}
           onOpenCommands={() => hud.select('inbox')}

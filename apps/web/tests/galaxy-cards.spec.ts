@@ -2214,3 +2214,177 @@ test('a probe in flight to one target leaves Spy available for the other targets
   await expect(spy(page, 2)).toBeEnabled()
   await expect(spy(page, 3)).toBeEnabled()
 })
+
+for (const [width, height] of [[1440, 900]]) {
+  test(`rapid Galaxy spying keeps a compact actionable toast stack at ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.clock.setFixedTime(new Date());
+    let revision = 1;
+    const missions: components["schemas"]["MissionView4"] = {
+      fleets: [],
+      incoming: [],
+      score_value_micro: "0",
+      fleet_slots: "20",
+    };
+    const targets = Object.fromEntries(
+      Array.from({ length: 14 }, (_, i) => [
+        i + 2,
+        {
+          body: targetBody({ id: id(21 + i), owner: id(31 + i) }),
+        },
+      ]),
+    );
+    await setup(
+      page,
+      null,
+      { missions, viewerRevision: () => String(revision) },
+      targets,
+    );
+    await expect(rows(page)).toHaveCount(15);
+    await routeWorld(page, async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.type !== "FleetQuote") return route.fallback();
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          request_id: request.context.request_id,
+          viewer_revision: String(revision),
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          data: {
+            intent: request.intent,
+            profile_hash: "a".repeat(64),
+            terms_hash: "b".repeat(64),
+            distance: 1000,
+            speeds: [["EspionageProbe", "100000000"]],
+            duration_ms: 120000,
+            fuel: "1000000",
+            capacity: "5000000",
+            maximum_payload: "4000000",
+            slot_limit: "20",
+          },
+        },
+      });
+    });
+    await page.route("**/commands", async (route) => {
+      const { gameplay } = route.request().postDataJSON();
+      const intent = gameplay.command.action.intent;
+      const position = Number(intent.destination.id.split("-").at(-1)) - 19;
+      const fleet = {
+        ...probeFleet(missions.fleets.length, Date.now()),
+        intent,
+        destination: { galaxy: 1, system: 371, position },
+      };
+      missions.fleets.push(fleet);
+      revision++;
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          command_id: gameplay.command_id,
+          admitted_at: Date.now(),
+          executed_at: Date.now(),
+          status: "Committed",
+          result_ids: [fleet.id],
+          minimum_viewer_revision: String(revision),
+        },
+      });
+    });
+    const notices = page.getByLabel("Recent game events");
+    for (const position of [2, 3, 4]) {
+      await spy(page, position).evaluate((el) =>
+        el.scrollIntoView({ block: "center" }),
+      );
+      await withGalaxyResponse(page, () => spy(page, position).click());
+      await expect(notices.getByTestId("swipeable-toast")).toHaveCount(
+        position - 1,
+      );
+      await expect(rows(page).nth(position - 1)).toContainText(
+        "Espionage en route",
+      );
+    }
+    const cards = notices.getByTestId("swipeable-toast");
+    const top = notices.locator('[data-toast-depth="0"]');
+    await expect(notices.getByRole("button")).toHaveCount(1);
+    await expect(top).toContainText("[1:371:4]");
+    await expect(top.getByRole("button")).toHaveCSS("opacity", "1");
+    const topBox = (await top.boundingBox())!;
+    const stackBox = (await notices.boundingBox())!;
+    expect(stackBox.height).toBe(topBox.height);
+    for (const covered of await notices.locator("[inert]").all()) {
+      expect(
+        await covered.evaluate((el) => getComputedStyle(el).pointerEvents),
+      ).toBe("none");
+      const box = (await covered.boundingBox())!;
+      expect(topBox.y - box.y).toBeLessThanOrEqual(12);
+    }
+    await diagnosticScreenshot(page, {
+      path: `test-results/toast-stack/galaxy-stacked-${width}x${height}.png`,
+    });
+
+    await top.getByRole("button").focus();
+    await page.keyboard.press("Escape");
+    await expect(cards).toHaveCount(2);
+    await expect(top).toContainText("[1:371:3]");
+    await expect(top.getByRole("button")).toBeFocused();
+
+    // Keep moving down the real list while new notices replace the oldest.
+    for (let position = 5; position <= 15; position++) {
+      await spy(page, position).evaluate((el) =>
+        el.scrollIntoView({ block: "center" }),
+      );
+      await withGalaxyResponse(page, () => spy(page, position).click());
+      await expect(rows(page).nth(position - 1)).toContainText(
+        "Espionage en route",
+      );
+      // Dismissing a notice does not change the existing three-event history cap.
+      await expect(cards).toHaveCount(position < 7 ? 2 : 3);
+      await expect(top).toContainText(`[1:371:${position}]`);
+    }
+    expect(missions.fleets).toHaveLength(14);
+    await expect(top.getByRole("button")).toHaveCSS("opacity", "1");
+    await diagnosticScreenshot(page, {
+      path: `test-results/toast-stack/galaxy-last-target-${width}x${height}.png`,
+    });
+
+    // A short drag settles without opening. Successive swipes promote the next
+    // notice, and covered cards cannot receive focus or pointer input.
+    const swipe = async (distance: number) => {
+      const box = (await top.boundingBox())!;
+      const x = box.x + box.width / 2,
+        y = box.y + box.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + distance, y, { steps: 10 });
+      await page.mouse.up();
+    };
+    await swipe(10);
+    await expect(cards).toHaveCount(3);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(top.getByTestId("swipeable-toast")).toHaveCSS(
+      "transform",
+      "none",
+    );
+    await swipe(95);
+    await expect(cards).toHaveCount(2);
+    await expect(top).toContainText("[1:371:14]");
+    await swipe(-95);
+    await expect(cards).toHaveCount(1);
+    await expect(top).toContainText("[1:371:13]");
+    await diagnosticScreenshot(page, {
+      path: `test-results/toast-stack/galaxy-promoted-${width}x${height}.png`,
+    });
+    await top.getByRole("button").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await top.getByRole("button").focus();
+    await page.keyboard.press("Escape");
+    await expect(cards).toHaveCount(0);
+    await expect(page.getByTestId("command-orb")).toBeFocused();
+  });
+}

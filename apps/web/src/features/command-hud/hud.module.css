@@ -389,13 +389,29 @@
   position: absolute;
   bottom: 32px;
   right: 94px;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 8px;
   width: min(254px, calc(100vw - 130px));
 }
-.toastSwipe {
+.toastStackItem {
+  position: relative;
+  z-index: calc(3 - var(--toast-depth));
   pointer-events: auto;
+  transform-origin: center bottom;
+  transform: translateY(calc(-6px * var(--toast-depth)))
+    scale(calc(1 - 0.025 * var(--toast-depth)));
+  transition: transform 180ms ease-out !important;
+}
+.toastStackItem[inert] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.toastStackItem[inert] .toastSwipe,
+.toastStackItem[inert] .toast {
+  height: 100%;
+  overflow: hidden;
+}
+.toastSwipe {
+  pointer-events: inherit;
   touch-action: pan-y;
   user-select: none;
 }
@@ -418,7 +434,7 @@
     0 8px 30px #0009,
     0 0 16px rgba(var(--hud-rgb), 0.1),
     inset 0 1px 0 rgba(var(--hud-rgb), 0.12);
-  pointer-events: auto;
+  pointer-events: inherit;
   animation: toastLife 7s both !important;
   transform-origin: right bottom;
 }

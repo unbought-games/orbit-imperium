@@ -1,6 +1,8 @@
 import { addressCaption } from '../../client-model/empire-identity'
 import {
   useState,
+  useRef,
+  useLayoutEffect,
   type CSSProperties,
   type ComponentPropsWithRef,
   type ReactNode,
@@ -32,6 +34,7 @@ import {
   hasUnreadIntelligence,
   unreadBadgeCount,
   noticeContent,
+  noticeKey,
   orbAppearance,
   type HudIcon,
   type HudNotice,
@@ -60,14 +63,76 @@ export function HudIconMark({
   const Icon = icons[kind]
   return <Icon size={size} aria-hidden="true" />
 }
-export function HudToast({
+export function HudToasts({ hud }: { hud: CommandHudState }) {
+  const container = useRef<HTMLDivElement>(null)
+  const restoreFocus = useRef(false)
+  const notices = hud.toasts.filter((notice) =>
+    noticeContent(hud.state, notice),
+  )
+  const topKey = notices[0] ? noticeKey(notices[0]) : null
+  useLayoutEffect(() => {
+    if (restoreFocus.current) {
+      const next = container.current?.querySelector<HTMLButtonElement>(
+        '[data-toast-depth="0"] button',
+      )
+      const orb =
+        container.current?.parentElement?.querySelector<HTMLButtonElement>(
+          '[data-testid="command-orb"]',
+        )
+      ;(next ?? orb)?.focus({ preventScroll: true })
+      restoreFocus.current = false
+    }
+    return () => {
+      restoreFocus.current ||= !!container.current?.contains(
+        document.activeElement,
+      )
+    }
+  }, [topKey])
+  return (
+    <div
+      ref={container}
+      className={styles.toasts}
+      aria-label="Recent game events"
+      aria-live="polite"
+      aria-relevant="additions"
+    >
+      {notices.map((notice, depth) => (
+        <div
+          key={noticeKey(notice)}
+          className={styles.toastStackItem}
+          data-toast-depth={depth}
+          inert={depth > 0}
+          aria-hidden={depth > 0 || undefined}
+          style={{ '--toast-depth': depth } as CSSProperties}
+        >
+          <HudToast
+            notice={notice}
+            hud={hud}
+            active={depth === 0}
+            onDismiss={() => {
+              restoreFocus.current = !!container.current?.contains(
+                document.activeElement,
+              )
+              hud.dismiss(notice)
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+function HudToast({
   notice,
   hud,
+  active,
+  onDismiss,
 }: {
   notice: HudNotice
   hud: CommandHudState
+  active: boolean
+  onDismiss: () => void
 }) {
-  const swipe = useToastSwipe(() => hud.dismiss(notice))
+  const swipe = useToastSwipe(onDismiss)
   const content = noticeContent(hud.state, notice)
   if (!content) return null
   const used = occupiedFleetSlots(hud.state)
@@ -78,7 +143,7 @@ export function HudToast({
     <motion.div
       className={styles.toastSwipe}
       data-testid="swipeable-toast"
-      drag="x"
+      drag={active ? 'x' : false}
       dragMomentum={false}
       dragSnapToOrigin={false}
       style={{ x: swipe.x, opacity: swipe.opacity }}
