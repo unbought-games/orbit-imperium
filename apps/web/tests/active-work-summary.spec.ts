@@ -157,6 +157,15 @@ for (const width of [390, 1440]) {
           exact: true,
         })
         await expect(cancel).toBeEnabled()
+        expect(
+          await cancel.evaluate(
+            (button) =>
+              button.closest(':has(> div > [role="progressbar"])') !== null,
+          ),
+        ).toBe(true)
+        await expect(
+          summary.getByRole('group', { name: 'Cancellation refund' }),
+        ).toBeVisible()
         await cancel.click()
         const dialog = page.getByRole('dialog', {
           name: /Cancel (research|construction)\?/,
