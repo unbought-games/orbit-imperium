@@ -1,5 +1,49 @@
 # PR and main test performance audit
 
+## November 9, 2026: report-glance lazy-response readiness
+
+PR #374 merge-group run [42653338937](https://github.com/unbought-games/orbit-imperium/actions/runs/42653338937)
+tested integration `6ea33c8be8f8a3f84472118c403ad73d9a1869e4` over source
+`d457faaae7daad25dcb15b76f6178923c727ab97`. Browser shard 7/8 failed
+`report glances expose historical mission facts in compact rows on desktop and phone`
+at the ContactLost color assertion: after `page.reload()`, the first row's
+`strong` element was absent for the assertion deadline. The failure snapshot
+already contained the expected Contact Lost row. HTML readiness did not wait
+for the lazy report POST or its complete body. The other 145 shard cases passed.
+
+Inspected the scenario, its Git history (including #158, #354 and #365), and this
+audit. No prior readiness repair was found for this scenario; #158's separately
+named disabled-control repair changed report-deletion.spec.ts, not this test.
+The separate owner Test Czar ledger was not available. This is the scenario's
+one repair attempt: use the existing `withFixtureResponse` helper before each
+navigation/reload, matching the report POST (not the HTML GET), then retain all
+existing observable content, layout, focus, color and contrast assertions.
+
+Audited all eight report navigation/reload sites in report-glance.spec.ts,
+including the delivered details and responsive tools cases, and applied the
+same response boundary to all five scenarios. The PR #374 owner delivers this
+common-pattern repair in this chat; no independent follow-up remains. No
+product behavior, sleeps, retries or timeout settings changed. Existing
+report-preview and fleet-summary unit tests retain deterministic report facts,
+missing data, identities and fleet-summary arithmetic.
+
+Validation: source `d457faaa` plus the test-only diff SHA-256
+`c13511dd4a72d5a18cc2021837c4bc7553c5b1030f7d9028ada6c5f792b69678` (this ledger entry is documentation-only).
+The initial local pass was 5/5 in 23.1s with 2.050s module preparation. Inspection
+then tightened the response matcher to POST so an HTML response cannot satisfy
+it; final validation passed 5/5 in 23.2s with 1.734s preparation. Both used one
+worker, no retries and no local runner queue. The 29 report-preview/fleet-summary
+unit tests passed in 0.245s; ESLint and whitespace checks passed. No UI changed,
+so the previously inspected defense screenshots remain current.
+
+One remote failed scenario, zero local assertion failures. The first integration
+run was superseded when a preceding PR left the queue; its obsolete workflow
+42652228544 was canceled to free runner capacity. No blind CI rerun occurred.
+The failed shard's runner wait was 17m 2s after scope selection, setup was
+1m 22s, browser execution 10.2m, and cleanup/artifact upload about 4s. The UI
+runner stopped Vite and Chromium and released its port; no Docker was started.
+Final pushed-head and merge-group results are recorded on PR #374.
+
 ## November 5, 2026: recovery fixture teardown after its first repair
 
 [Main CI run 42114714101](https://github.com/unbought-games/orbit-imperium/actions/runs/42114714101)

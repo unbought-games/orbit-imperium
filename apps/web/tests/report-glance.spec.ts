@@ -1,3 +1,4 @@
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
@@ -22,7 +23,10 @@ test('report glances expose historical mission facts in compact rows on desktop 
     const { context } = route.request().postDataJSON()
     await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: now, as_of_ms: now, data: { items, player_names: { [id(9)]: 'Commander Cassiopeia' }, has_more: false, next_cursor: null, as_of_ms: now } } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports`)
+  await withFixtureResponse(
+    page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+    () => page.goto(`/u/andromeda/b/${body.id}/reports`),
+  )
   // Keep the original warm metal color in the HUD, its tooltip, and report previews.
   // Comparing only against the resource token would miss a regression in that token.
   const metalDetails = page.getByLabel('Current resources').getByRole('button', { name: 'Metal details' })
@@ -182,7 +186,10 @@ test('report glances expose historical mission facts in compact rows on desktop 
   ] as const) {
     combat.outcome = outcome
     combat.participants = [{ owner: binding.player, side }]
-    await page.reload()
+    await withFixtureResponse(
+      page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+      () => page.reload(),
+    )
     await expect(rows.nth(2).locator('strong')).toHaveText(title)
     await expect(rows.nth(2).getByText(title, { exact: true })).toBeVisible()
     await expect(rows.nth(2).getByText(title, { exact: true })).toHaveCSS('color', color)
@@ -197,13 +204,19 @@ test('report glances expose historical mission facts in compact rows on desktop 
   ] as const) {
     combat.outcome = outcome
     delete combat.participants
-    await page.reload()
+    await withFixtureResponse(
+      page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+      () => page.reload(),
+    )
     await expect(rows.nth(2).locator('strong')).toHaveText(title)
     await expect(rows.nth(2).getByText(title, { exact: true })).toBeVisible()
     await expect(rows.nth(2).getByRole('link', { name: `${title} · Luna (Moon)`, exact: true })).toBeVisible()
   }
   delete combat.outcome
-  await page.reload()
+  await withFixtureResponse(
+    page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+    () => page.reload(),
+  )
   await expect(rows.nth(2).getByRole('link', { name: 'Combat · Luna (Moon)', exact: true })).toBeVisible()
   await expect(rows.nth(2)).not.toContainText('victory')
   // Type colors also work without previews and meet WCAG AA on the row surface.
@@ -216,7 +229,10 @@ test('report glances expose historical mission facts in compact rows on desktop 
   ] as const) {
     items[0].kind = kind
     delete items[0].preview
-    await page.reload()
+    await withFixtureResponse(
+      page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+      () => page.reload(),
+    )
     const heading = rows.first().locator('strong')
     await expect(heading).toHaveCSS('color', color)
     const contrast = await heading.evaluate(el => {
@@ -242,7 +258,10 @@ test('report glances expose historical mission facts in compact rows on desktop 
   const spy = items[1].preview
   if (spy?.kind !== 'Espionage' || !spy.target) throw Error('Expected spy target')
   spy.target.name = 'VeryLongUnbrokenHistoricalPlanetNameForMobileTruncation'
-  await page.reload()
+  await withFixtureResponse(
+    page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+    () => page.reload(),
+  )
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     const identity = 'Commander Cassiopeia · ' + spy.target.name
@@ -276,7 +295,10 @@ for (const width of [1440, 390]) {
         payload: {kind: 'Delivered', at: Date.now()-60000, sender: binding.player, recipient: id(9), origin: {galaxy: 1, system: 2, position: 8}, target: {galaxy: 1, system: 1, position: 3}, origin_name: 'Nova Roma Historical Homeworld', target_name: 'Very Long Destination Colony Name', cargo: {metal: '1000000000', crystal: '2000000000', deuterium: '3000000000'}}
       }}})
     })
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${id(74)}`)
+    await withFixtureResponse(
+      page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(`/reports/${id(74)}`),
+      () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(74)}`),
+    )
     const observation = page.getByRole('region', {name: 'Report observation'})
     await expect(observation).toContainText('Nova Roma Historical Homeworld')
     await expect(observation).toContainText('Very Long Destination Colony Name')
@@ -305,7 +327,10 @@ for (const width of [1280, 390]) {
       const {context} = route.request().postDataJSON()
       await route.fulfill({json: {protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: now, as_of_ms: now, data: {items, has_more: false, next_cursor: null, as_of_ms: now}}})
     })
-    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await withFixtureResponse(
+      page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/reports'),
+      () => page.goto(`/u/andromeda/b/${body.id}/reports`),
+    )
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(5)
     const tools = page.getByRole('group', {name: 'Report tools'})
