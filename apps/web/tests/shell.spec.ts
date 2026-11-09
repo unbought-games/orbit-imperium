@@ -1815,7 +1815,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Unknown planet')
-  await quote.getByRole('button', { name: 'Location actions for [1:1:3]', exact: true }).click()
+  await quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true }).click({ button: 'right' })
   await page.clock.runFor(100)
   await expect(page.getByRole('menuitem', { name: 'View in Galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
   await page.keyboard.press('Escape')

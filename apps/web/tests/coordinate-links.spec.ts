@@ -113,7 +113,7 @@ for (const width of [1280, 390, 320]) {
     const selected = page.locator('li[aria-current="location"]')
     await expect(selected).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
-    const control = selected.getByRole('button').first()
+    const control = selected.getByRole('link', { name: 'View [1:5:12] in galaxy', exact: true })
     await control.focus()
     await expect(control).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')

@@ -255,7 +255,7 @@ test('report glances expose historical mission facts in compact rows on desktop 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await diagnosticScreenshot(page, { path: `test-results/report-title-long-${width}.png` })
   }
-  await rows.nth(1).getByRole('button', { name: 'Location actions for [1:1:3]' }).click()
+  await rows.nth(1).getByRole('link', { name: 'View [1:1:3] in galaxy', exact: true }).click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)

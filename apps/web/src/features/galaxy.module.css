@@ -114,13 +114,7 @@
   color: #c9c5b9;
 }
 .coordinates {
-  color: #8d9da7;
   font-size: 0.75rem;
-}
-.coordinates button {
-  font-size: inherit;
-  color: inherit;
-  min-height: 24px;
 }
 .playerStatus {
   display: flex;
