@@ -9,6 +9,11 @@ export function WorkCardSurface({ children }: { children: ReactNode }) {
   return <div className={styles.surface}>{children}</div>
 }
 
+/** Secondary band below the active work: queue state or the work's own actions. */
+export function WorkCardFooter({ children }: { children: ReactNode }) {
+  return <div className={styles.footer}>{children}</div>
+}
+
 /** Shared active-work presentation; callers own timing and operation semantics. */
 export function ActiveWorkCard({
   item,

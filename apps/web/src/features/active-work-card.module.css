@@ -143,6 +143,18 @@
   box-shadow: 0 0 10px #a4dbef55;
 }
 
+.footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-5);
+  border-top: 1px solid #a4dbef26;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+}
+
 .identity h3 a {
   display: inline-flex;
   align-items: center;
@@ -231,6 +243,9 @@
   }
   .timers > div + div {
     padding-left: var(--space-2);
+  }
+  .footer {
+    padding-inline: var(--space-4);
   }
 }
 .timer .unconfirmed,
