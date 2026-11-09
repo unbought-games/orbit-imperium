@@ -8151,6 +8151,8 @@ export interface components {
             bonuses: components["schemas"]["TechnicalBonus3"][];
             combat: components["schemas"]["ShipCombatStatistics3"] | null;
             storage_capacities: string[] | null;
+            /** @description Whole resource units per defense: metal, crystal, deuterium, from active manufacturing rules. */
+            cost?: string[];
         };
         SimulationUnit: {
             item: components["schemas"]["ItemKey3"];
@@ -8348,6 +8350,10 @@ export interface components {
             type: "Directory";
             search: string;
             offset: number;
+            recruiting_only?: boolean;
+            language?: string | null;
+            beginners?: components["schemas"]["RecruitmentExperience"] | null;
+            activity?: components["schemas"]["RecruitmentActivity"] | null;
         } | {
             /** @constant */
             type: "Mine";

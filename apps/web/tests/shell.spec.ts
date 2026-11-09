@@ -944,7 +944,8 @@ for (const [kind, elapsed] of [
       await confirmCancellation(page)
     } else await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(cancel).toBeDisabled()
-    await expect(cancel).toHaveText('Cancelling…')
+    if (kind === 'construction') await expect(cancel).toHaveText('Cancelling…')
+    else await expect(summary.getByText('Cancelling', { exact: true })).toBeVisible()
     if (kind === 'construction') {
       await expect(summary).toContainText('Research Lab · Level 1')
     } else {

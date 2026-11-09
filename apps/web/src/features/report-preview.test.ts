@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest'
-import { reportPreview, reportAge, reportListIdentity } from './report-preview'
+import {
+  reportPreview,
+  reportAge,
+  reportListIdentity,
+  reportListTitle,
+} from './report-preview'
 
 it('shows abandoned planet coordinates without explanatory subtext', () => {
   const at = { galaxy: 1, system: 33, position: 4 }
@@ -354,4 +359,45 @@ it('preserves lunar endpoints in delivery, contact, deployment and return previe
       target_kind: 'Moon',
     }).targetKind,
   ).toBeUndefined()
+})
+
+it('uses the viewer participant for report titles and preserves historical uncertainty', () => {
+  const report = {
+    id: 'report',
+    kind: 'Combat' as const,
+    observed_at: 1000,
+    read: false,
+    hidden: false,
+    preview: {
+      kind: 'Combat' as const,
+      outcome: 'AttackerVictory' as const,
+      participants: [
+        { owner: 'other', side: 'Attacker' as const },
+        { owner: 'viewer', side: 'Defender' as const },
+      ],
+    },
+  }
+  expect(reportListTitle(report, 'viewer')).toMatchObject({
+    title: 'Defeat',
+    tone: 'loss',
+  })
+  expect(reportListTitle(report, 'other')).toMatchObject({
+    title: 'Victory',
+    tone: 'win',
+  })
+  expect(
+    reportListTitle(
+      { ...report, preview: { kind: 'Combat', outcome: 'DefenderVictory' } },
+      'viewer',
+    ),
+  ).toMatchObject({ title: 'Defender victory', tone: 'neutral' })
+  expect(
+    reportListTitle({ ...report, preview: { kind: 'Combat' } }, 'viewer'),
+  ).toMatchObject({ title: 'Combat', tone: 'neutral' })
+  expect(
+    reportListTitle(
+      { ...report, kind: 'ContactLost', preview: undefined },
+      'viewer',
+    ),
+  ).toMatchObject({ title: 'Contact Lost', tone: 'neutral' })
 })

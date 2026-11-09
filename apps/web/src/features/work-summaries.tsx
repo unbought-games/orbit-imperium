@@ -6,7 +6,7 @@ import { resolveDestination, type Page } from '../shell/routes'
 import { bodyName, label } from '../ui/format'
 import { Heading } from '../ui/typography'
 import { Link } from '../ui/link'
-import { Hammer, FlaskConical, Rocket, ArrowRight } from 'lucide-react'
+import { Hammer, FlaskConical, Rocket, ArrowRight, X } from 'lucide-react'
 import { useCountdown } from '../client-model/use-clock'
 import styles from './work-summaries.module.css'
 import { useContext } from 'react'
@@ -18,7 +18,7 @@ import { researchProgress } from '../client-model/research-progress'
 import { elapsedProgress } from './overview-progress'
 import { WorkCancellationButton } from './work-cancellation-button'
 import { ResearchSummaryContent } from './research-summary-content'
-import { ResourceSummary } from '../ui/number-value'
+import { CancellationReview } from './progression/active-work-details'
 import { manufacturingQueue } from '../client-model/manufacturing-queue'
 import { ManufacturingSummary } from './manufacturing-summary'
 import { LevelWorkSummary } from './level-work-summary'
@@ -189,6 +189,58 @@ export function WorkSummaries({
               category === 'research' && researchHost
                 ? `Host ${bodyName(researchHost)} [${researchHost.coordinates.galaxy}:${researchHost.coordinates.system}:${researchHost.coordinates.position}]`
                 : null
+            const cancel = layout !== 'directive' &&
+              work &&
+              session &&
+              cancelType && (
+                <WorkCancellationButton
+                  model={session.model}
+                  operationId={work.operationId}
+                  kind={cancelType}
+                  key={work.operationId ?? 'pending'}
+                  dialogTitle={
+                    cancelType === 'CancelConstruction'
+                      ? 'Cancel construction?'
+                      : 'Cancel research?'
+                  }
+                  review={
+                    <CancellationReview
+                      question={`Stop ${name}?`}
+                      paid={work.paid}
+                    />
+                  }
+                  variant={catalogWork ? 'ghost' : 'secondary'}
+                  size={catalogWork ? 'icon-touch' : undefined}
+                  title={
+                    catalogWork
+                      ? cancelType === 'CancelConstruction'
+                        ? 'Cancel construction'
+                        : 'Cancel research'
+                      : undefined
+                  }
+                  aria-label={
+                    cancelType === 'CancelConstruction'
+                      ? 'Cancel construction'
+                      : 'Cancel research'
+                  }
+                  disabled={!work.canCancel}
+                  onConfirm={() => {
+                    if (work.canCancel && work.operationId)
+                      void session.model.send({
+                        type: cancelType,
+                        operation: work.operationId,
+                      })
+                  }}
+                >
+                  {catalogWork ? (
+                    <X size={16} aria-hidden="true" />
+                  ) : work.status === 'Cancelling' ? (
+                    'Cancelling…'
+                  ) : (
+                    'Cancel'
+                  )}
+                </WorkCancellationButton>
+              )
             return (
               <section
                 className={`${styles.summary} ${compactWork ? styles.activeSummary : ''} ${(category === 'manufacturing' && queue.length > 0) || catalogWork ? styles.productionSummary : ''}`}
@@ -212,6 +264,7 @@ export function WorkSummaries({
                         ? constructionPercent
                         : researchPercent
                     }
+                    cancel={cancel}
                   />
                 ) : layout === 'directive' &&
                   category === 'research' &&
@@ -300,43 +353,7 @@ export function WorkSummaries({
                   </div>
                 )}
                 <div className={styles.actions}>
-                  {layout !== 'directive' && work && session && cancelType && (
-                    <WorkCancellationButton
-                      model={session.model}
-                      operationId={work.operationId}
-                      kind={cancelType}
-                      key={work.operationId ?? 'pending'}
-                      dialogTitle={
-                        cancelType === 'CancelConstruction'
-                          ? 'Cancel construction?'
-                          : 'Cancel research?'
-                      }
-                      confirmLabel="Confirm cancellation"
-                      cancelLabel="Keep working"
-                      review={
-                        <p>
-                          Stop {name} and refund{' '}
-                          <ResourceSummary value={work.paid} />?
-                        </p>
-                      }
-                      variant="secondary"
-                      aria-label={
-                        cancelType === 'CancelConstruction'
-                          ? 'Cancel construction'
-                          : 'Cancel research'
-                      }
-                      disabled={!work.canCancel}
-                      onConfirm={() => {
-                        if (work.canCancel && work.operationId)
-                          void session.model.send({
-                            type: cancelType,
-                            operation: work.operationId,
-                          })
-                      }}
-                    >
-                      {work.status === 'Cancelling' ? 'Cancelling…' : 'Cancel'}
-                    </WorkCancellationButton>
-                  )}
+                  {!catalogWork && cancel}
                   {showLink &&
                     (layout === 'directive' && research && target ? (
                       <ArrowRight size={18} aria-hidden="true" />

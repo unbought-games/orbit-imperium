@@ -613,15 +613,18 @@
   border: 1px solid var(--hud-border);
   background: linear-gradient(110deg, #cbb68d0b, transparent);
 }
-.research:has(a:focus-visible) {
+.research:has(a:focus-visible),
+.alliance:has(a:focus-visible) {
   outline: var(--focus-ring);
   outline-offset: 4px;
 }
-.empire .research a:focus-visible {
+.empire .research a:focus-visible,
+.empire .alliance a:focus-visible {
   outline: none;
 }
 @media (hover: hover) {
-  .research:has(a:hover) {
+  .research:has(a:hover),
+  .alliance:has(a:hover) {
     border-color: var(--ice);
     background-color: #a4dbef0a;
   }
@@ -1310,12 +1313,14 @@
   font-size: 0.75rem;
   text-decoration: none;
 }
-.idleResearchLink::after {
+.idleResearchLink::after,
+.allianceLink::after {
   content: '';
   position: absolute;
   inset: 0;
 }
 .alliance {
+  position: relative;
   margin-top: 16px;
   border: 1px solid var(--hud-border);
   background: #07151f80;

@@ -47,3 +47,39 @@
   outline-offset: 3px;
   border-radius: 4px;
 }
+
+.inputGroup {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+}
+.inputGroup > .control {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: calc(var(--control-size) - 2px);
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+.inputGroup:has(> .control:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.inputAccessory {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--text-muted);
+}
+.inputAccessory:first-child {
+  margin-inline-start: 14px;
+}
+.inputAccessory:last-child {
+  margin-inline-end: 14px;
+}
+.inputAccessory > svg {
+  width: 16px;
+  height: 16px;
+}

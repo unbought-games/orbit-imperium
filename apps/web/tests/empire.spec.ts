@@ -7,6 +7,7 @@ import {
   id,
   resources,
   shellFixture,
+  installGameFixture,
   refreshGame,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
@@ -1097,5 +1098,31 @@ for (const width of [390, 1440]) {
     await page.reload()
     await expect(ledger).toBeVisible()
     expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+  })
+}
+
+for (const member of [true, false]) {
+  test(`alliance panel waits for confirmed membership before offering discovery (${member ? 'member' : 'nonmember'})`, async ({ page }) => {
+    await installGameFixture(page, { protocol: 4, bodies: [body], missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' } })
+    let release!: () => void
+    const profilesReady = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/player-profiles', async route => {
+      await profilesReady
+      const { context } = route.request().postDataJSON()
+      const now = Math.floor(Date.now() / 1000)
+      await route.fulfill({ json: {
+        ...context,
+        players: [{ player: binding.player, username: 'Commander', observed_at: now, expires_at: now + 300,
+          ...(member ? { alliance: { id: id(800), universe: binding.universe, name: 'Starlight Assembly', tag: 'STAR' } } : {}),
+        } satisfies S['PlayerDisplay']],
+      } })
+    })
+    const requested = page.waitForRequest(request => request.url().endsWith('/player-profiles'))
+    await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await requested
+    const panel = page.getByRole('region', { name: 'Empire alliance', exact: true })
+    await expect(panel.getByRole('link', { name: 'Open alliance', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/alliance`)
+    await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), async () => { release() })
+    await expect(panel.getByRole('link', { name: member ? 'Your alliance' : 'Find your alliance', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/alliance${member ? '' : '/discover'}`)
   })
 }
