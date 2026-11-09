@@ -1,5 +1,22 @@
 # PR and main test performance audit
 
+## November 9, 2026: colony report readiness without the overview visit
+
+PR #375 run [42678831678](https://github.com/unbought-games/orbit-imperium/actions/runs/42678831678)
+browser shard 3/8 failed `colonization success links to a usable colony` inside
+`shellFixture`: the bootstrap response completed, but `main h1` did not render
+within the assertion deadline on a loaded runner. The failure snapshot contained
+the ready overview heading. The other 147 shard cases passed.
+
+No prior repair for this scenario exists in Git history or this audit; the
+separate owner Test Czar ledger was unavailable. This is its one repair attempt.
+The scenario never used the overview: it immediately navigated to the report.
+Both report variants now install the game fixture without visiting the overview
+and wait for their report POST with `withFixtureResponse` before asserting
+rendered content. No sleeps, retries, timeouts or product behavior changed.
+Local validation: all six colonization cases passed with three workers and no
+retries. The cross-spec audit of ungated navigations has its own owner.
+
 ## November 9, 2026: retire report-glance after its one repair
 
 The readiness repair above passed locally but did not establish reliability.
