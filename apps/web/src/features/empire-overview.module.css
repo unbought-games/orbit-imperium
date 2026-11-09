@@ -48,32 +48,6 @@
   margin: 13px 0 0;
   letter-spacing: 0.035em;
 }
-.strength {
-  display: flex;
-  gap: clamp(24px, 4vw, 64px);
-  margin: 0;
-}
-.strength div {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 5px;
-}
-.strength dt {
-  color: var(--hud-muted);
-  font:
-    0.625rem system-ui,
-    sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-.strength dd {
-  margin: 0;
-  font:
-    300 clamp(2rem, 3.5vw, 4rem) / 1 system-ui,
-    sans-serif;
-  letter-spacing: -0.06em;
-  color: var(--champagne-light);
-}
 .empireLedger {
   display: grid;
   grid-template-columns: 1.15fr repeat(3, minmax(0, 1fr));
@@ -969,17 +943,6 @@
     max-width: 180px;
     line-height: 1.6;
   }
-  .strength {
-    gap: 12px;
-    padding-top: 25px;
-  }
-  .strength dd {
-    font-size: 1.65rem;
-  }
-  .strength dt {
-    font-size: 0.5rem;
-    letter-spacing: 0.03em;
-  }
   .empireLedger {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     margin-bottom: 16px;
@@ -1100,12 +1063,6 @@
   }
 }
 @media (max-width: 359px) {
-  .strength {
-    gap: 7px;
-  }
-  .strength dd {
-    font-size: 1.35rem;
-  }
   .heading h2 {
     font-size: 2rem;
   }
@@ -1153,15 +1110,6 @@
   background: radial-gradient(ellipse, #071620ed 30%, #07162000 72%);
   padding: 8px 0;
 }
-@media (max-width: 767px) {
-  .strength {
-    flex-wrap: wrap;
-    max-width: 120px;
-  }
-  .strength dt {
-    white-space: nowrap;
-  }
-}
 .fleetBody {
   display: flex;
   flex: 1;
@@ -1169,15 +1117,6 @@
   min-height: 0;
 }
 @media (max-width: 767px) {
-  .strength {
-    flex-wrap: nowrap;
-    max-width: none;
-    flex-shrink: 0;
-    gap: 10px;
-  }
-  .strength dd {
-    font-size: 1.4rem;
-  }
   .fleetBoard .boardLink {
     display: none;
   }
@@ -1192,9 +1131,6 @@
   .heading {
     margin-bottom: 18px;
     align-items: center;
-  }
-  .strength {
-    padding-top: 0;
   }
   .panelHeading h3 {
     font-size: 1.25rem;
@@ -1217,19 +1153,6 @@
 }
 .heading h2 {
   font-size: 1.5rem;
-}
-.strength {
-  flex-wrap: wrap;
-  flex-shrink: 1;
-  max-width: 100%;
-  gap: 8px 20px;
-}
-.strength div {
-  flex-direction: row;
-  align-items: baseline;
-}
-.strength dd {
-  font-size: 1rem;
 }
 .commandDeck {
   grid-template-columns: minmax(0, 1fr);

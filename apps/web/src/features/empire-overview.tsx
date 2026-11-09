@@ -726,23 +726,7 @@ export function EmpireOverview({
   return (
     <section className={styles.empire} aria-label="Empire overview">
       <header className={styles.heading}>
-        <div>
-          <h2>Empire</h2>
-        </div>
-        <dl className={styles.strength}>
-          <div>
-            <dt>Planets</dt>
-            <dd>{String(planets).padStart(2, '0')}</dd>
-          </div>
-          <div>
-            <dt>Moons</dt>
-            <dd>{String(moons).padStart(2, '0')}</dd>
-          </div>
-          <div>
-            <dt>Fleets</dt>
-            <dd>{String(flights.length).padStart(2, '0')}</dd>
-          </div>
-        </dl>
+        <h2>Empire</h2>
       </header>
       <div className={styles.empireLedger} aria-label="Empire resource totals">
         <div className={styles.ledgerLabel}>
