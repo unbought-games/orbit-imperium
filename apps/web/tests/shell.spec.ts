@@ -2238,7 +2238,7 @@ test('server recall eligibility survives an elapsed client countdown', async ({
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   for (const width of [390, 1280]) {
-    test(`navigation and menus have no motion at ${width}px with ${reducedMotion}`, async ({ page }) => {
+    test(`navigation limits motion to desktop hover colors at ${width}px with ${reducedMotion}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 })
       await page.emulateMedia({ reducedMotion })
       await page.addInitScript(() => {
@@ -2251,14 +2251,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
             /wealthGuide(Glow|Pulse)/.test((event as AnimationEvent).animationName)
           if (!(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue) events.push('animation')
         }, true)
-        document.addEventListener('transitionrun', event => { if (!(event.target instanceof Element && event.target.closest('[data-command-hud]'))) events.push('transition') }, true)
+        document.addEventListener('transitionrun', event => {
+          const target = event.target
+          const isSidebarColor = matchMedia('(min-width: 1024px) and (prefers-reduced-motion: no-preference)').matches &&
+            target instanceof Element && target.matches('a, button') &&
+            target.closest('[aria-label="Game navigation"]') &&
+            ['background-color', 'color'].includes((event as TransitionEvent).propertyName)
+          if (!(target instanceof Element && target.closest('[data-command-hud]')) && !isSidebarColor) events.push('transition')
+        }, true)
         const start = document.startViewTransition.bind(document)
         document.startViewTransition = (...args) => {
           events.push('view-transition')
           return start(...args)
         }
       })
-      // Navigation stays motionless; the explicitly animated command HUD and
+      // Only desktop sidebar colors may transition; the animated command HUD and
       // slow wealth-guide pulse are checked separately. The hostile-fleet signal has
       // its own coverage, so keep this fixture free of incoming threats.
       const purchases = await shellFixture(page, {
@@ -2271,7 +2278,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           const isWealthCue = animation instanceof CSSAnimation && target instanceof Element &&
             target.closest('[aria-label="Empire resource totals"] dl') &&
             /wealthGuide(Glow|Pulse)/.test(animation.animationName)
-          return !(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue
+          const isSidebarColor = animation instanceof CSSTransition &&
+            matchMedia('(min-width: 1024px) and (prefers-reduced-motion: no-preference)').matches &&
+            target instanceof Element && target.matches('a, button') &&
+            target.closest('[aria-label="Game navigation"]') &&
+            ['background-color', 'color'].includes(animation.transitionProperty)
+          return !(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue && !isSidebarColor
         }).length)).toBe(0)
         expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
       }
@@ -2280,6 +2292,9 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         const link = name === 'Resources'
           ? page.getByRole('link', { name: 'Develop', exact: true })
           : page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name, exact: true })
+        const animated = width >= 1024 && reducedMotion === 'no-preference'
+        await expect(link).toHaveCSS('transition-duration', animated ? '0.15s, 0.15s' : '0s')
+        await expect(link).toHaveCSS('transition-property', animated ? 'background-color, color' : 'none')
         await link.hover()
         await assertStill()
         await link.click()

@@ -291,6 +291,18 @@
   }
 }
 
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .sidebarDestinations a,
+  .sidebarDestinations button,
+  .sidebarPlayer,
+  .accountMenuItem {
+    /* Requested hover feedback opts into the global transition reset. */
+    transition:
+      background-color 150ms ease,
+      color 150ms ease !important;
+  }
+}
+
 @media (min-width: 1024px) and (pointer: coarse) {
   .sidebarDestinations a,
   .sidebarDestinations button,
