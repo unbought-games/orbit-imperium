@@ -254,9 +254,18 @@ test('construction without a server start time stays honest and demolition remai
   await expect(summary.getByText('Tearing down', { exact: true })).toBeVisible()
   await expect(summary.getByText('Level 3', { exact: true })).toBeVisible()
   await expect(summary.getByRole('progressbar')).toHaveCount(0)
-  await expect(
-    summary.getByRole('button', { name: 'Cancel construction', exact: true }),
-  ).toBeEnabled()
+  const cancel = summary.getByRole('button', {
+    name: 'Cancel construction',
+    exact: true,
+  })
+  await expect(cancel).toBeEnabled()
+  const [cancelBox, summaryBox] = await Promise.all([
+    cancel.boundingBox(),
+    summary.boundingBox(),
+  ])
+  expect(cancelBox!.x + cancelBox!.width / 2).toBeGreaterThan(
+    summaryBox!.x + summaryBox!.width * 0.75,
+  )
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

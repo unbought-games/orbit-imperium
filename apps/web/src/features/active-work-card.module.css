@@ -146,8 +146,12 @@
 }
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {
   /* Touch-sized hit area keeps the icon aligned with the desktop position. */
+  .progressTrack {
+    gap: 2px;
+  }
   .progressAction {
-    margin: -16px -10px;
+    margin-block: -16px;
+    margin-inline-end: -10px;
   }
 }
 .progress {
