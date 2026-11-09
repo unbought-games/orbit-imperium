@@ -20,7 +20,6 @@ export function ProductionReviewAction() {
       )}
       {directive && (
         <div className={styles.reviewReward}>
-          <span>Reward</span>
           <ObjectiveReward reward={directive.reward} variant="inline" />
         </div>
       )}

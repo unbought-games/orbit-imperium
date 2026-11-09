@@ -1036,7 +1036,16 @@ test('planet ledger retains its borders beside the desktop sidebar', async ({
     if (width < 1024) expect(bounds!.x).toBeGreaterThan(content!.x)
     else expect(bounds!.x).toBeCloseTo(content!.x, 1)
     expect(bounds!.x + bounds!.width).toBeCloseTo(content!.x + content!.width, 1)
-    expect(bounds!.height).toBe(width < 1024 ? 64 : 82)
+    expect(bounds!.height).toBe(64)
+    if (width >= 1024) {
+      const brand = await page
+        .getByRole('complementary', { name: 'Game navigation' })
+        .getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
+        .boundingBox()
+      expect(
+        Math.abs(brand!.y + brand!.height / 2 - bounds!.y - bounds!.height / 2),
+      ).toBeLessThan(2)
+    }
     expect(
       (
         await bar.getByRole('button', { name: 'Metal details' }).innerText()
