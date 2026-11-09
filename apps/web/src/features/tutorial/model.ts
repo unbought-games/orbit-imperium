@@ -275,7 +275,7 @@ export function briefingProgress(
   data: TutorialData | null,
   view: S['BoundView4'],
 ) {
-  if (!data || !hasIncompleteBriefing(data)) return null
+  if (!data?.beginner || !hasIncompleteBriefing(data)) return null
   const objectives = data.chapters.flatMap((chapter) => chapter.objectives)
   const completed = objectives.filter((objective) => objective.completed).length
   const remaining = objectives.length - completed

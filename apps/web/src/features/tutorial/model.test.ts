@@ -8,6 +8,7 @@ import {
   objectiveDescription,
   tutorialPages,
   briefingEntryAvailable,
+  briefingProgress,
   tutorialMorePages,
   objectiveStatus,
   accomplishmentTitle,
@@ -341,4 +342,12 @@ it('keeps initial navigation compact and briefing reachable while its first read
   expect(briefingEntryAvailable(data, 4)).toBe(true)
   expect(briefingEntryAvailable({ ...data, enrolled: false }, 4)).toBe(false)
   expect(briefingEntryAvailable(null, 2)).toBe(false)
+})
+
+it('shows overview briefing progress only in the beginner interface', () => {
+  const { data, view } = fixture()
+  data.beginner = true
+  expect(briefingProgress(data, view)).toMatchObject({ step: 1, total: 31 })
+  data.beginner = false
+  expect(briefingProgress(data, view)).toBeNull()
 })
