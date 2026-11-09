@@ -1218,6 +1218,23 @@ for (const width of [1280, 390]) {
         const dialog = page.getByRole('dialog', {name: 'Command uplink'})
         const all = dialog.getByRole('link', {name: 'All reports', exact: true})
         await expect(all).toBeInViewport()
+        const fleets = dialog.getByRole('button', {name: /^Fleets/})
+        await expect(fleets).toHaveAttribute('aria-expanded', 'false')
+        const heading = dialog.getByRole('heading', {name: 'Reports & messages'})
+        expect((await fleets.boundingBox())!.y).toBeLessThan((await heading.boundingBox())!.y)
+        const actions = dialog.getByRole('group', {name: 'Report and message actions'})
+        for (const action of await actions.locator('a, button').all()) {
+          const bounds = (await action.boundingBox())!
+          expect(bounds.width).toBe(width < 768 ? 44 : 24)
+          expect(bounds.height).toBe(width < 768 ? 44 : 24)
+          await expect(action).toHaveAttribute('data-button-variant', 'ghost')
+        }
+        await expect(all).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports`)
+        await expect(actions.getByRole('link', {name: 'Messages', exact: true})).toHaveAttribute('href', `/u/andromeda/b/${body.id}/messages`)
+        await diagnosticScreenshot(page, {path: `test-results/reports-orb-idle-${width}x900.png`})
+        await all.focus()
+        await expect(all).toBeFocused()
+
         const first = dialog.locator('[aria-label="Intelligence list"] button').first()
         await expect(first).toBeVisible()
         expect((await all.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y)

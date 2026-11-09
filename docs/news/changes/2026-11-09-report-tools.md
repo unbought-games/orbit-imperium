@@ -6,8 +6,9 @@ date: '2026-11-09T15:00:00Z'
 
 The Reports menu and command orb inbox now have **Mark all as read**. It covers
 all your reports, including archived reports and pages you haven't loaded, while
-keeping stars, shared links, and archive choices intact. **All reports** is at
-the top of the orb inbox, so a long unread list can't bury it.
+keeping stars, shared links, and archive choices intact. **All reports** is in
+the compact report header below your collapsed fleets, so a long unread list
+can't bury it.
 
 The archive menu remembers your last age preset and custom hours in this browser.
 Opening it still lets you review the selection before archiving anything.
