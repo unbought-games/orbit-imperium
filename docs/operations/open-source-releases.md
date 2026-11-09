@@ -50,6 +50,16 @@ an existing record must match exactly. Staging `build-<run>-<arch>` tags
 are implementation artifacts, not supported release references. Their names stay
 stable across attempts so rerunning only failed jobs can reuse successful builds.
 
+## Changelog ownership
+
+`CHANGELOG.md` is an index of numbered releases. Only release preparation updates
+it, adding a link to the version's canonical announcement and detailed notes in
+`docs/news/releases/vVERSION.md`. Never add an `Unreleased` section or unreleased
+change entries. Feature and fix PRs leave the index untouched; concurrent work
+records substantive changes in separate build notes under `docs/news/changes/`.
+Release preparation assembles the version's notes from the complete Git/PR range
+and those build notes, rather than a shared running changelog.
+
 ## Contributor credit
 
 Every release with external contributions must acknowledge all of those
@@ -57,11 +67,10 @@ contributors. Credit code and coauthorship as well as documentation, testing,
 artwork, translations, and verified reports or reviews that led to included changes.
 An editorial decision to omit a maintenance change must not omit its contributor.
 
-When a contribution lands, add a linked acknowledgment to its build note in
-`docs/news/changes/` and the `Unreleased` section of `CHANGELOG.md`. State what the
-person contributed; preserve original authorship and coauthor trailers when
-integrating or squashing their work. Maintainer follow-up does not replace the
-original contributor's credit.
+When a contribution lands, add a linked acknowledgment to its individual build
+note in `docs/news/changes/`. State what the person contributed; preserve original
+authorship and coauthor trailers when integrating or squashing their work.
+Maintainer follow-up does not replace the original contributor's credit.
 
 During release preparation and every refresh of an existing release draft:
 
@@ -79,12 +88,12 @@ During release preparation and every refresh of an existing release draft:
 3. Include a `Contributors` section in `docs/news/releases/vVERSION.md` listing
    every external contributor in that range. Preserve credit beside a feature
    when useful, and thank first-time contributors explicitly. Reconcile the section
-   against the full audit, existing build notes, and unreleased changelog credits.
-   Remove credits for work excluded from the release; retain them as unreleased.
-4. Once included credits are in the version's notes, remove only the corresponding
-   entries from `CHANGELOG.md`'s `Unreleased` section, removing the section if empty.
-   The numbered changelog entry links to those canonical notes. Preparation
-   preserves existing text; the agent performs this reconciliation, not the script.
+   against the full audit and existing build notes. Remove credits for work
+   excluded from the release's notes; preserve their original build notes for a
+   future release.
+4. Keep the original build notes and their acknowledgments after including them
+   in the version's notes. The numbered changelog entry links to those canonical
+   release notes; do not copy individual changes or credits into `CHANGELOG.md`.
 5. Check that the rendered notes retain the acknowledgments and links. GitHub
    Releases and the website use the same version post; preserve its credits in
    announcements and summaries, too. A source-comparison link or generic thanks
