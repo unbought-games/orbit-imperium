@@ -329,9 +329,7 @@ test('vacation and inactivity coexist; tooltips support hover, keyboard, tap and
   await page.mouse.move(0, 0)
   await vacation.click()
   await expect(page.getByRole('tooltip')).toContainText('Attacks and espionage')
-  await page
-    .getByRole('heading', { name: 'Galaxy', exact: true })
-    .click({ force: true })
+  await rows(page).first().getByText('Your planet', { exact: true }).click()
   await expect(page.getByRole('tooltip')).toBeHidden()
   await card
     .getByRole('button', { name: 'Activity within the last 15 minutes' })
