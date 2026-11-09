@@ -109,7 +109,11 @@
   gap: 8px 16px;
 }
 .reward[data-variant='inline'] .amount {
+  align-items: baseline;
   gap: 6px;
+}
+.reward[data-variant='inline'] .amount svg {
+  align-self: center;
 }
 .reward[data-variant='inline'] strong {
   font-size: var(--font-size-sm);
