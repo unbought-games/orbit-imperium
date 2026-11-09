@@ -59,7 +59,8 @@ line height. Do not wrap names in flex boxes to align them with prose, set a min
 control height on their inline links, or apply screen-specific vertical offsets.
 Names must wrap across lines together with surrounding sentences.
 
-Inline insignias scale with the text. Supporter badges are capped at 16px. Each
+Inline insignias scale with the text. Supporter badges are capped at 16px. Both
+marks center on capital letters, not lowercase letters. Each
 mark stays with the adjacent complete Unicode character; the rest of the name
 remains free to wrap. Badge tooltip hit targets extend outside the line box rather
 than changing paragraph spacing. Use baseline alignment for separate text items
