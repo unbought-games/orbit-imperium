@@ -26,7 +26,9 @@ export function developmentActivity(state: GameState, body?: string) {
   if (construction)
     active.add(catalogPage({ kind: 'Building', id: construction.building }))
   for (const batch of manufacturingQueue(view, body, pending.manufacturing)) {
-    if (BigInt(batch.remaining) > 0n) active.add(catalogPage(batch.item))
+    if (BigInt(batch.remaining) <= 0n) continue
+    active.add(catalogPage(batch.item))
+    if (batch.item.kind === 'Missile') active.add('shipyard')
   }
   return active
 }

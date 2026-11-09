@@ -93,7 +93,7 @@ it('marks account-wide research on either planet and independently marks produci
   expect([...developmentActivity(state, 'home')]).toEqual([])
 })
 
-it('marks missile production in defense, where missiles are built', () => {
+it('marks missile production in the shipyard that builds them and the defense page that lists them', () => {
   const { state, view } = fixture()
   view.progression.manufacturing = [
     {
@@ -113,7 +113,9 @@ it('marks missile production in defense, where missiles are built', () => {
       can_cancel: false,
     },
   ]
-  expect([...developmentActivity(state, 'home')]).toEqual(['defense'])
+  expect(developmentActivity(state, 'home')).toEqual(
+    new Set(['shipyard', 'defense']),
+  )
 })
 
 it('includes unresolved submitted work and removes rejected work without storing badge state', () => {
