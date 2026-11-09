@@ -1,5 +1,9 @@
 import { test, expect } from './fixtures/test'
-import { inlineBaseline, textLineMetrics } from './fixtures/identity-typography'
+import {
+  capCenterOffset,
+  inlineBaseline,
+  textLineMetrics,
+} from './fixtures/identity-typography'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
@@ -29,6 +33,12 @@ for (const width of [1440, 390, 320]) {
         ).toBeLessThan(0.15)
       }
     }
+    const marks = page.locator(
+      ':is([data-baseline], [data-paragraph], [data-heading]) :is([data-shape], [role="img"][aria-label^="Supporter"])',
+    )
+    await expect(marks.first()).toBeVisible()
+    for (const mark of await marks.all())
+      expect(Math.abs(await mark.evaluate(capCenterOffset))).toBeLessThan(0.15)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

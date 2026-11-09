@@ -33,6 +33,9 @@
   width: min(1em, 16px);
   height: min(1em, 16px);
   vertical-align: middle;
+  /* Middle centers on lowercase letters; raise to the capital letter center. */
+  top: -0.09em;
+  top: calc((1ex - 1cap) / 2);
   line-height: 0;
   color: var(--supporter-color, inherit);
 }
