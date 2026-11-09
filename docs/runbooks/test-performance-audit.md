@@ -1,5 +1,95 @@
 # PR and main test performance audit
 
+## November 9, 2026: retire report-glance after its one repair
+
+The readiness repair above passed locally but did not establish reliability.
+PR-head run [42659657516](https://github.com/unbought-games/orbit-imperium/actions/runs/42659657516)
+at `8c1de6c83f041e0d7b7f73508e280a8f0449b15c` stalled in browser shard 7/8.
+The authenticated live job log and subsequently downloaded log contain successful
+completion for all 145 other cases (test numbers 1–146 except 76), but no
+completion for `report glances expose historical mission facts in compact rows
+on desktop and phone`. Its four neighboring report-glance cases completed.
+The last other case finished at 17:04:57 UTC; cancellation at 17:20:39 UTC
+ended more than fifteen minutes of no progress. This is failed validation, not
+a pass, even though all other PR jobs and automated review passed.
+
+Removed that entire browser scenario under the one-repair rule. It is not
+renamed, skipped, recreated, given a longer timeout, or stabilized again.
+The previous section records its first failure, history search and repair.
+No root cause beyond the stalled scenario is claimed for this second failure.
+The four independent delivered-detail/report-tools browser cases remain with
+their response gates, and existing report-deletion tests retain row navigation,
+keyboard actions, selection and archive interactions.
+
+Retained deterministic protection in report-preview, report-fleet-summary,
+combat-report-model and resource-mark tests covers historical report facts,
+known/unknown data, names, fleet counts, viewer-relative outcomes and canonical
+resource symbols/colors. Added a focused reportListTitle test for selecting the
+viewer's participant when another participant appears first, historical reports
+without participant/outcome knowledge, and the Contact Lost fallback. The
+removed broad visual scenario's exact layout/contrast permutations are no
+longer claimed as covered. No product UI changes were needed.
+
+Validation: `8c1de6c8` plus the two test-file diff SHA-256
+`cf8d2bdafc760bc2ac42269e5a43e9772a263c41b96197a185fec49b6eee105c` (this audit entry is documentation-only).
+All 55 deterministic tests passed in 0.259s. All four retained browser cases
+passed in 10.9s after 1.903s module preparation, one worker, no retries or local
+runner queue. ESLint, TypeScript and whitespace checks passed. The runner
+closed its browser/Vite server and released its port; no Docker was used.
+
+Counts so far: one original integration assertion failure, one post-repair
+PR-head stall canceled after inspection, one canceled superseded integration
+run, and one failed queue entry removal. The stalled job prepared its runner
+from 16:57:54 to 16:58:58 UTC; test execution ran until cancellation at
+17:20:39 UTC, followed by GitHub cleanup of its orphan processes. No unchanged
+CI retry was requested. The implementation owner retains this repair/removal
+and latest-revision follow-through in PR #374; no independent follow-up is
+unassigned. Final CI and merge timing are recorded on that PR.
+
+## November 9, 2026: report-glance lazy-response readiness
+
+PR #374 merge-group run [42653338937](https://github.com/unbought-games/orbit-imperium/actions/runs/42653338937)
+tested integration `6ea33c8be8f8a3f84472118c403ad73d9a1869e4` over source
+`d457faaae7daad25dcb15b76f6178923c727ab97`. Browser shard 7/8 failed
+`report glances expose historical mission facts in compact rows on desktop and phone`
+at the ContactLost color assertion: after `page.reload()`, the first row's
+`strong` element was absent for the assertion deadline. The failure snapshot
+already contained the expected Contact Lost row. HTML readiness did not wait
+for the lazy report POST or its complete body. The other 145 shard cases passed.
+
+Inspected the scenario, its Git history (including #158, #354 and #365), and this
+audit. No prior readiness repair was found for this scenario; #158's separately
+named disabled-control repair changed report-deletion.spec.ts, not this test.
+The separate owner Test Czar ledger was not available. This is the scenario's
+one repair attempt: use the existing `withFixtureResponse` helper before each
+navigation/reload, matching the report POST (not the HTML GET), then retain all
+existing observable content, layout, focus, color and contrast assertions.
+
+Audited all eight report navigation/reload sites in report-glance.spec.ts,
+including the delivered details and responsive tools cases, and applied the
+same response boundary to all five scenarios. The PR #374 owner delivers this
+common-pattern repair in this chat; no independent follow-up remains. No
+product behavior, sleeps, retries or timeout settings changed. Existing
+report-preview and fleet-summary unit tests retain deterministic report facts,
+missing data, identities and fleet-summary arithmetic.
+
+Validation: source `d457faaa` plus the test-only diff SHA-256
+`c13511dd4a72d5a18cc2021837c4bc7553c5b1030f7d9028ada6c5f792b69678` (this ledger entry is documentation-only).
+The initial local pass was 5/5 in 23.1s with 2.050s module preparation. Inspection
+then tightened the response matcher to POST so an HTML response cannot satisfy
+it; final validation passed 5/5 in 23.2s with 1.734s preparation. Both used one
+worker, no retries and no local runner queue. The 29 report-preview/fleet-summary
+unit tests passed in 0.245s; ESLint and whitespace checks passed. No UI changed,
+so the previously inspected defense screenshots remain current.
+
+One remote failed scenario, zero local assertion failures. The first integration
+run was superseded when a preceding PR left the queue; its obsolete workflow
+42652228544 was canceled to free runner capacity. No blind CI rerun occurred.
+The failed shard's runner wait was 17m 2s after scope selection, setup was
+1m 22s, browser execution 10.2m, and cleanup/artifact upload about 4s. The UI
+runner stopped Vite and Chromium and released its port; no Docker was started.
+Final pushed-head and merge-group results are recorded on PR #374.
+
 ## November 5, 2026: recovery fixture teardown after its first repair
 
 [Main CI run 42114714101](https://github.com/unbought-games/orbit-imperium/actions/runs/42114714101)
@@ -1301,3 +1391,28 @@ and `adapters/player-profiles.test.ts` (source-bound transport contracts).
 No product source/UI changed and no new screenshot requirement is introduced.
 The original queue failure/removal is counted alongside the initial PR failure;
 fresh PR/review and integration checks are required for the updated head.
+
+## November 9, 2026: Alliance PR #362 feedback
+
+Reviewed failing CI run 42434513400 at head 54e6f6fb. Native build/lint/unit checks passed; the separate aggregate “Build, lint and unit tests” gate failed because database/rest and browser shard 1 failed. No top-level CI conversation comments were present.
+
+- Validated Bugbot thread PRRT_kwDOVRgPYs608nmU: welcome retry called the controller directly, bypassing navigation, profile invalidation and recruitment tracking. First submissions, ordinary retries and welcome retries now share one successful-completion path; retry captures the original pending action before the controller clears it. New Join/Apply welcome browser cases verify home destination, resulting board/application list and identical retried command ID/payload after an explicit 503.
+- Browser failure `open and closed recruitment and existing membership drive the available controls`: the five-second assertion began after HTML navigation through two route transitions, before both Mine/public data were known delivered. The failure artifact already contained the expected closed-recruitment text. Inspected test history and this ledger; no prior repair to this scenario was found. This is its one repair: a shared response helper registers both required listeners before navigation/reload, then asserts actual content. The scenario's directory transition is also response-gated. Audited the other public-profile caller and applied the same readiness helper to uncertain retry; all original assertions remain. No sleep, timeout change or rerun-for-luck.
+- Database failures `alliance_identity::delayed_espionage_preserves_event_affiliation_through_rename_disband_and_sharing` and `alliances::accept_join_create_compete_and_withdraw_all_pending` occurred in fresh schema preparation at the existing ten-second production deadline, before domain assertions. Four cold database binaries started together; resource contention is the working diagnosis. Limit CI database work to two binaries using Make's existing DB_JOBS setting. All binaries share this limit; each still has its own disposable database and serial tests. No production migration/lock/statement timeout, database durability, assertion or suite selection changed. The same first four suites are the local validation batch; CI must confirm the runner-capacity repair.
+- Integrated main 901cad85 because GitHub reported a conflict; combined the arrival/loading browser suite entries and regenerated contracts/routes.
+
+Local validation after repair: 4 focused browser tests passed (preparation 4.978s; runner 8.1s); 18 relevant units passed in 321ms; 129 tooling tests passed with one existing skip in 16.510s; full static checks and production build passed (17.94s). All 17 PostgreSQL tests across alliance_identity, alliances, analytics and attack_groups passed with DB_JOBS=2 (compile 30.97s, total 105.64s; alliance suite 46.177s and attack_groups 60.483s). Native runners cleaned up browser servers and disposable databases. No repair validation failures or removals. This chat owns the first repair and its CI follow-through; there is no unassigned independent follow-up. Implementation screenshots remain deferred under the user's standing instruction.
+
+### November 9: unknown Empire alliance membership
+
+Validated the second Bugbot finding, thread PRRT_kwDOVRgPYs61UJl6. An absent/expired player profile was treated like confirmed nonmembership and routed to discovery. Unknown membership now opens Alliance home with the neutral “Open alliance” label; only a delivered profile without an alliance offers discovery. Held-response browser scenarios cover member and nonmember profile arrivals without sleeps or clock assumptions.
+
+Initial new-scenario run: member passed; nonmember failed because the authored fixture sent `alliance: null`, but PlayerDisplay permits an omitted field rather than null. Checked the schema, scenario history and repair ledger: this newly added case had no previous repair. Its single repair omits the absent field and types the fixture with PlayerDisplay. Focused nonmember repair passed (1.9s test, 3.7s runner, 4.148s preparation); initial run was 10.6s with 5.484s preparation. No production workaround or assertion relaxation. TypeScript, scoped ESLint and whitespace checks passed.
+
+### November 9: merge-queue route readiness repair
+
+Queue attempt 1: enqueued 15:59:15 UTC at PR head c4eb74de; merge-group tree 61f2297c, CI run 42650189371. All native and database checks passed. Browser shard 7 failed `public alliance entry keeps its query and hash when resolving the universe name`: the URL assertion started after bootstrap delivery while the lazy Alliance redirect still had work pending. The error records the intermediate /alliance URL; the subsequent failure DOM shows Discover alliances with public-profile loading. This is asynchronous route readiness, not a wrong retained query/hash.
+
+History shows the test was introduced in e8a96d81 with no previous repair; the earlier task only changed its expected destination. Single repair: register membership/public-profile response listeners before navigation and verify rendered content before the exact final URL. Audited the shared bootstrap-only helper callers: the two Alliance history/planet-switching cases now also wait for Mine on initial navigation and reload. Their exact URL/query/hash/history assertions remain intact; non-Alliance cases are unchanged. No sleep, timeout increase, removed assertion or duplicate scenario. The implementation chat owns this bounded repair and its queue verification.
+
+Focused repair validation: all 3 affected cases passed (1.925s preparation, 3.7s runner); whitespace checks passed. The native fixture runner cleaned up. Previous PR-head CI run 42645503712 was entirely green on c4eb74de, including automated review; queue failures are recorded separately and are not erased by that earlier success. Screenshots remain deferred at user request.

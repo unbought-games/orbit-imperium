@@ -32,3 +32,14 @@ export function inlineBaseline(element: Element) {
   probe.remove()
   return baseline
 }
+/** Vertical distance between an inline mark's center and the center of capital letters. */
+export function capCenterOffset(mark: Element) {
+  const probe = document.createElement('span')
+  probe.style.cssText =
+    'display:inline-block;width:0;height:1cap;padding:0;margin:0;border:0;vertical-align:baseline'
+  mark.before(probe)
+  const cap = probe.getBoundingClientRect()
+  probe.remove()
+  const box = mark.getBoundingClientRect()
+  return (box.top + box.bottom) / 2 - (cap.top + cap.bottom) / 2
+}

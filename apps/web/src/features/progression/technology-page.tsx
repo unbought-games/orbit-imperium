@@ -1,3 +1,4 @@
+import { UnitComparison } from './unit-comparison'
 import { ShipComparison } from './ship-comparison'
 import { useState } from 'react'
 import { Network } from 'lucide-react'
@@ -207,6 +208,13 @@ export function TechnologyPage(props: ProgressionProps) {
         ))}
       </div>
       {!entries.length && <p>No catalog is available for this body.</p>}
+      {page === 'defense' && (
+        <UnitComparison
+          kind="Defense"
+          catalog={view.catalog}
+          research={view.research}
+        />
+      )}
       {page === 'shipyard' && (
         <ShipComparison catalog={view.catalog} research={view.research} />
       )}
@@ -292,6 +300,14 @@ function TechnologyInspector({
           onQuantity={setQuantity}
           onInspect={() => inspect()}
           onTechnology={() => setTechnology(true)}
+        />
+      )}
+      {selected.key.kind === 'Defense' && (
+        <UnitComparison
+          kind="Defense"
+          catalog={view.catalog}
+          research={view.research}
+          initialId={selected.key.id}
         />
       )}
       {selected.key.kind === 'Ship' && (

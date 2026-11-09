@@ -1,3 +1,4 @@
+import { LoadingRegion } from '../../ui/loading-region'
 import type { components } from '../../contracts'
 import { useGameSession } from '../../shell/session-context'
 import { universeSlug } from '../../client-model/universe-name'
@@ -39,28 +40,32 @@ export function AllianceWelcome({
         Your empire is ready. Joining an alliance is optional—you can start
         playing whenever you like.
       </p>
-      {publicAlliance.error ? (
-        <>
-          <p role="alert">{publicAlliance.error}</p>
-          <Button onClick={publicAlliance.retry}>Retry invitation</Button>
-        </>
-      ) : data ? (
-        <>
-          <Summary summary={data.summary} />
-          {data.summary.id === alliance && (
-            <Recruit
-              summary={data.summary}
-              view={view}
-              run={run}
-              busy={busy}
-              messageRows={3}
-              initialMessage={`Hi! I’d like to join ${data.summary.name}.`}
-            />
-          )}
-        </>
-      ) : (
-        <p role="status">Loading alliance…</p>
-      )}
+      <LoadingRegion
+        contentClassName={styles.stack}
+        loading={!data && !publicAlliance.error}
+        label="Loading alliance…"
+      >
+        {publicAlliance.error ? (
+          <>
+            <p role="alert">{publicAlliance.error}</p>
+            <Button onClick={publicAlliance.retry}>Retry invitation</Button>
+          </>
+        ) : data ? (
+          <>
+            <Summary summary={data.summary} />
+            {data.summary.id === alliance && (
+              <Recruit
+                summary={data.summary}
+                view={view}
+                run={run}
+                busy={busy}
+                messageRows={3}
+                initialMessage={`Hi! I’d like to join ${data.summary.name}.`}
+              />
+            )}
+          </>
+        ) : null}
+      </LoadingRegion>
       {pending && <Button onClick={retryCommand}>Retry last command</Button>}
       {error && (
         <>
@@ -84,7 +89,7 @@ export function AllianceWelcome({
         </ButtonLinkAnchor>
         <ButtonLinkAnchor
           variant="secondary"
-          href={`/u/${universeSlug(universeName)}/alliance`}
+          href={`/u/${universeSlug(universeName)}/alliance/discover`}
         >
           Browse alliances
         </ButtonLinkAnchor>

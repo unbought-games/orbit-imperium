@@ -235,9 +235,15 @@
     background: var(--surface-navigation-selected);
     box-shadow: inset 2px 0 var(--accent);
   }
-  .sidebarDestinations > a > svg {
+  .sidebarDestinations > :is(a, button) > svg,
+  .moreDestinations :is(a, button) > svg {
     width: 19px;
     height: 19px;
+    flex-shrink: 0;
+  }
+  .sidebarDevelop :is(a, button) > svg {
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
   }
   .sidebarDevelop {
@@ -288,6 +294,18 @@
     justify-content: space-between;
     gap: 8px;
     font-size: var(--font-size-sm);
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .sidebarDestinations a,
+  .sidebarDestinations button,
+  .sidebarPlayer,
+  .accountMenuItem {
+    /* Requested hover feedback opts into the global transition reset. */
+    transition:
+      background-color 150ms ease,
+      color 150ms ease !important;
   }
 }
 

@@ -29,14 +29,23 @@ implementation details are needed.
 
 All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests are squash-merged, so the PR title becomes the commit title. Verify the title before creating or updating a PR.
 
+## Changelog
+
+`CHANGELOG.md` is an index of numbered releases, updated only during release
+preparation. Never add an `Unreleased` section or unreleased change entries.
+Feature and fix PRs must leave it untouched. Keep change-specific notes and
+contributor acknowledgments in individual files under `docs/news/changes/`;
+assemble the version's complete notes from those files and Git/PR history during
+release preparation.
+
 ## Contributor credit
 
 Credit every external contributor in the release notes for their included work,
 including coauthors and documentation, testing, artwork, translation, and verified
 reports or reviews that led to a change. Preserve attribution when integrating or
-squashing their work. Add credit to the relevant build note and unreleased
-changelog entry when the contribution lands, then carry it into the numbered
-release. Follow the [contributor credit process](docs/operations/open-source-releases.md#contributor-credit)
+squashing their work. Add credit to the relevant build note when the contribution
+lands, then carry it into the numbered release notes during release preparation.
+Follow the [contributor credit process](docs/operations/open-source-releases.md#contributor-credit)
 when preparing or refreshing notes; editorial filtering must not drop contributors.
 
 ## UI screenshots

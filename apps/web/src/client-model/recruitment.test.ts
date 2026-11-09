@@ -26,7 +26,7 @@ describe('alliance entry context', () => {
       ).toEqual(entry)
     expect(validateAuthSearch({ redirect: path })).toEqual({ redirect: path })
     expect(allianceWelcomePath('New Andromeda', entry)).toBe(
-      `/u/new-andromeda/alliance?alliance=${alliance}&welcome=1&invitation=${invitation}`,
+      `/u/new-andromeda/alliance/discover?alliance=${alliance}&welcome=1&invitation=${invitation}`,
     )
   })
   it('rejects external, malformed, recursive and incomplete invitation destinations', () => {
