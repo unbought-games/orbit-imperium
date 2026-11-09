@@ -2179,3 +2179,38 @@ test('desktop Harvest keeps its Actions anchor when the planet changes', async (
   await expect(popover).not.toBeVisible()
   await expect(actions(page, 2)).toBeFocused()
 })
+
+test('a probe in flight to one target leaves Spy available for the other targets', async ({
+  page,
+}) => {
+  await setup(page, null)
+  const destinations: string[] = []
+  let releaseFirst!: () => void
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve
+  })
+  await routeWorld(page, async (route) => {
+    const request = route.request().postDataJSON()
+    if (request.type !== 'FleetQuote') return route.fallback()
+    destinations.push(request.intent.destination.id)
+    if (request.intent.destination.id === id(21)) await firstGate
+    await route.fulfill({
+      status: 409,
+      json: { code: 'InsufficientResources' },
+    })
+  })
+  await spy(page, 2).click()
+  await expect.poll(() => destinations).toEqual([id(21)])
+  await expect(spy(page, 2)).toBeDisabled()
+  await expect(spy(page, 2)).toHaveAttribute('title', 'Sending a probe…')
+  await expect(spy(page, 3)).toBeEnabled()
+  await expect(spy(page, 3)).toHaveAttribute(
+    'title',
+    'Send one espionage probe',
+  )
+  await spy(page, 3).click()
+  await expect.poll(() => destinations).toEqual([id(21), id(22)])
+  releaseFirst()
+  await expect(spy(page, 2)).toBeEnabled()
+  await expect(spy(page, 3)).toBeEnabled()
+})
