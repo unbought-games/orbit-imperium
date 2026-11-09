@@ -1,3 +1,4 @@
+import { combatForceGroups } from './combat-force-groups'
 import { MoonCreationSummary } from './moon-creation-summary'
 import { ResourceSummary } from '../ui/number-value'
 import type { ReactNode } from 'react'
@@ -56,33 +57,46 @@ function ForceTable({
             <th scope="col">{settled ? 'Lost' : 'Destroyed'}</th>
           </tr>
         </thead>
-        <tbody>
-          {force.rows.map((row) => (
-            <tr key={row.key}>
-              <th scope="row">{row.name}</th>
-              <td>
-                <Amount value={row.start} />
-              </td>
-              <td>
-                <Amount value={row.finish} />
-              </td>
-              {recovery && (
+        {combatForceGroups(force).map((group) => (
+          <tbody key={group.title ?? 'units'}>
+            {group.title && (
+              <tr>
+                <th
+                  scope="rowgroup"
+                  colSpan={recovery ? 5 : 4}
+                  className={styles.unitGroup}
+                >
+                  {group.title}
+                </th>
+              </tr>
+            )}
+            {group.rows.map((row) => (
+              <tr key={row.key}>
+                <th scope="row">{row.name}</th>
                 <td>
-                  <Amount value={row.recovered} />
+                  <Amount value={row.start} />
                 </td>
-              )}
-              <td
-                className={
-                  (settled ? row.permanent : row.lost) === 0n
-                    ? undefined
-                    : styles.lossNumber
-                }
-              >
-                <Amount value={settled ? row.permanent : row.lost} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
+                <td>
+                  <Amount value={row.finish} />
+                </td>
+                {recovery && (
+                  <td>
+                    <Amount value={row.recovered} />
+                  </td>
+                )}
+                <td
+                  className={
+                    (settled ? row.permanent : row.lost) === 0n
+                      ? undefined
+                      : styles.lossNumber
+                  }
+                >
+                  <Amount value={settled ? row.permanent : row.lost} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        ))}
       </table>
       {!force.rows.length && <p className={styles.note}>No units.</p>}
     </div>
