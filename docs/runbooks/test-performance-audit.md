@@ -46,22 +46,6 @@ CI retry was requested. The implementation owner retains this repair/removal
 and latest-revision follow-through in PR #374; no independent follow-up is
 unassigned. Final CI and merge timing are recorded on that PR.
 
-## November 9, 2026: retire the phone report-tools variant after its repair
-
-PR #376 run [42678825556](https://github.com/unbought-games/orbit-imperium/actions/runs/42678825556)
-stalled in browser shard 7/8. All 146 other cases completed by 19:15:33 UTC;
-test 81, `compact report tools combine filters and preserve their controls at
-390px`, started about 19:12:37 UTC and never finished. The run was canceled at
-20:01:55 UTC with no failure diagnostics. Thirty local repetitions of both widths
-on the PR head merged with main passed.
-
-PR #374 already gave this scenario its readiness repair (the report POST gate
-recorded below). Under the one-repair rule, the 390px variant is removed
-outright; it is not renamed, skipped, retried or given a timeout. The 1280px
-variant keeps sort, filter, selection, cleanup and resize-to-phone coverage.
-The phone-only filter sheet and the More report actions selection entry point
-are no longer claimed as browser-covered. No product UI changed.
-
 ## November 9, 2026: report-glance lazy-response readiness
 
 PR #374 merge-group run [42653338937](https://github.com/unbought-games/orbit-imperium/actions/runs/42653338937)
