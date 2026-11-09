@@ -63,13 +63,6 @@
   border-radius: 5px;
 }
 
-.tools {
-  height: 20px;
-  vertical-align: middle;
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-}
 .address {
   white-space: nowrap;
 }

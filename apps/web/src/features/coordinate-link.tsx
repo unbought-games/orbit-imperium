@@ -1,7 +1,6 @@
 import { universeSlug } from '../client-model/universe-name'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSetAtom } from 'jotai'
-import { Copy, Check, Ellipsis } from 'lucide-react'
 import { ContextMenu } from '@base-ui/react/context-menu'
 import { Menu } from '@base-ui/react/menu'
 import { ScreenContext } from '../shell/screen-context'
@@ -10,7 +9,6 @@ import { galaxyTarget, readCoordinates } from '../shell/galaxy-location'
 import { locationPath, type LocationKind } from '../shell/location-address'
 import { coordinates } from '../ui/format'
 import { Link } from '../ui/link'
-import { Button } from '../ui/button'
 import { copiedLocationAtom } from './coordinate-memory'
 import { coordinateMissions } from './coordinate-actions'
 import styles from './coordinate-link.module.css'
@@ -23,12 +21,10 @@ export function CoordinateLink({
   className,
   target = 'planet',
   known,
-  compact = false,
   onHarvest,
 }: {
   at: unknown
   onHarvest?: (opener: HTMLElement | null) => void
-  compact?: boolean
   label?: string
   children?: ReactNode
   origin?: string
@@ -41,9 +37,8 @@ export function CoordinateLink({
     debris?: boolean
   }
 }) {
-  const trigger = useRef<HTMLButtonElement>(null)
+  const trigger = useRef<HTMLAnchorElement>(null)
   const handingOff = useRef(false)
-  const menuPopup = useRef<HTMLDivElement>(null)
   const contextPopup = useRef<HTMLDivElement>(null)
   // A callback is an explicit focus target in Base UI. Preserve its normal
   // outside-focus behavior while suppressing restoration during Harvest handoff.
@@ -178,40 +173,13 @@ export function CoordinateLink({
         data-coordinate=""
         className={`${styles.coordinate} ${className ?? ''}`}
       >
-        {compact ? (
-          <Menu.Root
-            onOpenChange={(open) => {
-              setFeedback('')
-              if (open) handingOff.current = false
-            }}
-          >
-            <Menu.Trigger
-              ref={trigger}
-              render={<Button variant="ghost" padding="compact" />}
-              className={styles.value}
-              aria-label={`Location actions for ${text}`}
-              title="Coordinates · copy, share or navigate"
-            >
-              {children ?? <span className={styles.address}>{text}</span>}
-            </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner className={styles.positioner} sideOffset={4}>
-                <Menu.Popup
-                  ref={menuPopup}
-                  finalFocus={() => restoreFocus(menuPopup.current)}
-                  className={styles.menu}
-                >
-                  {items()}
-                </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
-        ) : navigable ? (
+        {navigable ? (
           <Link
             {...galaxyTarget(context.universeName, body, {
               ...location,
               ...(target !== 'planet' ? { target } : {}),
             })}
+            ref={trigger}
             resetScroll={false}
             className={`${styles.value} ${className ?? ''}`}
             aria-label={`View ${label ? `${label} ` : ''}${text} in galaxy`}
@@ -221,53 +189,6 @@ export function CoordinateLink({
         ) : (
           <span className={styles.value}>
             {children ?? <span className={styles.address}>{text}</span>}
-          </span>
-        )}
-        {!compact && (
-          <span className={styles.tools}>
-            <Button
-              variant="ghost"
-              size="icon"
-              padding="compact"
-              type="button"
-              onClick={() => void copy(false)}
-              aria-label={`Copy coordinates ${text}`}
-              title={feedback || 'Copy coordinates'}
-            >
-              {feedback.startsWith('Coordinates copied') ? (
-                <Check size={14} />
-              ) : (
-                <Copy size={14} />
-              )}
-            </Button>
-            <Menu.Root
-              onOpenChange={(open) => {
-                setFeedback('')
-                if (open) handingOff.current = false
-              }}
-            >
-              <Menu.Trigger
-                ref={trigger}
-                render={
-                  <Button variant="ghost" size="icon" padding="compact" />
-                }
-                aria-label={`Location actions for ${text}`}
-                title="Location actions"
-              >
-                <Ellipsis size={16} />
-              </Menu.Trigger>
-              <Menu.Portal>
-                <Menu.Positioner className={styles.positioner} sideOffset={4}>
-                  <Menu.Popup
-                    ref={menuPopup}
-                    finalFocus={() => restoreFocus(menuPopup.current)}
-                    className={styles.menu}
-                  >
-                    {items()}
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </Menu.Portal>
-            </Menu.Root>
           </span>
         )}
         <span

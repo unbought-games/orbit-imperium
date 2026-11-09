@@ -364,9 +364,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espiona
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 1000 })
         const link = attacker.getByRole('link', { name: 'View attacker origin [2:24:5] in galaxy' })
-        await link.focus()
-        await expect(link).toBeFocused()
-        await attacker.getByRole('button', { name: 'Location actions for [2:24:5]' }).click()
+        await link.click({ button: 'right' })
         await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
         await diagnosticScreenshot(page, { path: `${output}/origin-actions-${width}.png` })
         await page.keyboard.press('Escape')
