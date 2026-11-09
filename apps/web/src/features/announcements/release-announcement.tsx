@@ -1,3 +1,4 @@
+import { useGameSession } from '../../shell/session-context'
 import {
   Suspense,
   useRef,
@@ -45,7 +46,11 @@ export function ReleaseAnnouncement({
   suspended: boolean
   children: Trigger
 }) {
-  const { announcement, acknowledge } = useReleaseAnnouncement(account)
+  const { view } = useGameSession()
+  const { announcement, acknowledge } = useReleaseAnnouncement(
+    account,
+    view.protocol === 4 ? (view.joined_at_ms ?? undefined) : undefined,
+  )
   const open = !!announcement && !suspended
   const arrow = useRef<SVGSVGElement>(null)
   const close = () => {

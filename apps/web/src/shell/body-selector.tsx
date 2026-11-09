@@ -2,9 +2,11 @@ import type { BoundView } from '../client-model/commands'
 import { RichSelect } from '../ui/rich-select'
 import { bodyName, coordinates } from '../ui/format'
 import { resolveBodyArt } from '../ui/artwork'
+import { useBodyAppearance } from '../features/body-appearance'
 import styles from './body-selector.module.css'
 
 function BodyLabel({ body }: { body: BoundView['bodies'][number] }) {
+  const appearance = useBodyAppearance(body.id)
   return (
     <span
       className={styles.body}
@@ -12,7 +14,7 @@ function BodyLabel({ body }: { body: BoundView['bodies'][number] }) {
     >
       <img
         key={body.id}
-        src={resolveBodyArt(body).thumbnail}
+        src={resolveBodyArt({ ...body, appearance }).thumbnail}
         width={40}
         height={40}
         alt=""

@@ -25,17 +25,22 @@ export const announcementEnd = (entry: Announcement) =>
     ? Date.parse(entry.until)
     : Date.parse(entry.date) + announcementDays * 86_400_000
 
-/** The newest announcement inside its window that this account hasn't acknowledged. */
+/**
+ * The newest announcement inside its window that this account hasn't
+ * acknowledged. News from before the empire joined is not news to it.
+ */
 export function currentAnnouncement(
   announcements: readonly Announcement[],
   now: number,
   seen: (id: string) => boolean,
+  joinedAt?: number,
 ): Announcement | null {
   return (
     announcements
       .filter(
         (entry) =>
           Date.parse(entry.date) <= now &&
+          (joinedAt === undefined || Date.parse(entry.date) >= joinedAt) &&
           now < announcementEnd(entry) &&
           !seen(entry.id),
       )

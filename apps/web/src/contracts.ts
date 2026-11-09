@@ -5131,6 +5131,141 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/universes/{universe}/arrival": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose a planet look or complete the one-time arrival scene
+         * @description Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ArrivalRequest"];
+                };
+            };
+            responses: {
+                /** @description Bound response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ArrivalState"];
+                    };
+                };
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Access or bot participation denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                    };
+                };
+                /** @description Typed service problem */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/media/insignias/{symbol}/{version}": {
         parameters: {
             query?: never;
@@ -7055,6 +7190,11 @@ export interface components {
             empire_deletion?: components["schemas"]["EmpireDeletionStatus4"];
             leads_alliance?: boolean;
             vacation?: components["schemas"]["VacationView4"];
+            /** @description Whether this empire still has its one-time arrival scene to complete. */
+            arrival_pending?: boolean;
+            /** @description Original enrollment time; omitted when unknown. */
+            joined_at_ms?: number;
+            body_appearances?: components["schemas"]["BodyAppearances"];
         };
         CapabilityState4: {
             /** @enum {unknown} */
@@ -7119,6 +7259,7 @@ export interface components {
             positions: components["schemas"]["GalaxyPosition4"][];
             observed_at: number;
             player_names?: components["schemas"]["PublicPlayerNames4"];
+            body_appearances?: components["schemas"]["BodyAppearances"];
         };
         WorldQueryKind4: {
             /** @constant */
@@ -9408,6 +9549,27 @@ export interface components {
         } | {
             /** @constant */
             type: "ReviewProductionSettings";
+        };
+        /** @description Chosen planet art slot by body ID. Absent bodies use the orbit-slot default. */
+        BodyAppearances: {
+            [key: string]: number;
+        };
+        ArrivalAction: {
+            /** @constant */
+            type: "SetAppearance";
+            /** Format: uuid */
+            body: string;
+            slot: number;
+        } | {
+            /** @constant */
+            type: "Complete";
+        };
+        ArrivalRequest: {
+            context: components["schemas"]["QueryContext"];
+            action: components["schemas"]["ArrivalAction"];
+        };
+        ArrivalState: {
+            pending: boolean;
         };
     };
     responses: never;

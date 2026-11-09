@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- New empires begin with an arrival scene: choose a title, a planet look that suits
+  your orbit, and a name for your world before your Briefing. Existing empires are
+  unchanged. Read the [build note](docs/news/changes/2026-11-08-arrival.md).
+
+- Profile titles, insignia saves and simulator sides now work on servers hosted
+  over plain HTTP.
+
 - The command orb can announce selected new features in game. Each announcement
   shows once and links to its full update.
 

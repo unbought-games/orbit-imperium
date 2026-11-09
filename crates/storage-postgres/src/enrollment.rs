@@ -332,6 +332,9 @@ impl PgStore {
                 machine_sleep.is_none(),
             )
             .await?;
+            if machine_sleep.is_none() {
+                crate::arrival::enroll(&mut tx, u, player).await?;
+            }
             if !scoped {
                 sqlx::query("UPDATE world_heads SET revision=revision+1 WHERE universe=$1")
                     .bind(u.0)
