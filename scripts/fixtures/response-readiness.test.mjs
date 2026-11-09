@@ -15,33 +15,33 @@ function deferred() {
   return { promise, resolve }
 }
 
-function response(
-  path,
-  payload,
-  { method = 'POST', ok = true, finished = Promise.resolve(null) } = {},
-) {
+function response(path, payload, { method = 'POST', ok = true } = {}) {
   return {
     url: () => `https://fixture.test/api/v1${path}`,
     request: () => ({ method: () => method, postDataJSON: () => payload }),
     ok: () => ok,
-    finished: () => finished,
   }
 }
 
+/** Delivers `requestfinished` events in order to the helper's predicate, as
+ * Playwright does: cancelled or failed requests never finish. */
 function fixture() {
-  const received = deferred()
+  const finished = deferred()
   let predicate
   return {
     page: {
-      waitForResponse: (matches) => {
+      waitForEvent: (event, { predicate: matches }) => {
+        assert.equal(event, 'requestfinished')
         predicate = matches
-        return received.promise
+        return finished.promise
       },
     },
-    send: (value) => {
+    finish: async (value) => {
       assert.ok(predicate, 'response listener must precede navigation')
-      if (predicate(value)) received.resolve(value)
-      return predicate(value)
+      const request = { response: async () => value }
+      const matched = await predicate(request)
+      if (matched) finished.resolve(request)
+      return matched
     },
   }
 }
@@ -57,14 +57,17 @@ const matches = (request) =>
   request.building === wanted.building
 
 for (const bulk of [false, true]) {
-  test(`catalog readiness waits for the matching ${bulk ? 'bulk' : 'single'} response body after navigation`, async () => {
+  test(`catalog readiness waits for the matching ${bulk ? 'bulk' : 'single'} delivered response after navigation`, async () => {
     const f = fixture()
     const body = deferred()
     let completed = false
     const ready = withProgressionResponse(f.page, matches, async () => {
-      assert.equal(f.send(response('/overview', {}, { method: 'GET' })), false)
       assert.equal(
-        f.send(
+        await f.finish(response('/overview', {}, { method: 'GET' })),
+        false,
+      )
+      assert.equal(
+        await f.finish(
           response('/progression-options', {
             request: { ...wanted, body: 'other' },
           }),
@@ -72,7 +75,7 @@ for (const bulk of [false, true]) {
         false,
       )
       assert.equal(
-        f.send(
+        await f.finish(
           response(
             '/progression-options',
             { request: wanted },
@@ -81,42 +84,54 @@ for (const bulk of [false, true]) {
         ),
         false,
       )
-      assert.equal(
-        f.send(
+      body.promise.then(() =>
+        f.finish(
           response(
             bulk ? '/progression-options/bulk' : '/progression-options',
             bulk
               ? { requests: [{ ...wanted, building: 'CrystalMine' }, wanted] }
               : { request: wanted },
-            { finished: body.promise },
           ),
         ),
-        true,
       )
     }).then(() => {
       completed = true
     })
-    // Drain resolved navigation/header work; only the controlled body is held.
     await setImmediate()
     assert.equal(completed, false)
-    body.resolve(null)
+    body.resolve()
     await ready
     assert.equal(completed, true)
   })
 }
 
-test('catalog readiness rejects failed HTTP and interrupted delivery instead of waiting for a later success', async () => {
-  for (const options of [
-    { ok: false },
-    { finished: Promise.resolve(new Error('connection closed')) },
-  ]) {
-    const f = fixture()
-    await assert.rejects(
-      withProgressionResponse(f.page, matches, async () => {
-        f.send(response('/progression-options', { request: wanted }, options))
-      }),
-    )
-  }
+test('catalog readiness rejects a failed HTTP status', async () => {
+  const f = fixture()
+  await assert.rejects(
+    withProgressionResponse(f.page, matches, async () => {
+      await f.finish(
+        response('/progression-options', { request: wanted }, { ok: false }),
+      )
+    }),
+  )
+})
+
+test('readiness waits for a finished request, not navigation alone', async () => {
+  const f = fixture()
+  let completed = false
+  const ready = withProgressionResponse(f.page, matches, async () => {}).then(
+    () => {
+      completed = true
+    },
+  )
+  await setImmediate()
+  assert.equal(completed, false)
+  assert.equal(
+    await f.finish(response('/progression-options', { request: wanted })),
+    true,
+  )
+  await ready
+  assert.equal(completed, true)
 })
 
 test('catalog readiness propagates navigation failure', async () => {

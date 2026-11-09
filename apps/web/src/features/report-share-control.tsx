@@ -5,6 +5,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import { useAuthSession } from '../shell/auth-context'
 import { Button } from '../ui/button'
 import { Text } from '../ui/typography'
+import { copyReportLink } from './copy-report-link'
 import { sharedReportPath } from '../adapters/report-sharing'
 import { useReportSharing } from './use-report-sharing'
 import styles from './report-sharing.module.css'
@@ -91,16 +92,18 @@ function ShareSettings({
   const [identity, setIdentity] = useState(false)
   const [coordinates, setCoordinates] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const link = useRef<HTMLInputElement>(null)
   const url = status?.token
     ? new URL(sharedReportPath(status.token), window.location.origin).href
     : ''
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(url)
-      setFeedback('Link copied.')
-    } catch {
-      setFeedback('Select the link above and copy it manually.')
-    }
+    if (!link.current) return
+    const copied = await copyReportLink(link.current)
+    setFeedback(
+      copied
+        ? 'Link copied.'
+        : 'Automatic copying is unavailable. The link is selected; use your browser’s Copy action.',
+    )
   }
   return (
     <section className={styles.settings} aria-label="Report sharing">
@@ -140,7 +143,12 @@ function ShareSettings({
           </Text>
           <label className={styles.link}>
             Share link
-            <input readOnly value={url} onFocus={(e) => e.target.select()} />
+            <input
+              ref={link}
+              readOnly
+              value={url}
+              onFocus={(e) => e.target.select()}
+            />
           </label>
           <div className={styles.actions}>
             <Button disabled={busy} onClick={() => void copy()}>
