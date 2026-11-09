@@ -248,7 +248,7 @@ for (const width of [390, 1440]) {
     await capture('cancellation')
     await page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Confirm cancellation' })
+      .getByRole('button', { name: 'Yes, cancel' })
       .click()
     await expect(confirm).toBeEnabled()
     await confirm.click()

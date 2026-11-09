@@ -17,7 +17,10 @@ export function WorkCancellationButton({
   disabled,
   onConfirm,
   ...props
-}: Omit<ComponentProps<typeof ConfirmationButton>, 'requiresConfirmation'> & {
+}: Omit<
+  ComponentProps<typeof ConfirmationButton>,
+  'requiresConfirmation' | 'confirmLabel' | 'cancelLabel'
+> & {
   model?: Coordinator | null
   operationId: string | null
   kind: CancellationKind
@@ -28,6 +31,8 @@ export function WorkCancellationButton({
   return (
     <ConfirmationButton
       {...props}
+      confirmLabel="Yes, cancel"
+      cancelLabel="Keep working"
       disabled={disabled || (policy !== null && !policy.canCancel)}
       requiresConfirmation={() => {
         model?.tick()
