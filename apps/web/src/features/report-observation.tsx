@@ -24,12 +24,9 @@ import { reportKindLabel } from './report-preview'
 import { reportLevel } from './report-level'
 import { reportLevelArt } from './report-level-art'
 import { CatalogImage } from '../ui/image-catalog'
-import {
-  groupReportBuildings,
-  reportBuildingRowTitle,
-} from './report-buildings'
+import { groupReportBuildings } from './report-buildings'
 import { groupReportResearch } from './report-research'
-import type { ObservedLevel, ObservedLevelGroup } from './report-buildings'
+import type { ObservedLevel, ObservedLevelRow } from './report-buildings'
 type RecordValue = Record<string, unknown>
 const record = (v: unknown): RecordValue =>
   v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -132,32 +129,18 @@ function Levels({
     <Text>{emptyLabel}</Text>
   )
 }
-function GroupedLevels({
-  groups,
+function TitledLevels({
+  rows,
   emptyLabel,
-  buildings = false,
 }: {
-  groups: ObservedLevelGroup[]
+  rows: ObservedLevelRow[]
   emptyLabel: string
-  buildings?: boolean
 }) {
-  return groups.length ? (
-    groups.map(({ title, rows }) => (
-      <div key={title}>
-        <div className={styles.levelGroupHeader}>
-          <h4 className={styles.levelGroupHeading}>{title}</h4>
-          <span>Observed level</span>
-        </div>
-        {rows.map((line) => (
-          <div key={line[0][0]} className={styles.levelRow}>
-            {buildings && reportBuildingRowTitle(line) && (
-              <h5 className={styles.levelRowHeading}>
-                {reportBuildingRowTitle(line)}
-              </h5>
-            )}
-            <Levels rows={line} emptyLabel={emptyLabel} />
-          </div>
-        ))}
+  return rows.length ? (
+    rows.map(({ title, levels }) => (
+      <div key={title} className={styles.levelRow}>
+        <h4 className={styles.levelRowHeading}>{title}</h4>
+        <Levels rows={levels} emptyLabel={emptyLabel} />
       </div>
     ))
   ) : (
@@ -452,9 +435,8 @@ function ReportObservationContent({
         </KnownSection>
         <KnownSection title="Buildings" value={payload.buildings}>
           {(v) => (
-            <GroupedLevels
-              buildings
-              groups={groupReportBuildings(
+            <TitledLevels
+              rows={groupReportBuildings(
                 record(v),
                 record(payload.target).kind,
               )}
@@ -464,8 +446,8 @@ function ReportObservationContent({
         </KnownSection>
         <KnownSection title="Research" value={payload.research}>
           {(v) => (
-            <GroupedLevels
-              groups={groupReportResearch(record(v))}
+            <TitledLevels
+              rows={groupReportResearch(record(v))}
               emptyLabel="No research"
             />
           )}
@@ -476,7 +458,7 @@ function ReportObservationContent({
             {activity.type === 'Minutes'
               ? `${text(activity.minutes)} minutes`
               : text(activity.type)}
-            . Fleet contact may cause activity.
+            .
           </Text>
           <Risk value={payload.counterespionage} />
         </footer>

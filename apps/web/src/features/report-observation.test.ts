@@ -69,7 +69,7 @@ it('keeps exact integer probability context alongside floored percentages', () =
   ).toContain('Counterespionage: 5% (53584 parts per million)')
 })
 
-it('renders only observed building levels under catalog group headings', () => {
+it('renders only observed building levels under their subsection headings', () => {
   const text = render({
     kind: 'Espionage',
     buildings: {
@@ -78,9 +78,10 @@ it('renders only observed building levels under catalog group headings', () => {
     },
   })
   expect(text).toContain(
-    'BuildingsResource buildingsObserved levelMinesMetal MineLevel UnknownFacility buildingsObserved levelInfrastructureResearch LabLevel 2Other buildingsObserved levelLegacy BuildingLevel 0',
+    'BuildingsMinesMetal MineLevel UnknownInfrastructureResearch LabLevel 2Other buildingsLegacy BuildingLevel 0',
   )
   expect(text).not.toContain('Crystal Mine')
+  expect(text).not.toContain('Observed level')
 })
 
 it('keeps hidden buildings distinct from an observed empty section', () => {
@@ -91,7 +92,7 @@ it('keeps hidden buildings distinct from an observed empty section', () => {
   expect(hidden).toContain(
     'BuildingsUnknown — this observation did not reveal this section.',
   )
-  expect(hidden).not.toContain('Resource buildings')
+  expect(hidden).not.toContain('Mines')
   expect(hidden).not.toContain('Metal Mine')
   expect(
     render({
@@ -117,9 +118,10 @@ it('renders observed research in report groups without inventing missing levels'
     },
   })
   expect(text).toContain(
-    'ResearchCombat and espionageObserved levelWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchObserved levelCombustion DriveLevel 3Basic researchObserved levelEnergy TechnologyLevel UnknownAdvanced researchObserved levelComputer TechnologyLevel 2Other researchObserved levelFuture ResearchLevel 1',
+    'ResearchCombat and espionageWeapons TechnologyLevel 4Espionage TechnologyLevel 0Drive researchCombustion DriveLevel 3Basic researchEnergy TechnologyLevel UnknownAdvanced researchComputer TechnologyLevel 2Other researchFuture ResearchLevel 1',
   )
   expect(text).not.toContain('Shielding Technology')
+  expect(text).not.toContain('Observed level')
 })
 
 it.each([
@@ -234,6 +236,8 @@ it('places historical target identity first and activity and detection after all
   expect(text.indexOf('Research')).toBeLessThan(
     text.indexOf('Counterespionage: 0%'),
   )
+  expect(text).toContain('Activity before contact: 20 minutes.Counterespionage')
+  expect(text).not.toContain('Fleet contact may cause activity')
   expect(markup.match(/<svg[^>]+data-resource=/g)).toHaveLength(3)
   expect(text).toContain('18,76310,441560')
 })
