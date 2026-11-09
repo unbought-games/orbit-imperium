@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Briefing rewards have a visible label, upgrade shortfalls name their target
+  level, and the advisor no longer says “Click me to hide this.” Thanks to
+  [sumdeos](https://discord.com/users/181133185491402753) and
+  [eleven](https://discord.com/users/184060817644322816) for the reports.
+  Read the [build note](docs/news/changes/2026-11-09-briefing-rewards.md).
+
 - New empires begin with an arrival scene: choose a title, a planet look that suits
   your orbit, and a name for your world before your Briefing. Existing empires are
   unchanged. Read the [build note](docs/news/changes/2026-11-08-arrival.md).

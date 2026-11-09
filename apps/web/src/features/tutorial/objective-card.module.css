@@ -96,6 +96,10 @@
 }
 
 .reward[data-variant='inline'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
   padding: 0;
   margin-top: 8px;
   border: 0;
