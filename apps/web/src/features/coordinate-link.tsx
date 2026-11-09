@@ -1,7 +1,6 @@
 import { universeSlug } from '../client-model/universe-name'
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSetAtom } from 'jotai'
-import { Copy, Check, Ellipsis } from 'lucide-react'
 import { ContextMenu } from '@base-ui/react/context-menu'
 import { Menu } from '@base-ui/react/menu'
 import { ScreenContext } from '../shell/screen-context'
@@ -221,53 +220,6 @@ export function CoordinateLink({
         ) : (
           <span className={styles.value}>
             {children ?? <span className={styles.address}>{text}</span>}
-          </span>
-        )}
-        {!compact && (
-          <span className={styles.tools}>
-            <Button
-              variant="ghost"
-              size="icon"
-              padding="compact"
-              type="button"
-              onClick={() => void copy(false)}
-              aria-label={`Copy coordinates ${text}`}
-              title={feedback || 'Copy coordinates'}
-            >
-              {feedback.startsWith('Coordinates copied') ? (
-                <Check size={14} />
-              ) : (
-                <Copy size={14} />
-              )}
-            </Button>
-            <Menu.Root
-              onOpenChange={(open) => {
-                setFeedback('')
-                if (open) handingOff.current = false
-              }}
-            >
-              <Menu.Trigger
-                ref={trigger}
-                render={
-                  <Button variant="ghost" size="icon" padding="compact" />
-                }
-                aria-label={`Location actions for ${text}`}
-                title="Location actions"
-              >
-                <Ellipsis size={16} />
-              </Menu.Trigger>
-              <Menu.Portal>
-                <Menu.Positioner className={styles.positioner} sideOffset={4}>
-                  <Menu.Popup
-                    ref={menuPopup}
-                    finalFocus={() => restoreFocus(menuPopup.current)}
-                    className={styles.menu}
-                  >
-                    {items()}
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </Menu.Portal>
-            </Menu.Root>
           </span>
         )}
         <span
