@@ -115,6 +115,7 @@
 }
 .coordinates {
   font-size: 0.75rem;
+  min-height: 24px;
 }
 .playerStatus {
   display: flex;

@@ -114,6 +114,7 @@ for (const width of [1280, 390, 320]) {
     await expect(selected).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
     const control = selected.getByRole('link', { name: 'View [1:5:12] in galaxy', exact: true })
+    await expect(control).toHaveCSS('min-height', '24px')
     await control.focus()
     await expect(control).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
