@@ -149,6 +149,9 @@ pub(super) fn world_projection(
             .collect(),
         has_unread_reports: snapshot.unread_report.is_some(),
         player_names: Default::default(),
+        arrival_pending: false,
+        joined_at_ms: None,
+        body_appearances: Default::default(),
         progression,
         missions,
     })

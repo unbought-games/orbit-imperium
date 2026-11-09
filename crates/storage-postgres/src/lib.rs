@@ -1,3 +1,4 @@
+mod arrival;
 mod empire_identity;
 pub use empire_identity::grant_cosmetic;
 mod empire_history;

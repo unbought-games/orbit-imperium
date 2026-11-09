@@ -183,6 +183,13 @@
   transform-origin: center;
   animation: orbIn 1.4s ease-in-out both !important;
 }
+.ambient {
+  display: inline-flex;
+}
+.ambient .orb {
+  display: block;
+  animation: none !important;
+}
 .orb::before {
   content: '';
   position: absolute;

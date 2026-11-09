@@ -5,7 +5,7 @@ it('groups all current research in explicit report order regardless of payload o
   const expected = [
     {
       title: 'Combat and espionage',
-      rows: [
+      levels: [
         ['WeaponsTechnology', 8],
         ['ShieldingTechnology', 7],
         ['ArmourTechnology', 6],
@@ -14,7 +14,7 @@ it('groups all current research in explicit report order regardless of payload o
     },
     {
       title: 'Drive research',
-      rows: [
+      levels: [
         ['CombustionDrive', 4],
         ['ImpulseDrive', 3],
         ['HyperspaceDrive', 0],
@@ -22,7 +22,7 @@ it('groups all current research in explicit report order regardless of payload o
     },
     {
       title: 'Basic research',
-      rows: [
+      levels: [
         ['EnergyTechnology', 5],
         ['LaserTechnology', 4],
         ['IonTechnology', 3],
@@ -32,7 +32,7 @@ it('groups all current research in explicit report order regardless of payload o
     },
     {
       title: 'Advanced research',
-      rows: [
+      levels: [
         ['ComputerTechnology', 4],
         ['Astrophysics', 3],
         ['IntergalacticResearchNetwork', 2],
@@ -40,11 +40,9 @@ it('groups all current research in explicit report order regardless of payload o
       ],
     },
   ]
-  const rows = expected.flatMap((group) => group.rows)
+  const rows = expected.flatMap((group) => group.levels)
   for (const entries of [rows, [...rows].reverse(), [...rows].sort()]) {
-    expect(groupReportResearch(Object.fromEntries(entries))).toEqual(
-      expected.map((group) => ({ ...group, rows: [group.rows] })),
-    )
+    expect(groupReportResearch(Object.fromEntries(entries))).toEqual(expected)
   }
 })
 
@@ -56,15 +54,13 @@ it('retains zero and unknown levels and sorts future IDs without mutating observ
     HyperspaceDrive: 'Unknown',
   })
   expect(groupReportResearch(observation)).toEqual([
-    { title: 'Combat and espionage', rows: [[['EspionageTechnology', 0]]] },
-    { title: 'Drive research', rows: [[['HyperspaceDrive', 'Unknown']]] },
+    { title: 'Combat and espionage', levels: [['EspionageTechnology', 0]] },
+    { title: 'Drive research', levels: [['HyperspaceDrive', 'Unknown']] },
     {
       title: 'Other research',
-      rows: [
-        [
-          ['AFutureResearch', '12'],
-          ['ZFutureResearch', null],
-        ],
+      levels: [
+        ['AFutureResearch', '12'],
+        ['ZFutureResearch', null],
       ],
     },
   ])
@@ -73,6 +69,6 @@ it('retains zero and unknown levels and sorts future IDs without mutating observ
 it('omits empty groups and never invents unobserved levels', () => {
   expect(groupReportResearch({})).toEqual([])
   expect(groupReportResearch({ ComputerTechnology: 0 })).toEqual([
-    { title: 'Advanced research', rows: [[['ComputerTechnology', 0]]] },
+    { title: 'Advanced research', levels: [['ComputerTechnology', 0]] },
   ])
 })

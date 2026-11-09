@@ -15,6 +15,8 @@ export type BodyArtIdentity =
       id: string
       kind: 'Planet' | 'Moon'
       coordinates: Readonly<{ position: number }>
+      /** The owner's chosen planet art slot, when one was chosen. */
+      appearance?: number
     }>
 
 const root = '/art/atlas'
@@ -42,6 +44,16 @@ export function resolvePlanetArt(position: number): Artwork {
   return artwork(`planet-${String(slot).padStart(2, '0')}`, bodySizes)
 }
 
+/** Art slots whose climate matches an orbit, the orbit's own slot first. */
+export function appearanceOptions(position: number): number[] {
+  const [first, last] =
+    position <= 4 ? [1, 4] : position <= 8 ? [5, 8] : [9, 15]
+  const band = Array.from({ length: last - first + 1 }, (_, i) => first + i)
+  return band.includes(position)
+    ? [position, ...band.filter((slot) => slot !== position)]
+    : band
+}
+
 function moonVariant(id: string): number {
   // FNV-1a over the complete stable ID. Never names, roster order or randomness.
   let hash = 2166136261
@@ -57,7 +69,7 @@ export function resolveBodyArt(body: BodyArtIdentity): Artwork {
     return artwork('planet-abandoned', bodySizes)
   return body.kind === 'Moon'
     ? artwork(`moon-0${moonVariant(body.id)}`, bodySizes)
-    : resolvePlanetArt(body.coordinates.position)
+    : resolvePlanetArt(body.appearance ?? body.coordinates.position)
 }
 
 export function resolveCatalogArt(

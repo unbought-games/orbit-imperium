@@ -25,6 +25,26 @@ describe('currentAnnouncement', () => {
   const older = entry('older', '2026-11-01T00:00:00Z')
   const newer = entry('newer', '2026-11-05T00:00:00Z', '2026-11-08T00:00:00Z')
 
+  it('hides news published before the empire joined', () => {
+    const now = at('2026-11-06T00:00:00Z')
+    expect(
+      currentAnnouncement(
+        [older, newer],
+        now,
+        never,
+        at('2026-11-02T00:00:00Z'),
+      )?.id,
+    ).toBe('newer')
+    expect(
+      currentAnnouncement(
+        [older, newer],
+        now,
+        never,
+        at('2026-11-05T12:00:00Z'),
+      ),
+    ).toBeNull()
+  })
+
   it('picks the newest live announcement regardless of catalog order', () => {
     expect(
       currentAnnouncement([older, newer], at('2026-11-06T00:00:00Z'), never)

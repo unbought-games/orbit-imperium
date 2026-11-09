@@ -8,6 +8,7 @@ import {
   resolveCatalogArt,
   resolvePlanetArt,
   atmosphereArt,
+  appearanceOptions,
 } from './artwork'
 import type { BodyArtIdentity, Artwork } from './artwork'
 import type { components } from '../contracts'
@@ -106,6 +107,26 @@ describe('artwork identity', () => {
     for (const position of [0, -1, 16, NaN, Infinity, 4.5]) {
       expect(resolvePlanetArt(position)).toEqual(resolvePlanetArt(4))
     }
+  })
+})
+
+describe('chosen planet appearance', () => {
+  it('offers the looks from the orbit climate band with the orbit slot first', () => {
+    expect(appearanceOptions(4)).toEqual([4, 1, 2, 3])
+    expect(appearanceOptions(5)).toEqual([5, 6, 7, 8])
+    expect(appearanceOptions(8)).toEqual([8, 5, 6, 7])
+    expect(appearanceOptions(9)).toEqual([9, 10, 11, 12, 13, 14, 15])
+    expect(appearanceOptions(12)).toEqual([12, 9, 10, 11, 13, 14, 15])
+  })
+  it('uses a chosen look for planets but never for moons or abandoned worlds', () => {
+    expect(resolveBodyArt({ ...body, appearance: 2 }).key).toBe('planet-02')
+    expect(resolveBodyArt(body).key).toBe('planet-04')
+    expect(
+      resolveBodyArt({ ...body, kind: 'Moon', appearance: 2 }).key,
+    ).toMatch(/^moon-0[1-3]$/)
+    expect(resolveBodyArt({ kind: 'AbandonedPlanet' }).key).toBe(
+      'planet-abandoned',
+    )
   })
 })
 

@@ -9,6 +9,7 @@ import {
   type ProfileAction,
 } from '../adapters/empire-history'
 import { http, HttpError, type Session } from '../adapters/http'
+import { commandId } from '../adapters/command-id'
 
 export function useArchive<T>(schema: string, path: string) {
   const [store] = useState(() =>
@@ -65,12 +66,7 @@ export function useArchive<T>(schema: string, path: string) {
     store.setState({ busy: true, error: '' })
     let committed = false
     try {
-      await editProfile(
-        profile,
-        state.session.csrf,
-        action,
-        crypto.randomUUID(),
-      )
+      await editProfile(profile, state.session.csrf, action, commandId(crypto))
       committed = true
       const data = await readArchive<T>(
         schema,

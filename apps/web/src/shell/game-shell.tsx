@@ -1,3 +1,4 @@
+import { ArrivalScene } from '../features/arrival/arrival-scene'
 import { TutorialExperienceAction } from '../features/tutorial/experience-action'
 import { TutorialSync } from '../features/tutorial/use-tutorial'
 import { VacationNotice } from '../features/vacation'
@@ -42,7 +43,8 @@ import { usePinnedHeader } from './use-pinned-header'
 import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 import { developmentActivity, developmentBlockers } from './navigation-activity'
 export function GameShell() {
-  const { model } = useGameSession()
+  const { model, view } = useGameSession()
+  if (view.protocol === 4 && view.arrival_pending) return <ArrivalScene />
   return (
     <ErrorBannerProvider model={model}>
       <GameShellContent />

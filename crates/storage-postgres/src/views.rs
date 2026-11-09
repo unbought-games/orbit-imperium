@@ -242,6 +242,32 @@ impl GameStore for PgStore {
         self.read_player_alliances(binding, players).await
     }
 
+    async fn arrival_presentation(
+        &self,
+        binding: Binding,
+        bodies: Vec<BodyId>,
+    ) -> Result<ArrivalPresentation, StoreError> {
+        self.read_arrival_presentation(binding, bodies).await
+    }
+    async fn body_appearances(
+        &self,
+        binding: Binding,
+        bodies: Vec<BodyId>,
+    ) -> Result<BodyAppearances, StoreError> {
+        self.read_body_appearances(binding, bodies).await
+    }
+    async fn set_body_appearance(
+        &self,
+        binding: Binding,
+        body: BodyId,
+        slot: u8,
+    ) -> Result<(), StoreError> {
+        self.write_body_appearance(binding, body, slot).await
+    }
+    async fn complete_arrival(&self, binding: Binding) -> Result<(), StoreError> {
+        self.write_arrival_completion(binding).await
+    }
+
     async fn public_player_names(
         &self,
         binding: Binding,

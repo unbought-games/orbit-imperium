@@ -6605,6 +6605,161 @@
         "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
       }
     },
+    "/api/v1/universes/{universe}/arrival": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrivalRequest"
+              }
+            }
+          }
+        },
+        "summary": "Choose a planet look or complete the one-time arrival scene",
+        "x-bot-category": "social-or-status",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": " Bot accounting and inactivity behavior: see docs/operations/bots.md. Bearer credentials are scoped to one account/player/universe; cookie CSRF remains required."
+      }
+    },
     "/api/media/insignias/{symbol}/{version}": {
       "get": {
         "summary": "Read an immutable operator-published insignia SVG",
@@ -14156,6 +14311,19 @@
           },
           "vacation": {
             "$ref": "#/components/schemas/VacationView4"
+          },
+          "arrival_pending": {
+            "type": "boolean",
+            "description": "Whether this empire still has its one-time arrival scene to complete."
+          },
+          "joined_at_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Original enrollment time; omitted when unknown."
+          },
+          "body_appearances": {
+            "$ref": "#/components/schemas/BodyAppearances"
           }
         },
         "required": [
@@ -14463,6 +14631,9 @@
           },
           "player_names": {
             "$ref": "#/components/schemas/PublicPlayerNames4"
+          },
+          "body_appearances": {
+            "$ref": "#/components/schemas/BodyAppearances"
           }
         },
         "required": [
@@ -24275,6 +24446,85 @@
             ],
             "additionalProperties": false
           }
+        ]
+      },
+      "BodyAppearances": {
+        "type": "object",
+        "description": "Chosen planet art slot by body ID. Absent bodies use the orbit-slot default.",
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15
+        },
+        "propertyNames": {
+          "format": "uuid"
+        }
+      },
+      "ArrivalAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SetAppearance"
+              },
+              "body": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "slot": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 15
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "slot"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "Complete"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        ]
+      },
+      "ArrivalRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ArrivalAction"
+          }
+        },
+        "required": [
+          "context",
+          "action"
+        ]
+      },
+      "ArrivalState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pending": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pending"
         ]
       }
     },
