@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   comparisonStats,
+  comparisonFacts,
   researchedValue,
   type ShipEntry,
   type Research,
@@ -220,4 +221,83 @@ it('switches Bombers at Hyperspace Drive 8 and preserves unknown or retained pro
     drive: 'ImpulseDrive',
     speed: '8800',
   })
+})
+
+it('compares defense costs and combat from active technical data with completed research', () => {
+  const defense: ShipEntry = {
+    ...ship,
+    key: { kind: 'Defense', id: 'RocketLauncher' },
+    ship_statistics: undefined,
+    technical_data: {
+      cost: ['1234', '567', '89'],
+      combat: {
+        ...ship.ship_statistics!.combat!,
+        technology_bonus: ['1', '5'],
+      },
+      facts: [],
+      bonuses: [],
+      storage_capacities: null,
+    },
+  }
+  expect(comparisonStats(defense, research, 'current')).toMatchObject({
+    cost: ['1234', '567', '89'],
+    attack: '800000',
+    shield: '1400000',
+    hull: '48000000',
+    against: [],
+    from: [],
+    speed: undefined,
+  })
+  expect(comparisonStats(defense, research, 'base').attack).toBe('500000')
+  expect(comparisonStats(defense, [], 'current').attack).toBeUndefined()
+  expect(
+    comparisonStats({ ...defense, enabled: false }, research, 'base').cost,
+  ).toBeUndefined()
+  delete defense.technical_data!.cost
+  expect(comparisonStats(defense, research, 'base').cost).toBeUndefined()
+  delete defense.technical_data
+  expect(comparisonStats(defense, research, 'base').attack).toBeUndefined()
+})
+
+it('groups shared defense rules while retaining the units a distinction applies to', () => {
+  const recovery = {
+    label: 'Recovery',
+    value: 'Custom recovery rule',
+    subject: null,
+  }
+  const dome = {
+    label: 'Body limit',
+    value: 'One dome of this type',
+    subject: null,
+  }
+  const entry = (
+    id: 'RocketLauncher' | 'SmallShieldDome',
+    facts: (typeof recovery)[],
+  ): ShipEntry => ({
+    ...ship,
+    key: { kind: 'Defense', id },
+    technical_data: {
+      facts,
+      bonuses: [],
+      combat: null,
+      storage_capacities: null,
+    },
+  })
+  expect(
+    comparisonFacts([
+      entry('RocketLauncher', [recovery]),
+      entry('SmallShieldDome', [recovery, dome]),
+    ]),
+  ).toEqual([
+    {
+      label: 'Recovery',
+      value: 'Custom recovery rule',
+      ids: ['RocketLauncher', 'SmallShieldDome'],
+    },
+    {
+      label: 'Body limit',
+      value: 'One dome of this type',
+      ids: ['SmallShieldDome'],
+    },
+  ])
 })
