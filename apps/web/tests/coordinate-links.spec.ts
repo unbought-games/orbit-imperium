@@ -5,6 +5,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { shellFixture, binding, body, id, resources } from './fixtures/game'
+import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const now = 1792756800000
@@ -127,7 +128,7 @@ for (const width of [1280, 390, 320]) {
   }) => {
     await page.setViewportSize({ width, height: 844 })
     const requests = await setup(page)
-    await page.goto(path(`fleets/${fleet.id}`))
+    await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
     const target = page
       .getByRole('link', {
         name: 'View destination [1:5:12] in galaxy',
@@ -186,7 +187,7 @@ test('returning mission keeps origin and destination labels unambiguous', async 
   page,
 }) => {
   await setup(page, 'Returning')
-  await page.goto(path(`fleets/${fleet.id}`))
+  await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
   const mission = page.getByRole('article', { name: 'Attack fleet' })
   await expect(mission).toContainText('←')
   await mission
@@ -205,10 +206,10 @@ test('context-free direct links preserve coordinates and invalid locations are s
   await withGalaxyResponse(page, () => page.goto('/u/andromeda-prime/galaxy?galaxy=1&system=5&position=12'))
   await assertLocation(page, 5, 12)
   requests.length = 0
-  await page.goto(path('galaxy?galaxy=1&system=500&position=12'))
+  await withBootstrapResponse(page, () => page.goto(path('galaxy?galaxy=1&system=500&position=12')))
   await expect(page.getByRole('alert')).toContainText('outside this universe')
   expect(requests).toEqual([])
-  await page.goto(path('galaxy?galaxy=1&system=-1&position=12'))
+  await withBootstrapResponse(page, () => page.goto(path('galaxy?galaxy=1&system=-1&position=12')))
   await expect(
     page.getByRole('heading', { name: 'Destination unavailable', exact: true }),
   ).toBeVisible()
@@ -219,7 +220,7 @@ test('planet selector is one target while empire coordinates browse without chan
   page,
 }) => {
   await setup(page)
-  await page.goto(path('overview'))
+  await withBootstrapResponse(page, () => page.goto(path('overview')))
   for (const width of [1280, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     const selector = page.getByRole('combobox', { name: 'Selected body' })
@@ -364,7 +365,7 @@ for (const [kind, payload, linkName] of [
         },
       })
     })
-    await page.goto(`/u/andromeda-prime/reports/${header.id}?body=${body.id}`)
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda-prime/reports/${header.id}?body=${body.id}`))
     await expect(
       page.getByRole('link', { name: linkName, exact: true }),
     ).toBeVisible()
@@ -392,7 +393,7 @@ test('copy, menus and explicit dispatch actions preserve origin and recent copy'
       },
     })
   })
-  await page.goto(path(`fleets/${fleet.id}`))
+  await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
   const target = page
     .getByRole('link', {
       name: 'View destination [1:5:12] in galaxy',
@@ -522,7 +523,7 @@ test('shared locations show an access error without offering enrollment', async 
       },
     }),
   )
-  await page.goto('/u/andromeda-prime/location/1:5:12')
+  await withBootstrapResponse(page, () => page.goto('/u/andromeda-prime/location/1:5:12'))
   await expect(
     page.getByRole('heading', { name: 'Destination unavailable', exact: true }),
   ).toBeVisible()
@@ -536,7 +537,7 @@ test('shared locations show an access error without offering enrollment', async 
 
 test('closing a coordinate menu respects focus moved to its location link', async ({ page }) => {
   await setup(page)
-  await page.goto(path(`fleets/${fleet.id}`))
+  await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
   const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
   const origin = page.getByRole('link', { name: 'View origin [1:2:4] in galaxy', exact: true }).first()
   await target.click({ button: 'right' })
@@ -554,7 +555,7 @@ test.describe('coordinate actions on touch', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
   test('long-press opens location actions without following the link', async ({ page }) => {
     await setup(page)
-    await page.goto(path(`fleets/${fleet.id}`))
+    await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
     const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
     await expect(target).toBeVisible()
     await expect(target.locator('..').getByRole('button')).toHaveCount(0)

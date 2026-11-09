@@ -1,4 +1,4 @@
-import { withProgressionResponse } from './fixtures/responses'
+import { withBootstrapResponse, withProgressionResponse } from './fixtures/responses'
 import { routeProgressionOptions, unrouteProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
 import { selectBody } from './fixtures/body-selector'
@@ -168,7 +168,7 @@ for (const selected of ['Crystal Mine', 'Metal Mine']) {
     page,
   }) => {
     const fixture = await buildingFixture(page, true)
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     await page
       .getByRole('link', { name: `Upgrade ${selected}`, exact: true })
       .click()
@@ -217,7 +217,7 @@ for (const width of [320, 390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     await buildingFixture(page)
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     await page
       .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
       .click()
@@ -240,7 +240,7 @@ for (const width of [320, 390, 1440]) {
       /Energy after demolition37\s*\(\+11\)/,
     )
     await expect(pane).not.toContainText('Operating energy saved')
-    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities`))
     await page
       .getByRole('link', { name: 'Upgrade Research Lab', exact: true })
       .click()
@@ -279,7 +279,7 @@ for (const width of [320, 390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     await buildingFixture(page)
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     await page
       .getByRole('link', { name: 'Upgrade Metal Storage', exact: true })
       .click()
@@ -366,7 +366,7 @@ test('a pending building quote labels its disabled action as loading', async ({
     await route.fallback()
   })
   try {
-    await page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`))
     const action = page.getByRole('button', {
       name: 'Confirm upgrade',
       exact: true,
@@ -716,7 +716,7 @@ test('quick build discards delayed quotes after switching planets', async ({
     }),
   )
   try {
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     await expect.poll(fixture.queries).toBeGreaterThan(0)
     await selectBody(page, id(6))
     await expect(
@@ -744,7 +744,7 @@ test('quick build stays disabled on inspection failure and keeps server rejectio
   const fixture = await quickBuildFixture(page)
   fixture.failOptions(true)
   fixture.reject()
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   const build = page.getByRole('button', {
     name: 'Build Metal Mine',
     exact: true,
@@ -1181,7 +1181,7 @@ for (const width of [390, 1440]) {
     await buildingFixture(page, true)
     const fail = (route: import('@playwright/test').Route) => route.fulfill({ status: 503 })
     await routeProgressionOptions(page, fail)
-    await page.goto(`/u/andromeda/b/${body.id}/resources/crystal-mine`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources/crystal-mine`))
     const active = page.getByRole('region', { name: 'Active construction', exact: true })
     await expect(active.getByRole('alert')).toContainText('Unable to inspect this action')
     await expect(active.getByRole('button', { name: 'Cancel construction', exact: true })).toBeEnabled()
@@ -1201,7 +1201,7 @@ for (const width of [390, 1440]) {
     const height = width === 390 ? 844 : 1000
     await page.setViewportSize({ width, height })
     await buildingFixture(page, true, 'MetalStorage')
-    await page.goto(`/u/andromeda/b/${body.id}/resources/metal-storage`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources/metal-storage`))
     const active = page.getByRole('region', { name: 'Active construction', exact: true })
     await expect(active.getByRole('heading')).toHaveText('Upgrading to level 1')
     await expect(active.getByTitle('New total', { exact: true })).toHaveText('20,000')

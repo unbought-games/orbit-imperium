@@ -102,7 +102,7 @@ test('leader accepts recruits, edits delegated roles, assigns multiple roles and
   const detail = own()
   detail.roles!.push({ id: id(871), name: 'Scout', is_default: false, permissions: ['ViewMembers'], grantable_permissions: [] })
   const f = await fixture(page, detail)
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await page.getByRole('button', { name: 'Applications', exact: true }).click()
   await page.getByRole('button', { name: 'Accept New Pilot', exact: true }).click()
   await expect(page.getByText('No pending applications.')).toBeVisible()
@@ -140,7 +140,7 @@ test('leader accepts recruits, edits delegated roles, assigns multiple roles and
 test('noticeboard renders safely, creates, pins, edits and loads a stable older page with responsive layouts', async ({ page }) => {
   const detail = own(); detail.next_post_before = id(850)
   const f = await fixture(page, detail)
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await expect(page.getByRole('heading', { name: 'Welcome aboard' })).toBeVisible()
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 })
@@ -195,7 +195,7 @@ test('open and closed recruitment and existing membership drive the available co
 
 test('lost membership clears private board, roster and administration after an access-denied reload', async ({ page }) => {
   const f = await fixture(page, own())
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await page.getByRole('button', { name: 'Members', exact: true }).click()
   const roster = page.getByRole('region', { name: 'Alliance roster' })
   await expect(roster.getByRole('link', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
@@ -213,7 +213,7 @@ test('notice rolloff comes from refreshed server pages and retains pinned notice
   const detail = own()
   detail.posts = Array.from({ length: 100 }, (_, index) => ({ id: id(900 + index), author: member, author_name: 'Nova', title: `Notice ${100 - index}`, body: 'A chapter in our history.', created_at: 1700000000100 - index, updated_at: 1700000000100 - index, pinned: index === 0 }))
   const f = await fixture(page, detail)
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await expect(page.getByRole('article')).toHaveCount(20)
   await page.getByText('Write a notice', { exact: true }).click()
   await page.getByLabel('Notice title', { exact: true }).first().fill('Next chapter')
@@ -259,7 +259,7 @@ test('departed notice authors use authorized current profile tags while roster m
     const now = Math.floor(Date.now() / 1000)
     return route.fulfill({ json: { ...context, players: (source.players ?? []).map((player: string) => ({ player, username: player === departed ? 'Departed Pilot' : player === member ? 'Nova' : 'Commander', observed_at: now, expires_at: now + 300, alliance: { id: id(889), universe: binding.universe, name: 'Other Alliance', tag: 'AWAY' } })) } })
   })
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Welcome aboard' }) })
   await focusPlayerDetails(page, article.getByRole('link', { name: 'Departed Pilot profile details' }))
   await expect(page.getByRole('tooltip').getByRole('link', { name: 'Alliance Other Alliance [AWAY]', exact: true })).toBeVisible()
@@ -291,7 +291,7 @@ test('a delegated manager can dismiss a locked member role editor without submit
   detail.roles!.push({ id: id(872), name: 'Intelligence', is_default: false, permissions: ['ViewMembers', 'ViewActivity'], grantable_permissions: [] })
   detail.members!.find(m => m.player === member)!.roles.push(id(872))
   const f = await fixture(page, detail)
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await page.getByRole('button', { name: 'Members', exact: true }).click()
   await page.getByRole('button', { name: 'Assign roles to Nova', exact: true }).click()
   await expect(page.getByText('This member holds a role above your delegated authority.')).toBeVisible()
@@ -318,7 +318,7 @@ test('expired noticeboard cursors recover to fresh notices', async ({ page }) =>
     }
     return route.fulfill({json:{...context,sampled_at:1700000000000,directory:[],directory_count:0,alliance:detail,applications:[]}})
   })
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await page.getByRole('button', { name:'Older notices', exact:true }).click()
   await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
   await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
@@ -328,7 +328,7 @@ test('expired noticeboard cursors recover to fresh notices', async ({ page }) =>
 
 test('saving an unrelated role retains an edited notice draft', async ({page})=>{
   await fixture(page,own())
-  await page.goto('/u/andromeda/alliance')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await page.getByText('Write a notice',{exact:true}).click()
   await page.getByRole('textbox',{name:'Notice title',exact:true}).fill('Unpublished orders')
   await page.getByRole('textbox',{name:'Notice body',exact:true}).fill('Keep this draft while assigning duties.')
@@ -356,7 +356,7 @@ for (const viewport of [{ width: 390, height: 740 }, { width: 1440, height: 900 
       // A tall preformatted notice mirrors the ASCII art in the iPhone report.
       detail.posts![0].body = '```\n' + Array.from({ length: 60 }, (_, index) => `| Standing order ${index + 1} |`).join('\n') + '\n```\n\nRead these standing orders together.\n\n[Read recruitment](/alliances/' + binding.universe + '/' + alliance + ')'
       await fixture(page, detail)
-      await page.goto('/u/andromeda/alliance')
+      await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
       const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Welcome aboard' }) })
       await expect(article).toBeVisible()
       await page.clock.runFor(500)

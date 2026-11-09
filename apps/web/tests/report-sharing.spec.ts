@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/test'
 import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { withReportResponse, withSharedReportResponse } from './fixtures/responses'
 
 const reportId = id(70)
 const token = id(75)
@@ -53,7 +54,7 @@ for (const width of [390, 1440]) {
         ),
       })
     })
-    await page.goto(`/reports/shared/${token}`)
+    await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
     await expect(
       page.getByRole('heading', { name: 'Shared report', exact: true }),
     ).toBeVisible()
@@ -189,7 +190,7 @@ for (const width of [390, 1440])
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+    await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
     const trigger = page.getByRole('button', {
       name: 'Share report',
       exact: true,
@@ -250,7 +251,7 @@ for (const width of [390, 1440])
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
     expect(active).toBe(true)
     expect(actions).not.toContain('Revoke')
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+    await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
     await expect(page.getByRole('button', {name: 'Move to inbox', exact: true})).toBeEnabled()
     await trigger.click()
     await expect(page.getByRole('textbox', {name: 'Share link'})).toHaveValue(new RegExp(`/reports/shared/${token}$`))
@@ -336,7 +337,7 @@ test('public combat shows loot and keeps historical names without a profile sess
   await page.route(`**/api/v4/shared-reports/${token}`, (route) =>
     route.fulfill({ json: report }),
   )
-  await page.goto(`/reports/shared/${token}`)
+  await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
   await expect(
     page.getByRole('heading', { name: 'Attacker victory' }),
   ).toBeVisible()
@@ -372,7 +373,7 @@ test('included coordinates and names work without account navigation', async ({
   await page.route(`**/api/v4/shared-reports/${token}`, (route) =>
     route.fulfill({ json: report }),
   )
-  await page.goto(`/reports/shared/${token}`)
+  await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
   await expect(
     page.getByText('Historical player', { exact: true }),
   ).toBeVisible()
@@ -398,7 +399,7 @@ for (const width of [1440, 390]) {
         research: {visibility: 'Known', value: {WeaponsTechnology: 8, ShieldingTechnology: 7, ArmourTechnology: 6, EspionageTechnology: 5, CombustionDrive: 4, ImpulseDrive: 3, HyperspaceDrive: 2}},
       }
     }}))
-    await page.goto(`/reports/shared/${token}`)
+    await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
     await expect(page.getByRole('heading', {name: 'Research', exact: true})).toBeVisible()
     for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
       await expect(page.getByText(name, {exact: true})).toHaveCount(0)
@@ -429,7 +430,7 @@ for (const width of [1440, 390]) {
     } }))
     for (const display of ['visible', 'hidden']) {
       kind = display === 'visible' ? 'bot' : 'human'
-      await page.goto(`/reports/shared/${token}`)
+      await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
       await expect(page.getByText('Harvester', { exact: true })).toBeVisible()
       await expect(page.getByLabel('Bot', { exact: true })).toHaveCount(display === 'visible' ? 1 : 0)
       await diagnosticScreenshot(page, { path: `test-results/bot-shared-report-${display}-${width}x1000.png` })

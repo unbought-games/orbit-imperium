@@ -3,6 +3,7 @@ import { openNavigation } from './fixtures/navigation'
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { installGameFixture, binding, id, body } from './fixtures/game'
+import { withBootstrapResponse, withRankingsResponse } from './fixtures/responses'
 
 test('High Scores keeps one snapshot through search and paging, finds me, and opens accessible details', async ({ page }) => {
   await installGameFixture(page, { protocol: 4 })
@@ -24,7 +25,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
     const visible = new Set(source.players ?? [binding.player])
     return route.fulfill({ json: { binding, request_id: context.request_id, players: players.filter(p => visible.has(p.player)).map(p => ({ player: p.player, username: p.username, ...(p === players[0] ? { supporter_tier: 2 } : {}), observed_at: now, expires_at: now + 300 })) } })
   })
-  await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
+  await withRankingsResponse(page, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
   await expect(page.getByRole('heading', { name: 'High Scores', exact: true })).toBeVisible()
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   await expect(table.getByRole('row')).toHaveCount(51)
@@ -108,7 +109,7 @@ test('a refresh removing the selected player closes details, restores useful foc
     if (requests === 2) await pending
     await route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000 + requests, processing_pending: false, players: visible ? players : [] } })
   })
-  await page.goto('/u/andromeda/high-scores')
+  await withRankingsResponse(page, () => page.goto('/u/andromeda/high-scores'))
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   const player = table.getByRole('button', { name: 'Score details for Selected Commander: 12 points' })
   await expect(player).toBeVisible()
@@ -128,7 +129,7 @@ test('a refresh removing the selected player closes details, restores useful foc
 test('browser navigation away from player details leaves the destination usable', async ({ page }) => {
   await installGameFixture(page, { protocol: 4 })
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }] } }))
-  await page.goto(`/u/andromeda/overview?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/overview?body=${body.id}`))
   await openNavigation(page)
   await page.getByRole('link', { name: 'High Scores', exact: true }).click()
   await page.getByRole('table').getByRole('button', { name: 'Score details for Selected Commander: 12 points' }).click()
@@ -148,7 +149,7 @@ test('rank movement is accessible, stable through filters and paging, and refres
     previous_rank: i === 0 ? 3 : i === 1 ? 1 : i === 2 ? null : i === 5 ? 86 : i + 1,
   }))
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1792886400000, baseline_at: baseline, processing_pending: false, players } }))
-  await page.goto('/u/andromeda/high-scores')
+  await withRankingsResponse(page, () => page.goto('/u/andromeda/high-scores'))
   const table = page.getByRole('table')
   await expect(page.getByText('Rank change since yesterday’s first snapshot', { exact: false })).toBeVisible()
   await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText('(+2)')
@@ -208,7 +209,7 @@ test('alliance standings share one snapshot, search names and tags, and navigate
       players: [{ player: binding.player, username: 'My Commander', points: '500', rank: 1, ...(ownAlliance ? { alliance: alliances[80].alliance } : {}) }],
     } })
   })
-  await page.goto('/u/andromeda/high-scores')
+  await withRankingsResponse(page, () => page.goto('/u/andromeda/high-scores'))
   await focusPlayerDetails(page, page.getByRole('table').getByRole('link', { name: 'My Commander profile details' }))
   await expect(page.getByRole('tooltip').getByRole('link', { name: /Alliance Étoile/ })).toHaveAttribute('href', `/alliances/${binding.universe}/${alliances[80].alliance.id}`)
   await page.getByRole('button', { name: 'Alliances', exact: true }).click()
@@ -254,7 +255,7 @@ test('alliance standings share one snapshot, search names and tags, and navigate
 test('legacy rankings responses retain players and show an honest empty alliance view', async ({ page }) => {
   await installGameFixture(page, { protocol: 4 })
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [] } }))
-  await page.goto('/u/andromeda/high-scores')
+  await withRankingsResponse(page, () => page.goto('/u/andromeda/high-scores'))
   await page.getByRole('button', { name: 'Alliances', exact: true }).click()
   await expect(page.getByText('No alliances are ranked yet.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Around my alliance' })).toBeDisabled()

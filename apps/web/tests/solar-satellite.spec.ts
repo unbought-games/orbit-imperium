@@ -6,6 +6,7 @@ import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id, refreshGame } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 type S = components['schemas']
 const item = { kind: 'Ship', id: 'SolarSatellite' } as const
 const catalog = JSON.parse(
@@ -187,10 +188,10 @@ test('satellites require Shipyard 1 and show stationary statistics and local ene
   page,
 }) => {
   await setup(page, 0)
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   await expect(page.getByRole('heading', { name: 'Resource buildings', exact: true })).toBeVisible()
   await expect(page.locator('main').getByText('Solar Satellite', { exact: true })).toHaveCount(0)
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
   await page
     .getByRole('link', { name: 'Build Solar Satellite', exact: true })
     .click()
@@ -226,7 +227,7 @@ test('satellites manufacture by quantity but never appear in fleet selection', a
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
   await page
     .getByRole('link', { name: 'Build Solar Satellite', exact: true })
     .click()
@@ -247,7 +248,7 @@ test('satellites manufacture by quantity but never appear in fleet selection', a
       item,
       quantity: '2',
     })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   await expect(
     page.getByRole('radio', { checked: true }),
   ).toBeVisible()
@@ -288,7 +289,7 @@ test('production controls show satellite quantity and submit group throttling', 
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   await openProductionSettings(page)
   const row = page.getByRole('row').filter({
     has: page.getByRole('rowheader', {
@@ -312,7 +313,7 @@ test('production controls show satellite quantity and submit group throttling', 
       settings: { solar_satellite: 50 },
     })
   await expect.poll(() => production.settings.solar_satellite).toBe(50)
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await expect(row.getByRole('slider')).toHaveValue('50')
   await expect(row).toContainText('30')
 })
@@ -321,7 +322,7 @@ for (const width of [320, 1440]) {
   test(`satellite ordering shows authoritative planet output without technical expansion at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const production = await setup(page)
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`))
     const order = page.getByRole('region', { name: 'New order', exact: true })
     const perUnit = order.locator('dl > div').filter({ has: page.getByText('Energy per satellite · 100% production', { exact: true }) })
     await expect(perUnit).toContainText('30')
@@ -342,7 +343,7 @@ test('satellite ordering updates across planets, zero stationed satellites and u
   const production = await setup(page, 1, { bodies: [{ ...body, inventories: [] }, second] })
   production.solar_satellite!.energy_supply = '0'
   production.settings.solar_satellite = 0
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`))
   const order = page.getByRole('region', { name: 'New order', exact: true })
   await expect(order).toContainText('Energy per satellite · 100% production30')
   await expect(order).toContainText('Current satellite energy · 0% production0')

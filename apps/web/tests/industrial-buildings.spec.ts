@@ -4,6 +4,7 @@ import { shellFixture, body, binding, id, refreshGame } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const baseline = JSON.parse(readFileSync('rules/mvp-v1-slice-13.json', 'utf8'))
@@ -195,7 +196,7 @@ for (const building of ['Shipyard', 'NaniteFactory'] as const) {
             animations: 'disabled',
           })
       }
-      await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities`))
       const tile = page.getByRole('link', {
         name: `Upgrade ${title}`,
         exact: true,

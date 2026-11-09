@@ -1,5 +1,5 @@
 import { routeWorld } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withReportResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
@@ -279,7 +279,7 @@ async function prepareHistoricalDraft(page: Page) {
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
   await page.getByRole('button', { name: 'Attack', exact: true }).click()
   await expect(mission(page)).toHaveValue('Attack')
   await expect(

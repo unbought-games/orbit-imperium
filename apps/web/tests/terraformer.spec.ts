@@ -4,6 +4,7 @@ import { shellFixture, body, binding, id, refreshGame } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const baseline = JSON.parse(readFileSync('rules/mvp-v1-slice-13.json', 'utf8'))
@@ -206,7 +207,7 @@ for (const width of [390, 1440]) {
       revision++
       await refreshGame(page)
     }
-    await page.goto(`/u/andromeda/b/${body.id}/facilities`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities`))
     const tile = page.getByRole('link', {
       name: 'Upgrade Terraformer',
       exact: true,
@@ -273,7 +274,7 @@ for (const width of [390, 1440]) {
       pane.getByRole('link', { name: 'Energy Technology 12', exact: true }),
     ).toBeVisible()
     await capture('technical')
-    await page.goto('/u/andromeda/overview')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/overview'))
     await expect(
       page.getByText('100/105 fields', { exact: false }),
     ).toBeVisible()

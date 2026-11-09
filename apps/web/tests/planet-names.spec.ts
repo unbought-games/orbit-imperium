@@ -1,6 +1,7 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import { binding, body, id, shellFixture } from './fixtures/game'
+import { withBootstrapResponse } from './fixtures/responses'
 
 test('a rejected rename preserves the draft and leaves the confirmed name unchanged', async ({
   page,
@@ -101,7 +102,7 @@ test('active fleet routes show current public names and fit a phone', async ({
       ],
     },
   })
-  await page.goto(`/u/andromeda/fleets/${id(71)}?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/fleets/${id(71)}?body=${body.id}`))
   // The legacy URL redirects and remounts the route. Wait before opening the
   // native details element so that navigation cannot close it after the click.
   await expect(page).toHaveURL(
@@ -165,7 +166,7 @@ test('the fallback label is a valid explicit name for an unnamed planet', async 
   ).toBeVisible()
   expect(planet.name).toBe('Planet')
   await expect(save).toHaveCount(0)
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
     'Planet',
