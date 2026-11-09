@@ -2,13 +2,6 @@
 
 ## Unreleased
 
-- Report tools remember your archive age, offer Mark all as read, and keep All
-  reports at the top of the command orb inbox. Shared links have a copying
-  fallback, and combat defenders are grouped into ships and defenses. Thanks to
-  [sumdeos](https://discord.com/users/181133185491402753) and
-  [Gh0stP1rate](https://discord.com/users/343178308164255744) for the reports and
-  suggestions. Read the [build note](docs/news/changes/2026-11-09-report-tools.md).
-
 - New empires begin with an arrival scene: choose a title, a planet look that suits
   your orbit, and a name for your world before your Briefing. Existing empires are
   unchanged. Read the [build note](docs/news/changes/2026-11-08-arrival.md).
