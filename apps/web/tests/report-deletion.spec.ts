@@ -1192,7 +1192,7 @@ for (const width of [1280, 390]) {
     await dialog.getByRole('combobox', {name: 'Older than'}).selectOption('custom')
     await dialog.getByRole('spinbutton', {name: 'Hours'}).fill('36.5')
     await page.keyboard.press('Escape')
-    await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().method() === 'POST', () => page.reload())
+    await withReportListResponse(page, () => page.reload())
     await ageCleanup(page)
     await expect(dialog.getByRole('combobox', {name: 'Older than'})).toHaveValue('custom')
     await expect(dialog.getByRole('spinbutton', {name: 'Hours'})).toHaveValue('36.5')
