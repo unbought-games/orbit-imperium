@@ -2205,6 +2205,7 @@ test('a probe in flight to one target leaves Spy available for the other targets
   await spy(page, 2).click()
   await expect.poll(() => destinations).toEqual([id(21)])
   await expect(spy(page, 2)).toBeDisabled()
+  await expect(spy(page, 2)).toHaveAttribute('title', 'Sending a probe…')
   await expect(spy(page, 3)).toBeEnabled()
   await expect(spy(page, 3)).toHaveAttribute(
     'title',

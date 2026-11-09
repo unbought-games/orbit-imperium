@@ -95,7 +95,7 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
       send: () => void send(target),
       paused: state.rateLimited,
       busy: sending.has(target.id) || pendingProbe(state, origin, target.id),
-      reason,
+      reason: sending.has(target.id) ? 'Sending a probe…' : reason,
       error: rejection(target.id) ?? errors.get(target.id) ?? null,
       notice: errors.get(target.id) ?? null,
     }),
