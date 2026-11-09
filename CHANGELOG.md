@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-- Notifications stack behind the newest card to leave more of Galaxy visible
-  while sending probes. Thanks to
-  [Gh0stP1rate](https://discord.com/users/343178308164255744) and
-  [sumdeos](https://discord.com/users/181133185491402753) for the reports.
-  Read the [build note](docs/news/changes/2026-11-09-compact-notifications.md).
-
 - New empires begin with an arrival scene: choose a title, a planet look that suits
   your orbit, and a name for your world before your Briefing. Existing empires are
   unchanged. Read the [build note](docs/news/changes/2026-11-08-arrival.md).
