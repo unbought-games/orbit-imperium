@@ -1,25 +1,5 @@
 # PR and main test performance audit
 
-## November 9, 2026: retire compact report tools after repeated stalls
-
-After its PR #374 readiness repair, `compact report tools combine filters and
-preserve their controls` stalled browser shard 7/8 in five runs on main and on
-PRs #373, #376 and #378, at both 1280px and 390px. Examples: main push run
-[42668931382](https://github.com/unbought-games/orbit-imperium/actions/runs/42668931382)
-(both widths), PR #373 run [42686821207](https://github.com/unbought-games/orbit-imperium/actions/runs/42686821207)
-(1280px), PR #376 run [42678825556](https://github.com/unbought-games/orbit-imperium/actions/runs/42678825556)
-and PR #378 run [42689982274](https://github.com/unbought-games/orbit-imperium/actions/runs/42689982274)
-(390px, then 1280px on its rerun). Each run finished every other case in the
-shard and produced no diagnostics, because browser actions have no deadline. 168
-local stress runs of the report specs with eight workers passed.
-
-Under the one-repair rule, the whole scenario is removed. It is not renamed,
-skipped, retried or given a timeout. The delivered-detail report-glance cases
-remain. Report-deletion specs keep archive, selection and keyboard coverage, and
-report-preview unit tests keep list facts. Sort menus, the filter popover and
-sheet, combined filter chips, the archive-age dialog's custom hours and
-cross-viewport persistence are no longer claimed as browser-covered.
-
 ## November 9, 2026: colony report readiness without the overview visit
 
 PR #375 run [42678831678](https://github.com/unbought-games/orbit-imperium/actions/runs/42678831678)
