@@ -6,6 +6,7 @@ import { test, expect } from './fixtures/test'
 import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { withGalaxyResponse } from './fixtures/galaxy'
+import { withFixtureResponse } from './fixtures/responses'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 const content = JSON.parse(
@@ -599,10 +600,23 @@ for (const width of [1440, 390])
       page.getByRole('region', { name: 'Incoming fleets' }),
     ).toHaveCount(0)
     await capture('missile-mission-details')
-    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await withFixtureResponse(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().endsWith('/reports') &&
+        response.request().postDataJSON().filter?.unread_only === false,
+      () => page.goto(`/u/andromeda/b/${body.id}/reports`),
+    )
     await expect(page.getByText('6 intercepted · 2 penetrated')).toBeVisible()
     await capture('report-list')
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${id(70)}`)
+    await withFixtureResponse(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith(`/reports/${id(70)}`),
+      () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(70)}`),
+    )
     await expect(
       page.getByRole('region', { name: 'Missile impact report' }),
     ).toContainText('Permanently destroyed defenses')

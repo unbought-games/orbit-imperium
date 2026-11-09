@@ -1,5 +1,24 @@
 # PR and main test performance audit
 
+## November 9, 2026: missile report lazy-response readiness
+
+PR #373 run [42678837519](https://github.com/unbought-games/orbit-imperium/actions/runs/42678837519)
+browser shard 6/8 failed `missile inventory launch and reports at 390px`: after
+`page.goto` to the impact report, the `Missile impact report` region was absent
+for the assertion deadline, although the failure snapshot contained it with the
+expected text. The scenario ran 1.2m on a loaded runner; the other 146 shard
+cases passed. Earlier runs of the same PR source passed.
+
+Git history and this audit show no prior repair for this scenario; the separate
+owner Test Czar ledger was unavailable. This is its one repair attempt, matching
+the report-glance repair: the report list and report detail navigations now wait
+for their own report POST with `withFixtureResponse` before asserting rendered
+content. No sleeps, retries, timeouts or product behavior changed. Local
+validation: both viewport variants passed with two workers and no retries.
+
+About 25 other report navigations in fixture browser specs still assert after a
+bare `page.goto`. Auditing them is independent follow-up outside PR #373.
+
 ## November 5, 2026: recovery fixture teardown after its first repair
 
 [Main CI run 42114714101](https://github.com/unbought-games/orbit-imperium/actions/runs/42114714101)
