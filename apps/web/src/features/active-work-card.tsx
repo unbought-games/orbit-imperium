@@ -9,11 +9,6 @@ export function WorkCardSurface({ children }: { children: ReactNode }) {
   return <div className={styles.surface}>{children}</div>
 }
 
-/** Secondary band below the active work: queue state or the work's own actions. */
-export function WorkCardFooter({ children }: { children: ReactNode }) {
-  return <div className={styles.footer}>{children}</div>
-}
-
 /** Shared active-work presentation; callers own timing and operation semantics. */
 export function ActiveWorkCard({
   item,
@@ -24,6 +19,7 @@ export function ActiveWorkCard({
   percent,
   progressLabel,
   moving = true,
+  progressAction,
   children,
 }: {
   item: components['schemas']['CatalogKey3']
@@ -34,6 +30,8 @@ export function ActiveWorkCard({
   percent: number | null
   progressLabel: string
   moving?: boolean
+  /** Compact control that ends the progress track, such as cancelling the work. */
+  progressAction?: ReactNode
   children: ReactNode
 }) {
   const art = resolveCatalogArt(item)
@@ -63,17 +61,24 @@ export function ActiveWorkCard({
         </div>
       </div>
       {children}
-      {percent !== null && (
-        <div
-          className={styles.progress}
-          role="progressbar"
-          aria-label={progressLabel}
-          aria-valuenow={Math.round(percent)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          data-moving={moving && percent < 100 && percent > 0}
-        >
-          <span style={{ width: `${percent}%` }} />
+      {(percent !== null || progressAction) && (
+        <div className={styles.progressTrack}>
+          {percent !== null && (
+            <div
+              className={styles.progress}
+              role="progressbar"
+              aria-label={progressLabel}
+              aria-valuenow={Math.round(percent)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              data-moving={moving && percent < 100 && percent > 0}
+            >
+              <span style={{ width: `${percent}%` }} />
+            </div>
+          )}
+          {progressAction && (
+            <div className={styles.progressAction}>{progressAction}</div>
+          )}
         </div>
       )}
     </div>

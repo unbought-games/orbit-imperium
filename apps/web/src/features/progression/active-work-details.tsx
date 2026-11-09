@@ -34,6 +34,26 @@ export function RefundAmounts({
   )
 }
 
+/** Shared cancellation question and refund for every work confirmation. */
+export function CancellationReview({
+  question,
+  paid,
+}: {
+  question: ReactNode
+  paid: components['schemas']['Resources']
+}) {
+  return (
+    <>
+      <p>{question}</p>
+      <dl className={styles.compare}>
+        <DetailRow label="Full refund">
+          <RefundAmounts paid={paid} />
+        </DetailRow>
+      </dl>
+    </>
+  )
+}
+
 /** Construction and research share the same active-work reading order. */
 export function ActiveWorkDetails({
   label,

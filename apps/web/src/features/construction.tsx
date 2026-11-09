@@ -3,7 +3,6 @@ import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { canAfford } from '../client-model/resources'
 import { QuotePanel, QuoteAction } from '../ui/quote-panel'
 import { WorkCancellationButton } from './work-cancellation-button'
-import { ResourceSummary } from '../ui/number-value'
 import { Button, ButtonLinkAnchor } from '../ui/button'
 import { Heading, Text } from '../ui/typography'
 import { CatalogActions, CatalogCard, CatalogGrid } from '../ui/catalog-layout'
@@ -22,6 +21,7 @@ import { resourceBuildings } from './progression/resource-buildings'
 import { ResourceCosts } from '../ui/resource-costs'
 import { label } from '../ui/format'
 import styles from './legacy-resources.module.css'
+import { CancellationReview } from './progression/active-work-details'
 import type { View } from '../adapters/http'
 import type { Quote, QuoteRequest } from '../client-model/commands'
 import { buildingProgress } from '../client-model/building-progress'
@@ -331,10 +331,10 @@ export function Economy({
             confirmLabel="Confirm cancellation"
             cancelLabel="Keep construction"
             review={
-              <p>
-                Stop construction and refund{' '}
-                <ResourceSummary value={active.paid} />?
-              </p>
+              <CancellationReview
+                question="Stop this construction?"
+                paid={active.paid}
+              />
             }
             onConfirm={() =>
               void send({ type: 'CancelConstruction', operation: active.id })

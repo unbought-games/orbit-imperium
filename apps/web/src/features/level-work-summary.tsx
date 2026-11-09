@@ -5,15 +5,12 @@ import type { researchProgress } from '../client-model/research-progress'
 import type { routeTarget } from '../shell/route-target'
 import { label } from '../ui/format'
 import { Link } from '../ui/link'
-import { RefundAmounts } from './progression/active-work-details'
 import {
   ActiveWorkCard,
-  WorkCardFooter,
   WorkCardSurface,
   WorkTimer,
   WorkTimers,
 } from './active-work-card'
-import styles from './level-work-summary.module.css'
 
 export function LevelWorkSummary({
   item,
@@ -64,6 +61,7 @@ export function LevelWorkSummary({
         percent={percent}
         progressLabel={`${label(item.id)} estimated progress`}
         moving={active && work.secondsRemaining !== null}
+        progressAction={cancel}
       >
         <WorkTimers>
           <WorkTimer
@@ -85,15 +83,6 @@ export function LevelWorkSummary({
           />
         </WorkTimers>
       </ActiveWorkCard>
-      {cancel && (
-        <WorkCardFooter>
-          <span className={styles.refund}>
-            Refund on cancel
-            <RefundAmounts paid={work.paid} />
-          </span>
-          <span className={styles.action}>{cancel}</span>
-        </WorkCardFooter>
-      )}
     </WorkCardSurface>
   )
 }

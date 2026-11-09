@@ -163,15 +163,19 @@ for (const width of [390, 1440]) {
               button.closest(':has(> div > [role="progressbar"])') !== null,
           ),
         ).toBe(true)
-        await expect(
-          summary.getByRole('group', { name: 'Cancellation refund' }),
-        ).toBeVisible()
         await cancel.click()
         const dialog = page.getByRole('dialog', {
           name: /Cancel (research|construction)\?/,
         })
         await expect(dialog).toBeVisible()
         await expect(dialog).toContainText('refund')
+        const refund = dialog.getByRole('group', {
+          name: 'Cancellation refund',
+        })
+        await expect(refund.getByRole('img', { name: 'Metal' })).toBeVisible()
+        await expect(
+          refund.getByRole('img', { name: 'Deuterium' }),
+        ).toHaveCount(0)
         await page.keyboard.press('Escape')
         await expect(cancel).toBeFocused()
       }

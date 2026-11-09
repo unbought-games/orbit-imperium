@@ -130,8 +130,29 @@
 .totalTimer dd {
   font-weight: 650;
 }
-.progress {
+.progressTrack {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.progressAction {
+  display: flex;
+  flex-shrink: 0;
+  /* The hit area may exceed the track; only the 4px bar sets the row height. */
+  margin-block: -10px;
+  margin-inline-start: auto;
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  /* Touch-sized hit area keeps the icon aligned with the desktop position. */
+  .progressAction {
+    margin: -16px -10px;
+  }
+}
+.progress {
+  flex: 1;
+  min-width: 0;
   height: 4px;
   background: #a4dbef1c;
   overflow: hidden;
@@ -141,18 +162,6 @@
   height: 100%;
   background: linear-gradient(90deg, var(--ice-shadow), var(--ice));
   box-shadow: 0 0 10px #a4dbef55;
-}
-
-.footer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-  min-height: 44px;
-  padding: var(--space-1) var(--space-5);
-  border-top: 1px solid #a4dbef26;
-  color: var(--text-muted);
-  font-size: 0.6875rem;
 }
 
 .identity h3 a {
@@ -243,9 +252,6 @@
   }
   .timers > div + div {
     padding-left: var(--space-2);
-  }
-  .footer {
-    padding-inline: var(--space-4);
   }
 }
 .timer .unconfirmed,

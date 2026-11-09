@@ -10,7 +10,6 @@ import { manufacturingSummary } from './manufacturing-summary-model'
 import styles from './manufacturing-summary.module.css'
 import {
   ActiveWorkCard,
-  WorkCardFooter,
   WorkCardSurface,
   WorkTimer as Timer,
   WorkTimers,
@@ -141,12 +140,10 @@ export function ManufacturingSummary({
         )}
       </ol>
       {upcoming.length === 0 && (
-        <WorkCardFooter>
-          <p className={styles.queueEmpty}>
-            <Radar size={16} aria-hidden="true" />
-            No further orders queued
-          </p>
-        </WorkCardFooter>
+        <p className={styles.queueEmpty}>
+          <Radar size={16} aria-hidden="true" />
+          No further orders queued
+        </p>
       )}
     </WorkCardSurface>
   )

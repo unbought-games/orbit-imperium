@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 import type { researchProgress } from '../../client-model/research-progress'
 import { WorkCancellationButton } from '../work-cancellation-button'
 import { label } from '../../ui/format'
-import { ActiveWorkDetails, RefundAmounts } from './active-work-details'
+import { ActiveWorkDetails, CancellationReview } from './active-work-details'
 import { DetailRow } from './detail-layout'
 import styles from './detail-layout.module.css'
 import noticeStyles from './quote-review.module.css'
@@ -67,17 +67,10 @@ export function ResearchWorkDetails({
         confirmLabel="Confirm cancellation"
         cancelLabel="Keep research"
         review={
-          <>
-            <p>
-              Cancel {verb.toLowerCase()} {label(research.research)} to level{' '}
-              {research.targetLevel}?
-            </p>
-            <dl className={styles.compare}>
-              <DetailRow label="Full refund">
-                <RefundAmounts paid={research.paid} />
-              </DetailRow>
-            </dl>
-          </>
+          <CancellationReview
+            question={`Cancel ${verb.toLowerCase()} ${label(research.research)} to level ${research.targetLevel}?`}
+            paid={research.paid}
+          />
         }
         disabled={!research.canCancel}
         onConfirm={() => {

@@ -18,7 +18,7 @@ import { researchProgress } from '../client-model/research-progress'
 import { elapsedProgress } from './overview-progress'
 import { WorkCancellationButton } from './work-cancellation-button'
 import { ResearchSummaryContent } from './research-summary-content'
-import { ResourceSummary } from '../ui/number-value'
+import { CancellationReview } from './progression/active-work-details'
 import { manufacturingQueue } from '../client-model/manufacturing-queue'
 import { ManufacturingSummary } from './manufacturing-summary'
 import { LevelWorkSummary } from './level-work-summary'
@@ -206,13 +206,20 @@ export function WorkSummaries({
                   confirmLabel="Confirm cancellation"
                   cancelLabel="Keep working"
                   review={
-                    <p>
-                      Stop {name} and refund{' '}
-                      <ResourceSummary value={work.paid} />?
-                    </p>
+                    <CancellationReview
+                      question={`Stop ${name}?`}
+                      paid={work.paid}
+                    />
                   }
                   variant={catalogWork ? 'ghost' : 'secondary'}
-                  size={catalogWork ? 'small' : undefined}
+                  size={catalogWork ? 'icon-touch' : undefined}
+                  title={
+                    catalogWork
+                      ? cancelType === 'CancelConstruction'
+                        ? 'Cancel construction'
+                        : 'Cancel research'
+                      : undefined
+                  }
                   aria-label={
                     cancelType === 'CancelConstruction'
                       ? 'Cancel construction'
@@ -227,8 +234,13 @@ export function WorkSummaries({
                       })
                   }}
                 >
-                  {catalogWork && <X size={16} aria-hidden="true" />}
-                  {work.status === 'Cancelling' ? 'Cancelling…' : 'Cancel'}
+                  {catalogWork ? (
+                    <X size={16} aria-hidden="true" />
+                  ) : work.status === 'Cancelling' ? (
+                    'Cancelling…'
+                  ) : (
+                    'Cancel'
+                  )}
                 </WorkCancellationButton>
               )
             return (
