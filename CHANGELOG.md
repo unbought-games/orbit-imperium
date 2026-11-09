@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- New empires begin with an arrival scene: choose a title, a planet look that suits
+  your orbit, and a name for your world before your Briefing. Existing empires are
+  unchanged. Read the [build note](docs/news/changes/2026-11-08-arrival.md).
+
+- Profile titles, insignia saves and simulator sides now work on servers hosted
+  over plain HTTP.
+
+- Planet and moon coordinates show only their link, without the copy and menu
+  buttons beside them. Right-click a coordinate, or long-press it on touch, to
+  copy it, share a location link or prepare a mission.
+
 - The command orb can announce selected new features in game. Each announcement
   shows once and links to its full update.
 

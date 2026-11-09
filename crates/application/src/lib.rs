@@ -1,3 +1,5 @@
+mod arrival;
+pub use arrival::*;
 mod empire_identity;
 pub use empire_identity::*;
 mod empire_history;

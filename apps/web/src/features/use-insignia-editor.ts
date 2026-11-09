@@ -1,3 +1,4 @@
+import { commandId } from '../adapters/command-id'
 import { useEffect, useState, useContext } from 'react'
 import { useStore } from 'zustand'
 import { InsigniaContext } from '../shell/insignia-context'
@@ -59,7 +60,7 @@ export function useInsigniaEditor() {
     create: () => {
       setSelectedId(null)
       setDraft({
-        id: crypto.randomUUID(),
+        id: commandId(crypto),
         name: 'My insignia',
         recipe: snapshot?.catalog.some((e) => e.group === 'center')
           ? layeredRecipe(defaultInsignia)

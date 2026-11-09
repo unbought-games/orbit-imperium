@@ -1,5 +1,10 @@
 import { addressCaption } from '../../client-model/empire-identity'
-import { useState, type CSSProperties, type ComponentPropsWithRef } from 'react'
+import {
+  useState,
+  type CSSProperties,
+  type ComponentPropsWithRef,
+  type ReactNode,
+} from 'react'
 import {
   Atom,
   Check,
@@ -170,6 +175,33 @@ function OrbSymbol({ kind }: { kind: HudIcon | null }) {
   )
 }
 
+function OrbFace({ symbol }: { symbol: ReactNode }) {
+  return (
+    <>
+      <span className={styles.outerOrbit} />
+      <span className={styles.innerOrbit} />
+      <span className={styles.orbCore}>
+        <span className={styles.coreShimmer} />
+        {symbol}
+      </span>
+    </>
+  )
+}
+
+/** The idle orb as decoration, outside the command HUD. */
+export function AmbientOrb({ className }: { className?: string }) {
+  return (
+    <span
+      className={`${styles.surface} ${styles.ambient} ${className ?? ''}`}
+      aria-hidden="true"
+    >
+      <span className={styles.orb}>
+        <OrbFace symbol={<OrbSymbol kind={null} />} />
+      </span>
+    </span>
+  )
+}
+
 export function CommandOrb({
   hud,
   address = 'Commander',
@@ -255,12 +287,7 @@ export function CommandOrb({
             <span />
           </span>
         )}
-        <span className={styles.outerOrbit} />
-        <span className={styles.innerOrbit} />
-        <span className={styles.orbCore}>
-          <span className={styles.coreShimmer} />
-          <OrbSymbol kind={appearance.icon} />
-        </span>
+        <OrbFace symbol={<OrbSymbol kind={appearance.icon} />} />
         <span
           className={styles.orbCharge}
           data-testid="orb-charge"

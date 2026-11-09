@@ -1,4 +1,5 @@
 mod alliance_preview;
+mod arrival;
 mod empire_history;
 mod empire_identity;
 mod insignias;
@@ -214,6 +215,7 @@ where
             "/api/v1/universes/{id}/insignias",
             post(insignias::handle::<S>),
         )
+        .route("/api/v1/universes/{id}/arrival", post(arrival::handle::<S>))
         .route(
             "/api/media/insignias/{symbol}/{version}",
             get(insignias::media::<S>),

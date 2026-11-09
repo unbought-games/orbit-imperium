@@ -477,20 +477,20 @@ for (const mission of ['Transport', 'Attack']) {
   })
 }
 
-test('one coordinate control supports copy, navigation and keyboard focus restoration', async ({
+test('one coordinate link supports copy, navigation and keyboard focus restoration', async ({
   page,
 }) => {
   await setup(page)
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   const card = rows(page).nth(1)
-  const coordinate = card.getByRole('button', {
-    name: 'Location actions for [1:371:2]',
+  const coordinate = card.getByRole('link', {
+    name: 'View [1:371:2] in galaxy',
+    exact: true,
   })
   await expect(
-    card.getByRole('button', { name: /^Copy coordinates/ }),
+    card.locator('[data-coordinate]').getByRole('button'),
   ).toHaveCount(0)
-  await coordinate.focus()
-  await page.keyboard.press('Enter')
+  await coordinate.click({ button: 'right' })
   await page
     .getByRole('menuitem', { name: 'Copy coordinates', exact: true })
     .click()
@@ -499,9 +499,6 @@ test('one coordinate control supports copy, navigation and keyboard focus restor
     .toBe('[1:371:2]')
   await expect(coordinate).toBeFocused()
   await coordinate.click()
-  await page
-    .getByRole('menuitem', { name: 'View in Galaxy', exact: true })
-    .click()
   await expect(page.locator('li[aria-current="location"]')).toContainText(
     'Selected location [1:371:2]',
   )
@@ -1767,8 +1764,8 @@ for (const width of [390, 1280]) {
 test(`coordinate Harvest shares the quick form and restores its opener at ${width}px`, async ({ page }) => {
   await setupHarvest(page)
   await page.setViewportSize({ width, height: 844 })
-  const trigger = rows(page).nth(1).getByRole('button', { name: 'Location actions for [1:371:2]', exact: true })
-  await trigger.click()
+  const trigger = rows(page).nth(1).getByRole('link', { name: 'View [1:371:2] in galaxy', exact: true })
+  await trigger.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Prepare harvest', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
   await expect(sheet).toBeVisible()
@@ -2181,4 +2178,39 @@ test('desktop Harvest keeps its Actions anchor when the planet changes', async (
   await page.keyboard.press('Escape')
   await expect(popover).not.toBeVisible()
   await expect(actions(page, 2)).toBeFocused()
+})
+
+test('a probe in flight to one target leaves Spy available for the other targets', async ({
+  page,
+}) => {
+  await setup(page, null)
+  const destinations: string[] = []
+  let releaseFirst!: () => void
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve
+  })
+  await routeWorld(page, async (route) => {
+    const request = route.request().postDataJSON()
+    if (request.type !== 'FleetQuote') return route.fallback()
+    destinations.push(request.intent.destination.id)
+    if (request.intent.destination.id === id(21)) await firstGate
+    await route.fulfill({
+      status: 409,
+      json: { code: 'InsufficientResources' },
+    })
+  })
+  await spy(page, 2).click()
+  await expect.poll(() => destinations).toEqual([id(21)])
+  await expect(spy(page, 2)).toBeDisabled()
+  await expect(spy(page, 2)).toHaveAttribute('title', 'Sending a probe…')
+  await expect(spy(page, 3)).toBeEnabled()
+  await expect(spy(page, 3)).toHaveAttribute(
+    'title',
+    'Send one espionage probe',
+  )
+  await spy(page, 3).click()
+  await expect.poll(() => destinations).toEqual([id(21), id(22)])
+  releaseFirst()
+  await expect(spy(page, 2)).toBeEnabled()
+  await expect(spy(page, 3)).toBeEnabled()
 })

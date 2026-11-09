@@ -113,7 +113,8 @@ for (const width of [1280, 390, 320]) {
     const selected = page.locator('li[aria-current="location"]')
     await expect(selected).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
-    const control = selected.getByRole('button').first()
+    const control = selected.getByRole('link', { name: 'View [1:5:12] in galaxy', exact: true })
+    await expect(control).toHaveCSS('min-height', '24px')
     await control.focus()
     await expect(control).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
@@ -135,31 +136,15 @@ for (const width of [1280, 390, 320]) {
       .first()
     await expect(target).toBeVisible()
     const coordinate = target.locator('..')
-    const copy = coordinate.getByRole('button', {
-      name: 'Copy coordinates [1:5:12]',
-      exact: true,
-    })
-    const menu = coordinate.getByRole('button', {
-      name: 'Location actions for [1:5:12]',
-      exact: true,
-    })
-    const copyBox = (await copy.boundingBox())!
-    const menuBox = (await menu.boundingBox())!
-    const valueBox = (await target.boundingBox())!
-    expect(copyBox.width).toBe(24)
-    expect(copyBox.height).toBe(24)
-    expect(menuBox.width).toBe(24)
-    expect(menuBox.height).toBe(24)
-    expect(copyBox.x - valueBox.x - valueBox.width).toBeLessThanOrEqual(2)
-    expect(menuBox.x).toBe(copyBox.x + copyBox.width)
-    await menu.focus()
-    await page.keyboard.press('Enter')
+    await expect(coordinate.getByRole('button')).toHaveCount(0)
+    await target.click({ button: 'right' })
     await expect(
       page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
     ).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(menu).toBeFocused()
-    await menu.blur()
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    await expect(target).toBeFocused()
+    await target.blur()
     await diagnosticScreenshot(page, {
       path: `test-results/coordinate-mission-${width}.png`,
     })
@@ -408,19 +393,25 @@ test('copy, menus and explicit dispatch actions preserve origin and recent copy'
     })
   })
   await page.goto(path(`fleets/${fleet.id}`))
-  await page
-    .getByRole('button', { name: 'Copy coordinates [1:5:12]', exact: true })
+  const target = page
+    .getByRole('link', {
+      name: 'View destination [1:5:12] in galaxy',
+      exact: true,
+    })
     .first()
+  await target.click({ button: 'right' })
+  await page
+    .getByRole('menuitem', { name: 'Copy coordinates', exact: true })
     .click()
   await expect
     .poll(() =>
       page.evaluate(() => (window as unknown as { copied: string }).copied),
     )
     .toBe('[1:5:12]')
-  await page
-    .getByRole('button', { name: 'Location actions for [1:5:12]', exact: true })
-    .first()
-    .click()
+  await expect(target.locator('..').getByRole('status')).toHaveText(
+    'Coordinates copied.',
+  )
+  await target.click({ button: 'right' })
   await page
     .getByRole('menuitem', { name: 'Copy location link', exact: true })
     .click()
@@ -429,32 +420,8 @@ test('copy, menus and explicit dispatch actions preserve origin and recent copy'
       page.evaluate(() => (window as unknown as { copied: string }).copied),
     )
     .toContain('/u/andromeda-prime/location/1:5:12')
-  await page
-    .getByRole('link', {
-      name: 'View destination [1:5:12] in galaxy',
-      exact: true,
-    })
-    .first()
-    .click({ button: 'right' })
-  await expect(
-    page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
-  ).toBeVisible()
-  await page.keyboard.press('Escape')
-  // Context-menu dismissal restores focus asynchronously. Finish that handoff
-  // before opening the button menu, or late restoration can dismiss it.
   await expect(page.getByRole('menu')).toHaveCount(0)
-  await expect(
-    page
-      .getByRole('link', {
-        name: 'View destination [1:5:12] in galaxy',
-        exact: true,
-      })
-      .first(),
-  ).toBeFocused()
-  await page
-    .getByRole('button', { name: 'Location actions for [1:5:12]', exact: true })
-    .first()
-    .click()
+  await target.click({ button: 'right' })
   await page
     .getByRole('menuitem', { name: 'Prepare transport', exact: true })
     .click()
@@ -571,13 +538,34 @@ test('closing a coordinate menu respects focus moved to its location link', asyn
   await setup(page)
   await page.goto(path(`fleets/${fleet.id}`))
   const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
-  await page.getByRole('button', { name: 'Location actions for [1:5:12]', exact: true }).first().click()
+  const origin = page.getByRole('link', { name: 'View origin [1:2:4] in galaxy', exact: true }).first()
+  await target.click({ button: 'right' })
   const menu = page.getByRole('menu')
   await expect(menu).toBeVisible()
   await page.keyboard.press('Escape')
-  await target.focus()
+  await origin.focus()
   await expect(menu).toHaveCount(0)
-  await expect(target).toBeFocused()
+  await expect(origin).toBeFocused()
   await page.keyboard.press('Enter')
-  await assertLocation(page, 5, 12)
+  await assertLocation(page, 2, 4)
+})
+
+test.describe('coordinate actions on touch', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+  test('long-press opens location actions without following the link', async ({ page }) => {
+    await setup(page)
+    await page.goto(path(`fleets/${fleet.id}`))
+    const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
+    await expect(target).toBeVisible()
+    await expect(target.locator('..').getByRole('button')).toHaveCount(0)
+    const box = (await target.boundingBox())!
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] })
+    await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect(page.getByRole('menuitem', { name: 'Copy location link', exact: true })).toBeVisible()
+    await expect(page).toHaveURL(path(`fleets/${fleet.id}`))
+    await diagnosticScreenshot(page, { path: 'test-results/coordinate-long-press-390.png' })
+  })
 })

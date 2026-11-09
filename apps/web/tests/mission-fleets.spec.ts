@@ -364,17 +364,17 @@ for (const screen of ['fleets', 'overview'] as const) {
       await toggle.click()
       await expect(toggle).toHaveAttribute('aria-expanded', 'true')
       await expect(page).toHaveURL(path)
-      await row
-        .getByRole('button', { name: 'Copy coordinates [1:15:7]', exact: true })
+      const coordinate = row
+        .locator('[data-coordinate]')
+        .filter({ hasText: '[1:15:7]' })
+        .first()
+      await coordinate.click({ button: 'right' })
+      await page
+        .getByRole('menuitem', { name: 'Copy coordinates', exact: true })
         .click()
       await expect(row.getByRole('status')).toHaveText('Coordinates copied.')
       await expect(page).toHaveURL(path)
-      await row
-        .getByRole('button', {
-          name: 'Location actions for [1:15:7]',
-          exact: true,
-        })
-        .click()
+      await coordinate.click({ button: 'right' })
       await page
         .getByRole('menuitem', { name: 'Copy location link', exact: true })
         .click()

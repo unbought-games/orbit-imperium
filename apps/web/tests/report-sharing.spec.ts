@@ -380,9 +380,7 @@ test('included coordinates and names work without account navigation', async ({
     'Historical planet ·',
   )
   await expect(page.getByText('[1:2:3]', { exact: true })).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Location actions for [1:2:3]' })
-    .click()
+  await page.getByText('[1:2:3]', { exact: true }).click({ button: 'right' })
   await expect(
     page.getByRole('menuitem', { name: 'Copy coordinates' }),
   ).toBeVisible()

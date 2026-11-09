@@ -1,3 +1,7 @@
+/// <reference types="node" />
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { expect, it, vi } from 'vitest'
 import { commandId } from './command-id'
 import { browserDependencies } from './runtime'
@@ -33,4 +37,18 @@ it('wires HTTP-compatible IDs into the browser command platform', () => {
   } finally {
     vi.unstubAllGlobals()
   }
+})
+
+it('keeps app code off randomUUID, which plain-HTTP origins do not provide', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  const sources = readdirSync(root, {
+    recursive: true,
+    encoding: 'utf8',
+  }).filter((path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path))
+  expect(sources.length).toBeGreaterThan(100)
+  expect(
+    sources.filter((path) =>
+      /crypto\.randomUUID\(/.test(readFileSync(join(root, path), 'utf8')),
+    ),
+  ).toEqual([])
 })

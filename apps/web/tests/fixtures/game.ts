@@ -48,12 +48,45 @@ export const body: components['schemas']['BodyV3'] = {
 const fixtureWorldRevisions = new WeakMap<Page, () => string>()
 export function inactiveTutorial(route: Route, revision: string) {
   const query = route.request().postDataJSON()
-  return route.fulfill({json:{protocol:4,binding:query.context.binding,request_id:query.context.request_id,viewer_revision:revision,sampled_at:Date.now(),as_of_ms:Date.now(),data:{enrolled:false,human:true,program:'colony-opening-v1',version:1,preference:null,beginner:false,completed:false,homeworld:null,chapters:[],recommended_objectives:[],receipts:[],sites:[]}}})
+  return route.fulfill({
+    json: {
+      protocol: 4,
+      binding: query.context.binding,
+      request_id: query.context.request_id,
+      viewer_revision: revision,
+      sampled_at: Date.now(),
+      as_of_ms: Date.now(),
+      data: {
+        enrolled: false,
+        human: true,
+        program: 'colony-opening-v1',
+        version: 1,
+        preference: null,
+        beginner: false,
+        completed: false,
+        homeworld: null,
+        chapters: [],
+        recommended_objectives: [],
+        receipts: [],
+        sites: [],
+      },
+    },
+  })
 }
 /** World-specific fixtures leave the unrelated, inactive opening query intact. */
-export function routeWorld(page:Page, handler:(route:Route)=>unknown|Promise<unknown>, options?:{times?:number}) {
- return page.route('**/world',route=>route.request().postDataJSON()?.type==='Tutorial'
-  ? inactiveTutorial(route,fixtureWorldRevisions.get(page)?.() ?? '1') : handler(route),options)
+export function routeWorld(
+  page: Page,
+  handler: (route: Route) => unknown | Promise<unknown>,
+  options?: { times?: number },
+) {
+  return page.route(
+    '**/world',
+    (route) =>
+      route.request().postDataJSON()?.type === 'Tutorial'
+        ? inactiveTutorial(route, fixtureWorldRevisions.get(page)?.() ?? '1')
+        : handler(route),
+    options,
+  )
 }
 
 /** Install HTTP fixtures before navigating directly to the page under test. */
@@ -71,10 +104,14 @@ export async function installGameFixture(
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
     unreadReportCount?: () => number
-    empireDeletion?: () => components['schemas']['EmpireDeletionStatus4'] | undefined
+    empireDeletion?: () =>
+      | components['schemas']['EmpireDeletionStatus4']
+      | undefined
     leadsAlliance?: boolean
     viewerRevision?: () => string
     homeworldId?: string
+    arrivalPending?: () => boolean
+    bodyAppearances?: () => Record<string, number>
     playerNames?: components['schemas']['PublicPlayerNames4']
     attackGroups?: components['schemas']['AttackGroup4'][]
     holdings?: components['schemas']['HeldFleetView4'][]
@@ -143,7 +180,8 @@ export async function installGameFixture(
         },
       })
     const context = request.postDataJSON()
-    if (url.pathname.endsWith('/world') && context?.type === 'Tutorial') return inactiveTutorial(route, options.viewerRevision?.() ?? '1')
+    if (url.pathname.endsWith('/world') && context?.type === 'Tutorial')
+      return inactiveTutorial(route, options.viewerRevision?.() ?? '1')
     if (url.pathname.endsWith('/player-profiles'))
       return route.fulfill({
         json: {
@@ -202,15 +240,15 @@ export async function installGameFixture(
     }
 
     const bodies: components['schemas']['BodyV3'][] = options.bodies ?? [
-          body,
-          {
-            ...body,
-            id: id(6),
-            kind: 'Moon',
-            coordinates: { galaxy: 1, system: 371, position: 13 },
-            amounts: { ...resources, metal: '2000000000' },
-          },
-        ]
+      body,
+      {
+        ...body,
+        id: id(6),
+        kind: 'Moon',
+        coordinates: { galaxy: 1, system: 371, position: 13 },
+        amounts: { ...resources, metal: '2000000000' },
+      },
+    ]
 
     const view = {
       ...common,
@@ -225,7 +263,9 @@ export async function installGameFixture(
       sampled_at: sampledAt,
       as_of_ms: sampledAt,
       speed: options.speed ?? 1,
-      ...(protocol === 4 && options.homeworldId ? { homeworld_id: options.homeworldId } : {}),
+      ...(protocol === 4 && options.homeworldId
+        ? { homeworld_id: options.homeworldId }
+        : {}),
       bodies: bodies.map((b) =>
         protocol === 2
           ? {
@@ -248,13 +288,20 @@ export async function installGameFixture(
         ? {
             empire_deletion: options.empireDeletion?.(),
             leads_alliance: options.leadsAlliance ?? false,
-            vacation: options.vacation?.() ?? { active: false, entered_at: null, earliest_exit_at: null, blockers: [] },
+            vacation: options.vacation?.() ?? {
+              active: false,
+              entered_at: null,
+              earliest_exit_at: null,
+              blockers: [],
+            },
             attack_groups: options.attackGroups ?? [],
             holdings: options.holdings ?? [],
             depots: options.depots ?? [],
             missiles: options.missiles ?? [],
             has_unread_reports: options.hasUnreadReports?.() ?? false,
             player_names: options.playerNames,
+            arrival_pending: options.arrivalPending?.() ?? false,
+            body_appearances: options.bodyAppearances?.() ?? {},
             missions: options.missions ?? {
               fleets: [],
               incoming: [
@@ -300,7 +347,11 @@ export async function installGameFixture(
       ...(protocol !== 2
         ? {
             progression: {
-              production: bodies.map(b => options.production?.find(entry => entry.body === b.id) ?? productionFixture(b)),
+              production: bodies.map(
+                (b) =>
+                  options.production?.find((entry) => entry.body === b.id) ??
+                  productionFixture(b),
+              ),
               research_operation: options.researchOperation ?? null,
               manufacturing: options.manufacturing ?? [],
               limits: { max_active_manufacturing_entries: 256 },
@@ -339,7 +390,8 @@ export async function installGameFixture(
       return route.fulfill({ json: session })
     if (url.pathname.endsWith('/settings'))
       return route.fulfill({ json: settings })
-    if (url.pathname.endsWith('/overview')) return route.fulfill({ json: view, headers: options.snapshotHeaders?.() })
+    if (url.pathname.endsWith('/overview'))
+      return route.fulfill({ json: view, headers: options.snapshotHeaders?.() })
     if (url.pathname.endsWith('/presence'))
       return route.fulfill({
         json: {
@@ -369,8 +421,48 @@ export async function installGameFixture(
           minimum_viewer_revision: options.viewerRevision?.() ?? '1',
         },
       })
-    if (url.pathname.endsWith('/social/query')) return route.fulfill({ json: { ...context.context, conversations: [], messages: [], circulars: [], contacts: [], contact: null, next_cursor: null } })
-    if (protocol === 4 && url.pathname.endsWith('/reports')) return route.fulfill({ json: { protocol: 4, binding, request_id: context.context.request_id, viewer_revision: options.viewerRevision?.() ?? '1', sampled_at: sampledAt, as_of_ms: sampledAt, data: { items: Array.from({ length: options.unreadReportCount?.() ?? (options.hasUnreadReports?.() ? 1 : 0) }, (_, index) => ({ id: id(900 + index), kind: 'SpyContact', read: false, hidden: false, observed_at: sampledAt })), next_cursor: null, has_more: false, as_of_ms: sampledAt } } })
+    if (url.pathname.endsWith('/social/query'))
+      return route.fulfill({
+        json: {
+          ...context.context,
+          conversations: [],
+          messages: [],
+          circulars: [],
+          contacts: [],
+          contact: null,
+          next_cursor: null,
+        },
+      })
+    if (protocol === 4 && url.pathname.endsWith('/reports'))
+      return route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          request_id: context.context.request_id,
+          viewer_revision: options.viewerRevision?.() ?? '1',
+          sampled_at: sampledAt,
+          as_of_ms: sampledAt,
+          data: {
+            items: Array.from(
+              {
+                length:
+                  options.unreadReportCount?.() ??
+                  (options.hasUnreadReports?.() ? 1 : 0),
+              },
+              (_, index) => ({
+                id: id(900 + index),
+                kind: 'SpyContact',
+                read: false,
+                hidden: false,
+                observed_at: sampledAt,
+              }),
+            ),
+            next_cursor: null,
+            has_more: false,
+            as_of_ms: sampledAt,
+          },
+        },
+      })
     if (url.pathname.endsWith('/commands')) purchases++
     return route.fulfill({ status: 404, json: { code: 'NotFound' } })
   })
@@ -386,9 +478,10 @@ export async function shellFixture(
   await withFixtureResponse(
     page,
     (response) => response.url().endsWith('/bootstrap'),
-    () => page.goto(
-      `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
-    ),
+    () =>
+      page.goto(
+        `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+      ),
   )
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Empire —')

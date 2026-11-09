@@ -139,7 +139,6 @@ export function GalaxyPosition({
             </strong>
             {body && <GalaxyActivity activity={body.activity} />}
             <CoordinateLink
-              compact
               at={coordinates}
               target={body?.kind === 'Moon' ? 'moon' : 'planet'}
               known={{

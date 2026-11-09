@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest'
 import { groupReportBuildings } from './report-buildings'
 
-it('keeps mines, power, storage and related facilities on separate rows', () => {
+it('keeps mines, power, storage and related facilities on separate titled rows', () => {
   const entries = [
     ['CrystalMine', 6],
     ['CrystalStorage', 1],
@@ -18,35 +18,40 @@ it('keeps mines, power, storage and related facilities on separate rows', () => 
   ] as const
   const expected = [
     {
-      title: 'Resource buildings',
-      rows: [
-        [
-          ['MetalMine', 7],
-          ['CrystalMine', 6],
-          ['DeuteriumSynthesizer', 4],
-        ],
-        [
-          ['SolarPlant', 13],
-          ['FusionReactor', 0],
-        ],
-        [
-          ['MetalStorage', 1],
-          ['CrystalStorage', 1],
-          ['DeuteriumTank', 0],
-        ],
+      title: 'Mines',
+      levels: [
+        ['MetalMine', 7],
+        ['CrystalMine', 6],
+        ['DeuteriumSynthesizer', 4],
       ],
     },
     {
-      title: 'Facility buildings',
-      rows: [
-        [
-          ['RoboticsFactory', 2],
-          ['NaniteFactory', 1],
-        ],
-        [
-          ['Shipyard', 2],
-          ['ResearchLab', 2],
-        ],
+      title: 'Power',
+      levels: [
+        ['SolarPlant', 13],
+        ['FusionReactor', 0],
+      ],
+    },
+    {
+      title: 'Storage',
+      levels: [
+        ['MetalStorage', 1],
+        ['CrystalStorage', 1],
+        ['DeuteriumTank', 0],
+      ],
+    },
+    {
+      title: 'Production',
+      levels: [
+        ['RoboticsFactory', 2],
+        ['NaniteFactory', 1],
+      ],
+    },
+    {
+      title: 'Infrastructure',
+      levels: [
+        ['Shipyard', 2],
+        ['ResearchLab', 2],
       ],
     },
   ]
@@ -54,6 +59,18 @@ it('keeps mines, power, storage and related facilities on separate rows', () => 
     expect(groupReportBuildings(Object.fromEntries(ordered), 'Planet')).toEqual(
       expected,
     )
+})
+
+it('titles partial rows without assuming the first catalog item was observed', () => {
+  expect(
+    groupReportBuildings({
+      CrystalMine: 6,
+      FusionReactor: 2,
+      DeuteriumTank: 0,
+      NaniteFactory: 0,
+      ResearchLab: 3,
+    }).map(({ title }) => title),
+  ).toEqual(['Mines', 'Power', 'Storage', 'Production', 'Infrastructure'])
 })
 
 it('omits moon-only entries from planet observations without mutating them', () => {
@@ -64,20 +81,18 @@ it('omits moon-only entries from planet observations without mutating them', () 
     RoboticsFactory: 2,
   })
   expect(groupReportBuildings(observation, 'Planet')).toEqual([
-    { title: 'Facility buildings', rows: [[['RoboticsFactory', 2]]] },
+    { title: 'Production', levels: [['RoboticsFactory', 2]] },
   ])
   expect(observation.JumpGate).toBe(1)
   for (const kind of ['Moon', undefined])
     expect(groupReportBuildings(observation, kind)).toEqual([
+      { title: 'Production', levels: [['RoboticsFactory', 2]] },
       {
-        title: 'Facility buildings',
-        rows: [
-          [['RoboticsFactory', 2]],
-          [
-            ['LunarBase', 0],
-            ['SensorPhalanx', 0],
-            ['JumpGate', 1],
-          ],
+        title: 'Facilities',
+        levels: [
+          ['LunarBase', 0],
+          ['SensorPhalanx', 0],
+          ['JumpGate', 1],
         ],
       },
     ])
@@ -90,19 +105,17 @@ it('retains unknown IDs and observed zero levels without filling missing entries
       'Planet',
     ),
   ).toEqual([
-    { title: 'Resource buildings', rows: [[['FusionReactor', 0]]] },
+    { title: 'Power', levels: [['FusionReactor', 0]] },
     {
       title: 'Other buildings',
-      rows: [
-        [
-          ['ALegacyBuilding', '12'],
-          ['ZLegacyBuilding', null],
-        ],
+      levels: [
+        ['ALegacyBuilding', '12'],
+        ['ZLegacyBuilding', null],
       ],
     },
   ])
   expect(groupReportBuildings({})).toEqual([])
   expect(groupReportBuildings({ ResearchLab: 0 })).toEqual([
-    { title: 'Facility buildings', rows: [[['ResearchLab', 0]]] },
+    { title: 'Infrastructure', levels: [['ResearchLab', 0]] },
   ])
 })

@@ -1,3 +1,5 @@
+import { usePlayerIdentity } from '../../shell/player-profiles-context'
+import { useIdentityTitle } from '../../client-model/use-identity-title'
 import { ObjectiveOpen } from './objective-open'
 import { Accordion } from '@base-ui/react/accordion'
 import {
@@ -62,6 +64,8 @@ function ChapterJourney({
   view: S['BoundView4']
 }) {
   const next = recommendation(data, view)
+  const identity = usePlayerIdentity(view.binding.player)
+  const title = useIdentityTitle(identity?.title)
   const chapter = data.chapters.find((c) => !c.completed)
   const all = data.chapters.flatMap((c) => c.objectives)
   const started =
@@ -79,7 +83,7 @@ function ChapterJourney({
             ? 'An empire of your own'
             : started
               ? (chapter?.title ?? 'Continue your opening')
-              : 'This world is yours, Commander.'}
+              : `This world is yours, ${title.address}.`}
         </Heading>
         {!started && (
           <Text>

@@ -133,16 +133,21 @@ function AllianceWorkspace({
       : undefined,
   )
   const busy = state.busy || state.loading || !!state.pending
+  const complete = (action: Parameters<Run>[0]) => {
+    if (action.type === 'Join') trackRecruitment('joined')
+    if (action.type === 'Apply') trackRecruitment('applied')
+    if (identityActions.has(action.type)) refreshProfiles()
+    setSelected(undefined)
+    if (creating || discovering) void navigate(allianceTarget)
+  }
   const run: Run = async (action) => {
     const ok = await controller.run(action)
-    if (ok) {
-      if (action.type === 'Join') trackRecruitment('joined')
-      if (action.type === 'Apply') trackRecruitment('applied')
-      if (identityActions.has(action.type)) refreshProfiles()
-      setSelected(undefined)
-      if (creating || discovering) void navigate(allianceTarget)
-    }
+    if (ok) complete(action)
     return ok
+  }
+  const retryCommand = async () => {
+    const pending = controller.store.getState().pending
+    if (pending && (await controller.retry())) complete(pending.action)
   }
   const tabs = detail
     ? [
@@ -228,7 +233,7 @@ function AllianceWorkspace({
             error={state.error}
             retry={() => void controller.refresh()}
             pending={!!state.pending && !state.busy}
-            retryCommand={() => void controller.retry()}
+            retryCommand={() => void retryCommand()}
           />
         ) : (
           <LoadingRegion
@@ -255,22 +260,7 @@ function AllianceWorkspace({
                   The last command may have reached the server. Retry the same
                   command to confirm its result before making another change.
                 </p>
-                <Button
-                  onClick={() => {
-                    void controller.retry().then((ok) => {
-                      if (ok) {
-                        if (
-                          state.pending &&
-                          identityActions.has(state.pending.action.type)
-                        )
-                          refreshProfiles()
-                        setSelected(undefined)
-                        if (creating || discovering)
-                          void navigate(allianceTarget)
-                      }
-                    })
-                  }}
-                >
+                <Button onClick={() => void retryCommand()}>
                   Retry last command
                 </Button>
               </div>

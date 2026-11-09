@@ -52,6 +52,13 @@ async function fixture(page: Page, initial: S['AllianceDetail'] | null) {
   return { commands, rejectNext: () => { rejectNext = true }, detail: () => detail, denyReads: () => { denied = true } }
 }
 
+// Both membership and public profile are prerequisites for recruitment controls.
+function withAllianceProfile(page: Page, navigate: () => Promise<unknown>) {
+  return withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () =>
+    withFixtureResponse(page, response => response.url().endsWith(`/alliances/${alliance}`), navigate),
+  )
+}
+
 test('discovery applications preserve rejected drafts, withdraw and create an alliance', async ({ page }) => {
   const f = await fixture(page, null)
   await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
@@ -170,15 +177,16 @@ test('noticeboard renders safely, creates, pins, edits and loads a stable older 
 test('open and closed recruitment and existing membership drive the available controls', async ({ page }) => {
   const f = await fixture(page, null)
   await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary: { ...summary, recruitment: 'Closed' }, public_text: 'Private explorers.' } }))
-  await page.goto(`/u/andromeda/alliance?alliance=${alliance}`)
+  await withAllianceProfile(page, () => page.goto(`/u/andromeda/alliance?alliance=${alliance}`))
+  await expect(page.getByRole('heading', { name: summary.name, exact: true })).toBeVisible()
   await expect(page.getByText('This alliance is not recruiting.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Send application' })).toHaveCount(0)
   await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary: { ...summary, recruitment: 'Open' }, public_text: 'Welcome explorers.' } }))
-  await page.reload()
+  await withAllianceProfile(page, () => page.reload())
   await page.getByRole('button', { name: 'Join STAR', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm join star' }).click()
   await expect(page.getByRole('heading', { name: 'Welcome aboard' })).toBeVisible()
-  await page.getByRole('link', { name: 'Discover alliances' }).click()
+  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.getByRole('link', { name: 'Discover alliances' }).click())
   await expect(page.getByRole('link', { name: 'Create Alliance', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'View STAR', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Welcome aboard' })).toBeVisible()
@@ -227,7 +235,7 @@ test('uncertain command retry reuses identity and does not send an edited duplic
     if (requests.length === 1) return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     return route.fulfill({ json: { command_id: requests[0].command_id, alliance, revision: 1 } })
   })
-  await page.goto(`/u/andromeda/alliance?alliance=${alliance}`)
+  await withAllianceProfile(page, () => page.goto(`/u/andromeda/alliance?alliance=${alliance}`))
   await page.getByLabel('Application message').fill('My original application')
   await page.getByRole('button', { name: 'Send application' }).click()
   await expect(page.getByRole('button', { name: 'Send application' })).toBeDisabled()
@@ -447,5 +455,38 @@ for (const width of [1440]) {
     expect(buttonBox.height).toBeLessThanOrEqual(46)
     expect(buttonBox.x).toBeGreaterThanOrEqual(inputBox.x + inputBox.width)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+for (const action of ['Join', 'Apply'] as const) {
+  test(`welcome ${action} retry returns to alliance home with the original command`, async ({ page }) => {
+    await fixture(page, null)
+    await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: {
+      summary: { ...summary, recruitment: action === 'Join' ? 'Open' : 'Application' },
+      public_text: 'Welcome explorers.',
+    } }))
+    const requests: S['AllianceCommandRequest'][] = []
+    await page.route('**/alliances/commands', route => {
+      requests.push(route.request().postDataJSON())
+      if (requests.length === 1) return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+      return route.fallback()
+    })
+    await withAllianceProfile(page, () => page.goto(`/u/andromeda/alliance/discover?alliance=${alliance}&welcome=1`))
+    const unavailable = page.waitForResponse(response => response.url().endsWith('/alliances/commands') && response.status() === 503)
+    if (action === 'Join') {
+      await page.getByRole('button', { name: 'Join STAR', exact: true }).click()
+      await page.getByRole('button', { name: 'Confirm join star' }).click()
+    } else {
+      await page.getByLabel('Application message').fill('Ready to explore together.')
+      await page.getByRole('button', { name: 'Send application' }).click()
+    }
+    expect(await (await unavailable).finished()).toBeNull()
+    await expect(page.getByRole('button', { name: 'Retry last command' })).toBeVisible()
+    await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.getByRole('button', { name: 'Retry last command' }).click())
+    await expect(page).toHaveURL(/\/alliance$/)
+    await expect(page.getByRole('heading', { name: action === 'Join' ? 'Welcome aboard' : 'Your applications (1/5)' })).toBeVisible()
+    expect(requests).toHaveLength(2)
+    expect(requests[1].command_id).toBe(requests[0].command_id)
+    expect(requests[1].action).toEqual(requests[0].action)
   })
 }
