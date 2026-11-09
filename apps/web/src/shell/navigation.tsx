@@ -137,7 +137,15 @@ export function Navigation({
         key={p}
         {...routeTarget(universeName, p, body)}
         aria-current={
-          (primary ? title === selected : p === page) ? 'page' : undefined
+          (
+            primary
+              ? title === selected
+              : p === page ||
+                (p === 'alliance' &&
+                  (page === 'alliance-create' || page === 'alliance-discover'))
+          )
+            ? 'page'
+            : undefined
         }
         onClick={(event) => {
           if (

@@ -7,7 +7,7 @@ export function allianceWelcomePath(
   universeName: string,
   entry: RecruitmentEntry,
 ) {
-  return `/u/${universeSlug(universeName)}/alliance?${new URLSearchParams({ alliance: entry.alliance, welcome: '1', ...(entry.invitation ? { invitation: entry.invitation } : {}) })}`
+  return `/u/${universeSlug(universeName)}/alliance/discover?${new URLSearchParams({ alliance: entry.alliance, welcome: '1', ...(entry.invitation ? { invitation: entry.invitation } : {}) })}`
 }
 export function useRecruitmentEntry(
   entry: RecruitmentEntry,

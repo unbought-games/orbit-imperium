@@ -32,12 +32,10 @@ for (const width of [1440, 390]) {
         page.getByRole('link', { name: 'View STAR', exact: true }),
       ).toBeVisible()
       await capture(page, 'directory', width)
-      await page.getByLabel('Language', { exact: true }).selectOption('de')
-      await withFixtureResponse(page, pathMatches('/recruitment'), () =>
-        page.getByRole('button', { name: 'Find recruiting alliances' }).click(),
-      )
+      await page.getByRole('button', { name: 'Filters', exact: true }).click()
+      await withFixtureResponse(page, pathMatches('/recruitment'), () => page.getByLabel('Language', { exact: true }).selectOption('de'))
       await expect(
-        page.getByText('No recruiting alliances match.', { exact: false }),
+        page.getByRole('heading', { name: 'No alliances match your search.', exact: true }),
       ).toBeVisible()
       await expect(page.getByLabel('Language', { exact: true })).toHaveValue(
         'de',

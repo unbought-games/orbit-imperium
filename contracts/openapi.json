@@ -13096,7 +13096,7 @@
               },
               "name": {
                 "type": "string",
-                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+                "description": "1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected."
               }
             },
             "required": [
@@ -19277,6 +19277,35 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
+              },
+              "recruiting_only": {
+                "type": "boolean"
+              },
+              "language": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "beginners": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RecruitmentExperience"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "activity": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RecruitmentActivity"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [

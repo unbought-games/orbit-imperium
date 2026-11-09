@@ -8348,6 +8348,10 @@ export interface components {
             type: "Directory";
             search: string;
             offset: number;
+            recruiting_only?: boolean;
+            language?: string | null;
+            beginners?: components["schemas"]["RecruitmentExperience"] | null;
+            activity?: components["schemas"]["RecruitmentActivity"] | null;
         } | {
             /** @constant */
             type: "Mine";

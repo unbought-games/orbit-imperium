@@ -336,26 +336,13 @@ for (const touch of [true, false]) {
         await page.route(/\/recruitment(?:\?|$)/, route =>
           route.fulfill({ json: { alliances: [], total: 0 } }),
         )
-        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/recruitment'), () => page.goto('/u/andromeda/alliance'))
-        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/alliances/query'), () => page.getByRole('button', { name: 'Search alliances', exact: true }).click())
-        const alliancePages = page.getByRole('navigation', {
-          name: 'Alliance directory pages',
-          exact: true,
-        })
-        await selectionIs(
-          alliancePages.getByText('0 alliances', { exact: true }),
-          false,
-        )
-        if (touch)
-          await selectionIs(
-            alliancePages.getByRole('button', {
-              name: 'More alliances',
-              exact: true,
-            }),
-            true,
-          )
-        await alliancePages.scrollIntoViewIfNeeded()
-        await capture(page, 'alliance-navigation')
+        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.goto('/u/andromeda/alliance/discover'))
+        const emptyAlliances = page.getByRole('heading', { name: 'No alliances yet.' })
+        await expect(emptyAlliances).toBeVisible()
+        await expect(page.getByRole('navigation', { name: 'Alliance directory pages' })).toHaveCount(0)
+        await selectionIs(emptyAlliances, false)
+        if (touch) await selectionIs(page.getByRole('button', { name: 'Search alliances', exact: true }), true)
+        await capture(page, 'alliance-empty')
 
         await page.route('**/api/v1/bootstrap', (route) =>
           route.fulfill({

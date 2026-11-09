@@ -73,6 +73,13 @@ long names, headings and narrow rows with the real components.
 
 - Keep the shell, controls, focus, and user edits stable as data loads or filters
   change. Update the affected content without blanking or remounting the screen.
+- Use [LoadingRegion](loading-region.tsx) for content-area loading. Keep it mounted
+  around the content and pass the request's loading state; never conditionally
+  mount it as a fallback. Its orbital indicator waits 200ms before appearing and
+  stays for at least 500ms once visible. Fast requests show no indicator. Existing
+  content stays mounted, and the indicator occupies the same space without adding
+  a status row. Use `contentClassName` to preserve the content's own layout. Motion
+  stops under reduced-motion preferences; use a specific accessible loading label.
 - Distinguish loading, empty, error, disabled, and pending states. Show an empty
   collection only after a successful response; preserve useful content on retry.
 - Empty states need a quiet focal point, a clear message, and a useful next action
