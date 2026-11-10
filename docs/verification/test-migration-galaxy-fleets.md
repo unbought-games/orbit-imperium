@@ -256,3 +256,27 @@ strength, timeout or retry policy changes. Parent owns the one affected rerun.
 Evidence: `/tmp/orbit-fleet-cards-first.log` and parent artifacts under
 `test-results/test-strategy/fleet-cards-first`. The unexecuted downstream
 assertions are not reported as passed.
+
+## Galaxy-position first-run evidence and one scene repair
+
+The parent's integrated component run passed seven of eight Galaxy-position
+cases. The 390px keyboard debris case completed its interactions but failed the
+unchanged document-overflow assertion after closing the sheet: `scrollWidth` was
+408 instead of 390. The screenshot also showed clipped left-edge planet art.
+
+This is a scene container defect. Production `GameShell` supplies inline padding
+from `--shell-inline-gutter`; Galaxy's `.screen` cancels that gutter with negative
+inline margins below 768px. The isolated scene applied `.screen` directly to an
+unpadded root. At this viewport the 18px gutter explains the additional positive
+right overflow. The other mobile checks observed an open modal, whose document
+locking concealed the underlying fixture overflow; their passes did not prove
+the closed row layout.
+
+The single repair supplies the caller's gutter on an outer main and keeps the
+real Galaxy `.screen` inside it. No production CSS or overflow assertion changed;
+there is no clipping, width cap or hidden-overflow workaround. The fixture's
+capability `reason: Available` correction already made by the parent is separate
+and is not duplicated here. Parent retains evidence under
+`test-results/test-strategy/components-integrated` and
+`/tmp/orbit-components-integrated.log`, and owns the affected validation. No
+browser, build or typecheck was run for this repair.

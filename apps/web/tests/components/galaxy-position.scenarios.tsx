@@ -81,66 +81,70 @@ export function GalaxyPositionScenario() {
   const open = selected !== null
   return (
     <FleetPresentationRoutes>
-      <main className={styles.screen}>
-        <Button onClick={() => setBlocked(!blocked)}>
-          Toggle blocked harvest
-        </Button>
-        <section className={styles.positions} aria-label="Galaxy positions">
-          <ul className={styles.positionList}>
-            {positions.map((item) => (
-              <li key={item.coordinates.position}>
-                <GalaxyPosition
-                  position={item}
-                  player={view.binding.player}
-                  origin={fixture.body.id}
-                  playerNames={{
-                    [id(31)]: 'CommanderAndromedaTheUnreasonablyLongName',
-                    [id(32)]: 'Vega',
-                  }}
-                  missions={{
-                    transport: true,
-                    attack: true,
-                    deploy: true,
-                    harvest: true,
-                  }}
-                  colony={colonizationStatus(view, item.coordinates.position)}
-                  onDraft={(at, mission, element) => {
-                    if (mission !== 'Harvest') return
-                    opener.current = element ?? null
-                    setSelected(at.position)
-                    setEdit(null)
-                  }}
-                  espionage={{
-                    send: () => {},
-                    busy: false,
-                    reason: null,
-                    error: null,
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-        <GalaxyHarvestPresentation
-          harvest={{
-            ...availability,
-            count,
-            setEdit,
-            invalid: harvestCountError(count, availability.available),
-            send: async () => {},
-            error: '',
-            busy: false,
-            paused: false,
-            uncertain: false,
-            commandId: null,
-          }}
-          position={position}
-          open={open}
-          onClose={() => setSelected(null)}
-          onCustomize={() => setSelected(null)}
-          returnFocusRef={opener}
-          onRecover={() => {}}
-        />
+      {/* Galaxy cancels its caller's inline gutter on mobile. Preserve that
+          container contract without mounting the session-owning game shell. */}
+      <main style={{ paddingInline: 'var(--shell-inline-gutter)' }}>
+        <div className={styles.screen}>
+          <Button onClick={() => setBlocked(!blocked)}>
+            Toggle blocked harvest
+          </Button>
+          <section className={styles.positions} aria-label="Galaxy positions">
+            <ul className={styles.positionList}>
+              {positions.map((item) => (
+                <li key={item.coordinates.position}>
+                  <GalaxyPosition
+                    position={item}
+                    player={view.binding.player}
+                    origin={fixture.body.id}
+                    playerNames={{
+                      [id(31)]: 'CommanderAndromedaTheUnreasonablyLongName',
+                      [id(32)]: 'Vega',
+                    }}
+                    missions={{
+                      transport: true,
+                      attack: true,
+                      deploy: true,
+                      harvest: true,
+                    }}
+                    colony={colonizationStatus(view, item.coordinates.position)}
+                    onDraft={(at, mission, element) => {
+                      if (mission !== 'Harvest') return
+                      opener.current = element ?? null
+                      setSelected(at.position)
+                      setEdit(null)
+                    }}
+                    espionage={{
+                      send: () => {},
+                      busy: false,
+                      reason: null,
+                      error: null,
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+          <GalaxyHarvestPresentation
+            harvest={{
+              ...availability,
+              count,
+              setEdit,
+              invalid: harvestCountError(count, availability.available),
+              send: async () => {},
+              error: '',
+              busy: false,
+              paused: false,
+              uncertain: false,
+              commandId: null,
+            }}
+            position={position}
+            open={open}
+            onClose={() => setSelected(null)}
+            onCustomize={() => setSelected(null)}
+            returnFocusRef={opener}
+            onRecover={() => {}}
+          />
+        </div>
       </main>
     </FleetPresentationRoutes>
   )
