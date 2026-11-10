@@ -91,89 +91,16 @@ queue CI was green.
 
 ## Completing the migration after phase one
 
-Phase one is PR #385. Its main-integrated inventory contains 816 application
-cases (39 tagged journeys and 777 other required cases), plus 271 isolated
-component cases after the documented CI retirement of one recurring touch
-scenario. These counts are a starting inventory, not a target for how
-many replacements to write. New tests added after this snapshot also need an
-owner and disposition.
+Phase one merged as PR #385 at `0c235fd6`. The up-front audit and complete
+remaining plan now live in [e2e migration workstreams](../verification/e2e-migration/README.md).
+That durable handoff supersedes the initial two-chat proposal with ten bounded,
+resumable workstreams, a frozen case/file inventory, known coverage gaps,
+explicit acceptance obligations and a status log. Use the selected brief rather
+than repeating the repository-wide audit in each new chat.
 
-Use two implementation chats with disjoint application-spec ownership and one
-integration/validation owner. Start their branches from the merged phase-one
-revision. Inventory each owned case by full title path/project, protected
-behavior, production owner, repair history, and proposed destination before
-removing coverage. Review the existing 39 journeys too: a tag is not proof that
-a case earns its place in the final gate.
-
-| Chat | Scope | Initial application inventory | First useful batches |
-| --- | --- | --- | --- |
-| Gameplay | Economy, progression, Dispatch, fleets/Galaxy, Empire actions | 415 cases in 40 files, including existing journeys | Catalog/quote/resource permutations, then fleet/Galaxy and command wiring |
-| Shell, social and reports | Bootstrap/recovery, HUD/navigation, tutorial, profiles/alliances and report interactions | 401 cases in 33 files, including existing journeys | Shell/bootstrap/HUD state permutations, then report deletion/sharing and social flows |
-| Integration owner | Shared harness, fixture registry, runner/CI selection, complete coverage map and validation | No independent migration batch | Review replacements, integrate bounded batches, run expensive checks serially |
-
-Production edits follow the owning feature. Shared store/provider/API and
-navigation/identity changes must be coordinated with the integration owner
-before either chat edits them. The integration owner owns shared component
-registry/fixture changes, Make/npm, Playwright/Vite configuration, workflows and
-strategy documentation. Each chat supplies its registry additions in its
-handoff, avoiding competing edits. Do not launch builds, browser suites or full
-typechecks concurrently; cheap focused deterministic tests can run independently.
-
-Each batch must deliver:
-
-- Real production seams where needed, with behavior and authoritative state
-  ownership preserved; fixtures mock external ports rather than the logic under test.
-- Passing replacements at the cheapest valid boundary. Pure/controller tests
-  cover rules and race schedules; interactive components cover real handlers,
-  focus, gestures and layout. Keep a short application journey only for a unique
-  integration risk. Use HTTP/database tests for actual server invariants.
-- A named mapping from every removed assertion to retained protection, or a
-  justified obsolete/duplicate/defective disposition. Explicitly identify any
-  lost browser wiring; do not describe a mocked component as server coverage.
-- Exact revision, focused test results, outstanding expensive validation, and
-  failure/repair evidence. Preserve deliberate loading/error/race coverage.
-
-Deliver small independently reviewable batches; do not wait for another giant
-all-at-once migration. The integration owner verifies each replacement before
-removing the original selection, incorporates other main changes, and owns the
-PR/merge-queue follow-through.
-
-The final cutover is complete only when all application cases have a disposition,
-all worthwhile replacements pass, and every remaining routine application case
-has a named unique journey risk. Remove the temporary broad feature cohort only
-then. Continue requiring deterministic and relevant component coverage; do not
-move unfinished work to optional/scheduled suites. Verify the selection union,
-PR checks, merge-group checks, and resulting main revision. Reconcile authoring
-guidance with the final commands and keep explicit full-system acceptance separate.
-
-Measure preparation, execution, runner allocation, queue residence and total
-merge delay separately. Retain every failed attempt and queue removal, classified
-as product, test, infrastructure, cancellation or unknown. Compare first-attempt
-results across actual PR/queue/main runs; a single green run cannot establish a
-new flake rate. No arbitrary test-count reduction or green retry closes the work.
-
-### Initial file ownership
-
-Names below are `apps/web/tests/<name>.spec.ts`. The manifest covers all 73
-application spec files in the phase-one integrated inventory.
-
-Gameplay:
-
-- `active-work-summary`, `alliance-attacks`, `alliance-depot`, `arrival`, `battlecruiser`.
-- `battleship`, `bomber`, `building-quotes`, `catalog-affordability`, `catalog-pages`.
-- `colonization`, `combat-simulation`, `cruiser`, `destroyer`, `dispatch-validation`.
-- `empire`, `empire-deletion`, `empire-history`, `fleet-inventory`, `fusion-reactor`.
-- `galaxy-cards`, `heavy-fighter`, `hyperspace-drive`, `hyperspace-technology`, `industrial-buildings`.
-- `large-cargo`, `locked-buildings`, `missile-warfare`, `mission-fleets`, `moon-fleets`.
-- `moons`, `planet-abandonment`, `planet-names`, `progression-cancellation`, `research-network`.
-- `resources`, `sensor-phalanx`, `solar-satellite`, `terraformer`, `vacation`.
-
-Shell, social and reports:
-
-- `alliance-identity`, `alliances`, `bootstrap-ui`, `client-update`, `combat-reports`.
-- `command-hud`, `content-updates`, `coordinate-links`, `density`, `desktop-navigation`.
-- `detail-playground`, `empire-identity`, `espionage-reports`, `high-scores`, `home`.
-- `hosted-auth`, `hud-playground`, `insignias`, `loading-region`, `mobile-selection`.
-- `number-input`, `planet-page-routing`, `player-profiles`, `recruitment`, `release-announcement`.
-- `report-deletion`, `report-glance`, `report-sharing`, `shell`, `social`.
-- `tutorial`, `tutorial-advisor`, `web-app`.
+The audited snapshot has 816 required application cases (39 journey candidates
+and 777 feature integrations), 271 isolated component cases, ten production
+homepage cases and 22 browser cases in explicit acceptance. Script/native
+acceptance is inventoried separately. The original 1,183 application cases are
+also indexed for historical reconciliation. See the audit for exact revisions,
+provenance, evidence limits and completion criteria.
