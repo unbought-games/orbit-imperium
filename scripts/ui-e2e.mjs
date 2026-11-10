@@ -1,7 +1,7 @@
 // Fast frontend loop: real browser/component behavior with HTTP fixtures.
 // No database, accounts, gameplay setup, or Rust build.
 import { spawn } from 'node:child_process'
-import { build, createServer, preview } from 'vite'
+import { build, preview } from 'vite'
 import { reserveTestPort } from './fixtures/ports.mjs'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -35,64 +35,55 @@ for (const [signal, code] of [
 }
 try {
   const preparationStarted = performance.now()
-  if (components) {
-    vite = await createServer({
-      configFile: 'apps/web/vite.components.config.ts',
-      logLevel: 'warn',
-      server: {
-        host: '127.0.0.1',
-        port: lease.port,
-        strictPort: true,
-        hmr: false,
-        watch: null,
+  // Complete compilation before browser assertions for both boundaries. Lazy
+  // component imports otherwise pull a cold development graph into test timing.
+  // Retain development previews/React checks; these are not release artifacts.
+  const configFile = components
+    ? 'apps/web/vite.components.config.ts'
+    : 'apps/web/vite.config.ts'
+  assets = mkdtempSync(join(tmpdir(), 'orbit-browser-fixture-'))
+  await build({
+    configFile,
+    mode: 'test',
+    logLevel: 'warn',
+    define: {
+      'import.meta.env.DEV': 'true',
+      'process.env.NODE_ENV': JSON.stringify('development'),
+    },
+    build: {
+      outDir: assets,
+      emptyOutDir: true,
+      minify: false,
+      rollupOptions: {
+        input: components
+          ? [
+              resolve('apps/web/tests/components/index.html'),
+              resolve('apps/web/tests/components/report-observation.html'),
+            ]
+          : resolve('apps/web/index.html'),
       },
-    })
-    await lease.release()
-    await vite.listen()
-    if (!(await vite.environments.client.transformRequest('/main.tsx')))
-      throw Error('Component fixture entry unavailable')
-    await vite.environments.client.waitForRequestsIdle()
-  } else {
-    // Complete lazy route compilation before the browser's assertions begin.
-    // Keep the fixture suite's development-only previews and React checks. This
-    // is a test artifact, not the production release build or homepage check.
-    assets = mkdtempSync(join(tmpdir(), 'orbit-browser-fixture-'))
-    await build({
-      configFile: 'apps/web/vite.config.ts',
-      mode: 'test',
-      logLevel: 'warn',
-      define: {
-        'import.meta.env.DEV': 'true',
-        'process.env.NODE_ENV': JSON.stringify('development'),
-      },
-      build: {
-        outDir: assets,
-        emptyOutDir: true,
-        minify: false,
-        rollupOptions: { input: resolve('apps/web/index.html') },
-      },
-    })
-    await lease.release()
-    const server = await preview({
-      configFile: 'apps/web/vite.config.ts',
-      logLevel: 'warn',
-      build: { outDir: assets },
-      preview: {
-        host: '127.0.0.1',
-        port: lease.port,
-        strictPort: true,
-        proxy: {},
-      },
-    })
-    vite = {
-      httpServer: server.httpServer,
-      close: () => new Promise((done) => server.httpServer.close(done)),
-    }
+    },
+  })
+  await lease.release()
+  const server = await preview({
+    configFile,
+    logLevel: 'warn',
+    build: { outDir: assets },
+    preview: {
+      host: '127.0.0.1',
+      port: lease.port,
+      strictPort: true,
+      proxy: {},
+    },
+  })
+  vite = {
+    httpServer: server.httpServer,
+    close: () => new Promise((done) => server.httpServer.close(done)),
   }
   if (!(await fetch(base, { signal: AbortSignal.timeout(1000) })).ok)
     throw Error('Browser fixture HTML unavailable after server startup')
   console.log(
-    `${components ? 'Component module' : 'Application bundle'} preparation: ${Math.round(performance.now() - preparationStarted)}ms`,
+    `${components ? 'Component bundle' : 'Application bundle'} preparation: ${Math.round(performance.now() - preparationStarted)}ms`,
   )
   mkdirSync('test-results', { recursive: true })
   browser = spawn(

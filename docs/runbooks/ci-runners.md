@@ -46,8 +46,10 @@ classes block the aggregate gate. Browser case placement follows the
 [testing strategy](../architecture/testing-strategy.md), with explicit mappings
 in `docs/verification/test-migration-*.md`.
 
-The application fixture runner builds a temporary bundle before opening any
-browser. Lazy route compilation therefore cannot consume an assertion's wait.
+Both application and component fixture runners build temporary bundles before
+opening a browser. Lazy module compilation therefore cannot consume an
+assertion's wait. The component build includes both the gallery and independent
+report-observation entrypoint.
 The bundle deliberately retains development previews and React development
 checks; it is not a release artifact. The separate built-homepage check still
 validates production assets. The runner removes its temporary bundle and closes

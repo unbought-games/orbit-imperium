@@ -175,3 +175,41 @@ After the lockfile install, component TypeScript and the complete production
 frontend build/prerender passed. No source workaround or dependency version
 change was needed. Native runners closed browsers/servers and removed temporary
 application bundles. Remote CI and merge-queue evidence follow separately.
+
+### PR #385: component compilation crossed the assertion window
+
+CI run `42835800347`, attempt 1, head `8b260552`, job `129897661485`
+failed `real detail preview mine-zero keeps its decision above the phone fold
+without game requests`; 271 other component cases passed. All 819 application
+cases and native checks passed on that head. This is a test-runner preparation
+defect, not evidence of GitHub outage or a product regression.
+
+The retained trace contains 701 development-module requests after navigation.
+HTML arrived at 14:39:52.770 UTC, the lazy detail module at 14:39:53.023, and its
+transitive module graph continued arriving through 14:39:57.419. The initial
+heading assertion ran for five seconds and missed the completed render; the
+14:39:58.044 artwork request and failure snapshot show the expected Metal Mine
+and First Build UI. No API requests or page errors were recorded.
+
+Inspected original `detail-playground.spec.ts` history and the repair ledger as
+well as the moved component file. No earlier repair to this scenario was found.
+This is its one repair: the shared runner now precompiles both fixture
+boundaries, including the component gallery and its separate report entrypoint,
+then serves immutable assets. The previous preparation only transformed the
+component entry and left lazy scene imports to the browser. All gallery callers
+share the correction; no scenario, assertion, fake clock, timeout, retry or
+failure diagnostic changes. Existing repairs retain their history.
+
+Original logs and artifacts are retained locally under
+`test-results/test-strategy/pr385-ci-attempt1/` and in GitHub artifact
+`13773298455`. This chat owns the repair, full component validation and CI/queue
+follow-through. No independent follow-up repair is left unassigned.
+
+Repair validation: all 272 component tests passed, no retries/skips (4.290 s
+compilation, 117.562 s runner, two workers). All 39 application journeys passed
+through the unified runner (5.115 s compilation, 23.7 s runner, three workers).
+All 14 CI selection/workflow checks passed (10.840 s); runner syntax, formatting
+and whitespace checks passed. Both native runners cleaned up their browser,
+server and temporary bundles. CI run `42835800347` ultimately passed every
+other job, including all PostgreSQL groups; its aggregate gate correctly failed
+for the component assertion. Fresh CI is required on the repair commit.
