@@ -4,7 +4,7 @@ import { binding, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse } from './fixtures/responses'
 
-for (const width of [1280, 390]) {
+for (const width of [390]) {
   test(`request and cancel empire deletion ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let deletion: components['schemas']['EmpireDeletionStatus4'] | undefined
@@ -127,35 +127,6 @@ for (const width of [1280, 390]) {
       ),
     ).toBe(true)
   })
-  test(`alliance leader blocker ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await shellFixture(page, {
-      protocol: 4,
-      leadsAlliance: true,
-      missions: {
-        fleets: [],
-        incoming: [],
-        score_value_micro: '0',
-        fleet_slots: '1',
-      },
-    })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
-    const section = page.getByRole('region', {
-      name: 'Delete empire',
-      exact: true,
-    })
-    await expect(
-      section.getByRole('button', {
-        name: 'Request empire deletion',
-        exact: true,
-      }),
-    ).toBeDisabled()
-    await expect(section).toContainText('Transfer alliance leadership')
-    await section.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {
-      path: `test-results/empire-deletion-leader-${width}x900.png`,
-    })
-  })
   test(`recent sign-in rejection ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page, {
@@ -203,74 +174,5 @@ for (const width of [1280, 390]) {
     await diagnosticScreenshot(page, {
       path: `test-results/empire-deletion-error-${width}x900.png`,
     })
-  })
-  test(`automatic inactivity warning ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    let deletion: components['schemas']['EmpireDeletionStatus4'] | undefined = {
-      reason: 'Inactivity',
-      due_at: Date.now() + 7 * 86400000,
-    }
-    let revision = 1
-    await shellFixture(page, {
-      protocol: 4,
-      empireDeletion: () => deletion,
-      viewerRevision: () => String(revision),
-      missions: {
-        fleets: [],
-        incoming: [],
-        score_value_micro: '0',
-        fleet_slots: '1',
-      },
-    })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
-    const section = page.getByRole('region', {
-      name: 'Delete empire',
-      exact: true,
-    })
-    await expect(section).toContainText(
-      'This empire is scheduled for inactivity cleanup.',
-    )
-    await expect(
-      section.getByRole('button', { name: 'Keep my empire', exact: true }),
-    ).toBeVisible()
-    await section.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {
-      path: `test-results/empire-deletion-inactivity-${width}x900.png`,
-    })
-    await page.route('**/presence', async (route) => {
-      const request = route.request().postDataJSON()
-      expect(request.command.action).toMatchObject({
-        type: 'RecordForegroundPresence',
-        cause: 'AccountVisit',
-        body: null,
-        paired_command_id: null,
-      })
-      deletion = undefined
-      revision++
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: request.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [],
-          minimum_viewer_revision: String(revision),
-        },
-      })
-    })
-    await section
-      .getByRole('button', { name: 'Keep my empire', exact: true })
-      .click()
-    await expect(
-      section.getByRole('button', {
-        name: 'Request empire deletion',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('region', { name: 'Empire deletion scheduled' }),
-    ).toHaveCount(0)
   })
 }

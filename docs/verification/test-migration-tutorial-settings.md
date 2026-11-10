@@ -34,10 +34,12 @@ Register these exports from
 | `tutorial-experience` | `TutorialExperienceScenario` |
 | `tutorial-reward` | `TutorialRewardScenario` |
 
-The first commit supplies source seams, deterministic tests and 13 isolated
+Commit `d71d0a2a` supplies source seams, deterministic tests and 13 isolated
 component cases. The following migration commit consolidates application
 scenarios. Apply its removals only after the component cases pass in the
-integrated harness. Original test lineage and any prior repairs carry forward.
+integrated harness. Playwright inventory collection confirms 32 retained application cases and 13
+component cases, compared with 44 original application cases. Inventory collection
+is not browser execution. Original test lineage and any prior repairs carry forward.
 No failure-driven deletion or repair-budget reset is claimed here.
 
 ## Original scenario dispositions
@@ -104,10 +106,15 @@ retained below; the original cases in these four files have no duplicate titles.
   error, not intermittent test behavior. Two subsequent typecheck processes
   were deliberately interrupted (exit 130) on the parent's host-load request;
   those are incomplete checks, not passes.
+- Parent integrated the foundation as `d5acb535` and reported all 13 component
+  cases passing on their first attempt in 16.3s with one worker. Evidence is
+  retained in the parent's `test-results/test-strategy/tutorial-settings-first`.
+  This satisfies the replacement-coverage prerequisite for the consolidation
+  commit; it does not establish the retained application journeys or final build.
 - Parent requested no new browser/build/typecheck processes while host load was
-  45.5 on 12 cores. Component tests, retained application cases, final TypeScript
-  checks and desktop/mobile visual captures are pending the parent's serial
-  integrated validation. No UI behavior or visual-validation pass is claimed.
+  45.5 on 12 cores. Retained application cases, final TypeScript checks and
+  desktop/mobile visual captures remain with the parent's serial integrated
+  validation. No visual-validation pass is claimed here.
 - Temporary harness registrations/configuration copied into this isolated
   worktree are not part of the commits. No database/container was started.
   All task-owned typecheck processes were stopped; no browser/server was started.

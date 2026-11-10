@@ -32,7 +32,7 @@ async function capture(page: Page, target: Page | Locator, options: Parameters<P
   } else await diagnosticScreenshot(target, options)
 }
 
-for (const width of [1280, 390]) {
+for (const width of [1280]) {
   test(`vacation review, commitment, minimum and return at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let now = Date.now()
@@ -110,37 +110,9 @@ for (const width of [1280, 390]) {
     await capture(page, section, { path: `test-results/vacation-returned-${width}x900.png` })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
-  test(`vacation blockers and a changed server decision at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    let vacation: Vacation = { active: false, entered_at: null, earliest_exit_at: null, blockers: [
-      { kind: 'Construction', body: body.id }, { kind: 'Manufacturing', body: body.id }, { kind: 'Research', body: null },
-      { kind: 'Fleet', body: null }, { kind: 'Missile', body: null }, { kind: 'HostedFleet', body: body.id },
-    ] }
-    await shellFixture(page, { protocol: 4, vacation: () => vacation })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
-    const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
-    await expect(section.getByRole('button', { name: 'Enter vacation mode', exact: true })).toBeDisabled()
-    await expect(section.getByRole('listitem')).toHaveCount(6)
-    await expect(section.getByRole('link', { name: 'Open research' })).toHaveAttribute('href', /research/)
-    await page.setViewportSize({ width, height: 1200 })
-    await capture(page, section, { path: `test-results/vacation-blocked-${width}x1200.png` })
-    await page.setViewportSize({ width, height: 900 })
-    vacation = { ...vacation, blockers: [] }
-    await withBootstrapResponse(page, () => page.reload())
-    await page.route('**/commands', async (route) => {
-      const pair=route.request().postDataJSON()
-      if (pair.gameplay?.command.action?.type !== 'EnterVacation') return route.fallback()
-      await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Rejected', code: 'VacationBlocked' } })
-    })
-    await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
-    await section.getByRole('button', { name: 'Confirm vacation mode' }).click()
-    await expect(section.getByRole('alert')).toContainText('Review your current fleets and unfinished work')
-    await expect(page.getByRole('region', { name: 'Vacation active' })).toHaveCount(0)
-    await capture(page, section, { path: `test-results/vacation-rejected-${width}x900.png` })
-  })
 }
 
-for (const width of [1280, 390]) {
+for (const width of [390]) {
   test(`vacation clears confirmation on the same mounted Settings page at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let now = Date.now()

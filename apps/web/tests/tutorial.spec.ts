@@ -113,9 +113,16 @@ for (const width of [1440, 390])
     const failure = await failed
     expect(failure.status()).toBe(500)
     expect(await failure.finished()).toBeNull()
-    const status = page.getByRole('region', { name: 'Briefing status', exact: true })
-    await expect(status.getByRole('button', { name: 'Retry briefing', exact: true })).toBeVisible()
-    await expect(status.getByRole('link', { name: 'Briefing', exact: true })).toHaveAttribute('href', briefing)
+    const status = page.getByRole('region', {
+      name: 'Briefing status',
+      exact: true,
+    })
+    await expect(
+      status.getByRole('button', { name: 'Retry briefing', exact: true }),
+    ).toBeVisible()
+    await expect(
+      status.getByRole('link', { name: 'Briefing', exact: true }),
+    ).toHaveAttribute('href', briefing)
     await capture(page, 'overview-briefing-unavailable', width)
     await status.getByRole('link', { name: 'Briefing', exact: true }).click()
     await expect(
@@ -478,94 +485,21 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`chapter headings disclose independently with keyboard and reduced motion ${width}`, async ({
+  test(`chapter links navigate to the actual catalog without issuing orders ${width}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
-    await page.emulateMedia({ reducedMotion: 'no-preference' })
-    const chapterState = await installTutorialFixture(page)
+    const state = await installTutorialFixture(page)
     await withFixtureResponse(page, tutorial, () => page.goto(briefing))
-    const first = page
+    await page
       .getByRole('heading', { level: 3, name: /Establish the colony/ })
       .getByRole('button')
-    const second = page
-      .getByRole('heading', { level: 3, name: /Build the first fleet/ })
-      .getByRole('button')
-    const firstPanel = page.getByRole('region', {
-      name: /Establish the colony/,
-    })
-    const secondPanel = page.getByRole('region', {
-      name: /Build the first fleet/,
-    })
-    await expect(first).toHaveAttribute('aria-expanded', 'false')
-    await expect(firstPanel).toHaveCount(0)
-    const titleBox = (await first
-      .getByText('Establish the colony', { exact: true })
-      .boundingBox())!
-    const countBox = (await first.locator('small').boundingBox())!
-    expect(countBox.y).toBeLessThan(titleBox.y + titleBox.height)
-    expect(countBox.y + countBox.height).toBeGreaterThan(titleBox.y)
-    await expect(first).not.toContainText('earned')
-    const bounds = (await first.boundingBox())!
-    expect(bounds.height).toBeGreaterThanOrEqual(44)
-    expect(bounds.x).toBeGreaterThanOrEqual(0)
-    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
-    await first.press('Enter')
-    await expect(first).toHaveAttribute('aria-expanded', 'true')
-    await expect(first).toBeFocused()
-    await expect(firstPanel.getByRole('listitem')).toHaveCount(20)
-    const firstJob = firstPanel.getByRole('listitem').first()
-    await expect(
-      firstJob.getByRole('heading', {
-        level: 4,
-        name: 'Build Solar Plant level 1',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(
-      firstJob.getByText('Power your colony before starting its mines.', {
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(firstPanel).not.toContainText('Automatic homeworld reward')
-    const reward = firstJob.getByLabel('Reward', { exact: true })
-    await expect(
-      reward.getByRole('img', { name: 'Metal', exact: true }),
-    ).toBeVisible()
-    await expect(
-      reward.getByRole('img', { name: 'Crystal', exact: true }),
-    ).toBeVisible()
-    await expect(
-      reward.getByRole('img', { name: 'Deuterium', exact: true }),
-    ).toHaveCount(0)
-
-    await expect(firstPanel).toHaveCSS('transition-duration', '0.28s, 0.2s')
-    await expect(first.locator('svg')).toHaveCSS(
-      'transform',
-      'matrix(0, 1, -1, 0, 0, 0)',
-    )
-    await second.click()
-    await expect(second).toHaveAttribute('aria-expanded', 'true')
-    await expect(first).toHaveAttribute('aria-expanded', 'true')
-    await expect(secondPanel.getByRole('listitem')).toHaveCount(5)
-    await first.press('Space')
-    await expect(first).toHaveAttribute('aria-expanded', 'false')
-    await expect(firstPanel).toHaveCount(0)
-    await expect(first.locator('svg')).toHaveCSS('transform', 'none')
-    await expect(secondPanel).toBeVisible()
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await expect(secondPanel).toHaveCSS('transition-duration', '0s')
-    await expect(second.locator('svg')).toHaveCSS('transition-duration', '0s')
-    await second.press('Enter')
-    await expect(secondPanel).toHaveCount(0)
-    await expect(second).toBeFocused()
-    await first.press('Enter')
-    const crystalOpen = firstPanel.getByRole('link', {
+      .click()
+    const link = page.getByRole('link', {
       name: 'Open: Build Crystal Mine level 1',
       exact: true,
     })
-    await expect(crystalOpen).toHaveText('Open')
-    await expect(crystalOpen).toHaveAttribute(
+    await expect(link).toHaveAttribute(
       'href',
       `/u/andromeda/b/${body.id}/resources/crystal-mine`,
     )
@@ -573,7 +507,7 @@ for (const width of [1440, 390]) {
       page,
       (request) =>
         request.type === 'Upgrade' && request.building === 'CrystalMine',
-      () => crystalOpen.click(),
+      () => link.click(),
     )
     await expect(page).toHaveURL(
       `/u/andromeda/b/${body.id}/resources/crystal-mine`,
@@ -581,7 +515,7 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole('heading', { name: 'Crystal Mine', exact: true }),
     ).toBeVisible()
-    expect(chapterState.commands).toHaveLength(0)
+    expect(state.commands).toHaveLength(0)
   })
 }
 
@@ -648,39 +582,5 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole('link', { name: 'Fleets', exact: true }),
     ).toBeVisible()
-  })
-}
-
-
-for (const width of [1440, 390]) {
-  test(`briefing distinguishes rewards from a legacy directive's next upgrade shortfall ${width}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const state = await installTutorialFixture(page, 'research')
-    const objective = state.data.chapters[0].objectives[0]
-    const terms = objective.inspection!.terms!
-    if (terms.type !== 'Building') throw Error('fixture')
-    terms.source_level = 9
-    terms.target_level = 10
-    terms.paid.metal = '61150000000'
-    state.data.recommended_objectives = [objective.id]
-    await withFixtureResponse(page, tutorial, () => page.goto(briefing))
-    const card = page.getByRole('region', { name: 'Recommended next action' })
-    await expect(card).toContainText('Next Solar Plant upgrade (level 10) needs')
-    await expect(card.getByText('Reward', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: /01 Establish the colony/ }).click()
-    const row = page.getByRole('region', { name: /01 Establish the colony/ }).locator('li').filter({ has: page.getByRole('heading', { name: /Build Solar Plant level\s1/ }) })
-    await expect(row).toContainText('Next Solar Plant upgrade (level 10) needs')
-    await expect(row.getByText('Reward', { exact: true })).toBeVisible()
-    await expect(row.getByLabel('Reward', { exact: true })).toContainText('200')
-    await expect(row.getByRole('img', { name: 'Metal', exact: true })).toBeVisible()
-    await capture(page, 'briefing-rewards-next-upgrade', width)
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
-      await row.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 100))
-    await diagnosticScreenshot(page, {
-      path: `test-results/chat-5/briefing-reward-row-${width}x900.png`,
-    })
-    expect(state.commands).toHaveLength(0)
-    expect(state.data.receipts).toHaveLength(0)
   })
 }
