@@ -92,8 +92,9 @@ function Toast({ event, hud }: { event: HudEvent; hud: Hud }) {
       <button
         className={styles.toast}
         data-tone={copy.tone}
-        onClick={() => {
-          if (swipe.canOpen()) hud.dispatch({ type: 'open', id: event.id })
+        onClick={(click) => {
+          if (swipe.canOpen(click.detail === 0 ? 'keyboard' : 'pointer'))
+            hud.dispatch({ type: 'open', id: event.id })
         }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {

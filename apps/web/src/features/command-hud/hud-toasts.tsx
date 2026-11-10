@@ -103,8 +103,9 @@ function HudToast({
         type="button"
         className={styles.toast}
         data-tone={content.tone}
-        onClick={() => {
-          if (swipe.canOpen()) onOpen()
+        onClick={(event) => {
+          if (swipe.canOpen(event.detail === 0 ? 'keyboard' : 'pointer'))
+            onOpen()
         }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {

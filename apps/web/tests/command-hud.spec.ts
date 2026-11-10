@@ -1394,3 +1394,80 @@ for (const width of [1440, 390]) {
     } finally {release()}
   })
 }
+
+// Retain the actual hook/DOM loading contract until isolated hook coverage replaces it.
+for (const width of [1440]) {
+ for (const failRefresh of [false]) {
+  test(`background HUD refresh allows buffered entries and queues the next page at ${width}px (refresh fails: ${failRefresh})`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    await page.clock.install()
+    await page.clock.pauseAt(new Date())
+    // Keep pagination gestures deterministic; native observer races have their
+    // own coverage above. Only intercept the HUD scroll root.
+    await page.addInitScript(() => {
+      const NativeObserver = window.IntersectionObserver
+      window.IntersectionObserver = class extends NativeObserver {
+        private hud: boolean
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          super(callback, options)
+          this.hud = options?.root instanceof HTMLDialogElement
+        }
+        observe(target: Element) { if (!this.hud) super.observe(target) }
+      }
+    })
+    const f = await intelligenceFixture(page)
+    f.headers.push(...Array.from({length: 130}, (_, i) => ({id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false})))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await expect(page.getByTestId('unread-count')).toHaveText('99')
+    await page.getByTestId('command-orb').click()
+    await page.clock.runFor(1000)
+    const panel = page.getByRole('dialog', {name: 'Command uplink', exact: true})
+    const list = panel.getByLabel('Intelligence list')
+    const entries = list.getByRole('button')
+    const more = panel.getByRole('button', {name: 'Load more intelligence', exact: true})
+    await expect(entries).toHaveCount(20)
+    let release!: () => void
+    let held = false
+    let refreshes = 0
+    const gate = new Promise<void>(resolve => {release = resolve})
+    await page.route('**/api/**/reports', async route => {
+      if (!route.request().postDataJSON().cursor) {
+        held = true
+        refreshes++
+        await gate
+        if (failRefresh) return route.fulfill({status: 503, json: {code: 'Unavailable'}})
+      }
+      await route.fallback()
+    })
+    try {
+      await page.clock.runFor(15000)
+      await expect.poll(() => held).toBe(true)
+      // Queue another passive refresh while the first owns the inbox.
+      await page.clock.runFor(15000)
+      await expect(more).toBeEnabled()
+      await more.focus()
+      await expect(more).toBeFocused()
+      await expect(list).toHaveAttribute('aria-busy', 'false')
+      for (const count of [40]) {
+        await more.click()
+        await expect(entries).toHaveCount(count)
+        await expect(more).toBeEnabled()
+      }
+      expect(f.reportQueries).not.toContain(id(4049))
+      await more.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, {path: `test-results/background-hud-buffered-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
+      await more.click()
+      await expect(list).toHaveAttribute('aria-busy', 'true')
+      await expect(panel.getByText('Loading intelligence…', {exact: true})).toBeVisible()
+      expect(f.reportQueries).not.toContain(id(4049))
+      await diagnosticScreenshot(page, {path: `test-results/background-hud-queued-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
+    } finally {release()}
+    await expect(entries).toHaveCount(60)
+    await expect.poll(() => refreshes).toBe(2)
+    expect(f.reportQueries.filter(cursor => cursor === id(4049))).toHaveLength(1)
+    await expect(list).toHaveAttribute('aria-busy', 'false')
+  })
+}
+
+}

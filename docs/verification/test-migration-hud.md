@@ -6,7 +6,7 @@ Base: `a119915ffaeb881a7f54d65542478f4788bd4210`. This is the local HUD
 portion of the coordinated test-strategy change. The parent owns shared test
 fixtures, the component entry, runner configuration, CI selection and final
 integrated validation. No tests were moved to a nonblocking suite. The remaining
-36 command-HUD browser cases are still selected by the existing fixture runner;
+37 command-HUD browser cases are still selected by the existing fixture runner;
 this bounded change does not claim that the final small application gate is
 configured.
 
@@ -81,7 +81,7 @@ render replaces native browser behavior.
 | return refresh animation preview at mobile and desktop sizes | Retained native CSS/geometry checks and explicitly opt-in visual frames. Temporal confirmation policy stays in the deterministic tests above; this is still a required fixture test, not a silently moved preview job. |
 | shared inbox removes reports deleted elsewhere from badge and panel (390, 1440px) | Retained cross-surface subscription wiring. `model.test.ts` covers ignoring cached reports outside current inbox membership; report engine/state tests own reconciliation. |
 | background HUD refresh preserves settled status and focus (1440, 390px) | Retained: focus and interactive DOM remain stable during an intentionally held refresh. |
-| background HUD refresh allows buffered entries and queues the next page (1440, 390px × success/failure) | Moved: `inbox-pagination.test.ts` (`buffered pages stay available…`, `failed pagination leaves the settled limit…`) plus `intelligence-refresh.test.ts` (`coalesces concurrent wakes…`, `mailbox failures remain recoverable…`). Existing `report-engine.test.ts` `pagination waits through consecutive passive refreshes (first fails: %s)` proves success/failure ordering, one requested cursor, deduplication and settled membership at the actual shared engine boundary. Native focused controls during refresh remain in the preceding retained scenario; native loading/retry presentation remains in the list journey. |
+| background HUD refresh allows buffered entries and queues the next page (1440, 390px × success/failure) | Restored the 1440px/success application variant after review: only the actual hook/DOM case proves that passive refresh leaves Load more enabled and aria-busy false while buffered entries exist, then becomes busy for an explicit unavailable page. The remaining viewport/failure permutations move to: `inbox-pagination.test.ts` (`buffered pages stay available…`, `failed pagination leaves the settled limit…`) plus `intelligence-refresh.test.ts` (`coalesces concurrent wakes…`, `mailbox failures remain recoverable…`). Existing `report-engine.test.ts` `pagination waits through consecutive passive refreshes (first fails: %s)` proves success/failure ordering, one requested cursor, deduplication and settled membership at the actual shared engine boundary. Native focused controls during refresh remain in the preceding retained scenario; native loading/retry presentation remains in the list journey. |
 | reading a HUD item does not request more history (1440, 390px) | Moved: `inbox-pagination.test.ts` changes the target count below the settled limit without producing a request, then proves a new gesture requests exactly one next page. Shared report-engine reconciliation coverage remains; the list/detail browser journey still reads a real item and returns without losing pages/position. |
 
 The only owned Galaxy scenario was `rapid Galaxy spying keeps a compact
@@ -251,3 +251,55 @@ Validation of this follow-up on `15085e5f` plus the pointer-guard diff:
 passed all 14 tests in 0.511s. Focused ESLint and source formatting passed.
 No local test failure or retry occurred in this follow-up; no browser resources
 were started. The chat records the local commit containing that tested diff.
+
+
+## Follow-up: isolated toast contracts and review corrections
+
+Six isolated component cases are authored in
+`apps/web/tests/components/hud-toasts.component.spec.ts`, using the real
+`HudToasts` and three prepared notices from `hud-toasts.scenarios.tsx`:
+
+- Compact bounds, covered-card inertness, programmatic focus rejection, tab
+  order and top-card hit testing at 390x844 and 1440x900.
+- Keyboard dismissal promotes focus twice and invokes the supplied fallback
+  exactly once when the final card is dismissed.
+- Pointer cancellation followed by native Enter opens once without dismissal.
+- Mouse short-drag suppression, subsequent native click and a deliberate swipe
+  that dismisses once without an extra opening callback.
+- Independent real touch swipe and a native tap on the promoted card.
+
+The scene has no app bootstrap, game store or event expiry clock. Interaction
+records are the sole fixture state; remaining notices and callback output are
+derived from those records. Tests use the supported reduced-motion preference
+to leave decorative lifetime CSS out of focus/geometry/input contracts. They
+do not override CSS or Motion, and require the actual drag transform to reach
+its intended displacement before release. Normal-motion animation behavior is
+not claimed by these component cases. No raw pre-frame race permutation or
+retired rapid-Galaxy command journey is recreated.
+
+The parent must register the existing async scene-loader map entry:
+`'hud-toasts': async () => (await import('./hud-toasts.scenarios')).HudToastsScenario`.
+This task did not change the shared entry, fixture or runner configuration.
+
+Review also found that a prior canceled/dragged pointer blocked a fresh keyboard
+activation. `canOpen` now accepts an explicit pointer/keyboard activation kind;
+non-pointer native clicks (`detail === 0`, including assistive activation) bypass
+only the previous pointer guard and still cannot open an exiting card. Both
+consumers, production `HudToasts` and the dev HUD playground, classify their
+native click. There is no synthesized keydown click and no double-activation
+path. Two deterministic controller cases cover fresh keyboard activation after
+drag/cancel while preserving pointer suppression and the exit lock.
+
+The earlier migration overstated replacement of the buffered-refresh browser
+case: the controller tests do not exercise `useHudInbox`'s derived loading
+calculation. One original 1440px/success case is restored with its assertions
+intact; the table above is corrected. The deterministic shared-report-engine
+success/failure permutations remain. Removal of this last browser case requires
+an actual hook/component replacement, not the separate one-entry focus case.
+
+Validation: focused swipe/prepared-toast unit checks passed (16 tests, 0.527s)
+on `31bd0953` plus this follow-up diff. Source lint, formatting and syntax-only
+parsing of the two new component files are checked locally. Browser, component
+typechecking, production build and current screenshot validation remain pending
+the parent's serial validation window. No browser/build/typecheck was launched
+and no failure/retry occurred in this follow-up.

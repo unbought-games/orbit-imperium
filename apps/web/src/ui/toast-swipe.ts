@@ -58,7 +58,9 @@ export function createToastSwipeController(options: {
       dragged = true
   }
   return {
-    canOpen: () => !dragged && !canceled && !exiting,
+    // Native keyboard and assistive clicks have no pointer gesture to reject.
+    canOpen: (activation: 'pointer' | 'keyboard' = 'pointer') =>
+      !exiting && (activation === 'keyboard' || (!dragged && !canceled)),
     pointerDown(point: ToastPointer) {
       // A new pointer must not cancel an already committed dismissal.
       if (exiting) return

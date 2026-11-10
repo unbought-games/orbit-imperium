@@ -162,3 +162,22 @@ it('pointer cancellation without a Motion callback blocks activation until a new
   controller.pointerUp({ id: 1, x: 0, y: 0 })
   expect(controller.canOpen()).toBe(true)
 })
+
+it.each(['drag', 'cancel'] as const)(
+  'fresh keyboard activation remains available after pointer %s without clearing pointer suppression',
+  (gestureKind) => {
+    const { controller } = gesture()
+    controller.pointerDown({ id: 1, x: 0, y: 0 })
+    if (gestureKind === 'cancel') controller.pointerCancel(1)
+    else {
+      controller.pointerMove({ id: 1, x: 12, y: 0 })
+      controller.pointerUp({ id: 1, x: 12, y: 0 })
+    }
+    expect(controller.canOpen('pointer')).toBe(false)
+    expect(controller.canOpen('keyboard')).toBe(true)
+    expect(controller.canOpen('pointer')).toBe(false)
+    controller.dismiss()
+    expect(controller.canOpen('keyboard')).toBe(false)
+    expect(controller.canOpen('pointer')).toBe(false)
+  },
+)
