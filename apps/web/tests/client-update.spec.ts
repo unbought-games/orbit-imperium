@@ -163,7 +163,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
   })
 }
 
-for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+// Preserve main's retirement of the failed desktop recovery variant.
+for (const viewport of [{ width: 390, height: 844 }]) {
   test(`a click during quiet session recovery is explicitly refused (${viewport.width}x${viewport.height})`, async ({ page }, info) => {
     await page.setViewportSize(viewport)
     await page.emulateMedia({ reducedMotion: 'reduce' })

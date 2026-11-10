@@ -143,7 +143,7 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
 | foreground recovery preserves edits and only announces verified failures (${size}) | Retain foreground lifecycle, preserved edits and live-region wiring; controller owns response permutations; component migration candidate. |
 | offline actions and uncertain orders stay actionable after recovery (${size}) | Retain offline form/uncertain-command retry wiring and preserved draft; component migration candidate. |
 | session rotation recovers quietly but a refused action remains explicit (${viewport.width}x${viewport.height}) | Retire remaining mobile variant after recorded repair; coordinator and quiet-recovery browser coverage above. |
-| a click during quiet session recovery is explicitly refused (${viewport.width}x${viewport.height}) | Retain actual unsent form action, draft and refusal message through quiet recovery at desktop/mobile; component migration candidate. |
+| a click during quiet session recovery is explicitly refused (${viewport.width}x${viewport.height}) | Retain the mobile unsent form action, draft and refusal-message journey. Main PR #384 retired the desktop variant after an unexplained startup failure; preserve that retirement. Coordinator tests retain deterministic refusal behavior. |
 
 ### alliance-attacks.spec.ts
 

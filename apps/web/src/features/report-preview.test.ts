@@ -1,10 +1,47 @@
 import { expect, it } from 'vitest'
+import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
+import type { components } from '../contracts'
 import {
   reportPreview,
   reportAge,
   reportListIdentity,
   reportListTitle,
 } from './report-preview'
+
+it('counts stored missiles separately from combat defenses in espionage previews', () => {
+  const defenses =
+    missileDefenses as components['schemas']['EspionagePayload4']['defenses']
+  expect(reportPreview({ kind: 'Espionage', defenses }).facts).toEqual([
+    'Resources unknown',
+    'Fleet: unknown',
+    'Defenses: 100',
+    'Missiles: 10',
+  ])
+  expect(
+    reportPreview({ kind: 'Espionage', defenses: { visibility: 'Unknown' } })
+      .facts,
+  ).toEqual(['Resources unknown', 'Fleet: unknown', 'Defenses: unknown'])
+  expect(
+    reportPreview({
+      kind: 'Espionage',
+      defenses: { visibility: 'Known', value: [] },
+    }).facts,
+  ).toEqual(['Resources unknown', 'Fleet: unknown', 'Defenses: 0'])
+  expect(
+    reportPreview({
+      kind: 'Espionage',
+      defenses: {
+        visibility: 'Known',
+        value: [
+          {
+            item: { kind: 'Missile', id: 'AntiBallisticMissile' },
+            count: '9007199254740993',
+          },
+        ],
+      },
+    }).facts,
+  ).toContain('Missiles: 9,007,199,254,740,993')
+})
 
 it('shows abandoned planet coordinates without explanatory subtext', () => {
   const at = { galaxy: 1, system: 33, position: 4 }

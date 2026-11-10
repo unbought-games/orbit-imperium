@@ -438,6 +438,34 @@ const RESEARCH: [&str; 16] = [
 mod tests {
     use super::*;
     #[test]
+    fn missile_intelligence_survives_previews_and_sharing_without_revealing_unknowns() {
+        let defenses: Value = serde_json::from_str(include_str!(
+            "../../../contracts/fixtures/espionage-missile-defenses.json"
+        ))
+        .unwrap();
+        for visible in [true, false] {
+            let section = if visible {
+                defenses.clone()
+            } else {
+                json!({"visibility":"Unknown"})
+            };
+            let source = json!({"kind":"Espionage", "defenses":section});
+            assert_eq!(
+                crate::report_preview::report_preview(&source)["defenses"],
+                section
+            );
+            let report = project_shared_report(
+                ReportId::default(),
+                1000,
+                &source,
+                &Default::default(),
+                ReportShareOptions::default(),
+            )
+            .unwrap();
+            assert_eq!(report.payload["defenses"], section);
+        }
+    }
+    #[test]
     fn affiliation_sharing_follows_identity_consent_and_local_participant_ids() {
         let source: Value = serde_json::from_str(include_str!(
             "../../../contracts/fixtures/espionage-expanded.json"

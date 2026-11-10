@@ -232,3 +232,32 @@ whitespace checks passed. The component runner closed Chromium and its server
 and removed the temporary bundle. The user requested a review hold: follow
 fresh CI and review findings, then leave PR #385 open without queue enrollment
 or merge.
+
+## Main integration after the review hold
+
+Resolve conflicts against main `9a477a8e` (including PR #384 missile-report
+coverage and PR #383 announcement documentation). Preserve both branches' test
+retirements rather than reviving exhausted scenarios: the client-update session
+rotation scenarios remain absent, main's desktop quiet-recovery click variant
+remains absent, and main's retired desktop vacation journey remains absent.
+Keep main's surviving mobile vacation journey in the required `@journey` cohort;
+do not restore blocker/rejection application permutations already migrated to
+isolated components. The two normal-motion shell cases retired on main also
+remain absent, with its new deterministic navigation-motion coverage intact.
+
+Current application inventory: 816 cases, consisting of 39 journeys and 777
+feature integrations; isolated component inventory remains 271. The net change
+from 819 is main's removal of one recovery and two shell variants. Vacation
+retains one journey, now its existing mobile variant. Coverage maps and the
+continuation ownership counts are reconciled. No production conflict required
+a new source fix, and no additional scenario repair is claimed.
+
+Conflict-resolution validation: all 73 affected application cases passed in
+`client-update`, `vacation`, `shell` and `espionage-reports` (4.939 s
+bundle preparation, 65.444 s runner, two workers, no
+retries/skips). All 142 focused report/content/combat-model/navigation-motion
+unit tests passed (1.24 s), and all 14 CI selection/workflow checks passed
+(11.372 s). Whitespace checks passed; no unresolved files remain. Browser/server
+and temporary bundles were cleaned up. Artifacts are under
+`test-results/test-strategy/pr385-main-conflicts/`. Fresh CI must verify this
+merge commit; the owner review hold remains in effect.

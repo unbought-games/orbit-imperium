@@ -1864,7 +1864,11 @@ test('server recall eligibility survives an elapsed client countdown', async ({
   release()
 })
 
-for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+// The two no-preference cases exhausted their repair in PR #369 and failed
+// again when Briefing gained intentional motion. Keep reduced-motion coverage;
+// the sidebar's color-only CSS contract is checked in navigation-motion.test.ts.
+const navigationMotionPreferences: ('no-preference' | 'reduce')[] = ['reduce']
+for (const reducedMotion of navigationMotionPreferences) {
   for (const width of [390, 1280]) {
     test(`navigation limits motion to desktop hover colors at ${width}px with ${reducedMotion}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 })

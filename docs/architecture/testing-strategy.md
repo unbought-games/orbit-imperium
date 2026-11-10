@@ -91,8 +91,8 @@ queue CI was green.
 
 ## Completing the migration after phase one
 
-Phase one is PR #385. Its main-integrated inventory contains 819 application
-cases (39 tagged journeys and 780 other required cases), plus 271 isolated
+Phase one is PR #385. Its main-integrated inventory contains 816 application
+cases (39 tagged journeys and 777 other required cases), plus 271 isolated
 component cases after the documented CI retirement of one recurring touch
 scenario. These counts are a starting inventory, not a target for how
 many replacements to write. New tests added after this snapshot also need an
@@ -108,7 +108,7 @@ a case earns its place in the final gate.
 | Chat | Scope | Initial application inventory | First useful batches |
 | --- | --- | --- | --- |
 | Gameplay | Economy, progression, Dispatch, fleets/Galaxy, Empire actions | 415 cases in 40 files, including existing journeys | Catalog/quote/resource permutations, then fleet/Galaxy and command wiring |
-| Shell, social and reports | Bootstrap/recovery, HUD/navigation, tutorial, profiles/alliances and report interactions | 404 cases in 33 files, including existing journeys | Shell/bootstrap/HUD state permutations, then report deletion/sharing and social flows |
+| Shell, social and reports | Bootstrap/recovery, HUD/navigation, tutorial, profiles/alliances and report interactions | 401 cases in 33 files, including existing journeys | Shell/bootstrap/HUD state permutations, then report deletion/sharing and social flows |
 | Integration owner | Shared harness, fixture registry, runner/CI selection, complete coverage map and validation | No independent migration batch | Review replacements, integrate bounded batches, run expensive checks serially |
 
 Production edits follow the owning feature. Shared store/provider/API and
