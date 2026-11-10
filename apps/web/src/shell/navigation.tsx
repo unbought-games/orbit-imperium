@@ -13,13 +13,11 @@ import {
   Blocks,
   Radar,
   Telescope,
-  Swords,
   Menu,
   Mail,
   LogOut,
   ChevronsUpDown,
   Settings,
-  ClipboardList,
   ArrowUpRight,
 } from 'lucide-react'
 import styles from './navigation.module.css'
@@ -36,6 +34,7 @@ import {
 import type { BoundView } from '../client-model/commands'
 import { routeTarget } from './route-target'
 import { resolveDestination, type Page } from './routes'
+import { pageIcons } from './navigation-icons'
 import { buildPages, navigationAnchor, pageTitles } from './navigation-model'
 
 function revealFocusedDestination(event: FocusEvent<HTMLElement>) {
@@ -142,7 +141,15 @@ export function Navigation({
         key={p}
         {...routeTarget(universeName, p, body)}
         aria-current={
-          (primary ? title === selected : p === page) ? 'page' : undefined
+          (
+            primary
+              ? title === selected
+              : p === page ||
+                (p === 'alliance' &&
+                  (page === 'alliance-create' || page === 'alliance-discover'))
+          )
+            ? 'page'
+            : undefined
         }
         onClick={(event) => {
           if (
@@ -169,6 +176,8 @@ export function Navigation({
       </Button>
     )
   }
+  const sidebarDestination = (p: Page) =>
+    destination(p, pageTitles[p], pageIcons[p])
   const primaryNavigation = (
     <nav
       className={styles.primary}
@@ -217,25 +226,25 @@ export function Navigation({
           data-touch-control=""
         >
           {destination('overview', 'Empire', Orbit, true)}
-          {destination('briefing', 'Briefing', ClipboardList)}
+          {sidebarDestination('briefing')}
           {destination('resources', 'Develop', Blocks, true)}
           <nav
             className={styles.sidebarDevelop}
             aria-label="Develop navigation"
           >
-            {buildPages.map((p) => destination(p))}
+            {buildPages.map(sidebarDestination)}
           </nav>
           {destination('galaxy', 'Galaxy', Telescope, true)}
           {destination('fleets', 'Fleets', Radar, true)}
-          {destination('reports', 'Reports', Mail)}
-          {destination('combat-simulator', 'Combat Simulator', Swords)}
+          {sidebarDestination('reports')}
+          {sidebarDestination('combat-simulator')}
           {(!visiblePages ||
             ['alliance', 'messages', 'high-scores'].some((p) =>
               visiblePages.has(p as Page),
             )) && <h2 className={styles.sidebarLabel}>Community</h2>}
-          {destination('alliance')}
-          {destination('messages')}
-          {destination('high-scores')}
+          {sidebarDestination('alliance')}
+          {sidebarDestination('messages')}
+          {sidebarDestination('high-scores')}
           {morePages.length > 0 && (
             <Disclosure
               className={styles.more}
@@ -247,7 +256,13 @@ export function Navigation({
                 className={styles.moreDestinations}
               >
                 {morePages.map((p) =>
-                  destination(p, pageTitles[p], ArrowUpRight, false, true),
+                  destination(
+                    p,
+                    pageTitles[p],
+                    pageIcons[p] ?? ArrowUpRight,
+                    false,
+                    true,
+                  ),
                 )}
               </nav>
             </Disclosure>

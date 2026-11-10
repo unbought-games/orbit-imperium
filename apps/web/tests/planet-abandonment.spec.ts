@@ -4,6 +4,7 @@ import { body, binding, id, shellFixture } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse, withReportListResponse } from './fixtures/responses'
 
 for (const width of [1280, 390]) {
   test(`abandonment menu, losses, cancellation, blockers and removal at ${width}px`, async ({ page }) => {
@@ -43,7 +44,7 @@ for (const width of [1280, 390]) {
       revision++
       await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
     })
-    await page.goto(`/u/andromeda/b/${colony.id}/overview`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${colony.id}/overview`))
     const trigger = page.getByRole('button', { name: 'Planet actions [1:371:8]' })
     await trigger.click()
     const menu = page.getByRole('menuitem', { name: 'Abandon planet' })
@@ -73,7 +74,7 @@ for (const width of [1280, 390]) {
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
     await expect(page.getByRole('article', { name: 'Hesperia [1:371:8] dossier' })).toHaveCount(0)
     expect(submitted).toBe(1)
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(page.getByRole('article', { name: 'Hesperia [1:371:8] dossier' })).toHaveCount(0)
     await expect(page.getByRole('article', { name: 'Terra [1:371:12] dossier' })).toBeVisible()
     await page.getByRole('article', { name: 'Terra [1:371:12] dossier' }).scrollIntoViewIfNeeded()
@@ -97,7 +98,7 @@ for (const width of [1280, 390]) {
       const request = route.request().postDataJSON()
       await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id, viewer_revision: String(revision), sampled_at: now, as_of_ms: now, data: { items: [{ id: reportId, kind: 'PlanetAbandoned', observed_at: now, read: true, hidden: false, preview: { kind: 'PlanetAbandoned', coordinates: colony.coordinates, release_at: release } }], has_more: false, next_cursor: null, as_of_ms: now } } })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await withReportListResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/reports`))
     await expect(page.getByRole('link', { name: 'Planet Abandoned', exact: true })).toBeVisible()
     await diagnosticScreenshot(page, { path: `test-results/abandon-report-list-${width}x900.png` })
     await page.getByRole('link', { name: 'Planet Abandoned', exact: true }).click()

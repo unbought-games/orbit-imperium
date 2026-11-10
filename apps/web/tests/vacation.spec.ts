@@ -4,6 +4,7 @@ import { binding, body, shellFixture } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
 import { productionFixture } from '../src/test-support/production'
+import { withBootstrapResponse } from './fixtures/responses'
 type Vacation = components['schemas']['VacationView4']
 const minimum = 48 * 60 * 60 * 1000
 async function capture(page: Page, target: Page | Locator, options: Parameters<Page['screenshot']>[0]) {
@@ -64,7 +65,7 @@ for (const width of [1280, 390]) {
       revision++
       await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
     })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
     await expect(section.getByRole('button', { name: 'Enter vacation mode', exact: true })).toBeEnabled()
     await capture(page, section, { path: `test-results/vacation-ready-${width}x900.png` })
@@ -88,7 +89,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('region', { name: 'Vacation active' })).toContainText('Already-launched attacks still arrive')
     await page.evaluate(() => window.scrollTo(0, 0))
     await capture(page, page, { path: `test-results/vacation-active-${width}x900.png` })
-    await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resource-settings`))
     const sliders = page.getByRole('slider')
     await expect(sliders).toHaveCount(4)
     for (const slider of await sliders.all()) await expect(slider).toBeDisabled()
@@ -96,10 +97,10 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 1200 })
     await capture(page, page.getByRole('region', { name: 'Production controls' }), { path: `test-results/vacation-production-${width}x1200.png` })
     await page.setViewportSize({ width, height: 900 })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     now += minimum
     revision++
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(leave).toBeEnabled()
     await capture(page, section, { path: `test-results/vacation-exit-ready-${width}x900.png` })
     await leave.click()
@@ -116,7 +117,7 @@ for (const width of [1280, 390]) {
       { kind: 'Fleet', body: null }, { kind: 'Missile', body: null }, { kind: 'HostedFleet', body: body.id },
     ] }
     await shellFixture(page, { protocol: 4, vacation: () => vacation })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
     await expect(section.getByRole('button', { name: 'Enter vacation mode', exact: true })).toBeDisabled()
     await expect(section.getByRole('listitem')).toHaveCount(6)
@@ -125,7 +126,7 @@ for (const width of [1280, 390]) {
     await capture(page, section, { path: `test-results/vacation-blocked-${width}x1200.png` })
     await page.setViewportSize({ width, height: 900 })
     vacation = { ...vacation, blockers: [] }
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await page.route('**/commands', async (route) => {
       const pair=route.request().postDataJSON()
       if (pair.gameplay?.command.action?.type !== 'EnterVacation') return route.fallback()
@@ -158,7 +159,7 @@ for (const width of [1280, 390]) {
       revision++
       await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
     })
-    await page.goto('/u/andromeda/settings')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
     const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
     await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
     await section.getByRole('button', { name: 'Confirm vacation mode' }).click()

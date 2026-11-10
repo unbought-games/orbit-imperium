@@ -1,5 +1,5 @@
 import { routeWorld } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withReportResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
@@ -279,7 +279,7 @@ async function prepareHistoricalDraft(page: Page) {
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
   await page.getByRole('button', { name: 'Attack', exact: true }).click()
   await expect(mission(page)).toHaveValue('Attack')
   await expect(
@@ -1377,7 +1377,7 @@ for (const kind of [
     }
     if (kind === 'Harvest') {
       await expect(quote).toContainText('Debris field')
-      await quote.getByRole('button', { name: 'Location actions for [1:1:1]', exact: true }).click()
+      await quote.getByRole('link', { name: 'View destination [1:1:1] in galaxy', exact: true }).click({ button: 'right' })
       await expect(page.getByRole('menuitem', { name: 'View in Galaxy', exact: true })).toHaveAttribute('href', /target=debris/)
       await page.keyboard.press('Escape')
     }
@@ -1409,7 +1409,7 @@ for (const kind of [
   })
 }
 
-test('review retains honest unknown identities and keyboard coordinate actions', async ({
+test('review retains honest unknown identities and coordinate actions', async ({
   page,
 }) => {
   const state = await setup(page)
@@ -1420,16 +1420,17 @@ test('review retains honest unknown identities and keyboard coordinate actions',
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Unknown planet')
   await expect(quote).not.toContainText('Ember Watch')
-  const actions = quote.getByRole('button', {
-    name: 'Location actions for [1:2:1]',
+  const destination = quote.getByRole('link', {
+    name: 'View destination [1:2:1] in galaxy',
+    exact: true,
   })
-  await actions.focus()
-  await page.keyboard.press('Enter')
+  await destination.click({ button: 'right' })
   await expect(
     page.getByRole('menuitem', { name: 'Copy coordinates', exact: true }),
   ).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(actions).toBeFocused()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(destination).toBeFocused()
 })
 
 test('historical review keeps observation context visible without flight details', async ({

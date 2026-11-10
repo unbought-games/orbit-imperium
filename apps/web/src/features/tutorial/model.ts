@@ -182,11 +182,19 @@ export function objectiveStatus(
           ready: false,
           text: `Requires ${label(b.requirement.type === 'BodyBuilding' ? b.requirement.building : b.requirement.research)} level ${b.requirement.level}.`,
         }
-      if (b.resource && b.required && b.actual)
+      if (b.resource && b.required && b.actual) {
+        const terms = inspection?.terms
+        const subject =
+          terms?.type === 'Building' && terms.action === 'Upgrade'
+            ? `Next ${label(terms.building)} upgrade (level ${terms.target_level})`
+            : terms?.type === 'Research'
+              ? `${label(terms.research)} research (level ${terms.target_level})`
+              : 'Next action'
         return {
           ready: false,
-          text: `Needs ${formatWholeNumber((BigInt(b.required) - BigInt(b.actual) + 999999n) / 1000000n)} more ${b.resource.toLowerCase()}.`,
+          text: `${subject} needs ${formatWholeNumber((BigInt(b.required) - BigInt(b.actual) + 999999n) / 1000000n)} more ${b.resource.toLowerCase()}.`,
         }
+      }
       return {
         ready: false,
         text:

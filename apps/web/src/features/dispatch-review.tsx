@@ -126,7 +126,6 @@ export function DispatchReview({
           <div>
             <strong>{bodyName(body)}</strong>
             <CoordinateLink
-              compact
               at={body.coordinates}
               label="origin"
               target={body.kind === 'Moon' ? 'moon' : 'planet'}
@@ -151,7 +150,6 @@ export function DispatchReview({
               </span>
             ) : (
               <CoordinateLink
-                compact
                 at={destination.coordinates}
                 label="destination"
                 target={destination.kind}

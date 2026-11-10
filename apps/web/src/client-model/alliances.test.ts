@@ -279,7 +279,8 @@ it.each([false, true])(
         application: 'gone',
       }),
     ).toBe(false)
-    expect(read).toHaveBeenCalledTimes(revoked ? 3 : 2)
+    // Discovery loads independently; membership recovery only rechecks Mine.
+    expect(read.mock.calls).toEqual([[{ type: 'Mine' }], [{ type: 'Mine' }]])
     expect(controller.store.getState().view?.alliance).toEqual(
       revoked ? null : current.alliance,
     )

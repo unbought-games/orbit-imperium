@@ -10,6 +10,7 @@ import {
 } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 function inventoryFixture() {
@@ -143,7 +144,7 @@ for (const width of [320, 390, 1280]) {
       viewerRevision: () => String(revision),
     }
     await installGameFixture(page, options)
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     await expect(page.locator('main h1')).toHaveText('Fleets')
     const panel = page.getByRole('region', {
       name: 'Stationed ships',
@@ -179,7 +180,7 @@ for (const width of [320, 390, 1280]) {
     await expect(page).toHaveURL(
       `/u/andromeda/b/${body.id}/shipyard/small-cargo`,
     )
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     await expect(cargo.getByRole('cell').first()).toHaveText(
       '9,223,372,036,854,775,807',
     )
@@ -197,7 +198,7 @@ for (const width of [320, 390, 1280]) {
       .getByRole('link', { name: 'Open Shipyard', exact: true })
       .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/shipyard`)
-    await page.goto(`/u/andromeda/b/${body.id}/fleets/${id(30)}`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets/${id(30)}`))
     await expect(panel).toHaveCount(0)
     await expect(
       page.getByRole('heading', { name: 'Mission details', exact: true }),
@@ -212,7 +213,7 @@ test('empty stationed inventory retains a useful Shipyard destination', async ({
     protocol: 4,
     bodies: [{ ...body, inventories: [] }],
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   const panel = page.getByRole('region', {
     name: 'Stationed ships',
     exact: true,
@@ -233,7 +234,7 @@ for (const source of ['stationed', 'flying', 'queued', 'empty'] as const) {
     options.missions.fleets = source === 'flying' ? options.missions.fleets.slice(0, 1) : []
     options.manufacturing = source === 'queued' ? options.manufacturing.slice(0, 1) : []
     await installGameFixture(page, options)
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     const panel = page.getByRole('region', { name: 'Stationed ships', exact: true })
     await expect(panel.getByRole('table')).toHaveCount(source === 'empty' ? 0 : 1)
     if (source !== 'empty') {
@@ -257,7 +258,7 @@ for (const width of [390, 1440]) {
       { item: { kind: 'Ship', id: 'SolarSatellite' }, count: '8' },
     ]
     await installGameFixture(page, options)
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     const panel = page.getByRole('region', { name: 'Stationed ships', exact: true })
     await expect(panel.getByRole('rowheader')).toHaveText(['Military', 'Light Fighter', 'Civil', 'Solar Satellite', 'Small Cargo'])
     await diagnosticScreenshot(page.locator('main header').first(), { path: `test-results/fleets-slots-header-${width}x1000.png` })

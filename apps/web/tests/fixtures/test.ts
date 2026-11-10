@@ -5,29 +5,22 @@ export * from '@playwright/test'
 
 export const test = base.extend<{
   failureScreenshots: void
-  /** Curated orb announcements are real build content; most tests opt out. */
-  announcements: 'seen' | 'unseen'
+  /** Most fixtures use an empty runtime feed; announcement tests supply their own. */
+  announcements: 'empty' | 'custom'
   announcementHistory: void
 }>({
-  announcements: ['seen', { option: true }],
+  announcements: ['empty', { option: true }],
   announcementHistory: [
     async ({ browser, context, announcements }, use) => {
-      if (announcements === 'unseen') return use()
-      const markSeen = (target: BrowserContext) =>
-        target.addInitScript(() => {
-          const getItem = Storage.prototype.getItem
-          Storage.prototype.getItem = function (key: string) {
-            return key.startsWith('orbit.announcement.v1:')
-              ? 'seen'
-              : getItem.call(this, key)
-          }
-        })
-      await markSeen(context)
+      if (announcements === 'custom') return use()
+      const installEmptyFeed = (target: BrowserContext) =>
+        target.route('**/api/announcements', route => route.fulfill({ json: { schema: 1, announcements: [] } }))
+      await installEmptyFeed(context)
       // Tests that open extra contexts get the same default.
       const newContext = browser.newContext
       browser.newContext = async (...args) => {
         const created = await newContext.apply(browser, args)
-        await markSeen(created)
+        await installEmptyFeed(created)
         return created
       }
       try {

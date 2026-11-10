@@ -75,3 +75,15 @@
     font-size: 0.875rem;
   }
 }
+
+.facts {
+  max-width: 90ch;
+}
+.facts dt {
+  font-weight: 600;
+  margin-top: 1rem;
+}
+.facts dd {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted);
+}

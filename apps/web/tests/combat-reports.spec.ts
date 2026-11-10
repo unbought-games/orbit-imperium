@@ -272,6 +272,9 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espiona
     const forces = report.getByRole('region', { name: 'Forces and losses' })
     const attacker = forces.getByRole('article').nth(0)
     const defender = forces.getByRole('article').nth(1)
+    await expect(defender.getByRole('rowgroup').filter({hasText: 'Ships'})).toContainText('Light Fighter')
+    await expect(defender.getByRole('rowgroup').filter({hasText: 'Defenses'})).toContainText('Rocket Launcher')
+    await expect(attacker.getByRole('rowheader', {name: 'Defenses', exact: true})).toHaveCount(0)
     await expect(defender.getByRole('link', { name: 'View defender location [1:372:10] in galaxy' })).toBeVisible()
     await expect(defender).toContainText(`${targetName}[1:372:10]`)
     if (size === 'legacy') {
@@ -353,6 +356,10 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espiona
       if (width === 390 || width === 320) {
         await forces.evaluate(el => window.scrollTo(0, window.scrollY + el.getBoundingClientRect().top - 80))
         await diagnosticScreenshot(forces, { path: `${output}/${size}-forces-${width}.png` })
+        if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+          await defender.evaluate(el => el.scrollIntoView({block: 'center'}))
+          await diagnosticScreenshot(page, {path: `${output}/${size}-grouped-${width}x1000.png`})
+        }
       }
       await page.evaluate(() => window.scrollTo(0, 0))
       await diagnosticScreenshot(page, {
@@ -364,9 +371,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espiona
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 1000 })
         const link = attacker.getByRole('link', { name: 'View attacker origin [2:24:5] in galaxy' })
-        await link.focus()
-        await expect(link).toBeFocused()
-        await attacker.getByRole('button', { name: 'Location actions for [2:24:5]' }).click()
+        await link.click({ button: 'right' })
         await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
         await diagnosticScreenshot(page, { path: `${output}/origin-actions-${width}.png` })
         await page.keyboard.press('Escape')

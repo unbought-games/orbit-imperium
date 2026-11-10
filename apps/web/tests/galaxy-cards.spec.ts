@@ -15,6 +15,7 @@ import {
   id,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 async function setup(
   page: Page,
@@ -329,9 +330,7 @@ test('vacation and inactivity coexist; tooltips support hover, keyboard, tap and
   await page.mouse.move(0, 0)
   await vacation.click()
   await expect(page.getByRole('tooltip')).toContainText('Attacks and espionage')
-  await page
-    .getByRole('heading', { name: 'Galaxy', exact: true })
-    .click({ force: true })
+  await rows(page).first().getByText('Your planet', { exact: true }).click()
   await expect(page.getByRole('tooltip')).toBeHidden()
   await card
     .getByRole('button', { name: 'Activity within the last 15 minutes' })
@@ -445,7 +444,7 @@ test('system navigation, unavailable worlds and retry preserve eligibility and e
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveValue(coordinatePattern('position', '4'))
-  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+  await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
   await page.getByLabel('Solar system').fill('499')
   await page.getByLabel('Solar system').press('Enter')
   await expect(rows(page).first()).toContainText('[1:499:1]')
@@ -477,20 +476,20 @@ for (const mission of ['Transport', 'Attack']) {
   })
 }
 
-test('one coordinate control supports copy, navigation and keyboard focus restoration', async ({
+test('one coordinate link supports copy, navigation and keyboard focus restoration', async ({
   page,
 }) => {
   await setup(page)
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
   const card = rows(page).nth(1)
-  const coordinate = card.getByRole('button', {
-    name: 'Location actions for [1:371:2]',
+  const coordinate = card.getByRole('link', {
+    name: 'View [1:371:2] in galaxy',
+    exact: true,
   })
   await expect(
-    card.getByRole('button', { name: /^Copy coordinates/ }),
+    card.locator('[data-coordinate]').getByRole('button'),
   ).toHaveCount(0)
-  await coordinate.focus()
-  await page.keyboard.press('Enter')
+  await coordinate.click({ button: 'right' })
   await page
     .getByRole('menuitem', { name: 'Copy coordinates', exact: true })
     .click()
@@ -499,9 +498,6 @@ test('one coordinate control supports copy, navigation and keyboard focus restor
     .toBe('[1:371:2]')
   await expect(coordinate).toBeFocused()
   await coordinate.click()
-  await page
-    .getByRole('menuitem', { name: 'View in Galaxy', exact: true })
-    .click()
   await expect(page.locator('li[aria-current="location"]')).toContainText(
     'Selected location [1:371:2]',
   )
@@ -686,11 +682,11 @@ test('incoming fleets and report details use the supplied public name without an
       },
     })
   })
-  await page.goto(`/u/andromeda/reports/${reportId}?body=${body.id}`)
+  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/reports/${reportId}?body=${body.id}`))
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('Commander Vega made espionage contact')
   names = undefined
-  await page.reload()
+  await withReportResponse(page, reportId, () => page.reload())
   await expect(report).toContainText('Player 00000000 made espionage contact')
   expect(identityRequests).toEqual([])
 })
@@ -782,7 +778,7 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
     { player: binding.player, username: 'StellarNomad', supporter_tier: 2 },
     { player: id(32), username: 'ProtectedCommander', supporter_tier: 1 },
   ])
-  await page.reload()
+  await withGalaxyResponse(page, () => page.reload())
   const cards = page
     .getByRole('region', { name: 'Galaxy positions' })
     .getByRole('listitem')
@@ -1767,8 +1763,8 @@ for (const width of [390, 1280]) {
 test(`coordinate Harvest shares the quick form and restores its opener at ${width}px`, async ({ page }) => {
   await setupHarvest(page)
   await page.setViewportSize({ width, height: 844 })
-  const trigger = rows(page).nth(1).getByRole('button', { name: 'Location actions for [1:371:2]', exact: true })
-  await trigger.click()
+  const trigger = rows(page).nth(1).getByRole('link', { name: 'View [1:371:2] in galaxy', exact: true })
+  await trigger.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Prepare harvest', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
   await expect(sheet).toBeVisible()
@@ -1941,7 +1937,7 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await expect(page.getByRole('heading', { name: 'Transport Outbound' })).toBeVisible()
     // A direct Dispatch load also offers a deterministic return to the list.
-    await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
     await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
   })
@@ -2182,3 +2178,212 @@ test('desktop Harvest keeps its Actions anchor when the planet changes', async (
   await expect(popover).not.toBeVisible()
   await expect(actions(page, 2)).toBeFocused()
 })
+
+test('a probe in flight to one target leaves Spy available for the other targets', async ({
+  page,
+}) => {
+  await setup(page, null)
+  const destinations: string[] = []
+  let releaseFirst!: () => void
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve
+  })
+  await routeWorld(page, async (route) => {
+    const request = route.request().postDataJSON()
+    if (request.type !== 'FleetQuote') return route.fallback()
+    destinations.push(request.intent.destination.id)
+    if (request.intent.destination.id === id(21)) await firstGate
+    await route.fulfill({
+      status: 409,
+      json: { code: 'InsufficientResources' },
+    })
+  })
+  await spy(page, 2).click()
+  await expect.poll(() => destinations).toEqual([id(21)])
+  await expect(spy(page, 2)).toBeDisabled()
+  await expect(spy(page, 2)).toHaveAttribute('title', 'Sending a probe…')
+  await expect(spy(page, 3)).toBeEnabled()
+  await expect(spy(page, 3)).toHaveAttribute(
+    'title',
+    'Send one espionage probe',
+  )
+  await spy(page, 3).click()
+  await expect.poll(() => destinations).toEqual([id(21), id(22)])
+  releaseFirst()
+  await expect(spy(page, 2)).toBeEnabled()
+  await expect(spy(page, 3)).toBeEnabled()
+})
+
+for (const [width, height] of [[1440, 900]]) {
+  test(`rapid Galaxy spying keeps a compact actionable toast stack at ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.clock.setFixedTime(new Date());
+    let revision = 1;
+    const missions: components["schemas"]["MissionView4"] = {
+      fleets: [],
+      incoming: [],
+      score_value_micro: "0",
+      fleet_slots: "20",
+    };
+    const targets = Object.fromEntries(
+      Array.from({ length: 14 }, (_, i) => [
+        i + 2,
+        {
+          body: targetBody({ id: id(21 + i), owner: id(31 + i) }),
+        },
+      ]),
+    );
+    await setup(
+      page,
+      null,
+      { missions, viewerRevision: () => String(revision) },
+      targets,
+    );
+    await expect(rows(page)).toHaveCount(15);
+    await routeWorld(page, async (route) => {
+      const request = route.request().postDataJSON();
+      if (request.type !== "FleetQuote") return route.fallback();
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          request_id: request.context.request_id,
+          viewer_revision: String(revision),
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          data: {
+            intent: request.intent,
+            profile_hash: "a".repeat(64),
+            terms_hash: "b".repeat(64),
+            distance: 1000,
+            speeds: [["EspionageProbe", "100000000"]],
+            duration_ms: 120000,
+            fuel: "1000000",
+            capacity: "5000000",
+            maximum_payload: "4000000",
+            slot_limit: "20",
+          },
+        },
+      });
+    });
+    await page.route("**/commands", async (route) => {
+      const { gameplay } = route.request().postDataJSON();
+      const intent = gameplay.command.action.intent;
+      const position = Number(intent.destination.id.split("-").at(-1)) - 19;
+      const fleet = {
+        ...probeFleet(missions.fleets.length, Date.now()),
+        intent,
+        destination: { galaxy: 1, system: 371, position },
+      };
+      missions.fleets.push(fleet);
+      revision++;
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          command_id: gameplay.command_id,
+          admitted_at: Date.now(),
+          executed_at: Date.now(),
+          status: "Committed",
+          result_ids: [fleet.id],
+          minimum_viewer_revision: String(revision),
+        },
+      });
+    });
+    const notices = page.getByLabel("Recent game events");
+    for (const position of [2, 3, 4]) {
+      await spy(page, position).evaluate((el) =>
+        el.scrollIntoView({ block: "center" }),
+      );
+      await withGalaxyResponse(page, () => spy(page, position).click());
+      await expect(notices.getByTestId("swipeable-toast")).toHaveCount(
+        position - 1,
+      );
+      await expect(rows(page).nth(position - 1)).toContainText(
+        "Espionage en route",
+      );
+    }
+    const cards = notices.getByTestId("swipeable-toast");
+    const top = notices.locator('[data-toast-depth="0"]');
+    await expect(notices.getByRole("button")).toHaveCount(1);
+    await expect(top).toContainText("[1:371:4]");
+    await expect(top.getByRole("button")).toHaveCSS("opacity", "1");
+    const topBox = (await top.boundingBox())!;
+    const stackBox = (await notices.boundingBox())!;
+    expect(stackBox.height).toBe(topBox.height);
+    for (const covered of await notices.locator("[inert]").all()) {
+      expect(
+        await covered.evaluate((el) => getComputedStyle(el).pointerEvents),
+      ).toBe("none");
+      const box = (await covered.boundingBox())!;
+      expect(topBox.y - box.y).toBeLessThanOrEqual(12);
+    }
+    await diagnosticScreenshot(page, {
+      path: `test-results/toast-stack/galaxy-stacked-${width}x${height}.png`,
+    });
+
+    await top.getByRole("button").focus();
+    await page.keyboard.press("Escape");
+    await expect(cards).toHaveCount(2);
+    await expect(top).toContainText("[1:371:3]");
+    await expect(top.getByRole("button")).toBeFocused();
+
+    // Keep moving down the real list while new notices replace the oldest.
+    for (let position = 5; position <= 15; position++) {
+      await spy(page, position).evaluate((el) =>
+        el.scrollIntoView({ block: "center" }),
+      );
+      await withGalaxyResponse(page, () => spy(page, position).click());
+      await expect(rows(page).nth(position - 1)).toContainText(
+        "Espionage en route",
+      );
+      // Dismissing a notice does not change the existing three-event history cap.
+      await expect(cards).toHaveCount(position < 7 ? 2 : 3);
+      await expect(top).toContainText(`[1:371:${position}]`);
+    }
+    expect(missions.fleets).toHaveLength(14);
+    await expect(top.getByRole("button")).toHaveCSS("opacity", "1");
+    await diagnosticScreenshot(page, {
+      path: `test-results/toast-stack/galaxy-last-target-${width}x${height}.png`,
+    });
+
+    // A short drag settles without opening. Successive swipes promote the next
+    // notice, and covered cards cannot receive focus or pointer input.
+    const swipe = async (distance: number) => {
+      const box = (await top.boundingBox())!;
+      const x = box.x + box.width / 2,
+        y = box.y + box.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + distance, y, { steps: 10 });
+      await page.mouse.up();
+    };
+    await swipe(10);
+    await expect(cards).toHaveCount(3);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(top.getByTestId("swipeable-toast")).toHaveCSS(
+      "transform",
+      "none",
+    );
+    await swipe(95);
+    await expect(cards).toHaveCount(2);
+    await expect(top).toContainText("[1:371:14]");
+    await swipe(-95);
+    await expect(cards).toHaveCount(1);
+    await expect(top).toContainText("[1:371:13]");
+    await diagnosticScreenshot(page, {
+      path: `test-results/toast-stack/galaxy-promoted-${width}x${height}.png`,
+    });
+    await top.getByRole("button").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await top.getByRole("button").focus();
+    await page.keyboard.press("Escape");
+    await expect(cards).toHaveCount(0);
+    await expect(page.getByTestId("command-orb")).toBeFocused();
+  });
+}

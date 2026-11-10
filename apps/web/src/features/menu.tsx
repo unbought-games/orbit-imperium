@@ -5,25 +5,13 @@ import {
   tutorialMorePages,
 } from './tutorial/model'
 import { Disclosure } from '../ui/disclosure'
-import {
-  ChevronRight,
-  ClipboardList,
-  Radar,
-  Send,
-  Factory,
-  LogOut,
-  Mail,
-  MessageCircle,
-  Settings,
-  Shield,
-  Swords,
-  Trophy,
-} from 'lucide-react'
+import { ChevronRight, LogOut } from 'lucide-react'
 import { useStore } from 'zustand'
 import {
   hasUnreadReports,
   unreadReportCount,
 } from '../client-model/report-state'
+import { pageIcons } from '../shell/navigation-icons'
 import { navigationGroups, pageTitles } from '../shell/navigation-model'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination, type Page } from '../shell/routes'
@@ -31,19 +19,6 @@ import { useGameScreen } from '../shell/screen-context'
 import { Button, ButtonLink } from '../ui/button'
 import { PlayerName } from './player-name'
 import styles from './menu.module.css'
-
-const icons: Partial<Record<Page, typeof Settings>> = {
-  briefing: ClipboardList,
-  fleets: Radar,
-  dispatch: Send,
-  facilities: Factory,
-  messages: MessageCircle,
-  alliance: Shield,
-  'high-scores': Trophy,
-  reports: Mail,
-  'combat-simulator': Swords,
-  settings: Settings,
-}
 
 export function MenuScreen() {
   const { universeName, view, body, model, logout } = useGameScreen()
@@ -74,7 +49,7 @@ export function MenuScreen() {
         {groups.map(({ title, pages }) => {
           const destinations = pages.filter(available)
           const links = destinations.map((page) => {
-            const Icon = icons[page] ?? ChevronRight
+            const Icon = pageIcons[page] ?? ChevronRight
             return (
               <ButtonLink
                 key={page}

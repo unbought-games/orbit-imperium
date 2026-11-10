@@ -107,6 +107,7 @@ function force(participant: Observation, end: unknown, recovery?: unknown) {
     const lost = difference(start, finish)
     return {
       key,
+      kind: record(unit.item).kind,
       name: label(String(record(unit.item).id ?? 'Unknown unit')),
       start,
       finish,

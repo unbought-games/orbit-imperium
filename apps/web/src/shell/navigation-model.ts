@@ -32,6 +32,8 @@ export const pageTitles: Record<Page, string> = {
   settings: 'Settings',
   'high-scores': 'High Scores',
   alliance: 'Alliance',
+  'alliance-create': 'Create alliance',
+  'alliance-discover': 'Discover alliances',
   messages: 'Messages',
 }
 export function navigationAnchor(page: Page) {

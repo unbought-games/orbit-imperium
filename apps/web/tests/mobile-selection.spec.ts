@@ -1,10 +1,11 @@
 import { routeWorld } from './fixtures/game'
 import { openNavigation } from './fixtures/navigation'
-import { withFixtureResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse, withRankingsResponse } from './fixtures/responses'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { binding, body, id, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withGalaxyResponse } from './fixtures/galaxy'
 
 type CatalogKey = components['schemas']['CatalogKey3']
 const keys: CatalogKey[] = [
@@ -228,7 +229,7 @@ for (const mode of modes) {
       await selectionIs(page.locator('figcaption p'), false)
       await selectionIs(page.getByRole('link', { name: /Back to/ }), mode.touch)
       await galaxyFixture(page)
-      await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+      await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
       const slots = page.getByRole('button', { name: /Fleet slots:/ })
       if (mode.touch) await selectionIs(slots, true)
       await slots.click()
@@ -304,7 +305,7 @@ for (const touch of [true, false]) {
             },
           })
         })
-        await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
+        await withRankingsResponse(page, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
         const rankingPages = page.getByRole('navigation', {
           name: 'Ranking pages',
           exact: true,
@@ -336,26 +337,13 @@ for (const touch of [true, false]) {
         await page.route(/\/recruitment(?:\?|$)/, route =>
           route.fulfill({ json: { alliances: [], total: 0 } }),
         )
-        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/recruitment'), () => page.goto('/u/andromeda/alliance'))
-        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/alliances/query'), () => page.getByRole('button', { name: 'Search alliances', exact: true }).click())
-        const alliancePages = page.getByRole('navigation', {
-          name: 'Alliance directory pages',
-          exact: true,
-        })
-        await selectionIs(
-          alliancePages.getByText('0 alliances', { exact: true }),
-          false,
-        )
-        if (touch)
-          await selectionIs(
-            alliancePages.getByRole('button', {
-              name: 'More alliances',
-              exact: true,
-            }),
-            true,
-          )
-        await alliancePages.scrollIntoViewIfNeeded()
-        await capture(page, 'alliance-navigation')
+        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.goto('/u/andromeda/alliance/discover'))
+        const emptyAlliances = page.getByRole('heading', { name: 'No alliances yet.' })
+        await expect(emptyAlliances).toBeVisible()
+        await expect(page.getByRole('navigation', { name: 'Alliance directory pages' })).toHaveCount(0)
+        await selectionIs(emptyAlliances, false)
+        if (touch) await selectionIs(page.getByRole('button', { name: 'Search alliances', exact: true }), true)
+        await capture(page, 'alliance-empty')
 
         await page.route('**/api/v1/bootstrap', (route) =>
           route.fulfill({
@@ -426,7 +414,7 @@ for (const touch of [true, false]) {
           'fleets',
           'galaxy',
         ]) {
-          await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+          await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${screen}`))
           await expect(page.locator('main h1')).toHaveText(
             screen[0].toUpperCase() + screen.slice(1),
           )

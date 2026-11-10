@@ -5,6 +5,7 @@ import { binding, body, shellFixture, inactiveTutorial } from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
+import { withBootstrapResponse } from './fixtures/responses'
 
 test('fixture document loading recovers connection resets without retrying HTTP errors', async ({ page }) => {
   const requests = new Map<string, number>()
@@ -983,7 +984,7 @@ for (const width of [1440, 390]) {
 
     test('Discord matches the homepage and supports keyboard or touch navigation', async ({ page }) => {
       await shellFixture(page)
-      await page.goto(`/u/andromeda/settings?body=${body.id}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/settings?body=${body.id}`))
       const community = page.getByRole('region', { name: 'Community', exact: true })
       const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
       await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
@@ -1045,7 +1046,7 @@ test('open beta notice appears before public enrollment with approved policy lin
 test('signed-in settings retain the beta notice and best-effort support target', async ({ page }) => {
   await shellFixture(page)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto(`/u/andromeda/settings?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/settings?body=${body.id}`))
   await expect(page.getByRole('region', { name: 'Open Beta' })).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
   const help = page.getByRole('region', { name: 'Help and conduct reports' })
   await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
@@ -1068,7 +1069,7 @@ test('universe names stay out of the header while every game link uses the curre
       .map(a => new URL(a.href).pathname).filter(path => path.startsWith('/u/'))
       .every(path => path.startsWith('/u/andromeda/')))).toBe(true)
   }
-  await page.goto(`/u/andromeda/settings?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/settings?body=${body.id}`))
   await expect(page.locator('dt').filter({ hasText: /^Universe$/ }).locator('..')).toContainText('Andromeda')
 
   // Rename at the authority, then refresh the old link: no alias or redirect.

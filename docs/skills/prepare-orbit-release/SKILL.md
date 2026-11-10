@@ -23,10 +23,15 @@ Follow the contributor credit process in `docs/operations/open-source-releases.m
 Audit the full release range, including PR authors, coauthors, and verified non-code
 contributions; generated feature/fix bullets are not a complete contributor list.
 Add every external contributor to the version's Contributors section with public
-profile and contribution links. Carry forward build-note and unreleased changelog
-credits, moving only included entries out of Unreleased after recording them in
-the version's notes. Repeat the audit on refresh, preserve credits in summaries,
-and verify them in the rendered notes before declaring the release ready.
+profile and contribution links. Carry forward credits from individual build notes
+for included work, preserving the original notes and acknowledgments. Repeat the
+audit on refresh, preserve credits in summaries, and verify them in the rendered
+notes before declaring the release ready.
+
+`CHANGELOG.md` is an index of numbered releases, updated only during release
+preparation. Never add an Unreleased section or unreleased change entries. Feature
+and fix PRs leave it untouched; assemble release notes from the complete Git/PR
+range and individual build notes instead of a shared running changelog.
 
 Apply the editorial prompt before proposing the PR. For patch versions, proceed
 without asking for extra commentary by default. For minor/major versions (including

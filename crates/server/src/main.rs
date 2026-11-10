@@ -1,4 +1,5 @@
 mod analytics;
+mod announcements_cli;
 mod audit_cli;
 mod bots_cli;
 mod config;
@@ -50,6 +51,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
+    if args.get(1).map(String::as_str) == Some("announcements") {
+        return announcements_cli::run(announcements_cli::parse(&args[2..])?).await;
+    }
     if args.get(1).is_some_and(|s| s.eq_ignore_ascii_case("world")) {
         let command = world_cli::parse(&args[2..])?;
         if matches!(command.action, world_cli::Action::Help) {

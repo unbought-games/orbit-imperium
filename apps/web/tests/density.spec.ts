@@ -3,6 +3,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { shellFixture, binding, body, id, resources } from './fixtures/game'
+import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const now = Date.now()
@@ -71,7 +72,7 @@ for (const viewport of [
         fleet_slots: '2',
       },
     })
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     const recall = page.getByRole('button', {
       name: 'Review recall',
       exact: true,
@@ -175,7 +176,7 @@ for (const viewport of [
         },
       })
     })
-    await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`))
     await firstViewport(page, [
       page.getByRole('heading', { name: 'Victory', exact: true }),
       page.getByRole('button', { name: 'Prepare harvest' }),
@@ -222,7 +223,7 @@ for (const viewport of [
     ).toHaveValue('Harvest')
     await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '372'))
     await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '10'))
-    await page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`)
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`))
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await firstViewport(page, [
       page.getByRole('link', { name: 'Combat', exact: true }),
@@ -246,7 +247,7 @@ for (const viewport of [
         },
       ],
     })
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     const tile = page.getByRole('link', {
       name: 'Upgrade Metal Mine',
       exact: true,
@@ -322,7 +323,7 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: 'Review recall', exact: true }),
     ).toHaveCount(2)
     // A direct load also preserves navigation and the selected funding planet.
-    await page.goto(detailUrl)
+    await withBootstrapResponse(page, () => page.goto(detailUrl))
     await page
       .getByRole('link', { name: 'Dispatch Fleet', exact: true })
       .click()
@@ -349,7 +350,7 @@ for (const width of [1280, 390]) {
       ['fleets', 'Fleets'],
       ['dispatch', 'Dispatch fleet'],
     ]) {
-      await page.goto(`/u/andromeda/${route}?body=${body.id}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/${route}?body=${body.id}`))
       // The legacy URL replaces the route's heading during canonicalization.
       // Measure the final planet-scoped screen, not the outgoing route.
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${route}`)
@@ -394,7 +395,7 @@ for (const width of [390, 1280]) {
       ['galaxy', 'Galaxy', 'Main'],
       ['dispatch', 'Dispatch', 'Main'],
     ]) {
-      await page.goto(`/u/andromeda/b/${body.id}/${route}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${route}`))
       const tabs = page.getByRole('navigation', { name: `${navigation} navigation` })
       await expect(tabs).toBeVisible()
       await expect(tabs.getByRole('link', { name: route === 'dispatch' ? 'Fleets' : title, exact: true })).toHaveAttribute('aria-current', 'page')
@@ -473,7 +474,7 @@ for (const width of [320, 390, 1440]) {
         fleet_slots: '4',
       },
     })
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     const attacks = page.getByRole('article', {
       name: 'Incoming attack fleet',
       exact: true,
@@ -592,7 +593,7 @@ for (const width of [320, 390, 1440]) {
     )
     await expect(attack.getByRole('heading')).toHaveCSS('color', color)
     await page.unroute('**/api/**/overview')
-    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     const board = page.getByRole('region', { name: 'Fleet movements' })
     await expect(board).toContainText('3 incoming hostile fleets detected')
     const spyFlight = board

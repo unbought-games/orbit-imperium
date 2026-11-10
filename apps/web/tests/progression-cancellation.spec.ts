@@ -5,6 +5,7 @@ import { confirmCancellation } from './fixtures/confirmation'
 import { expect, test, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import { binding, body, id, refreshGame, shellFixture } from './fixtures/game'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const titles = [
@@ -188,7 +189,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   // Only unlocked, inactive tiles inspect costs; the Deuterium Tank remains
   // locked and the Crystal Mine keeps its active-construction presentation.
   await expect
@@ -386,7 +387,7 @@ for (const kind of ['construction', 'research'] as const) {
         sent.push(envelope.command)
         return route.fulfill({ json: { protocol: 4, binding, command_id: envelope.command_id, admitted_at: now, executed_at: now, status: 'Rejected', code: 'OperationNotActive' } })
       })
-      await page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`))
       const cancel = page.getByRole('button', { name: `Cancel ${kind}`, exact: true })
       await cancel.focus()
       await page.keyboard.press('Enter')
@@ -394,14 +395,14 @@ for (const kind of ['construction', 'research'] as const) {
       if (elapsed >= 30_000) {
         await expect(dialog).toBeVisible()
         await expect(dialog).toContainText(elapsed === 29 * 3_600_000 ? '29 hours of work will be lost.' : '30 seconds of work will be lost.')
-        await expect(dialog.getByRole('button', { name: `Keep ${kind}` })).toBeFocused()
+        await expect(dialog.getByRole('button', { name: 'Keep working' })).toBeFocused()
         expect(sent).toHaveLength(0)
         expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
         await diagnosticScreenshot(page, { path: `test-results/cancellation-${kind}-${elapsed}.png` })
         await page.keyboard.press('Escape')
         await expect(cancel).toBeFocused()
         await cancel.click()
-        await dialog.getByRole('button', { name: 'Confirm cancellation' }).click()
+        await dialog.getByRole('button', { name: 'Yes, cancel' }).click()
       } else await expect(dialog).toHaveCount(0)
       await expect.poll(() => sent.length).toBe(1)
       expect(sent[0]).toEqual({ type: kind === 'construction' ? 'CancelConstruction' : 'CancelResearch', operation: id(10) })

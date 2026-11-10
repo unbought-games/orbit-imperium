@@ -4,6 +4,7 @@ import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const research = 'HyperspaceDrive' as const
@@ -311,7 +312,7 @@ for (const width of [390, 1440]) {
         fullPage: state !== 'technology-tree',
       })
     }
-    await page.goto(`/u/andromeda/b/${body.id}/research`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research`))
     const tile = page.getByRole('link', {
       name: 'Research Hyperspace Drive',
       exact: true,
@@ -404,7 +405,7 @@ for (const width of [390, 1440]) {
       ['hyperspace-technology', 'Unlocks Hyperspace Drive at level 3'],
       ['impulse-drive', 'Replaced when Hyperspace Drive reaches level 8.'],
     ]) {
-      await page.goto(`/u/andromeda/b/${body.id}/research/${slug}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research/${slug}`))
       await pane.getByText('Technical data', { exact: true }).click()
       await expect(pane).toContainText(expected)
       await capture(`${slug}-details`)
@@ -421,7 +422,7 @@ for (const width of [390, 1440]) {
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await setup(page, { lab: 6, technology: 2 })
-    await page.goto(detailPath)
+    await withBootstrapResponse(page, () => page.goto(detailPath))
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(
       pane.getByRole('button', { name: 'Confirm research', exact: true }),
@@ -447,7 +448,7 @@ test('Hyperspace Drive remains unavailable before universe activation', async ({
   page,
 }) => {
   await setup(page, { enabled: false })
-  await page.goto(detailPath)
+  await withBootstrapResponse(page, () => page.goto(detailPath))
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Unavailable in this universe.')
   await expect(

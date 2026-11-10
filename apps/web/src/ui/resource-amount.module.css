@@ -78,7 +78,7 @@
   justify-content: center;
   gap: 8px;
   max-width: none;
-  min-height: 52px;
+  min-height: var(--control-size);
   text-align: left;
   padding: 4px 12px;
 }

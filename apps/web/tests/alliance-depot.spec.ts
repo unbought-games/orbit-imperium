@@ -5,6 +5,7 @@ import { test, expect } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
 import { setDestination } from './fixtures/coordinates'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 type S = components['schemas']
 const now = 1793486400000
 const catalog: S['CatalogEntry3'][] = JSON.parse(
@@ -181,12 +182,12 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     await expect(
       page.getByRole('heading', { name: 'Hades', exact: true }).first(),
     ).toBeVisible()
     await shot(page, 'empire-holding', width)
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     await expect(
       page.getByRole('heading', { name: 'Hold Holding' }),
     ).toBeVisible()
@@ -344,7 +345,7 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
     await page.getByRole('radio', { name: 'Hold', exact: true }).check()
     await page
       .getByRole('combobox', { name: 'Holding duration', exact: true })
@@ -476,7 +477,7 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/facilities/alliance-depot`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities/alliance-depot`))
     await expect(
       page.getByRole('heading', { name: 'Alliance Depot', exact: true }),
     ).toBeVisible()

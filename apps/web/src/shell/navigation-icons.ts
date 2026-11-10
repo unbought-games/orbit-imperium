@@ -1,0 +1,35 @@
+import {
+  ClipboardList,
+  Factory,
+  FlaskConical,
+  Mail,
+  MessageCircle,
+  Pickaxe,
+  Radar,
+  Rocket,
+  Send,
+  Settings,
+  Shield,
+  ShieldHalf,
+  Swords,
+  Trophy,
+  type LucideIcon,
+} from 'lucide-react'
+import type { Page } from './routes'
+
+export const pageIcons: Partial<Record<Page, LucideIcon>> = {
+  briefing: ClipboardList,
+  resources: Pickaxe,
+  facilities: Factory,
+  research: FlaskConical,
+  shipyard: Rocket,
+  defense: ShieldHalf,
+  fleets: Radar,
+  dispatch: Send,
+  messages: MessageCircle,
+  alliance: Shield,
+  'high-scores': Trophy,
+  reports: Mail,
+  'combat-simulator': Swords,
+  settings: Settings,
+}

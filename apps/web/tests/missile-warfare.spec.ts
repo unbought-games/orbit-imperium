@@ -7,6 +7,7 @@ import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
 type S = components['schemas']
 const content = JSON.parse(
   readFileSync('rules/content/missile-warfare.json', 'utf8'),
@@ -412,12 +413,12 @@ for (const width of [1440, 390])
         fullPage: true,
       })
     }
-    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     await expect(
       page.getByRole('region', { name: 'Fleet movements' }),
     ).toContainText('Missile attack')
     await capture('empire-warning')
-    await page.goto(`/u/andromeda/b/${body.id}/defense`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense`))
     await expect(
       page.getByRole('region', { name: 'Missile silo capacity' }),
     ).toHaveCount(0)
@@ -426,7 +427,7 @@ for (const width of [1440, 390])
     ).toBeVisible()
     await capture('defense-catalog')
     for (const slug of ['anti-ballistic-missile', 'interplanetary-missile']) {
-      await page.goto(`/u/andromeda/b/${body.id}/defense/${slug}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense/${slug}`))
       const pane = page.getByRole('region', { name: 'Progression quote' })
       await expect(
         pane.getByRole('region', { name: 'Missile silo capacity' }),
@@ -466,7 +467,7 @@ for (const width of [1440, 390])
         ).toBeVisible()
       }
     }
-    await page.goto(`/u/andromeda/b/${body.id}/facilities/missile-silo`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities/missile-silo`))
     await expect(
       page.getByRole('region', { name: 'Missile silo capacity' }),
     ).toBeVisible()
@@ -530,7 +531,7 @@ for (const width of [1440, 390])
       type: 'LaunchMissiles',
       intent: { count: '2', primary: 'RocketLauncher', target },
     })
-    await page.goto(`/u/andromeda/b/${body.id}/overview`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     const empireMissile = page
       .getByRole('region', { name: 'Fleet movements' })
       .getByRole('listitem', { name: 'Outgoing missile attack', exact: true })
@@ -547,7 +548,7 @@ for (const width of [1440, 390])
       .getByText('Cannot be recalled.', { exact: true })
       .click()
     await expect(page).toHaveURL(missileDetails!)
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     await expect(
       page.getByRole('region', { name: 'Incoming fleets' }),
     ).toContainText('Incoming missile attack')
@@ -599,10 +600,10 @@ for (const width of [1440, 390])
       page.getByRole('region', { name: 'Incoming fleets' }),
     ).toHaveCount(0)
     await capture('missile-mission-details')
-    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await withReportListResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/reports`))
     await expect(page.getByText('6 intercepted · 2 penetrated')).toBeVisible()
     await capture('report-list')
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${id(70)}`)
+    await withReportResponse(page, id(70), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(70)}`))
     await expect(
       page.getByRole('region', { name: 'Missile impact report' }),
     ).toContainText('Permanently destroyed defenses')

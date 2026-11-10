@@ -845,14 +845,16 @@ export function EmpireOverview({
           <Destination
             view={view}
             body={body.id}
-            page="alliance"
+            page={
+              profile && !profile.alliance ? 'alliance-discover' : 'alliance'
+            }
             className={styles.allianceLink}
           >
             {profile?.alliance
               ? 'Your alliance'
               : profile
                 ? 'Find your alliance'
-                : 'Explore alliances'}
+                : 'Open alliance'}
             <ArrowRight size={16} aria-hidden="true" />
           </Destination>
         </section>

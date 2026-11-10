@@ -7,6 +7,7 @@ import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 type S = components['schemas']
 async function expectLayoutAndCapture(
   page: Page,
@@ -235,7 +236,7 @@ for (const width of [390, 1440]) {
     }, testInfo) => {
       await page.setViewportSize({ width, height: 900 })
       await setup(page, levels)
-      await page.goto(`/u/andromeda/b/${body.id}/shipyard/battleship`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/battleship`))
       const pane = page.getByRole('region', { name: 'Progression quote' })
       await expect(
         pane.getByRole('button', { name: 'Build', exact: true }),
@@ -255,7 +256,7 @@ test('Battleship stays unavailable before its universe enables it', async ({
   page,
 }) => {
   await setup(page, { enabled: false })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/battleship`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/battleship`))
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Unavailable in this universe.')
   await expect(
@@ -287,7 +288,7 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
     await expect(
       page.getByRole('link', { name: 'Build Battleship', exact: true }),
     ).toBeVisible()
@@ -343,7 +344,7 @@ for (const width of [390, 1440]) {
       path: testInfo.outputPath(`battleship-confirmed-${width}x900.png`),
       fullPage: true,
     })
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
     await page.locator('summary').filter({ hasText: 'Compare ships' }).click()
     for (const name of ['Light Fighter', 'Heavy Fighter']) {
       await page.getByRole('checkbox', { name, exact: true }).uncheck()
@@ -416,7 +417,7 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
     await page
       .getByRole('radio', { name: 'Attack', exact: true }).check()
     await setDestination(page, { position: '8' })

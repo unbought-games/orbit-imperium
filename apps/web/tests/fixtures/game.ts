@@ -179,6 +179,7 @@ export async function installGameFixture(
           ],
         },
       })
+    if (url.pathname === '/api/announcements') return route.fallback()
     const context = request.postDataJSON()
     if (url.pathname.endsWith('/world') && context?.type === 'Tutorial')
       return inactiveTutorial(route, options.viewerRevision?.() ?? '1')

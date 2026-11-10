@@ -59,7 +59,8 @@ line height. Do not wrap names in flex boxes to align them with prose, set a min
 control height on their inline links, or apply screen-specific vertical offsets.
 Names must wrap across lines together with surrounding sentences.
 
-Inline insignias scale with the text. Supporter badges are capped at 16px. Each
+Inline insignias scale with the text. Supporter badges are capped at 16px. Both
+marks center on capital letters, not lowercase letters. Each
 mark stays with the adjacent complete Unicode character; the rest of the name
 remains free to wrap. Badge tooltip hit targets extend outside the line box rather
 than changing paragraph spacing. Use baseline alignment for separate text items
@@ -72,6 +73,13 @@ long names, headings and narrow rows with the real components.
 
 - Keep the shell, controls, focus, and user edits stable as data loads or filters
   change. Update the affected content without blanking or remounting the screen.
+- Use [LoadingRegion](loading-region.tsx) for content-area loading. Keep it mounted
+  around the content and pass the request's loading state; never conditionally
+  mount it as a fallback. Its orbital indicator waits 200ms before appearing and
+  stays for at least 500ms once visible. Fast requests show no indicator. Existing
+  content stays mounted, and the indicator occupies the same space without adding
+  a status row. Use `contentClassName` to preserve the content's own layout. Motion
+  stops under reduced-motion preferences; use a specific accessible loading label.
 - Distinguish loading, empty, error, disabled, and pending states. Show an empty
   collection only after a successful response; preserve useful content on retry.
 - Empty states need a quiet focal point, a clear message, and a useful next action

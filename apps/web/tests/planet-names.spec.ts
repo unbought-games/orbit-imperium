@@ -1,6 +1,7 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import { binding, body, id, shellFixture } from './fixtures/game'
+import { withBootstrapResponse } from './fixtures/responses'
 
 test('a rejected rename preserves the draft and leaves the confirmed name unchanged', async ({
   page,
@@ -101,7 +102,7 @@ test('active fleet routes show current public names and fit a phone', async ({
       ],
     },
   })
-  await page.goto(`/u/andromeda/fleets/${id(71)}?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/fleets/${id(71)}?body=${body.id}`))
   // The legacy URL redirects and remounts the route. Wait before opening the
   // native details element so that navigation cannot close it after the click.
   await expect(page).toHaveURL(
@@ -165,7 +166,7 @@ test('the fallback label is a valid explicit name for an unnamed planet', async 
   ).toBeVisible()
   expect(planet.name).toBe('Planet')
   await expect(save).toHaveCount(0)
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
   await expect(page.getByRole('textbox', { name: 'Planet name' })).toHaveValue(
     'Planet',
@@ -244,18 +245,6 @@ test('ghost controls share default, hover, focus, pressed and disabled styles', 
     bodies: [{ ...body, name: 'Terra' }],
   })
   const rename = page.getByRole('button', { name: 'Rename planet [1:371:12]' })
-  const dossier = page.getByRole('article', {
-    name: 'Terra [1:371:12] dossier',
-    exact: true,
-  })
-  const copy = dossier.getByRole('button', {
-    name: 'Copy coordinates [1:371:12]',
-    exact: true,
-  })
-  const menu = dossier.getByRole('button', {
-    name: 'Location actions for [1:371:12]',
-    exact: true,
-  })
   const gray = 'rgb(182, 198, 214)'
   const foreground = 'rgb(232, 230, 223)'
   const hoverBackground = 'rgba(255, 255, 255, 0.08)'
@@ -270,13 +259,8 @@ test('ghost controls share default, hover, focus, pressed and disabled styles', 
   await page.getByRole('textbox', { name: 'Planet name' }).fill('New Terra')
   await expect(save).toBeEnabled()
 
-  for (const control of [
-    save,
-    cancel,
-    copy,
-    menu,
-    page.getByRole('button', { name: 'Account menu', exact: true }),
-  ]) {
+  const menu = page.getByRole('button', { name: 'Account menu', exact: true })
+  for (const control of [save, cancel, menu]) {
     await page.mouse.move(0, 0)
     await control.blur()
     await expect(control).toHaveCSS('color', gray)
@@ -314,7 +298,7 @@ test('ghost controls share default, hover, focus, pressed and disabled styles', 
   await expect(rename).toHaveCSS('color', gray)
 
   await page.emulateMedia({ forcedColors: 'active' })
-  await copy.hover()
+  await rename.hover()
   const systemColors = await page.evaluate(() => {
     const probe = document.createElement('span')
     probe.style.color = 'ButtonText'
@@ -325,6 +309,6 @@ test('ghost controls share default, hover, focus, pressed and disabled styles', 
     probe.remove()
     return colors
   })
-  await expect(copy).toHaveCSS('color', systemColors.color)
-  await expect(copy).toHaveCSS('background-color', systemColors.background)
+  await expect(rename).toHaveCSS('color', systemColors.color)
+  await expect(rename).toHaveCSS('background-color', systemColors.background)
 })

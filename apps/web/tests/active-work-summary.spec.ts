@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/test'
 import { body, id, shellFixture } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const now = 1_800_000_000_000
@@ -100,7 +101,7 @@ for (const width of [390, 1440]) {
         ...fixture(screen),
         sampledAt: () => sampledAt,
       })
-      await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${screen}`))
       const manufacturing = screen === 'shipyard' || screen === 'defense'
       const summary = page.getByRole('region', {
         name: manufacturing
@@ -157,12 +158,35 @@ for (const width of [390, 1440]) {
           exact: true,
         })
         await expect(cancel).toBeEnabled()
+        expect(
+          await cancel.evaluate(
+            (button) =>
+              button.closest(':has(> div > [role="progressbar"])') !== null,
+          ),
+        ).toBe(true)
         await cancel.click()
         const dialog = page.getByRole('dialog', {
           name: /Cancel (research|construction)\?/,
         })
         await expect(dialog).toBeVisible()
         await expect(dialog).toContainText('refund')
+        const refund = dialog.getByRole('group', {
+          name: 'Cancellation refund',
+        })
+        await expect(refund.getByRole('img', { name: 'Metal' })).toBeVisible()
+        await expect(
+          refund.getByRole('img', { name: 'Deuterium' }),
+        ).toHaveCount(0)
+        const [keep, confirm] = await Promise.all(
+          ['Keep working', 'Yes, cancel'].map(
+            async (name) =>
+              (await dialog
+                .getByRole('button', { name, exact: true })
+                .boundingBox())!,
+          ),
+        )
+        expect(keep.y).toBe(confirm.y)
+        expect(keep.x + keep.width).toBeLessThan(confirm.x)
         await page.keyboard.press('Escape')
         await expect(cancel).toBeFocused()
       }
@@ -226,14 +250,23 @@ test('construction without a server start time stays honest and demolition remai
   delete options.constructions[0].started_at
   options.constructions[0].target_level = 3
   await shellFixture(page, options)
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   const summary = page.getByRole('region', { name: 'Buildings', exact: true })
   await expect(summary.getByText('Tearing down', { exact: true })).toBeVisible()
   await expect(summary.getByText('Level 3', { exact: true })).toBeVisible()
   await expect(summary.getByRole('progressbar')).toHaveCount(0)
-  await expect(
-    summary.getByRole('button', { name: 'Cancel construction', exact: true }),
-  ).toBeEnabled()
+  const cancel = summary.getByRole('button', {
+    name: 'Cancel construction',
+    exact: true,
+  })
+  await expect(cancel).toBeEnabled()
+  const [cancelBox, summaryBox] = await Promise.all([
+    cancel.boundingBox(),
+    summary.boundingBox(),
+  ])
+  expect(cancelBox!.x + cancelBox!.width / 2).toBeGreaterThan(
+    summaryBox!.x + summaryBox!.width * 0.75,
+  )
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

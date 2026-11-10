@@ -1,4 +1,4 @@
-import { withFixtureResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import {
@@ -7,6 +7,7 @@ import {
   id,
   resources,
   shellFixture,
+  installGameFixture,
   refreshGame,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
@@ -771,7 +772,7 @@ for (const width of [320, 390, 1280]) {
       await verifyCargo(row, index)
     }
     await diagnosticScreenshot(board, { path: `test-results/cargo-empire-${width}.png` })
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     const cards = page.getByRole('article').filter({ has: page.getByRole('group', { name: 'Carried resources' }) })
     await expect(cards).toHaveCount(5)
     for (let index = 0; index < cases.length; index++) await verifyCargo(cards.nth(index), index)
@@ -1094,8 +1095,34 @@ for (const width of [390, 1440]) {
     await expect.poll(() => ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
     expect(await guide.evaluate(element => getComputedStyle(element, '::after').opacity)).toBe('0')
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-reduced-motion-${width}x1000.png` })
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(ledger).toBeVisible()
     expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
+  })
+}
+
+for (const member of [true, false]) {
+  test(`alliance panel waits for confirmed membership before offering discovery (${member ? 'member' : 'nonmember'})`, async ({ page }) => {
+    await installGameFixture(page, { protocol: 4, bodies: [body], missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' } })
+    let release!: () => void
+    const profilesReady = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/player-profiles', async route => {
+      await profilesReady
+      const { context } = route.request().postDataJSON()
+      const now = Math.floor(Date.now() / 1000)
+      await route.fulfill({ json: {
+        ...context,
+        players: [{ player: binding.player, username: 'Commander', observed_at: now, expires_at: now + 300,
+          ...(member ? { alliance: { id: id(800), universe: binding.universe, name: 'Starlight Assembly', tag: 'STAR' } } : {}),
+        } satisfies S['PlayerDisplay']],
+      } })
+    })
+    const requested = page.waitForRequest(request => request.url().endsWith('/player-profiles'))
+    await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await requested
+    const panel = page.getByRole('region', { name: 'Empire alliance', exact: true })
+    await expect(panel.getByRole('link', { name: 'Open alliance', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/alliance`)
+    await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), async () => { release() })
+    await expect(panel.getByRole('link', { name: member ? 'Your alliance' : 'Find your alliance', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/alliance${member ? '' : '/discover'}`)
   })
 }

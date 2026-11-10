@@ -133,6 +133,8 @@ size, and signup settings.
 For existing worlds, follow the [rules update guide](docs/operations/rules-updates.md)
 after updating the server. [Customization setup](docs/operations/empire-customization.md)
 covers your own insignia content and persistent asset storage.
+[In-game announcements](docs/operations/announcements.md) explains how to publish
+server news without a rebuild or restart.
 [Release distribution](docs/operations/open-source-releases.md) covers digest
 pinning and recovery. Numbered releases and official-server updates are published
 separately; available features also depend on the universe's active rules.

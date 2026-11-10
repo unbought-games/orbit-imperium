@@ -36,7 +36,11 @@ export function comparisonStats(
 ) {
   const stats = entry.enabled ? entry.ship_statistics : undefined
   const p = stats?.propulsion
-  const c = stats?.combat
+  const defense =
+    entry.enabled && entry.key.kind === 'Defense'
+      ? entry.technical_data
+      : undefined
+  const c = defense?.combat ?? stats?.combat
   const level = (id: string) => research.find((r) => r.research === id)?.level
   const replacement = p?.hyperspace_upgrade
     ? { drive: 'HyperspaceDrive' as const, ...p.hyperspace_upgrade }
@@ -55,7 +59,7 @@ export function comparisonStats(
   const drive = knownProfile ? profile?.drive : undefined
   return {
     stationary: entry.key.id === 'SolarSatellite' && !entry.mobile,
-    cost: stats?.cost,
+    cost: defense?.cost ?? stats?.cost,
     cargo: p?.cargo_capacity,
     drive,
     speed:
@@ -99,4 +103,25 @@ export function comparisonStats(
     against: c?.rapid_fire_against,
     from: c?.rapid_fire_from,
   }
+}
+
+/** Group identical server explanations without duplicating prose in narrow cells. */
+export function comparisonFacts(entries: ShipEntry[]) {
+  const facts = new Map<
+    string,
+    { label: string; value: string; ids: string[] }
+  >()
+  for (const entry of entries) {
+    for (const fact of entry.technical_data?.facts ?? []) {
+      const key = JSON.stringify([fact.label, fact.value])
+      const group = facts.get(key) ?? {
+        label: fact.label,
+        value: fact.value,
+        ids: [],
+      }
+      group.ids.push(entry.key.id)
+      facts.set(key, group)
+    }
+  }
+  return [...facts.values()]
 }

@@ -289,7 +289,6 @@
   .worldBar {
     grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
     grid-template-areas: 'context resources';
-    min-height: 82px;
     gap: 24px;
   }
   .masthead {

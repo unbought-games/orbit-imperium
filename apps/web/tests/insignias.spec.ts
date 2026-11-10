@@ -13,6 +13,7 @@ import {
 } from './fixtures/game'
 import type { Page } from '@playwright/test'
 import type { components } from '../src/contracts'
+import { withFixtureResponse } from './fixtures/responses'
 
 const fallback = {
   version: 1 as const,
@@ -139,7 +140,7 @@ for (const width of [1440, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     const { state, appearance } = await fixture(page)
-    await page.goto('/u/andromeda/settings')
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     await expect(
       panel.getByRole('button', { name: 'New design' }),
@@ -172,13 +173,13 @@ for (const width of [1440, 390]) {
     await expect(panel.getByRole('status')).toHaveText(
       'Design saved and equipped.',
     )
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
       'Aurelian expedition',
     )
     expect(state.designs[0].recipe.foreground).toBe('#f2ca74')
     state.supporter = true
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await panel.getByRole('button', { name: 'Test star', exact: true }).click()
     await panel.getByRole('button', { name: 'Save & equip' }).click()
     await expect(panel.getByRole('status')).toHaveText(
@@ -192,7 +193,7 @@ for (const width of [1440, 390]) {
     })
     state.supporter = false
     state.unknown = true
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(panel).toContainText(
       'Supporter verification is temporarily unavailable',
     )
@@ -206,7 +207,7 @@ for (const width of [1440, 390]) {
       path: `test-results/insignia-unavailable-${width}x1000.png`,
     })
     state.permanent = true
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(panel.getByLabel('Permanently unlocked')).toBeVisible()
     await panel.evaluate((el) =>
       window.scrollBy(0, el.getBoundingClientRect().top - 72),
@@ -279,7 +280,7 @@ test('failed saves preserve the draft and the library can recover', async ({
   page,
 }) => {
   const { state } = await fixture(page)
-  await page.goto('/u/andromeda/settings')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
   await page.getByRole('button', { name: 'New design' }).click()
   await page.getByLabel('Design name', { exact: true }).fill('Still mine')
   state.fail = true
@@ -304,7 +305,7 @@ for (const width of [1440, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     const { state } = await fixture(page)
-    await page.goto('/u/andromeda/settings')
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     for (const name of ['First standard', 'Second standard']) {
       await panel.getByRole('button', { name: 'New design' }).click()
@@ -318,7 +319,7 @@ for (const width of [1440, 390]) {
     await expect(
       panel.getByRole('button', { name: 'Remove insignia' }),
     ).toHaveCount(0)
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
       'First standard',
     )
@@ -427,7 +428,7 @@ for (const width of [1440, 390]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/galaxy?body=${body.id}`))
     // Full navigation restarts the game session before the world and profile
     // requests run. Check each readiness boundary before asserting identity.
     await expect(
@@ -505,7 +506,7 @@ for (const width of [1440, 390]) {
     const { state } = await fixture(page)
     state.installed = false
     state.permanent = true
-    await page.goto('/u/andromeda/settings')
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     await panel.getByRole('button', { name: 'New design' }).click()
     await expect(panel.getByRole('button', { name: 'Test star', exact: true })).toHaveCount(0)
@@ -516,7 +517,7 @@ for (const width of [1440, 390]) {
     const id = '00000000-0000-4000-8000-000000000031'
     state.designs = [{ id, name: 'Preserved design', recipe: { ...fallback, symbol: 'test-star' }, revision: 1 }]
     state.equipped = id
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue('Preserved design')
     await expect(panel).toContainText('This symbol is not installed on this server.')
     await expect(panel.getByRole('button', { name: 'Equip design', exact: true })).toBeDisabled()
@@ -539,7 +540,7 @@ for(const width of [1440,390]){
  test(`layered composer saves colors and slots at ${width}px`,async({page})=>{
   await page.setViewportSize({width,height:1000})
   const {state}=await fixture(page,true)
-  await page.goto('/u/andromeda/settings')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
   const panel=page.getByRole('region',{name:'Empire insignia'})
   await panel.getByRole('button',{name:'New design'}).click()
   await expect(panel.getByRole('button',{name:'test-center',exact:true})).toBeDisabled()
@@ -555,14 +556,14 @@ for(const width of [1440,390]){
   expect(state.designs[0].recipe.layers?.every(l=>l.color==='#aabbcc')).toBe(true)
   await panel.evaluate(el=>window.scrollBy(0,el.getBoundingClientRect().top-72))
   await diagnosticScreenshot(page,{path:`test-results/composer-free-${width}x1000.png`,fullPage:true})
-  state.supporter=true;await page.reload()
+  state.supporter=true;await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
   for(const id of ['test-stripe-a','test-stripe-b','test-stripe-c'])await panel.getByRole('button',{name:id,exact:true}).click()
   await panel.getByLabel('Accent color',{exact:true}).fill('#ffeeaa')
   await panel.getByRole('button',{name:'Save & equip'}).click()
   await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
   expect(state.designs[0].recipe.layers).toHaveLength(4)
   expect(state.designs[0].recipe.layers?.some(l=>l.symbol==='test-stripe-a')).toBe(false)
-  await page.reload()
+  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
   await expect(panel.getByRole('button',{name:'test-stripe-c',exact:true})).toHaveAttribute('aria-pressed','true')
   await panel.evaluate(el=>window.scrollBy(0,el.getBoundingClientRect().top-72))
   await diagnosticScreenshot(page,{path:`test-results/composer-supporter-${width}x1000.png`,fullPage:true})
@@ -575,7 +576,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     const { state } = await fixture(page, true)
     state.supporter = true
-    await page.goto('/u/andromeda/settings')
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     await panel.getByRole('button', { name: 'New design' }).click()
     const accent = panel.getByLabel('Accent color', { exact: true })
@@ -612,7 +613,7 @@ for (const width of [1440, 390]) {
     await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
     expect(state.designs[0].recipe.shape).toBe('hexagon')
     expect(state.designs[0].recipe.layers?.filter(l => l.symbol.startsWith('test-stripe')).map(l => l.color)).toEqual(['#8866cc', '#8866cc'])
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(preview).toHaveAttribute('data-shape', 'hexagon')
     await expect(accent).toHaveValue('#22cc88')
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {

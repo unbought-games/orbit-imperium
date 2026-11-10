@@ -817,3 +817,37 @@ for (const width of [1440, 390]) {
     ).toBeVisible()
   })
 }
+
+
+for (const width of [1440, 390]) {
+  test(`briefing distinguishes rewards from a legacy directive's next upgrade shortfall ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const state = await installTutorialFixture(page, 'research')
+    const objective = state.data.chapters[0].objectives[0]
+    const terms = objective.inspection!.terms!
+    if (terms.type !== 'Building') throw Error('fixture')
+    terms.source_level = 9
+    terms.target_level = 10
+    terms.paid.metal = '61150000000'
+    state.data.recommended_objectives = [objective.id]
+    await withFixtureResponse(page, tutorial, () => page.goto(briefing))
+    const card = page.getByRole('region', { name: 'Recommended next action' })
+    await expect(card).toContainText('Next Solar Plant upgrade (level 10) needs')
+    await expect(card.getByText('Reward', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: /01 Establish the colony/ }).click()
+    const row = page.getByRole('region', { name: /01 Establish the colony/ }).locator('li').filter({ has: page.getByRole('heading', { name: /Build Solar Plant level\s1/ }) })
+    await expect(row).toContainText('Next Solar Plant upgrade (level 10) needs')
+    await expect(row.getByText('Reward', { exact: true })).toBeVisible()
+    await expect(row.getByLabel('Reward', { exact: true })).toContainText('200')
+    await expect(row.getByRole('img', { name: 'Metal', exact: true })).toBeVisible()
+    await capture(page, 'briefing-rewards-next-upgrade', width)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+      await row.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 100))
+    await diagnosticScreenshot(page, {
+      path: `test-results/chat-5/briefing-reward-row-${width}x900.png`,
+    })
+    expect(state.commands).toHaveLength(0)
+    expect(state.data.receipts).toHaveLength(0)
+  })
+}

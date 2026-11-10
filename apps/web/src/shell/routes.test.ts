@@ -169,14 +169,22 @@ it('keeps resource settings accessible without production data but requires a su
   ).toBe(false)
 })
 
-it('exposes alliances only in protocol four without requiring a planet', () => {
-  expect(
-    resolveDestination({ universe: 'u', page: 'alliance' }, view).available,
-  ).toBe(false)
+it('exposes alliance home, creation and discovery only in protocol four without requiring a planet', () => {
   const current = { ...view, protocol: 4, bodies: [] } as unknown as BoundView
-  expect(
-    resolveDestination({ universe: 'u', page: 'alliance' }, current),
-  ).toMatchObject({ available: true, page: 'alliance', body: null })
+  for (const page of [
+    'alliance',
+    'alliance-create',
+    'alliance-discover',
+  ] as const) {
+    expect(resolveDestination({ universe: 'u', page }, view).available).toBe(
+      false,
+    )
+    expect(resolveDestination({ universe: 'u', page }, current)).toMatchObject({
+      available: true,
+      page,
+      body: null,
+    })
+  }
 })
 
 it('allows only currently visible outgoing missile mission details', () => {
@@ -239,6 +247,8 @@ it('keeps account pages available without planets and rejects explicit inaccessi
   for (const page of [
     'messages',
     'alliance',
+    'alliance-create',
+    'alliance-discover',
     'high-scores',
     'settings',
     'combat-simulator',

@@ -351,3 +351,9 @@
 .neutral .result {
   color: #cbb68d;
 }
+
+.units .unitGroup {
+  padding-top: 1rem;
+  color: var(--champagne-light);
+  text-align: left;
+}
