@@ -1,3 +1,4 @@
+import type { SettingsDestination } from '../../src/features/alliances/settings'
 import { allianceSections } from '../../src/features/alliances/sections'
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
@@ -196,6 +197,12 @@ function setup() {
         ]
       if (a.type === 'AssignRoles')
         detail.members!.find((m) => m.player === a.player)!.roles = a.roles
+      if (a.type === 'Update') {
+        detail.summary.name = a.name
+        detail.summary.tag = a.tag
+        detail.summary.recruitment = a.recruitment
+        detail.public_text = a.public_text
+      }
       if (a.type === 'Accept') detail.applications = []
       if (a.type === 'SetRecruitmentProfile')
         detail.summary.recruitment_profile = a.profile
@@ -340,7 +347,9 @@ declare global {
 }
 export function AllianceStory() {
   const [scenario] = useState(setup),
-    [tab, setTab] = useState('Board')
+    [tab, setTab] = useState('Board'),
+    [settingsSection, setSettingsSection] =
+      useState<SettingsDestination>('Profile')
   const state = useStore(scenario.controller.store)
   useEffect(() => {
     window.allianceScenario = scenario
@@ -386,7 +395,14 @@ export function AllianceStory() {
                 <Applications detail={detail} run={run} busy={busy} />
               )}
               {tab === 'Settings' && (
-                <Settings detail={detail} player={self} run={run} busy={busy} />
+                <Settings
+                  detail={detail}
+                  player={self}
+                  run={run}
+                  busy={busy}
+                  section={settingsSection}
+                  onSectionChange={setSettingsSection}
+                />
               )}
             </>
           )}

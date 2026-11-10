@@ -174,13 +174,18 @@ test('role form delegates permissions, member editor assigns multiple roles and 
     commands.find((c) => c.action.type === 'AssignRoles')!.action,
   ).toMatchObject({ roles: ['scout', 'custom'] })
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('button', { name: 'Leadership', exact: true }).click()
+  await page.getByLabel('New leader', { exact: true }).selectOption('nova')
   await page
-    .getByRole('button', { name: 'Transfer to Nova', exact: true })
+    .getByRole('button', { name: 'Transfer leadership', exact: true })
     .click()
   await expect(
-    page.getByRole('group', { name: 'Review Transfer to Nova' }),
+    page.getByRole('dialog', { name: 'Transfer leadership?' }),
   ).toContainText('you become a Member')
-  await page.getByRole('button', { name: 'Confirm transfer to nova' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Transfer leadership', exact: true })
+    .click()
   await expect(
     page.getByRole('button', { name: 'Disband alliance' }),
   ).toHaveCount(0)
@@ -322,6 +327,9 @@ for (const width of [390, 1440]) {
       )
       await mount('alliance-panels')
       await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page
+        .getByRole('button', { name: 'Recruitment', exact: true })
+        .click()
       await page.getByLabel('List in recruitment directory').uncheck()
       await page
         .getByLabel('Activity expectations', { exact: true })
@@ -330,10 +338,19 @@ for (const width of [390, 1440]) {
         .getByRole('button', { name: 'Save recruitment preferences' })
         .click()
       await expect(
+        page.getByRole('button', { name: 'Recruitment', exact: true }),
+      ).toHaveAttribute('aria-current', 'page')
+      await page
+        .getByRole('button', { name: 'Invitations', exact: true })
+        .click()
+      await expect(
         page.getByRole('button', { name: 'Create invitation link' }),
       ).toBeEnabled()
       await page.getByRole('button', { name: 'Create invitation link' }).click()
-      const link = page.getByLabel('Invitation link', { exact: true })
+      const link = page.getByRole('textbox', {
+        name: 'Invitation link',
+        exact: true,
+      })
       await expect(link).toHaveValue(/\/invite\/universe\/invitation-token$/)
       await link.focus()
       expect(
@@ -358,7 +375,7 @@ for (const width of [390, 1440]) {
         .click()
       await page
         .getByRole('button', {
-          name: 'Confirm disable invitation link',
+          name: 'Disable link',
           exact: true,
         })
         .click()
@@ -598,5 +615,117 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true)
+  })
+}
+
+test('settings keep independent drafts and the selected section across rejected and successful saves', async ({
+  page,
+  mount,
+}) => {
+  await mount('alliance-panels')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page
+    .getByLabel('Alliance name', { exact: true })
+    .fill('Starlight Voyagers')
+  await page.getByLabel('Public recruitment text').fill('Explore with us.')
+  await page.evaluate(() => window.allianceScenario.reject())
+  await page.getByRole('button', { name: 'Save profile' }).click()
+  await expect(page.getByRole('alert')).toContainText('Conflict')
+  await expect(page.getByLabel('Alliance name', { exact: true })).toHaveValue(
+    'Starlight Voyagers',
+  )
+  await page.getByRole('button', { name: 'Recruitment', exact: true }).click()
+  await page.getByLabel('Recruitment', { exact: true }).selectOption('Closed')
+  await page.getByRole('button', { name: 'Save joining rules' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Recruitment', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByLabel('Recruitment', { exact: true })).toHaveValue(
+    'Closed',
+  )
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await expect(page.getByLabel('Alliance name', { exact: true })).toHaveValue(
+    'Starlight Voyagers',
+  )
+  await page.getByRole('button', { name: 'Save profile' }).click()
+  await page.getByRole('button', { name: 'Recruitment', exact: true }).click()
+  await expect(page.getByLabel('Recruitment', { exact: true })).toHaveValue(
+    'Closed',
+  )
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await expect(page.getByLabel('Alliance name', { exact: true })).toHaveValue(
+    'Starlight Voyagers',
+  )
+  await expect(page.getByLabel('Public recruitment text')).toHaveValue(
+    'Explore with us.',
+  )
+  const updates = await page.evaluate(() =>
+    window.allianceScenario.commands.map(({ action }) => action),
+  )
+  expect(updates[1]).toMatchObject({
+    type: 'Update',
+    name: 'Starlight Assembly',
+    recruitment: 'Closed',
+    public_text: 'Together among the stars.',
+  })
+  expect(updates[2]).toMatchObject({
+    type: 'Update',
+    name: 'Starlight Voyagers',
+    recruitment: 'Closed',
+    public_text: 'Explore with us.',
+  })
+})
+
+for (const width of [1440, 390]) {
+  test(`settings navigation and leadership review fit ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await mount('alliance-panels')
+    await page.evaluate(() => window.allianceScenario.prepare('roster'))
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    const nav = page.getByRole('navigation', { name: 'Settings sections' })
+    for (const name of [
+      'Profile',
+      'Recruitment',
+      'Invitations',
+      'Leadership',
+    ]) {
+      await nav.getByRole('button', { name, exact: true }).click()
+      await expect(
+        nav.getByRole('button', { name, exact: true }),
+      ).toHaveAttribute('aria-current', 'page')
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+    }
+    const transfer = page.getByRole('button', {
+      name: 'Transfer leadership',
+      exact: true,
+    })
+    await expect(transfer).toHaveCount(1)
+    await expect(transfer).toBeDisabled()
+    await page.getByLabel('New leader', { exact: true }).selectOption('nova')
+    await transfer.click()
+    const dialog = page.getByRole('dialog', { name: 'Transfer leadership?' })
+    await expect(dialog).toContainText('Make Nova leader')
+    await expect(
+      dialog.getByRole('button', { name: 'Cancel', exact: true }),
+    ).toBeFocused()
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(transfer).toBeFocused()
+    await page
+      .getByRole('button', { name: 'Disband alliance', exact: true })
+      .click()
+    await expect(page.getByRole('dialog')).toContainText(
+      'This cannot be undone.',
+    )
+    await page.getByRole('button', { name: 'Keep alliance' }).click()
+    expect(await page.evaluate(() => window.allianceScenario.commands)).toEqual(
+      [],
+    )
   })
 }

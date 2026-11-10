@@ -5,38 +5,58 @@ import {
   recruitmentFromForm,
 } from '../../client-model/recruitment'
 import { Button, ButtonLinkAnchor } from '../../ui/button'
-import { Field, Input } from '../../ui/form'
-import { ActionForm, ConfirmAction, type Run } from './shared'
+import { ConfirmationButton } from '../../ui/confirmation-button'
+import { Field, Input, Select } from '../../ui/form'
+import { value, type Run } from './shared'
+import { SettingsForm, SettingsSection } from './settings-section'
 import { RecruitmentFields } from './recruitment-fields'
-import { RecruitmentImage } from './recruitment-image'
-import styles from './alliances.module.css'
-export function RecruitmentSettings({
-  detail,
-  run,
-  busy,
-}: {
-  detail: AllianceDetail
-  run: Run
-  busy: boolean
-}) {
-  const [message, setMessage] = useState('')
+import styles from './settings.module.css'
+
+type Props = { detail: AllianceDetail; run: Run; busy: boolean }
+
+export function RecruitmentSettings({ detail, run, busy }: Props) {
   if (!can(detail, 'ManageRecruitment')) return null
-  const path = detail.invitation
-    ? `/invite/${detail.summary.universe}/${detail.invitation}`
-    : null
-  const url = path ? `${location.origin}${path}` : ''
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(url)
-      setMessage('Invitation link copied.')
-    } catch {
-      setMessage('Select and copy the invitation link above.')
-    }
-  }
   return (
-    <section className={styles.stack} aria-label="Recruitment settings">
-      <h3>Recruitment and invitations</h3>
-      <ActionForm
+    <>
+      <SettingsForm
+        draftKey={`joining:${detail.summary.id}`}
+        label="Save joining rules"
+        busy={busy}
+        onSubmit={(data) =>
+          run({
+            type: 'Update',
+            alliance: detail.summary.id,
+            name: detail.summary.name,
+            tag: detail.summary.tag,
+            public_text: detail.public_text,
+            recruitment: value(
+              data,
+              'recruitment',
+            ) as AllianceDetail['summary']['recruitment'],
+          })
+        }
+      >
+        <SettingsSection
+          title="Joining rules"
+          description="Choose how new members join your alliance."
+        >
+          <Field>
+            Recruitment
+            <Select
+              aria-label="Recruitment"
+              name="recruitment"
+              defaultValue={detail.summary.recruitment}
+            >
+              <option value="Open">Open — instant joining</option>
+              <option value="Application">
+                Application — approval required
+              </option>
+              <option value="Closed">Closed — no new applications</option>
+            </Select>
+          </Field>
+        </SettingsSection>
+      </SettingsForm>
+      <SettingsForm
         draftKey={`recruitment:${detail.summary.id}`}
         label="Save recruitment preferences"
         busy={busy}
@@ -48,19 +68,41 @@ export function RecruitmentSettings({
           })
         }
       >
-        <RecruitmentFields
-          profile={detail.summary.recruitment_profile ?? emptyRecruitment}
-        />
-      </ActionForm>
-      <section
-        className={`${styles.card} ${styles.stack}`}
-        aria-label="Alliance invitation"
+        <SettingsSection
+          title="Discovery & preferences"
+          description="Help players find an alliance that fits them."
+        >
+          <RecruitmentFields
+            compact
+            profile={detail.summary.recruitment_profile ?? emptyRecruitment}
+          />
+        </SettingsSection>
+      </SettingsForm>
+    </>
+  )
+}
+
+export function InvitationSettings({ detail, run, busy }: Props) {
+  const [message, setMessage] = useState('')
+  if (!can(detail, 'ManageRecruitment')) return null
+  const path = detail.invitation
+    ? `/invite/${detail.summary.universe}/${detail.invitation}`
+    : null
+  const url = path ? `${location.origin}${path}` : ''
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url)
+      setMessage('Invitation link copied.')
+    } catch {
+      setMessage('Select and copy the invitation link.')
+    }
+  }
+  return (
+    <>
+      <SettingsSection
+        title="Invitation link"
+        description="A shareable link with no expiry. Your joining rules still apply."
       >
-        <h4>Invite people to your alliance</h4>
-        <p>
-          Share this link anywhere. It belongs to your alliance, has no expiry,
-          and follows your current joining rules.
-        </p>
         {path ? (
           <>
             <Field>
@@ -72,57 +114,111 @@ export function RecruitmentSettings({
               />
             </Field>
             <div className={styles.actions}>
-              <Button onClick={() => void copy()}>Copy invitation link</Button>
-              <ButtonLinkAnchor variant="secondary" href={path}>
+              <Button size="small" onClick={() => void copy()}>
+                Copy invitation link
+              </Button>
+              <ButtonLinkAnchor size="small" variant="secondary" href={path}>
                 Preview invitation
               </ButtonLinkAnchor>
             </div>
-            <RecruitmentImage
-              path={path}
-              name={detail.summary.name}
-              tag={detail.summary.tag}
-            />
-            <ConfirmAction
-              label="Replace invitation link"
-              description="Replace this link? Previously shared invitation links will stop working."
+          </>
+        ) : (
+          <div className={styles.actions}>
+            <Button
+              size="small"
               disabled={busy}
-              onConfirm={() =>
-                run({
+              onClick={() =>
+                void run({
                   type: 'SetInvitation',
                   alliance: detail.summary.id,
                   enabled: true,
                 })
               }
-            />
-            <ConfirmAction
-              label="Disable invitation link"
-              description="Disable this invitation? Your public page and recruitment rules remain available."
-              disabled={busy}
-              onConfirm={() =>
-                run({
-                  type: 'SetInvitation',
-                  alliance: detail.summary.id,
-                  enabled: false,
-                })
-              }
-            />
-          </>
-        ) : (
-          <Button
-            disabled={busy}
-            onClick={() =>
-              void run({
-                type: 'SetInvitation',
-                alliance: detail.summary.id,
-                enabled: true,
-              })
-            }
-          >
-            Create invitation link
-          </Button>
+            >
+              Create invitation link
+            </Button>
+          </div>
         )}
-        {message && <p role="status">{message}</p>}
-      </section>
-    </section>
+        {message && (
+          <p className={styles.hint} role="status">
+            {message}
+          </p>
+        )}
+      </SettingsSection>
+      {path && (
+        <>
+          <SettingsSection
+            title="Recruitment image"
+            description="An image of your alliance to share alongside the link."
+          >
+            <div className={styles.actions}>
+              <ButtonLinkAnchor
+                size="small"
+                variant="secondary"
+                href={`${path}/image`}
+                download={`${detail.summary.tag}-recruitment.png`}
+              >
+                Download recruitment image
+              </ButtonLinkAnchor>
+            </div>
+          </SettingsSection>
+          <SettingsSection
+            title="Link controls"
+            description="Replace a shared link or turn it off. Your public recruitment page stays available."
+          >
+            <div className={styles.actions}>
+              <ConfirmationButton
+                size="small"
+                variant="secondary"
+                disabled={busy}
+                dialogTitle="Replace invitation link?"
+                cancelLabel="Keep link"
+                confirmLabel="Replace link"
+                review={
+                  <p>
+                    Previously shared invitation links will stop working. A new
+                    link will be created.
+                  </p>
+                }
+                onConfirm={() => {
+                  setMessage('')
+                  void run({
+                    type: 'SetInvitation',
+                    alliance: detail.summary.id,
+                    enabled: true,
+                  })
+                }}
+              >
+                Replace invitation link
+              </ConfirmationButton>
+              <ConfirmationButton
+                size="small"
+                variant="secondary"
+                disabled={busy}
+                dialogTitle="Disable invitation link?"
+                cancelLabel="Keep link"
+                confirmLabel="Disable link"
+                review={
+                  <p>
+                    This invitation link will stop working. Your public page and
+                    recruitment rules remain available.
+                  </p>
+                }
+                onConfirm={() => {
+                  setMessage('')
+                  void run({
+                    type: 'SetInvitation',
+                    alliance: detail.summary.id,
+                    enabled: false,
+                  })
+                }}
+              >
+                Disable invitation link
+              </ConfirmationButton>
+            </div>
+          </SettingsSection>
+        </>
+      )}
+    </>
   )
 }

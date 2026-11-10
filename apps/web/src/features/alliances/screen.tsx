@@ -1,3 +1,4 @@
+import type { SettingsDestination } from './settings'
 import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
 import { ContentColumn } from '../../ui/content-column'
@@ -118,6 +119,8 @@ function AllianceWorkspace({
   const state = useStore(controller.store)
   const refreshProfiles = useRefreshPlayerProfiles()
   const [tab, setTab] = useState('Board')
+  const [settingsSection, setSettingsSection] =
+    useState<SettingsDestination>('Profile')
   const [selected, setSelected] = useState<string | undefined>(initialAlliance)
   useEffect(() => {
     void controller.refresh()
@@ -346,6 +349,8 @@ function AllianceWorkspace({
                       )}
                       {active === 'Settings' && (
                         <Settings
+                          section={settingsSection}
+                          onSectionChange={setSettingsSection}
                           detail={detail}
                           player={player}
                           run={run}

@@ -7,6 +7,7 @@ import {
 } from '../../client-model/recruitment'
 import { Field, Select } from '../../ui/form'
 import styles from './alliances.module.css'
+import fieldStyles from './recruitment-fields.module.css'
 export function RecruitmentPreferences({
   profile,
 }: {
@@ -29,7 +30,9 @@ export function RecruitmentPreferences({
 }
 export function RecruitmentFields({
   profile,
+  compact = false,
 }: {
+  compact?: boolean
   profile: RecruitmentProfile
 }) {
   const languages = [
@@ -39,7 +42,7 @@ export function RecruitmentFields({
       .map((code) => ({ value: code, label: languageName(code) })),
   ]
   return (
-    <>
+    <div className={compact ? fieldStyles.compact : fieldStyles.default}>
       <label className={styles.recruitmentToggle}>
         <input type="checkbox" name="listed" defaultChecked={profile.listed} />{' '}
         List in recruitment directory
@@ -65,40 +68,42 @@ export function RecruitmentFields({
           ))}
         </fieldset>
       </details>
-      <Field>
-        New players
-        <Select
-          aria-label="New players"
-          name="beginners"
-          defaultValue={profile.beginners ?? ''}
-        >
-          <option value="">Not specified</option>
-          {experienceOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field>
-        Activity expectations
-        <Select
-          aria-label="Activity expectations"
-          name="activity"
-          defaultValue={profile.activity ?? ''}
-        >
-          <option value="">Not specified</option>
-          {activityOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <div className={compact ? fieldStyles.preferences : fieldStyles.default}>
+        <Field>
+          New players
+          <Select
+            aria-label="New players"
+            name="beginners"
+            defaultValue={profile.beginners ?? ''}
+          >
+            <option value="">Not specified</option>
+            {experienceOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field>
+          Activity expectations
+          <Select
+            aria-label="Activity expectations"
+            name="activity"
+            defaultValue={profile.activity ?? ''}
+          >
+            <option value="">Not specified</option>
+            {activityOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
       <p className={styles.meta}>
         Leave any preference unset. Activity expectations describe your group;
         the game does not enforce attendance.
       </p>
-    </>
+    </div>
   )
 }
