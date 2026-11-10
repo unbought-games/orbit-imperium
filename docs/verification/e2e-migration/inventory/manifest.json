@@ -1,0 +1,226 @@
+{
+  "schema": 1,
+  "snapshot_revision": "0c235fd6d27422374abf61ea44e39c015a9c1675",
+  "audit_date": "2026-11-10",
+  "baseline_revision": "a119915ffaeb881a7f54d65542478f4788bd4210",
+  "baseline_source": "retained Playwright collection /tmp/orbit-browser-inventory.json from phase-one investigation; exported here for durability",
+  "counts": {
+    "application": 816,
+    "component": 271,
+    "homepage": 10,
+    "explicit": 22
+  },
+  "journeys": 39,
+  "current_files": 114,
+  "original_application_cases": 1183,
+  "original_application_files": 76,
+  "workstreams": {
+    "01": {
+      "name": "Resources, quotes and production controls",
+      "brief": "workstreams/01-resources-and-quotes.md",
+      "current_cases": 108,
+      "application_cases": 108,
+      "component_cases": 0,
+      "application_files": [
+        "resources",
+        "building-quotes",
+        "catalog-affordability",
+        "locked-buildings",
+        "progression-cancellation"
+      ],
+      "component_files": []
+    },
+    "02": {
+      "name": "Catalog, manufacturing and technical details",
+      "brief": "workstreams/02-catalog-and-progression.md",
+      "current_cases": 198,
+      "application_cases": 131,
+      "component_cases": 67,
+      "application_files": [
+        "catalog-pages",
+        "battlecruiser",
+        "battleship",
+        "bomber",
+        "cruiser",
+        "destroyer",
+        "fusion-reactor",
+        "heavy-fighter",
+        "hyperspace-drive",
+        "hyperspace-technology",
+        "industrial-buildings",
+        "large-cargo",
+        "research-network",
+        "solar-satellite",
+        "terraformer"
+      ],
+      "component_files": [
+        "detail.component",
+        "progression-comparison.component",
+        "progression-detail.component",
+        "progression-forms.component"
+      ]
+    },
+    "03": {
+      "name": "Dispatch, Galaxy, fleets and mission controls",
+      "brief": "workstreams/03-dispatch-and-fleets.md",
+      "current_cases": 219,
+      "application_cases": 120,
+      "component_cases": 99,
+      "application_files": [
+        "alliance-attacks",
+        "alliance-depot",
+        "arrival",
+        "colonization",
+        "combat-simulation",
+        "dispatch-validation",
+        "fleet-inventory",
+        "galaxy-cards",
+        "missile-warfare",
+        "mission-fleets",
+        "moon-fleets",
+        "moons",
+        "sensor-phalanx"
+      ],
+      "component_files": [
+        "dispatch",
+        "fleet-card.component",
+        "galaxy-fleet.component",
+        "galaxy-position.component"
+      ]
+    },
+    "04": {
+      "name": "Empire, lifecycle and settings",
+      "brief": "workstreams/04-empire-and-settings.md",
+      "current_cases": 69,
+      "application_cases": 56,
+      "component_cases": 13,
+      "application_files": [
+        "active-work-summary",
+        "empire",
+        "empire-deletion",
+        "empire-history",
+        "planet-abandonment",
+        "planet-names",
+        "vacation"
+      ],
+      "component_files": [
+        "tutorial-settings.component"
+      ]
+    },
+    "05": {
+      "name": "Shell, navigation, public layout and primitives",
+      "brief": "workstreams/05-shell-and-navigation.md",
+      "current_cases": 206,
+      "application_cases": 154,
+      "component_cases": 52,
+      "application_files": [
+        "coordinate-links",
+        "density",
+        "desktop-navigation",
+        "detail-playground",
+        "home",
+        "loading-region",
+        "mobile-selection",
+        "number-input",
+        "planet-page-routing",
+        "shell",
+        "web-app"
+      ],
+      "component_files": [
+        "action-sheet.component",
+        "form",
+        "loading",
+        "popover.component",
+        "shell-controls.component",
+        "shell-layout.component",
+        "shell-navigation.component",
+        "shell-selection.component"
+      ]
+    },
+    "06": {
+      "name": "Startup, authentication, recovery, HUD and tutorial",
+      "brief": "workstreams/06-startup-hud-and-tutorial.md",
+      "current_cases": 144,
+      "application_cases": 139,
+      "component_cases": 5,
+      "application_files": [
+        "bootstrap-ui",
+        "hosted-auth",
+        "client-update",
+        "command-hud",
+        "hud-playground",
+        "content-updates",
+        "release-announcement",
+        "tutorial",
+        "tutorial-advisor"
+      ],
+      "component_files": [
+        "hud-toasts.component"
+      ]
+    },
+    "07": {
+      "name": "Social, alliances, recruitment and identity",
+      "brief": "workstreams/07-social-and-identity.md",
+      "current_cases": 77,
+      "application_cases": 49,
+      "component_cases": 28,
+      "application_files": [
+        "alliance-identity",
+        "alliances",
+        "empire-identity",
+        "high-scores",
+        "insignias",
+        "player-profiles",
+        "recruitment",
+        "social"
+      ],
+      "component_files": [
+        "alliance.component",
+        "identity.component",
+        "profile-display.component",
+        "recruitment.component",
+        "social.component"
+      ]
+    },
+    "08": {
+      "name": "Reports, sharing, deletion and history",
+      "brief": "workstreams/08-reports-and-cleanup.md",
+      "current_cases": 66,
+      "application_cases": 59,
+      "component_cases": 7,
+      "application_files": [
+        "combat-reports",
+        "espionage-reports",
+        "report-deletion",
+        "report-glance",
+        "report-sharing"
+      ],
+      "component_files": [
+        "delivered-report",
+        "harvest-report",
+        "report-cleanup",
+        "shared-combat-report"
+      ]
+    },
+    "09": {
+      "name": "Shared harness, contracts and explicit acceptance",
+      "brief": "workstreams/09-harness-and-acceptance.md",
+      "current_cases": 32,
+      "application_cases": 0,
+      "component_cases": 0,
+      "application_files": [],
+      "component_files": []
+    },
+    "10": {
+      "name": "Final journey gate, CI cutover and agent guidance",
+      "brief": "workstreams/10-cutover-and-reliability.md",
+      "current_cases": 0,
+      "application_cases": 0,
+      "component_cases": 0,
+      "application_files": [],
+      "component_files": []
+    }
+  },
+  "execution": "Collection and static audit only; no browser, database, container or build run performed for this audit. expected_outcome is runner configuration, not observed success.",
+  "identity": "id hashes boundary, full file, project and full title path; collector/source lines are secondary. Name matches in baseline CSV are discovery aids, not equivalence proof."
+}

@@ -1,0 +1,33 @@
+id,owner,boundary,file,project,title_path,journey,expected_outcome,collector_line,source_declaration_lines,history,runner_suite
+0cf290310691c9dc,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage exposes complete content and styles in raw HTML, registration true",no,passed,6,10,,homepage
+b7f660ff81576dfa,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration true, JS false, 390x900",no,passed,30,58,,homepage
+822449ab46832b83,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration true, JS false, 1440x900",no,passed,30,58,,homepage
+1af9cfc93989e9df,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration true, JS true, 390x900",no,passed,30,58,,homepage
+148c11ec7248e9c3,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration true, JS true, 1440x900",no,passed,30,58,,homepage
+cb94015f76e47c03,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage exposes complete content and styles in raw HTML, registration false",no,passed,6,10,,homepage
+107dab724cc220f2,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration false, JS false, 390x900",no,passed,30,58,,homepage
+168101a56e365536,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration false, JS false, 1440x900",no,passed,30,58,,homepage
+b0f795b1d453ad43,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration false, JS true, 390x900",no,passed,30,58,,homepage
+b25f0b173ce1284a,09,homepage,apps/web/tests/homepage-built.spec.ts,,"homepage-built.spec.ts > built homepage registration false, JS true, 1440x900",no,passed,30,58,,homepage
+e550b7fb95ac552e,09,explicit,apps/web/tests/bootstrap.spec.ts,,bootstrap.spec.ts > production HTML bootstraps an authenticated refresh without startup reads or screen flashes,no,passed,2,3,,core
+6c442a6c173fe972,09,explicit,apps/web/tests/bootstrap.spec.ts,,bootstrap.spec.ts > successful login keeps its cookie when initial game loading is unavailable,no,passed,65,73,,core
+ee25694b561c1750,09,explicit,apps/web/tests/construction.spec.ts,,"construction.spec.ts > quote, commit, cancel, and deadline completion through the real scheduler",no,passed,3,3,,core
+04f1c383a3aa22f3,09,explicit,apps/web/tests/login.spec.ts,,login.spec.ts > two keyboard sign-ins expose separate owned planets and revoke logout,no,passed,5,5,,core
+9ca848ce4736e34a,09,explicit,apps/web/tests/reconnect.spec.ts,,reconnect.spec.ts > lost POST acknowledgement survives refresh with one durable identity,no,passed,9,8,,core
+cc166443257ce37e,09,explicit,apps/web/tests/reconnect.spec.ts,,reconnect.spec.ts > malformed responses preserve the last validated private view,no,passed,92,31,,core
+bbe47fd6ce805bbb,09,explicit,apps/web/tests/reconnect.spec.ts,,reconnect.spec.ts > a wrong-principal first overview is never rendered or activated,no,passed,133,37,,core
+f0addd7a11f67193,09,explicit,apps/web/tests/reconnect.spec.ts,,reconnect.spec.ts > real epoch change after bootstrap rebinds without replay,no,passed,170,41,,core
+6e8c79dd012d0451,09,explicit,apps/web/tests/transport.spec.ts,,"transport.spec.ts > two players deliver cargo, return ships, then recall without delivery",no,passed,9,5,,core
+7f1637e2788d6ac8,09,explicit,apps/web/tests/zfoundation.spec.ts,,zfoundation.spec.ts > two bodies retain independent pending actions through keyboard switching and reload,no,passed,9,10,,core
+adaf48fad5f31557,09,explicit,apps/web/tests/mvp.spec.ts,,"mvp.spec.ts > five private accounts see only their starter, build, and switch safely at phone/desktop widths",no,passed,7,8,,mvp
+b9ed2a85f9d15f5d,09,explicit,apps/web/tests/progression.spec.ts,,"progression.spec.ts > mobile and desktop progression controls, blocked purchases, pending work, and private relogin",no,passed,8,9,,progression
+ed09b1fe419f2109,09,explicit,apps/web/tests/responsive.spec.ts,,"responsive.spec.ts > routed progression shell: viewport matrix, keyboard, history, invalid IDs and no navigation purchases",no,passed,8,8,,progression
+fe8d794a476bf465,09,explicit,apps/web/tests/responsive.spec.ts,,"responsive.spec.ts > keyboard purchase, disconnected countdown and authoritative reconnect preserve focus and announcements",no,passed,287,69,,progression
+4ca4c9c6ff8bbf72,09,explicit,apps/web/tests/responsive.spec.ts,,"responsive.spec.ts > keyboard completes production, facility, research and shared ship/defense order flows",no,passed,403,82,,progression
+2f176cdb3cc5d2f4,09,explicit,apps/web/tests/routing.spec.ts,,"routing.spec.ts > browser-history deep links survive login, refresh, history and native new-tab navigation",no,passed,5,6,,progression
+555175b89ad61913,09,explicit,apps/web/tests/routing.spec.ts,,routing.spec.ts > unavailable paths and invalid URL context cannot select or purchase on another planet,no,passed,123,72,,progression
+3b0bcca7721fff3d,09,explicit,apps/web/tests/missions.spec.ts,,"missions.spec.ts > galaxy, dispatch, original-pair recovery, recall and authorized reports across G11 widths",no,passed,7,7,,missions
+9609f52e7aca7993,09,explicit,apps/web/tests/missions.spec.ts,,missions.spec.ts > paginated inbox remains usable after leaving a pending report detail,no,passed,314,313,,missions
+7626374fbd9e8fce,09,explicit,apps/web/tests/raiding.spec.ts,,raiding.spec.ts > scout report → attack with lost acknowledgement → incoming → combat → return → harvest,no,passed,8,9,,raiding
+c5e5be4e26e93d97,09,explicit,apps/web/tests/raiding.spec.ts,,raiding.spec.ts > zero-debris combat reports do not offer a harvest shortcut,no,passed,471,139,,raiding
+cf7544295f707deb,09,explicit,apps/web/tests/signup.spec.ts,,"signup.spec.ts > new player signs up, builds, refreshes and signs back in on mobile",no,passed,3,4,,signup
