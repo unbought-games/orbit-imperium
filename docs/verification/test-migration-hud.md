@@ -209,3 +209,45 @@ results JSON, screenshot and error context are preserved both under
 `test-results/browser-ui/` and `/tmp/orbit-hud-reduced-motion-20261109/` on the
 implementation host. Previous screenshots belong to the earlier validated
 controller commit, not this failed follow-up capture.
+
+## Follow-up: pointer movement before Motion drag callbacks
+
+The parent's baseline at `a119915ffaeb881a7f54d65542478f4788bd4210` recorded a
+second distinct outcome in the retired rapid-Galaxy journey: after the second
+swipe, line 2375 expected one toast but found zero, and the locator call log
+records navigation to the canonical body-scoped Galaxy route. The case lasted
+11.330s. This differs from main job `129552404085`, which found two cards at
+that same assertion. Baseline evidence remains in the parent's
+`test-results/test-strategy/baseline-a119915f/results.json` and matching Galaxy
+error context. Neither outcome is silently replaced by the other or explained
+solely by machine load. The exhausted journey remains retired.
+
+Inspection found a concrete activation vulnerability in the toast consumer:
+`canOpen()` depended on Motion's `onDragStart`. The installed `PanSession`
+queues movement using `frame.update`, ends the session on pointerup, and can
+end without ever starting a pan. `VisualElementDragControls` also schedules
+`onDragStart` on `frame.update` and `onDragEnd` after render. Consequently a
+native click can be handled before our drag flag is set. This demonstrates a
+possible product mechanism; it does not establish that this mechanism caused
+all of the baseline navigation or earlier retained-card failures.
+
+The controller now records the primary pointer's starting coordinates and
+synchronously observes movement and release. Travel reaching Motion's default
+three-pixel pan threshold blocks opening even if Motion callbacks have not run.
+Moving back to the origin cannot erase that intent. Jitter below the threshold
+remains a tap; unrelated pointers are ignored, cancellation blocks activation,
+and a new tap resets the guard. Motion still owns drag animation and dismissal;
+raw input does not invent velocity, force a dismissal or change its thresholds.
+
+Focused deterministic regressions exercise raw move/up before any drag callback,
+release-only displacement, vertical travel, out-and-back movement, tap jitter,
+pointer identity and cancellation. Parent-owned isolated browser checks must
+verify real event wiring and final pixels after integration. This task launched
+no further browser, build or full typecheck under the validation-coordination
+restriction.
+
+Validation of this follow-up on `15085e5f` plus the pointer-guard diff:
+`npm test -- src/ui/toast-swipe.test.ts src/features/command-hud/hud-toasts.test.ts`
+passed all 14 tests in 0.511s. Focused ESLint and source formatting passed.
+No local test failure or retry occurred in this follow-up; no browser resources
+were started. The chat records the local commit containing that tested diff.

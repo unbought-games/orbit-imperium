@@ -8,6 +8,8 @@ export function shouldDismissToast(offset: number, velocity: number) {
   )
 }
 
+export type ToastPointer = { id: number; x: number; y: number }
+
 export type ToastSwipeAnimation = {
   target: number
   kind: 'dismiss' | 'return'
@@ -18,6 +20,7 @@ export function createToastSwipeController(options: {
   animate: (animation: ToastSwipeAnimation) => () => void
   onDismiss: () => void
 }) {
+  let pointer: ToastPointer | null = null
   let dragged = false
   let canceled = false
   let exiting = false
@@ -47,17 +50,33 @@ export function createToastSwipeController(options: {
     exiting = true
     run(direction * 360, 'dismiss')
   }
+  function pointerMove(point: ToastPointer) {
+    if (!pointer || point.id !== pointer.id) return
+    // Match Motion's pan threshold, but observe input synchronously: its
+    // onDragStart callback may arrive after pointerup and the native click.
+    if (Math.hypot(point.x - pointer.x, point.y - pointer.y) >= 3)
+      dragged = true
+  }
   return {
-    canOpen: () => !dragged && !exiting,
-    pointerDown() {
+    canOpen: () => !dragged && !canceled && !exiting,
+    pointerDown(point: ToastPointer) {
       // A new pointer must not cancel an already committed dismissal.
       if (exiting) return
       cancelAnimation()
+      pointer = point
       dragged = false
       canceled = false
     },
-    pointerCancel() {
+    pointerMove,
+    pointerUp(point: ToastPointer) {
+      if (point.id !== pointer?.id) return
+      pointerMove(point)
+      pointer = null
+    },
+    pointerCancel(id: number) {
+      if (id !== pointer?.id) return
       canceled = true
+      pointer = null
     },
     dragStart() {
       dragged = true

@@ -1,8 +1,19 @@
-import { useEffect, useMemo, useRef } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { animate, useMotionValue, useTransform } from 'motion/react'
 import type { PanInfo } from 'motion/react'
 import { createToastSwipeController } from './toast-swipe'
 import { useReducedMotion } from './use-reduced-motion'
+
+const pointer = (event: ReactPointerEvent) => ({
+  id: event.pointerId,
+  x: event.clientX,
+  y: event.clientY,
+})
 
 export function useToastSwipe(onDismiss: () => void) {
   const x = useMotionValue(0)
@@ -38,8 +49,16 @@ export function useToastSwipe(onDismiss: () => void) {
     dismiss: () => controller.dismiss(),
     canOpen: controller.canOpen,
     dragProps: {
-      onPointerDownCapture: controller.pointerDown,
-      onPointerCancelCapture: controller.pointerCancel,
+      onPointerDownCapture: (event: ReactPointerEvent) => {
+        if (event.isPrimary && event.button === 0)
+          controller.pointerDown(pointer(event))
+      },
+      onPointerMoveCapture: (event: ReactPointerEvent) =>
+        controller.pointerMove(pointer(event)),
+      onPointerUpCapture: (event: ReactPointerEvent) =>
+        controller.pointerUp(pointer(event)),
+      onPointerCancelCapture: (event: ReactPointerEvent) =>
+        controller.pointerCancel(event.pointerId),
       onDragStart: controller.dragStart,
       onDragEnd: (
         _event: PointerEvent | MouseEvent | TouchEvent,
