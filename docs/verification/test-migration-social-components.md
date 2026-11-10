@@ -233,3 +233,52 @@ Parent owns the serial validation window and remaining integration:
 5. Resolve each explicit residual contract note in the inventory, then retire
    only originals whose replacements passed. This commit intentionally leaves
    those original scenarios enabled while validation is paused.
+
+## Integrated component failure diagnosis and first corrections
+
+Parent's serial integration run completed with 257 passed and 15 failed overall
+(4.8 minutes); that aggregate includes unrelated owners. Within this scope,
+all nine social cases passed, ten of eleven alliance cases passed, and two of
+three directory cases passed. Read-only evidence: `/tmp/orbit-components-integrated.log`
+and the parent worktree's `test-results/test-strategy/components-integrated/`.
+The parent owns the exact integrated tree record; its current HEAD when inspected
+was `93cc09fea72b4f1f32c2864bef4dea3a1147ebfe`, with integrated working-tree changes.
+Do not treat that HEAD alone as an exact description of all tested source.
+
+- `saving an unrelated role retains an edited notice draft across unmount` failed
+  at its first fill: `getByLabel('Notice title', { exact: true })` resolved to the
+  new-notice input and the hidden edit-notice input with value `Welcome aboard`.
+  This was a migration locator defect, before any persistence assertion. The
+  original app case uses accessible textbox-role locators, which exclude the
+  closed details editor. Its one correction restores that same semantic locator
+  for both draft fields, scoped to the form containing Publish notice, on entry and after remount. No ordinal, timeout, retry or
+  assertion change. Audited the other notice label callers: A-board explicitly
+  selects the new editor or scopes edits to its article; they did not have this
+  ambiguous locator. No previous repair of this newly introduced locator defect
+  exists in the source history or repair ledger inspected here.
+- `directory controls 390px / filters preserve input and focus when results become
+empty` failed the root overflow assertion. The failure PNG visibly shows the
+  test story's unbroken JSON diagnostic line extending beyond the viewport;
+  production directory controls fit above it. The one fixture correction makes
+  that output wrap anywhere. The root overflow assertion remains unchanged.
+  Audit found the same raw JSON-output pattern in RecruitStory; its diagnostic
+  output receives the same wrapping rule. No production CSS, hidden overflow,
+  screen width, timeout or assertion is changed. This also does not recreate the
+  historically removed mobile combined-filter journey.
+
+These corrections are prepared in a separate commit from application retirement.
+No browser/build/typecheck was started by this child. Parent must run each
+corrected failing case once and inspect the results; this is not a green result
+or permission to rerun repeatedly. If either defective test fails again after
+this correction, follow the existing one-repair disposition rule, retaining
+its useful deterministic coverage and its original app protection until the
+coverage decision is explicit.
+
+The same pre-validation correction commit audits all three owned component specs
+and replaces every direct `page.screenshot` call with the existing
+`diagnosticScreenshot` helper. Capture is inactive unless
+`ORBIT_TEST_SCREENSHOTS=1`; geometry, focus, selection, overflow and form
+assertions stay unconditional. No screenshot-specific preparatory interaction was
+found: font readiness and scrolling in the notice test serve its actual reading
+and viewport assertions. This is a capture-policy correction, not a second
+stabilization or a replacement for the recorded failure diagnostics.

@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { test, expect } from './fixture'
 import type {} from './alliance.story'
 
@@ -172,12 +173,17 @@ test('saving an unrelated role retains an edited notice draft across unmount', a
   mount,
 }) => {
   await mount('alliance-panels')
+  const draft = page
+    .locator('form')
+    .filter({
+      has: page.getByRole('button', { name: 'Publish notice', exact: true }),
+    })
   await page.getByText('Write a notice', { exact: true }).click()
-  await page
-    .getByLabel('Notice title', { exact: true })
+  await draft
+    .getByRole('textbox', { name: 'Notice title', exact: true })
     .fill('Unpublished orders')
-  await page
-    .getByLabel('Notice body', { exact: true })
+  await draft
+    .getByRole('textbox', { name: 'Notice body', exact: true })
     .fill('Keep this draft while assigning duties.')
   await page.getByRole('button', { name: 'Roles', exact: true }).click()
   await page.getByText('Create a custom role', { exact: true }).click()
@@ -188,12 +194,12 @@ test('saving an unrelated role retains an edited notice draft across unmount', a
   await expect(page.getByText('Observer', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Board', exact: true }).click()
   await page.getByText('Write a notice', { exact: true }).click()
-  await expect(page.getByLabel('Notice title', { exact: true })).toHaveValue(
-    'Unpublished orders',
-  )
-  await expect(page.getByLabel('Notice body', { exact: true })).toHaveValue(
-    'Keep this draft while assigning duties.',
-  )
+  await expect(
+    draft.getByRole('textbox', { name: 'Notice title', exact: true }),
+  ).toHaveValue('Unpublished orders')
+  await expect(
+    draft.getByRole('textbox', { name: 'Notice body', exact: true }),
+  ).toHaveValue('Keep this draft while assigning duties.')
 })
 
 for (const width of [390, 1440]) {
@@ -259,7 +265,7 @@ for (const width of [390, 1440]) {
         ),
       ).toBe(true)
       await expect(link).toHaveAttribute('href', '/alliances/universe/alliance')
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: info.outputPath(`notice-${width}x990.png`),
       })
     })
@@ -302,7 +308,7 @@ for (const width of [390, 1440]) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: info.outputPath(`recruitment-${width}x900.png`),
         fullPage: true,
       })

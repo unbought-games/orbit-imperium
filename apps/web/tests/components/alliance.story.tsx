@@ -387,7 +387,12 @@ export function RecruitStory() {
             return true
           }}
         />
-        <output aria-label="Recruitment result">{sent}</output>
+        <output
+          aria-label="Recruitment result"
+          style={{ overflowWrap: 'anywhere' }}
+        >
+          {sent}
+        </output>
       </main>
     </AllianceDraftContext.Provider>
   )

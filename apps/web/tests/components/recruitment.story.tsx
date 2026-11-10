@@ -88,7 +88,9 @@ function DirectoryStory({ authenticated }: { authenticated: boolean }) {
         {...state}
         retry={() => void controller.load(query)}
       />
-      <output aria-label="Directory query">{JSON.stringify(query)}</output>
+      <output aria-label="Directory query" style={{ overflowWrap: 'anywhere' }}>
+        {JSON.stringify(query)}
+      </output>
     </main>
   )
 }

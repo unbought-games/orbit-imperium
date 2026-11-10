@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { test, expect } from './fixture'
 for (const width of [1440, 390]) {
   test.describe(`directory controls ${width}px`, () => {
@@ -39,7 +40,7 @@ for (const width of [1440, 390]) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
-      await page.screenshot({
+      await diagnosticScreenshot(page, {
         path: info.outputPath(`directory-empty-${width}x900.png`),
       })
       await page

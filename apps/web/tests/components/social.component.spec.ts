@@ -1,3 +1,4 @@
+import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixture'
 import type {} from './social.story'
 async function open(page: Page) {
@@ -211,7 +212,9 @@ for (const width of [1440, 390]) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true)
-      await page.screenshot({ path: info.outputPath(`chat-${width}x900.png`) })
+      await diagnosticScreenshot(page, {
+        path: info.outputPath(`chat-${width}x900.png`),
+      })
     })
     test('empty history, failed refresh, long Markdown and blocking preserve usable controls', async ({
       page,
