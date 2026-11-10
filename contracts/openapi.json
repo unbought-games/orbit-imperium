@@ -19797,17 +19797,17 @@
                 "format": "uuid"
               },
               "title": {
-                "type": "string"
+                "type": "string",
+                "description": "Defaults to an empty string when omitted. A notice must contain a title or body."
               },
               "body": {
-                "type": "string"
+                "type": "string",
+                "description": "Defaults to an empty string when omitted. A notice must contain a title or body."
               }
             },
             "required": [
               "type",
-              "alliance",
-              "title",
-              "body"
+              "alliance"
             ]
           },
           {
@@ -19827,18 +19827,18 @@
                 "format": "uuid"
               },
               "title": {
-                "type": "string"
+                "type": "string",
+                "description": "Defaults to an empty string when omitted. A notice must contain a title or body."
               },
               "body": {
-                "type": "string"
+                "type": "string",
+                "description": "Defaults to an empty string when omitted. A notice must contain a title or body."
               }
             },
             "required": [
               "type",
               "alliance",
-              "post",
-              "title",
-              "body"
+              "post"
             ]
           },
           {

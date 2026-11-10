@@ -124,7 +124,13 @@ function setup() {
       const projected = structuredClone(detail)
       if (q.type === 'Detail' && q.post_before) {
         projected.posts = [
-          { ...projected.posts![0], id: 'older', title: 'Older chapter' },
+          {
+            ...projected.posts![0],
+            id: 'older',
+            title: 'Older chapter',
+            created_at: 1699999999000,
+            pinned: false,
+          },
         ]
         projected.next_post_before = null
       }
@@ -156,18 +162,20 @@ function setup() {
             id: 'new',
             author: self,
             author_name: 'Commander',
-            title: a.title,
-            body: a.body,
+            title: a.title ?? '',
+            body: a.body ?? '',
             pinned: false,
             created_at: 1700000000001,
             updated_at: 1700000000001,
           },
           ...detail.posts!,
         ]
+      if (a.type === 'DeletePost')
+        detail.posts = detail.posts!.filter((p) => p.id !== a.post)
       if (a.type === 'EditPost')
         Object.assign(detail.posts!.find((p) => p.id === a.post)!, {
-          title: a.title,
-          body: a.body,
+          title: a.title ?? '',
+          body: a.body ?? '',
         })
       if (a.type === 'PinPost')
         detail.posts!.find((p) => p.id === a.post)!.pinned = a.pinned
@@ -317,11 +325,7 @@ export function AllianceStory() {
                   run={run}
                   busy={busy}
                   load={(cursor) => {
-                    void scenario.controller.refresh({
-                      type: 'Detail',
-                      alliance: 'alliance',
-                      post_before: cursor,
-                    })
+                    void scenario.controller.loadOlder(cursor)
                   }}
                 />
               )}

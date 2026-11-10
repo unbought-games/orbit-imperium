@@ -8475,8 +8475,10 @@ export interface components {
             type: "CreatePost";
             /** Format: uuid */
             alliance: string;
-            title: string;
-            body: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            title?: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            body?: string;
         } | {
             /** @constant */
             type: "EditPost";
@@ -8484,8 +8486,10 @@ export interface components {
             alliance: string;
             /** Format: uuid */
             post: string;
-            title: string;
-            body: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            title?: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            body?: string;
         } | {
             /** @constant */
             type: "DeletePost";

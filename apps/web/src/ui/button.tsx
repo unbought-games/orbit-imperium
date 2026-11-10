@@ -7,6 +7,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'ghost'
 export type ButtonSize =
   | 'default'
   | 'compact'
+  | 'inline'
   | 'small'
   | 'large'
   | 'icon'

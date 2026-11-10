@@ -1,5 +1,5 @@
 import { createContext, useContext, useLayoutEffect, useRef } from 'react'
-import type { ChangeEvent } from 'react'
+import type { FormEvent } from 'react'
 
 // Only fields the player actually edits are retained. Server defaults remain
 // authoritative for every untouched field. This cache lives with the screen's
@@ -35,7 +35,7 @@ export function useAllianceDraft(key: string) {
       else control.value = values[0] ?? ''
     }
   }, [drafts, key])
-  const onChange = (event: ChangeEvent<HTMLFormElement>) => {
+  const onChange = (event: FormEvent<HTMLFormElement>) => {
     const target = event.target
     if (
       !drafts ||

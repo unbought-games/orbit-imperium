@@ -171,7 +171,7 @@ function AllianceWorkspace({
       <ContentColumn
         as="section"
         width={creating ? 'focused' : 'full'}
-        className={styles.screen}
+        className={creating || discovering ? styles.screen : styles.myAlliance}
         aria-label="Alliances"
       >
         <TaskHeader
@@ -198,7 +198,7 @@ function AllianceWorkspace({
           }
         >
           {!creating && !discovering && detail && (
-            <ButtonLink variant="secondary" {...discoveryTarget}>
+            <ButtonLink variant="secondary" size="inline" {...discoveryTarget}>
               Discover alliances
             </ButtonLink>
           )}
@@ -333,13 +333,7 @@ function AllianceWorkspace({
                           player={player}
                           run={run}
                           busy={busy}
-                          load={(cursor) =>
-                            void controller.refresh({
-                              type: 'Detail',
-                              alliance: detail.summary.id,
-                              post_before: cursor,
-                            })
-                          }
+                          load={(cursor) => void controller.loadOlder(cursor)}
                         />
                       )}
                       {active === 'Members' && (

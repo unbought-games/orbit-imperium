@@ -38,9 +38,9 @@ async function fixture(page: Page, initial: S['AllianceDetail'] | null) {
       case 'Reject': detail!.applications = []; break
       case 'SaveRole': { const role = { id: action.role ?? id(870), name: action.name, permissions: action.permissions, grantable_permissions: action.grantable_permissions, is_default: false }; detail!.roles = [...detail!.roles!.filter(r => r.id !== role.id), role]; break }
       case 'AssignRoles': detail!.members!.find(m => m.player === action.player)!.roles = action.roles; break
-      case 'CreatePost': detail!.posts = [{ id: id(880), author: binding.player, author_name: 'Commander', title: action.title, body: action.body, created_at: 1700000000001, updated_at: 1700000000001, pinned: false }, ...detail!.posts!].slice(0, 100); break
+      case 'CreatePost': detail!.posts = [{ id: id(880), author: binding.player, author_name: 'Commander', title: action.title ?? '', body: action.body ?? '', created_at: 1700000000001, updated_at: 1700000000001, pinned: false }, ...detail!.posts!].slice(0, 100); break
       case 'PinPost': detail!.posts!.find(p => p.id === action.post)!.pinned = action.pinned; break
-      case 'EditPost': Object.assign(detail!.posts!.find(p => p.id === action.post)!, { title: action.title, body: action.body }); break
+      case 'EditPost': Object.assign(detail!.posts!.find(p => p.id === action.post)!, { title: action.title ?? '', body: action.body ?? '' }); break
       case 'DeletePost': detail!.posts = detail!.posts!.filter(p => p.id !== action.post); break
       case 'Transfer': detail!.leader = action.player; detail!.permissions = baseRole.permissions; detail!.grantable_permissions = []; delete detail!.audit; delete detail!.applications; break
       case 'Leave': case 'Disband': detail = null; break
@@ -198,6 +198,7 @@ for (const viewport of [{ width: 390, height: 740 }]) {
       await page.clock.pauseAt(now)
       const detail = own()
       detail.posts![0].pinned = true
+      detail.next_post_before = id(851)
       // A tall preformatted notice mirrors the ASCII art in the iPhone report.
       detail.posts![0].body = '```\n' + Array.from({ length: 60 }, (_, index) => `| Standing order ${index + 1} |`).join('\n') + '\n```\n\nRead these standing orders together.\n\n[Read recruitment](/alliances/' + binding.universe + '/' + alliance + ')'
       await fixture(page, detail)
@@ -235,7 +236,7 @@ for (const viewport of [{ width: 390, height: 740 }]) {
       const pages = page.getByRole('navigation', { name: 'Notice pages' })
       await pages.scrollIntoViewIfNeeded()
       await page.clock.runFor(1000)
-      await expect(pages.getByRole('button', { name: 'Newest notices' })).toBeInViewport()
+      await expect(pages.getByRole('button', { name: 'Load older notices' })).toBeInViewport()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       await diagnosticScreenshot(page, { path: `test-results/alliance-reading-${viewport.width}.png` })
       await link.click()
@@ -368,7 +369,7 @@ test('expired noticeboard cursors recover to fresh notices', { tag: '@journey' }
     return route.fulfill({json:{...context,sampled_at:1700000000000,directory:[],directory_count:0,alliance:detail,applications:[]}})
   })
   await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await page.getByRole('button', { name:'Older notices', exact:true }).click()
+  await page.getByRole('button', { name:'Load older notices', exact:true }).click()
   await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
   await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
   expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)

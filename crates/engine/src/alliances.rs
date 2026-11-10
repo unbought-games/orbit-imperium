@@ -126,13 +126,17 @@ pub enum AllianceAction {
     },
     CreatePost {
         alliance: Uuid,
+        #[serde(default)]
         title: String,
+        #[serde(default)]
         body: String,
     },
     EditPost {
         alliance: Uuid,
         post: Uuid,
+        #[serde(default)]
         title: String,
+        #[serde(default)]
         body: String,
     },
     DeletePost {

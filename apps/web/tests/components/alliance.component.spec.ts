@@ -2,78 +2,117 @@ import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { test, expect } from './fixture'
 import type {} from './alliance.story'
 
-test('notice form previews safe Markdown, publishes, pins, edits and changes pages', async ({
+test('open composer publishes optional fields and menu edits, pins and deletes notices', async ({
   page,
   mount,
 }) => {
   await mount('alliance-panels')
+  const composer = page.getByRole('form', { name: 'Write a notice' })
+  await expect(composer).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Welcome aboard' }),
-  ).toBeVisible()
-  await page.getByText('Write a notice', { exact: true }).click()
-  await page
-    .getByLabel('Notice title', { exact: true })
-    .first()
-    .fill('Rally at dawn')
-  await page
+    page.getByRole('button', { name: 'Preview notice' }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Newest notices' }),
+  ).toHaveCount(0)
+  await composer.getByRole('button', { name: 'Publish notice' }).click()
+  await expect(composer.getByRole('alert')).toHaveText(
+    'Add a title or a message.',
+  )
+  expect(await page.evaluate(() => window.allianceScenario.commands)).toEqual(
+    [],
+  )
+  await composer
     .getByLabel('Notice body', { exact: true })
-    .first()
-    .fill('**Meet** at dawn.\n\n<img src=x onerror=alert(1)>')
-  await page
-    .getByRole('button', { name: 'Preview notice', exact: true })
-    .first()
-    .click()
-  await expect(page.locator('strong').filter({ hasText: 'Meet' })).toBeVisible()
-  await expect(page.locator('img')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Publish notice' }).click()
+    .fill('**Meet** at dawn.')
+  await composer.getByRole('button', { name: 'Publish notice' }).click()
+  const article = page.getByRole('article', {
+    name: 'Notice by Commander',
+    exact: true,
+  })
   await expect(
-    page.getByRole('heading', { name: 'Rally at dawn' }),
+    article.getByText('Meet at dawn.', { exact: true }),
   ).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Pin Rally at dawn', exact: true })
-    .click()
-  await expect(
-    page.getByRole('button', { name: 'Unpin Rally at dawn', exact: true }),
-  ).toBeVisible()
-  const article = page
-    .getByRole('article')
-    .filter({ has: page.getByRole('heading', { name: 'Rally at dawn' }) })
-  await article.getByText('Edit notice', { exact: true }).click()
+  await expect(article.locator('strong')).toHaveText('Meet')
+  await expect(composer.getByLabel('Notice body', { exact: true })).toHaveValue(
+    '',
+  )
   await article
+    .getByRole('button', { name: 'Notice actions', exact: true })
+    .click()
+  await page.getByRole('menuitem', { name: 'Pin notice', exact: true }).click()
+  await expect(article.getByText('Pinned', { exact: true })).toBeVisible()
+  await article
+    .getByRole('button', { name: 'Notice actions', exact: true })
+    .click()
+  await page.getByRole('menuitem', { name: 'Edit notice', exact: true }).click()
+  const editor = article.getByRole('form', { name: 'Edit notice' })
+  await expect(editor.getByLabel('Notice title', { exact: true })).toBeFocused()
+  await editor.getByLabel('Notice title', { exact: true }).fill('Rally at noon')
+  await editor.getByLabel('Notice body', { exact: true }).fill('')
+  await page.evaluate(() => window.allianceScenario.reject())
+  await editor.getByRole('button', { name: 'Save notice' }).click()
+  await expect(page.getByRole('alert')).toContainText('Conflict')
+  await expect(editor.getByLabel('Notice title', { exact: true })).toHaveValue(
+    'Rally at noon',
+  )
+  await editor.getByRole('button', { name: 'Save notice' }).click()
+  const revised = page.getByRole('article', {
+    name: 'Rally at noon',
+    exact: true,
+  })
+  await expect(
+    revised.getByRole('heading', { name: 'Rally at noon' }),
+  ).toBeVisible()
+  await expect(revised.getByRole('form')).toHaveCount(0)
+  await revised
+    .getByRole('button', { name: 'Notice actions: Rally at noon' })
+    .click()
+  await page.getByRole('menuitem', { name: 'Edit notice', exact: true }).click()
+  await revised
     .getByLabel('Notice title', { exact: true })
-    .fill('Rally at noon')
-  await article
-    .getByRole('button', { name: 'Preview notice', exact: true })
-    .click()
-  await article
-    .getByRole('textbox', { name: 'Notice body', exact: true })
-    .fill('**Meet** at noon instead.')
-  await article
-    .getByRole('button', { name: 'Preview notice', exact: true })
-    .click()
+    .fill('Discard this change')
+  await revised.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(
-    article.getByText('Meet at noon instead.', { exact: true }),
-  ).toHaveCount(1)
-  await article.getByRole('button', { name: 'Save notice' }).click()
-  await expect(
-    page.getByRole('heading', { name: 'Rally at noon' }),
+    revised.getByRole('heading', { name: 'Rally at noon' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Older notices' }).click()
+  await page.getByRole('button', { name: 'Load older notices' }).click()
   await expect(
     page.getByRole('heading', { name: 'Older chapter' }),
   ).toBeVisible()
+  await expect(revised).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Rally at noon' }),
+    page.getByRole('button', { name: 'Load older notices' }),
   ).toHaveCount(0)
-  await page.getByRole('button', { name: 'Newest notices' }).click()
+  await revised
+    .getByRole('button', { name: 'Notice actions: Rally at noon' })
+    .click()
+  await page
+    .getByRole('menuitem', { name: 'Delete notice', exact: true })
+    .click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toContainText(
+    '“Rally at noon” will be permanently removed.',
+  )
+  await dialog.getByRole('button', { name: 'Keep notice', exact: true }).click()
   await expect(
-    page.getByRole('heading', { name: 'Rally at noon' }),
-  ).toBeVisible()
+    revised.getByRole('button', { name: 'Notice actions: Rally at noon' }),
+  ).toBeFocused()
+  await revised
+    .getByRole('button', { name: 'Notice actions: Rally at noon' })
+    .click()
+  await page
+    .getByRole('menuitem', { name: 'Delete notice', exact: true })
+    .click()
+  await dialog
+    .getByRole('button', { name: 'Delete notice', exact: true })
+    .click()
+  await expect(revised).toHaveCount(0)
   expect(
     await page.evaluate(() =>
       window.allianceScenario.commands.map((c) => c.action.type),
     ),
-  ).toEqual(['CreatePost', 'PinPost', 'EditPost'])
+  ).toEqual(['CreatePost', 'PinPost', 'EditPost', 'EditPost', 'DeletePost'])
 })
 
 test('role form delegates permissions, member editor assigns multiple roles and leadership confirms transfer', async ({
@@ -176,7 +215,6 @@ test('saving an unrelated role retains an edited notice draft across unmount', a
   const draft = page.locator('form').filter({
     has: page.getByRole('button', { name: 'Publish notice', exact: true }),
   })
-  await page.getByText('Write a notice', { exact: true }).click()
   await draft
     .getByRole('textbox', { name: 'Notice title', exact: true })
     .fill('Unpublished orders')
@@ -191,7 +229,6 @@ test('saving an unrelated role retains an edited notice draft across unmount', a
   await page.getByRole('button', { name: 'Create role', exact: true }).click()
   await expect(page.getByText('Observer', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Board', exact: true }).click()
-  await page.getByText('Write a notice', { exact: true }).click()
   await expect(
     draft.getByRole('textbox', { name: 'Notice title', exact: true }),
   ).toHaveValue('Unpublished orders')
@@ -255,7 +292,7 @@ for (const width of [390, 1440]) {
       const pages = page.getByRole('navigation', { name: 'Notice pages' })
       await pages.scrollIntoViewIfNeeded()
       await expect(
-        pages.getByRole('button', { name: 'Newest notices' }),
+        pages.getByRole('button', { name: 'Load older notices' }),
       ).toBeInViewport()
       expect(
         await page.evaluate(
@@ -401,7 +438,6 @@ test('noticeboard controls fit the intermediate 768px viewport', async ({
   await expect(
     page.getByRole('heading', { name: 'Welcome aboard' }),
   ).toBeVisible()
-  await page.getByText('Write a notice', { exact: true }).click()
   await expect(
     page.getByRole('button', { name: 'Publish notice' }),
   ).toBeVisible()

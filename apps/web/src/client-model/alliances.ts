@@ -107,16 +107,38 @@ export class AlliancesController {
       this.store.getState().view?.alliance,
     )
   }
+  loadOlder(cursor: string) {
+    const { view, loading, busy, pending } = this.store.getState()
+    const previous = view?.alliance
+    if (
+      loading ||
+      busy ||
+      pending ||
+      !previous ||
+      previous.next_post_before !== cursor
+    )
+      return Promise.resolve(false)
+    return this.load(
+      { type: 'Detail', alliance: previous.summary.id, post_before: cursor },
+      previous,
+      '',
+      true,
+    )
+  }
   private async load(
     query: S['AllianceQuery'],
     previous?: AllianceDetail | null,
     successNotice = '',
+    append = false,
+    preserveBoard = false,
   ): Promise<boolean> {
     this.query = query
     const generation = ++this.generation
+    const previousView = this.store.getState().view
+    const retain = append || preserveBoard
     this.store.setState({
       loading: true,
-      view: null,
+      view: retain ? previousView : null,
       directory: null,
       error: '',
       notice: '',
@@ -144,13 +166,34 @@ export class AlliancesController {
       if (generation !== this.generation) return false
       if (!response)
         throw new Error('Alliance access unavailable. Refresh your session.')
-      const view =
+      let view =
         query.type === 'Directory'
           ? await this.ports.read({ type: 'Mine' })
           : response
       if (generation !== this.generation) return false
       if (!view)
         throw new Error('Alliance access unavailable. Refresh your session.')
+      if (
+        append &&
+        !recoveredCursor &&
+        previous &&
+        view.alliance?.summary.id === previous.summary.id &&
+        view.alliance.revision === previous.revision
+      ) {
+        const ids = new Set(previous.posts?.map((post) => post.id))
+        view = {
+          ...view,
+          alliance: {
+            ...view.alliance,
+            posts: [
+              ...(previous.posts ?? []),
+              ...(view.alliance.posts ?? []).filter(
+                (post) => !ids.has(post.id),
+              ),
+            ],
+          },
+        }
+      }
       if (
         previous &&
         (!view.alliance ||
@@ -185,7 +228,7 @@ export class AlliancesController {
       if (generation !== this.generation) return false
       if (accessLost(error)) this.ports.onAccessLost?.()
       this.store.setState({
-        view: null,
+        view: append && !accessLost(error) ? previousView : null,
         directory: null,
         loading: false,
         error: errorMessage(error),
@@ -222,16 +265,24 @@ export class AlliancesController {
         throw new Error('Command status unknown. Retry to confirm the result.')
       if (['Leave', 'Disband', 'Transfer'].includes(pending.action.type))
         this.ports.onAccessLost?.()
+      const preserveBoard = [
+        'CreatePost',
+        'EditPost',
+        'PinPost',
+        'DeletePost',
+      ].includes(pending.action.type)
       this.store.setState({
         busy: false,
         pending: null,
-        view: null,
+        view: preserveBoard ? previousView : null,
         directory: null,
       })
       await this.load(
         { type: 'Mine' },
         previousView?.alliance,
         'Alliance updated.',
+        false,
+        preserveBoard,
       )
       return true
     } catch (error) {

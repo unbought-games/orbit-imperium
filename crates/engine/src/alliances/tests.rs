@@ -1159,3 +1159,88 @@ fn alliance_links_survive_creator_departure_and_never_bypass_joining_rules() {
     .unwrap();
     assert_eq!(s.invitation, None);
 }
+
+#[test]
+fn notices_accept_title_or_body_and_reject_empty_create_and_edit() {
+    let mut s = state();
+    for (title, body) in [
+        ("Title only", ""),
+        ("", "**Body only**"),
+        ("Both", "Message"),
+    ] {
+        run(
+            &mut s,
+            1,
+            AllianceAction::CreatePost {
+                alliance: id(10),
+                title: title.into(),
+                body: body.into(),
+            },
+        )
+        .unwrap();
+        let post = s.posts.last().unwrap();
+        assert_eq!(post.title, title);
+        assert_eq!(post.body, body);
+    }
+    let post = s.posts[0].id;
+    for (title, body) in [("", "Now body only"), ("Now title only", "")] {
+        run(
+            &mut s,
+            1,
+            AllianceAction::EditPost {
+                alliance: id(10),
+                post,
+                title: title.into(),
+                body: body.into(),
+            },
+        )
+        .unwrap();
+        assert_eq!(s.posts[0].title, title);
+        assert_eq!(s.posts[0].body, body);
+    }
+    for (title, body) in [("", ""), ("  ", "\n\t ")] {
+        denied(
+            &mut s,
+            1,
+            AllianceAction::CreatePost {
+                alliance: id(10),
+                title: title.into(),
+                body: body.into(),
+            },
+        );
+        denied(
+            &mut s,
+            1,
+            AllianceAction::EditPost {
+                alliance: id(10),
+                post,
+                title: title.into(),
+                body: body.into(),
+            },
+        );
+    }
+}
+
+#[test]
+fn omitted_notice_fields_default_to_empty_strings() {
+    let mut s = state();
+    let create: AllianceAction = serde_json::from_value(serde_json::json!({
+        "type": "CreatePost", "alliance": id(10), "body": "Message without a title"
+    }))
+    .unwrap();
+    run(&mut s, 1, create).unwrap();
+    assert_eq!(s.posts[0].title, "");
+    let post = s.posts[0].id;
+    let edit: AllianceAction = serde_json::from_value(serde_json::json!({
+        "type": "EditPost", "alliance": id(10), "post": post, "title": "Title without a message"
+    }))
+    .unwrap();
+    run(&mut s, 1, edit).unwrap();
+    assert_eq!(s.posts[0].body, "");
+    for action in [
+        serde_json::json!({"type": "CreatePost", "alliance": id(10)}),
+        serde_json::json!({"type": "EditPost", "alliance": id(10), "post": post}),
+    ] {
+        denied(&mut s, 1, serde_json::from_value(action).unwrap());
+    }
+}
