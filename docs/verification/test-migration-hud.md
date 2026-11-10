@@ -303,3 +303,39 @@ parsing of the two new component files are checked locally. Browser, component
 typechecking, production build and current screenshot validation remain pending
 the parent's serial validation window. No browser/build/typecheck was launched
 and no failure/retry occurred in this follow-up.
+
+## First authored touch-component repair: cleanup after touchEnd
+
+The parent's first integrated component run recorded five passing HUD cases and
+one failing touch case (0.652s), within the reported 257-pass/15-fail run. Evidence
+is preserved in the parent's
+`test-results/test-strategy/components-integrated/results.json`, the matching
+`hud-toasts.component-touch-28109-d-card-accepts-a-native-tap/` trace/error context,
+and `/tmp/orbit-components-integrated.log`. The report metadata contains the
+worker count (one), not the integrated commit SHA; the tested authored case
+comes from `80cc2ab0`, and the parent owns exact integration revision recording.
+
+The failure was at the unconditional `touchCancel` in `finally`, with CDP error
+`Must send a TouchStart first to start a new touch.` The retained trace confirms
+that all preceding gesture assertions finished without error, including two
+remaining cards, one `command:build` dismissal, no accidental opening, and the
+subsequent native tap opening `report:report`. This is a test cleanup defect,
+not a product gesture failure and not a passing test overall.
+
+Git history shows this case was introduced in `80cc2ab0`; the feature repair
+record has no previous repair for this authored case. This is its one explained
+repair. Track the CDP gesture after successful touchStart and clear it after
+successful touchEnd. Cleanup sends touchCancel only while that gesture remains
+active and always attempts session detach. If the body already failed, retain
+that original exception and annotate additional cleanup errors; otherwise a
+cleanup failure still fails the case. Every gesture assertion, coordinate,
+movement-progress boundary and viewport remains unchanged. No test is renamed,
+retried, reclassified as nonblocking or given a longer timeout.
+
+Auditing `touchCancel` callers in the integrated component directory found only
+this cleanup; there is no second component caller requiring the same repair.
+Local validation is formatting, syntax-only parsing and diff review on
+`80cc2ab0` plus the cleanup change. No browser/build/typecheck was launched.
+The parent owns serial execution of this repaired case. A further test-defect
+failure exhausts its repair allowance and must not receive another stabilization
+patch; any independently evidenced product defect must still be fixed.

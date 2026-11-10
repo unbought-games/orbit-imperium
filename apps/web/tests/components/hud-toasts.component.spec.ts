@@ -181,17 +181,20 @@ test.describe('touch toast input', () => {
 
   test('touch swipe dismisses once without opening, and the promoted card accepts a native tap', async ({
     page,
-  }) => {
+  }, testInfo) => {
     const card = cards(page).first()
     const box = (await top(page).boundingBox())!
     const x = box.x + box.width / 2,
       y = box.y + box.height / 2
     const cdp = await page.context().newCDPSession(page)
+    let touchActive = false
+    let failed = false
     try {
       await cdp.send('Input.dispatchTouchEvent', {
         type: 'touchStart',
         touchPoints: [{ x, y }],
       })
+      touchActive = true
       for (const distance of [24, 48, 72, 96]) {
         await cdp.send('Input.dispatchTouchEvent', {
           type: 'touchMove',
@@ -203,6 +206,7 @@ test.describe('touch toast input', () => {
         type: 'touchEnd',
         touchPoints: [],
       })
+      touchActive = false
       await expect(cards(page)).toHaveCount(2)
       await expect(dismissed(page)).toHaveText('command:build')
       await expect(opened(page)).toHaveText('none')
@@ -210,12 +214,36 @@ test.describe('touch toast input', () => {
       await top(page).tap()
       await expect(opened(page)).toHaveText('report:report')
       await expect(dismissed(page)).toHaveText('command:build')
+    } catch (error) {
+      failed = true
+      throw error
     } finally {
-      await cdp.send('Input.dispatchTouchEvent', {
-        type: 'touchCancel',
-        touchPoints: [],
-      })
-      await cdp.detach()
+      const cleanupErrors: unknown[] = []
+      try {
+        if (touchActive)
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchCancel',
+            touchPoints: [],
+          })
+      } catch (error) {
+        cleanupErrors.push(error)
+      }
+      try {
+        await cdp.detach()
+      } catch (error) {
+        cleanupErrors.push(error)
+      }
+      if (cleanupErrors.length) {
+        if (!failed)
+          throw new AggregateError(cleanupErrors, 'Touch cleanup failed')
+        // Keep the original gesture/assertion failure; retain cleanup failures
+        // as additional evidence instead of overwriting it from finally.
+        for (const error of cleanupErrors)
+          testInfo.annotations.push({
+            type: 'cleanup-error',
+            description: String(error),
+          })
+      }
     }
   })
 })
