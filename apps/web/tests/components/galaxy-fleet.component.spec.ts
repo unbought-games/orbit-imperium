@@ -259,6 +259,12 @@ test.describe('status interaction', () => {
     ]) {
       const trigger = page.getByRole('button', { name: label, exact: true })
       await trigger.focus()
+      // The previous phase used touch. Base UI correctly ignores non-focus-visible
+      // programmatic focus after touch; traverse with the actual keyboard before
+      // asserting the keyboard-triggered tooltip.
+      await page.keyboard.press('Tab')
+      await page.keyboard.press('Shift+Tab')
+      await expect(trigger).toBeFocused()
       await expect(page.getByRole('tooltip')).toContainText(label)
       await page.keyboard.press('Escape')
       await expect(page.getByRole('tooltip')).toBeHidden()

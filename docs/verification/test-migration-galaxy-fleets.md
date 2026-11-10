@@ -128,3 +128,19 @@ Full suite ancestry and project are retained because file plus leaf title is not
 | `default` / `faf25f149ed786d6994b-3827c0f3de6ba59ddb61` | moon-fleets.spec.ts > moon fleet operations 390 > delivery reports retain lunar destination links at shared coordinates | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
 | `default` / `faf25f149ed786d6994b-530f3eefc81b4d30c242` | moon-fleets.spec.ts > moon fleet operations 390 > moon quick-espionage failures remain visible on the Galaxy row | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
 | `default` / `faf25f149ed786d6994b-501fcd6dc064d3d6b07d` | moon-fleets.spec.ts > moon fleet operations 390 > moon dispatch shows observed attack and espionage protection before review | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+
+## Component first-run evidence and one authored-test repair
+
+Parent integrated `3ca92a78` as `a12173ea` and ran the ten component cases: nine
+passed; the combined status case failed after its touch phase when the next
+iteration used `locator.focus()` and expected a keyboard tooltip. The focused
+Inactive trigger was present, but no tooltip opened. Base UI's installed
+`useFocus` deliberately opens only for focus-visible input; the preceding tap
+left pointer modality active. Programmatic focus was not a keyboard gesture.
+
+The one repair traverses Tab then Shift+Tab to the target and asserts focus before
+the same tooltip assertion. It preserves touch, keyboard, outside dismissal and
+all status assertions, introduces no timeout or product change, and is not an
+unchanged retry. Parent retains the failure log `/tmp/orbit-galaxy-components-first.log`
+and artifacts under `test-results/test-strategy/galaxy-components-first`. Validation
+of this repair remains with parent serial execution.
