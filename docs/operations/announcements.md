@@ -95,7 +95,45 @@ available for explicitly configured local development endpoints. Production
 endpoints should use HTTPS. The backend must support conditional object writes
 (`If-Match` and `If-None-Match`); unsupported writes fail rather than fall back to
 unsafe overwrites. Endpoint compatibility must include these operations, not just
-ordinary GET/PUT. No bucket-list or delete permission is required.
+ordinary GET/PUT. Delete permission is not required. Once the active pointer and
+its feed exist, the runtime needs only object-read permission and a publisher
+needs object-read/write permission.
+
+### First publication on AWS S3
+
+AWS returns **403 Access Denied**, rather than 404 Not Found, for a missing object
+when the caller lacks `s3:ListBucket`. Consequently, an uninitialized store read
+with object-only permissions produces a storage error and HTTP 503, not an empty
+feed. This also prevents the publishing CLI from loading the initial feed.
+The adapter deliberately does not treat permission errors as an empty store.
+See [AWS GetObject permissions](https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html).
+
+Before enabling the first runtime-feed consumer, use an authorized operator
+identity that can distinguish absence to inspect `announcements/current.json`.
+Preserve an existing valid feed. If the pointer is absent, initialize a valid
+feed before deployment, even when no announcement content is requested. Do not
+publish sample content merely to make the endpoint healthy.
+
+An operator can bootstrap an empty store with conditional object writes:
+
+1. Serialize the empty feed as `{"schema":1,"announcements":[]}` without a
+   trailing newline. Compute the SHA-256 of those exact bytes.
+2. Create `announcements/feeds/<sha256>.json` with those bytes and
+   `If-None-Match: *`. Read it back and verify the hash. If the immutable key
+   already exists, verify its exact bytes; never overwrite it.
+3. Create `announcements/current.json` containing
+   `{"schema":1,"revision":"<sha256>"}` with `If-None-Match: *`. If another
+   publisher created the pointer, stop and inspect it; never replace it as part
+   of initialization. Retain any unreferenced immutable object.
+4. Read back the pointer and feed using the runtime identity. After enabling
+   the consumer and allowing its 60-second cache to refresh, verify the exact
+   server image's `orbit announcements list` and public `/api/announcements`
+   return the same revision and zero announcements.
+
+This establishes the normal existing-object path without granting the runtime
+bucket-list permission. Object access denial, invalid JSON, hash mismatch and
+missing referenced feed objects remain errors to investigate. HTTP 503 from this
+optional endpoint still counts as a service failure even if game readiness passes.
 
 The API needs `GetObject` on `announcements/*`. The publishing identity needs
 `GetObject` and `PutObject` there. Objects are stored at
