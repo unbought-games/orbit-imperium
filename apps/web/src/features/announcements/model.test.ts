@@ -1,7 +1,4 @@
-import { lazy } from 'react'
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { announcements } from './catalog'
 import {
   announcementEnd,
   createAnnouncementHistory,
@@ -9,13 +6,12 @@ import {
   type Announcement,
 } from './model'
 
-const Content = lazy(async () => ({ default: () => null }))
 const entry = (id: string, date: string, until?: string): Announcement => ({
   id,
   title: id,
   date,
   until,
-  Content,
+  body: id,
 })
 const day = 86_400_000
 const at = (iso: string) => Date.parse(iso)
@@ -97,44 +93,5 @@ describe('announcement history', () => {
     expect(history.seen('account', 'news')).toBe(false)
     history.remember('account', 'news')
     expect(history.seen('account', 'news')).toBe(true)
-  })
-})
-
-describe('announcement catalog', () => {
-  const newsRoot = new URL('../../../../../docs/news/', import.meta.url)
-  const newsIds = new Set(
-    ['changes', 'releases'].flatMap((section) =>
-      readdirSync(new URL(`${section}/`, newsRoot))
-        .filter((file) => file.endsWith('.md'))
-        .map(
-          (file) =>
-            readFileSync(new URL(`${section}/${file}`, newsRoot), 'utf8').match(
-              /^id:\s*(\S+)/m,
-            )?.[1],
-        ),
-    ),
-  )
-
-  it.each(announcements.map((a) => [a.id, a] as const))(
-    '%s has a stable ID, a valid window and a real update link',
-    (_, announcement) => {
-      expect(announcement.id).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-      expect(announcement.title.trim()).not.toBe('')
-      expect(Number.isFinite(Date.parse(announcement.date))).toBe(true)
-      expect(announcementEnd(announcement)).toBeGreaterThan(
-        Date.parse(announcement.date),
-      )
-      if (announcement.href) {
-        const id = announcement.href.match(
-          /^\/updates\/([a-z0-9-]+)\.html$/,
-        )?.[1]
-        expect(newsIds).toContain(id)
-      }
-    },
-  )
-
-  it('has unique IDs', () => {
-    const ids = announcements.map((a) => a.id)
-    expect(new Set(ids).size).toBe(ids.length)
   })
 })

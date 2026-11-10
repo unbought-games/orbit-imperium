@@ -21,6 +21,12 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
         .clone()
         .map(unbought_auth::RelyingParty::new)
         .transpose()?;
+    let announcements = match &serve.asset_store {
+        Some(config) => Some(orbit_transport_http::announcement_router(Arc::new(
+            orbit_storage_assets::announcements::AnnouncementStorage::connect(config).await?,
+        ))),
+        None => None,
+    };
     let customization = if let Some(config) = &serve.asset_store {
         let assets = config.connect().await?;
         let customization = Customization::load(
@@ -132,7 +138,8 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                                 oidc,
                                 serve.profiles,
                                 customization.expect("API asset store prepared"),
-                            );
+                            )
+                            .merge(announcements.expect("API announcement storage prepared"));
                             #[cfg(feature = "test-support")]
                             let router = if let Some(lab) = lab_router {
                                 router.merge(lab)

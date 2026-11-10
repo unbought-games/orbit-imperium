@@ -420,3 +420,9 @@ test-db-tutorial:
 .PHONY: test-auth-telemetry
 test-auth-telemetry:
 	cargo nextest run -p orbit-application -p orbit-server -p orbit-transport-http --lib --bins -E 'test(auth_observation::tests::) | test(metrics::tests::) | test(bootstrap::tests::) | test(active_session_rotation_has_a_distinct_private_retry_response)'
+
+.PHONY: test-announcements
+test-announcements:
+	cargo nextest run -p orbit-application -p orbit-storage-assets -p orbit-transport-http -p orbit-server -E 'test(announcements) | binary(announcements_cli)'
+	npm test -- apps/web/src/features/announcements apps/web/src/features/alliances/markdown.test.ts
+	npm run test:ui -- release-announcement.spec.ts
