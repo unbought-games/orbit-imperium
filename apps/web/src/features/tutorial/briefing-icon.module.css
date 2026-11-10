@@ -1,0 +1,217 @@
+/* The link's touch target and magic float over the heading, adding no row height. */
+.icon {
+  position: absolute;
+  inset-inline-end: -10px;
+  top: calc(50% + 4px);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  text-decoration: none;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon > svg {
+  position: relative;
+  z-index: 1;
+}
+.icon::before,
+.icon::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  opacity: 0;
+}
+.icon::before {
+  inset: -8px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ice) 32%, transparent),
+    color-mix(in srgb, var(--champagne-light) 16%, transparent) 38%,
+    transparent 72%
+  );
+}
+.icon::after {
+  inset: 3px;
+  background: conic-gradient(
+    from 30deg,
+    transparent 35%,
+    var(--ice-light) 49%,
+    transparent 51%,
+    transparent 85%,
+    var(--champagne-light) 99%,
+    transparent
+  );
+  mask: radial-gradient(transparent 62%, black 65%, black 68%, transparent 71%);
+}
+.icon:is([data-attention='true'], :hover, :focus-visible) {
+  color: var(--champagne-light);
+}
+.icon:is([data-attention='true'], :hover, :focus-visible)::before {
+  opacity: 1;
+}
+.icon:is([data-attention='true'], :hover, :focus-visible) > svg {
+  filter: drop-shadow(0 0 5px var(--ice));
+}
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.icon:is([data-attention='true'], :hover, :focus-visible) .stars {
+  opacity: 1;
+}
+.stars > span {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  opacity: 0;
+  transform: scale(0.6);
+}
+.stars > span:nth-child(-n + 3),
+.icon:is(:hover, :focus-visible) .stars > span {
+  opacity: 1;
+  transform: scale(1);
+}
+.stars > span::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--star-color, var(--champagne-light));
+  clip-path: polygon(
+    50% 0,
+    62% 38%,
+    100% 50%,
+    62% 62%,
+    50% 100%,
+    38% 62%,
+    0 50%,
+    38% 38%
+  );
+  opacity: 0;
+}
+.stars > span:nth-child(1) {
+  top: 6px;
+  right: 4px;
+}
+.stars > span:nth-child(2) {
+  bottom: 5px;
+  left: 2px;
+  --delay: -1.2s;
+}
+.stars > span:nth-child(3) {
+  top: 5px;
+  left: 7px;
+  width: 3px;
+  height: 3px;
+  --star-color: var(--ice-light);
+  --delay: -2.4s;
+}
+.stars > span:nth-child(4) {
+  top: 19px;
+  right: -3px;
+  --delay: -0.4s;
+}
+.stars > span:nth-child(5) {
+  bottom: -3px;
+  left: 23px;
+  --delay: -0.8s;
+}
+.stars > span:nth-child(6) {
+  top: -4px;
+  left: 20px;
+  width: 4px;
+  height: 4px;
+  --delay: -1.6s;
+}
+.stars > span:nth-child(7) {
+  top: 20px;
+  left: -4px;
+  width: 3px;
+  height: 3px;
+  --star-color: var(--ice-light);
+  --delay: -2s;
+}
+.icon:is(:hover, :focus-visible)::before {
+  filter: brightness(1.65);
+}
+.icon:is(:hover, :focus-visible)::after {
+  opacity: 0.75;
+}
+.icon:is(:hover, :focus-visible) > svg {
+  transform: translateY(-1px) scale(1.1);
+  filter: drop-shadow(0 0 4px var(--champagne-light))
+    drop-shadow(0 0 9px var(--ice));
+}
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.5) rotate(-15deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3) rotate(15deg);
+  }
+}
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Fade envelopes independently of their continuously animated decorations. */
+@media (prefers-reduced-motion: no-preference) {
+  .icon {
+    transition: color 360ms ease !important;
+  }
+  .icon > svg {
+    transition:
+      filter 420ms ease,
+      transform 420ms ease !important;
+  }
+  .icon::before {
+    transition:
+      opacity 480ms ease,
+      filter 480ms ease !important;
+    animation: breathe 4s ease-in-out infinite !important;
+  }
+  .icon::after {
+    transition: opacity 480ms ease !important;
+    animation: orbit 5s linear infinite !important;
+  }
+  .stars {
+    transition: opacity 480ms ease !important;
+  }
+  .stars > span {
+    transition:
+      opacity 420ms ease,
+      transform 420ms ease !important;
+  }
+  .stars > span::before {
+    animation: twinkle 3.6s ease-in-out infinite !important;
+    animation-delay: var(--delay, 0s) !important;
+  }
+  .stars > span:nth-child(n + 4)::before {
+    animation-duration: 2.8s !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stars > span::before {
+    opacity: 0.85;
+  }
+}

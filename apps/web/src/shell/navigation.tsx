@@ -88,7 +88,11 @@ export function Navigation({
     primary = false,
     inMore = false,
   ) => {
-    if (p === 'briefing' && !briefingEntryAvailable(tutorial, view.protocol))
+    if (
+      p === 'briefing' &&
+      (!briefingEntryAvailable(tutorial, view.protocol) ||
+        tutorial?.beginner === false)
+    )
       return null
     if (!inMore && p !== 'menu' && visiblePages && !visiblePages.has(p))
       return null

@@ -1148,8 +1148,10 @@
   padding-top: 12px;
 }
 .heading {
+  position: relative;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  padding-top: 8px;
+  margin-bottom: 8px;
 }
 .heading h2 {
   font-size: 1.5rem;

@@ -51,12 +51,13 @@ export function MenuScreen() {
   const visible = tutorialPages(tutorial, view.protocol === 4 ? view : null)
   const more = tutorialMorePages(visible)
   const groups: { title: string; pages: Page[] }[] = [
-    ...(briefingEntryAvailable(tutorial, view.protocol)
-      ? [{ title: 'Guidance', pages: ['briefing' as const] }]
-      : []),
     ...navigationGroups.map((group) => ({
       ...group,
-      pages: group.pages.filter((p) => !visible || visible.has(p)),
+      pages: group.pages.filter(
+        (p) =>
+          (!visible || visible.has(p)) &&
+          (p !== 'briefing' || briefingEntryAvailable(tutorial, view.protocol)),
+      ),
     })),
     ...(more.length ? [{ title: 'More', pages: more }] : []),
   ]

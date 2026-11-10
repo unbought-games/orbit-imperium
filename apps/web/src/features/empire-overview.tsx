@@ -47,6 +47,7 @@ import { bodyName, coordinates, label } from '../ui/format'
 import { currentResourceRates } from '../ui/resource-rates'
 import { BodyIllustration } from './body-illustration'
 import { WorkSummaries } from './work-summaries'
+import { BriefingIcon } from './tutorial/briefing-icon'
 import {
   bodyTraffic,
   empireFlights,
@@ -727,6 +728,7 @@ export function EmpireOverview({
     <section className={styles.empire} aria-label="Empire overview">
       <header className={styles.heading}>
         <h2>Empire</h2>
+        <BriefingIcon />
       </header>
       <div className={styles.empireLedger} aria-label="Empire resource totals">
         <div className={styles.ledgerLabel}>
