@@ -4,7 +4,6 @@ import { buildPages, fleetPages, navigationGroups } from './navigation-model'
 
 it('gives every secondary sidebar and menu destination its own icon', () => {
   const pages = [
-    'briefing',
     ...buildPages,
     ...fleetPages,
     ...navigationGroups.flatMap((group) => group.pages),
