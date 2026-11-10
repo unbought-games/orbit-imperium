@@ -20,14 +20,8 @@ import {
 } from '../../src/shell/session-context'
 import { PlayerProfilesContext } from '../../src/shell/player-profiles-context'
 import { PlayerProfilesController } from '../../src/client-model/player-profiles'
-import {
-  createDispatchFixture,
-  type DispatchFixture,
-  originId,
-  player,
-  now,
-  id,
-} from './dispatch-fixture'
+import { createDispatchFixture, type DispatchFixture } from './dispatch-fixture'
+import { originId, player, now, id } from './dispatch-data'
 
 type Variant = 'standard' | 'historical' | 'unknown'
 export type DispatchSceneControl = Pick<

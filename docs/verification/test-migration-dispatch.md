@@ -193,7 +193,10 @@ Owned test files:
 - `components/dispatch.tsx`: a feature-only scene with a minimal memory router for
   real link/menu semantics, prepared profiles, a real coordinator, and the actual
   Dispatch hook/view. There is no application router or authentication runtime.
-- `components/dispatch-fixture.ts`: typed external world/view/command responses,
+- `components/dispatch-data.ts`: pure snapshot builders, options and constants shared
+  by Node collection and browser scenes; runtime dependencies are pure test-support
+  data modules only.
+- `components/dispatch-fixture.ts`: browser-only coordinator and typed external world/view/command responses,
   complete production records, request capture and explicitly released read gates.
   Source updates use `Coordinator.refresh`; no game state is copied into a fake UI
   controller. Unexpected operations are recorded and asserted empty.
@@ -255,6 +258,36 @@ selection rather than shipping uncovered removals.
 - The temporary AJV inspection used existing pinned esbuild solely to load the
   fixture diagnostic (12 ms, 616.5 KB), not a production build or browser runner.
   Temporary files were removed. No application/server/container was started.
+
+## Parent collection failure and scoped boundary repair
+
+The parent's first Dispatch component attempt on the integrated phase-two code
+(`669c3c74b3db37636d79ddb511f0eb715b8a52b7`) failed **during collection, with zero
+tests executed**. Node could not resolve `ajv/dist/2020` through
+`client-model/schema.ts`. This is a test-module boundary defect, not a browser
+assertion failure, product regression, or proven infrastructure outage. There are
+still no component/browser assertion results for the phase-two migration.
+
+Cause: both the Node spec and its driver imported runtime constants from
+`dispatch-fixture.ts`, which also imports the browser coordinator and schema
+implementation. Merely collecting cases therefore loaded browser dependencies in
+Node. The repair moves constants, options and snapshot builders into the pure
+`dispatch-data.ts`; both Node files now import that module. Browser scene constants
+also come from it, while the browser-only fixture retains Coordinator and ports.
+The only remaining runtime importer of `dispatch-fixture.ts` is `dispatch.tsx`.
+Type-only scene imports in the driver erase during transpilation. The shared data
+module's runtime dependencies are the pure bootstrap/production test-support
+builders. Production AJV imports, shared registry and runners are unchanged.
+
+This is the first scoped repair of this collection boundary. The original failure
+remains recorded; no expensive checks or browser retries were launched in this
+chat. Parent owns full source/component typechecking and serial execution of the
+72-case component group after integrating the fix. Focused formatting and a
+runtime-import audit passed. The transpiled Node driver imports only the shared
+Playwright fixture and `dispatch-data`; the pure data graph contains exactly
+`dispatch-data.ts`, `test-support/bootstrap.ts`, and `test-support/production.ts`.
+`git diff --check` also passed. These checks execute no test bodies and do not
+establish a passing collection or browser result.
 
 ## Failure history and validation
 

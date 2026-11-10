@@ -1,8 +1,8 @@
 import { expect, type Page } from './fixture'
 import type { DispatchSceneControl } from './dispatch'
-import type { DispatchFixtureOptions } from './dispatch-fixture'
+import type { DispatchFixtureOptions } from './dispatch-data'
 import type { components } from '../../src/contracts'
-import { originId } from './dispatch-fixture'
+import { originId } from './dispatch-data'
 type State = {
   bodies: components['schemas']['BodyV3'][]
   capabilities: components['schemas']['CapabilityState4']['capability'][]

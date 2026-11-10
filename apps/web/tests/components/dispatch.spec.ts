@@ -1,6 +1,6 @@
 import { test, expect } from './fixture'
 import { setDestination, coordinatePattern } from '../fixtures/coordinates'
-import { originBody as body, id, player } from './dispatch-fixture'
+import { originBody as body, id, player } from './dispatch-data'
 import {
   setup,
   configure,
