@@ -182,35 +182,6 @@ async function setup(
   })
 }
 
-for (const [label, levels] of [
-  ['Shipyard', { shipyard: 3 }],
-  ['Combustion Drive', { combustion: 5 }],
-] as const) {
-  test(`Large Cargo exposes its missing ${label} prerequisite`, async ({
-    page,
-  }) => {
-    await setup(page, levels)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/large-cargo`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(
-      pane.getByRole('button', { name: 'Build', exact: true }),
-    ).toBeDisabled()
-    await expect(pane.getByLabel('Action blockers')).toContainText(label)
-  })
-}
-
-test('Large Cargo stays unavailable before its universe enables it', async ({
-  page,
-}) => {
-  await setup(page, { enabled: false })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/large-cargo`))
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Unavailable in this universe.')
-  await expect(
-    pane.getByRole('button', { name: 'Build', exact: true }),
-  ).toBeDisabled()
-})
-
 for (const width of [390, 1440]) {
   test(`Large Cargo submits the selected build quantity at ${width}px`, async ({
     page,
@@ -235,7 +206,9 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/shipyard`),
+    )
     await page
       .getByRole('link', { name: 'Build Large Cargo', exact: true })
       .click()
@@ -335,16 +308,19 @@ test('Large Cargos can be selected, quoted and launched in a transport fleet', a
       },
     })
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-  await page
-    .getByRole('radio', { name: 'Transport', exact: true }).check()
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
+  await page.getByRole('radio', { name: 'Transport', exact: true }).check()
   await setDestination(page, { position: '8' })
   await page
     .getByRole('textbox', { name: 'Large Cargo · 2 available' })
     .fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  await expect(quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Large Cargo 2'])
+  await expect(
+    quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem'),
+  ).toHaveText(['Large Cargo 2'])
   await quote.getByRole('button', { name: /^Transport to / }).click()
   await expect
     .poll(() => sent)

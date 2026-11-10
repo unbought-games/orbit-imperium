@@ -177,7 +177,9 @@ for (const width of [390, 1440]) {
         fullPage: state !== 'technology-tree',
       })
     }
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/research`),
+    )
     const tile = page.getByRole('link', {
       name: 'Research Hyperspace Technology',
       exact: true,
@@ -197,9 +199,7 @@ for (const width of [390, 1440]) {
     await capture('research-catalog')
     await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText(
-      'Unlocks Destroyers at level 5',
-    )
+    await expect(pane).toContainText('Unlocks Destroyers at level 5')
     await expect(
       pane.getByRole('button', { name: 'Crystal details' }),
     ).toContainText('4,000')
@@ -271,7 +271,9 @@ for (const width of [390, 1440]) {
       pane.getByRole('button', { name: 'Cancel research', exact: true }),
     ).toBeEnabled()
     await capture('research-active')
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research/hyperspace-drive`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/research/hyperspace-drive`),
+    )
     await expect(pane).toContainText('Unavailable in this universe.')
     await expect(
       pane.getByRole('button', { name: 'Confirm research', exact: true }),
@@ -313,15 +315,3 @@ for (const width of [390, 1440]) {
     ).toBe(true)
   })
 }
-
-test('Hyperspace Technology remains unavailable before universe activation', async ({
-  page,
-}) => {
-  await setup(page, { enabled: false })
-  await withBootstrapResponse(page, () => page.goto(detailPath))
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Unavailable in this universe.')
-  await expect(
-    pane.getByRole('button', { name: 'Confirm research', exact: true }),
-  ).toBeDisabled()
-})

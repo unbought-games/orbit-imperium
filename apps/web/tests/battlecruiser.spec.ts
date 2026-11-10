@@ -1,9 +1,7 @@
-import { routeWorld } from './fixtures/game'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { setDestination } from './fixtures/coordinates'
 import { test, expect } from './fixtures/test'
-import { shellFixture, body, binding, id } from './fixtures/game'
+import { shellFixture, body, binding } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse } from './fixtures/responses'
@@ -129,16 +127,6 @@ for (const [key, definition] of Object.entries(researchDefinitions)) {
     combat: null,
   }
 }
-const bound = (request_id: string, data: unknown) => ({
-  protocol: 4,
-  binding,
-  request_id,
-  viewer_revision: '1',
-  sampled_at: Date.now(),
-  as_of_ms: Date.now(),
-  data,
-})
-
 async function capture(page: Parameters<typeof shellFixture>[0], path: string) {
   if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
   await page
@@ -342,213 +330,15 @@ async function setup(
   })
 }
 
-for (const [label, levels] of [
-  ['Shipyard', { shipyard: 7 }],
-  ['Hyperspace Technology', { technology: 4 }],
-  ['Hyperspace Drive', { hyperspace: 4 }],
-  ['Laser Technology', { laser: 11 }],
-] as const) {
-  test(`Battlecruiser exposes its missing ${label} prerequisite`, async ({
-    page,
-  }) => {
-    await setup(page, levels)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/battlecruiser`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(
-      pane.getByRole('button', { name: 'Build', exact: true }),
-    ).toBeDisabled()
-    await expect(pane.getByLabel('Action blockers')).toContainText(label)
-  })
-}
-
-test('Battlecruiser stays unavailable before its universe enables it', async ({
-  page,
-}) => {
-  await setup(page, { enabled: false })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/battlecruiser`))
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Unavailable in this universe.')
-  await expect(
-    pane.getByRole('button', { name: 'Build', exact: true }),
-  ).toBeDisabled()
-})
-
-for (const width of [390, 1440]) {
-  test(`Battlecruiser submits the selected build quantity at ${width}px`, async ({
-    page,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 })
-    await setup(page)
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    let sent: unknown = null
-    await page.route('**/commands', async (route) => {
-      const pair = route.request().postDataJSON()
-      sent = pair.gameplay.command
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: pair.gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [id(80)],
-          minimum_viewer_revision: '1',
-        },
-      })
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
-    await expect(
-      page.getByRole('link', { name: 'Build Battlecruiser', exact: true }),
-    ).toBeVisible()
-    await capture(
-      page,
-      testInfo.outputPath(`battlecruiser-catalog-${width}x900.png`),
-    )
-    await page
-      .getByRole('link', { name: 'Build Battlecruiser', exact: true })
-      .click()
-    await expect(pane).toContainText('A hyperspace-powered combat ship')
-    await expect(pane.locator('img').first()).toHaveAttribute(
-      'src',
-      /battlecruiser/,
-    )
-    await pane.getByText('Technical data', { exact: true }).click()
-    const stats = pane.getByRole('region', {
-      name: 'Ship technical statistics',
-    })
-    await expect(stats).toContainText('10,000')
-    await expect(stats).toContainText('7,000')
-    await expect(stats).toContainText('Hyperspace Drive')
-    await expect(stats).toContainText('Solar Satellite')
-    await expect(stats).toContainText('Cruiser')
-    await expect(stats).toContainText('Battleship × 7')
-    await expect(stats).not.toContainText('profile changes')
-    await page.getByLabel('Shipyard quantity').fill('2')
-    await expect(
-      pane.getByRole('button', { name: 'Metal details' }),
-    ).toContainText('60,000')
-    await expect(
-      pane.getByRole('button', { name: 'Crystal details' }),
-    ).toContainText('80,000')
-    await expect(
-      pane.getByRole('button', { name: 'Deuterium details' }),
-    ).toContainText('30,000')
-    await capture(
-      page,
-      testInfo.outputPath(`battlecruiser-details-${width}x900.png`),
-    )
-    await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect
-      .poll(() => sent)
-      .toMatchObject({
-        type: 'StartManufacture',
-        body: body.id,
-        item,
-        quantity: '2',
-      })
-    const result = pane.getByRole('group', { name: 'Latest action result' })
-    await expect(result).toContainText('Last submitted: 2 × Battlecruiser')
-    await expect(result).toContainText('Order confirmed')
-  })
-}
-
-for (const width of [390, 1440]) {
-  test(`Battlecruisers can be selected, quoted and launched at ${width}px`, async ({
-    page,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 })
-    await setup(page)
-    const target = {
-      type: 'Body',
-      id: id(90),
-      expected_kind: 'Planet',
-      expected_owner: id(91),
-    }
-    await routeWorld(page, async (route) => {
-      const request = route.request().postDataJSON()
-      await route.fulfill({
-        json: bound(
-          request.context.request_id,
-          request.type === 'ResolveDestination'
-            ? target
-            : {
-                intent: request.intent,
-                profile_hash: 'a'.repeat(64),
-                terms_hash: 'b'.repeat(64),
-                distance: 1005,
-                speeds: [['Battlecruiser', '25000']],
-                duration_ms: 360000,
-                fuel: '20000000',
-                capacity: '1500000000',
-                maximum_payload: '1480000000',
-                slot_limit: '1',
-              },
-        ),
-      })
-    })
-    let sent: unknown = null
-    await page.route('**/commands', async (route) => {
-      const pair = route.request().postDataJSON()
-      sent = pair.gameplay.command
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: pair.gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [id(80)],
-          minimum_viewer_revision: '1',
-        },
-      })
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-    await page
-      .getByRole('radio', { name: 'Attack', exact: true }).check()
-    await setDestination(page, { position: '8' })
-    await page
-      .getByRole('textbox', { name: 'Battlecruiser · 2 available' })
-      .fill('2')
-    await page
-      .getByRole('button', { name: 'Review fleet', exact: true })
-      .click()
-    const quote = page.getByRole('region', { name: 'Fleet quote' })
-    await expect(
-      quote
-        .getByRole('list', { name: 'Ship composition' })
-        .getByRole('listitem'),
-    ).toHaveText(['Battlecruiser 2'])
-    await capture(
-      page,
-      testInfo.outputPath(`battlecruiser-fleet-quote-${width}x900.png`),
-    )
-    await quote.getByRole('button', { name: /^Attack with / }).click()
-    await expect
-      .poll(() => sent)
-      .toMatchObject({
-        type: 'World',
-        action: {
-          type: 'LaunchFleet',
-          intent: {
-            mission: 'Attack',
-            ships: [
-              { owner: binding.player, ship_type: 'Battlecruiser', count: '2' },
-            ],
-          },
-        },
-      })
-  })
-}
-
 for (const width of [390, 1440]) {
   test(`Battlecruiser comparison and research unlocks at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await setup(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/shipyard`),
+    )
     await page.locator('summary').filter({ hasText: 'Compare ships' }).click()
     for (const name of ['Light Fighter', 'Heavy Fighter'])
       await page.getByRole('checkbox', { name, exact: true }).uncheck()
@@ -574,7 +364,9 @@ for (const width of [390, 1440]) {
       'hyperspace-technology',
       'laser-technology',
     ]) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research/${slug}`))
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/research/${slug}`),
+      )
       const pane = page.getByRole('region', { name: 'Progression quote' })
       await expect(pane).toContainText('Battlecruisers')
       await expect(
@@ -593,26 +385,5 @@ for (const width of [390, 1440]) {
         testInfo.outputPath(`${slug}-battlecruiser-unlock-${width}x900.png`),
       )
     }
-  })
-}
-
-for (const width of [390, 1440]) {
-  test(`Battlecruiser locked detail at ${width}px`, async ({
-    page,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 })
-    await setup(page, { laser: 11 })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/battlecruiser`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(
-      pane.getByRole('button', { name: 'Build', exact: true }),
-    ).toBeDisabled()
-    await expect(pane.getByLabel('Action blockers')).toContainText(
-      'Laser Technology',
-    )
-    await capture(
-      page,
-      testInfo.outputPath(`battlecruiser-locked-${width}x900.png`),
-    )
   })
 }

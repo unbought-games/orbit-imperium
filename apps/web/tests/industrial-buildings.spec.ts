@@ -196,7 +196,9 @@ for (const building of ['Shipyard', 'NaniteFactory'] as const) {
             animations: 'disabled',
           })
       }
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities`))
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/facilities`),
+      )
       const tile = page.getByRole('link', {
         name: `Upgrade ${title}`,
         exact: true,
@@ -293,6 +295,11 @@ for (const building of ['Shipyard', 'NaniteFactory'] as const) {
         body: body.id,
         building,
       })
+      // Sending the command is not the resulting UI state. Await the applied
+      // demolition snapshot before teardown can remove its HTTP fixtures.
+      await expect(
+        pane.getByRole('region', { name: 'Active construction' }),
+      ).toBeVisible()
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

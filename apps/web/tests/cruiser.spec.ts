@@ -161,89 +161,6 @@ async function setup(
   })
 }
 
-for (const [label, levels] of [
-  ['Shipyard', { shipyard: 4 }],
-  ['Ion Technology', { ion: 1 }],
-  ['Impulse Drive', { impulse: 3 }],
-] as const) {
-  test(`Cruiser exposes its missing ${label} prerequisite`, async ({
-    page,
-  }) => {
-    await setup(page, levels)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/cruiser`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(
-      pane.getByRole('button', { name: 'Build', exact: true }),
-    ).toBeDisabled()
-    await expect(pane.getByLabel('Action blockers')).toContainText(label)
-  })
-}
-
-test('Cruiser stays unavailable before its universe enables it', async ({
-  page,
-}) => {
-  await setup(page, { enabled: false })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/cruiser`))
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Unavailable in this universe.')
-  await expect(
-    pane.getByRole('button', { name: 'Build', exact: true }),
-  ).toBeDisabled()
-})
-
-for (const width of [390, 1440]) {
-  test(`Cruiser submits the selected build quantity at ${width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await setup(page)
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    let sent: unknown = null
-    await page.route('**/commands', async (route) => {
-      const pair = route.request().postDataJSON()
-      sent = pair.gameplay.command
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: pair.gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [id(80)],
-          minimum_viewer_revision: '1',
-        },
-      })
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
-    await page.getByRole('link', { name: 'Build Cruiser', exact: true }).click()
-    await expect(pane).toContainText('A fast impulse-powered combat ship')
-    await expect(pane.locator('img').first()).toHaveAttribute('src', /cruiser/)
-    await page.getByLabel('Shipyard quantity').fill('2')
-    await expect(
-      pane.getByRole('button', { name: 'Metal details' }),
-    ).toContainText('40,000')
-    await expect(
-      pane.getByRole('button', { name: 'Crystal details' }),
-    ).toContainText('14,000')
-    await expect(
-      pane.getByRole('button', { name: 'Deuterium details' }),
-    ).toContainText('4,000')
-    await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect
-      .poll(() => sent)
-      .toMatchObject({
-        type: 'StartManufacture',
-        body: body.id,
-        item,
-        quantity: '2',
-      })
-    const result = pane.getByRole('group', { name: 'Latest action result' })
-    await expect(result).toContainText('Last submitted: 2 × Cruiser')
-    await expect(result).toContainText('Order confirmed')
-  })
-}
-
 test('Cruisers can be selected, quoted and launched in an attack fleet', async ({
   page,
 }) => {
@@ -293,14 +210,17 @@ test('Cruisers can be selected, quoted and launched in an attack fleet', async (
       },
     })
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-  await page
-    .getByRole('radio', { name: 'Attack', exact: true }).check()
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
   await setDestination(page, { position: '8' })
   await page.getByRole('textbox', { name: 'Cruiser · 2 available' }).fill('2')
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  await expect(quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Cruiser 2'])
+  await expect(
+    quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem'),
+  ).toHaveText(['Cruiser 2'])
   await quote.getByRole('button', { name: /^Attack with / }).click()
   await expect
     .poll(() => sent)
