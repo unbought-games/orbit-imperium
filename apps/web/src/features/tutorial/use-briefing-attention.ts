@@ -1,7 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { TutorialData } from '../../client-model/tutorial-engine'
 import { advisorHistory } from './advisor-history'
 import { briefingAttentionEvents } from './briefing-attention'
+
+/** A delivered briefing is read regardless of which navigation link opened it. */
+export function useRememberBriefingVisit(
+  scope: string,
+  data: TutorialData | null,
+) {
+  useEffect(() => {
+    for (const event of briefingAttentionEvents(data))
+      advisorHistory.remember(scope, event)
+  }, [scope, data])
+}
 
 export function useBriefingAttention(scope: string, data: TutorialData | null) {
   const [visit, setVisit] = useState<{

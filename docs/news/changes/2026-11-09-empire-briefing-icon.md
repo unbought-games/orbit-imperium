@@ -1,3 +1,9 @@
+---
+id: empire-briefing-icon
+title: Your briefing is a book away
+date: '2026-11-09T21:30:00-05:00'
+---
+
 The Empire heading now includes a book icon that opens your Briefing. It glows
 when unfinished briefing tasks await your first visit, settles after you click,
 and lights up again when you complete another objective. Viewed updates stay

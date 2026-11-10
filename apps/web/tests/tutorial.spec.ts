@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/test'
 import { installTutorialFixture } from './fixtures/tutorial'
 import { body } from './fixtures/game'
 import {
+  withBootstrapResponse,
   withFixtureResponse,
   withProgressionResponse,
 } from './fixtures/responses'
@@ -10,6 +11,45 @@ import { mkdir } from 'node:fs/promises'
 const briefing = `/u/andromeda/b/${body.id}/briefing`
 const tutorial = (r: import('@playwright/test').Response) =>
   r.url().endsWith('/world') && r.request().postDataJSON().type === 'Tutorial'
+
+test('opening the book before guidance arrives acknowledges the delivered briefing', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const state = await installTutorialFixture(page)
+  state.data.beginner = false
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  state.hold = () => held
+  const overview = `/u/andromeda/b/${body.id}/overview`
+  await withBootstrapResponse(page, () => page.goto(overview))
+  await page.getByRole('link', { name: 'Open briefing', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Briefing', exact: true }),
+  ).toContainText('Receiving your briefing')
+  await withFixtureResponse(page, tutorial, async () => {
+    state.hold = null
+    release()
+  })
+  await expect(
+    page.getByRole('region', { name: 'Recommended next action' }),
+  ).toBeVisible()
+  await withFixtureResponse(page, tutorial, () => page.goto(overview))
+  await expect(
+    page.getByRole('link', { name: 'Open briefing', exact: true }),
+  ).toHaveAttribute('data-attention', 'false')
+  state.earnMine()
+  await withFixtureResponse(page, tutorial, () => page.reload())
+  await expect(
+    page.getByRole('link', {
+      name: 'Open briefing — unread updates',
+      exact: true,
+    }),
+  ).toHaveAttribute('data-attention', 'true')
+  expect(state.commands).toHaveLength(0)
+})
 
 for (const width of [1440, 390]) {
   test(`Empire briefing icon opens by keyboard or touch and remembers acknowledged progress at ${width}px`, async ({
@@ -293,6 +333,12 @@ for (const width of [1440, 390])
     ).toBeVisible()
     expect(state.commands).toHaveLength(0)
     expect(state.data.receipts).toHaveLength(0)
+    await withFixtureResponse(page, tutorial, () =>
+      page.goto(`/u/andromeda/b/${body.id}/overview`),
+    )
+    await expect(
+      page.getByRole('link', { name: 'Open briefing', exact: true }),
+    ).toHaveAttribute('data-attention', 'false')
   })
 
 for (const width of [1440, 390]) {
