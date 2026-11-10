@@ -1,4 +1,8 @@
-# See stored missiles in espionage reports
+---
+id: espionage-missiles
+title: See stored missiles in espionage reports
+date: '2026-11-10T13:00:00Z'
+---
 
 Espionage reports now show Anti-Ballistic Missiles and Interplanetary Missiles
 alongside defenses once that section is revealed. At equal Espionage Technology,

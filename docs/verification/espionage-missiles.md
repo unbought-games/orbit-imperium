@@ -66,3 +66,14 @@ All test and capture browser/server processes exited. The capture-only script
 and images remain in ignored `test-results/` for review. The dev server logged
 two unrelated announcement-proxy connection refusals during capture; report
 responses and rendering completed. No database or Docker resources were started.
+
+## PR follow-through
+
+PR #384 initially tested head `80635e55c0f3a47e7cf92f6215e9ae8a8a2ca256`.
+CI run `42830073442`, attempt 1, failed browser job `129877598739` during
+`make test-homepage-built`: the news builder rejected this change's build note
+because its YAML frontmatter was missing. Browser assertions had not started.
+Added the required note ID, title and date, then successfully ran `npm run build`
+locally (client bundling 3.91s; prerender bundling 0.371s). This is a deterministic
+build-content repair, not an unchanged-job retry or a browser-test repair.
+The full `make _static` check also passed before the initial push.
