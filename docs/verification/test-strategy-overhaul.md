@@ -146,3 +146,32 @@ were removed by the runner; retained failure logs, reports, traces and screensho
 remain local under `test-results/test-strategy/`. No Docker resources were started
 for this frontend migration. Lockfiles and CHANGELOG remain unchanged. No PR,
 push, deployment or repository-protection change is part of this verification.
+
+## Phase-one PR integration
+
+PR #385 integrates main `b3aaae7c6a240fd5ff1e96bf7c5185521e43fcf3` to resolve
+the player-profile test conflict. Preserve main's documented retirement of the
+recurring three-report identity scenario and this branch's other coverage
+migrations. The briefing acknowledgement hook composes with the extracted
+Tutorial presentation boundary; all new main assertions remain selected.
+
+The combined inventory is 819 application cases: 39 journeys and 780 required
+feature integrations. Relative to the local 816-case snapshot, main adds three
+briefing scenarios and one announcement scenario, and removes the recurring
+report-identity case. Component inventory remains 272.
+
+Affected profile/tutorial browser validation: 21 passed, 4.866 s bundle
+preparation and 29.6 s runner with two workers; no retries. Relevant tutorial
+and identity units: 67 passed, 1.08 s runner. CI selection/workflow policy:
+14 passed, 9.199 s. Artifacts are under
+`test-results/test-strategy/pr385-integration/`.
+
+The first component typecheck after merging main failed because local
+node_modules lacked main's newly added Markdown declaration dependency. Refresh
+from the committed lockfile with npm ci before repeating the typecheck/build;
+this is stale local dependency setup, not a test assertion failure.
+
+After the lockfile install, component TypeScript and the complete production
+frontend build/prerender passed. No source workaround or dependency version
+change was needed. Native runners closed browsers/servers and removed temporary
+application bundles. Remote CI and merge-queue evidence follow separately.

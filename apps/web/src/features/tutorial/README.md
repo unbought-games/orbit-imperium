@@ -12,6 +12,16 @@ must not check tutorial flags or initiate guidance.
   the orb's generic trigger props. The orb stays mounted and keeps its placement.
 - Onboarding progress, rewards and eligibility remain authoritative in the game
   store. Viewing or dismissing guidance sends no gameplay commands.
+- `briefing-icon.tsx` opens the Briefing from the Empire heading. Its glow is
+  derived from the initial unread visit and completed objective IDs. Clicking
+  acknowledges only the currently displayed progress, using separate briefing
+  events in the binding-scoped presentation history. New completions, including
+  the final objective, light it again; reduced motion keeps a static glow.
+  The Briefing page also records delivered progress as read, covering sidebar
+  and menu visits and book clicks made before the tutorial response arrives.
+  The custom link floats outside header flow to preserve title spacing. Hover
+  and keyboard focus intensify its stars and orbiting glints without a button
+  background; its ambient motion explicitly opts out of the global CSS reset.
 
 A lesson opens automatically only on its first visit. Later visits start closed;
 clicking the orb toggles the current lesson. Leaving an eligible page restores

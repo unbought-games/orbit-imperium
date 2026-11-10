@@ -24,6 +24,8 @@ Orbit Imperium is a browser-based space strategy game with an authoritative Rust
 
 ## Operations
 
+- [In-game announcements](operations/announcements.md): runtime news, operator commands, local files and S3-compatible storage.
+
 - [Development server runbook](runbooks/development-server.md): startup, database maintenance, readiness, and recovery.
 - [Concurrent runtime](operations/concurrent-runtime.md): process topology, connection budgets, rollout, and observability.
 - [Rules updates](operations/rules-updates.md): content activation, compatibility, and integrity inspection.

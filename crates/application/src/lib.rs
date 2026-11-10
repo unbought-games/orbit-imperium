@@ -1,3 +1,4 @@
+pub mod announcements;
 mod arrival;
 pub use arrival::*;
 mod empire_identity;

@@ -1,4 +1,5 @@
 //! Filesystem and S3 adapters. Never contains player, billing, or presentation policy.
+pub mod announcements;
 use object_store::{
     ObjectStore, ObjectStoreExt, aws::AmazonS3Builder, local::LocalFileSystem, path::Path,
 };
@@ -55,6 +56,9 @@ impl AssetConfig {
         }
     }
     pub async fn connect(&self) -> Result<Arc<dyn AssetStore>, AssetError> {
+        Ok(Arc::new(BlobStore(self.object_store().await?)))
+    }
+    async fn object_store(&self) -> Result<Arc<dyn ObjectStore>, AssetError> {
         let store: Arc<dyn ObjectStore> = match self {
             Self::Files { directory } => {
                 tokio::fs::create_dir_all(directory)
@@ -83,7 +87,7 @@ impl AssetConfig {
                 Arc::new(builder.build().map_err(|_| AssetError::Unavailable)?)
             }
         };
-        Ok(Arc::new(BlobStore(store)))
+        Ok(store)
     }
 }
 pub struct BlobStore(pub Arc<dyn ObjectStore>);

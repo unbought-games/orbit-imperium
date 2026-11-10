@@ -22,6 +22,7 @@ it('keeps secondary destinations discoverable without repeating primary navigati
   expect(navigationGroups).toEqual([
     { title: 'Community', pages: ['messages', 'alliance', 'high-scores'] },
     { title: 'Tools', pages: ['reports', 'combat-simulator'] },
+    { title: 'Guidance', pages: ['briefing'] },
     { title: 'Settings', pages: ['settings'] },
   ])
   const pages = navigationGroups.flatMap((group) => group.pages)

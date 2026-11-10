@@ -1,3 +1,5 @@
+mod announcements;
+pub use announcements::router as announcement_router;
 mod alliance_preview;
 mod arrival;
 mod empire_history;

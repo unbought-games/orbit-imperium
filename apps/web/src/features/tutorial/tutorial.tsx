@@ -11,6 +11,8 @@ import { Button, ButtonLink } from '../../ui/button'
 import { Link } from '../../ui/link'
 import { Heading, Text } from '../../ui/typography'
 import { useTutorial } from './use-tutorial'
+import { bindingKey } from '../../client-model/commands'
+import { useRememberBriefingVisit } from './use-briefing-attention'
 import {
   objectiveStatus,
   objectiveTitle,
@@ -27,6 +29,10 @@ type S = components['schemas']
 export function TutorialBriefing() {
   const t = useTutorial()
   const { view } = useGameScreen()
+  useRememberBriefingVisit(
+    bindingKey(view.binding),
+    view.protocol === 4 ? t.data : null,
+  )
   if (view.protocol !== 4) return null
   return (
     <section id="opening-guidance" tabIndex={-1} aria-label="Briefing">

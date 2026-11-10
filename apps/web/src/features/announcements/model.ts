@@ -1,21 +1,12 @@
-import type { ComponentType, LazyExoticComponent } from 'react'
-
-/**
- * One curated announcement. The content is an ordinary React component, so an
- * entry can use images, lists, links or any shared UI component.
- */
+/** Runtime editorial data. IDs remain stable across copy corrections. */
 export type Announcement = {
-  /** Stable ID. Changing it shows the announcement again to everyone. */
   id: string
-  /** Shown as the bubble heading and its accessible name. */
   title: string
-  /** ISO time when the announcement starts showing. */
   date: string
-  /** ISO time when it stops showing. Defaults to 30 days after `date`. */
   until?: string
-  /** Optional full release note, usually `/updates/<news-id>.html`. */
   href?: string
-  Content: LazyExoticComponent<ComponentType>
+  image?: { src: string; alt: string }
+  body: string
 }
 
 export const announcementDays = 30
