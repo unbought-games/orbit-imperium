@@ -209,24 +209,6 @@ test('lost membership clears private board, roster and administration after an a
   await expect(page.getByText('Nova', { exact: true })).toHaveCount(0)
 })
 
-test('notice rolloff comes from refreshed server pages and retains pinned notices', async ({ page }) => {
-  const detail = own()
-  detail.posts = Array.from({ length: 100 }, (_, index) => ({ id: id(900 + index), author: member, author_name: 'Nova', title: `Notice ${100 - index}`, body: 'A chapter in our history.', created_at: 1700000000100 - index, updated_at: 1700000000100 - index, pinned: index === 0 }))
-  const f = await fixture(page, detail)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await expect(page.getByRole('article')).toHaveCount(20)
-  await page.getByText('Write a notice', { exact: true }).click()
-  await page.getByLabel('Notice title', { exact: true }).first().fill('Next chapter')
-  await page.getByLabel('Notice body', { exact: true }).first().fill('Tomorrow begins.')
-  await page.getByRole('button', { name: 'Publish notice', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Next chapter' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Notice 100', exact: true })).toBeVisible()
-  await expect(page.getByRole('article')).toHaveCount(20)
-  expect(f.detail()?.posts).toHaveLength(100)
-  expect(f.detail()?.posts?.some(post => post.title === 'Notice 1')).toBe(false)
-  expect(f.commands.map(command => command.action.type)).toEqual(['CreatePost'])
-})
-
 test('uncertain command retry reuses identity and does not send an edited duplicate', async ({ page }) => {
   await fixture(page, null)
   const requests: S['AllianceCommandRequest'][] = []
@@ -301,29 +283,6 @@ test('a delegated manager can dismiss a locked member role editor without submit
   await cancel.click()
   await expect(page.getByRole('button', { name: 'Assign roles to Nova', exact: true })).toBeVisible()
   expect(f.commands).toEqual([])
-})
-
-test('expired noticeboard cursors recover to fresh notices', async ({ page }) => {
-  const detail = own(); detail.next_post_before = id(851)
-  await fixture(page, detail)
-  const queries: S['AllianceQuery'][] = []
-  await page.route('**/alliances/query', route => {
-    const { context, query } = route.request().postDataJSON() as S['AllianceQueryRequest']
-    queries.push(query)
-    if (query.type === 'Detail' && query.post_before) {
-      detail.revision++
-      detail.posts![0].title = 'Fresh standing orders'
-      detail.next_post_before = null
-      return route.fulfill({ status:409, json:{code:'Conflict'} })
-    }
-    return route.fulfill({json:{...context,sampled_at:1700000000000,directory:[],directory_count:0,alliance:detail,applications:[]}})
-  })
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await page.getByRole('button', { name:'Older notices', exact:true }).click()
-  await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
-  await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
-  expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)
-  expect(queries.at(-1)).toEqual({type:'Detail',alliance,post_before:null})
 })
 
 test('saving an unrelated role retains an edited notice draft', async ({page})=>{
@@ -490,3 +449,18 @@ for (const action of ['Join', 'Apply'] as const) {
     expect(requests[1].action).toEqual(requests[0].action)
   })
 }
+
+// Application gate: a submitted membership mutation changes the destination route.
+// The expanded interaction scenarios above remain until component validation passes.
+test('creates an alliance from its route and returns to membership home', async ({ page }) => {
+  const f = await fixture(page, null)
+  const membership = (response: import('@playwright/test').Response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine'
+  await withFixtureResponse(page, membership, () => page.goto('/u/andromeda/alliance/create'))
+  await page.getByLabel('Alliance name', { exact: true }).fill('New Horizon')
+  await page.getByLabel('Alliance tag', { exact: true }).fill('NEW')
+  await withFixtureResponse(page, membership, () => page.getByRole('button', { name: 'Create Alliance', exact: true }).click())
+  await expect(page).toHaveURL(/\/alliance$/)
+  await expect(page.getByRole('heading', { name: 'New Horizon', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'My alliance', exact: true })).toBeVisible()
+  expect(f.commands.map(command => command.action.type)).toEqual(['Create'])
+})

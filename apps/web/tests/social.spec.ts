@@ -1041,3 +1041,18 @@ for (const width of [1440, 390]) {
     await expect(composer).toHaveValue('Still editing while history is queued')
   })
 }
+
+// Application gate: command wiring plus the direct-message route and its return link.
+// The expanded interaction scenarios above remain until component validation passes.
+test('submits a direct message from its deep link and returns to the conversation list', async ({ page }) => {
+  const f = await fixture(page, 1)
+  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
+  await page.getByLabel('Message', { exact: true }).fill('Meet at the outpost.')
+  await withSocialResponse(page, 'Messages', () => page.getByRole('button', { name: 'Send message', exact: true }).click())
+  await expect(page.getByLabel('Message history').getByText('Meet at the outpost.', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Message', { exact: true })).toHaveValue('')
+  await page.getByRole('button', { name: 'Back to conversations', exact: true }).click()
+  await expect(page).not.toHaveURL(/player=/)
+  await expect(page.getByRole('button', { name: /Open conversation with Nova/ })).toContainText('Meet at the outpost.')
+  expect(f.commands.filter(command => command.action.type === 'Send')).toHaveLength(1)
+})

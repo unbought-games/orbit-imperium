@@ -297,3 +297,46 @@ it.each(['switch', 'clear'] as const)(
     expect(c.store.getState().olderRequested).toBe(false)
   },
 )
+
+it('a hidden conversation leaves the inbox but opening it again reads retained history', async () => {
+  const contact = {
+    player: 'peer',
+    username: 'Nova',
+    blocked: false,
+    request: null,
+    requested_by: null,
+    accepted: false,
+  }
+  const commands: SocialRequest[] = []
+  const controller = new SocialController({
+    newId: () => 'hide',
+    command: async (request) => {
+      commands.push(request)
+      return { command_id: request.command_id, message: null }
+    },
+    read: async (q) =>
+      q.type === 'Messages'
+        ? view({ contact, messages: [msg(1), msg(2)] })
+        : view({
+            conversations: commands.length
+              ? []
+              : [{ contact, latest: msg(2), unread: false }],
+          }),
+  })
+  await controller.list()
+  await controller.open('peer')
+  expect(
+    await controller.run({ type: 'Hide', player: 'peer', message: 'm2' }),
+  ).toBe(true)
+  expect(controller.store.getState().list?.conversations).toEqual([])
+  await controller.open(null)
+  await controller.open('peer')
+  expect(
+    controller.store
+      .getState()
+      .history?.messages.map((message) => message.body),
+  ).toEqual(['Message 1', 'Message 2'])
+  expect(commands.map((request) => request.action)).toEqual([
+    { type: 'Hide', player: 'peer', message: 'm2' },
+  ])
+})
