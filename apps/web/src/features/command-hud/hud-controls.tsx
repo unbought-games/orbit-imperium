@@ -66,11 +66,13 @@ export function HudIconMark({
 export function HudToasts({ hud }: { hud: CommandHudState }) {
   const container = useRef<HTMLDivElement>(null)
   const restoreFocus = useRef(false)
+  const shownTop = useRef<string | null>(null)
   const notices = hud.toasts.filter((notice) =>
     noticeContent(hud.state, notice),
   )
   const topKey = notices[0] ? noticeKey(notices[0]) : null
   useLayoutEffect(() => {
+    shownTop.current = topKey
     if (restoreFocus.current) {
       const next = container.current?.querySelector<HTMLButtonElement>(
         '[data-toast-depth="0"] button',
@@ -110,9 +112,11 @@ export function HudToasts({ hud }: { hud: CommandHudState }) {
             hud={hud}
             active={depth === 0}
             onDismiss={() => {
-              restoreFocus.current = !!container.current?.contains(
-                document.activeElement,
-              )
+              // Only removing the top card changes topKey and consumes the flag.
+              if (noticeKey(notice) === shownTop.current)
+                restoreFocus.current = !!container.current?.contains(
+                  document.activeElement,
+                )
               hud.dismiss(notice)
             }}
           />
