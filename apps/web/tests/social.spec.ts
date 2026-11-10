@@ -1,4 +1,4 @@
-import { withFixtureResponse, withSocialResponse } from './fixtures/responses'
+import { withSocialResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, binding, id } from './fixtures/game'
@@ -246,7 +246,9 @@ test('conversation action announces unread state and clears it after reading', a
   page,
 }) => {
   await fixture(page)
-  await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
+  await withSocialResponse(page, 'Conversations', () =>
+    page.goto('/u/andromeda/messages'),
+  )
   const action = page.getByRole('button', {
     name: /^Open conversation with Nova/,
   })
@@ -264,78 +266,13 @@ test('conversation action announces unread state and clears it after reading', a
   await expect(action).not.toContainText('Unread')
 })
 
-test('conversation paging, safe Markdown, uncertain send retry and blocking', async ({
-  page,
-}) => {
-  const f = await fixture(page)
-  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
-  const history = page.getByLabel('Message history')
-  await expect(history.getByText('Message 65', { exact: true })).toBeVisible()
-  await expect(history.getByText('Message 1', { exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Load older messages' }).click()
-  await expect(history.getByText('Message 1', { exact: true })).toBeVisible()
-  expect(
-    f.requests
-      .filter((q) => q.type === 'Messages')
-      .every((q) => q.limit === 50),
-  ).toBe(true)
-  await page
-    .getByLabel('Message', { exact: true })
-    .fill(
-      '**Bold hello**\n\n<script>window.evil=true</script>\n\n![image](https://example.com/x.png)',
-    )
-  f.failSend()
-  await page.getByRole('button', { name: 'Send message', exact: true }).click()
-  await expect(
-    page.getByRole('button', { name: 'Retry pending action' }),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Retry pending action' }).click()
-  await expect(
-    history.locator('strong', { hasText: 'Bold hello' }),
-  ).toBeVisible()
-  await expect(history.locator('img,script')).toHaveCount(0)
-  await expect(page.getByLabel('Message', { exact: true })).toHaveValue('')
-  const sends = f.commands.filter((q) => q.action.type === 'Send')
-  expect(sends).toHaveLength(2)
-  expect(sends[0].command_id).toBe(sends[1].command_id)
-  await page
-    .getByRole('button', { name: 'Conversation options', exact: true })
-    .click()
-  await page.getByRole('menuitem', { name: 'Add friend', exact: true }).click()
-  await page
-    .getByRole('button', { name: 'Conversation options', exact: true })
-    .click()
-  await expect(
-    page.getByRole('menuitem', { name: 'Cancel request' }),
-  ).toBeVisible()
-  await page
-    .getByRole('menuitem', { name: 'Block player', exact: true })
-    .click()
-  await expect(
-    page.getByText('This player is blocked. Unblock them to send messages.'),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('menuitem', { name: 'Cancel request' }),
-  ).toHaveCount(0)
-  await page
-    .getByRole('button', { name: 'Conversation options', exact: true })
-    .click()
-  await page
-    .getByRole('menuitem', { name: 'Unblock player', exact: true })
-    .click()
-  await page
-    .getByRole('button', { name: 'Conversation options', exact: true })
-    .click()
-  await expect(
-    page.getByRole('menuitem', { name: 'Add friend', exact: true }),
-  ).toBeVisible()
-})
-
 test('mobile friends and one-way circulars', async ({ page }) => {
   const f = await fixture(page)
   f.invite()
   await page.setViewportSize({ width: 390, height: 844 })
-  await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
+  await withSocialResponse(page, 'Conversations', () =>
+    page.goto('/u/andromeda/messages'),
+  )
   await chooseCategory(page, 'Requests')
   await page
     .getByRole('button', { name: 'Contact options for Nova', exact: true })
@@ -378,7 +315,9 @@ test('new messages arrive incrementally and hiding preserves history', async ({
   page,
 }) => {
   const f = await fixture(page)
-  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
+  await withSocialResponse(page, 'Messages', () =>
+    page.goto(`/u/andromeda/messages?player=${peer}`),
+  )
   await expect(
     page.getByLabel('Message history').getByText('Message 65', { exact: true }),
   ).toBeVisible()
@@ -396,7 +335,9 @@ test('new messages arrive incrementally and hiding preserves history', async ({
     .getByRole('menuitem', { name: 'Hide conversation', exact: true })
     .click()
   await expect(page.getByText(/No conversations yet/)).toBeVisible()
-  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
+  await withSocialResponse(page, 'Messages', () =>
+    page.goto(`/u/andromeda/messages?player=${peer}`),
+  )
   await expect(
     page.getByLabel('Message history').getByText('Message 66', { exact: true }),
   ).toBeVisible()
@@ -406,161 +347,15 @@ test('new messages arrive incrementally and hiding preserves history', async ({
   })
 })
 
-
-
-for (const viewport of [
-  { width: 1440, height: 1000 },
-  { width: 390, height: 844 },
-]) {
-  test(`history polling preserves layout, scroll and composer at ${viewport.width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(viewport)
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    const f = await fixture(page)
-    const releaseInitial = f.holdHistory()
-    await page.goto(`/u/andromeda/messages?player=${peer}`)
-    const loading = page
-      .getByRole('status')
-      .filter({ hasText: 'Loading messages…' })
-    await expect(loading).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/messages-initial-${viewport.width}.png`,
-      fullPage: true,
-    })
-    releaseInitial()
-    const history = page.getByLabel('Message history')
-    await expect(history.getByText('Message 65', { exact: true })).toBeVisible()
-    const composer = page.getByLabel('Message', { exact: true })
-    await composer.fill('An unfinished message')
-    await composer.evaluate((el: HTMLTextAreaElement) =>
-      el.setSelectionRange(3, 8),
-    )
-    await history.evaluate((el) => {
-      el.scrollTop = 100
-      el.dispatchEvent(new Event('scroll'))
-    })
-    const position = () =>
-      page.evaluate(() => {
-        const history = document.querySelector(
-          '[aria-label="Message history"]',
-        )!
-        const composer = document.querySelector(
-          'textarea',
-        )! as HTMLTextAreaElement
-        return {
-          historyY: history.getBoundingClientRect().y,
-          composerY: composer.getBoundingClientRect().y,
-          pageY: window.scrollY,
-          historyTop: history.scrollTop,
-          selection: [composer.selectionStart, composer.selectionEnd],
-        }
-      })
-    const before = await position()
-    const releasePoll = f.holdHistory()
-    const count = f.requests.filter((q) => q.type === 'Messages').length
-    await page.clock.runFor(4999)
-    expect(f.requests.filter((q) => q.type === 'Messages')).toHaveLength(count)
-    await page.clock.runFor(1)
-    await expect
-      .poll(() => f.requests.filter((q) => q.type === 'Messages').length)
-      .toBe(count + 1)
-    await expect(loading).toHaveCount(0)
-    expect(await position()).toEqual(before)
-    await expect(composer).toBeFocused()
-    await expect(composer).toBeEnabled()
-    // Capture the conversation header and composer at their actual viewport positions.
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, {
-      path: `test-results/messages-refresh-${viewport.width}.png`,
-    })
-    await page.evaluate((y) => window.scrollTo(0, y), before.pageY)
-    await diagnosticScreenshot(page, {
-      path: `test-results/messages-composer-${viewport.width}.png`,
-    })
-    const polled = page.waitForResponse(r => r.url().endsWith('/social/query') && r.request().postDataJSON().query.type === 'Messages')
-    releasePoll()
-    await polled
-    // Passive polling keeps pagination available throughout the request.
-    await expect(
-      page.getByRole('button', { name: 'Load older messages' }),
-    ).toBeEnabled()
-    expect(await position()).toEqual(before)
-    await expect(composer).toHaveValue('An unfinished message')
-    await expect(composer).toBeFocused()
-
-    f.incoming()
-    await page.clock.runFor(5000)
-    await expect(history.getByText('Message 66', { exact: true })).toHaveCount(
-      1,
-    )
-    expect(await position()).toEqual(before)
-    await expect(composer).toBeFocused()
-    await expect(composer).toHaveValue('An unfinished message')
-    // Reading at the bottom still follows newly received messages.
-    await history.evaluate((el) => {
-      el.scrollTop = el.scrollHeight
-      el.dispatchEvent(new Event('scroll'))
-    })
-    f.incoming()
-    await page.clock.runFor(5000)
-    await expect(history.getByText('Message 67', { exact: true })).toBeVisible()
-    await expect
-      .poll(() =>
-        history.evaluate(
-          (el) => el.scrollHeight - el.scrollTop - el.clientHeight,
-        ),
-      )
-      .toBeLessThan(2)
-
-    // Prepending older history keeps the previously visible message anchored.
-    await history.evaluate((el) => {
-      el.scrollTop = 0
-      el.dispatchEvent(new Event('scroll'))
-    })
-    const oldTop = await history
-      .getByText('Message 16', { exact: true })
-      .evaluate(
-        (el) =>
-          el.getBoundingClientRect().top -
-          el.closest('[aria-label="Message history"]')!.getBoundingClientRect()
-            .top,
-      )
-    const releaseOlder = f.holdHistory()
-    await page.getByRole('button', { name: 'Load older messages' }).click()
-    await expect(
-      page.getByRole('button', { name: 'Load older messages' }),
-    ).toBeDisabled()
-    await expect(loading).toHaveCount(0)
-    releaseOlder()
-    await expect(history.getByText('Message 1', { exact: true })).toHaveCount(1)
-    // scrollHeight rounds to whole CSS pixels while message boxes retain fractions.
-    const anchoredTop = await history
-      .getByText('Message 16', { exact: true })
-      .evaluate(
-        (el) =>
-          el.getBoundingClientRect().top -
-          el.closest('[aria-label="Message history"]')!.getBoundingClientRect()
-            .top,
-      )
-    expect(Math.abs(anchoredTop - oldTop)).toBeLessThan(1)
-    await expect(composer).toHaveValue('An unfinished message')
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true)
-  })
-}
-
 test('empty history stays loaded during polling and displays the first incoming message', async ({
   page,
 }) => {
   await page.clock.install()
   await page.clock.pauseAt(new Date())
   const f = await fixture(page, 0)
-  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
+  await withSocialResponse(page, 'Messages', () =>
+    page.goto(`/u/andromeda/messages?player=${peer}`),
+  )
   await expect(page.getByText('Start your conversation.')).toBeVisible()
   const composer = page.getByLabel('Message', { exact: true })
   await composer.fill('First draft')
@@ -616,443 +411,96 @@ test('initial and background history errors remain visible and Refresh retries',
   await expect(composer).toHaveValue('Keep this after a failed poll')
 })
 
-for (const viewport of [
-  { width: 1440, height: 1000 },
-  { width: 390, height: 844 },
-]) {
-  test(`chat layout, search and composer at ${viewport.width}px`, async ({
+// Application gate: command wiring plus the direct-message route and its return link.
+// Isolated components own layout, draft editing, menus and keyboard permutations.
+for (const width of [1440, 390]) {
+  test(`submits a direct message from its deep link and returns to the conversation list at ${width}px`, async ({
     page,
   }) => {
-    await page.setViewportSize(viewport)
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const f = await fixture(page)
-    const start = new Date(2026, 9, 31, 14, 20).getTime()
-    const bodies = [
-      'Hey! Are you still near the outer colonies?',
-      'I am. Just brought the fleet back to Aster.',
-      'Perfect. Want to coordinate a trade? I can send crystal once your transports are back.',
-      'Sounds good. Give me a few minutes to check the cargo space.',
-      'No rush — send me the coordinates when you’re ready.',
-    ]
-    f.seed(
-      bodies.map((body, i) => ({
-        ...message(i + 1),
-        body,
-        sender: i % 2 ? binding.player : peer,
-        sent_at: start + i * 60000,
-      })),
-      ['Orion', 'Lyra', 'Cassiopeia'].map((username, i) => ({
-        contact: { ...contact(), player: id(810 + i), username },
-        latest: {
-          ...message(10 + i),
-          body: [
-            'Thanks! The shipment arrived safely.',
-            'You: Let’s regroup after the expedition.',
-            'See you at the outpost.',
-          ][i],
-          sent_at: start - i * 86400000,
-        },
-        unread: i === 0,
-      })),
+    await page.setViewportSize({ width, height: 900 })
+    const f = await fixture(page, 1)
+    await withSocialResponse(page, 'Messages', () =>
+      page.goto(`/u/andromeda/messages?player=${peer}`),
     )
-    await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
     await expect(
-      page.getByRole('button', { name: /Open conversation with/ }),
-    ).toHaveCount(4)
-    await page.mouse.move(0, 0)
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-list-${viewport.width}x${viewport.height}.png`,
-    })
-    await page.getByLabel('Search conversations').fill('outer')
-    // Search covers the latest preview, not unloaded thread history.
-    await expect(page.getByText('No matching conversations')).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-search-empty-${viewport.width}x${viewport.height}.png`,
-    })
-    await page.getByRole('button', { name: 'Clear filters' }).click()
+      page.getByRole('button', { name: 'Send message', exact: true }),
+    ).toBeInViewport()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
     await page
-      .getByRole('button', { name: 'Conversation filters and sorting' })
-      .click()
-    await page.getByLabel('Sort by', { exact: true }).selectOption('name')
-    await page.getByLabel('Show', { exact: true }).selectOption('unread')
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-filters-${viewport.width}x${viewport.height}.png`,
-    })
-    await page.keyboard.press('Escape')
-    await expect(
-      page.getByRole('button', { name: /Open conversation with/ }),
-    ).toHaveCount(2)
-    await page.getByRole('button', { name: 'Show all', exact: true }).click()
-    await page
-      .getByRole('button', { name: /Open conversation with Nova/ })
-      .click()
-    const history = page.getByLabel('Message history')
-    await expect(history.getByText(bodies[4], { exact: true })).toBeVisible()
-    const incoming = history
-      .getByRole('article', { name: 'Message from Nova to you' })
-      .last()
-    const outgoing = history
-      .getByRole('article', { name: 'Message from you to Nova' })
-      .last()
-    const [left, right, container] = await Promise.all([
-      incoming.boundingBox(),
-      outgoing.boundingBox(),
-      history.boundingBox(),
-    ])
-    expect(left!.x).toBeLessThan(right!.x)
-    expect(left!.width).toBeLessThanOrEqual(container!.width * 0.79)
-    expect(right!.width).toBeLessThanOrEqual(container!.width * 0.79)
-    const composer = page.getByLabel('Message', { exact: true })
-    await composer.fill('On my way. See you there!')
-    await page.mouse.move(0, 0)
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-thread-${viewport.width}x${viewport.height}.png`,
-    })
-    await page
-      .getByRole('button', { name: 'Back to conversations', exact: true })
-      .click()
-    await page
-      .getByRole('button', { name: /Open conversation with Nova/ })
-      .click()
-    await expect(composer).toHaveValue('On my way. See you there!')
-    const send = page.getByRole('button', { name: 'Send message', exact: true })
-    await expect(send).toBeInViewport()
-    await composer.evaluate((el: HTMLTextAreaElement) =>
-      el.setSelectionRange(el.value.length, el.value.length),
+      .getByLabel('Message', { exact: true })
+      .fill('Meet at the outpost.')
+    await withSocialResponse(page, 'Messages', () =>
+      page.getByRole('button', { name: 'Send message', exact: true }).click(),
     )
-    await composer.press('Enter')
-    await expect(composer).toHaveValue('On my way. See you there!\n')
-    expect(f.commands.filter((c) => c.action.type === 'Send')).toHaveLength(0)
-    await composer.press('Control+Enter')
-    await expect(
-      history.getByText('On my way. See you there!', { exact: true }),
-    ).toBeVisible()
-    await expect(composer).toHaveValue('')
-    await composer.fill('🚀'.repeat(4001))
-    await expect(send).toBeDisabled()
-    await composer.press('Control+Enter')
-    expect(f.commands.filter((c) => c.action.type === 'Send')).toHaveLength(1)
-    await composer.fill('')
-    await page
-      .getByRole('button', { name: 'Conversation options', exact: true })
-      .click()
-    const optionsMenu = page.getByRole('menu', {
-      name: 'Conversation options',
-      exact: true,
-    })
-    // Menu focus is scheduled after opening. Await that lifecycle explicitly:
-    // diagnostic screenshots must not be responsible for making Escape work.
-    await expect(optionsMenu).toBeVisible()
-    await expect
-      .poll(() =>
-        optionsMenu.evaluate((menu) => menu.contains(document.activeElement)),
-      )
-      .toBe(true)
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-options-${viewport.width}x${viewport.height}.png`,
-    })
-    await page.keyboard.press('Escape')
-    await expect(optionsMenu).toBeHidden()
-    await expect(
-      page.getByRole('button', { name: 'Conversation options', exact: true }),
-    ).toBeFocused()
-    await page
-      .getByRole('button', { name: 'Back to conversations', exact: true })
-      .click()
-    await expect(page.getByLabel('Search conversations')).toBeVisible()
-    f.invite()
-    await chooseCategory(page, 'Requests')
-    await page
-      .getByRole('button', { name: 'Contact options for Nova', exact: true })
-      .click()
-    await expect(
-      page.getByRole('menuitem', { name: 'Accept friend', exact: true }),
-    ).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-requests-${viewport.width}x${viewport.height}.png`,
-    })
-    await page
-      .getByRole('menuitem', { name: 'Accept friend', exact: true })
-      .click()
-    await chooseCategory(page, 'Friends')
-    await page
-      .getByRole('button', { name: 'Contact options for Nova', exact: true })
-      .click()
-    await expect(
-      page.getByRole('menuitem', { name: 'Remove friend', exact: true }),
-    ).toBeVisible()
-    await page.keyboard.press('Escape')
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-friends-${viewport.width}x${viewport.height}.png`,
-    })
-    await page
-      .getByRole('button', { name: 'Contact options for Nova', exact: true })
-      .click()
-    await page
-      .getByRole('menuitem', { name: 'Block player', exact: true })
-      .click()
-    await chooseCategory(page, 'Blocks')
-    await page
-      .getByRole('button', { name: 'Contact options for Nova', exact: true })
-      .click()
-    await expect(
-      page.getByRole('menuitem', { name: 'Unblock player', exact: true }),
-    ).toBeVisible()
-    await page.keyboard.press('Escape')
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-blocks-${viewport.width}x${viewport.height}.png`,
-    })
-    await chooseCategory(page, 'Circulars')
-    await page
-      .getByLabel('Alliance announcement')
-      .fill(
-        'Meet at the outpost after your fleets return. Safe travels, commanders.',
-      )
-    await page
-      .getByRole('button', { name: 'Send circular', exact: true })
-      .click()
     await expect(
       page
-        .getByRole('article')
-        .getByText(
-          'Meet at the outpost after your fleets return. Safe travels, commanders.',
-          { exact: true },
-        ),
+        .getByLabel('Message history')
+        .getByText('Meet at the outpost.', { exact: true }),
     ).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-circulars-${viewport.width}x${viewport.height}.png`,
-      fullPage: true,
-    })
+    await expect(page.getByLabel('Message', { exact: true })).toHaveValue('')
+    await page
+      .getByRole('button', { name: 'Back to conversations', exact: true })
+      .click()
+    await expect(page).not.toHaveURL(/player=/)
+    await expect(
+      page.getByRole('button', { name: /Open conversation with Nova/ }),
+    ).toContainText('Meet at the outpost.')
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true)
+      f.commands.filter((command) => command.action.type === 'Send'),
+    ).toHaveLength(1)
   })
 }
 
-for (const viewport of [
-  { width: 1440, height: 1000 },
-  { width: 390, height: 844 },
-]) {
-  test(`empty, error, blocked and long-message states at ${viewport.width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(viewport)
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const f = await fixture(page, 0)
-    f.failHistory()
-    await page.goto(`/u/andromeda/messages?player=${peer}`)
-    await expect(page.getByRole('alert')).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-error-${viewport.width}x${viewport.height}.png`,
-    })
-    await page
-      .getByRole('button', { name: 'Retry messages', exact: true })
-      .click()
-    await expect(
-      page.getByText('Start your conversation.', { exact: true }),
-    ).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-empty-${viewport.width}x${viewport.height}.png`,
-    })
-    const composer = page.getByLabel('Message', { exact: true })
-    const long = 'Coordinates: ' + 'outer-colony-'.repeat(35)
-    await composer.fill(long)
-    await page
-      .getByRole('button', { name: 'Send message', exact: true })
-      .click()
-    const history = page.getByLabel('Message history')
-    await expect(history.getByText(long, { exact: true })).toBeVisible()
-    expect(
-      await history.evaluate((el) => el.scrollWidth <= el.clientWidth),
-    ).toBe(true)
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBe(true)
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-long-${viewport.width}x${viewport.height}.png`,
-    })
-    await page
-      .getByRole('button', { name: 'Conversation options', exact: true })
-      .click()
-    await page
-      .getByRole('menuitem', { name: 'Block player', exact: true })
-      .click()
-    await expect(
-      page.getByText('This player is blocked. Unblock them to send messages.'),
-    ).toBeVisible()
-    await page.keyboard.press('Escape')
-    await diagnosticScreenshot(page, {
-      path: `test-results/dm-blocked-thread-${viewport.width}x${viewport.height}.png`,
-    })
-    await expect(composer).toHaveCount(0)
-  })
-}
-
-test('message categories share the heading and collapse into a keyboard-accessible mobile menu', async ({
+// Controller tests cannot establish that the application installs its polling timer.
+test('application polls message history at five seconds without replacing the loaded thread', async ({
   page,
 }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.setViewportSize({ width: 1440, height: 1000 })
-  await fixture(page)
-  await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
-  const title = page.getByRole('heading', {
-    name: 'Messages',
-    exact: true,
-    level: 2,
-  })
-  const categories = page.getByRole('group', {
-    name: 'Message categories',
-    exact: true,
-  })
-  await expect(categories).toBeVisible()
-  const [heading, group] = await Promise.all([
-    title.boundingBox(),
-    categories.boundingBox(),
-  ])
-  expect(
-    Math.abs(heading!.y + heading!.height / 2 - group!.y - group!.height / 2),
-  ).toBeLessThan(2)
-  expect(group!.x).toBeGreaterThan(heading!.x + heading!.width)
-  await chooseCategory(page, 'Friends')
-  await expect(page.getByText(/No friends yet/)).toBeVisible()
-  await page.setViewportSize({ width: 390, height: 844 })
-  const trigger = page.getByRole('button', {
-    name: 'Message categories',
-    exact: true,
-  })
-  await expect(trigger).toHaveText('Friends')
-  await expect(categories).toHaveCount(0)
-  await trigger.focus()
-  await page.keyboard.press('Enter')
+  const now = new Date('2026-10-31T14:20:00Z')
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
+  const f = await fixture(page)
+  const releaseInitial = f.holdHistory()
+  await page.goto(`/u/andromeda/messages?player=${peer}`)
   await expect(
-    page.getByRole('menuitemradio', { name: 'Friends', exact: true }),
-  ).toHaveAttribute('aria-checked', 'true')
-  await diagnosticScreenshot(page, {
-    path: 'test-results/dm-category-menu-390x844.png',
-  })
-  await page.keyboard.press('Escape')
-  await expect(trigger).toBeFocused()
-  await trigger.press('Enter')
+    page.getByText('Loading messages…', { exact: true }),
+  ).toBeVisible()
+  await withSocialResponse(page, 'Messages', async () => releaseInitial())
   await expect(
-    page.getByRole('menuitemradio', { name: 'Conversations', exact: true }),
-  ).toBeFocused()
-  await page.keyboard.press('End')
-  await expect(
-    page.getByRole('menuitemradio', { name: 'Blocks', exact: true }),
-  ).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(trigger).toHaveText('Blocks')
-  await expect(page.getByText('No blocks yet.')).toBeVisible()
-  await page.setViewportSize({ width: 1440, height: 1000 })
-  await expect(
-    page.getByRole('button', { name: 'Blocks', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true')
-  await page.setViewportSize({ width: 320, height: 740 })
-  await expect(trigger).toHaveText('Blocks')
-  await chooseCategory(page, 'Conversations')
-  const [mobileHeading, mobileTrigger, refresh] = await Promise.all([
-    title.boundingBox(),
-    trigger.boundingBox(),
-    page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox(),
-  ])
+    page.getByLabel('Message history').getByText('Message 65', { exact: true }),
+  ).toBeVisible()
+  const releasePoll = f.holdHistory()
+  const count = f.requests.filter((query) => query.type === 'Messages').length
+  try {
+    await page.clock.runFor(4999)
+    expect(
+      f.requests.filter((query) => query.type === 'Messages'),
+    ).toHaveLength(count)
+    await page.clock.runFor(1)
+    await expect
+      .poll(
+        () => f.requests.filter((query) => query.type === 'Messages').length,
+      )
+      .toBe(count + 1)
+    await expect(
+      page.getByText('Loading messages…', { exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: 'Load older messages' }),
+    ).toBeEnabled()
+    await withSocialResponse(page, 'Messages', async () => releasePoll())
+  } finally {
+    releasePoll()
+  }
   expect(
-    Math.abs(
-      mobileHeading!.y +
-        mobileHeading!.height / 2 -
-        mobileTrigger!.y -
-        mobileTrigger!.height / 2,
-    ),
-  ).toBeLessThan(2)
-  expect(
-    Math.abs(
-      mobileHeading!.y +
-        mobileHeading!.height / 2 -
-        refresh!.y -
-        refresh!.height / 2,
-    ),
-  ).toBeLessThan(2)
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
+    f.requests
+      .filter((query) => query.type === 'Messages')
+      .every((query) => query.limit === 50),
   ).toBe(true)
-  const search = page.getByRole('textbox', { name: 'Search conversations' })
-  const icon = search.locator('..').locator('svg')
-  const [fieldBounds, iconBounds] = await Promise.all([
-    search.boundingBox(),
-    icon.boundingBox(),
-  ])
-  expect(iconBounds!.x).toBeGreaterThan(fieldBounds!.x)
-  expect(iconBounds!.x + iconBounds!.width).toBeLessThan(
-    fieldBounds!.x + fieldBounds!.width,
-  )
-  expect(
-    Math.abs(
-      iconBounds!.y +
-        iconBounds!.height / 2 -
-        fieldBounds!.y -
-        fieldBounds!.height / 2,
-    ),
-  ).toBeLessThan(1)
-  await search.locator('..').click({ position: { x: 20, y: 22 } })
-  await expect(search).toBeFocused()
-  await diagnosticScreenshot(page, {
-    path: 'test-results/dm-header-320x740.png',
-  })
-})
-
-for (const width of [1440, 390]) {
-  test(`background message poll accepts older history and preserves edits at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    const f = await fixture(page)
-    await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
-    const older = page.getByRole('button', {name: 'Load older messages'})
-    await expect(older).toBeEnabled()
-    const history = page.getByLabel('Message history')
-    await history.evaluate(el => {el.scrollTop = 0; el.dispatchEvent(new Event('scroll'))})
-    const anchor = history.getByText('Message 16', {exact: true})
-    const offset = () => anchor.evaluate(el => el.getBoundingClientRect().top - el.closest('[aria-label="Message history"]')!.getBoundingClientRect().top)
-    const before = await offset()
-    const composer = page.getByLabel('Message', {exact: true})
-    await composer.fill('Unsent refresh draft')
-    const release = f.holdHistory()
-    try {
-      await page.clock.runFor(5000)
-      await expect.poll(() => f.requests.filter(q => q.type === 'Messages').length).toBe(2)
-      await expect(older).toBeEnabled()
-      await expect(composer).toBeFocused()
-      await expect(composer).toHaveValue('Unsent refresh draft')
-      await diagnosticScreenshot(page, {path: `test-results/background-messages-${width}x900.png`, fullPage: true})
-      await older.click()
-      await expect(older).toBeDisabled()
-      expect(f.requests.filter(q => q.type === 'Messages')).toHaveLength(2)
-      await composer.fill('Still editing while history is queued')
-    } finally {release()}
-    await expect(history.getByText('Message 1', {exact: true})).toHaveCount(1)
-    expect(f.requests.filter(q => q.type === 'Messages' && q.before)).toHaveLength(1)
-    expect(Math.abs(await offset() - before)).toBeLessThan(1)
-    await expect(composer).toBeFocused()
-    await expect(composer).toHaveValue('Still editing while history is queued')
-  })
-}
-
-// Application gate: command wiring plus the direct-message route and its return link.
-// The expanded interaction scenarios above remain until component validation passes.
-test('submits a direct message from its deep link and returns to the conversation list', async ({ page }) => {
-  const f = await fixture(page, 1)
-  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
-  await page.getByLabel('Message', { exact: true }).fill('Meet at the outpost.')
-  await withSocialResponse(page, 'Messages', () => page.getByRole('button', { name: 'Send message', exact: true }).click())
-  await expect(page.getByLabel('Message history').getByText('Meet at the outpost.', { exact: true })).toBeVisible()
-  await expect(page.getByLabel('Message', { exact: true })).toHaveValue('')
-  await page.getByRole('button', { name: 'Back to conversations', exact: true }).click()
-  await expect(page).not.toHaveURL(/player=/)
-  await expect(page.getByRole('button', { name: /Open conversation with Nova/ })).toContainText('Meet at the outpost.')
-  expect(f.commands.filter(command => command.action.type === 'Send')).toHaveLength(1)
+  await expect(
+    page.getByLabel('Message history').getByText('Message 65', { exact: true }),
+  ).toBeVisible()
 })

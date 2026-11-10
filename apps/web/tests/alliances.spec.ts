@@ -98,82 +98,6 @@ test('discovery applications preserve rejected drafts, withdraw and create an al
   expect(f.commands[0].command_id).not.toBe(f.commands[1].command_id)
 })
 
-test('leader accepts recruits, edits delegated roles, assigns multiple roles and transfers leadership', async ({ page }) => {
-  const detail = own()
-  detail.roles!.push({ id: id(871), name: 'Scout', is_default: false, permissions: ['ViewMembers'], grantable_permissions: [] })
-  const f = await fixture(page, detail)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await page.getByRole('button', { name: 'Applications', exact: true }).click()
-  await page.getByRole('button', { name: 'Accept New Pilot', exact: true }).click()
-  await expect(page.getByText('No pending applications.')).toBeVisible()
-  await page.getByRole('button', { name: 'Roles', exact: true }).click()
-  await page.getByText('Create a custom role', { exact: true }).click()
-  await page.getByRole('textbox', { name: 'Role name', exact: true }).fill('Recruitment officer')
-  for (const label of ['View applications', 'Accept and reject applications']) {
-    await page.getByRole('checkbox', { name: `${label}: allow`, exact: true }).check()
-    await page.getByRole('checkbox', { name: `${label}: delegate`, exact: true }).check()
-  }
-  await page.getByRole('button', { name: 'Create role', exact: true }).click()
-  await expect(page.getByText('Recruitment officer', { exact: true })).toBeVisible()
-  const saved = f.commands.find(c => c.action.type === 'SaveRole')!.action
-  expect(saved).toMatchObject({ permissions: ['ViewApplications', 'ProcessApplications'], grantable_permissions: ['ViewApplications', 'ProcessApplications'] })
-  await page.getByText('Recruitment officer', { exact: true }).click()
-  await page.getByRole('textbox', { name: 'Role name', exact: true }).fill('Recruitment captain')
-  await page.getByRole('button', { name: 'Save role', exact: true }).click()
-  await expect(page.getByText('Recruitment captain', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Members', exact: true }).click()
-  await page.getByRole('button', { name: 'Assign roles to Nova' }).click()
-  await page.getByLabel('Recruitment captain', { exact: true }).check()
-  await page.getByLabel('Scout', { exact: true }).check()
-  await page.getByRole('button', { name: 'Save member roles' }).click()
-  expect(f.commands.find(c => c.action.type === 'AssignRoles')!.action).toMatchObject({ player: member, roles: [id(871), id(870)] })
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('button', { name: 'Transfer to Nova', exact: true }).click()
-  await expect(page.getByRole('group', { name: 'Review Transfer to Nova' })).toContainText('you become a Member')
-  await page.getByRole('button', { name: 'Confirm transfer to nova' }).click()
-  await expect(page.getByRole('button', { name: 'Roles', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Applications', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Disband alliance', exact: true })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Leave alliance', exact: true })).toBeVisible()
-})
-
-test('noticeboard renders safely, creates, pins, edits and loads a stable older page with responsive layouts', async ({ page }) => {
-  const detail = own(); detail.next_post_before = id(850)
-  const f = await fixture(page, detail)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await expect(page.getByRole('heading', { name: 'Welcome aboard' })).toBeVisible()
-  for (const width of [390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 900 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await diagnosticScreenshot(page, { path: `test-results/alliance-${width}-${page.url().includes('/alliances/') ? 'public' : 'board'}.png`, fullPage: true })
-  }
-  await page.getByText('Write a notice', { exact: true }).click()
-  await page.getByLabel('Notice title', { exact: true }).first().fill('Rally at dawn')
-  await page.getByLabel('Notice body', { exact: true }).first().fill('**Meet** at dawn.\n\n<img src=x onerror=alert(1)>')
-  await page.getByRole('button', { name: 'Preview notice', exact: true }).first().click()
-  await expect(page.locator('strong').filter({ hasText: 'Meet' })).toBeVisible()
-  await page.getByRole('button', { name: 'Publish notice', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Rally at dawn' })).toBeVisible()
-  await page.getByRole('button', { name: 'Pin Rally at dawn', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Unpin Rally at dawn', exact: true })).toBeVisible()
-  const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Rally at dawn' }) })
-  await article.getByText('Edit notice', { exact: true }).click()
-  await article.getByLabel('Notice title', { exact: true }).fill('Rally at noon')
-  await article.getByRole('button', { name: 'Preview notice', exact: true }).click()
-  await article.getByRole('textbox', { name: 'Notice body', exact: true }).fill('**Meet** at noon instead.')
-  await article.getByRole('button', { name: 'Preview notice', exact: true }).click()
-  await expect(article.getByText('Meet at noon instead.', { exact: true })).toHaveCount(1)
-  await article.getByRole('button', { name: 'Save notice' }).click()
-  await expect(page.getByRole('heading', { name: 'Rally at noon' })).toBeVisible()
-  await expect(page.getByText('Meet at noon instead.', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Older notices' }).click()
-  await expect(page.getByRole('heading', { name: 'Older chapter' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Rally at noon' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Newest notices' }).click()
-  await expect(page.getByRole('heading', { name: 'Rally at noon' })).toBeVisible()
-  expect(f.commands.map(c => c.action.type)).toEqual(['CreatePost', 'PinPost', 'EditPost'])
-})
-
 test('open and closed recruitment and existing membership drive the available controls', async ({ page }) => {
   const f = await fixture(page, null)
   await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary: { ...summary, recruitment: 'Closed' }, public_text: 'Private explorers.' } }))
@@ -263,46 +187,8 @@ test('departed notice authors use authorized current profile tags while roster m
   }
 })
 
-test('a delegated manager can dismiss a locked member role editor without submitting', async ({ page }) => {
-  const detail = own()
-  const leader = id(899)
-  detail.leader = leader
-  detail.permissions = ['ViewMembers', 'AssignRoles']
-  detail.grantable_permissions = ['ViewMembers']
-  detail.members!.push({ player: leader, username: 'Leader', joined_at: 1700000000000, roles: [baseRole.id] })
-  detail.roles!.push({ id: id(872), name: 'Intelligence', is_default: false, permissions: ['ViewMembers', 'ViewActivity'], grantable_permissions: [] })
-  detail.members!.find(m => m.player === member)!.roles.push(id(872))
-  const f = await fixture(page, detail)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await page.getByRole('button', { name: 'Members', exact: true }).click()
-  await page.getByRole('button', { name: 'Assign roles to Nova', exact: true }).click()
-  await expect(page.getByText('This member holds a role above your delegated authority.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save member roles', exact: true })).toBeDisabled()
-  const cancel = page.getByRole('button', { name: 'Cancel role changes', exact: true })
-  await expect(cancel).toBeEnabled()
-  await cancel.click()
-  await expect(page.getByRole('button', { name: 'Assign roles to Nova', exact: true })).toBeVisible()
-  expect(f.commands).toEqual([])
-})
-
-test('saving an unrelated role retains an edited notice draft', async ({page})=>{
-  await fixture(page,own())
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await page.getByText('Write a notice',{exact:true}).click()
-  await page.getByRole('textbox',{name:'Notice title',exact:true}).fill('Unpublished orders')
-  await page.getByRole('textbox',{name:'Notice body',exact:true}).fill('Keep this draft while assigning duties.')
-  await page.getByRole('button',{name:'Roles',exact:true}).click()
-  await page.getByText('Create a custom role',{exact:true}).click()
-  await page.getByRole('textbox',{name:'Role name',exact:true}).fill('Observer')
-  await page.getByRole('button',{name:'Create role',exact:true}).click()
-  await expect(page.getByText('Observer',{exact:true})).toBeVisible()
-  await page.getByRole('button',{name:'Board',exact:true}).click()
-  await page.getByText('Write a notice',{exact:true}).click()
-  await expect(page.getByRole('textbox',{name:'Notice title',exact:true})).toHaveValue('Unpublished orders')
-  await expect(page.getByRole('textbox',{name:'Notice body',exact:true})).toHaveValue('Keep this draft while assigning duties.')
-})
-
-for (const viewport of [{ width: 390, height: 740 }, { width: 1440, height: 900 }]) {
+// Desktop geometry is isolated; retain mobile overview refresh and public-link navigation.
+for (const viewport of [{ width: 390, height: 740 }]) {
   test.describe(`alliance reading at ${viewport.width}px`, () => {
     test.use({ viewport, isMobile: viewport.width < 768, hasTouch: viewport.width < 768 })
 
@@ -451,7 +337,7 @@ for (const action of ['Join', 'Apply'] as const) {
 }
 
 // Application gate: a submitted membership mutation changes the destination route.
-// The expanded interaction scenarios above remain until component validation passes.
+// Isolated components own role, draft, notice-editing and recruitment-form interactions.
 test('creates an alliance from its route and returns to membership home', async ({ page }) => {
   const f = await fixture(page, null)
   const membership = (response: import('@playwright/test').Response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine'
@@ -463,4 +349,28 @@ test('creates an alliance from its route and returns to membership home', async 
   await expect(page.getByRole('heading', { name: 'New Horizon', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'My alliance', exact: true })).toBeVisible()
   expect(f.commands.map(command => command.action.type)).toEqual(['Create'])
+})
+
+// Restored: controller state cannot prove the screen recovery live region.
+test('expired noticeboard cursors recover to fresh notices', async ({ page }) => {
+  const detail = own(); detail.next_post_before = id(851)
+  await fixture(page, detail)
+  const queries: S['AllianceQuery'][] = []
+  await page.route('**/alliances/query', route => {
+    const { context, query } = route.request().postDataJSON() as S['AllianceQueryRequest']
+    queries.push(query)
+    if (query.type === 'Detail' && query.post_before) {
+      detail.revision++
+      detail.posts![0].title = 'Fresh standing orders'
+      detail.next_post_before = null
+      return route.fulfill({ status:409, json:{code:'Conflict'} })
+    }
+    return route.fulfill({json:{...context,sampled_at:1700000000000,directory:[],directory_count:0,alliance:detail,applications:[]}})
+  })
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
+  await page.getByRole('button', { name:'Older notices', exact:true }).click()
+  await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
+  await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
+  expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)
+  expect(queries.at(-1)).toEqual({type:'Detail',alliance,post_before:null})
 })
