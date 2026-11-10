@@ -151,13 +151,16 @@ test('role form delegates permissions, member editor assigns multiple roles and 
     page.getByText('Recruitment captain', { exact: true }),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Members', exact: true }).click()
-  await page.getByRole('button', { name: 'Assign roles to Nova' }).click()
+  await page.getByRole('button', { name: 'Member actions: Nova' }).click()
+  await page
+    .getByRole('menuitem', { name: 'Assign roles', exact: true })
+    .click()
   await page.getByLabel('Recruitment captain', { exact: true }).check()
   await page.getByLabel('Scout', { exact: true }).check()
-  await page.getByRole('button', { name: 'Save member roles' }).click()
-  await expect(
-    page.getByRole('article').filter({ hasText: 'Nova' }),
-  ).toContainText('Scout · Recruitment captain')
+  await page.getByRole('button', { name: 'Save roles' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'Nova' })).toContainText(
+    'Scout · Recruitment captain',
+  )
   const commands = await page.evaluate(() => window.allianceScenario.commands)
   expect(
     commands.find((c) => c.action.type === 'SaveRole')!.action,
@@ -191,16 +194,17 @@ test('locked member role editor can cancel without submitting', async ({
   await mount('alliance-panels')
   await page.evaluate(() => window.allianceScenario.prepare('locked'))
   await page.getByRole('button', { name: 'Members', exact: true }).click()
-  await page.getByRole('button', { name: 'Assign roles to Nova' }).click()
+  await page.getByRole('button', { name: 'Member actions: Nova' }).click()
+  await page
+    .getByRole('menuitem', { name: 'Assign roles', exact: true })
+    .click()
   await expect(
     page.getByText('This member holds a role above your delegated authority.'),
   ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save roles' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(
-    page.getByRole('button', { name: 'Save member roles' }),
-  ).toBeDisabled()
-  await page.getByRole('button', { name: 'Cancel role changes' }).click()
-  await expect(
-    page.getByRole('button', { name: 'Assign roles to Nova' }),
+    page.getByRole('button', { name: 'Member actions: Nova' }),
   ).toBeVisible()
   expect(await page.evaluate(() => window.allianceScenario.commands)).toEqual(
     [],
@@ -446,4 +450,107 @@ test('noticeboard controls fit the intermediate 768px viewport', async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true)
+})
+
+for (const width of [390, 1440]) {
+  test(`compact member roster remains readable and opens role actions at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await mount('alliance-panels')
+    await page.evaluate(() => window.allianceScenario.prepare('roster'))
+    await page.getByRole('button', { name: 'Members', exact: true }).click()
+    const roster = page.getByRole('region', { name: 'Alliance roster' })
+    const table = roster.getByRole('table', { name: 'Alliance members' })
+    await expect(table.getByRole('row')).toHaveCount(9)
+    await expect(
+      roster.getByRole('heading', { name: 'Members', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      roster.getByText('Exact activity times are private.', { exact: true }),
+    ).toHaveCount(0)
+    // A populated roster must not return to tall per-member cards.
+    expect((await table.boundingBox())!.height).toBeLessThan(
+      width === 390 ? 660 : 520,
+    )
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await expect(table.getByRole('row').nth(1)).toContainText('Commander')
+    const nova = table.getByRole('row').filter({ hasText: 'Nova' })
+    await nova.getByRole('button', { name: 'Member actions: Nova' }).click()
+    await page
+      .getByRole('menuitem', { name: 'Assign roles', exact: true })
+      .click()
+    const dialog = page.getByRole('dialog', { name: 'Roles for Nova' })
+    await expect(dialog.getByLabel('Scout', { exact: true })).toBeChecked()
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(
+      nova.getByRole('button', { name: 'Member actions: Nova' }),
+    ).toBeFocused()
+    await nova.getByRole('button', { name: 'Member actions: Nova' }).click()
+    await page
+      .getByRole('menuitem', { name: 'Remove member', exact: true })
+      .click()
+    const confirmation = page.getByRole('alertdialog', { name: 'Remove Nova?' })
+    await expect(confirmation).toContainText('lose access')
+    await confirmation.getByRole('button', { name: 'Keep member' }).click()
+    await expect(nova).toBeVisible()
+    await nova.getByRole('button', { name: 'Member actions: Nova' }).click()
+    await page
+      .getByRole('menuitem', { name: 'Remove member', exact: true })
+      .click()
+    await confirmation
+      .getByRole('button', { name: 'Remove member', exact: true })
+      .click()
+    await expect(table.getByRole('row')).toHaveCount(8)
+    await expect(nova).toHaveCount(0)
+  })
+}
+
+test('read-only roster omits unauthorized activity and management actions', async ({
+  page,
+  mount,
+}) => {
+  await mount('alliance-panels')
+  await page.evaluate(() => window.allianceScenario.prepare('viewer'))
+  await page.getByRole('button', { name: 'Members', exact: true }).click()
+  const roster = page.getByRole('region', { name: 'Alliance roster' })
+  await expect(
+    roster.getByRole('columnheader', { name: 'Activity' }),
+  ).toHaveCount(0)
+  await expect(roster.getByText('Recent', { exact: true })).toHaveCount(0)
+  await expect(roster.getByText('Away', { exact: true })).toHaveCount(0)
+  await expect(roster.getByText('Inactive', { exact: true })).toHaveCount(0)
+  await expect(
+    roster.getByRole('button', { name: /Member actions:/ }),
+  ).toHaveCount(0)
+})
+
+test('rejected member-role edits retain selections and explain the failure inside the dialog', async ({
+  page,
+  mount,
+}) => {
+  await mount('alliance-panels')
+  await page.getByRole('button', { name: 'Members', exact: true }).click()
+  await page.getByRole('button', { name: 'Member actions: Nova' }).click()
+  await page
+    .getByRole('menuitem', { name: 'Assign roles', exact: true })
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Roles for Nova' })
+  await dialog.getByLabel('Scout', { exact: true }).check()
+  await page.evaluate(() => window.allianceScenario.reject())
+  await dialog.getByRole('button', { name: 'Save roles' }).click()
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Could not save these roles.',
+  )
+  await expect(dialog.getByLabel('Scout', { exact: true })).toBeChecked()
+  await dialog.getByRole('button', { name: 'Save roles' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole('row').filter({ hasText: 'Nova' })).toContainText(
+    'Scout',
+  )
 })

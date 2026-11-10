@@ -4,84 +4,8 @@ import { can, type AllianceDetail } from '../../client-model/alliances'
 import { Button } from '../../ui/button'
 import { Field, Input, Select } from '../../ui/form'
 import { ActionForm, ConfirmAction, Markdown, value, type Run } from './shared'
-import { MemberRoles } from './roles'
+export { Roster } from './roster'
 import styles from './alliances.module.css'
-export function Roster({
-  detail,
-  player,
-  run,
-  busy,
-}: {
-  detail: AllianceDetail
-  player: string
-  run: Run
-  busy: boolean
-}) {
-  return (
-    <section className={styles.stack} aria-label="Alliance roster">
-      <h3>Members</h3>
-      {can(detail, 'ViewActivity') && (
-        <p>
-          Recent: active in the last 15 minutes. Away: active within seven days.
-          Inactive: seven days or more. Exact activity times are private.
-        </p>
-      )}
-      {detail.members?.map((member) => (
-        <article className={styles.card} key={member.player}>
-          <h4>
-            <PlayerName
-              player={member.player}
-              fallback={member.username}
-              alliance={detail.summary}
-            />
-            {member.player === player ? ' · You' : ''}
-            {member.player === detail.leader ? ' · Leader' : ''}
-          </h4>
-          <p>
-            {detail.roles
-              ?.filter(
-                (role) => role.is_default || member.roles.includes(role.id),
-              )
-              .map((role) => role.name)
-              .join(' · ')}
-          </p>
-          {can(detail, 'ViewActivity') && member.activity && (
-            <p>{member.activity}</p>
-          )}
-          <p className={styles.meta}>
-            Joined {new Date(member.joined_at).toLocaleDateString()}
-          </p>
-          <div className={styles.actions}>
-            {can(detail, 'AssignRoles') && member.player !== detail.leader && (
-              <MemberRoles
-                detail={detail}
-                member={member}
-                run={run}
-                busy={busy}
-              />
-            )}
-            {can(detail, 'KickMembers') &&
-              member.player !== detail.leader &&
-              member.player !== player && (
-                <ConfirmAction
-                  label={`Remove ${member.username}`}
-                  description={`Remove ${member.username} from ${detail.summary.name}? They immediately lose private alliance access.`}
-                  disabled={busy}
-                  onConfirm={() =>
-                    run({
-                      type: 'Kick',
-                      alliance: detail.summary.id,
-                      player: member.player,
-                    })
-                  }
-                />
-              )}
-          </div>
-        </article>
-      ))}
-    </section>
-  )
-}
 export function Applications({
   detail,
   run,

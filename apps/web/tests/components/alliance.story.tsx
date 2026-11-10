@@ -170,6 +170,10 @@ function setup() {
           },
           ...detail.posts!,
         ]
+      if (a.type === 'Kick') {
+        detail.members = detail.members!.filter((m) => m.player !== a.player)
+        detail.summary.member_count = detail.members!.length
+      }
       if (a.type === 'DeletePost')
         detail.posts = detail.posts!.filter((p) => p.id !== a.post)
       if (a.type === 'EditPost')
@@ -226,7 +230,50 @@ function setup() {
       await controller.refresh()
     },
     refresh: () => controller.refresh(),
-    prepare: async (kind: 'locked' | 'long' | 'departed' | 'expired') => {
+    prepare: async (
+      kind: 'locked' | 'long' | 'departed' | 'expired' | 'roster' | 'viewer',
+    ) => {
+      if (kind === 'roster' || kind === 'viewer') {
+        detail.roles!.push({
+          id: 'diplomat',
+          name: 'Diplomat',
+          is_default: false,
+          permissions: ['ViewMembers', 'ViewApplications'],
+          grantable_permissions: [],
+        })
+        detail.members = [
+          { ...detail.members![0], activity: 'Recent' },
+          {
+            ...detail.members![1],
+            activity: 'Away',
+            roles: ['member', 'scout'],
+          },
+          ...[
+            'Atlas',
+            'Ember',
+            'Kaia',
+            'Lyra',
+            'Orion',
+            'Vesper of the distant outer systems',
+          ].map((username, index) => ({
+            player: `sample-${index}`,
+            username,
+            joined_at: 1700000000000 - index * 86400000,
+            roles:
+              index === 3
+                ? ['member', 'scout', 'diplomat']
+                : index === 2
+                  ? ['member', 'diplomat']
+                  : ['member'],
+            activity: (['Recent', 'Away', 'Inactive'] as const)[index % 3],
+          })),
+        ]
+        detail.summary.member_count = detail.members!.length
+        if (kind === 'viewer') {
+          detail.permissions = ['ViewMembers']
+          detail.grantable_permissions = []
+        }
+      }
       if (kind === 'locked') {
         detail.leader = 'leader'
         detail.permissions = ['ViewMembers', 'AssignRoles']

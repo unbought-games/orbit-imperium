@@ -8,7 +8,6 @@ import {
   type AllianceDetail,
   type AlliancePermission,
 } from '../../client-model/alliances'
-import { Button } from '../../ui/button'
 import { Field, Input } from '../../ui/form'
 import { ActionForm, ConfirmAction, value, type Run } from './shared'
 import styles from './alliances.module.css'
@@ -169,84 +168,5 @@ export function Roles({
         </details>
       )}
     </section>
-  )
-}
-export function MemberRoles({
-  detail,
-  member,
-  run,
-  busy,
-}: {
-  detail: AllianceDetail
-  member: components['schemas']['AllianceMember']
-  run: Run
-  busy: boolean
-}) {
-  const [editing, setEditing] = useState(false)
-  const roles = detail.roles ?? []
-  const assignable = roles.filter(
-    (role) =>
-      !role.is_default &&
-      canDelegate(detail, [...role.permissions, ...role.grantable_permissions]),
-  )
-  const locked = roles.filter(
-    (role) =>
-      !role.is_default &&
-      member.roles.includes(role.id) &&
-      !assignable.includes(role),
-  )
-  return editing ? (
-    <>
-      <ActionForm
-        draftKey={`member:${detail.summary.id}:${member.player}`}
-        busy={busy || locked.length > 0}
-        label="Save member roles"
-        onSubmit={async (data) => {
-          const ok = await run({
-            type: 'AssignRoles',
-            alliance: detail.summary.id,
-            player: member.player,
-            roles: data.getAll('role').map(String),
-          })
-          if (ok) setEditing(false)
-          return ok
-        }}
-      >
-        <p>
-          Assign roles to {member.username}. Default membership permissions
-          always apply.
-        </p>
-        {locked.length > 0 && (
-          <p>This member holds a role above your delegated authority.</p>
-        )}
-        {assignable.map((role) => (
-          <label key={role.id}>
-            <input
-              type="checkbox"
-              name="role"
-              value={role.id}
-              defaultChecked={member.roles.includes(role.id)}
-            />
-            {role.name}
-          </label>
-        ))}
-      </ActionForm>
-      <Button
-        variant="secondary"
-        type="button"
-        disabled={busy}
-        onClick={() => setEditing(false)}
-      >
-        Cancel role changes
-      </Button>
-    </>
-  ) : (
-    <Button
-      variant="secondary"
-      disabled={busy}
-      onClick={() => setEditing(true)}
-    >
-      Assign roles to {member.username}
-    </Button>
   )
 }
