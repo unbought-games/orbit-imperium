@@ -345,3 +345,56 @@ it('ignores cached unread reports outside current inbox membership, including st
   expect(hasUnreadIntelligence(state)).toBe(false)
   expect(orbAppearance(state, []).tone).toBe('ice')
 })
+
+it('retargets the orb from attack to success to unread to idle using current facts', () => {
+  const state = fixture()
+  state.mailbox = {
+    conversations: [],
+    circulars: [
+      {
+        id: 'mail',
+        alliance: 'a',
+        alliance_name: 'Alliance',
+        alliance_tag: 'TAG',
+        sender: 'sender',
+        sender_name: 'Nova',
+        body: 'hello',
+        sent_at: 1,
+        read: false,
+      },
+    ],
+  }
+  state.attempts.set(
+    'build',
+    attempt({
+      type: 'StartUpgrade',
+      body: 'body',
+      building: 'MetalMine',
+      expected_terms_hash: 'hash',
+    }),
+  )
+  const recent = [{ kind: 'command' as const, id: 'build', shownAt: 0 }]
+  state.view.missions.incoming = [
+    {
+      sender: 'enemy',
+      origin: { galaxy: 1, system: 2, position: 3 },
+      target: 'home',
+      mission: 'Attack',
+      arrival_at: 9000,
+      ships: { visibility: 'Unknown' },
+    },
+  ]
+  expect(orbAppearance(state, recent)).toEqual({ tone: 'red', icon: 'attack' })
+  state.view.missions.incoming = []
+  expect(orbAppearance(state, recent)).toEqual({
+    tone: 'green',
+    icon: 'building',
+  })
+  expect(orbAppearance(state, [])).toEqual({
+    tone: 'champagne',
+    icon: 'message',
+  })
+  state.mailbox.circulars[0].read = true
+  expect(orbAppearance(state, [])).toEqual({ tone: 'ice', icon: null })
+  expect(orbAppearance(state, [])).toEqual({ tone: 'ice', icon: null })
+})

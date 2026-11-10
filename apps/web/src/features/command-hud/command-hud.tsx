@@ -4,13 +4,15 @@ import { TutorialAdvisor } from '../tutorial/advisor'
 import { BriefingLink } from '../tutorial/briefing-link'
 import { ReleaseAnnouncement } from '../announcements/release-announcement'
 import type { DispatchDraft } from '../missions'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from '@tanstack/react-router'
 import { useGameSession } from '../../shell/session-context'
 import { bindingKey } from '../../client-model/commands'
 import { useCommandHud } from './use-command-hud'
-import { CommandOrb, HudToasts } from './hud-controls'
+import { CommandOrb } from './hud-controls'
+import { HudToasts } from './hud-toasts'
+import { hudToastViews } from './notification-history'
 import { HudPanel } from './hud-panel'
 import { incomingThreats } from './model'
 import styles from './hud.module.css'
@@ -33,14 +35,28 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
   const identity = usePlayerIdentity(view.binding.player)
   const title = useIdentityTitle(identity?.title)
   const hud = useCommandHud(model)
+  const layer = useRef<HTMLDivElement>(null)
   const href = useLocation({ select: (location) => location.href })
   useEffect(() => {
     hud.select(null)
   }, [href])
   return createPortal(
     <div className={styles.surface} data-command-hud>
-      <div className={styles.hudLayer} aria-label="Live command HUD">
-        <HudToasts hud={hud} />
+      <div
+        ref={layer}
+        className={styles.hudLayer}
+        aria-label="Live command HUD"
+      >
+        <HudToasts
+          notices={hudToastViews(hud.state, hud.toasts)}
+          onOpen={hud.select}
+          onDismiss={hud.dismiss}
+          focusFallback={() =>
+            layer.current
+              ?.querySelector<HTMLButtonElement>('[data-testid="command-orb"]')
+              ?.focus({ preventScroll: true })
+          }
+        />
         <TutorialAdvisor
           suspended={hud.selection !== null}
           onOpenCommands={() => hud.select('inbox')}

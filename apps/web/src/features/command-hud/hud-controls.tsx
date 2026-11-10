@@ -1,214 +1,24 @@
 import { addressCaption } from '../../client-model/empire-identity'
 import {
   useState,
-  useRef,
-  useLayoutEffect,
   type CSSProperties,
   type ComponentPropsWithRef,
   type ReactNode,
 } from 'react'
-import {
-  Atom,
-  Check,
-  ChevronRight,
-  Crosshair,
-  Hammer,
-  Mail,
-  Orbit,
-  Radar,
-  Rocket,
-  Shield,
-  Swords,
-  Telescope,
-} from 'lucide-react'
+import { Check, Orbit, Rocket } from 'lucide-react'
+import { HudIconMark } from './hud-icon'
+export { HudIconMark } from './hud-icon'
 import { AnimatePresence, motion } from 'motion/react'
 import { useReducedMotion } from '../../ui/use-reduced-motion'
-import { useToastSwipe } from '../../ui/use-toast-swipe'
-import { ResourceSummary } from '../../ui/number-value'
-import {
-  occupiedFleetSlots,
-  currentServerTime,
-} from '../../client-model/game-projection'
-import { arrivalCountdown, exactTime } from '../mission-presentation'
+import { occupiedFleetSlots } from '../../client-model/game-projection'
 import {
   hasUnreadIntelligence,
   unreadBadgeCount,
-  noticeContent,
-  noticeKey,
   orbAppearance,
   type HudIcon,
-  type HudNotice,
 } from './model'
 import type { CommandHudState } from './use-command-hud'
 import styles from './hud.module.css'
-const icons = {
-  spy: Radar,
-  fleet: Rocket,
-  building: Hammer,
-  research: Atom,
-  shipyard: Rocket,
-  defense: Shield,
-  report: Telescope,
-  message: Mail,
-  attack: Swords,
-  scan: Crosshair,
-}
-export function HudIconMark({
-  kind,
-  size = 20,
-}: {
-  kind: HudIcon
-  size?: number
-}) {
-  const Icon = icons[kind]
-  return <Icon size={size} aria-hidden="true" />
-}
-export function HudToasts({ hud }: { hud: CommandHudState }) {
-  const container = useRef<HTMLDivElement>(null)
-  const restoreFocus = useRef(false)
-  const shownTop = useRef<string | null>(null)
-  const notices = hud.toasts.filter((notice) =>
-    noticeContent(hud.state, notice),
-  )
-  const topKey = notices[0] ? noticeKey(notices[0]) : null
-  useLayoutEffect(() => {
-    shownTop.current = topKey
-    if (restoreFocus.current) {
-      const next = container.current?.querySelector<HTMLButtonElement>(
-        '[data-toast-depth="0"] button',
-      )
-      const orb =
-        container.current?.parentElement?.querySelector<HTMLButtonElement>(
-          '[data-testid="command-orb"]',
-        )
-      ;(next ?? orb)?.focus({ preventScroll: true })
-      restoreFocus.current = false
-    }
-    return () => {
-      restoreFocus.current ||= !!container.current?.contains(
-        document.activeElement,
-      )
-    }
-  }, [topKey])
-  return (
-    <div
-      ref={container}
-      className={styles.toasts}
-      aria-label="Recent game events"
-      aria-live="polite"
-      aria-relevant="additions"
-    >
-      {notices.map((notice, depth) => (
-        <div
-          key={noticeKey(notice)}
-          className={styles.toastStackItem}
-          data-toast-depth={depth}
-          inert={depth > 0}
-          aria-hidden={depth > 0 || undefined}
-          style={{ '--toast-depth': depth } as CSSProperties}
-        >
-          <HudToast
-            notice={notice}
-            hud={hud}
-            active={depth === 0}
-            onDismiss={() => {
-              // Only removing the top card changes topKey and consumes the flag.
-              if (noticeKey(notice) === shownTop.current)
-                restoreFocus.current = !!container.current?.contains(
-                  document.activeElement,
-                )
-              hud.dismiss(notice)
-            }}
-          />
-        </div>
-      ))}
-    </div>
-  )
-}
-function HudToast({
-  notice,
-  hud,
-  active,
-  onDismiss,
-}: {
-  notice: HudNotice
-  hud: CommandHudState
-  active: boolean
-  onDismiss: () => void
-}) {
-  const swipe = useToastSwipe(onDismiss)
-  const content = noticeContent(hud.state, notice)
-  if (!content) return null
-  const used = occupiedFleetSlots(hud.state)
-  const total =
-    hud.state.view?.protocol === 4 ? hud.state.view.missions.fleet_slots : '0'
-  const free = BigInt(total) > BigInt(used) ? BigInt(total) - BigInt(used) : 0n
-  return (
-    <motion.div
-      className={styles.toastSwipe}
-      data-testid="swipeable-toast"
-      drag={active ? 'x' : false}
-      dragMomentum={false}
-      dragSnapToOrigin={false}
-      style={{ x: swipe.x, opacity: swipe.opacity }}
-      {...swipe.dragProps}
-    >
-      <button
-        type="button"
-        className={styles.toast}
-        data-tone={content.tone}
-        onClick={() => {
-          if (swipe.canOpen()) hud.select(notice)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault()
-            swipe.dismiss()
-          }
-        }}
-      >
-        <span className={styles.toastIcon}>
-          <HudIconMark kind={content.icon} />
-        </span>
-        <span className={styles.toastBody}>
-          <span className={styles.toastTitle}>
-            {content.title}
-            {content.tone === 'green' && <Check size={14} />}
-          </span>
-          <span className={styles.toastDetail}>{content.detail}</span>
-          {content.deadline !== undefined && (
-            <span className={styles.flightLine}>
-              <span className={styles.trajectory}>
-                <i />
-              </span>
-              <time
-                title={exactTime(content.deadline)}
-                dateTime={new Date(content.deadline).toISOString()}
-              >
-                {arrivalCountdown(
-                  content.deadline,
-                  currentServerTime(hud.state),
-                )}
-              </time>
-            </span>
-          )}
-          {notice.kind === 'command' &&
-            (content.icon === 'fleet' || content.icon === 'spy') && (
-              <span className={styles.toastDetail}>
-                {free.toString()} fleet slots available
-              </span>
-            )}
-          {content.costs && (
-            <span className={styles.costs}>
-              <ResourceSummary value={content.costs} />
-            </span>
-          )}
-        </span>
-        <ChevronRight size={13} className={styles.toastArrow} />
-      </button>
-    </motion.div>
-  )
-}
 function OrbSymbol({ kind }: { kind: HudIcon | null }) {
   const reduced = useReducedMotion()
   const icon = kind ? (

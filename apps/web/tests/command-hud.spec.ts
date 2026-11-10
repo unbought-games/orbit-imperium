@@ -124,6 +124,11 @@ test('live mobile HUD receives reports, messages and threats across navigation a
   const report=page.getByLabel('Recent game events').getByRole('button',{name:/Espionage report/})
   await expect(report).toBeVisible();await expect(orb).toHaveAttribute('data-tone','champagne')
   await diagnosticScreenshot(page,{path:`${output}/report-toast-390x844.png`})
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await page.setViewportSize({width:1440,height:900})
+    await diagnosticScreenshot(page,{path:`${output}/report-toast-1440x900.png`})
+    await page.setViewportSize({width:390,height:844})
+  }
   await report.click()
   const panel=page.getByRole('dialog',{name:'Espionage report',exact:true})
   await expect(panel.getByText('Receiving report…')).toHaveCount(0)
@@ -515,46 +520,8 @@ test('HUD details return to the list without closing, even after scrolling a rep
 
 for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 900}]) {
  test(`HUD list infinitely loads past the badge cap, retries in place, and restores the list after detail at ${initialViewport.width}px`, async ({page}) => {
-  // Deliver an already-queued observer event after its list is hidden, and
-  // again after returning. Native scheduling made this race CI-only.
-  await page.addInitScript(() => {
-    const NativeObserver = window.IntersectionObserver
-    let current: (() => void) | undefined
-    let queued: (() => void) | undefined
-    const probe = window as Window & {__hudIntersectionProbe: {capture: () => void; deliver: () => void; ready: boolean; batchDeliveries: number; onNextBatch: () => void}}
-    probe.__hudIntersectionProbe = {
-      get ready() { return !!current },
-      batchDeliveries: 0,
-      onNextBatch() {
-        if (!current) throw Error('HUD observer was not installed')
-        const delivery = current
-        const list = document.querySelector('[aria-label="Intelligence list"]')!
-        const count = list.querySelectorAll('button').length
-        const mutation = new MutationObserver(() => {
-          if (list.querySelectorAll('button').length === count) return
-          mutation.disconnect()
-          probe.__hudIntersectionProbe.batchDeliveries++
-          delivery()
-        })
-        mutation.observe(list, {childList: true})
-      },
-      capture() { if (!current) throw Error('HUD observer was not installed'); queued = current },
-      deliver() { if (!queued) throw Error('No queued HUD intersection'); queued() },
-    }
-    window.IntersectionObserver = class extends NativeObserver {
-      private callback: IntersectionObserverCallback
-      private hud: boolean
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        super(callback, options)
-        this.callback = callback
-        this.hud = options?.root instanceof HTMLDialogElement
-      }
-      observe(target: Element) {
-        super.observe(target)
-        if (this.hud) current = () => this.callback([{target, isIntersecting: true} as IntersectionObserverEntry], this)
-      }
-    }
-  })
+  // Native scrolling, retry controls and detail/list scroll restoration need a
+  // browser. Callback races and page-intent permutations live in inbox-pagination.test.ts.
   await page.setViewportSize(initialViewport)
   await page.emulateMedia({reducedMotion:'reduce'})
   const f = await intelligenceFixture(page)
@@ -580,14 +547,11 @@ for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 
   await expect(entries).toHaveCount(20)
   await expect(list).toHaveAttribute('aria-busy','false')
   await diagnosticScreenshot(page,{path:`${output}/infinite-first-${initialViewport.width}x${initialViewport.height}.png`})
-  await expect.poll(() => page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {ready: boolean}}).__hudIntersectionProbe.ready)).toBe(true)
-  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {onNextBatch: () => void}}).__hudIntersectionProbe.onNextBatch())
   for(const count of [40,60,80,100]){
     await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
     await expect(entries).toHaveCount(count)
     await expect(list).toHaveAttribute('aria-busy','false')
   }
-  expect(await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {batchDeliveries: number}}).__hudIntersectionProbe.batchDeliveries)).toBe(1)
   expect(requests).toBe(0)
   await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
   await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
@@ -609,14 +573,11 @@ for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 
   // Opening an already loaded row must not throw away the loaded pages or position.
   await entries.nth(95).scrollIntoViewIfNeeded()
   const position=await panel.evaluate(el=>el.scrollTop)
-  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {capture: () => void}}).__hudIntersectionProbe.capture())
   await entries.nth(95).click()
   await expect(panel.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
   await expect(list).toHaveAttribute('aria-busy','false')
-  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {deliver: () => void}}).__hudIntersectionProbe.deliver())
   await panel.getByRole('button',{name:'Back to list'}).click()
   await expect(panel).toHaveAccessibleName('Command uplink')
-  await page.evaluate(() => (window as unknown as {__hudIntersectionProbe: {deliver: () => void}}).__hudIntersectionProbe.deliver())
   await expect(entries).toHaveCount(120)
   expect(Math.abs(await panel.evaluate(el=>el.scrollTop)-position)).toBeLessThan(5)
   await diagnosticScreenshot(page,{path:`${output}/infinite-return-${initialViewport.width}x${initialViewport.height}.png`})
@@ -637,109 +598,6 @@ for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 
   await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
 })
 }
-
-for (const width of [390, 1440]) {
-  test(`HUD ignores queued pagination observations after opening a report at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    // Deliver an observation captured before leaving the inbox after its observer
-    // disconnects. Browser callback delivery must not create new paging intent.
-    await page.addInitScript(() => {
-      const NativeObserver = window.IntersectionObserver
-      window.IntersectionObserver = class extends NativeObserver {
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          super(callback, options)
-          if (options?.root instanceof HTMLDialogElement) {
-            Object.assign(window, { notifyHudIntersection: () => callback(
-              [{ isIntersecting: true } as IntersectionObserverEntry], this,
-            ) })
-          }
-        }
-      }
-    })
-    const f = await intelligenceFixture(page)
-    f.headers.push(...Array.from({ length: 40 }, (_, i) => ({
-      id: id(6000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false,
-    })))
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(page.getByTestId('unread-count')).toHaveText('40')
-    await page.getByTestId('command-orb').click()
-    const panel = page.getByRole('dialog')
-    const entries = panel.getByLabel('Intelligence list').getByRole('button')
-    await expect(entries).toHaveCount(20)
-    const queued = await page.evaluateHandle(() => (
-      window as unknown as { notifyHudIntersection: () => void }
-    ).notifyHudIntersection)
-    // Also deliver at the DOM-commit boundary, before a passive-effect cleanup
-    // is guaranteed to run. The latest visibility guard must reject it.
-    await page.evaluate(notify => {
-      const inbox = document.querySelector('[aria-label="Intelligence list"]')!.parentElement!
-      const watcher = new MutationObserver(() => {
-        if (!inbox.hidden) return
-        notify()
-        watcher.disconnect()
-        Object.assign(window, { deliveredHiddenObservation: true })
-      })
-      watcher.observe(inbox, { attributes: true, attributeFilter: ['hidden'] })
-    }, queued)
-    await entries.first().click()
-    await expect.poll(() => page.evaluate(() => (
-      window as unknown as { deliveredHiddenObservation?: boolean }
-    ).deliveredHiddenObservation)).toBe(true)
-    await expect(panel.getByRole('button', { name: 'Attack', exact: true })).toBeVisible()
-    await expect.poll(() => f.reads).toContain('MarkReportRead')
-    await expect(page.locator('[aria-label="Intelligence list"]')).toHaveAttribute('aria-busy', 'false')
-    await queued.evaluate(notify => notify())
-    await panel.getByRole('button', { name: 'Back to list' }).click()
-    await expect(panel).toHaveAccessibleName('Command uplink')
-    await expect(entries).toHaveCount(20)
-    await queued.evaluate(notify => notify())
-    await queued.dispose()
-    await expect(entries).toHaveCount(20)
-    await expect(page.getByTestId('unread-count')).toHaveText('39')
-    await diagnosticScreenshot(page, { path: `${output}/queued-pagination-restored-${width}x900.png` })
-    await panel.evaluate(el => { el.scrollTop = el.scrollHeight })
-    await expect(entries).toHaveCount(39)
-    await expect(panel.getByRole('status').filter({ hasText: 'You’re all caught up.' })).toBeVisible()
-  })
-}
-
-test('stale HUD intersection callbacks cannot consume a later pagination batch', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.addInitScript(() => {
-    const host = window as typeof window & { replayStaleHudIntersection?: () => void }
-    const NativeObserver = window.IntersectionObserver
-    window.IntersectionObserver = class extends NativeObserver {
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        super(callback, options)
-        if (options?.root instanceof HTMLDialogElement && !host.replayStaleHudIntersection) {
-          host.replayStaleHudIntersection = () => callback([{ isIntersecting: true } as IntersectionObserverEntry], this)
-        }
-      }
-    }
-  })
-  const f = await intelligenceFixture(page)
-  f.headers.push(...Array.from({ length: 130 }, (_, i) => ({ id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false })))
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  await expect(page.getByTestId('unread-count')).toHaveText('99')
-  await page.getByTestId('command-orb').click()
-  const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
-  const entries = panel.getByLabel('Intelligence list').getByRole('button')
-  await expect(entries).toHaveCount(20)
-  await expect.poll(() => page.evaluate(() => typeof (window as typeof window & { replayStaleHudIntersection?: () => void }).replayStaleHudIntersection)).toBe('function')
-  for (const count of [40, 60]) {
-    // Click without scrolling the sentinel into view, then deliver the callback
-    // queued by the first observer after a newer batch has already committed.
-    await panel.getByRole('button', { name: 'Load more intelligence', exact: true }).evaluate(button => (button as HTMLButtonElement).click())
-    await expect(entries).toHaveCount(count)
-    await page.evaluate(async () => {
-      (window as typeof window & { replayStaleHudIntersection?: () => void }).replayStaleHudIntersection!()
-      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    })
-    await expect(entries).toHaveCount(count)
-  }
-})
 
 test('captions explain once, joke only on confirmed new losses, and keep humor separate from regular feedback', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
@@ -897,88 +755,6 @@ test('every orb surface blends through the shared palette, including rapid retar
   await page.setViewportSize({width:1440,height:900})
   await expect(orb).toBeVisible()
   await diagnosticScreenshot(page,{path:`${output}/orb-palette-desktop-1440x900.png`})
-})
-
-test('orb symbols overlap in a holographic dissolve, settle after rapid changes, and switch immediately with reduced motion', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  const f=await intelligenceFixture(page)
-  f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb=page.getByTestId('command-orb')
-  const symbols=orb.locator('[data-orb-symbol]')
-  await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveAttribute('data-orb-symbol','message')
-  await orb.evaluate(el=>{for(const a of el.getAnimations())if(a.effect?.getTiming().iterations===1)a.finish()})
-  // Capture a complete overlap frame inside the browser. evaluateAll first
-  // resolves element handles and then samples them in a separate task; an
-  // outgoing symbol can be detached between those tasks on a busy CI runner.
-  type SymbolFrame = { opacity:number; filter:string; transform:string; hidden:string|null; pointerEvents:string }
-  await orb.evaluate(el=>{
-    const target=el as Element & {symbolOverlap?:SymbolFrame[]}
-    const sample=()=>{
-      const frame=Array.from(el.querySelectorAll('[data-orb-symbol]'),node=>{
-        const style=getComputedStyle(node)
-        return {opacity:Number(style.opacity),filter:style.filter,transform:style.transform,hidden:node.getAttribute('aria-hidden'),pointerEvents:style.pointerEvents}
-      })
-      if(frame.length===2 && frame.every(part=>part.opacity>0 && part.opacity<1 && part.filter!=='blur(0px)' && part.filter!=='none' && part.transform!=='none')){
-        target.symbolOverlap=frame
-        return
-      }
-      if(el.isConnected)requestAnimationFrame(sample)
-    }
-    requestAnimationFrame(sample)
-  })
-  const incoming={sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack' as const,arrival_at:baseTime+180000,ships:{visibility:'Unknown' as const}}
-  f.missions.incoming.push(incoming)
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','red')
-  let overlap:SymbolFrame[]=[]
-  await expect.poll(async()=>{
-    overlap=await orb.evaluate(el=>(el as Element & {symbolOverlap?:SymbolFrame[]}).symbolOverlap ?? [])
-    return overlap.length
-  },{intervals:[10,20,30]}).toBe(2)
-  expect(overlap.map(({hidden,pointerEvents})=>({hidden,pointerEvents}))).toEqual([
-    {hidden:'true',pointerEvents:'none'},
-    {hidden:'true',pointerEvents:'none'},
-  ])
-  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-overlap-390x844.png`})
-  await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveAttribute('data-orb-symbol','attack')
-  await expect(symbols).toHaveCSS('opacity','1')
-  await expect(symbols).toHaveCSS('filter','blur(0px)')
-  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-attack-390x844.png`})
-  f.missions.incoming.length=0
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await expect(symbols).toHaveCount(2)
-  f.missions.incoming.push(incoming)
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','red')
-  // Wait for the requested state, then sample its settled layers atomically.
-  // Separate count/attribute reads can straddle the start of a retargeted dissolve.
-  await expect.poll(()=>symbols.evaluateAll(nodes=>nodes.map(node=>({
-    kind:node.getAttribute('data-orb-symbol'),opacity:getComputedStyle(node).opacity,
-  })))).toEqual([{kind:'attack',opacity:'1'}])
-  // Refreshing the same icon must not create a second layer or replay the entrance.
-  await f.refresh()
-  await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveCSS('opacity','1')
-  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-retarget-390x844.png`})
-  await page.emulateMedia({reducedMotion:'reduce'})
-  f.missions.incoming.length=0
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await expect(symbols).toHaveCount(1)
-  await expect(symbols).toHaveAttribute('data-orb-symbol','message')
-  await expect(symbols).toHaveCSS('opacity','1')
-  await expect(symbols).toHaveCSS('transform','none')
-  await expect(symbols).toHaveCSS('filter','none')
-  await orb.click()
-  await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
-  await page.getByRole('button',{name:'Close command HUD'}).click()
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/icon-dissolve-desktop-1440x900.png`})
 })
 
 test('orb hover charges every layer, preserves its hit area and palette, and supports keyboard and reduced motion', async ({page}) => {
@@ -1616,132 +1392,5 @@ for (const width of [1440, 390]) {
       await expect(entry).toBeFocused()
       await diagnosticScreenshot(page, {path: `test-results/background-hud-${width}x900.png`})
     } finally {release()}
-  })
-}
-
-for (const width of [1440, 390]) {
- for (const failRefresh of [false, true]) {
-  test(`background HUD refresh allows buffered entries and queues the next page at ${width}px (refresh fails: ${failRefresh})`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    // Keep pagination gestures deterministic; native observer races have their
-    // own coverage above. Only intercept the HUD scroll root.
-    await page.addInitScript(() => {
-      const NativeObserver = window.IntersectionObserver
-      window.IntersectionObserver = class extends NativeObserver {
-        private hud: boolean
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          super(callback, options)
-          this.hud = options?.root instanceof HTMLDialogElement
-        }
-        observe(target: Element) { if (!this.hud) super.observe(target) }
-      }
-    })
-    const f = await intelligenceFixture(page)
-    f.headers.push(...Array.from({length: 130}, (_, i) => ({id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false})))
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(page.getByTestId('unread-count')).toHaveText('99')
-    await page.getByTestId('command-orb').click()
-    await page.clock.runFor(1000)
-    const panel = page.getByRole('dialog', {name: 'Command uplink', exact: true})
-    const list = panel.getByLabel('Intelligence list')
-    const entries = list.getByRole('button')
-    const more = panel.getByRole('button', {name: 'Load more intelligence', exact: true})
-    await expect(entries).toHaveCount(20)
-    let release!: () => void
-    let held = false
-    let refreshes = 0
-    const gate = new Promise<void>(resolve => {release = resolve})
-    await page.route('**/api/**/reports', async route => {
-      if (!route.request().postDataJSON().cursor) {
-        held = true
-        refreshes++
-        await gate
-        if (failRefresh) return route.fulfill({status: 503, json: {code: 'Unavailable'}})
-      }
-      await route.fallback()
-    })
-    try {
-      await page.clock.runFor(15000)
-      await expect.poll(() => held).toBe(true)
-      // Queue another passive refresh while the first owns the inbox.
-      await page.clock.runFor(15000)
-      await expect(more).toBeEnabled()
-      await more.focus()
-      await expect(more).toBeFocused()
-      await expect(list).toHaveAttribute('aria-busy', 'false')
-      for (const count of [40]) {
-        await more.click()
-        await expect(entries).toHaveCount(count)
-        await expect(more).toBeEnabled()
-      }
-      expect(f.reportQueries).not.toContain(id(4049))
-      await more.scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, {path: `test-results/background-hud-buffered-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
-      await more.click()
-      await expect(list).toHaveAttribute('aria-busy', 'true')
-      await expect(panel.getByText('Loading intelligence…', {exact: true})).toBeVisible()
-      expect(f.reportQueries).not.toContain(id(4049))
-      await diagnosticScreenshot(page, {path: `test-results/background-hud-queued-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
-    } finally {release()}
-    await expect(entries).toHaveCount(60)
-    await expect.poll(() => refreshes).toBe(2)
-    expect(f.reportQueries.filter(cursor => cursor === id(4049))).toHaveLength(1)
-    await expect(list).toHaveAttribute('aria-busy', 'false')
-  })
-}
-
-}
-
-for (const width of [1440, 390]) {
-  test(`reading a HUD item does not request more history at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    await page.addInitScript(() => {
-      const NativeObserver = window.IntersectionObserver
-      window.IntersectionObserver = class extends NativeObserver {
-        private hud: boolean
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          super(callback, options)
-          this.hud = options?.root instanceof HTMLDialogElement
-        }
-        observe(target: Element) { if (!this.hud) super.observe(target) }
-      }
-    })
-    const f = await intelligenceFixture(page)
-    f.headers.push(...Array.from({length: 130}, (_, i) => ({id: id(5000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false})))
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(page.getByTestId('unread-count')).toHaveText('99')
-    await page.getByTestId('command-orb').click()
-    await page.clock.runFor(1000)
-    const panel = page.getByRole('dialog')
-    const list = panel.getByLabel('Intelligence list')
-    const entries = list.getByRole('button')
-    const more = panel.getByRole('button', {name: 'Load more intelligence', exact: true})
-    for (const count of [40, 60, 80, 100]) {
-      await more.click()
-      await expect(entries).toHaveCount(count)
-    }
-    // Reading an item lowers the target count below the already satisfied
-    // display limit. Server filtering fills the displayed window with 100 unread rows.
-    await entries.first().click()
-    await expect.poll(() => f.reads).toContain('MarkReportRead')
-    await panel.getByRole('button', {name: 'Back to list'}).click()
-    await expect(entries).toHaveCount(100)
-    await expect(more).toBeEnabled()
-    await page.clock.runFor(15000)
-    await expect(entries).toHaveCount(100)
-    await expect(list).toHaveAttribute('aria-busy', 'false')
-    expect(f.reportQueries).not.toContain(id(5100))
-    await more.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {path: `test-results/background-hud-read-${width}x900.png`})
-    // A new gesture still loads the next page.
-    await more.click()
-    await expect(entries).toHaveCount(120)
-    expect(f.reportQueries.filter(cursor => cursor === id(5100))).toHaveLength(1)
   })
 }
