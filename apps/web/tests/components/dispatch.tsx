@@ -1,3 +1,5 @@
+import { ContentColumn } from '../../src/ui/content-column'
+import shellStyles from '../../src/shell/game-shell.module.css'
 import { useEffect, useState } from 'react'
 import {
   createMemoryHistory,
@@ -109,10 +111,13 @@ function DispatchConsumer({
     <SessionContext.Provider value={session}>
       <PlayerProfilesContext.Provider value={profiles}>
         <div style={{ padding: 18 }}>
-          <main
+          {/* Match the production caller's focused width and query container. */}
+          <ContentColumn
+            as="main"
+            width="focused"
+            className={shellStyles['work-area']}
             data-dispatch-ready="true"
             data-origin={body.id}
-            style={{ maxWidth: 768, marginInline: 'auto' }}
           >
             <DispatchView
               model={model}
@@ -124,7 +129,7 @@ function DispatchConsumer({
               recentlyCopied={null}
               dispatch={dispatch}
             />
-          </main>
+          </ContentColumn>
         </div>
       </PlayerProfilesContext.Provider>
     </SessionContext.Provider>

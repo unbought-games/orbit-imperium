@@ -64,6 +64,14 @@ export type DispatchFixtureOptions = {
 export function dispatchData() {
   const ready = readyFixture(4)
   if (ready.snapshot.view.protocol !== 4) throw Error('Expected protocol 4')
+  // Match the application Dispatch fixture: the real comparator uses total cost.
+  // LightFighter deliberately has no statistics in that fixture.
+  const catalogCosts = {
+    EspionageProbe: ['0', '1000', '0'],
+    SmallCargo: ['2000', '2000', '0'],
+    Recycler: ['10000', '6000', '2000'],
+    ColonyShip: ['10000', '20000', '10000'],
+  } satisfies Record<string, [string, string, string]>
   const view: S['BoundView4'] = {
     ...ready.snapshot.view,
     viewer_revision: '1',
@@ -114,11 +122,15 @@ export function dispatchData() {
       mobile: true,
       body_kinds: ['Planet'],
       requirements: [],
-      ship_statistics: {
-        propulsion: null,
-        combat: null,
-        cost: ['2000', '2000', '0'],
-      },
+      ...(id === 'LightFighter'
+        ? {}
+        : {
+            ship_statistics: {
+              propulsion: null,
+              combat: null,
+              cost: catalogCosts[id],
+            },
+          }),
     })),
     missions: {
       fleets: [],
