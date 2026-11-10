@@ -118,7 +118,7 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
 | resource list Settings opens the selected planet's controls at ${width}px | Selected planet link, Enter activation and Back at 1440/390/320. |
 | resource settings navigation preserves history and reload support at ${width}px | Keyboard entry, focus, active navigation, reload and browser history; repair described above. |
 | resource settings follows the selected planet on protocol 4 | Body selection preserves resource-settings route and corresponding production. |
-| resource settings navigation opens production controls for supported protocols on protocol ${protocol} | Protocol 2 unavailable route and protocol 3/4 actual controls; representative compatibility wiring. |
+| resource settings navigation opens production controls for supported protocols on protocol ${protocol} | Retain provisionally: protocol 2 unavailable route and protocol 3/4 actual controls. Additional parent-baseline protocol-3 failure is unclassified; evidence and pending disposition recorded below. |
 | production sliders support mouse, keyboard bounds and final saves | Mouse input, keyboard bounds and final save plus compact controls. |
 | energy links retain details and native modifier and keyboard navigation | Retire after local repair attempt failed in shared startup; see final local disposition. Native modifier/new-tab assertion is lost. Resource-settings history retains keyboard entry and route/focus behavior; touch case retains energy-link activation. |
 | touch taps navigate to energy settings and set a production slider | Touch-context tap and slider interaction. |
@@ -270,3 +270,49 @@ retries: zero. The final remaining source edits were covered by the five-case
 follow-up pass; no second test-design repair was made for the deleted case.
 
 All task-owned Vite/Playwright/Vitest runners exited. Temporary node_modules symlink removed after validation; cached dependencies were not modified. Local failure artifacts remain ignored for inspection. No task-owned database/container resources were created.
+
+## Additional parent baseline evidence: protocol-3 resource settings
+
+Received after commit `3c20de64153f38e8559a111e69d806327c4c4236`.
+The parent baseline tests base `a119915ffaeb881a7f54d65542478f4788bd4210`;
+it is a separate execution from this worktree's validation above.
+
+- Exact scenario: `resource settings navigation opens production controls for
+  supported protocols on protocol 3`.
+- Source assertion: `resources.spec.ts:1825:43`, immediately after
+  `withBootstrapResponse` wraps the direct resource-settings navigation.
+  Expected `main h1` text `Resource settings`; no matching element within the
+  existing 5000ms assertion. Test duration 13.621s, retry index 0, worker index 3,
+  parallel index 2, start `2026-11-10T02:23:16.402Z` (November 9, 21:23:16 EST).
+- The retained error-context subsequently shows the focused `Resource settings`
+  H1, `Production controls`, metal slider value 100, and saved status. The
+  inspected PNG also visibly shows Resource settings and the metal slider at
+  100%. Thus the retained artifacts show the intended eventual UI; they do not
+  identify which asynchronous phase delayed the earlier assertion.
+- Protocol 2 passed in 7.088s and protocol 4 passed in 15.526s in that baseline.
+  These outcomes do not erase the protocol-3 failure or establish its cause.
+- Parent reported host load 45.5 on 12 cores with concurrent Vite/Chromium/tsc
+  work and other startup-heading failures. This is relevant environmental
+  evidence, not proof of an infrastructure cause. The report contains no trace
+  establishing main-thread scheduling, module loading, or response-to-render
+  ordering during the assertion interval. Product, fixture and infrastructure
+  classification therefore remains unresolved.
+- History inspected again: `6292946b` already added `withBootstrapResponse` to
+  this exact direct-navigation boundary. Do not silently reset that repair
+  history. No further repair, timeout increase, browser run, production build or
+  full typecheck was attempted in response to this evidence.
+
+Evidence locations (read-only inspection; originals preserved in parent):
+
+- `/Users/ethan/.codex/worktrees/c478/orbit-imperium/test-results/test-strategy/baseline-a119915f/results.json`
+- `/Users/ethan/.codex/worktrees/c478/orbit-imperium/test-results/browser-ui/resources-resource-setting-26cdc-ted-protocols-on-protocol-3/error-context.md`
+- `/Users/ethan/.codex/worktrees/c478/orbit-imperium/test-results/browser-ui/resources-resource-setting-26cdc-ted-protocols-on-protocol-3/attachments/failure-1-00cd08e47ac7a98d3fe36507d8d461fea38d8f25.png`
+
+Disposition: preserve the current scenario provisionally while the parent owns
+classification and serial integrated validation. This is an explicit unresolved
+finding, not a completed repair or a reliable-pass claim. If classified as a
+post-repair test defect, apply the one-repair retirement rule; do not recreate
+its journey under another name. If classified as an infrastructure failure,
+record the concrete causal evidence separately. This adds one parent-baseline
+assertion failure to the evidence inventory, without changing the previously
+reported local failure count or the 67 retained-case count.
