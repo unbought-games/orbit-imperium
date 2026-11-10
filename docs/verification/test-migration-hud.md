@@ -173,3 +173,39 @@ The parent must integrate this commit, validate its combined revision and add
 its owned prepared-toast browser cases before declaring the component harness
 or reduced application gate complete. Remaining native component cases in the
 inventory have not been silently dropped to achieve a test-count target.
+
+## Follow-up: changing reduced-motion preference
+
+The parent isolated-component run exposed a product defect when the OS motion
+preference changes after mount. Inspection of the installed
+`framer-motion/dist/es/utils/reduced-motion/use-reduced-motion.mjs` confirmed
+that its hook returns a `useState(prefersReducedMotion.current)` value without
+subscribing React to subsequent preference changes. Toast swipe now imports the
+existing `ui/use-reduced-motion.ts` subscription hook instead. The existing
+latest-value ref supplies the current preference when starting either dismissal
+or spring-back, without recreating gesture intent or animation controllers.
+
+This is a shared product fix, not a failing test's repair attempt. The parent
+owns the shared component harness's preference-change regression and the
+sheet/popover fixes. Local focused swipe and prepared-toast tests passed (9
+tests, 7.79s runner), as did source ESLint and formatting. The final browser
+capture rechecks the toast consumer, not the parent's sheet regression.
+
+The follow-up browser capture did **not** pass. On `9fbe08d6` plus the shared-hook
+import change, Vite preparation took 41.068s, then the initial orb attribute
+assertion failed after five seconds with no matching element (case 11.7s).
+The failure screenshot is a blank background; the subsequently recorded DOM
+snapshot contains the loaded game and command HUD. Vite also logged
+`ECONNREFUSED 127.0.0.1:8080` for world/reports/social/profile/update requests.
+These observations preserve a startup/readiness failure; contention alone does
+not classify it as an infrastructure failure or prove the proxy messages caused
+it. No retry, timeout change, test repair or deletion was attempted.
+
+The parent then coordinated exclusive validation after observing host load
+45.5 on 12 cores. This task's browser/Vite processes have exited. No further
+browser/build/typecheck run was launched. Parent-owned serial validation must
+resolve this failure and refresh visual evidence for the follow-up. Local
+results JSON, screenshot and error context are preserved both under
+`test-results/browser-ui/` and `/tmp/orbit-hud-reduced-motion-20261109/` on the
+implementation host. Previous screenshots belong to the earlier validated
+controller commit, not this failed follow-up capture.

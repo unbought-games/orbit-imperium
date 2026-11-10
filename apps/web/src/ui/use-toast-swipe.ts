@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
-import {
-  animate,
-  useMotionValue,
-  useReducedMotion,
-  useTransform,
-} from 'motion/react'
+import { animate, useMotionValue, useTransform } from 'motion/react'
 import type { PanInfo } from 'motion/react'
 import { createToastSwipeController } from './toast-swipe'
+import { useReducedMotion } from './use-reduced-motion'
 
 export function useToastSwipe(onDismiss: () => void) {
   const x = useMotionValue(0)
