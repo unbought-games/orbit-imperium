@@ -3,7 +3,7 @@ import { withFixtureResponse, withReportListResponse, withReportResponse } from 
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { shellFixture, installGameFixture, refreshGame, binding, body, id } from './fixtures/game'
+import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
 
 async function selectReports(page: Page, advanceClock = false) {
   if (await page.getByRole('group', {name: 'Report selection'}).isVisible()) return
@@ -546,30 +546,9 @@ test('triage selection follows filters and rejected bulk cleanup restores report
 })
 
 
-for (const width of [1440, 390]) {
-  for (const mode of ['rejected', 'uncertain'] as const) {
-    test(`bulk cleanup restores every report after ${mode} response at ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 })
-      const fixture = await reportsFixture(page, true)
-      await selectReports(page)
-      await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
-      let release!: () => void
-      fixture.setMode(mode)
-      fixture.pause(new Promise(resolve => { release = resolve }))
-      await page.getByRole('button', { name: 'Archive selected (2)', exact: true }).click()
-      await expect(page.getByRole('article')).toHaveCount(0)
-      await expect.poll(() => fixture.submitted()).toBe(1)
-      release()
-      await expect(page.getByRole('article')).toHaveCount(2)
-      await expect(page.getByTestId('game-error-banner')).toContainText(mode === 'rejected' ? 'Action rejected' : 'We’re checking whether this order went through.')
-      expect(fixture.headers.every(r => !r.hidden)).toBe(true)
-      expect(fixture.submitted()).toBe(1)
-      await diagnosticScreenshot(page, { path: `test-results/bulk-${mode}-${width}x900.png`, fullPage: true })
-    })
-  }
-}
-
-
+// Batch rejection/uncertainty permutations now mount the real cleanup hook and
+// selection bar in components/report-cleanup.spec.ts. Application error banners
+// and durable retry remain covered by the single/detail failure journeys above.
 for (const width of [1280, 390]) {
   test(`report whitespace opens the report while controls and keyboard stay independent at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })

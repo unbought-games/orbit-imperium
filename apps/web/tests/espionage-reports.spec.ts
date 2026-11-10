@@ -38,7 +38,9 @@ async function expectAlignedLevels(sections: Locator[]) {
   }
 }
 
-for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
+// Legacy/hidden data permutations render deterministically in report-observation.test.ts.
+// The expanded observation retains every responsive grouping and header assertion.
+for (const variant of ['expanded']) {
   test(`groups ${variant} espionage buildings and research at desktop and mobile widths`, async ({
     page,
   }) => {

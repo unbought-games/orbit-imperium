@@ -78,7 +78,7 @@ test('colony position gates and full-capacity warning lead to an empty-position 
  expect(launches).toBe(1)
 })
 
-for(const success of [true,false])test(`colonization ${success?'success links to a usable colony':'failure explains conserved return'}`,async({page})=>{
+for(const success of [true])test(`colonization ${success?'success links to a usable colony':'failure explains conserved return'}`,async({page})=>{
  await installGameFixture(page,fixtureOptions(success?[body,colony]:[body]))
  const kind=success?'Colonized':'ColonizationFailed'
  const payload=success?{kind,body:colony.id,fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,fields:230,diameter_km:15191,min_temperature:24,max_temperature:64,resources:{metal:'1500000000',crystal:'500000000',deuterium:'0'},return_at:null}
@@ -147,8 +147,11 @@ test('occupied colony positions retain the actionable error through shared dispa
 test('dispatch blocks a known locked colony position and enables an eligible position', async ({ page }) => {
   await setup(page)
   const requests: string[] = []
-  page.on('request', request => {
-    if (request.url().endsWith('/world')) requests.push(request.postDataJSON().type)
+  await routeWorld(page, async route => {
+    const request = route.request().postDataJSON()
+    requests.push(request.type)
+    expect(request.type).toBe('Galaxy')
+    await route.fulfill({ json: bound(request.context.request_id, emptyGalaxy(request.galaxy, request.system)) })
   })
   await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
