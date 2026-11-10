@@ -1,6 +1,7 @@
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
+import { withReportResponse, withSharedReportResponse } from './fixtures/responses'
 
 const reportId=id(70), target=id(9)
 const affiliation={id:id(85),universe:binding.universe,name:'Original alliance',tag:'OLD'}
@@ -16,7 +17,7 @@ test('reports show historical alliance tags even when current player profiles ha
     const context=route.request().postDataJSON()
     return route.fulfill({json:{protocol:4,binding,request_id:context.request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data:{header:{id:reportId,kind:'Espionage',observed_at:payload.observed_at,read:true,hidden:false},payload,player_names:{[target]:'Commander Vega'},player_alliances:{[target]:affiliation}}}})
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`)
+  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
   const observation=page.getByRole('region',{name:'Report observation'})
   await focusPlayerDetails(page, observation.getByRole('link', { name: 'Commander Vega profile details' }))
   await expect(page.getByRole('tooltip').getByRole('link',{name:'Alliance Original alliance [OLD]'})).toHaveAttribute('href',`/alliances/${binding.universe}/${affiliation.id}`)
@@ -27,7 +28,7 @@ test('reports show historical alliance tags even when current player profiles ha
 test('legacy reports and redacted shares never fill affiliation from live profiles', async ({page})=>{
   const token=id(86)
   await page.route(`**/api/v4/shared-reports/${token}`,route=>route.fulfill({json:{report:reportId,observed_at:payload.observed_at,options:{include_identity:false,include_coordinates:false},player_names:{'participant-1':'Player 1'},player_alliances:{},payload:{...payload,target:{owner:'participant-1',kind:'Planet'}}}}))
-  await page.goto(`/reports/shared/${token}`)
+  await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
   await expect(page.getByText('Player 1',{exact:true})).toBeVisible()
   await expect(page.locator('a[href^="/alliances/"]')).toHaveCount(0)
 })
@@ -36,7 +37,7 @@ test('identity-included public shares retain historical alliance links without l
   const token=id(87);const requests:string[]=[]
   page.on('request',request=>{if(request.url().includes('/api/'))requests.push(request.url())})
   await page.route(`**/api/v4/shared-reports/${token}`,route=>route.fulfill({json:{report:reportId,observed_at:payload.observed_at,options:{include_identity:true,include_coordinates:false},player_names:{'participant-1':'Commander Vega'},player_alliances:{'participant-1':affiliation},payload:{...payload,target:{owner:'participant-1',kind:'Planet'}}}}))
-  await page.goto(`/reports/shared/${token}`)
+  await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
   await page.getByRole('button', { name: 'Commander Vega profile details' }).click()
   await expect(page.getByRole('link',{name:'Alliance Original alliance [OLD]'})).toBeVisible()
   expect(requests).toHaveLength(1)

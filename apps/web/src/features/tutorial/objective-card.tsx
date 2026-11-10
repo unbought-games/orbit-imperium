@@ -41,7 +41,7 @@ export function ObjectiveReward({
   if (!resources.length) return null
   return (
     <div className={styles.reward} data-variant={variant} aria-label="Reward">
-      {variant === 'card' && <span className={styles.rewardLabel}>Reward</span>}
+      <span className={styles.rewardLabel}>Reward</span>
       <div className={styles.amounts}>
         {resources.map((resource) => (
           <span

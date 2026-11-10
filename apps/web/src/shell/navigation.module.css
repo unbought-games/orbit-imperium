@@ -192,7 +192,7 @@
     overscroll-behavior: contain;
     background: transparent;
     border-right: 1px solid var(--border-navigation);
-    padding: 20px 12px 12px;
+    padding: 10px 12px 12px;
   }
   .sidebar > * {
     flex-shrink: 0;

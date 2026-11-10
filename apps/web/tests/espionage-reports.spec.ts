@@ -3,6 +3,7 @@ import { test, expect } from './fixtures/test'
 import type { Locator } from '@playwright/test'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import { shellFixture, binding, body, id } from './fixtures/game'
+import { withReportResponse } from './fixtures/responses'
 
 // Every group shares the same columns, even when it contains fewer entries.
 async function expectAlignedLevels(sections: Locator[]) {
@@ -111,7 +112,7 @@ for (const variant of ['legacy', 'expanded', 'hidden'] as const) {
     })
     // Measure the canonical page, without racing the legacy query-URL redirect
     // that remounts the report. Redirect behavior has separate shell coverage.
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
     const report = page.getByRole('region', { name: 'Report observation' })
     const buildings = report.locator('section').filter({
       has: page.getByRole('heading', { name: 'Buildings', exact: true }),
@@ -323,7 +324,7 @@ test('long observed names wrap without moving levels or revealing hidden intelli
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`)
+  await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
   const report = page.getByRole('region', { name: 'Report observation' })
   const sections = ['Buildings', 'Research'].map((name) =>
     report

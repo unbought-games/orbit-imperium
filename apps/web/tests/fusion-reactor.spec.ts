@@ -3,6 +3,7 @@ import { shellFixture, body, binding } from './fixtures/game'
 import { openProductionSettings } from './fixtures/production-settings'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 type S = components['schemas']
 const content = JSON.parse(
   readFileSync(
@@ -89,7 +90,7 @@ for (const width of [320, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     await expect(
       page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }),
     ).toBeVisible()

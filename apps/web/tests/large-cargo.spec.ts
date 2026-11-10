@@ -5,6 +5,7 @@ import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 type S = components['schemas']
 const item = { kind: 'Ship', id: 'LargeCargo' } as const
 const catalog = JSON.parse(
@@ -189,7 +190,7 @@ for (const [label, levels] of [
     page,
   }) => {
     await setup(page, levels)
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard/large-cargo`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/large-cargo`))
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(
       pane.getByRole('button', { name: 'Build', exact: true }),
@@ -202,7 +203,7 @@ test('Large Cargo stays unavailable before its universe enables it', async ({
   page,
 }) => {
   await setup(page, { enabled: false })
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/large-cargo`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/large-cargo`))
   const pane = page.getByRole('region', { name: 'Progression quote' })
   await expect(pane).toContainText('Unavailable in this universe.')
   await expect(
@@ -234,7 +235,7 @@ for (const width of [390, 1440]) {
         },
       })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/shipyard`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard`))
     await page
       .getByRole('link', { name: 'Build Large Cargo', exact: true })
       .click()
@@ -334,7 +335,7 @@ test('Large Cargos can be selected, quoted and launched in a transport fleet', a
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   await page
     .getByRole('radio', { name: 'Transport', exact: true }).check()
   await setDestination(page, { position: '8' })

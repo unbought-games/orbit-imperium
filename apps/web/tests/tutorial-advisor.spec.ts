@@ -216,6 +216,8 @@ for (const width of [1440, 390]) {
     ).toHaveCount(0)
     await expect(celebration).toContainText('Metal Mine · level 1')
     await expect(celebration).toContainText('Rewards added automatically.')
+    await expect(celebration.getByText('Reward', { exact: true })).toBeVisible()
+    await expect(celebration).not.toContainText('Click me to hide this.')
     await expect(
       celebration.getByRole('img', { name: 'Metal', exact: true }),
     ).toBeVisible()
@@ -447,6 +449,8 @@ for (const width of [1440, 390]) {
     await expect(celebration).toBeVisible()
     await expect(celebration).toContainText('Production controls reviewed')
     await expect(celebration).toContainText('Rewards added automatically.')
+    await expect(celebration.getByText('Reward', { exact: true })).toBeVisible()
+    await expect(celebration).not.toContainText('Click me to hide this.')
     await expect(
       celebration.getByRole('region', { name: 'Next directive' }),
     ).toContainText('Upgrade Crystal Mine to level 2')

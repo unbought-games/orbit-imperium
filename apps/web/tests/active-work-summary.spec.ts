@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/test'
 import { body, id, shellFixture } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const now = 1_800_000_000_000
@@ -100,7 +101,7 @@ for (const width of [390, 1440]) {
         ...fixture(screen),
         sampledAt: () => sampledAt,
       })
-      await page.goto(`/u/andromeda/b/${body.id}/${screen}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${screen}`))
       const manufacturing = screen === 'shipyard' || screen === 'defense'
       const summary = page.getByRole('region', {
         name: manufacturing
@@ -249,7 +250,7 @@ test('construction without a server start time stays honest and demolition remai
   delete options.constructions[0].started_at
   options.constructions[0].target_level = 3
   await shellFixture(page, options)
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   const summary = page.getByRole('region', { name: 'Buildings', exact: true })
   await expect(summary.getByText('Tearing down', { exact: true })).toBeVisible()
   await expect(summary.getByText('Level 3', { exact: true })).toBeVisible()

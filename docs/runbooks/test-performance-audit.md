@@ -1,5 +1,37 @@
 # PR and main test performance audit
 
+## November 9, 2026: fixture navigation readiness sweep
+
+The report-glance and missile-report failures shared one test-design defect:
+a bare `page.goto` or `page.reload` followed by assertions on lazily fetched
+data, so the assertion deadline started at HTML load. Audited every bare
+navigation in the routine fixture browser suite (`uiFiles`): 341 sites in 53
+specs now wait for the response their next assertion depends on. Each site
+uses a named helper in `fixtures/responses.ts` or the existing
+`withGalaxyResponse`:
+
+- In-game screens gate on `GET /api/v1/bootstrap`, which carries the initial
+  game snapshot on a direct load. `/overview` is not requested on that path.
+- Report lists gate on the list POST with `filter.unread_only === false`, not
+  the shell's unread-badge query. Report details gate on `POST /reports/{id}`
+  and shared reports on `GET /api/v4/shared-reports/{token}`.
+- Galaxy, High Scores, Messages, Alliance and insignia screens gate on their
+  own Galaxy, rankings, social, alliance and insignia requests.
+
+Left bare on purpose: intentional loading, error and held-response scenarios;
+static playgrounds without API data; public, auth and bootstrap-failure flows
+in `bootstrap-ui`, `home` and `hosted-auth`; and sites that already await
+their own response or request. No sleeps, retries, timeouts or product behavior
+changed.
+
+Routine browser tests have no per-test deadline, so a matcher that never fires
+stalls its shard. Local validation therefore ran all 53 changed specs with a
+temporary `--timeout=90000`: 1007/1007 passed in 15.6m on three workers with
+no retries, so every gate matched a request its page makes. TypeScript over
+`src` and `tests` reported no new errors, the test-policy and
+diagnostic-screenshot script tests passed, and `git diff --check` was clean.
+The runner stopped Vite and Chromium; no Docker was used.
+
 ## November 9, 2026: colony report readiness without the overview visit
 
 PR #375 run [42678831678](https://github.com/unbought-games/orbit-imperium/actions/runs/42678831678)

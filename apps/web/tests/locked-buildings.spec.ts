@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const rules = JSON.parse(readFileSync('rules/mvp-v1-slice-5.json', 'utf8')) as {
@@ -36,7 +37,7 @@ for (const width of [1440, 390, 320]) {
         ['facilities', 'MissileSilo', 'Missile Silo'],
         ['resources', 'FusionReactor', 'Fusion Reactor'],
       ]) {
-        await page.goto(path(destination))
+        await withBootstrapResponse(page, () => page.goto(path(destination)))
         const tile = page.getByRole('link', {
           name: `Upgrade ${title}`,
           exact: true,
@@ -167,7 +168,7 @@ for (const width of [1440, 390, 320]) {
         ['facilities', 'Shipyard'],
         ['resources', 'Metal Mine'],
       ]) {
-        await page.goto(path(destination))
+        await withBootstrapResponse(page, () => page.goto(path(destination)))
         const tile = page.getByRole('link', {
           name: `Upgrade ${title}`,
           exact: true,
@@ -244,14 +245,14 @@ test('body restrictions remain inspectable from facility and resource cards', as
     ['facilities', 'Robotics Factory'],
     ['resources', 'Metal Mine'],
   ]) {
-    await page.goto(path(destination))
+    await withBootstrapResponse(page, () => page.goto(path(destination)))
     const tile = page.getByRole('link', {
       name: `Upgrade ${title}`,
       exact: true,
     })
     if (destination === 'facilities') {
       await expect(tile).toHaveCount(0)
-      await page.goto(`${path(destination)}/robotics-factory`)
+      await withBootstrapResponse(page, () => page.goto(`${path(destination)}/robotics-factory`))
     } else await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
     await expect(pane).toContainText('Unavailable on this planet.')

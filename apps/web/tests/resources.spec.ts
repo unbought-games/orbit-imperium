@@ -9,6 +9,7 @@ import { captureCatalog } from './fixtures/catalog-capture'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse } from './fixtures/responses'
 
 function production(): components['schemas']['ProductionDto'] {
   return {
@@ -125,7 +126,7 @@ async function setup(
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   await expect(page.locator('main h1')).toHaveText('Resources')
   return { economy, sent, planet }
 }
@@ -268,7 +269,7 @@ test('unaffordable tiles stay striped when another building starts and quote ref
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   const metal = page.getByRole('link', {
     name: 'Upgrade Metal Mine',
     exact: true,
@@ -749,7 +750,7 @@ for (const restoredCommand of ['production', 'legacy upgrade'] as const) {
           sessionStorage.setItem(key, JSON.stringify(attempt))
         }
       })
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await openProductionSettings(page)
     const panel = page.getByRole('region', { name: 'Production controls' })
     const metal = page.getByLabel('metal mine production')
@@ -1008,7 +1009,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   await expect(
     page.getByRole('button', { name: 'Resource settings', exact: true }),
   ).toHaveCount(0)
@@ -1202,7 +1203,7 @@ for (const [pageName, building, title] of [
       if (receipt.status === 'Committed') constructions.length = 0
       await route.fulfill({ json: receipt })
     })
-    await page.goto(`/u/andromeda/b/${body.id}/${pageName}`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${pageName}`))
     await expect(
       page.getByRole('complementary', { name: 'Activity' }),
     ).toHaveCount(0)
@@ -1282,7 +1283,7 @@ for (const [protocol, pageName, building, title] of [
         },
       ],
     })
-    await page.goto(`/u/andromeda/b/${body.id}/${pageName}`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${pageName}`))
     const tile = page.getByRole('link', {
       name: `Upgrade ${title}`,
       exact: true,
@@ -1608,7 +1609,7 @@ test('an accepted construction can be cancelled before its engine outcome arrive
     const id = new URL(route.request().url()).pathname.split('/').pop()!
     await route.fulfill({ json: receipts.get(id) })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   await page
     .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
     .click()
@@ -1662,7 +1663,7 @@ test('fractional balances stay whole in the ledger and tooltip without enabling 
   economy.gross_per_hour.metal = '0'
   economy.gross_per_hour.crystal = '0'
   await refreshGame(page)
-  await page.goto(`/u/andromeda/b/${body.id}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
   await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
   const pane = page.getByRole('region', { name: 'Progression quote' })
   const costs = pane.getByRole('group', { name: 'Required resources' })
@@ -1705,7 +1706,7 @@ test('legacy item links inspect other buildings during construction without stal
       },
     } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources/metal-mine`))
   await expect(page.getByRole('region', { name: 'Active construction' })).toBeVisible()
   expect(requests).toEqual([])
   const pane = page.getByRole('region', { name: 'Upgrade quote' })
@@ -1746,7 +1747,7 @@ for (const width of [1440, 390, 320]) {
       bodies: [body, colony],
       production: [production(), { ...production(), body: colony.id }],
     })
-    await page.goto(`/u/andromeda/b/${colony.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${colony.id}/resources`))
     const catalog = page.getByRole('region', { name: 'Resource buildings', exact: true })
     const settings = catalog.getByRole('link', { name: 'Resource settings', exact: true })
     await expect(settings).toHaveAttribute('href', `/u/andromeda/b/${colony.id}/resource-settings`)
@@ -1781,7 +1782,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('navigation', { name: 'Develop navigation', exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true })).toHaveCount(0)
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(page.getByLabel('metal mine production')).toHaveValue('100')
     await page.goBack()
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
@@ -1811,7 +1812,7 @@ for (const protocol of [2, 3, 4] as const) {
   test(`resource settings navigation opens production controls for supported protocols on protocol ${protocol}`, async ({ page }) => {
     await shellFixture(page, { protocol })
     if (protocol !== 2) {
-      await page.goto(`/u/andromeda/b/${body.id}/resources`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
       await expect(page.getByRole('region', { name: 'Resource buildings', exact: true }).getByRole('link', { name: 'Resource settings', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
       await expect(page.getByRole('link', { name: 'Energy — resource settings' })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
     } else await expect(page.getByRole('button', { name: 'Energy details' })).toBeVisible()
@@ -1820,7 +1821,7 @@ for (const protocol of [2, 3, 4] as const) {
     await page.getByRole('link', { name: 'Menu', exact: true }).click()
     const menu = page.getByRole('navigation', { name: 'Menu destinations' })
     await expect(menu.getByRole('link', { name: 'Resource settings', exact: true })).toHaveCount(0)
-    await page.goto(`/u/andromeda/b/${body.id}/resource-settings`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resource-settings`))
     await expect(page.locator('main h1')).toHaveText(protocol === 2 ? 'Destination unavailable' : 'Resource settings')
     if (protocol !== 2) {
       await expect(page.getByRole('region', { name: 'Production controls' })).toBeVisible()
@@ -2035,7 +2036,7 @@ for (const width of [1440, 390]) test(`resource settings opens usable controls a
     economy.settings_revision = String(++revision)
     await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/overview`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   const entry = await menuDestination(page, 'Resource settings')
   await expect(entry).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
   await expect(entry).toBeEnabled()
@@ -2052,7 +2053,7 @@ for (const width of [1440, 390]) test(`resource settings opens usable controls a
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0]).toMatchObject({ type: 'SetProduction', body: body.id, settings: { metal_mine: 90 } })
   await expect(controls.getByRole('status')).toHaveText('All changes saved automatically.')
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await expect(metal).toHaveValue('90')
   await page.mouse.move(0, 0)
   await diagnosticScreenshot(page, { path: `test-results/resource-settings-saved-${width}.png`, fullPage: true })

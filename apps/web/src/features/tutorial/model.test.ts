@@ -342,3 +342,56 @@ it('keeps initial navigation compact and briefing reachable while its first read
   expect(briefingEntryAvailable({ ...data, enrolled: false }, 4)).toBe(false)
   expect(briefingEntryAvailable(null, 2)).toBe(false)
 })
+
+it('names the quoted higher upgrade in a legacy level-one directive without granting completion', () => {
+  const { data, view } = fixture()
+  const objective = data.chapters[0].objectives[0]
+  const terms = objective.inspection!.terms!
+  if (terms.type !== 'Building') throw Error('fixture')
+  terms.source_level = 17
+  terms.target_level = 18
+  terms.paid.metal = '73489000000'
+  view.bodies[0].levels.SolarPlant = 17
+  view.bodies[0].amounts.metal = '19000000000'
+  expect(objectiveTitle(objective)).toBe('Build Solar Plant level 1')
+  expect(objectiveStatus(objective, data, view)).toEqual({
+    ready: false,
+    text: 'Next Solar Plant upgrade (level 18) needs 54,489 more metal.',
+  })
+  expect(objective.completed).toBe(false)
+  expect(data.receipts).toEqual([])
+})
+
+it('names the quoted research level and keeps generic shortfalls scoped to the next action', () => {
+  const { data, view } = fixture()
+  const objective = data.chapters
+    .flatMap((c) => c.objectives)
+    .find((o) => o.id === 'energy-1')!
+  const inspection = objective.inspection!
+  const terms = inspection.terms!
+  if (terms.type !== 'Research') throw Error('fixture')
+  inspection.blockers = []
+  terms.source_level = 3
+  terms.target_level = 4
+  terms.paid.metal = '250000000'
+  view.bodies[0].amounts.metal = '0'
+  expect(objectiveStatus(objective, data, view).text).toBe(
+    'Energy Technology research (level 4) needs 250 more metal.',
+  )
+  inspection.terms = null
+  inspection.blockers = [
+    {
+      code: 'InsufficientResources',
+      resource: 'Metal',
+      required: '250000000',
+      actual: '0',
+      requirement: null,
+      unit: 'MicroResource',
+    },
+  ]
+  expect(objectiveStatus(objective, data, view).text).toBe(
+    'Next action needs 250 more metal.',
+  )
+  objective.completed = true
+  expect(objectiveStatus(objective, data, view).text).toBe('Accomplished')
+})

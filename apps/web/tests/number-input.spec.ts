@@ -1,5 +1,6 @@
 import { test, expect, type Locator } from './fixtures/test'
 import { body, shellFixture } from './fixtures/game'
+import { withBootstrapResponse } from './fixtures/responses'
 
 async function expectSelected(input: Locator) {
   await expect(input).toBeFocused()
@@ -49,9 +50,9 @@ for (const interaction of ['click', 'tap'] as const) {
               },
             ],
           })
-          await page.goto(
+          await withBootstrapResponse(page, () => page.goto(
             `/u/andromeda/b/${body.id}/${screen === 'dispatch' ? 'dispatch' : 'fleets'}`,
-          )
+          ))
         }
 
         const inputs = page.locator('input[inputmode="numeric"]:not([data-coordinate-input])')
@@ -91,7 +92,7 @@ test('coordinates are one tab stop with colon and space advancement', async ({
   page,
 }) => {
   await shellFixture(page, { protocol: 4 })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   const input = page.getByLabel('Destination coordinates', { exact: true })
   await input.fill('')
   await input.pressSequentially('1:45 5')
@@ -109,7 +110,7 @@ test('coordinates are one tab stop with colon and space advancement', async ({
 test('coordinate input offers a numeric keyboard and a touch separator control', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await shellFixture(page, { protocol: 4 })
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   const input = page.getByLabel('Destination coordinates', { exact: true })
   await expect(input).toHaveAttribute('inputmode', 'numeric')
   await input.fill('1')

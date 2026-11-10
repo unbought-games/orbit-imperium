@@ -34,10 +34,6 @@
   overflow-y: auto;
 }
 
-.bubble footer > span {
-  flex-basis: 100%;
-}
-
 .celebrationLabel {
   display: flex;
   align-items: center;
@@ -91,8 +87,4 @@
 
 .reviewReward {
   margin: 12px 0;
-}
-.reviewReward > span {
-  color: var(--champagne);
-  font-size: var(--font-size-xs);
 }

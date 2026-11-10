@@ -15,6 +15,7 @@ import {
   id,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
+import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 async function setup(
   page: Page,
@@ -329,9 +330,7 @@ test('vacation and inactivity coexist; tooltips support hover, keyboard, tap and
   await page.mouse.move(0, 0)
   await vacation.click()
   await expect(page.getByRole('tooltip')).toContainText('Attacks and espionage')
-  await page
-    .getByRole('heading', { name: 'Galaxy', exact: true })
-    .click({ force: true })
+  await rows(page).first().getByText('Your planet', { exact: true }).click()
   await expect(page.getByRole('tooltip')).toBeHidden()
   await card
     .getByRole('button', { name: 'Activity within the last 15 minutes' })
@@ -445,7 +444,7 @@ test('system navigation, unavailable worlds and retry preserve eligibility and e
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveValue(coordinatePattern('position', '4'))
-  await page.goto(`/u/andromeda/b/${body.id}/galaxy`)
+  await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
   await page.getByLabel('Solar system').fill('499')
   await page.getByLabel('Solar system').press('Enter')
   await expect(rows(page).first()).toContainText('[1:499:1]')
@@ -683,11 +682,11 @@ test('incoming fleets and report details use the supplied public name without an
       },
     })
   })
-  await page.goto(`/u/andromeda/reports/${reportId}?body=${body.id}`)
+  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/reports/${reportId}?body=${body.id}`))
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('Commander Vega made espionage contact')
   names = undefined
-  await page.reload()
+  await withReportResponse(page, reportId, () => page.reload())
   await expect(report).toContainText('Player 00000000 made espionage contact')
   expect(identityRequests).toEqual([])
 })
@@ -779,7 +778,7 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
     { player: binding.player, username: 'StellarNomad', supporter_tier: 2 },
     { player: id(32), username: 'ProtectedCommander', supporter_tier: 1 },
   ])
-  await page.reload()
+  await withGalaxyResponse(page, () => page.reload())
   const cards = page
     .getByRole('region', { name: 'Galaxy positions' })
     .getByRole('listitem')
@@ -1938,7 +1937,7 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await expect(page.getByRole('heading', { name: 'Transport Outbound' })).toBeVisible()
     // A direct Dispatch load also offers a deterministic return to the list.
-    await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
     await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
   })

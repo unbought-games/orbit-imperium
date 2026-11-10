@@ -1,4 +1,4 @@
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withSocialResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, binding, id } from './fixtures/game'
@@ -246,7 +246,7 @@ test('conversation action announces unread state and clears it after reading', a
   page,
 }) => {
   await fixture(page)
-  await page.goto('/u/andromeda/messages')
+  await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
   const action = page.getByRole('button', {
     name: /^Open conversation with Nova/,
   })
@@ -268,7 +268,7 @@ test('conversation paging, safe Markdown, uncertain send retry and blocking', as
   page,
 }) => {
   const f = await fixture(page)
-  await page.goto(`/u/andromeda/messages?player=${peer}`)
+  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
   const history = page.getByLabel('Message history')
   await expect(history.getByText('Message 65', { exact: true })).toBeVisible()
   await expect(history.getByText('Message 1', { exact: true })).toHaveCount(0)
@@ -335,7 +335,7 @@ test('mobile friends and one-way circulars', async ({ page }) => {
   const f = await fixture(page)
   f.invite()
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/u/andromeda/messages')
+  await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
   await chooseCategory(page, 'Requests')
   await page
     .getByRole('button', { name: 'Contact options for Nova', exact: true })
@@ -378,7 +378,7 @@ test('new messages arrive incrementally and hiding preserves history', async ({
   page,
 }) => {
   const f = await fixture(page)
-  await page.goto(`/u/andromeda/messages?player=${peer}`)
+  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
   await expect(
     page.getByLabel('Message history').getByText('Message 65', { exact: true }),
   ).toBeVisible()
@@ -396,7 +396,7 @@ test('new messages arrive incrementally and hiding preserves history', async ({
     .getByRole('menuitem', { name: 'Hide conversation', exact: true })
     .click()
   await expect(page.getByText(/No conversations yet/)).toBeVisible()
-  await page.goto(`/u/andromeda/messages?player=${peer}`)
+  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
   await expect(
     page.getByLabel('Message history').getByText('Message 66', { exact: true }),
   ).toBeVisible()
@@ -560,7 +560,7 @@ test('empty history stays loaded during polling and displays the first incoming 
   await page.clock.install()
   await page.clock.pauseAt(new Date())
   const f = await fixture(page, 0)
-  await page.goto(`/u/andromeda/messages?player=${peer}`)
+  await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
   await expect(page.getByText('Start your conversation.')).toBeVisible()
   const composer = page.getByLabel('Message', { exact: true })
   await composer.fill('First draft')
@@ -655,7 +655,7 @@ for (const viewport of [
         unread: i === 0,
       })),
     )
-    await page.goto('/u/andromeda/messages')
+    await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
     await expect(
       page.getByRole('button', { name: /Open conversation with/ }),
     ).toHaveCount(4)
@@ -898,7 +898,7 @@ test('message categories share the heading and collapse into a keyboard-accessib
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize({ width: 1440, height: 1000 })
   await fixture(page)
-  await page.goto('/u/andromeda/messages')
+  await withSocialResponse(page, 'Conversations', () => page.goto('/u/andromeda/messages'))
   const title = page.getByRole('heading', {
     name: 'Messages',
     exact: true,
@@ -1011,7 +1011,7 @@ for (const width of [1440, 390]) {
     await page.clock.install()
     await page.clock.pauseAt(new Date())
     const f = await fixture(page)
-    await page.goto(`/u/andromeda/messages?player=${peer}`)
+    await withSocialResponse(page, 'Messages', () => page.goto(`/u/andromeda/messages?player=${peer}`))
     const older = page.getByRole('button', {name: 'Load older messages'})
     await expect(older).toBeEnabled()
     const history = page.getByLabel('Message history')

@@ -1,4 +1,4 @@
-import { withFixtureResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import {
@@ -772,7 +772,7 @@ for (const width of [320, 390, 1280]) {
       await verifyCargo(row, index)
     }
     await diagnosticScreenshot(board, { path: `test-results/cargo-empire-${width}.png` })
-    await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     const cards = page.getByRole('article').filter({ has: page.getByRole('group', { name: 'Carried resources' }) })
     await expect(cards).toHaveCount(5)
     for (let index = 0; index < cases.length; index++) await verifyCargo(cards.nth(index), index)
@@ -1095,7 +1095,7 @@ for (const width of [390, 1440]) {
     await expect.poll(() => ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
     expect(await guide.evaluate(element => getComputedStyle(element, '::after').opacity)).toBe('0')
     await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-reduced-motion-${width}x1000.png` })
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(ledger).toBeVisible()
     expect(await ledger.evaluate(element => element.getAnimations({ subtree: true }).length)).toBe(0)
   })

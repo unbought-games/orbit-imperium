@@ -1,5 +1,5 @@
 import { triageReports } from '../src/features/report-triage'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
@@ -276,9 +276,9 @@ for (const width of [1440, 390]) {
     await expect(unread).toHaveCount(0)
     expect(fixture.headers[1].hidden).toBe(true)
     expect(fixture.headers[1].read).toBe(false)
-    await page.reload()
+    await withReportListResponse(page, () => page.reload())
     await expect(rows).toHaveCount(1)
-    await page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`)
+    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`))
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
     await expect(
       page.getByRole('region', { name: 'Report observation' }),
@@ -287,7 +287,7 @@ for (const width of [1440, 390]) {
       page.getByRole('button', { name: 'Move to inbox' }),
     ).toBeVisible()
     await expect.poll(() => fixture.headers[1].read).toBe(true)
-    await page.reload()
+    await withReportResponse(page, fixture.headers[1].id, () => page.reload())
     await page.getByRole('button', { name: 'Move to inbox' }).click()
     await expect(
       page.getByRole('button', { name: 'Archive report' }),
@@ -296,7 +296,7 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Archive report' }).click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
     await expect(rows).toHaveCount(1)
-    await page.goto(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
+    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`))
     await expect(page.getByRole('button', { name: 'Move to inbox' })).toBeEnabled()
     await expect(unread).toHaveCount(0)
     await diagnosticScreenshot(page, {
@@ -314,7 +314,7 @@ for (const width of [1440, 390]) {
     expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44)
     await back.click()
     await expect(rows).toHaveCount(1)
-    await page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`)
+    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`))
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
     await page.getByRole('button', { name: 'Move to inbox' }).click()
     await expect(unread).toHaveCount(0)
@@ -412,7 +412,7 @@ test('opening a report marks it read after loading, clears the inbox badge and d
   await expect(page.getByRole('button', { name: 'Mark read', exact: true })).toHaveCount(0)
   expect(fixture.readRequests).toEqual([id(71)])
   await refreshGame(page)
-  await page.reload()
+  await withReportResponse(page, id(71), () => page.reload())
   await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
   await expect.poll(() => fixture.headers[1].read).toBe(true)
   expect(fixture.readRequests).toEqual([id(71)])
@@ -669,7 +669,7 @@ test.describe('report touch actions', () => {
       fixture.headers[0].starred = true
       fixture.headers[0].shared = true
       fixture.bumpRevision()
-      await page.reload()
+      await withReportListResponse(page, () => page.reload())
       await expect(remove).toBeDisabled()
       await remove.scrollIntoViewIfNeeded()
       const disabledBox = (await remove.boundingBox())!
@@ -900,7 +900,7 @@ for (const width of [1440, 390]) {
     const fixture = await reportsFixture(page, true)
     fixture.headers[1].hidden = true
     fixture.headers[1].observed_at = 1000
-    await page.reload()
+    await withReportListResponse(page, () => page.reload())
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(1)
     const folders = page.getByRole('group', {name: 'Report folder'})
@@ -978,7 +978,7 @@ for (const width of [1280, 390]) {
     const fixture = await reportsFixture(page, true)
     fixture.headers[1].starred = true
     fixture.headers[0].observed_at = Date.now() - 60_000
-    await page.reload()
+    await withReportListResponse(page, () => page.reload())
     await filterStatus(page, 'unread')
     await expect(page.getByRole('article')).toHaveCount(1)
     const trigger = page.getByRole('button', {name: 'More report actions'})
@@ -1192,7 +1192,7 @@ for (const width of [1280, 390]) {
     await dialog.getByRole('combobox', {name: 'Older than'}).selectOption('custom')
     await dialog.getByRole('spinbutton', {name: 'Hours'}).fill('36.5')
     await page.keyboard.press('Escape')
-    await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().method() === 'POST', () => page.reload())
+    await withReportListResponse(page, () => page.reload())
     await ageCleanup(page)
     await expect(dialog.getByRole('combobox', {name: 'Older than'})).toHaveValue('custom')
     await expect(dialog.getByRole('spinbutton', {name: 'Hours'})).toHaveValue('36.5')

@@ -29,6 +29,86 @@ export async function withFixtureResponse(
   expect((await request.response())?.ok()).toBe(true)
 }
 
+const posted = (response: Response, path: string) =>
+  response.request().method() === 'POST' &&
+  new URL(response.url()).pathname.endsWith(path)
+
+/** Direct loads take their initial game snapshot from bootstrap, not /overview. */
+export function withBootstrapResponse(
+  page: Page,
+  navigate: () => Promise<unknown>,
+) {
+  return withFixtureResponse(
+    page,
+    (response) => new URL(response.url()).pathname === '/api/v1/bootstrap',
+    navigate,
+  )
+}
+
+/** The report list, not the shell's unread-only badge query. */
+export function withReportListResponse(
+  page: Page,
+  navigate: () => Promise<unknown>,
+) {
+  return withFixtureResponse(
+    page,
+    (response) =>
+      posted(response, '/reports') &&
+      response.request().postDataJSON().filter?.unread_only === false,
+    navigate,
+  )
+}
+
+export function withReportResponse(
+  page: Page,
+  report: string,
+  navigate: () => Promise<unknown>,
+) {
+  return withFixtureResponse(
+    page,
+    (response) => posted(response, `/reports/${report}`),
+    navigate,
+  )
+}
+
+export function withSharedReportResponse(
+  page: Page,
+  token: string,
+  navigate: () => Promise<unknown>,
+) {
+  return withFixtureResponse(
+    page,
+    (response) =>
+      new URL(response.url()).pathname === `/api/v4/shared-reports/${token}`,
+    navigate,
+  )
+}
+
+export function withRankingsResponse(
+  page: Page,
+  navigate: () => Promise<unknown>,
+) {
+  return withFixtureResponse(
+    page,
+    (response) => posted(response, '/rankings'),
+    navigate,
+  )
+}
+
+export function withSocialResponse(
+  page: Page,
+  type: 'Conversations' | 'Messages',
+  navigate: () => Promise<unknown>,
+) {
+  return withFixtureResponse(
+    page,
+    (response) =>
+      posted(response, '/social/query') &&
+      response.request().postDataJSON().query.type === type,
+    navigate,
+  )
+}
+
 export function withProgressionResponse(
   page: Page,
   matches: (request: components['schemas']['QuoteRequest3']) => boolean,

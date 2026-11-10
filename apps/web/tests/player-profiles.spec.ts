@@ -15,6 +15,8 @@ import {
   body,
   id,
 } from './fixtures/game'
+import { withRankingsResponse } from './fixtures/responses'
+import { withGalaxyResponse } from './fixtures/galaxy'
 
 async function inspectIdentity(page: Page, screen: string, name: string) {
   for (const width of [1440, 390]) {
@@ -94,7 +96,7 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
       },
     })
   })
-  await page.goto(`/u/andromeda/galaxy?body=${body.id}`)
+  await withGalaxyResponse(page, () => page.goto(`/u/andromeda/galaxy?body=${body.id}`))
   const cards = page
     .getByRole('region', { name: 'Galaxy positions' })
     .getByRole('listitem')
@@ -346,7 +348,7 @@ test('player attachments align together and long identities stay within narrow r
     sampled_at: 1792843200000, baseline_at: 1792756800000, processing_pending: false,
     players: players.map((player, i) => ({ player: player.player, username: player.username, alliance: player.alliance, points: `${100 - i}`, rank: [123, 1234, 12345][i], previous_rank: [null, 1334, 12245][i] })),
   } }))
-  await page.goto(`/u/andromeda/high-scores?body=${body.id}`)
+  await withRankingsResponse(page, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   const trigger = table.getByRole('link', { name: 'Aurelia profile details' })
   await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()

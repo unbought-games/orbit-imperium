@@ -143,7 +143,6 @@ export function TutorialAdvisor({
                 </div>
               )}
               <footer>
-                <span>Click me to hide this.</span>
                 {!celebrating && (
                   <BriefingLink onClick={() => bubble.setExpanded(false)} />
                 )}

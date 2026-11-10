@@ -1,5 +1,5 @@
 import { routeWorld } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
 import { selectBody } from './fixtures/body-selector'
 import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -41,7 +41,7 @@ test('supporter claims color the shared account identity after sign-in and clear
   const amounts = [10, 25, 100]
   for (const next of [1, 2, 3]) {
     tier = next
-    await page.reload()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/player-profiles'), () => page.reload())
     const navigation = await openNavigation(page)
     const identity = navigation.getByLabel('Username', { exact: true })
     await expect(
@@ -69,13 +69,13 @@ test('supporter claims color the shared account identity after sign-in and clear
   ).toBeVisible()
   // A later sign-in can identify a different account with no inherited tier.
   username = 'OtherCommander'
-  await page.reload()
+  await withFixtureResponse(page, (response) => response.url().endsWith('/player-profiles'), () => page.reload())
   await expect(
     page.locator('main').getByText(username, { exact: true }),
   ).toBeVisible()
   await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
   tier = 2
-  await page.reload()
+  await withFixtureResponse(page, (response) => response.url().endsWith('/player-profiles'), () => page.reload())
   await expect(
     page.locator('main').getByRole('img', { name: /Supporter/ }),
   ).toBeVisible()
@@ -230,10 +230,10 @@ test('cold Defense navigation retains named universe and planet through preloadi
   await expect(page.locator('main h1')).toHaveText('Defense')
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
   await expect(page).toHaveURL(`/u/andromeda-prime/b/${id(6)}/defense`)
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await expect(page.locator('main h1')).toHaveText('Defense')
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
-  await page.goto(`/u/andromeda-prime/research?body=${id(6)}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda-prime/research?body=${id(6)}`))
   await nav.getByRole('link', { name: 'Defense', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Defense')
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
@@ -927,7 +927,7 @@ for (const [kind, elapsed] of [
       })
     })
     if (kind === 'research')
-      await page.goto(`/u/andromeda/b/${body.id}/research`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research`))
     const scope = kind === 'construction' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
     const summary = scope.getByRole('region', {
       name: kind === 'construction' ? 'Buildings' : 'Research',
@@ -1036,7 +1036,16 @@ test('planet ledger retains its borders beside the desktop sidebar', async ({
     if (width < 1024) expect(bounds!.x).toBeGreaterThan(content!.x)
     else expect(bounds!.x).toBeCloseTo(content!.x, 1)
     expect(bounds!.x + bounds!.width).toBeCloseTo(content!.x + content!.width, 1)
-    expect(bounds!.height).toBe(width < 1024 ? 64 : 82)
+    expect(bounds!.height).toBe(64)
+    if (width >= 1024) {
+      const brand = await page
+        .getByRole('complementary', { name: 'Game navigation' })
+        .getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
+        .boundingBox()
+      expect(
+        Math.abs(brand!.y + brand!.height / 2 - bounds!.y - bounds!.height / 2),
+      ).toBeLessThan(2)
+    }
     expect(
       (
         await bar.getByRole('button', { name: 'Metal details' }).innerText()
@@ -1561,7 +1570,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   const mission = page.getByRole('article', { name: 'Transport fleet' })
   await mission.getByRole('button', { name: 'Transport ship composition: 4 ships', exact: true }).click()
   await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
@@ -1581,9 +1590,9 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   ).toBeVisible()
   await selectBody(page, id(6))
   await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets/${fleet.id}`)
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
-  await page.goto(`/u/andromeda/fleets/${fleet.id}?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/fleets/${fleet.id}?body=${body.id}`))
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   await expect(mission).toContainText('2,000')
   await mission.getByText('Flight path', { exact: true }).click()
@@ -1659,7 +1668,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   })
   await page.getByRole('button', { name: 'Keep mission', exact: true }).click()
   await page.route('**/art/**', (route) => route.abort())
-  await page.reload()
+  await withBootstrapResponse(page, () => page.reload())
   await expect(
     page.getByRole('article', { name: 'Transport fleet' })
       .getByRole('list', { name: 'Ship composition' }).getByRole('listitem'),
@@ -1690,13 +1699,13 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
       score_value_micro: '0',
     },
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   await expect(page.getByText('No active fleets.')).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/fleets-empty-phone.png',
     fullPage: true,
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets/${id(99)}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets/${id(99)}`))
   await expect(
     page.getByText(
       'This item is unavailable or outside the current authorized view.',
@@ -1706,7 +1715,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
     path: 'test-results/fleets-unavailable-phone.png',
     fullPage: true,
   })
-  await page.goto(`/u/andromeda/settings?body=${body.id}`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/settings?body=${body.id}`))
   await expect(
     page.getByRole('heading', { name: 'Universe settings', exact: true }),
   ).toBeVisible()
@@ -1806,7 +1815,7 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.route('**/commands/*?epoch=*', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )
-  await page.goto(`/u/andromeda/b/${body.id}/dispatch`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   await setDestination(page, { position: '2' })
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
@@ -1953,7 +1962,7 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
       },
     ],
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   await expect(
     page.getByRole('figure', { name: 'Mission route schematic' }),
   ).toBeVisible()
@@ -2048,7 +2057,7 @@ test('selected body context truncates on phones and retains full labels and acce
   await expect(
     page.getByRole('button', { name: 'Planet information details' }),
   ).toHaveCount(0)
-  await page.goto(`/u/andromeda/b/${id(99)}/resources`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${id(99)}/resources`))
   const unavailable = page.getByRole('heading', {
     name: 'Destination unavailable',
     exact: true,
@@ -2075,7 +2084,7 @@ for (const width of [390, 1440]) {
       `/u/andromeda/b/${body.id}/defense`,
       `/u/andromeda/settings`,
     ]) {
-      await page.goto(route)
+      await withBootstrapResponse(page, () => page.goto(route))
       await expect(page.locator('main h1')).toBeAttached()
       await expect(page.getByRole('region', { name: 'Construction status', includeHidden: true })).toHaveCount(0)
       // Construction controls are contained in the page, never appended to the shell.
@@ -2083,7 +2092,7 @@ for (const width of [390, 1440]) {
         buttons => buttons.every(button => button.closest('main') !== null),
       )).toBe(true)
     }
-    await page.goto(`/u/andromeda/b/${body.id}/resources`)
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
     const work = page.getByRole('region', { name: 'Buildings', exact: true })
     await expect(work.getByRole('link', { name: 'Metal Mine · Level 2', exact: true })).toBeVisible()
     await expect(work.getByText('Level 2', { exact: true })).toBeVisible()
@@ -2207,7 +2216,7 @@ test('server recall eligibility survives an elapsed client countdown', async ({
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   await page.route('**/overview', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )
@@ -2514,15 +2523,15 @@ test.describe('planet-scoped gameplay routes retain context and redirect old que
   for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch'], ['reports', 'Reports']]) {
     test(path, async ({ page }) => {
       const purchases = await installGameFixture(page, { protocol: 4 })
-      await page.goto(`/u/andromeda/${path}?body=${body.id}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/${path}?body=${body.id}`))
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
       await expect(page.locator('main h1')).toHaveText(heading)
       await selectBody(page, id(6))
       await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${path}`)
-      await page.reload()
+      await withBootstrapResponse(page, () => page.reload())
       await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
       await expect(page.locator('main h1')).toHaveText(heading)
-      await page.goto(`/u/andromeda/b/${id(99)}/${path}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${id(99)}/${path}`))
       await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
       await expect(page).toHaveURL(`/u/andromeda/b/${id(99)}/${path}`)
       expect(purchases()).toBe(0)
@@ -2543,7 +2552,7 @@ for (const width of [320, 390, 1440]) {
       ['facilities', 'Buildings', 'Robotics Factory · Level 3'],
       ['research', 'Research', 'Energy Technology · Level 3'],
     ]) {
-      await page.goto(`/u/andromeda/b/${body.id}/${path}`)
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${path}`))
       const queue = page.getByRole('region', { name: region, exact: true })
       const link = queue.getByRole('link', { name: new RegExp(label) })
       await expect(link).toBeVisible()
@@ -2706,7 +2715,7 @@ test('incoming attacks stay in the phone viewport when there are no outgoing fle
       fleet_slots: '1',
     },
   })
-  await page.goto(`/u/andromeda/b/${body.id}/fleets`)
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   await expect(
     page.getByRole('heading', { name: 'No active fleets.' }),
   ).toBeVisible()
@@ -2753,7 +2762,7 @@ for (const width of [320, 390, 1440]) {
       protocol: 4,
       bodies: [home, moon, first, later],
     })
-    await page.goto('/u/andromeda')
+    await withBootstrapResponse(page, () => page.goto('/u/andromeda'))
     // A fresh open also loads the cold Vite route modules before rendering.
     await expect(page.locator('main h1')).toContainText('Empire —', {
       timeout: 30_000,
@@ -2819,7 +2828,7 @@ for (const width of [320, 390, 1440]) {
     await page.keyboard.press('Enter')
     await expect(trigger).toHaveAttribute('data-value', first.id)
     await selectBody(page, later.id)
-    await page.reload()
+    await withBootstrapResponse(page, () => page.reload())
     await expect(trigger).toHaveAttribute('data-value', later.id)
     await trigger.click()
     // Opening mounts the popup and its outside-press listeners asynchronously.
