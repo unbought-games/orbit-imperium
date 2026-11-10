@@ -166,10 +166,10 @@ export function GalaxyDisclosureScenario() {
   const [inactiveLong, setInactiveLong] = useState(false)
   const flights: GalaxyFlight[] = Array.from({ length: 6 }, (_, index) => ({
     id: `fleet-${index}`,
-    mission: index % 2 ? 'Harvest' : 'Espionage',
+    mission: index % 2 ? ('Harvest' as const) : ('Espionage' as const),
     dueAt: fleetFixtureTime + 60_000 + index * 1000,
-    phase: 'en route',
-  }))
+    phase: 'en route' as const,
+  })).filter((_, index) => revision === 0 || index !== 0)
   const body: NonNullable<S['GalaxyPosition4']['body']> = {
     id: 'target',
     owner: 'other',

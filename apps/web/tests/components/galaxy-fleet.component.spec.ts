@@ -232,7 +232,8 @@ test('flight summary preserves native disclosure through refreshed countdowns', 
   const disclosure = page.getByLabel('Your fleets to [1:371:2]', {
     exact: true,
   })
-  const trigger = page.getByLabel('Show 6 fleets to [1:371:2]', { exact: true })
+  const trigger = disclosure.locator('summary')
+  await expect(trigger).toHaveAccessibleName('Show 6 fleets to [1:371:2]')
   await expect(disclosure.locator('ul')).toBeHidden()
   await trigger.focus()
   await trigger.press('Enter')
@@ -240,7 +241,9 @@ test('flight summary preserves native disclosure through refreshed countdowns', 
   await expect(disclosure.locator('ul')).toBeVisible()
   await page.getByRole('button', { name: 'Refresh snapshot' }).click()
   await expect(disclosure.locator('ul')).toBeVisible()
-  await expect(trigger).toContainText('59s')
+  await expect(disclosure.locator('li')).toHaveCount(5)
+  await expect(trigger).toHaveAccessibleName('Show 5 fleets to [1:371:2]')
+  await expect(trigger).toContainText('1m 0s')
   await trigger.click()
   await expect(disclosure.locator('ul')).toBeHidden()
 })

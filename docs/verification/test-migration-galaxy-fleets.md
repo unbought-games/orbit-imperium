@@ -144,3 +144,14 @@ all status assertions, introduces no timeout or product change, and is not an
 unchanged retry. Parent retains the failure log `/tmp/orbit-galaxy-components-first.log`
 and artifacts under `test-results/test-strategy/galaxy-components-first`. Validation
 of this repair remains with parent serial execution.
+
+## Disclosure membership coverage correction
+
+Independent review found that the initial isolated disclosure scenario refreshed
+only the clock while the removed integration case also changed projected fleet
+membership after one fleet returned. The scene now removes the departed entry
+from its prepared projection on refresh, and the component case asserts five
+remaining entries, the updated accessible summary and continued expansion.
+`game-projection.test.ts` separately retains the real outbound/returning
+classification. This closes the missing DOM-retention assertion without claiming
+that static model coverage can prove it. Parent validates this correction.
