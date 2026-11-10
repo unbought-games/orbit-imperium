@@ -1,3 +1,4 @@
+import type { SettingsDestination } from '../../src/features/alliances/settings'
 import { allianceSections } from '../../src/features/alliances/sections'
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
@@ -11,6 +12,7 @@ import { Board } from '../../src/features/alliances/board'
 import { Roles } from '../../src/features/alliances/roles'
 import {
   Roster,
+  Audit,
   Applications,
   Settings,
 } from '../../src/features/alliances/administration'
@@ -124,7 +126,13 @@ function setup() {
       const projected = structuredClone(detail)
       if (q.type === 'Detail' && q.post_before) {
         projected.posts = [
-          { ...projected.posts![0], id: 'older', title: 'Older chapter' },
+          {
+            ...projected.posts![0],
+            id: 'older',
+            title: 'Older chapter',
+            created_at: 1699999999000,
+            pinned: false,
+          },
         ]
         projected.next_post_before = null
       }
@@ -156,18 +164,24 @@ function setup() {
             id: 'new',
             author: self,
             author_name: 'Commander',
-            title: a.title,
-            body: a.body,
+            title: a.title ?? '',
+            body: a.body ?? '',
             pinned: false,
             created_at: 1700000000001,
             updated_at: 1700000000001,
           },
           ...detail.posts!,
         ]
+      if (a.type === 'Kick') {
+        detail.members = detail.members!.filter((m) => m.player !== a.player)
+        detail.summary.member_count = detail.members!.length
+      }
+      if (a.type === 'DeletePost')
+        detail.posts = detail.posts!.filter((p) => p.id !== a.post)
       if (a.type === 'EditPost')
         Object.assign(detail.posts!.find((p) => p.id === a.post)!, {
-          title: a.title,
-          body: a.body,
+          title: a.title ?? '',
+          body: a.body ?? '',
         })
       if (a.type === 'PinPost')
         detail.posts!.find((p) => p.id === a.post)!.pinned = a.pinned
@@ -184,6 +198,12 @@ function setup() {
         ]
       if (a.type === 'AssignRoles')
         detail.members!.find((m) => m.player === a.player)!.roles = a.roles
+      if (a.type === 'Update') {
+        detail.summary.name = a.name
+        detail.summary.tag = a.tag
+        detail.summary.recruitment = a.recruitment
+        detail.public_text = a.public_text
+      }
       if (a.type === 'Accept') detail.applications = []
       if (a.type === 'SetRecruitmentProfile')
         detail.summary.recruitment_profile = a.profile
@@ -218,7 +238,122 @@ function setup() {
       await controller.refresh()
     },
     refresh: () => controller.refresh(),
-    prepare: async (kind: 'locked' | 'long' | 'departed' | 'expired') => {
+    prepare: async (
+      kind:
+        | 'locked'
+        | 'long'
+        | 'departed'
+        | 'expired'
+        | 'roster'
+        | 'viewer'
+        | 'audit'
+        | 'audit-empty',
+    ) => {
+      if (kind === 'audit' || kind === 'audit-empty') {
+        detail.audit =
+          kind === 'audit-empty'
+            ? []
+            : [
+                {
+                  id: 'event-1',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'AssignRoles',
+                  at: 1700000005000,
+                  target: member,
+                  subject: { kind: 'Player', label: 'Nova', player: member },
+                },
+                {
+                  id: 'event-2',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'DeleteRole',
+                  at: 1700000004000,
+                  target: 'deleted-role',
+                  subject: { kind: 'Role', label: 'Expedition coordinator' },
+                },
+                {
+                  id: 'event-3',
+                  actor: member,
+                  actor_name: 'Nova',
+                  action: 'DeletePost',
+                  at: 1700000003000,
+                  target: 'deleted-post',
+                  subject: {
+                    kind: 'Notice',
+                    label:
+                      'Launch instructions for the distant outer systems and our next expedition',
+                  },
+                },
+                {
+                  id: 'event-4',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'Accept',
+                  at: 1700000002000,
+                  target: 'old-application',
+                  subject: { kind: 'Player', label: 'Former applicant' },
+                },
+                {
+                  id: 'event-5',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'DisableInvitation',
+                  at: 1700000001000,
+                  target: null,
+                },
+                {
+                  id: 'event-6',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'PinNotice',
+                  at: 1700000000000,
+                  target: 'post',
+                  subject: { kind: 'Notice', label: 'Untitled notice' },
+                },
+              ]
+      }
+      if (kind === 'roster' || kind === 'viewer') {
+        detail.roles!.push({
+          id: 'diplomat',
+          name: 'Diplomat',
+          is_default: false,
+          permissions: ['ViewMembers', 'ViewApplications'],
+          grantable_permissions: [],
+        })
+        detail.members = [
+          { ...detail.members![0], activity: 'Recent' },
+          {
+            ...detail.members![1],
+            activity: 'Away',
+            roles: ['member', 'scout'],
+          },
+          ...[
+            'Atlas',
+            'Ember',
+            'Kaia',
+            'Lyra',
+            'Orion',
+            'Vesper of the distant outer systems',
+          ].map((username, index) => ({
+            player: `sample-${index}`,
+            username,
+            joined_at: 1700000000000 - index * 86400000,
+            roles:
+              index === 3
+                ? ['member', 'scout', 'diplomat']
+                : index === 2
+                  ? ['member', 'diplomat']
+                  : ['member'],
+            activity: (['Recent', 'Away', 'Inactive'] as const)[index % 3],
+          })),
+        ]
+        detail.summary.member_count = detail.members!.length
+        if (kind === 'viewer') {
+          detail.permissions = ['ViewMembers']
+          detail.grantable_permissions = []
+        }
+      }
       if (kind === 'locked') {
         detail.leader = 'leader'
         detail.permissions = ['ViewMembers', 'AssignRoles']
@@ -285,7 +420,9 @@ declare global {
 }
 export function AllianceStory() {
   const [scenario] = useState(setup),
-    [tab, setTab] = useState('Board')
+    [tab, setTab] = useState('Board'),
+    [settingsSection, setSettingsSection] =
+      useState<SettingsDestination>('Profile')
   const state = useStore(scenario.controller.store)
   useEffect(() => {
     window.allianceScenario = scenario
@@ -317,11 +454,7 @@ export function AllianceStory() {
                   run={run}
                   busy={busy}
                   load={(cursor) => {
-                    void scenario.controller.refresh({
-                      type: 'Detail',
-                      alliance: 'alliance',
-                      post_before: cursor,
-                    })
+                    void scenario.controller.loadOlder(cursor)
                   }}
                 />
               )}
@@ -334,8 +467,16 @@ export function AllianceStory() {
               {tab === 'Applications' && (
                 <Applications detail={detail} run={run} busy={busy} />
               )}
+              {tab === 'Audit' && <Audit detail={detail} />}
               {tab === 'Settings' && (
-                <Settings detail={detail} player={self} run={run} busy={busy} />
+                <Settings
+                  detail={detail}
+                  player={self}
+                  run={run}
+                  busy={busy}
+                  section={settingsSection}
+                  onSectionChange={setSettingsSection}
+                />
               )}
             </>
           )}

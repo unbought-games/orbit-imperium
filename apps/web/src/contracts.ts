@@ -8322,6 +8322,7 @@ export interface components {
             action: string;
             at: number;
             target: string | null;
+            subject?: components["schemas"]["AllianceAuditSubject"];
         };
         AllianceDetail: {
             summary: components["schemas"]["AllianceSummary"];
@@ -8475,8 +8476,10 @@ export interface components {
             type: "CreatePost";
             /** Format: uuid */
             alliance: string;
-            title: string;
-            body: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            title?: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            body?: string;
         } | {
             /** @constant */
             type: "EditPost";
@@ -8484,8 +8487,10 @@ export interface components {
             alliance: string;
             /** Format: uuid */
             post: string;
-            title: string;
-            body: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            title?: string;
+            /** @description Defaults to an empty string when omitted. A notice must contain a title or body. */
+            body?: string;
         } | {
             /** @constant */
             type: "DeletePost";
@@ -9576,6 +9581,14 @@ export interface components {
         };
         ArrivalState: {
             pending: boolean;
+        };
+        /** @description Human-readable event target. Role names and notice titles are preserved for new events; older events are resolved from surviving records. */
+        AllianceAuditSubject: {
+            /** @enum {string} */
+            kind: "Player" | "Role" | "Notice";
+            label: string;
+            /** Format: uuid */
+            player?: string;
         };
     };
     responses: never;

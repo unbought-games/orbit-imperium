@@ -72,11 +72,11 @@ pub(super) fn markdown(value: &str, max: usize, field: &str) -> Result<(), Allia
     Ok(())
 }
 pub(super) fn post(title: &str, body: &str) -> Result<(), AllianceError> {
-    label(title, 1, 120, "post title")?;
+    label(title, 0, 120, "post title")?;
     markdown(body, 8000, "post body")?;
-    if body.trim().is_empty() {
+    if title.trim().is_empty() && body.trim().is_empty() {
         return Err(AllianceError::InvalidInput(
-            "post body cannot be empty".into(),
+            "add a title or a message".into(),
         ));
     }
     Ok(())

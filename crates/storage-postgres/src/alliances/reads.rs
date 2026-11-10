@@ -230,6 +230,7 @@ impl PgStore {
                     .chain(state.applications.iter().map(|a| a.player))
                     .chain(state.posts.iter().map(|p| p.author))
                     .chain(state.audit.iter().map(|a| a.actor))
+                    .chain(state.audit.iter().filter_map(|a| a.subject_player()))
                     .collect();
                 let labels = names(&mut tx, b.universe, ids).await?;
                 let mut presence = BTreeMap::new();

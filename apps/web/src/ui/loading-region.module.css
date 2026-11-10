@@ -53,11 +53,12 @@
 .outer,
 .inner {
   transform-origin: 40px 40px;
-  animation: revolve 2.4s linear infinite;
+  /* Deliberate loading feedback opts out of the global animation reset. */
+  animation: revolve 2.4s linear infinite !important;
 }
 .inner {
-  animation-duration: 3.6s;
-  animation-direction: reverse;
+  animation-duration: 3.6s !important;
+  animation-direction: reverse !important;
 }
 @keyframes revolve {
   to {
@@ -67,6 +68,6 @@
 @media (prefers-reduced-motion: reduce) {
   .outer,
   .inner {
-    animation: none;
+    animation: none !important;
   }
 }

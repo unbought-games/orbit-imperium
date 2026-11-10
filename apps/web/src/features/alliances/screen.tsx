@@ -1,3 +1,4 @@
+import type { SettingsDestination } from './settings'
 import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
 import { ContentColumn } from '../../ui/content-column'
@@ -24,7 +25,7 @@ import { bindingKey } from '../../client-model/commands'
 import { AlliancesController } from '../../client-model/alliances'
 import type { Coordinator } from '../../client-model/coordinator'
 import { useGameSession } from '../../shell/session-context'
-import { Button, ButtonLink, ButtonLinkAnchor } from '../../ui/button'
+import { Button, ButtonLink } from '../../ui/button'
 import { ConfirmAction, Markdown, Summary, type Run } from './shared'
 import { usePublicAlliance } from '../../client-model/use-public-alliance'
 import { Board } from './board'
@@ -118,6 +119,8 @@ function AllianceWorkspace({
   const state = useStore(controller.store)
   const refreshProfiles = useRefreshPlayerProfiles()
   const [tab, setTab] = useState('Board')
+  const [settingsSection, setSettingsSection] =
+    useState<SettingsDestination>('Profile')
   const [selected, setSelected] = useState<string | undefined>(initialAlliance)
   useEffect(() => {
     void controller.refresh()
@@ -161,7 +164,10 @@ function AllianceWorkspace({
           ? (detail.applications?.map((application) => application.player) ??
             [])
           : active === 'Audit'
-            ? (detail.audit?.map((entry) => entry.actor) ?? [])
+            ? (detail.audit?.flatMap((entry) => [
+                entry.actor,
+                ...(entry.subject?.player ? [entry.subject.player] : []),
+              ]) ?? [])
             : active === 'Board'
               ? (detail.posts?.map((post) => post.author) ?? [])
               : []
@@ -171,7 +177,7 @@ function AllianceWorkspace({
       <ContentColumn
         as="section"
         width={creating ? 'focused' : 'full'}
-        className={styles.screen}
+        className={creating || discovering ? styles.screen : styles.myAlliance}
         aria-label="Alliances"
       >
         <TaskHeader
@@ -198,7 +204,7 @@ function AllianceWorkspace({
           }
         >
           {!creating && !discovering && detail && (
-            <ButtonLink variant="secondary" {...discoveryTarget}>
+            <ButtonLink variant="secondary" size="inline" {...discoveryTarget}>
               Discover alliances
             </ButtonLink>
           )}
@@ -306,12 +312,6 @@ function AllianceWorkspace({
                   {!discovering && detail ? (
                     <>
                       <Summary summary={detail.summary} />
-                      <ButtonLinkAnchor
-                        variant="secondary"
-                        href={`/alliances/${universe}/${detail.summary.id}`}
-                      >
-                        Public recruitment page
-                      </ButtonLinkAnchor>
                       <nav
                         className={styles.tabs}
                         aria-label="Alliance sections"
@@ -333,13 +333,7 @@ function AllianceWorkspace({
                           player={player}
                           run={run}
                           busy={busy}
-                          load={(cursor) =>
-                            void controller.refresh({
-                              type: 'Detail',
-                              alliance: detail.summary.id,
-                              post_before: cursor,
-                            })
-                          }
+                          load={(cursor) => void controller.loadOlder(cursor)}
                         />
                       )}
                       {active === 'Members' && (
@@ -358,6 +352,8 @@ function AllianceWorkspace({
                       )}
                       {active === 'Settings' && (
                         <Settings
+                          section={settingsSection}
+                          onSectionChange={setSettingsSection}
                           detail={detail}
                           player={player}
                           run={run}

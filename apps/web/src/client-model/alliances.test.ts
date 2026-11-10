@@ -344,3 +344,95 @@ it('publishing replaces the board with the authoritative page instead of appendi
     'server-cursor',
   )
 })
+
+const boardPost = (id: string, at: number) => ({
+  id,
+  author: 'p',
+  author_name: 'Pilot',
+  title: id,
+  body: '',
+  pinned: false,
+  created_at: at,
+  updated_at: at,
+})
+it('appends older notices without blanking the feed or mixing revisions', async () => {
+  const first = memberView()
+  first.alliance!.posts = [boardPost('new', 2)]
+  first.alliance!.next_post_before = 'older'
+  const page = deferred<components['schemas']['AllianceView']>()
+  const read = vi
+    .fn()
+    .mockResolvedValueOnce(first)
+    .mockReturnValueOnce(page.promise)
+  const controller = new AlliancesController({
+    read,
+    command: vi.fn(),
+    newId: () => 'id',
+  })
+  await controller.refresh()
+  const loading = controller.loadOlder('older')
+  expect(
+    controller.store.getState().view?.alliance?.posts?.map((p) => p.id),
+  ).toEqual(['new'])
+  expect(await controller.loadOlder('older')).toBe(false)
+  page.resolve({
+    ...first,
+    alliance: {
+      ...first.alliance!,
+      posts: [boardPost('old', 1)],
+      next_post_before: null,
+    },
+  })
+  expect(await loading).toBe(true)
+  expect(
+    controller.store.getState().view?.alliance?.posts?.map((p) => p.id),
+  ).toEqual(['new', 'old'])
+  read.mockResolvedValueOnce({
+    ...first,
+    alliance: {
+      ...first.alliance!,
+      revision: 2,
+      posts: [boardPost('replacement', 3)],
+    },
+  })
+  await controller.refresh()
+  read.mockRejectedValueOnce({ status: 409 }).mockResolvedValueOnce({
+    ...first,
+    alliance: {
+      ...first.alliance!,
+      revision: 3,
+      posts: [boardPost('fresh', 4)],
+      next_post_before: null,
+    },
+  })
+  await controller.loadOlder('older')
+  expect(
+    controller.store.getState().view?.alliance?.posts?.map((p) => p.id),
+  ).toEqual(['fresh'])
+  expect(controller.store.getState().notice).toContain(
+    'Showing the newest notices',
+  )
+})
+it('retains the feed on an older-page transport failure but clears it on lost access', async () => {
+  const first = memberView()
+  first.alliance!.posts = [boardPost('new', 2)]
+  first.alliance!.next_post_before = 'older'
+  const read = vi
+    .fn()
+    .mockResolvedValueOnce(first)
+    .mockRejectedValueOnce({ status: 503 })
+    .mockRejectedValueOnce({ status: 403 })
+  const lost = vi.fn()
+  const controller = new AlliancesController({
+    read,
+    command: vi.fn(),
+    newId: () => 'id',
+    onAccessLost: lost,
+  })
+  await controller.refresh()
+  expect(await controller.loadOlder('older')).toBe(false)
+  expect(controller.store.getState().view?.alliance?.posts?.[0].id).toBe('new')
+  expect(await controller.loadOlder('older')).toBe(false)
+  expect(controller.store.getState().view).toBeNull()
+  expect(lost).toHaveBeenCalledOnce()
+})

@@ -1,86 +1,108 @@
-import { PlayerName } from '../player-name'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Pin } from 'lucide-react'
 import type { components } from '../../contracts'
+import { PlayerName } from '../player-name'
 import { can, type AllianceDetail } from '../../client-model/alliances'
 import { Button } from '../../ui/button'
-import { Field, Input } from '../../ui/form'
-import { ActionForm, ConfirmAction, Markdown, value, type Run } from './shared'
-import styles from './alliances.module.css'
-function PostEditor({
+import { Markdown, type Run } from './shared'
+import { NoticeEditor } from './notice-editor'
+import { NoticeActions } from './notice-actions'
+import styles from './board.module.css'
+
+type Post = components['schemas']['AlliancePost']
+function Notice({
   detail,
   post,
+  player,
   run,
   busy,
 }: {
   detail: AllianceDetail
-  post?: components['schemas']['AlliancePost']
+  post: Post
+  player: string
   run: Run
   busy: boolean
 }) {
-  const [preview, setPreview] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const article = useRef<HTMLElement>(null)
+  const editable = post.author === player || can(detail, 'ManagePosts')
+  const finishEdit = () => {
+    setEditing(false)
+    article.current?.focus({ preventScroll: true })
+  }
   return (
-    <ActionForm
-      draftKey={`post:${detail.summary.id}:${post?.id ?? 'new'}`}
-      busy={busy}
-      label={post ? 'Save notice' : 'Publish notice'}
-      onSubmit={(data) =>
-        run(
-          post
-            ? {
-                type: 'EditPost',
-                alliance: detail.summary.id,
-                post: post.id,
-                title: value(data, 'title'),
-                body: value(data, 'body'),
-              }
-            : {
-                type: 'CreatePost',
-                alliance: detail.summary.id,
-                title: value(data, 'title'),
-                body: value(data, 'body'),
-              },
-        )
-      }
+    <article
+      className={styles.notice}
+      ref={article}
+      tabIndex={-1}
+      aria-label={post.title || `Notice by ${post.author_name}`}
     >
-      <Field>
-        Notice title
-        <Input
-          name="title"
-          defaultValue={post?.title}
-          required
-          maxLength={120}
+      {editing && editable ? (
+        <NoticeEditor
+          alliance={detail.summary.id}
+          post={post}
+          run={run}
+          busy={busy}
+          onClose={finishEdit}
         />
-      </Field>
-      <Field>
-        Notice body
-        <textarea
-          name="body"
-          defaultValue={post?.body}
-          required
-          maxLength={8000}
-          rows={6}
-        />
-      </Field>
-      <p>
-        Basic Markdown supported. Images, embedded content and HTML are
-        disabled.
-      </p>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={(e) => {
-          const form = e.currentTarget.form
-          if (form) setPreview(value(new FormData(form), 'body'))
-        }}
-      >
-        Preview notice
-      </Button>
-      {preview !== null && (
-        <div className={styles.preview}>
-          <Markdown text={preview} />
-        </div>
+      ) : (
+        <>
+          <div className={styles.noticeContent}>
+            <div>
+              {post.title && <h3 className={styles.title}>{post.title}</h3>}
+              {post.body.trim() && <Markdown text={post.body} compact />}
+            </div>
+            <NoticeActions
+              post={post}
+              alliance={detail.summary.id}
+              editable={editable}
+              pinnable={can(detail, 'PinPosts')}
+              busy={busy}
+              run={run}
+              onEdit={() => setEditing(true)}
+            />
+          </div>
+          <footer className={styles.noticeFooter}>
+            <div className={styles.byline}>
+              <PlayerName
+                player={post.author}
+                fallback={post.author_name}
+                alliance={
+                  detail.members?.some(
+                    (member) => member.player === post.author,
+                  )
+                    ? detail.summary
+                    : undefined
+                }
+              />
+              {' · '}
+              <time
+                dateTime={new Date(post.created_at).toISOString()}
+                title={new Date(post.created_at).toLocaleString()}
+              >
+                {new Date(post.created_at).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </time>
+              {post.updated_at > post.created_at && (
+                <span title={new Date(post.updated_at).toLocaleString()}>
+                  {' '}
+                  · Edited
+                </span>
+              )}
+              {post.pinned && (
+                <span className={styles.pinned}>
+                  <Pin size={12} aria-hidden="true" /> Pinned
+                </span>
+              )}
+            </div>
+          </footer>
+        </>
       )}
-    </ActionForm>
+    </article>
   )
 }
 export function Board({
@@ -94,95 +116,40 @@ export function Board({
   player: string
   run: Run
   busy: boolean
-  load: (cursor: string | null) => void
+  load: (cursor: string) => void
 }) {
   return (
-    <section className={styles.stack} aria-label="Alliance noticeboard">
-      <div>
-        <h3>Noticeboard</h3>
-        <p>
-          Private to your alliance. Up to 100 notices, with five pins. The
-          oldest unpinned notice rolls off when a new notice exceeds the limit.
-        </p>
-      </div>
+    <section className={styles.board} aria-label="Alliance noticeboard">
       {can(detail, 'PublishPosts') && (
-        <details className={styles.card}>
-          <summary>Write a notice</summary>
-          <PostEditor detail={detail} run={run} busy={busy} />
-        </details>
+        <NoticeEditor alliance={detail.summary.id} run={run} busy={busy} />
       )}
-      {detail.posts?.length === 0 && <p>No notices yet.</p>}
-      {detail.posts?.map((post) => (
-        <article className={styles.card} key={post.id}>
-          <span className={styles.meta}>
-            {post.pinned ? 'Pinned · ' : ''}
-            <PlayerName
-              player={post.author}
-              fallback={post.author_name}
-              alliance={
-                detail.members?.some((member) => member.player === post.author)
-                  ? detail.summary
-                  : undefined
-              }
-            />{' '}
-            · {new Date(post.created_at).toLocaleString()}
-          </span>
-          <h4>{post.title}</h4>
-          <Markdown text={post.body} />
-          <div className={styles.actions}>
-            {can(detail, 'PinPosts') && (
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() =>
-                  void run({
-                    type: 'PinPost',
-                    alliance: detail.summary.id,
-                    post: post.id,
-                    pinned: !post.pinned,
-                  })
-                }
-              >
-                {post.pinned ? 'Unpin' : 'Pin'} {post.title}
-              </Button>
-            )}
-            {(post.author === player || can(detail, 'ManagePosts')) && (
-              <ConfirmAction
-                label={`Delete ${post.title}`}
-                description={`Permanently delete “${post.title}” from the noticeboard?`}
-                disabled={busy}
-                onConfirm={() =>
-                  run({
-                    type: 'DeletePost',
-                    alliance: detail.summary.id,
-                    post: post.id,
-                  })
-                }
-              />
-            )}
-          </div>
-          {(post.author === player || can(detail, 'ManagePosts')) && (
-            <details>
-              <summary>Edit notice</summary>
-              <PostEditor detail={detail} post={post} run={run} busy={busy} />
-            </details>
-          )}
-        </article>
-      ))}
-      <nav className={styles.actions} aria-label="Notice pages">
-        <Button variant="secondary" disabled={busy} onClick={() => load(null)}>
-          Newest notices
-        </Button>
-        {detail.next_post_before && (
+      {detail.posts?.length === 0 && (
+        <p className={styles.empty}>No notices yet.</p>
+      )}
+      <div className={styles.feed}>
+        {detail.posts?.map((post) => (
+          <Notice
+            key={post.id}
+            detail={detail}
+            post={post}
+            player={player}
+            run={run}
+            busy={busy}
+          />
+        ))}
+      </div>
+      {detail.next_post_before && (
+        <nav className={styles.pagination} aria-label="Notice pages">
           <Button
             variant="secondary"
+            size="small"
             disabled={busy}
-            onClick={() => load(detail.next_post_before ?? null)}
+            onClick={() => load(detail.next_post_before!)}
           >
-            Older notices
+            Load older notices
           </Button>
-        )}
-      </nav>
+        </nav>
+      )}
     </section>
   )
 }

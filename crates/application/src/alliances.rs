@@ -88,6 +88,15 @@ pub struct AlliancePost {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct AllianceAuditSubject {
+    pub kind: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player: Option<PlayerId>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AllianceAudit {
     pub id: Uuid,
     pub actor: PlayerId,
@@ -95,6 +104,8 @@ pub struct AllianceAudit {
     pub action: String,
     pub at: i64,
     pub target: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<AllianceAuditSubject>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

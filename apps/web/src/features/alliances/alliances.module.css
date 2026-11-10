@@ -1,9 +1,13 @@
 .screen,
+.myAlliance,
 .stack,
 .publicPage {
   display: grid;
   gap: 1.25rem;
   min-width: 0;
+}
+.myAlliance {
+  row-gap: 0;
 }
 .publicPage {
   max-width: 64rem;

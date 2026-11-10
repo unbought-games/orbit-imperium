@@ -431,6 +431,21 @@ async fn accept_join_create_compete_and_withdraw_all_pending() {
     )
     .await;
     assert!(f.view(3, a).await.alliance.is_none());
+    // The kicked player is no longer in the roster. Audit target names must be
+    // loaded independently rather than relying on current member identities.
+    let audit = f.detail(0, a).await.audit.unwrap();
+    for action in ["Accept", "Kick"] {
+        let subject = audit
+            .iter()
+            .find(|entry| entry.action == action)
+            .unwrap()
+            .subject
+            .as_ref()
+            .unwrap();
+        assert_eq!(subject.player, Some(f.bindings[3].player));
+        assert!(subject.label.starts_with("alliance-"));
+        assert!(subject.label.ends_with("-3"));
+    }
 }
 
 #[tokio::test]
