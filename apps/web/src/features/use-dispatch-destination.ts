@@ -1,3 +1,4 @@
+import { currentDispatchRead, startDispatchObservation } from './dispatch-reads'
 import { useEffect, useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -27,30 +28,21 @@ export function useDispatchDestination(
   const enabled = !!coordinates
   useEffect(() => {
     if (!enabled || galaxy === undefined || system === undefined) return
-    let current = true
+    let request: ReturnType<typeof startDispatchObservation> | undefined
     const timer = setTimeout(() => {
-      void model.world({ type: 'Galaxy', galaxy, system }).then(
-        (result) => {
-          if (current)
-            setRead({
-              model,
-              key,
-              revision,
-              observation: result && 'positions' in result ? result : undefined,
-            })
-        },
-        () => {
-          if (current) setRead({ model, key, revision })
-        },
+      request = startDispatchObservation(
+        (query) => model.world(query),
+        galaxy,
+        system,
+        (observation) => setRead({ model, key, revision, observation }),
       )
     }, 250)
     return () => {
-      current = false
+      request?.cancel()
       clearTimeout(timer)
     }
   }, [model, key, galaxy, system, enabled, revision, mission])
-  const currentRead =
-    enabled && read?.model === model && read.key === key ? read : null
+  const currentRead = currentDispatchRead(model, enabled ? key : null, read)
   const observation = currentRead?.observation
   const target = destinationBody(view, coordinates, kind, observation)
   const position =

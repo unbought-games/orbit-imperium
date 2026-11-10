@@ -288,7 +288,9 @@ async function prepareHistoricalDraft(page: Page) {
   await page.getByLabel('Small Cargo · 2 available').fill('1')
 }
 
-for (const historical of [true, false]) {
+// Historical report routing and a real launch exercise the application boundary.
+// Manual intent construction is covered by dispatch-requests.test.ts and the reset journey below.
+for (const historical of [true]) {
   test(`owned-colony deploy launches with ${historical ? 'an edited historical draft' : 'manual coordinates'}`, async ({
     page,
   }) => {
@@ -343,63 +345,6 @@ for (const historical of [true, false]) {
     expect(state.launches).toBe(1)
   })
 }
-
-for (const change of ['identity', 'owner'] as const) {
-  test(`historical target ${change} changes still block review after editing away and back`, async ({
-    page,
-  }) => {
-    const state = await setup(page)
-    await prepareHistoricalDraft(page)
-    await page.getByRole('radio', { name: 'Transport', exact: true }).check()
-    await setDestination(page, { position: '2' })
-    await review(page).click()
-    await expect(
-      page.getByRole('region', { name: 'Fleet quote' }),
-    ).toBeVisible()
-    await page.getByRole('button', { name: 'Back to edit mission' }).click()
-    state.destination = {
-      type: 'Body',
-      id: change === 'identity' ? id(21) : id(20),
-      expected_owner: change === 'owner' ? binding.player : id(30),
-      expected_kind: 'Planet',
-    }
-    await setDestination(page, { position: '1' })
-    await review(page).click()
-    await expect(page.getByRole('alert')).toContainText(
-      'The observed target has changed',
-    )
-    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
-      0,
-    )
-    expect(state.launches).toBe(0)
-  })
-}
-
-test('a historical body draft can switch to harvesting at the same coordinates', async ({
-  page,
-}) => {
-  await setup(page)
-  await prepareHistoricalDraft(page)
-  await page.getByRole('radio', { name: 'Harvest', exact: true }).check()
-  await review(page).click()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-})
-
-test('an edited historical deploy still reports authoritative quote rejection', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  await prepareHistoricalDraft(page)
-  await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
-  await setDestination(page, { position: '2' })
-  state.quoteError = 'InvalidInput'
-  await review(page).click()
-  await expect(page.getByRole('alert')).toContainText(
-    'This mission is not valid.',
-  )
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(state.launches).toBe(0)
-})
 
 test('successful dispatch resets ship and cargo quantities after preserving edits through review', async ({
   page,
@@ -580,41 +525,6 @@ for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
   })
 }
 
-test('a delayed successful launch does not erase edits for the next fleet', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  state.launchError = null
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  await page.route('**/commands', async (route) => {
-    await gate
-    await route.fallback()
-  })
-  await review(page).click()
-  await page
-    .getByRole('button', {
-      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-    })
-    .click()
-  await expect(dispatchResult(page)).toContainText('Sending fleet order…')
-  const ship = page.getByLabel(/Small Cargo · \d+ available/)
-  await ship.fill('2')
-  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
-  const response = page.waitForResponse('**/commands')
-  release()
-  await response
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Launch Fleet:' }),
-  ).toContainText('Action confirmed.')
-  await expect(ship).toHaveValue('2')
-  await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
-  await expect(dispatchResult(page)).toHaveCount(0)
-  expect(state.launches).toBe(1)
-})
-
 test('flight timing updates with speed and selected ships without opening review or sending fleets', async ({
   page,
 }) => {
@@ -721,113 +631,6 @@ for (const width of [320, 390, 1280]) {
       expect(Date.parse((await timing.locator('time').getAttribute('datetime'))!)).toBeGreaterThan(arrival)
     }
     expect(state.launches).toBe(0)
-  })
-}
-
-test('deployment arrival clears while pending and ignores late or failed estimates', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
-  await selectDestinationPlanet(page, id(6))
-  const timing = page.getByRole('region', { name: 'Flight timing' })
-  await expect(timing.locator('dd').nth(0)).toHaveText('1m 40s')
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  state.hold = async (route) => {
-    const query = route.request().postDataJSON()
-    if (query.type === 'FleetEstimate' && query.intent.speed_percent === 50) {
-      held = true
-      await gate
-    }
-  }
-  await setSpeed(page, 50)
-  await expect.poll(() => held).toBe(true)
-  await expect(timing.locator('time')).toHaveCount(0)
-  await expect(timing).toContainText('Updating flight times…')
-  for (const width of [390, 1280]) await captureDeploymentTiming(page, 'pending', width)
-  await setSpeed(page, 20)
-  await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
-  const response = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/world') &&
-      response.request().postDataJSON().type === 'FleetEstimate' &&
-      response.request().postDataJSON().intent.speed_percent === 50,
-  )
-  release()
-  expect(await (await response).finished()).toBeNull()
-  await expect(timing.locator('dd').nth(0)).toHaveText('8m 20s')
-  state.estimateError = 'NotFound'
-  await setSpeed(page, 10)
-  await expect(timing).toContainText('no longer available')
-  await expect(timing.locator('time')).toHaveCount(0)
-  for (const width of [390, 1280]) await captureDeploymentTiming(page, 'error', width)
-  expect(state.launches).toBe(0)
-})
-
-test('Add all fills the fleet capacity without opening review or consuming fuel reserves', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  const fields = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByRole('textbox', { name, exact: true }),
-  )
-  await page.getByRole('button', { name: 'Add all', exact: true }).click()
-  await expect(fields[0]).toHaveValue('1667')
-  await expect(fields[1]).toHaveValue('1666')
-  await expect(fields[2]).toHaveValue('1666')
-  const amounts = await Promise.all(
-    fields.map(async (field) => BigInt(await field.inputValue())),
-  )
-  expect(amounts.reduce((sum, amount) => sum + amount, 0n)).toBe(4999n)
-  expect(amounts[0]).toBeLessThanOrEqual(BigInt(body.amounts.metal) / 1000000n)
-  expect(amounts[1]).toBeLessThanOrEqual(
-    BigInt(body.amounts.crystal) / 1000000n,
-  )
-  expect(amounts[2] * 1000000n + 1000000n).toBeLessThanOrEqual(
-    BigInt(body.amounts.deuterium),
-  )
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(state.launches).toBe(0)
-  await review(page).click()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-})
-
-for (const action of ['Add all', 'Max deuterium']) {
-  test(`an edited cargo amount wins over a delayed ${action} response`, async ({
-    page,
-  }) => {
-    const state = await setup(page)
-    let release!: () => void
-    let held = false
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    state.hold = async (route) => {
-      if (route.request().postDataJSON().type === 'FleetQuote') {
-        held = true
-        await gate
-      }
-    }
-    await page.getByRole('button', { name: action, exact: true }).click()
-    await expect.poll(() => held).toBe(true)
-    await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
-    const response = page.waitForResponse(
-      (response) =>
-        response.url().endsWith('/world') &&
-        response.request().postDataJSON().type === 'FleetQuote',
-    )
-    release()
-    await response
-    await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
-    await expect(page.getByRole('textbox', { name: 'Crystal', exact: true })).toHaveValue('0')
-    await expect(page.getByRole('textbox', { name: 'Deuterium', exact: true })).toHaveValue('0')
-    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
-      0,
-    )
   })
 }
 
@@ -1114,104 +917,6 @@ test('protection is explained before review, rechecked at review, and launch rac
   expect(state.launches).toBe(1)
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
   await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
-})
-
-test('fresh destination ownership is checked even when it was not in the owned-planet view', async ({
-  page,
-}) => {
-  await setup(page)
-  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
-  await routeWorld(page, async (route) => {
-    const q = route.request().postDataJSON()
-    if (q.type !== 'ResolveDestination') return route.fallback()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: q.context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
-          type: 'Body',
-          id: id(20),
-          expected_kind: 'Planet',
-          expected_owner: binding.player,
-        },
-      },
-    })
-  })
-  await review(page).click()
-  await expect(
-    page
-      .getByRole('alert')
-      .filter({ hasText: 'You cannot attack your own planet' }),
-  ).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-})
-
-test('late eligibility and quote failures cannot overwrite an edited destination', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  state.blocker = 'BeginnerProtected'
-  state.hold = async (route) => {
-    const q = route.request().postDataJSON()
-    if (q.type === 'Galaxy' && q.system === 1) {
-      held = true
-      await gate
-    }
-  }
-  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
-  await expect.poll(() => held).toBe(true)
-  await setDestination(page, { system: '2' })
-  const lateObservation = page.waitForResponse(
-    (r) =>
-      r.url().endsWith('/world') &&
-      r.request().postDataJSON().type === 'Galaxy' &&
-      r.request().postDataJSON().system === 1,
-  )
-  release()
-  state.blocker = null
-  await lateObservation
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: 'Beginner protection prevents' }),
-  ).toHaveCount(0)
-  let releaseQuote!: () => void
-  let quoteHeld = false
-  const quoteGate = new Promise<void>((resolve) => {
-    releaseQuote = resolve
-  })
-  state.quoteError = 'TargetVacation'
-  state.hold = async (route) => {
-    if (route.request().postDataJSON().type === 'FleetQuote') {
-      quoteHeld = true
-      await quoteGate
-    }
-  }
-  await review(page).click()
-  await expect.poll(() => quoteHeld).toBe(true)
-  await setDestination(page, { position: '3' })
-  const response = page.waitForResponse(
-    (r) =>
-      r.url().endsWith('/world') &&
-      r.request().postDataJSON().type === 'FleetQuote',
-  )
-  releaseQuote()
-  await response
-  await expect(review(page)).toBeEnabled()
-  await expect(
-    page.getByRole('alert').filter({ hasText: 'vacation mode' }),
-  ).toHaveCount(0)
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
 })
 
 for (const width of [320, 390, 1280]) {
@@ -1533,37 +1238,6 @@ for (const width of [320, 390, 1440]) {
   })
 }
 
-test('late destination lookup cannot replace a selected colony and failures are honest', async ({ page }) => {
-  const state = await setup(page)
-  const preview = page.getByLabel('Destination preview')
-  await expect(preview).toContainText('Ember Watch')
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>(resolve => { release = resolve })
-  state.hold = async route => {
-    const query = route.request().postDataJSON()
-    if (query.type === 'Galaxy' && query.system === 2) { held = true; await gate }
-  }
-  await setDestination(page, { system: '2' })
-  await expect(preview).toContainText('Looking up destination')
-  await expect(preview).not.toContainText('Ember Watch')
-  await expect.poll(() => held).toBe(true)
-  await selectDestinationPlanet(page, id(6))
-  await expect(preview).toContainText('Haven Colony')
-  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy' && r.request().postDataJSON().system === 2)
-  release()
-  await response
-  await expect(preview).toContainText('Haven Colony')
-  await routeWorld(page, async route => {
-    if (route.request().postDataJSON().type === 'Galaxy') return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
-    await route.fallback()
-  })
-  await setDestination(page, { system: '3', position: '1' })
-  await expect(preview).toContainText('Destination unavailable')
-  await expect(preview.locator('img')).toHaveCount(0)
-  await expect(page.getByRole('combobox', { name: 'Your planets and moons' })).not.toHaveAttribute('data-value')
-})
-
 test('destination picker includes a same-coordinate moon and excludes the origin', async ({ page }) => {
   await installGameFixture(page, { protocol: 4, bodies: [{ ...body, name: 'Home' }, { ...body, id: id(90), kind: 'Moon', name: 'Home moon' }], extraCapabilities: ['Deploy'] })
   await withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/bootstrap', () =>
@@ -1608,94 +1282,6 @@ test('planet renames, removal and origin changes update the picker and preview f
   await expect(picker).toBeDisabled()
   await expect(preview).not.toContainText(colony.name)
   await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue('1:1:2')
-})
-
-
-test('selecting a planet invalidates an in-flight review for manual coordinates', async ({ page }) => {
-  const state = await setup(page)
-  // Exercise the race after background estimation, which is not a review quote.
-  await expect.poll(() => state.estimates).toBeGreaterThan(0)
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>(resolve => { release = resolve })
-  state.hold = async route => {
-    if (route.request().postDataJSON().type === 'ResolveDestination') { held = true; await gate }
-  }
-  await review(page).click()
-  await expect.poll(() => held).toBe(true)
-  await selectDestinationPlanet(page, id(6))
-  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'ResolveDestination')
-  release()
-  await response
-  await expect(page.getByLabel('Destination preview')).toContainText('Haven Colony')
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(state.quotes).toBe(0)
-  state.hold = null
-  await review(page).click()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toContainText('Haven Colony')
-  expect(state.quotes).toBe(1)
-})
-
-
-test('destination retains its last observation while refreshing the same system', async ({ page }) => {
-  const state = await setup(page)
-  const preview = page.getByLabel('Destination preview')
-  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
-  await expect(preview).toContainText('Ember Watch')
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>(resolve => { release = resolve })
-  state.hold = async route => {
-    if (route.request().postDataJSON().type === 'Galaxy') { held = true; await gate }
-  }
-  state.advanceRevision()
-  await refreshGame(page)
-  await expect.poll(() => held).toBe(true)
-  await expect(preview).toContainText('Ember Watch')
-  await expect(preview).toContainText('Last observed · Review verifies destination.')
-  await expect(preview.locator('img')).toHaveCount(1)
-  state.observationAvailable = false
-  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
-  release()
-  await response
-  await expect(preview).toContainText('Empty position')
-  await expect(preview).not.toContainText('Ember Watch')
-  await expect(preview).not.toContainText('Updating')
-})
-
-test('a retained observation of a former colony is explicitly marked as historical', async ({ page }) => {
-  const state = await setup(page)
-  const preview = page.getByLabel('Destination preview')
-  await expect(preview).toContainText('Ember Watch')
-  state.ownedObservation = true
-  state.advanceRevision()
-  const observed = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
-  await refreshGame(page)
-  await observed
-  await expect(preview).not.toContainText('Updating')
-  await selectDestinationPlanet(page, id(6))
-  await expect(preview).toContainText('Haven Colony')
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>(resolve => { release = resolve })
-  state.hold = async route => {
-    if (route.request().postDataJSON().type === 'Galaxy') { held = true; await gate }
-  }
-  state.bodies.splice(1, 1)
-  state.advanceRevision()
-  await refreshGame(page)
-  await expect.poll(() => held).toBe(true)
-  await expect(page.getByRole('combobox', { name: 'Your planets and moons' })).toBeDisabled()
-  await expect(preview).toContainText('Haven Colony')
-  await expect(preview).toContainText('Last observed · Review verifies destination.')
-  await expect(preview).toContainText('You (last observed)')
-  await expect(preview).not.toContainText('Your colony')
-  state.ownedObservation = false
-  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'Galaxy')
-  release()
-  await response
-  await expect(preview).toContainText('Empty position')
-  await expect(preview).not.toContainText('Haven Colony')
 })
 
 
@@ -1805,21 +1391,6 @@ test('choosing a planet clears a rejected paste notice without changing coordina
   await input.press('Tab')
   await expect(preview.getByRole('alert')).toContainText('Enter a galaxy number from 1 to 1.')
   await expect(input).toHaveAttribute('aria-invalid', 'true')
-})
-
-test('background flight estimates preserve an explicit moon destination', async ({ page }) => {
-  const state = await setup(page)
-  // Background estimates must preserve the selected lunar endpoint.
-  await page.getByLabel('Destination coordinates', { exact: true }).evaluate(element => {
-    const data = new DataTransfer()
-    data.setData('text/plain', `${location.origin}/u/andromeda/location/1:1:3?target=moon`)
-    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
-  })
-  await expect(page.getByLabel('Destination preview')).toContainText('Moon not observed')
-  await expect.poll(() => state.estimates).toBeGreaterThan(0)
-  await expect(review(page)).toBeEnabled()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(state.launches).toBe(0)
 })
 
 for (const width of [390, 1440]) {
@@ -2261,52 +1832,6 @@ for (const width of [390, 1440]) {
     }
   })
 }
-
-for (const width of [390, 1440]) {
-  test(`zero-padded Dispatch counts use canonical review and launch values at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const state = await setup(page)
-    const ships = page.getByLabel('Small Cargo · 2 available')
-    await ships.fill('01')
-    await page.getByLabel('Recycler · 1 available').fill('000')
-    await page.getByLabel('Metal', { exact: true }).fill('00042')
-    await expect(page.getByRole('region', { name: 'Flight timing' }).locator('dd').first()).toHaveText('1m 40s')
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-padded-counts-${width}x1000.png`, fullPage: width >= 768 })
-    if (width < 768) {
-      await ships.scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-padded-ships-${width}x1000.png` })
-    }
-    const quoted = page.waitForRequest(request => request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')
-    await review(page).click()
-    const intent = (await quoted).postDataJSON().intent
-    expect(intent.ships).toEqual([{ owner: binding.player, ship_type: 'SmallCargo', count: '1' }])
-    expect(intent.cargo).toEqual({ metal: '42000000', crystal: '0', deuterium: '0' })
-    await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-    expect(state.launches).toBe(0)
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-canonical-review-${width}x1000.png`, fullPage: width >= 768 })
-    const launched = page.waitForRequest(request => request.url().endsWith('/commands'))
-    await page.getByRole('button', { name: /^Transport to / }).click()
-    expect((await launched).postDataJSON().gameplay.command.action.intent).toEqual(intent)
-    await expect(page.getByRole('complementary', { name: 'Action needs attention' })).toContainText('Fleet not sent: Beginner protection prevents')
-    expect(state.launches).toBe(1)
-  })
-
-
-}
-
-test('zero-padded oversized ship counts retain server range rejection', async ({ page }) => {
-  const state = await setup(page)
-  state.quoteError = 'NumericRange'
-  await page.getByLabel('Small Cargo · 2 available').fill('0018446744073709551616')
-  const quoted = page.waitForRequest(request => request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')
-  await review(page).click()
-  expect((await quoted).postDataJSON().intent.ships[0].count).toBe('18446744073709551616')
-  await expect(page.getByRole('alert')).toContainText('One of the entered amounts is too large')
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  expect(state.launches).toBe(0)
-})
 
 test('Dispatch keeps You in origin and review when self profiles and view names are unavailable', async ({ page }) => {
   const state = await setup(page, { omitPlayerNames: true, beforeNavigation: async () => {

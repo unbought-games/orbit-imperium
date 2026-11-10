@@ -1,3 +1,8 @@
+import {
+  DispatchRequests,
+  type DispatchCargoFill,
+  type DispatchSubmission,
+} from './dispatch-requests'
 import { siteContext } from './tutorial/model'
 import { observedBody } from './galaxy-body'
 import { useDispatchDestination } from './use-dispatch-destination'
@@ -13,26 +18,15 @@ import {
   currentServerTime,
   projectGameView,
 } from '../client-model/game-projection'
-import {
-  allDispatchCargo,
-  dispatchCargoCapacity,
-  maxDispatchCargo,
-} from '../client-model/dispatch-cargo'
+import { dispatchCargoCapacity } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
-import {
-  dispatchShips,
-  dispatchSelection,
-} from '../client-model/dispatch-timing'
+import { dispatchShips } from '../client-model/dispatch-timing'
 import { useDispatchTiming } from './use-dispatch-timing'
 import type { DispatchDraft } from './missions'
 import { colonizationStatus } from '../client-model/colonization'
 import {
   coordinateErrors,
   destinationError,
-  dispatchFailure,
-  dispatchObservationError,
-  dispatchQuantity,
-  dispatchResourceProblem,
   observedMissionWarning,
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
@@ -207,32 +201,27 @@ export function useDispatch({
     }
     wasReviewing.current = !!quote
   }, [quote])
-  const generation = useRef(0)
-  const [submitted, setSubmitted] = useState<{
-    key: string
-    generation: number
-    coordinates: S['Coordinates']
-  } | null>(null)
+  const [requests] = useState(() => new DispatchRequests())
+  const [submitted, setSubmitted] = useState<DispatchSubmission | null>(null)
   const submittedAttempt = useStore(model.store, (state) =>
     submitted ? state.attempts.get(submitted.key) : undefined,
   )
   const submittedStatus = submittedAttempt?.status
   useEffect(() => {
-    if (!submitted || submittedStatus !== 'committed') return
-    if (submitted.generation === generation.current) {
+    if (requests.shouldResetDraft(submitted, submittedStatus)) {
       setShips({})
       setCargo(['0', '0', '0'])
     }
-  }, [submitted, submittedStatus])
+  }, [submitted, submittedStatus, requests])
   useEffect(
     () => () => {
-      generation.current++
+      requests.invalidate()
     },
-    [],
+    [requests],
   )
   const [origin, setOrigin] = useState(body.id)
   if (origin !== body.id) {
-    generation.current++
+    requests.invalidate()
     setOrigin(body.id)
     setShips({})
     setCargo(['0', '0', '0'])
@@ -272,7 +261,7 @@ export function useDispatch({
     }
   }, [quote, quotedGroup])
   const clear = () => {
-    generation.current++
+    requests.invalidate()
     setSubmitted(null)
     setQuote(null)
     setBusy(false)
@@ -286,166 +275,65 @@ export function useDispatch({
       !canSubmitQuote(model.store.getState(), command, quote)
     )
       return
-    const requestGeneration = ++generation.current
-    setQuote(null)
-    const previousAttempts = model.store.getState().attempts
-    const sending = model.send(command, quote)
-    // send registers the attempt synchronously, before saving or delivering it.
-    // Select only this invocation's new ID, including while delivery is pending.
-    const key = [...model.store.getState().attempts.keys()].find(
-      (key) => !previousAttempts.has(key),
-    )
-    if (key)
-      setSubmitted({
-        key,
-        generation: requestGeneration,
-        coordinates: {
-          galaxy: Number(galaxy),
-          system: Number(system),
-          position: Number(position),
-        },
-      })
-    const id = await sending
-    if (!id && requestGeneration === generation.current) setSubmitted(null)
-  }
-  async function review(fillCargo?: 'all' | (typeof resourceNames)[number]) {
-    const requestGeneration = ++generation.current
-    setSubmitted(null)
-    setError('')
-    setQuote(null)
-    setBusy(true)
-    try {
-      const coordinateProblem = Object.values(coordinateProblems).find(Boolean)
-      if (coordinateProblem) {
-        setError(coordinateProblem)
-        return
-      }
-      if (targetProblem) {
-        setError(targetProblem)
-        return
-      }
-      const coordinates = {
+    await requests.submit(
+      command,
+      quote,
+      {
         galaxy: Number(galaxy),
         system: Number(system),
         position: Number(position),
-      }
-      const selection = dispatchSelection(
+      },
+      {
+        attempts: () => model.store.getState().attempts,
+        send: (command, quote) => model.send(command, quote),
+        submitted: setSubmitted,
+        closeReview: () => setQuote(null),
+      },
+    )
+  }
+
+  function review(fillCargo?: DispatchCargoFill) {
+    return requests.review(
+      {
+        coordinateProblems,
+        targetProblem,
+        galaxy,
+        system,
+        position,
+        targetKind,
         mission,
-        coordinates,
-        targetKind === 'moon' ? 'Moon' : 'Planet',
-      )
-      const destination = await model
-        .world(
-          siteSelection
-            ? { type: 'ResolveMissionSite', selection: siteSelection }
-            : {
-                type: 'ResolveDestination',
-                selection,
-              },
-        )
-        .catch((failure: unknown) => {
-          throw Error(
-            siteId && failure instanceof Error && failure.message === 'Conflict'
-              ? 'The site changed. Refresh the briefing in opening guidance, then review again.'
-              : dispatchFailure(failure),
-          )
-        })
-      if (requestGeneration !== generation.current) return
-      if (!destination || !('type' in destination))
-        throw Error('Destination unavailable.')
-      const resolvedProblem = destinationError(
-        mission,
-        destination,
-        view.binding.player,
-        body.id,
-      )
-      if (resolvedProblem) {
-        setError(resolvedProblem)
-        return
-      }
-      const observationProblem = dispatchObservationError(
+        holdHours,
+        speed,
+        types,
+        ships,
+        cargo,
+        player: view.binding.player,
+        originId: body.id,
         draft,
-        selection,
-        destination,
-      )
-      if (observationProblem) throw Error(observationProblem)
-      const cargoAmounts = fillCargo
-        ? ['0', '0', '0']
-        : cargo.map(dispatchQuantity)
-      const intent: S['FleetIntent4'] = {
-        origin: body.id,
-        ...(draft?.attackGroup ? { attack_group: draft.attackGroup } : {}),
-        destination,
-        mission,
-        ...(mission === 'Hold' ? { hold_hours: holdHours } : {}),
-        ships: dispatchShips(types, ships, view.binding.player),
-        cargo: {
-          metal: (BigInt(cargoAmounts[0]) * 1000000n).toString(),
-          crystal: (BigInt(cargoAmounts[1]) * 1000000n).toString(),
-          deuterium: (BigInt(cargoAmounts[2]) * 1000000n).toString(),
-        },
-        speed_percent: speed as S['FleetIntent4']['speed_percent'],
-      }
-      const terms = await model
-        .world({ type: 'FleetQuote', intent })
-        .catch(async (failure: unknown) => {
-          const code = failure instanceof Error ? failure.message : failure
-          const estimate =
-            code === 'InsufficientResources'
-              ? (timing?.terms ??
-                (await model
-                  .world({ type: 'FleetEstimate', intent })
-                  .catch(() => null)))
-              : null
-          const origin = projectGameView(model.store.getState())?.bodies.find(
+        siteId,
+        siteSelection,
+        estimate: timing?.terms,
+      },
+      {
+        world: (query) => model.world(query),
+        origin: () =>
+          projectGameView(model.store.getState())?.bodies.find(
             (candidate) => candidate.id === body.id,
-          )
-          const resourceProblem =
-            estimate && 'fuel' in estimate && origin
-              ? dispatchResourceProblem(
-                  origin.amounts,
-                  intent.cargo,
-                  estimate.fuel,
-                )
-              : ''
-          throw Error(resourceProblem || dispatchFailure(failure, intent))
-        })
-      if (requestGeneration !== generation.current) return
-      if (!terms || !('maximum_payload' in terms) || !('terms_hash' in terms))
-        throw Error(
-          'Unable to confirm this fleet quote. Review it again after reconnecting.',
-        )
-      if (fillCargo) {
-        const origin = projectGameView(model.store.getState())?.bodies.find(
-          (candidate) => candidate.id === body.id,
-        )
-        if (!origin) return
-        setCargo(
-          fillCargo === 'all'
-            ? allDispatchCargo(
-                origin.amounts,
-                terms.maximum_payload,
-                terms.fuel,
-                cargo,
-              )
-            : maxDispatchCargo(
-                origin.amounts,
-                terms.maximum_payload,
-                terms.fuel,
-                cargo,
-                fillCargo,
-              ),
-        )
-      } else setQuote(terms)
-    } catch (e) {
-      if (siteId) void model.tutorial.ensure(true)
-      if (requestGeneration === generation.current)
-        setError(
-          e instanceof Error ? e.message : 'Unable to quote this mission.',
-        )
-    } finally {
-      if (requestGeneration === generation.current) setBusy(false)
-    }
+          ),
+        quote: setQuote,
+        cargo: setCargo,
+        error: setError,
+        busy: setBusy,
+        clear: () => {
+          setSubmitted(null)
+          setQuote(null)
+        },
+        refreshSite: () => {
+          void model.tutorial.ensure(true)
+        },
+      },
+      fillCargo,
+    )
   }
   return {
     site,
