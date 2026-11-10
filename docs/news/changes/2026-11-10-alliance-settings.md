@@ -1,4 +1,8 @@
-# Clearer alliance settings
+---
+id: alliance-settings
+title: Clearer alliance settings
+date: '2026-11-10T15:47:00-05:00'
+---
 
 Alliance settings now have separate Profile, Recruitment, Invitations, and
 Leadership sections. Names and tags sit together, related preferences share a

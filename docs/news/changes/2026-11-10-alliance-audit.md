@@ -1,4 +1,8 @@
-# A readable alliance audit log
+---
+id: alliance-audit
+title: A readable alliance audit log
+date: '2026-11-10T16:02:00-05:00'
+---
 
 Alliance activity now appears in a compact table showing the player, action,
 target, and date and time. Targets use player names, role names, and notice
