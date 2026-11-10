@@ -2,6 +2,7 @@ import { test, expect } from './fixtures/test'
 import { installTutorialFixture } from './fixtures/tutorial'
 import { body } from './fixtures/game'
 import {
+  withBootstrapResponse,
   withFixtureResponse,
   withProgressionResponse,
 } from './fixtures/responses'
@@ -10,6 +11,183 @@ import { mkdir } from 'node:fs/promises'
 const briefing = `/u/andromeda/b/${body.id}/briefing`
 const tutorial = (r: import('@playwright/test').Response) =>
   r.url().endsWith('/world') && r.request().postDataJSON().type === 'Tutorial'
+
+test('opening the book before guidance arrives acknowledges the delivered briefing', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const state = await installTutorialFixture(page)
+  state.data.beginner = false
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  state.hold = () => held
+  const overview = `/u/andromeda/b/${body.id}/overview`
+  await withBootstrapResponse(page, () => page.goto(overview))
+  await page.getByRole('link', { name: 'Open briefing', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Briefing', exact: true }),
+  ).toContainText('Receiving your briefing')
+  await withFixtureResponse(page, tutorial, async () => {
+    state.hold = null
+    release()
+  })
+  await expect(
+    page.getByRole('region', { name: 'Recommended next action' }),
+  ).toBeVisible()
+  await withFixtureResponse(page, tutorial, () => page.goto(overview))
+  await expect(
+    page.getByRole('link', { name: 'Open briefing', exact: true }),
+  ).toHaveAttribute('data-attention', 'false')
+  state.earnMine()
+  await withFixtureResponse(page, tutorial, () => page.reload())
+  await expect(
+    page.getByRole('link', {
+      name: 'Open briefing — unread updates',
+      exact: true,
+    }),
+  ).toHaveAttribute('data-attention', 'true')
+  expect(state.commands).toHaveLength(0)
+})
+
+for (const width of [1440, 390]) {
+  test(`Empire briefing icon opens by keyboard or touch and remembers acknowledged progress at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const state = await installTutorialFixture(page)
+    state.data.beginner = false
+    const overview = `/u/andromeda/b/${body.id}/overview`
+    const icon = page.getByRole('link', { name: /^Open briefing/ })
+    await withFixtureResponse(page, tutorial, () => page.goto(overview))
+    await expect(icon).toHaveAttribute('data-attention', 'true')
+    await expect(icon).toHaveAttribute('href', briefing)
+    const heading = page.getByRole('heading', { name: 'Empire', exact: true })
+    const spacing = await heading.evaluate((el) => {
+      const header = el.parentElement!
+      return {
+        gap:
+          header.nextElementSibling!.getBoundingClientRect().top -
+          el.getBoundingClientRect().bottom,
+        extraHeight:
+          header.getBoundingClientRect().height -
+          el.getBoundingClientRect().height,
+      }
+    })
+    expect(spacing.gap).toBe(8)
+    expect(spacing.extraHeight).toBe(8)
+    expect(
+      await icon.evaluate(
+        (el) => getComputedStyle(el, '::before').animationName,
+      ),
+    ).toBe('none')
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    expect(
+      await icon
+        .locator('span > span')
+        .first()
+        .evaluate((el) => el.getAnimations({ subtree: true }).length),
+    ).toBeGreaterThan(0)
+    expect(
+      await icon.evaluate(
+        (el) => getComputedStyle(el, '::before').animationName,
+      ),
+    ).not.toBe('none')
+    expect(
+      await icon
+        .locator('span > span')
+        .first()
+        .evaluate((el) => getComputedStyle(el, '::before').animationName),
+    ).not.toBe('none')
+    await diagnosticScreenshot(page, {
+      path: `test-results/briefing-unread-${width}x900.png`,
+    })
+    if (width === 1440) {
+      await icon.hover()
+      const enterTransitions = await icon.evaluate(async (el) => {
+        const transitions = el
+          .getAnimations({ subtree: true })
+          .filter(
+            (animation): animation is CSSTransition =>
+              animation instanceof CSSTransition,
+          )
+        const properties = transitions.map(
+          (animation) => animation.transitionProperty,
+        )
+        await Promise.all(transitions.map((animation) => animation.finished))
+        return properties
+      })
+      expect(enterTransitions).toContain('opacity')
+      expect(enterTransitions).toContain('filter')
+      expect(
+        await icon.evaluate(
+          (el) => getComputedStyle(el, '::after').animationName,
+        ),
+      ).not.toBe('none')
+      expect(
+        await icon.evaluate((el) => getComputedStyle(el).backgroundColor),
+      ).toBe('rgba(0, 0, 0, 0)')
+      expect(
+        await icon.evaluate((el) => getComputedStyle(el, '::after').opacity),
+      ).toBe('0.75')
+      await diagnosticScreenshot(page, {
+        path: `test-results/briefing-hover-${width}x900.png`,
+      })
+      await page.mouse.move(0, 0)
+      const exitTransitions = await icon.evaluate(async (el) => {
+        const transitions = el
+          .getAnimations({ subtree: true })
+          .filter(
+            (animation): animation is CSSTransition =>
+              animation instanceof CSSTransition,
+          )
+        const properties = transitions.map(
+          (animation) => animation.transitionProperty,
+        )
+        await Promise.all(transitions.map((animation) => animation.finished))
+        return properties
+      })
+      expect(exitTransitions).toContain('opacity')
+      expect(exitTransitions).toContain('filter')
+      expect(
+        await icon.evaluate((el) => getComputedStyle(el, '::after').opacity),
+      ).toBe('0')
+      await icon.focus()
+      await page.keyboard.press('Enter')
+    } else {
+      const bounds = await icon.boundingBox()
+      expect(bounds?.width).toBeGreaterThanOrEqual(44)
+      expect(bounds?.height).toBeGreaterThanOrEqual(44)
+      await icon.click()
+    }
+    await expect(page).toHaveURL(briefing)
+    await expect(
+      page.getByRole('region', { name: 'Briefing', exact: true }),
+    ).toBeVisible()
+    await withFixtureResponse(page, tutorial, () => page.goto(overview))
+    await expect(icon).toHaveAttribute('data-attention', 'false')
+    await page.mouse.move(0, 0)
+    await diagnosticScreenshot(page, {
+      path: `test-results/briefing-read-${width}x900.png`,
+    })
+    state.earnMine()
+    await withFixtureResponse(page, tutorial, () => page.reload())
+    await expect(icon).toHaveAttribute('data-attention', 'true')
+    await icon.click()
+    await expect(page).toHaveURL(briefing)
+    await withFixtureResponse(page, tutorial, () => page.goto(overview))
+    await expect(icon).toHaveAttribute('data-attention', 'false')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    expect(state.commands).toHaveLength(0)
+  })
+}
+
 async function capture(
   page: import('@playwright/test').Page,
   state: string,
@@ -138,14 +316,29 @@ for (const width of [1440, 390])
       page.getByRole('button', { name: 'Show full interface', exact: true }),
     ).toHaveCount(0)
     await expect(page).toHaveURL(/\/defense$/)
-    if (width < 1024)
+    if (width < 1024) {
       await page.getByRole('link', { name: 'Menu', exact: true }).click()
+      await expect(
+        page
+          .getByRole('region', { name: 'Guidance', exact: true })
+          .getByRole('link', { name: 'Briefing', exact: true }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Guidance', exact: true }),
+      ).toBeVisible()
+    }
     await page.getByRole('link', { name: 'Briefing', exact: true }).click()
     await expect(
       page.getByRole('region', { name: 'Recommended next action' }),
     ).toBeVisible()
     expect(state.commands).toHaveLength(0)
     expect(state.data.receipts).toHaveLength(0)
+    await withFixtureResponse(page, tutorial, () =>
+      page.goto(`/u/andromeda/b/${body.id}/overview`),
+    )
+    await expect(
+      page.getByRole('link', { name: 'Open briefing', exact: true }),
+    ).toHaveAttribute('data-attention', 'false')
   })
 
 for (const width of [1440, 390]) {
@@ -595,6 +788,10 @@ for (const width of [1440, 390]) {
     const receipts = structuredClone(state.data.receipts)
     const objectives = structuredClone(state.data.chapters)
     await withFixtureResponse(page, tutorial, () => page.goto(briefing))
+    const sidebarBriefing = page
+      .getByLabel('Game navigation', { exact: true })
+      .getByRole('link', { name: 'Briefing', exact: true, includeHidden: true })
+    await expect(sidebarBriefing).toHaveCount(1)
     const enter = page.getByRole('button', {
       name: 'Enter Full Experience',
       exact: true,
@@ -632,6 +829,7 @@ for (const width of [1440, 390]) {
     await withFixtureResponse(page, tutorial, () => accept.click())
     await expect(confirm).toHaveCount(0)
     await expect(enter).toHaveCount(0)
+    await expect(sidebarBriefing).toHaveCount(0)
     await expect(
       page.getByRole('region', { name: 'Recommended next action' }),
     ).toBeVisible()
@@ -645,8 +843,23 @@ for (const width of [1440, 390]) {
     expect(state.data.chapters).toEqual(objectives)
     await withFixtureResponse(page, tutorial, () => page.reload())
     await expect(enter).toHaveCount(0)
+    await expect(sidebarBriefing).toHaveCount(0)
     await expect(
       page.getByRole('link', { name: 'Fleets', exact: true }),
+    ).toBeVisible()
+    await withFixtureResponse(page, tutorial, () =>
+      page.goto(`/u/andromeda/b/${body.id}/overview`),
+    )
+    const book = page.getByRole('link', { name: /^Open briefing/ })
+    await expect(book).toBeVisible()
+    await expect(sidebarBriefing).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: `test-results/briefing-full-mode-${width}x900.png`,
+    })
+    await book.click()
+    await expect(page).toHaveURL(briefing)
+    await expect(
+      page.getByRole('region', { name: 'Briefing', exact: true }),
     ).toBeVisible()
   })
 }

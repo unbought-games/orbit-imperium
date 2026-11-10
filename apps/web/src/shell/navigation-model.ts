@@ -11,6 +11,7 @@ export const fleetPages: Page[] = ['fleets', 'dispatch']
 export const navigationGroups = [
   { title: 'Community', pages: ['messages', 'alliance', 'high-scores'] },
   { title: 'Tools', pages: ['reports', 'combat-simulator'] },
+  { title: 'Guidance', pages: ['briefing'] },
   { title: 'Settings', pages: ['settings'] },
 ] satisfies { title: string; pages: Page[] }[]
 export const pageTitles: Record<Page, string> = {

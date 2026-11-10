@@ -1515,3 +1515,44 @@ Queue attempt 1: enqueued 15:59:15 UTC at PR head c4eb74de; merge-group tree 61f
 History shows the test was introduced in e8a96d81 with no previous repair; the earlier task only changed its expected destination. Single repair: register membership/public-profile response listeners before navigation and verify rendered content before the exact final URL. Audited the shared bootstrap-only helper callers: the two Alliance history/planet-switching cases now also wait for Mine on initial navigation and reload. Their exact URL/query/hash/history assertions remain intact; non-Alliance cases are unchanged. No sleep, timeout increase, removed assertion or duplicate scenario. The implementation chat owns this bounded repair and its queue verification.
 
 Focused repair validation: all 3 affected cases passed (1.925s preparation, 3.7s runner); whitespace checks passed. The native fixture runner cleaned up. Previous PR-head CI run 42645503712 was entirely green on c4eb74de, including automated review; queue failures are recorded separately and are not erased by that earlier success. Screenshots remain deferred at user request.
+
+
+## November 9, 2026: PR #382 report identity browser recurrence
+
+Run `42744590303`, head `56d9ba378400f31590daa32ebef67976fc049cfe`,
+failed `espionage and combat observations use current public identities without
+changing historical facts` in browser shard 7, job `129593612602`. All native
+checks and the other browser shards passed. This case failed inside its initial
+`shellFixture` overview visit, before any report/profile assertion: `main h1`
+was absent during the unchanged five-second assertion. The retained failure
+snapshot includes `Empire — Planet [1:371:12]` and the fully populated overview.
+The shard passed 147 other cases and ran for 10.0 minutes.
+
+Inspected Git history, the failure PNG/context and the RCA77 entry above.
+Commit `bb6d316a` already repaired this report scenario's three profile-name
+locators as part of the same repair of incoming/profile observations in PR #360.
+That entry records the two affected scenarios passing; a green pass does not
+restore the repair allowance. Remove this recurring scenario under the hard
+one-repair policy, with its now-unused `inspectIdentity` helper and type imports.
+Do not rename it, add another stabilization or increase a timeout.
+
+Retained deterministic coverage lives in `client-model/player-profiles.test.ts`
+(refresh, supporter expiry, current identities versus older observations and
+session fencing), `adapters/player-profiles.test.ts` (bound source contracts)
+and `features/report-preview.test.ts` (historical names, facts, uncertainty and
+public identities). This is not an end-to-end replacement for the deleted
+three-report browser journey. Remaining Galaxy, bot/profile refresh and identity
+alignment browser tests retain their interaction coverage and diagnostics.
+
+This is the already documented unnecessary-overview-startup pattern. Audited the
+remaining callers in this file: Galaxy exercises navigation from overview,
+rankings/profile refresh installs fixtures directly, and alignment retains its
+existing setup. No shared helper or deliberate loading/error/race case changed.
+This PR owns the deletion, retained-suite validation and follow-through; there
+is no separate deferred repair. No product source or UI changed in this step.
+
+After removal, all 32 retained deterministic cases passed in 0.289s and all four
+remaining profile browser cases passed (2.248s module preparation, 5.8s runner;
+individual cases 2.2s, 2.2s, 2.5s and 4.8s). The runner closed Chromium/Vite and
+released its port; no Docker or database setup was used. The original CI failure
+remains counted; the new head still requires fresh CI and merge-queue validation.
