@@ -13096,7 +13096,7 @@
               },
               "name": {
                 "type": "string",
-                "description": "1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
               }
             },
             "required": [
@@ -19144,6 +19144,9 @@
                 "type": "null"
               }
             ]
+          },
+          "subject": {
+            "$ref": "#/components/schemas/AllianceAuditSubject"
           }
         },
         "required": [
@@ -24564,6 +24567,32 @@
         },
         "required": [
           "pending"
+        ]
+      },
+      "AllianceAuditSubject": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Human-readable event target. Role names and notice titles are preserved for new events; older events are resolved from surviving records.",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Player",
+              "Role",
+              "Notice"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "player": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "kind",
+          "label"
         ]
       }
     },

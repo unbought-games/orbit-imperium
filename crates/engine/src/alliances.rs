@@ -4,6 +4,8 @@ use crate::PlayerId;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use uuid::Uuid;
+mod audit;
+pub use audit::AuditSubject;
 mod deletion;
 mod policy;
 #[cfg(test)]
@@ -252,6 +254,8 @@ pub struct StateAudit {
     pub action: String,
     pub at: i64,
     pub target: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<AuditSubject>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AllianceState {
@@ -364,6 +368,7 @@ impl AllianceState {
                 action: "Create".into(),
                 at: now,
                 target: None,
+                subject: None,
             }],
         })
     }
@@ -453,9 +458,16 @@ impl AllianceState {
         next.audit.push(StateAudit {
             id: new_id,
             actor,
-            action: action.name().into(),
+            action: self.audit_action(action).into(),
             at: now,
-            target: action.target(),
+            target: action.target().or_else(|| {
+                matches!(
+                    action,
+                    AllianceAction::CreatePost { .. } | AllianceAction::SaveRole { role: None, .. }
+                )
+                .then_some(new_id)
+            }),
+            subject: self.audit_subject(action),
         });
         if next.audit.len() > MAX_AUDIT {
             next.audit.drain(..next.audit.len() - MAX_AUDIT);

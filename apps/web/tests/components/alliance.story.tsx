@@ -12,6 +12,7 @@ import { Board } from '../../src/features/alliances/board'
 import { Roles } from '../../src/features/alliances/roles'
 import {
   Roster,
+  Audit,
   Applications,
   Settings,
 } from '../../src/features/alliances/administration'
@@ -238,8 +239,80 @@ function setup() {
     },
     refresh: () => controller.refresh(),
     prepare: async (
-      kind: 'locked' | 'long' | 'departed' | 'expired' | 'roster' | 'viewer',
+      kind:
+        | 'locked'
+        | 'long'
+        | 'departed'
+        | 'expired'
+        | 'roster'
+        | 'viewer'
+        | 'audit'
+        | 'audit-empty',
     ) => {
+      if (kind === 'audit' || kind === 'audit-empty') {
+        detail.audit =
+          kind === 'audit-empty'
+            ? []
+            : [
+                {
+                  id: 'event-1',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'AssignRoles',
+                  at: 1700000005000,
+                  target: member,
+                  subject: { kind: 'Player', label: 'Nova', player: member },
+                },
+                {
+                  id: 'event-2',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'DeleteRole',
+                  at: 1700000004000,
+                  target: 'deleted-role',
+                  subject: { kind: 'Role', label: 'Expedition coordinator' },
+                },
+                {
+                  id: 'event-3',
+                  actor: member,
+                  actor_name: 'Nova',
+                  action: 'DeletePost',
+                  at: 1700000003000,
+                  target: 'deleted-post',
+                  subject: {
+                    kind: 'Notice',
+                    label:
+                      'Launch instructions for the distant outer systems and our next expedition',
+                  },
+                },
+                {
+                  id: 'event-4',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'Accept',
+                  at: 1700000002000,
+                  target: 'old-application',
+                  subject: { kind: 'Player', label: 'Former applicant' },
+                },
+                {
+                  id: 'event-5',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'DisableInvitation',
+                  at: 1700000001000,
+                  target: null,
+                },
+                {
+                  id: 'event-6',
+                  actor: self,
+                  actor_name: 'Commander',
+                  action: 'PinNotice',
+                  at: 1700000000000,
+                  target: 'post',
+                  subject: { kind: 'Notice', label: 'Untitled notice' },
+                },
+              ]
+      }
       if (kind === 'roster' || kind === 'viewer') {
         detail.roles!.push({
           id: 'diplomat',
@@ -394,6 +467,7 @@ export function AllianceStory() {
               {tab === 'Applications' && (
                 <Applications detail={detail} run={run} busy={busy} />
               )}
+              {tab === 'Audit' && <Audit detail={detail} />}
               {tab === 'Settings' && (
                 <Settings
                   detail={detail}

@@ -1,6 +1,7 @@
 use super::*;
 use orbit_engine::alliances::{AllianceState, StateApplication};
 use std::collections::BTreeMap;
+mod audit;
 
 pub fn alliance_summary(universe: UniverseId, state: &AllianceState) -> AllianceSummary {
     AllianceSummary {
@@ -162,6 +163,7 @@ pub fn alliance_detail(
                     action: a.action.clone(),
                     at: a.at,
                     target: a.target,
+                    subject: audit::subject(state, a, names),
                 })
                 .collect()
         }),
@@ -178,7 +180,7 @@ fn has_roles(state: &AllianceState, actor: PlayerId) -> bool {
 mod tests {
     use super::*;
     use orbit_engine::alliances::{AllianceAction, StateMember};
-    fn state() -> AllianceState {
+    pub(super) fn state() -> AllianceState {
         AllianceState::create(
             Uuid::from_u128(1),
             PlayerId(Uuid::from_u128(2)),

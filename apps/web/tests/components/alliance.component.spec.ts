@@ -729,3 +729,48 @@ for (const width of [1440, 390]) {
     )
   })
 }
+
+for (const width of [1440, 390]) {
+  test(`audit table explains targets and timestamps without overflow at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await mount('alliance-panels')
+    await page.evaluate(() => window.allianceScenario.prepare('audit'))
+    await page.getByRole('button', { name: 'Audit', exact: true }).click()
+    const table = page.getByRole('table', {
+      name: 'Alliance activity, newest first',
+    })
+    const changed = table.getByRole('row').filter({ hasText: 'Changed roles' })
+    await expect(changed).toContainText('Commander')
+    await expect(changed).toContainText('Nova')
+    await expect(changed.locator('time')).toHaveAttribute(
+      'datetime',
+      '2023-11-14T22:13:25.000Z',
+    )
+    await expect(
+      table.getByRole('row').filter({ hasText: 'Deleted role' }),
+    ).toContainText('Expedition coordinator')
+    await expect(
+      table.getByRole('row').filter({ hasText: 'Deleted notice' }),
+    ).toContainText('Launch instructions for the distant outer systems')
+    await expect(
+      table.getByRole('row').filter({ hasText: 'Accepted application' }),
+    ).toContainText('Former applicant')
+    await expect(table).not.toContainText('old-application')
+    await expect(table).not.toContainText('deleted-role')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    const box = await changed.boundingBox()
+    expect(box!.height).toBeLessThanOrEqual(width === 390 ? 85 : 56)
+    await page.evaluate(() => window.allianceScenario.prepare('audit-empty'))
+    await expect(
+      page.getByRole('heading', { name: 'No activity yet' }),
+    ).toBeVisible()
+    await expect(table).toHaveCount(0)
+  })
+}

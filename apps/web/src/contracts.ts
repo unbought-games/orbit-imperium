@@ -8322,6 +8322,7 @@ export interface components {
             action: string;
             at: number;
             target: string | null;
+            subject?: components["schemas"]["AllianceAuditSubject"];
         };
         AllianceDetail: {
             summary: components["schemas"]["AllianceSummary"];
@@ -9580,6 +9581,14 @@ export interface components {
         };
         ArrivalState: {
             pending: boolean;
+        };
+        /** @description Human-readable event target. Role names and notice titles are preserved for new events; older events are resolved from surviving records. */
+        AllianceAuditSubject: {
+            /** @enum {string} */
+            kind: "Player" | "Role" | "Notice";
+            label: string;
+            /** Format: uuid */
+            player?: string;
         };
     };
     responses: never;

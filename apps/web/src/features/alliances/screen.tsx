@@ -164,7 +164,10 @@ function AllianceWorkspace({
           ? (detail.applications?.map((application) => application.player) ??
             [])
           : active === 'Audit'
-            ? (detail.audit?.map((entry) => entry.actor) ?? [])
+            ? (detail.audit?.flatMap((entry) => [
+                entry.actor,
+                ...(entry.subject?.player ? [entry.subject.player] : []),
+              ]) ?? [])
             : active === 'Board'
               ? (detail.posts?.map((post) => post.author) ?? [])
               : []

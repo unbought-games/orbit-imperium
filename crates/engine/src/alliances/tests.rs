@@ -1244,3 +1244,143 @@ fn omitted_notice_fields_default_to_empty_strings() {
         denied(&mut s, 1, serde_json::from_value(action).unwrap());
     }
 }
+
+#[test]
+fn audit_preserves_deleted_subjects_and_distinguishes_reversible_actions() {
+    let mut s = state();
+    let scout = role(&mut s, "Scout", vec![], vec![]);
+    run(
+        &mut s,
+        1,
+        AllianceAction::SaveRole {
+            alliance: id(10),
+            role: Some(scout),
+            name: "Explorer".into(),
+            permissions: vec![],
+            grantable_permissions: vec![],
+        },
+    )
+    .unwrap();
+    run(
+        &mut s,
+        1,
+        AllianceAction::DeleteRole {
+            alliance: id(10),
+            role: scout,
+        },
+    )
+    .unwrap();
+    assert_eq!(s.audit[1].action, "CreateRole");
+    assert_eq!(
+        s.audit[1].subject,
+        Some(AuditSubject::Role {
+            name: "Scout".into()
+        })
+    );
+    assert_eq!(
+        s.audit.last().unwrap().subject,
+        Some(AuditSubject::Role {
+            name: "Explorer".into()
+        })
+    );
+    assert!(s.roles.iter().all(|r| r.id != scout));
+
+    let post = id(10000 + u128::from(s.revision));
+    run(
+        &mut s,
+        1,
+        AllianceAction::CreatePost {
+            alliance: id(10),
+            title: "Launch plan".into(),
+            body: "".into(),
+        },
+    )
+    .unwrap();
+    run(
+        &mut s,
+        1,
+        AllianceAction::PinPost {
+            alliance: id(10),
+            post,
+            pinned: true,
+        },
+    )
+    .unwrap();
+    assert_eq!(s.audit.last().unwrap().action, "PinNotice");
+    run(
+        &mut s,
+        1,
+        AllianceAction::PinPost {
+            alliance: id(10),
+            post,
+            pinned: false,
+        },
+    )
+    .unwrap();
+    assert_eq!(s.audit.last().unwrap().action, "UnpinPost");
+    run(
+        &mut s,
+        1,
+        AllianceAction::DeletePost {
+            alliance: id(10),
+            post,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        s.audit.last().unwrap().subject,
+        Some(AuditSubject::Notice {
+            title: "Launch plan".into()
+        })
+    );
+    assert!(s.posts.is_empty());
+    for (enabled, expected) in [
+        (true, "CreateInvitation"),
+        (true, "ReplaceInvitation"),
+        (false, "DisableInvitation"),
+    ] {
+        run(
+            &mut s,
+            1,
+            AllianceAction::SetInvitation {
+                alliance: id(10),
+                enabled,
+            },
+        )
+        .unwrap();
+        assert_eq!(s.audit.last().unwrap().action, expected);
+    }
+}
+
+#[test]
+fn audit_retains_applicant_after_consumption_and_reads_old_events() {
+    let mut s = state();
+    s.recruitment = AllianceRecruitment::Application;
+    run(
+        &mut s,
+        2,
+        AllianceAction::Apply {
+            alliance: id(10),
+            text: "Ready".into(),
+        },
+    )
+    .unwrap();
+    let application = s.applications[0].id;
+    run(
+        &mut s,
+        1,
+        AllianceAction::Accept {
+            alliance: id(10),
+            application,
+        },
+    )
+    .unwrap();
+    assert!(s.applications.is_empty());
+    assert_eq!(s.audit.last().unwrap().subject_player(), Some(player(2)));
+    let legacy: StateAudit = serde_json::from_value(serde_json::json!({
+        "id": id(500), "actor": player(1), "action": "AssignRoles", "at": 1000, "target": id(2)
+    }))
+    .unwrap();
+    assert!(legacy.subject.is_none());
+    assert_eq!(legacy.subject_player(), Some(player(2)));
+}

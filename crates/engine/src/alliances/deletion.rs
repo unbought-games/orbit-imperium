@@ -53,9 +53,17 @@ impl AllianceState {
         next.audit.push(StateAudit {
             id: input,
             actor: player,
-            action: "EmpireRemoved".into(),
+            action: if self.leader == player {
+                "Succession"
+            } else {
+                "EmpireRemoved"
+            }
+            .into(),
             at,
-            target: Some(next.leader.0),
+            target: (self.leader == player).then_some(next.leader.0),
+            subject: (self.leader == player).then_some(AuditSubject::Player {
+                player: next.leader,
+            }),
         });
         if next.audit.len() > MAX_AUDIT {
             next.audit.drain(..next.audit.len() - MAX_AUDIT);

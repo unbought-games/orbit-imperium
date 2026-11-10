@@ -94,31 +94,4 @@ export function Applications({
   )
 }
 export { Settings } from './settings'
-export function Audit({ detail }: { detail: AllianceDetail }) {
-  return (
-    <section className={styles.stack} aria-label="Alliance audit history">
-      <h3>Audit history</h3>
-      {!detail.audit?.length && <p>No recorded changes.</p>}
-      {detail.audit?.map((entry) => (
-        <article className={styles.card} key={entry.id}>
-          <strong>
-            <PlayerName
-              player={entry.actor}
-              fallback={entry.actor_name}
-              alliance={
-                detail.members?.some((member) => member.player === entry.actor)
-                  ? detail.summary
-                  : undefined
-              }
-            />
-          </strong>{' '}
-          · {entry.action}
-          <p className={styles.meta}>
-            {new Date(entry.at).toLocaleString()}
-            {entry.target ? ` · Target: ${entry.target}` : ''}
-          </p>
-        </article>
-      ))}
-    </section>
-  )
-}
+export { Audit } from './audit'
