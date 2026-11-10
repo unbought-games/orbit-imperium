@@ -127,8 +127,9 @@ full suite ancestry and project, not file plus leaf title, which is not unique.
 The full-run starting revision was
 `93cc09fea72b4f1f32c2864bef4dea3a1147ebfe` with working-change SHA-256
 `1e7a235f976ba67e261a77cb56139379e04c6eab20babba7f11c0e14ebc3f2f5`.
-The final integration snapshot is recorded below after committing the validated
-source. Local runner allocation wait was not separately measured; no GitHub CI,
+The validated implementation snapshot is
+`80839e2484ee82b10624fdf1c91ed61107f930ef`; the following commit only records this
+verification revision. Local runner allocation wait was not separately measured; no GitHub CI,
 merge-queue delay or post-merge result is claimed.
 
 Inspected final real-component captures for notifications and Harvest controls at
