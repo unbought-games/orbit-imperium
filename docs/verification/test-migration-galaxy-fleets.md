@@ -11,7 +11,7 @@ Base: `a119915ffaeb881a7f54d65542478f4788bd4210`.
 
 ## Coverage and remaining integration
 
-Twelve expanded application cases move to nine component cases and six deterministic inventory model cases. The existing harvest, Galaxy projection, debris, fleet-order and mission-presentation units retain numerical/eligibility/state coverage. The remaining application cases stay **required feature integration** pending further decomposition; this commit does not shrink CI selection or declare the entire 97-case inventory migrated.
+Eighteen expanded application cases move to nineteen component cases and six deterministic inventory model cases. The second group is pending parent serial validation. The existing harvest, Galaxy projection, debris, fleet-order and mission-presentation units retain numerical/eligibility/state coverage. The remaining application cases stay **required feature integration** pending further decomposition; this commit does not shrink CI selection or declare the entire 97-case inventory migrated.
 
 Keep actual application journeys for Galaxy quick actions, paid command/reconciliation, body and route switching, history, row-link navigation, coordinate overlays, and moon intent. A generic isolated surface cannot prove those callers pass the correct identity/context or retain keyed disclosure state. Do not silently deselect the remaining cases on the strength of these component tests.
 
@@ -106,18 +106,18 @@ Full suite ancestry and project are retained because file plus leaf title is not
 | `default` / `9c4a90075213ce439feb-5fa7f8560db44d65f8e3` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 320px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-cca4d5458232f697ec30` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-6c50bd98bd241b51d52b` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
-| `default` / `9c4a90075213ce439feb-29581042116202c1672e` | mission-fleets.spec.ts > fleets row opens details without stealing controls at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-29581042116202c1672e` | mission-fleets.spec.ts > fleets row opens details without stealing controls at 390px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
 | `default` / `9c4a90075213ce439feb-fe9daee2127107f8eead` | mission-fleets.spec.ts > fleets row opens details without stealing controls at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
-| `default` / `9c4a90075213ce439feb-286b82a5d50be016b3a9` | mission-fleets.spec.ts > overview row opens details without stealing controls at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-286b82a5d50be016b3a9` | mission-fleets.spec.ts > overview row opens details without stealing controls at 390px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
 | `default` / `9c4a90075213ce439feb-a61c209f8424c1188268` | mission-fleets.spec.ts > overview row opens details without stealing controls at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
-| `default` / `9c4a90075213ce439feb-f42a107bf34d64b3d12e` | mission-fleets.spec.ts > fleets incoming fleet shares the flight card and discloses intelligence at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
-| `default` / `9c4a90075213ce439feb-8fb33718887c5577112f` | mission-fleets.spec.ts > fleets incoming fleet shares the flight card and discloses intelligence at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-f42a107bf34d64b3d12e` | mission-fleets.spec.ts > fleets incoming fleet shares the flight card and discloses intelligence at 390px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-8fb33718887c5577112f` | mission-fleets.spec.ts > fleets incoming fleet shares the flight card and discloses intelligence at 1280px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
 | `default` / `9c4a90075213ce439feb-0ac2155b27f8d73fc6f5` | mission-fleets.spec.ts > overview incoming fleet shares the flight card and discloses intelligence at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-03411e745265959f0243` | mission-fleets.spec.ts > overview incoming fleet shares the flight card and discloses intelligence at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-d42e41fcc066f2b8ad3d` | mission-fleets.spec.ts > fleets incoming disclosure state stays with its fleet across snapshot changes | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-c9aabc76df550bf2e618` | mission-fleets.spec.ts > overview incoming disclosure state stays with its fleet across snapshot changes | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
-| `default` / `9c4a90075213ce439feb-25b112003cbcc069e119` | mission-fleets.spec.ts > fleet row touch feedback > fleets touchdown and cancellation preserve scrolling and child controls | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
-| `default` / `9c4a90075213ce439feb-9bc9fc4b957cbff665c2` | mission-fleets.spec.ts > fleet row touch feedback > overview touchdown and cancellation preserve scrolling and child controls | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-25b112003cbcc069e119` | mission-fleets.spec.ts > fleet row touch feedback > fleets touchdown and cancellation preserve scrolling and child controls | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-9bc9fc4b957cbff665c2` | mission-fleets.spec.ts > fleet row touch feedback > overview touchdown and cancellation preserve scrolling and child controls | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
 | `default` / `faf25f149ed786d6994b-617af40ce12b512907a2` | moon-fleets.spec.ts > moon fleet operations 1440 > launches from local inventory and supplies moon defenders from the parent | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
 | `default` / `faf25f149ed786d6994b-9f21fa3de34e8c3e0d52` | moon-fleets.spec.ts > moon fleet operations 1440 > Galaxy moon actions and quick espionage bind the moon rather than its planet | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
 | `default` / `faf25f149ed786d6994b-aba839a220aa3cf1e4cb` | moon-fleets.spec.ts > moon fleet operations 1440 > delivery reports retain lunar destination links at shared coordinates | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
@@ -174,3 +174,41 @@ protection. Combined-modality new coverage is lost; status component migration
 is deferred, not fixed by a passing retry. Evidence: parent log
 `/tmp/orbit-galaxy-components-repair.log` and
 `test-results/test-strategy/galaxy-components-repair`. No rerun requested.
+
+## Second group: fleet cards and recall interaction
+
+`MissionFleetCardPresentation` renders actual outgoing card markup, row-link
+interaction and local disclosure from prepared snapshots. `MissionFleetCard`
+retains the live coordinator subscription, time projection and real command
+actions. `FleetRecallPresentation` owns review/keep/confirm interaction;
+`FleetRecall` retains command admission and pending-state derivation. No
+command state, snapshot or business eligibility is duplicated in local state.
+
+New required scene registrations from `fleet-card.scenarios.tsx`:
+
+- `fleet-cards-article`: `FleetArticleScenario`
+- `fleet-cards-list`: `FleetListScenario`
+
+Ten isolated cases cover both container semantics and mobile/desktop cards:
+hover/press, dragging out onto a child control, local ship disclosure through a
+snapshot refresh, keyboard focus outlines, text-selection suppression of row
+navigation, review/keep/confirm callbacks and pending controls, incoming hidden
+intelligence, equal own/incoming geometry, touch cancellation and real
+router-link activation. These use the real production card, recall control,
+IncomingFleet, row-link hook, links and CSS. The scene's memory router observes
+link activation without mounting application/session/network clients.
+
+Six expanded application cases are replaced: two mobile row-control variants,
+two touch-cancellation variants and two fleet-page incoming-card variants.
+Actual desktop route/new-tab/context-menu journeys, Overview-to-HUD incoming
+embedding, keyed incoming insertion/removal across both application callers,
+and the active-fleet/recall journeys remain required. All ten lunar cases also
+remain required: they protect actual selected-Moon identity, parent-supplied
+defense, report links, quick-action command targets and observed protection
+through the application. A generic component callback cannot prove those
+caller bindings. No original body-intent assertion was dropped.
+
+Production and new test files pass scoped formatting, ESLint for production
+changes, whitespace and parser checks. Full component/type/application and
+desktop/mobile visual validation remain assigned to the parent, per serialized
+validation instructions. No new browser, build or full typecheck was started.
