@@ -27,7 +27,7 @@ inspection did not establish a production regression.
 | --- | --- | --- |
 | Resource-settings history, 1440 | Runs `42712613473` / job `129485942628` and `42712933918` / job `129487488425`; tested `fcf1fa5866d313837dbdbab8a558aa9cd8c835a5` and `5e4c7480b37e3ab989dfc78dd231dd217058762c`, respectively. After Enter, H1 remained Empire; artifact has Empire H1 active. | Explained focus race: the test clicks Empire then immediately focuses the persistent energy link while `game-shell.tsx`'s route layout effect still owes focus to Empire. Complete that route's heading/focus before moving focus to the link, assert link focus, then send Enter. First repair of this keyboard boundary. Introduced in `dee958da`; `1181001f` adapted sidebar navigation; `6292946b` gated a later reload, not this preceding route transition. Both failures predate this repair. |
 | Resource-settings usable controls, 1440 | Run `42691140362` / job `129413010760`, SHA `4d87b6250cb342348063e6b4c82d4ce53b52923a`; energy link absent after bare `goto`; artifact subsequently contains Empire and the energy link. | Prior shared repair `6292946b` already gates bootstrap before the link assertion. Preserve that repair and validate it; no additional stabilization patch. |
-| Galaxy supporter levels | Runs `42691219166` / job `129412823098`, SHA `12cff4ad380feb338f8ecbd4979d68b7c05edf90`; `42698757279` / job `129438535877`, SHA `d0689602294006f93045da5e600cd5e4f952c4a8`. First badge absent at assertion; latter artifact includes all three badges and correct names. | Retire entire broad scenario. It starts a running fake clock after shell startup, overrides identities, navigates another document, and later advances time through asynchronous refreshes. `6292946b` gated Galaxy world data but not separately loaded profiles. Evidence supports a readiness defect but does not isolate the outstanding profile phase; do not add another broad readiness patch. Tier transitions, outage expiry and bot/human permutations are controller coverage; static tier/ordinary markup added below. Lost: Galaxy-specific badge/CSS-color and three-width overflow checks. Other profile consumers retain browser identity/layout/focus wiring. |
+| Galaxy supporter levels | Runs `42691219166` / job `129412823098`, SHA `12cff4ad380feb338f8ecbd4979d68b7c05edf90`; `42698757279` / job `129438535877`, SHA `d0689602294006f93045da5e600cd5e4f952c4a8`. First badge absent at assertion; latter artifact includes all three badges and correct names. | Retire entire broad scenario. It starts a running fake clock after shell startup, overrides identities, navigates another document, and later advances time through asynchronous refreshes. `6292946b` gated Galaxy world data but not separately loaded profiles. Evidence supports a readiness defect but does not isolate the outstanding profile phase; do not add another broad readiness patch. Tier transitions, outage expiry and bot/human permutations are controller coverage; static tier/ordinary markup added below. Lost at retirement: Galaxy-specific badge/CSS-color and three-width overflow checks. The isolated profile-display counterpart below recovers shared badge color/semantics, pending validation; it does not recreate Galaxy wiring or overflow checks. Other profile consumers retain browser identity/layout/focus wiring. |
 | Deployment reload startup, mobile | Run `42652228544` / job `129281517892`, SHA `d1f4be636486c22d5378b51dcd47365c549ffc07`: after manual reload bootstrap headers, paused message absent; artifact subsequently includes that message and Updating your universe. | Remove both viewport variants of this scenario, without renaming/recreating it. `a4b2dcab` and ledger section "startup" already record its one clock-scheduling repair (`runFor(1)`). This is a subsequent test readiness failure. Controller covers single reload, quiet period, page recreation and manual recovery. Lost: real multi-document route preservation and startup live-region identity wiring. Remaining recent-reload case protects visible recovery action and focus. |
 | Session rotation, mobile | Run `42690568978` / job `129409032323`, SHA `7aee4cff078e8790ee16b8e4f4f235ada546fdcf`: H1 absent after bootstrap boundary; artifact subsequently includes Empire. | Remove remaining mobile variant. `c199b798` consumed phase-ordering repair; `5f61be69` removed desktop after recurrence and repaired shared teardown tracking. Do not reset repair count for mobile. Coordinator tests retain quiet recovery and explicit admission refusal, and remaining quiet-recovery click browser case retains unsent edit/error wiring. |
 | Alliance create/invite/join/recall, 390 | Run `42652228544` / job `129281517942`, SHA `d1f4be636486c22d5378b51dcd47365c549ffc07`: expected Joining closed, saw Joining open and two fleets. Artifact says "Recall Mission: Action committed; awaiting updated view." | Remove both variants under unexplained-test-defect rule. Mock mutates group closed synchronously before receipt; artifact proves receipt processing, but does not explain why revision reconciliation was late. No prior recall repair found (introduced `bc93670b`; `6292946b` only gates navigation). Do not invent a second poll or increase assertion time. Engine/database coverage protects actual invite/join/recall semantics; surviving invitation and simulator cases retain independent browser controls. Lost: chained create/invite/join/requote/recall browser command wiring and recall layout. |
@@ -57,7 +57,7 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
   refresh" for Rankings/Galaxy/Incoming/Report. Adapter tests preserve source and
   binding validation. `features/supporter-identity.test.ts` now checks each tier's
   accessible label and palette selector, plus absent decoration for ordinary
-  players. Actual computed RGB colors are no longer checked by the retired test.
+  players. The retired application test no longer checks computed RGB colors; the isolated counterpart described below is authored and pending parent validation.
 - `client-model/client-update.test.ts`: "ignores absent/matching headers and
   reserves one reload across concurrent responses and page recreation", "fails
   closed on blocked storage, invalid timestamps, and clocks moving backward,
@@ -128,9 +128,9 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
 
 | Original scenario (all original variants) | Disposition and retained protection |
 | --- | --- |
-| Galaxy shows all three supporter levels and ordinary players, then removes changed and expired badges | Retire defective broad scenario; deterministic and static replacements plus explicitly lost coverage above. |
+| Galaxy shows all three supporter levels and ordinary players, then removes changed and expired badges | Retire defective broad scenario; deterministic/static coverage retained. New isolated profile-display component cases recover shared computed badge colors/accessible names and ordinary-player absence, pending parent validation. Galaxy-specific routing/overflow remain retired. |
 | espionage and combat observations use current public identities without changing historical facts | Retain Report-source identity link/tooltip focus, Escape and historical-report consumer wiring for spy/espionage/combat. |
-| bot profile labels follow authoritative refresh at ${width}px | Retain "bot profile labels follow authoritative refresh at 390px", including bot-to-human refresh on the already-mounted consumer, removal of Bot and updated dossier. Consolidate only the duplicate desktop variant; source permutations remain in controller tests, desktop popup/geometry in attachments/report cases. |
+| bot profile labels follow authoritative refresh at ${width}px | Retain "bot profile labels follow authoritative refresh at 390px", including bot-to-human refresh on the already-mounted consumer, removal of Bot and updated dossier. Consolidate only the duplicate desktop variant; source permutations remain in controller tests, desktop popup/geometry in attachments/report cases. New isolated same-store mounted-update case is pending validation; the mobile live-update assertions remain required. |
 | player attachments align together and long identities stay within narrow rows | Retain measured baseline, narrow-cell containment and tooltip access at 1440/390/320; wait for Rankings identity delivery, and do screenshot-only scrolling only when capture is enabled. |
 
 ### client-update.spec.ts
@@ -349,3 +349,58 @@ was launched. Parent owns serial integrated validation of all 71 retained cases,
 including the restored production cases and live mobile profile refresh. Earlier
 136-unit and browser results are historical checks, not validation of this
 follow-up revision.
+
+## Isolated profile display additions (pending parent validation)
+
+Two narrow component cases recover useful shared-display protection without
+restoring the retired Galaxy tour. Files:
+
+- `apps/web/tests/components/profile-display.scenarios.tsx`
+- `apps/web/tests/components/profile-display.component.spec.ts`
+
+The scene exports **`ProfileDisplayScenario`** and the type
+**`ProfileDisplayControl`**. Parent must register gallery key **`profile-display`**
+in its owned `main.tsx`, using the lazy import
+`(await import('./profile-display.scenarios')).ProfileDisplayScenario`.
+No gallery entry, fixture, configuration or production source was changed here.
+
+The scene mounts production `PlayerName` (and its real `SupporterIdentity` and
+`PlayerProfile` children) under `PlayerProfilesContext`. A lazy scene initializer
+creates exactly one real `PlayerProfilesController`, then seeds its Zustand store
+with typed prepared observations and a fixed store time. The controller is never
+started: there are no fetches, watches, expiry timers, app bootstrap or routing.
+The scene control publishes a human observation into that same controller store;
+it never replaces the provider, controller, component key or root. Its global
+control is removed on unmount. Specs import the control interface as a type only,
+so browser components are not loaded into Node test collection.
+
+Authored scenario names and contracts:
+
+1. **`prepared supporter tiers expose their accessible badges and computed colors while ordinary players have no badge`**:
+   mounts all three tiers and an ordinary identity together; checks exact
+   accessible badge names and titles, actual computed RGB colors
+   `133,214,239`, `240,172,212`, `242,187,131`, and absence of decoration on the
+   ordinary player. This is shared-component rendering, not source refresh or
+   Galaxy route coverage.
+2. **`a mounted player identity and open dossier react to bot-to-human publication in the same controller store`**:
+   opens the real dossier through keyboard focus at 390px, observes the Bot
+   marker and Automated player dossier, publishes the prepared human record
+   without navigation/click/refocus, and checks the mounted marker disappears
+   while the dossier changes to Commander and human description. Existing
+   identity and dossier DOM handles must remain connected; the supporter badge
+   stays visible. Escape dismisses the dossier and retains trigger focus.
+
+The existing application `bot profile labels follow authoritative refresh at
+390px` remains intact to prove Rankings query/consumer wiring. Its live-update
+assertions are not removed before the component counterpart passes. All four
+restored production-autosave cases remain required; their component migration
+belongs to the progression owner. Application case count remains 71; these add
+**two isolated component cases**, pending registration and execution.
+
+Validation here: reviewed typed fixtures, production component dependencies,
+shared gallery contract and mount/update ownership; formatted both new files
+with pinned Node 24.18.0 and installed Prettier; `git diff --check` passed. No
+browser, production build or typecheck was launched. Parent owns gallery
+registration, component typecheck and serial
+`npm run test:components -- profile-display.component.spec.ts --workers=1`.
+No pass, timing or reliability claim is made for these newly authored cases.
