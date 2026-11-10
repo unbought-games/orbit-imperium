@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
+import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
 import { ReportObservation } from './report-observation'
 import { PlayerProfilesContext } from '../shell/player-profiles-context'
 import { PlayerProfilesController } from '../client-model/player-profiles'
@@ -17,6 +18,24 @@ const render = (payload: Record<string, unknown>) =>
       createElement(ReportObservation, { payload }),
     ),
   ).replace(/<[^>]+>/g, '')
+
+it('shows both stored missile quantities inside revealed defenses only', () => {
+  const text = render({ kind: 'Espionage', defenses: missileDefenses })
+  expect(text).toContain(
+    'DefensesRocket Launcher100Anti Ballistic Missile6Interplanetary Missile4',
+  )
+  const hidden = render({
+    kind: 'Espionage',
+    defenses: {
+      visibility: 'Unknown',
+      value: missileDefenses.value,
+    },
+  })
+  expect(hidden).not.toContain('Missile')
+  expect(hidden).toContain(
+    'Unknown — this observation did not reveal this section.',
+  )
+})
 
 it('distinguishes observed zero resources, an empty fleet and unrevealed defenses', () => {
   const text = render({

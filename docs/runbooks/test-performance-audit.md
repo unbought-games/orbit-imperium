@@ -1,5 +1,101 @@
 # PR and main test performance audit
 
+## November 10, 2026: PR #384 queue startup failures
+
+Queue run `42837687421` tested integration `946cd964c7256c1d0b9b079ee6e037dc4baac28d`
+for PR head `b7c4c918`. Native/database checks passed, but two browser cases
+failed and GitHub removed the PR from the queue once. This is not a successful
+merge or an infrastructure-outage diagnosis.
+
+- `client-update.spec.ts`: `a click during quiet session recovery is explicitly
+  refused (1440x1000)` failed its initial Empire-heading assertion before reaching
+  session recovery. Job `129904355451`, artifact `13775915646`. The failure
+  snapshot already contains the heading. This scenario originated in PR #348;
+  unlike the separate session-rotation scenario retired in PR #355, no prior
+  repair was found for this case. Bootstrap delivery is already response-gated;
+  the evidence does not establish the precise cause of the late render. Removed
+  this desktop variant under the unexplained-failure rule rather than applying
+  a speculative wait or rerunning unchanged.
+- `vacation.spec.ts`: `vacation review, commitment, minimum and return at 1280px`
+  failed to find Leave vacation mode after its final reload. Job `129904355556`,
+  artifact `13774304482`. The snapshot contains the enabled button. The journey
+  previously received the screenshot-helper repair documented in
+  `docs/verification/vacation.md` and the later response-gating sweep. Removed
+  the failed desktop variant outright; did not repair it again.
+
+The mobile variants remain, and vacation blocker/rejection coverage remains at
+both widths. The shared bootstrap-response helper is already used at both
+failure sites; inspection established no new helper defect to patch or delegate.
+Do not infer a diagnosed race or successful repair from these deletions.
+Retained deterministic protection includes coordinator tests for explicit refusal
+without sending, queueing or persistence, and engine vacation tests for exact
+minimum duration, production preservation, blockers and exit behavior.
+
+Validation: four retained browser cases passed (1.981s module preparation, 6.4s
+runner; cases 2.0–5.6s), 71 coordinator tests passed (0.684s runner), and eight
+engine vacation tests passed (0.39s preparation, 0.26s execution). No browser
+timeouts, assertions, production behavior or CI protections changed. Task-owned
+fixture servers and browsers exited; no database or Docker resources were started.
+
+## November 10, 2026: obsolete normal-motion shell assertions
+
+PR #384 run `42831197283` at head `519dec7c` failed the 390px and 1280px
+`navigation limits motion to desktop hover colors ... with no-preference` cases
+in browser job `129882198228`. Each recorded nine animation-start events and
+expected none. The integration includes main's intentional Briefing animation
+from PR #382; the test observes the entire document, not just navigation.
+The two reduced-motion variants passed, as did the native checks and databases.
+
+History confirms the same scenario already consumed its repair in PR #369
+(`17778e49704c9b54ccb00ab66a5648a1c78f82bd`), documented in
+`docs/verification/sidebar-hover-transitions.md`: its blanket no-motion assertion
+was expanded to allow requested sidebar color transitions. Removed the two
+failing normal-motion cases outright under the one-repair policy. Kept the two
+reduced-motion cases and all their assertions unchanged. No new exemptions,
+timeouts or unchanged retries were added. No production animation was changed.
+
+Retained cheap coverage in `navigation-motion.test.ts` checks the desktop and
+no-reduced-motion media guard, eligible sidebar controls, color-only 150ms
+transitions, and the required override of the global reset. Its first run hit
+Vitest's CSS-module stub through a raw import; after checking this ledger and
+its absent prior history, its one repair reads the stylesheet with Node instead.
+It passed in 0.145s. The two retained browser cases passed (1.992s preparation,
+3.4s runner total, 2.4s each). Briefing's dedicated browser cases already cover
+its intended animation and reduced-motion behavior. Audit found no other
+`uiMotionEvents` observer outside this scenario. There is no independent
+follow-up or shared helper defect left open.
+
+## November 10, 2026: espionage missile disclosure fixtures
+
+New deterministic tests caught two fixture-authoring mistakes on their first
+runs: the world editor requires `op: "set"` before deserialization, and simulator
+input counts are numbers rather than the report's decimal strings. Checked this
+ledger and file history; neither new case had a prior repair. Added the missing
+operation and corrected the expected simulator input type. Both passed their
+single repair runs, retaining exact missile visibility and combat exclusion
+assertions.
+
+Removed both new `missile intelligence survives report navigation and sharing
+at {1440,390}px` browser cases after their second failure. First attempt: an
+inbox fixture incorrectly supplied the full report as its preview, and its
+locator expected the exact accessible link name `Espionage`. The single repair
+projected the preview's allowed fields. Second attempt: the report rendered
+correctly, but the locator still missed the actual name `Espionage · Nova Roma`.
+Both runs failed at the first inbox assertion; neither established successful
+browser validation. No timeout increases or third repair were made. Existing
+browser tests remain unchanged.
+
+Retained coverage is deterministic: real engine arrival tests across twelve
+probe/technology combinations, the shared engine-produced defenses fixture,
+client report/preview schema checks, static report rendering and hidden-section
+checks, separate preview totals, shared-report projection, and simulator
+exclusion. A separate disposable capture-only browser session inspected inbox,
+detail, unknown, and public report screens at both viewport sizes; it is not a
+replacement regression test or a claim that the removed cases passed. Failure
+evidence and measured phase timings are recorded in
+`docs/verification/espionage-missiles.md`. There is no outstanding shared fixture
+defect or independent follow-up work from these local authoring mistakes.
+
 ## November 9, 2026: fixture navigation readiness sweep
 
 The report-glance and missile-report failures shared one test-design defect:

@@ -15,11 +15,19 @@ export type ReportFact =
   | { resources: S['Resources']; label?: string; debris?: boolean }
 const totalUnits = (
   observation: Extract<Preview, { kind: 'Espionage' }>['fleet'],
+  missiles = false,
 ) =>
   !observation || observation.visibility === 'Unknown'
     ? 'unknown'
     : formatWholeNumber(
-        observation.value.reduce((sum, unit) => sum + BigInt(unit.count), 0n),
+        observation.value.reduce(
+          (sum, unit) =>
+            sum +
+            ((unit.item.kind === 'Missile') === missiles
+              ? BigInt(unit.count)
+              : 0n),
+          0n,
+        ),
       )
 
 /** Derive a list glance only from the report's historical, recipient-visible facts. */
@@ -85,6 +93,13 @@ export function reportPreview(
         `Fleet: ${totalUnits(preview.fleet)}`,
         `Defenses: ${totalUnits(preview.defenses)}`,
       )
+      if (
+        preview.defenses?.visibility === 'Known' &&
+        preview.defenses.value.some(
+          (unit) => unit.item.kind === 'Missile' && BigInt(unit.count) > 0n,
+        )
+      )
+        facts.push(`Missiles: ${totalUnits(preview.defenses, true)}`)
       if (preview.counterespionage?.detected) facts.push('Detected')
       break
     case 'Returned':

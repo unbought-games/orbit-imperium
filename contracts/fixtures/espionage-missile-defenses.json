@@ -1,0 +1,8 @@
+{
+  "visibility": "Known",
+  "value": [
+    { "item": { "kind": "Defense", "id": "RocketLauncher" }, "count": "100" },
+    { "item": { "kind": "Missile", "id": "AntiBallisticMissile" }, "count": "6" },
+    { "item": { "kind": "Missile", "id": "InterplanetaryMissile" }, "count": "4" }
+  ]
+}

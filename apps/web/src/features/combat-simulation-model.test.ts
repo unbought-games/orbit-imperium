@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import observation from '../../../../contracts/fixtures/espionage-expanded.json'
+import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
 import {
   attackerLosses,
   averageSurvivors,
@@ -45,6 +46,19 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
   },
 ]
 const attacking = { 'attacker:Ship:LightFighter': '10' }
+it('imports combat defenses while excluding revealed missiles from fleet simulation', () => {
+  const observed: Espionage = {
+    ...report,
+    defenses: missileDefenses as Espionage['defenses'],
+  }
+  const fields = simulationFields(observed, catalog, [])
+  expect(unsupportedReportUnits(observed, fields)).toEqual([])
+  const result = simulationInputs(fields, attacking)
+  expect(result.error).toBeNull()
+  expect(result.inputs?.defender.units).toEqual([
+    { item: { kind: 'Defense', id: 'RocketLauncher' }, count: 100 },
+  ])
+})
 it.each([true, false])(
   'prefills retained Gauss Cannons only on the defending side (enabled=%s)',
   (enabled) => {
