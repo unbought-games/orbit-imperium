@@ -12,6 +12,24 @@ import { useEmpireDeletion } from './use-empire-deletion'
 export function EmpireDeletion() {
   const { view, model, universeName } = useGameScreen()
   const action = useEmpireDeletion(model)
+  return (
+    <EmpireDeletionView
+      view={view}
+      universeName={universeName}
+      action={action}
+    />
+  )
+}
+
+export function EmpireDeletionView({
+  view,
+  universeName,
+  action,
+}: {
+  view: components['schemas']['GameView']
+  universeName: string
+  action: ReturnType<typeof useEmpireDeletion>
+}) {
   if (view.protocol !== 4) return null
   const deletion = view.empire_deletion
   return (

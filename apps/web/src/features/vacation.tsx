@@ -22,6 +22,24 @@ const blockerNames = {
 export function VacationSettings() {
   const { model, view, universeName } = useGameScreen()
   const action = useVacation(model)
+  return (
+    <VacationSettingsView
+      view={view}
+      universeName={universeName}
+      action={action}
+    />
+  )
+}
+
+export function VacationSettingsView({
+  view,
+  universeName,
+  action,
+}: {
+  view: components['schemas']['GameView']
+  universeName: string
+  action: ReturnType<typeof useVacation>
+}) {
   const [review, setReview] = useState(false)
   const opener = useRef<HTMLButtonElement>(null)
   const vacation = action.vacation
