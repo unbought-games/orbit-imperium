@@ -524,6 +524,96 @@ fn moon_parent_binding_shares_one_inventory_and_removed_moon_does_not_spend_it()
 }
 
 #[test]
+fn espionage_discloses_both_missiles_only_with_defenses() {
+    let expected: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../contracts/fixtures/espionage-missile-defenses.json"
+    ))
+    .unwrap();
+    // Probe counts straddle the defenses boundary for equal, higher, and lower
+    // completed research. Silo levels remain behind the buildings threshold.
+    for (observer, target, probes, visible, buildings) in [
+        (8, 8, 2, false, false),
+        (8, 8, 3, true, false),
+        (8, 8, 5, true, true),
+        (9, 8, 1, false, false),
+        (9, 8, 2, true, false),
+        (10, 8, 1, true, true),
+        (7, 8, 3, false, false),
+        (7, 8, 4, true, false),
+        (6, 8, 6, false, false),
+        (6, 8, 7, true, false),
+        (5, 8, 11, false, false),
+        (5, 8, 12, true, false),
+    ] {
+        let (mut s, r, p, b, t) = ready();
+        edit(
+            &mut s,
+            &r,
+            b,
+            1200,
+            serde_json::json!({
+                "op":"set",
+                "research":{"EspionageTechnology":observer},
+                "ships":{"EspionageProbe":probes}
+            }),
+        );
+        edit(
+            &mut s,
+            &r,
+            t,
+            1201,
+            serde_json::json!({
+                "op":"set",
+                "research":{"EspionageTechnology":target},
+                "ships":{"SmallCargo":0,"Recycler":0,"EspionageProbe":0},
+                "missiles":{"InterplanetaryMissile":4}
+            }),
+        );
+        let mut request = super::intent(&s, p, b, t);
+        request.mission = Mission::Espionage;
+        request.cargo = Resources::default();
+        request.ships = vec![ManifestStack {
+            owner: p,
+            ship_type: ShipType::EspionageProbe,
+            count: probes,
+        }];
+        let event = launch_raid(&mut s, &r, p, b, request, 1000, 1202);
+        let result = run(&mut s, &r, p, b, event.at, 1203, Input::Event(event.event));
+        apply(&mut s, result);
+        let report = s
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .reports
+            .values()
+            .find(|report| report.kind == "Espionage")
+            .unwrap();
+        let payload = &report.payloads[&p];
+        assert_eq!(
+            payload["defenses"],
+            if visible {
+                expected.clone()
+            } else {
+                serde_json::json!({"visibility":"Unknown"})
+            },
+            "observer={observer}, target={target}, probes={probes}"
+        );
+        assert_eq!(
+            payload["fleet"],
+            serde_json::json!({"visibility":"Known","value":[]})
+        );
+        assert_eq!(payload["buildings"]["visibility"] == "Known", buildings);
+        if buildings {
+            assert_eq!(payload["buildings"]["value"]["MissileSilo"], 4);
+        }
+        assert_eq!(payload["counterespionage"]["probability_ppm"], 0);
+        assert_eq!(payload["counterespionage"]["detected"], false);
+        validate_asset_lineage(&s).unwrap();
+    }
+}
+
+#[test]
 fn ordinary_raids_never_target_silo_inventory() {
     let (mut s, r, p, b, t) = ready();
     let mut request = super::intent(&s, p, b, t);

@@ -1,5 +1,36 @@
 # PR and main test performance audit
 
+## November 10, 2026: espionage missile disclosure fixtures
+
+New deterministic tests caught two fixture-authoring mistakes on their first
+runs: the world editor requires `op: "set"` before deserialization, and simulator
+input counts are numbers rather than the report's decimal strings. Checked this
+ledger and file history; neither new case had a prior repair. Added the missing
+operation and corrected the expected simulator input type. Both passed their
+single repair runs, retaining exact missile visibility and combat exclusion
+assertions.
+
+Removed both new `missile intelligence survives report navigation and sharing
+at {1440,390}px` browser cases after their second failure. First attempt: an
+inbox fixture incorrectly supplied the full report as its preview, and its
+locator expected the exact accessible link name `Espionage`. The single repair
+projected the preview's allowed fields. Second attempt: the report rendered
+correctly, but the locator still missed the actual name `Espionage · Nova Roma`.
+Both runs failed at the first inbox assertion; neither established successful
+browser validation. No timeout increases or third repair were made. Existing
+browser tests remain unchanged.
+
+Retained coverage is deterministic: real engine arrival tests across twelve
+probe/technology combinations, the shared engine-produced defenses fixture,
+client report/preview schema checks, static report rendering and hidden-section
+checks, separate preview totals, shared-report projection, and simulator
+exclusion. A separate disposable capture-only browser session inspected inbox,
+detail, unknown, and public report screens at both viewport sizes; it is not a
+replacement regression test or a claim that the removed cases passed. Failure
+evidence and measured phase timings are recorded in
+`docs/verification/espionage-missiles.md`. There is no outstanding shared fixture
+defect or independent follow-up work from these local authoring mistakes.
+
 ## November 9, 2026: fixture navigation readiness sweep
 
 The report-glance and missile-report failures shared one test-design defect:

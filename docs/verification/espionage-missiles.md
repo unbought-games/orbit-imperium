@@ -1,0 +1,68 @@
+# Espionage missile disclosure — November 10, 2026
+
+Validated the working-tree implementation on base revision
+`16b0c823149d63c0571a28a804834be2d11e6504`. The SHA-256 of
+`git diff HEAD -- apps/web/src crates` followed by the bytes of
+`contracts/fixtures/espionage-missile-defenses.json` is
+`9ed3e646d0ee72df5ada564f267d4d4cc14c2de4c99f6b517fb22283a946d631`.
+Documentation edits are outside that tested-code fingerprint. This records the
+implementation checkpoint before the separately requested PR follow-through;
+no deployment was performed.
+
+## Behavior and coverage
+
+- Both stored missile types use the existing defense visibility score of three.
+  The engine test resolves actual missions at twelve probe/research combinations,
+  checks exact observed counts, checks the separate building threshold, and
+  verifies missiles neither appear in fleet intelligence nor add detection risk.
+- A shared fixture matches engine output and passes the browser's existing
+  detailed-report and inbox-preview contracts. No schema migration is needed.
+- Static rendering distinguishes known quantities from unknown defenses;
+  inbox summaries count combat defenses and missiles separately, using exact
+  integer arithmetic. Shared-report projection preserves disclosure.
+- Simulator import retains ordinary defenses and excludes missile inventory.
+  Existing ordinary-raid and detected-espionage checks continue to pass.
+
+## Executed checks
+
+| Check | Result | Measured phases |
+| --- | --- | --- |
+| `npm ci --no-audit --no-fund` | Installed 304 packages | Setup 3s |
+| Existing `groups expanded` espionage browser case, before changes | Passed | Vite preparation 2.029s; test 7.6s; runner total 8.5s |
+| Four focused client test files: content-contract, report-preview, report-observation, combat-simulation-model | 140 passed, one new fixture assertion failed | Runner total 0.912s |
+| Corrected combat-simulation-model file | 22 passed | Runner total 0.156s; all 141 distinct focused client cases passed across these runs |
+| `cargo test -p orbit-engine --test missions missiles:: -- --nocapture` | First run: 12 passed, one new fixture failed; repaired run: 13 passed | Initial compilation 15.99s, execution 0.16s; repair compilation 0.69s, execution 1.04s |
+| `cargo test -p orbit-engine --test missions espionage` | 10 passed, including the new boundary case | Compilation 0.76s; execution 2.31s |
+| `cargo test -p orbit-application --lib report_sharing::tests::` | 6 passed | Compilation 25.25s; execution under 0.01s |
+| New missile browser cases, attempt 1 | Both viewport cases failed | Vite preparation 4.250s; cases 9.0s and 9.1s |
+| New missile browser cases, attempt 2 | Both viewport cases failed; removed under the one-repair rule | Vite preparation 1.868s; cases 7.5s and 7.6s |
+| `npx tsc --noEmit -p apps/web` | Passed | Not separately timed |
+| ESLint and Prettier on changed client files | Passed | Not separately timed |
+| `cargo fmt --all -- --check` and `git diff --check` | Passed | Not separately timed |
+| `cargo clippy -p orbit-engine -p orbit-application --lib -- -D warnings` | Passed | Total 12.69s; short local build-lock wait not separately timed |
+
+The first deterministic failures were fixture authoring errors: missing world
+edit `op` and an expected string where simulator inputs use a number. Each was
+repaired once. The removed browser cases and their two failures are documented
+in the Test Czar ledger at `docs/runbooks/test-performance-audit.md`. Retained
+failure artifacts are under `test-results/browser-ui/espionage-reports-missile--*`.
+There were no external runner waits or merge delays; those phases did not run.
+
+## Visual inspection and cleanup
+
+A disposable capture-only Playwright session loaded the real Vite application
+with HTTP fixtures and the engine-checked missile quantities. It used the
+response-aware helpers for inbox, detail, and shared-report delivery. Inspected
+the inbox, revealed defenses, unknown defenses, and public shared report at
+1440×1000 and 390×1000 viewport sizes. Counts remain legible and correctly grouped
+without horizontal overflow. This inspection is separate from automated
+regression-test success; the removed browser cases did not pass.
+
+Images are local chat artifacts named
+`test-results/espionage-missiles-{inbox,detail,unknown,shared}-{1440,390}x1000.png`.
+Public-report captures include the full page. No images were uploaded or hosted.
+
+All test and capture browser/server processes exited. The capture-only script
+and images remain in ignored `test-results/` for review. The dev server logged
+two unrelated announcement-proxy connection refusals during capture; report
+responses and rendering completed. No database or Docker resources were started.

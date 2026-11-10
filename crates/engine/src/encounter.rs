@@ -275,7 +275,9 @@ pub(crate) fn spy_encounter(
     for stock in s
         .inventories
         .iter()
-        .filter(|x| x.body == id && x.count > 0 && !matches!(x.item, ManufacturedItem::Missile(_)))
+        // Stored missiles share the defenses disclosure threshold, even though
+        // battle assembly excludes them from ordinary combat.
+        .filter(|x| x.body == id && x.count > 0)
     {
         stocks.insert(stock.item, stock.count);
     }

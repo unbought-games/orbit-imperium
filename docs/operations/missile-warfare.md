@@ -76,8 +76,28 @@ recall action.
 Attacker reports disclose sent/intercepted/penetrating counts and destroyed
 defenses, not surviving defenders, Armour or remaining interceptors. Defender
 reports include their remaining interceptors. Reports use the existing recipient
-archive and retention rules. Espionage missile stock disclosure remains disabled;
-this addition does not silently expand intelligence visibility.
+archive and retention rules.
+
+Espionage reveals completed, stored Anti-Ballistic Missiles and Interplanetary
+Missiles in **Defenses**, together with ordinary defenses. Both missile types
+use the existing defenses threshold: `probes + d * abs(d) >= 3`, where `d` is
+the observer's completed Espionage Technology minus the target's. At equal
+technology, three probes reveal defenses and missiles; one level ahead needs
+two probes, two levels ahead needs one, and one/two/three levels behind need
+four/seven/twelve probes. There is no additional missile-specific technology
+requirement. The Missile Silo level remains in Buildings (score at least five).
+
+Counts are an arrival-time snapshot, not live intelligence, and exclude queued
+manufacturing and missiles already launched. Unknown defenses do not disclose
+missiles. Stored reports and published copies are not backfilled: reports made
+before missile disclosure was enabled retain their original observations. Inbox
+previews show missiles separately from combat-defense counts. Defense resource
+investment sorting still values all observed inventory in the section, including
+stored missiles. Fleet combat and combat simulation continue to exclude missiles.
+
+This follows the [OGame espionage formula reference](https://board.en.ogame.gameforge.com/index.php?thread/548906-formula-thread-v3/),
+the [IPM guide's advice to scout interceptors](https://board.en.ogame.gameforge.com/index.php?thread/810633-guide-09-ipm-guide/),
+and the [documented report layout](https://www.owiki.de/index.php/Spiobericht).
 
 ## Moon integration
 

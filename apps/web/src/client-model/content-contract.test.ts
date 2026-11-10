@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import schema from '../../../../contracts/openapi.json'
 import observation from '../../../../contracts/fixtures/espionage-expanded.json'
+import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
 import { bootstrapFixture, id } from '../test-support/bootstrap'
 import { productionFixture } from '../test-support/production'
 import { ContractDataError, validate } from './schema'
@@ -15,6 +16,17 @@ const expanded = () => ({
   ...observation,
   buildings: known(buildings),
   research: known(research),
+})
+
+it('accepts engine-produced missile intelligence in detailed reports and inbox previews', () => {
+  const payload = { ...observation, defenses: missileDefenses }
+  expect(validate('ReportPayload4', payload)).toEqual(payload)
+  expect(
+    validate('ReportPreview4', {
+      kind: 'Espionage',
+      defenses: missileDefenses,
+    }),
+  ).toEqual({ kind: 'Espionage', defenses: missileDefenses })
 })
 
 it('reads the actual engine observation after enabling Impulse Drive and Astrophysics', () => {
