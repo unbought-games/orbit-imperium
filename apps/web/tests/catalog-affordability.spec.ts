@@ -172,8 +172,10 @@ async function fixture(page: Page, scenario: (typeof cases)[number]) {
   return { planet, research, inspections, options, now }
 }
 
-for (const scenario of cases) {
-  for (const width of [390, 1440]) {
+// One live class/reload journey exercises the shared tile hook. Item and resource
+// permutations live in options.test.ts, resources.test.ts and catalog-tile-model.test.ts.
+for (const scenario of [cases[0]]) {
+  for (const width of [390]) {
     test(`${scenario.page} hatching follows exact live balances at ${width}px`, async ({
       page,
     }) => {

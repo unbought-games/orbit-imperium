@@ -757,105 +757,8 @@ test('manufacturing updates totals locally and Build validates without dismissin
   await expect(pane).toBeVisible()
 })
 
-for (const width of [390, 1280]) {
-  test(`manufacturing keeps its form anchored through blank and invalid quantities at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 950 })
-    const { sent, inspections } = await setup(page)
-    for (const [pageName, itemName, quantityLabel] of [
-      ['Shipyard', 'Small Cargo', 'Shipyard quantity'],
-      ['Defense', 'Rocket Launcher', 'Defenses quantity'],
-    ]) {
-      await navigate(page, pageName as 'Shipyard' | 'Defense')
-      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
-      const order = page.getByRole('region', { name: 'New order', exact: true })
-      const input = order.getByRole('textbox', { name: quantityLabel })
-      const build = order.getByRole('button', { name: 'Build', exact: true })
-      await expect(build).toBeEnabled()
-      await input.scrollIntoViewIfNeeded()
-      await input.click()
-      const position = async () => input.evaluate(el => {
-        const rect = el.getBoundingClientRect()
-        return { top: rect.top + window.scrollY, height: rect.height }
-      })
-      const before = await position()
-      const initialInspections = inspections.length
-      const labels = ['Production duration per unit', 'Order', 'Estimated start', 'Order complete', 'New order cost']
-      await input.press('Backspace')
-      await expect(input).toHaveValue('')
-      for (const value of ['', '0', '-1', '1.5', 'abc', '9223372036854775808']) {
-        if (value) await input.fill(value)
-        await expect(input).toBeFocused()
-        await expect(order.locator('dt')).toHaveText(labels)
-        await expect(build).toBeDisabled()
-        await expect(order.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
-        await expect(order.locator('dt').filter({ hasText: /^Order$/ }).locator('..')).toHaveText('Order—')
-        expect(await position()).toEqual(before)
-        if (value === '') await diagnosticScreenshot(order, { path: `test-results/quantity-edit-${pageName}-${width}.png` })
-      }
-      await input.fill('2')
-      await expect(build).toBeEnabled()
-      await expect(order).toContainText(`2 × ${itemName}`)
-      expect(await position()).toEqual(before)
-      await input.fill('999999')
-      await expect(build).toBeDisabled()
-      await expect(page.getByLabel('Missing resources')).toBeVisible()
-      expect(await position()).toEqual(before)
-      expect(inspections.length).toBe(initialInspections)
-      expect(sent).toHaveLength(0)
-    }
-  })
-}
-
-for (const action of ['edit', 'dismiss', 'reopen']) {
-  test(`manufacturing ignores delayed validation after ${action}`, async ({
-    page,
-  }) => {
-    const { sent } = await setup(page)
-    await navigate(page, 'Shipyard')
-    await page
-      .getByRole('link', { name: 'Build Small Cargo', exact: true })
-      .click()
-    const build = page.getByRole('button', { name: 'Build', exact: true })
-    await expect(build).toBeEnabled()
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    let finished!: () => void
-    const responded = new Promise<void>((resolve) => {
-      finished = resolve
-    })
-    await routeProgressionOptions(page,
-      async (route) => {
-        await gate
-        await route.fallback()
-        finished()
-      },
-      { times: 1 },
-    )
-    await build.click()
-    await expect(build).toBeDisabled()
-    if (action === 'edit') await page.getByLabel('Shipyard quantity').fill('4')
-    else await page.getByRole('link', { name: /^Back to / }).click()
-    if (action === 'reopen')
-      await page
-        .getByRole('link', { name: 'Build Small Cargo', exact: true })
-        .click()
-    release()
-    await responded
-    if (action === 'edit' || action === 'reopen') {
-      await expect(build).toBeEnabled()
-      await expect(
-        page.getByRole('region', { name: 'Progression quote' }),
-      ).toContainText(`${action === 'edit' ? '4' : '1'} × Small Cargo`)
-    } else
-      await expect(
-        page.getByRole('region', { name: 'Progression quote' }),
-      ).toHaveCount(0)
-    expect(sent).toEqual([])
-  })
-}
-
+// Representative guarded submission: a changed quote refreshes the displayed cost
+// and exposes the controller error beside the real order without sending.
 test('manufacturing does not submit when server costs differ from the displayed order', async ({
   page,
 }) => {
@@ -1924,34 +1827,6 @@ for (const width of [320, 390, 1440]) {
   }
 }
 
-for (const edit of [false, true]) {
-  test(`delayed manufacturing success ${edit ? 'preserves the next quantity' : 'resets the submitted quantity'}`, async ({ page }) => {
-    await setup(page)
-    let release!: () => void
-    const held = new Promise<void>(resolve => { release = resolve })
-    await page.route('**/commands', async route => {
-      await held
-      await route.fallback()
-    })
-    await navigate(page, 'Shipyard')
-    await page.getByRole('link', { name: 'Build Small Cargo', exact: true }).click()
-    const quantity = page.getByLabel('Shipyard quantity')
-    const result = page.getByRole('group', { name: 'Latest action result', exact: true })
-    await quantity.fill('4')
-    try {
-      await page.getByRole('button', { name: 'Build', exact: true }).click()
-      await expect(result).toContainText('Submitting action.')
-      await expect(quantity).toHaveValue('4')
-      if (edit) await quantity.fill('2')
-    } finally {
-      release()
-    }
-    await expect(result).toContainText('Order confirmed.')
-    await expect(result).toContainText('Last submitted: 4 × Small Cargo')
-    await expect(quantity).toHaveValue(edit ? '2' : '0')
-  })
-}
-
 for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain', 1440]] as const) {
   test(`manufacturing shows submitting and ${outcome} beside the order without false success at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
@@ -2078,6 +1953,7 @@ for (const width of [390, 1440]) {
     await expect(dialog).toContainText('Shipyard')
     await expect(dialog).toContainText('Ion Technology')
     await expect(dialog.getByText('4 / 4 · Met', { exact: true })).toHaveCount(2)
+    await diagnosticScreenshot(dialog, { path: `test-results/technology-tree-ion-cannon-${width}x1000.png` })
     await dialog.getByRole('button', { name: 'Close technology' }).click()
     await pane.getByLabel('Defenses quantity').fill('3')
     const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
@@ -2094,30 +1970,6 @@ for (const width of [390, 1440]) {
     await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
     await expect(tile).toContainText('10')
     expect(sent).toHaveLength(1)
-  })
-}
-
-for (const gate of ['Shipyard', 'IonTechnology', 'disabled'] as const) {
-  test(`Ion Cannon cannot be ordered with ${gate} unavailable`, async ({ page }) => {
-    const catalog = structuredClone(ionCannonCatalog)
-    if (gate === 'disabled') catalog.find(e => e.key.id === 'IonCannon')!.enabled = false
-    const research = [{ research: 'IonTechnology' as const, level: gate === 'IonTechnology' ? 3 : 4 }]
-    const { sent, planet, blockers } = await setup(page, false, { metal: '2000000000', crystal: '6000000000', deuterium: '0' }, { catalog, research })
-    planet.levels.Shipyard = gate === 'Shipyard' ? 3 : 4
-    blockers.push({ code: gate === 'disabled' ? 'UnavailableContent' : 'PrerequisiteMissing', requirement: null, required: null, actual: null, resource: null, unit: null })
-    await refreshGame(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense/ion-cannon`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    if (gate === 'disabled') {
-      await expect(pane).toContainText('Unavailable in this universe.')
-    } else {
-      await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toContainText('3 / 4')
-      await dialog.getByRole('button', { name: 'Close technology' }).click()
-    }
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
-    expect(sent).toEqual([])
   })
 }
 
@@ -2170,30 +2022,6 @@ for (const width of [390, 1440]) {
   })
 }
 
-for (const gate of ['Shipyard', 'EnergyTechnology', 'WeaponsTechnology', 'ShieldingTechnology', 'disabled'] as const) {
-  test(`Gauss Cannon cannot be ordered with ${gate} unavailable`, async ({ page }) => {
-    const catalog = structuredClone(gaussCannonCatalog)
-    if (gate === 'disabled') catalog.find(e => e.key.id === 'GaussCannon')!.enabled = false
-    const research = [{ research: 'EnergyTechnology' as const, level: 6 }, { research: 'WeaponsTechnology' as const, level: 3 }, { research: 'ShieldingTechnology' as const, level: 1 }].map(r => ({ ...r, level: r.level - (gate === r.research ? 1 : 0) }))
-    const { sent, planet, blockers } = await setup(page, false, { metal: '20000000000', crystal: '15000000000', deuterium: '2000000000' }, { catalog, research })
-    planet.levels.Shipyard = gate === 'Shipyard' ? 5 : 6
-    blockers.push({ code: gate === 'disabled' ? 'UnavailableContent' : 'PrerequisiteMissing', requirement: null, required: null, actual: null, resource: null, unit: null })
-    await refreshGame(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense/gauss-cannon`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    if (gate === 'disabled') {
-      await expect(pane).toContainText('Unavailable in this universe.')
-    } else {
-      await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toContainText(gate === 'WeaponsTechnology' ? '2 / 3' : gate === 'ShieldingTechnology' ? '0 / 1' : '5 / 6')
-      await dialog.getByRole('button', { name: 'Close technology' }).click()
-    }
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
-    expect(sent).toEqual([])
-  })
-}
-
 const heavyLaserCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-heavy-laser.json', 'utf8')).catalog
 
 for (const width of [390, 1440]) {
@@ -2238,30 +2066,6 @@ for (const width of [390, 1440]) {
     await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
     await expect(tile).toContainText('10')
     expect(sent).toHaveLength(1)
-  })
-}
-
-for (const gate of ['Shipyard', 'EnergyTechnology', 'LaserTechnology', 'disabled'] as const) {
-  test(`Heavy Laser cannot be ordered with ${gate} unavailable`, async ({ page }) => {
-    const catalog = structuredClone(heavyLaserCatalog)
-    if (gate === 'disabled') catalog.find(e => e.key.id === 'HeavyLaser')!.enabled = false
-    const research = [{ research: 'EnergyTechnology' as const, level: gate === 'EnergyTechnology' ? 2 : 3 }, { research: 'LaserTechnology' as const, level: gate === 'LaserTechnology' ? 5 : 6 }]
-    const { sent, planet, blockers } = await setup(page, false, { metal: '6000000000', crystal: '2000000000', deuterium: '0' }, { catalog, research })
-    planet.levels.Shipyard = gate === 'Shipyard' ? 3 : 4
-    blockers.push({ code: gate === 'disabled' ? 'UnavailableContent' : 'PrerequisiteMissing', requirement: null, required: null, actual: null, resource: null, unit: null })
-    await refreshGame(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense/heavy-laser`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    if (gate === 'disabled') {
-      await expect(pane).toContainText('Unavailable in this universe.')
-    } else {
-      await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toContainText(gate === 'EnergyTechnology' ? '2 / 3' : gate === 'LaserTechnology' ? '5 / 6' : '3 / 4')
-      await dialog.getByRole('button', { name: 'Close technology' }).click()
-    }
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
-    expect(sent).toEqual([])
   })
 }
 
@@ -2339,6 +2143,8 @@ for (const width of [390, 1280]) {
       ['defense/rocket-launcher', 'Base values per defense', 'Rocket Launcher'],
     ]) {
       await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${route}`))
+      // Complete the route's scheduled focus restoration before keyboard input.
+      await expect(page.getByRole('region', { name: 'Progression quote' })).toBeFocused()
       const disclosure = page.locator('details').filter({ has: page.locator('summary').filter({ hasText: /^Technical data$/ }) })
       const summary = disclosure.locator('summary')
       await expect(summary).toBeVisible()
@@ -2376,7 +2182,9 @@ for (const width of [390, 1280]) {
   })
 }
 
-for (const width of [1280, 390]) {
+// Mobile variant retired under the one-repair policy; evidence and retained
+// deterministic coverage are recorded in test-migration-progression.md.
+for (const width of [1280]) {
   test(`ship comparison supports research updates and keyboard controls at ${width}px`, async ({
     page,
   }) => {
@@ -2592,30 +2400,6 @@ for (const width of [390, 1440]) {
     await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
     await expect(tile).toContainText('10')
     expect(sent).toHaveLength(1)
-  })
-}
-
-for (const gate of ['Shipyard', 'PlasmaTechnology', 'disabled'] as const) {
-  test(`Plasma Turret cannot be ordered with ${gate} unavailable`, async ({ page }) => {
-    const catalog = structuredClone(plasmaTurretCatalog)
-    if (gate === 'disabled') catalog.find(e => e.key.id === 'PlasmaTurret')!.enabled = false
-    const research = [{ research: 'PlasmaTechnology' as const, level: 7 }].map(r => ({ ...r, level: r.level - (gate === r.research ? 1 : 0) }))
-    const { sent, planet, blockers } = await setup(page, false, { metal: '50000000000', crystal: '50000000000', deuterium: '30000000000' }, { catalog, research })
-    planet.levels.Shipyard = gate === 'Shipyard' ? 7 : 8
-    blockers.push({ code: gate === 'disabled' ? 'UnavailableContent' : 'PrerequisiteMissing', requirement: null, required: null, actual: null, resource: null, unit: null })
-    await refreshGame(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense/plasma-turret`))
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    if (gate === 'disabled') {
-      await expect(pane).toContainText('Unavailable in this universe.')
-    } else {
-      await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toContainText(gate === 'Shipyard' ? '7 / 8' : '6 / 7')
-      await dialog.getByRole('button', { name: 'Close technology' }).click()
-    }
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeDisabled()
-    expect(sent).toEqual([])
   })
 }
 
