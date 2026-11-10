@@ -5,9 +5,12 @@ run on GitHub-hosted `ubuntu-24.04` VMs. Each job gets a disposable host, includ
 Docker and Chromium's Linux dependencies. Explicit suites remain opt-in with
 generous preparation and execution guards.
 
-Routine fixture-browser tests run in eight Playwright shards on separate VMs,
-in parallel with native build/lint/unit checks and three PostgreSQL groups,
-after a short changed-path selection job. The two measured longest database
+Routine browser validation uses eight disposable VMs: one for tagged application
+journeys, one for isolated components, and six for remaining required feature
+integrations. These run in parallel with native build/lint/unit checks and three
+PostgreSQL groups after changed-path selection. Unmigrated feature assertions
+remain required; the inventory check rejects omissions and duplicate execution
+across all three browser classes. The two measured longest database
 binaries, `rules_updates` and `world_edit`, each get a group; the `rest` group
 includes every other binary automatically. Each group compiles only its selected
 binaries. Run them locally with `make test-db-rules`, `make test-db-world`, or
@@ -36,8 +39,29 @@ suite deadline. GitHub-hosted jobs retain the platform's six-hour cap. Functiona
 network timeouts and assertions about timeout behavior remain unchanged.
 Each browser shard uses at most three workers, bounded by available CPUs.
 Playwright's `fullyParallel` mode partitions individual tests across shards.
-`make test-ui` still runs the whole suite locally; use `make test-ui UI_SHARD=2/8`
-to reproduce one CI shard. No test selection or assertion changes with sharding.
+`make test-ui` runs all application fixture tests locally. Use `make test-journeys`
+for the `@journey` cohort, `make test-features UI_SHARD=2/6` for one remaining
+feature shard, and `make test-components` for the isolated gallery. All three
+classes block the aggregate gate. Browser case placement follows the
+[testing strategy](../architecture/testing-strategy.md), with explicit mappings
+in `docs/verification/test-migration-*.md`.
+
+Both application and component fixture runners build temporary bundles before
+opening a browser. Lazy module compilation therefore cannot consume an
+assertion's wait. The component build includes both the gallery and independent
+report-observation entrypoint.
+The bundle deliberately retains development previews and React development
+checks; it is not a release artifact. The separate built-homepage check still
+validates production assets. The runner removes its temporary bundle and closes
+its server/browser on exit. Components use a test-only Vite entry with prepared
+real components and fail on unexpected API requests or page errors. Neither
+runner hot-reloads changing source during validation.
+
+On a shared development machine, one owner serializes browser suites, builds
+and full typechecks across collaborating chats. Separate worktrees and one
+worker per chat do not isolate CPU/memory. Preserve interrupted/failing evidence
+and record resource contention separately from a diagnosed test defect.
+
 Responsive catalog checks keep routes mounted across viewport changes to avoid redundant
 application startup while retaining every viewport and control assertion.
 Countdown tests exercise a normal one-second tick before fast-forwarding to

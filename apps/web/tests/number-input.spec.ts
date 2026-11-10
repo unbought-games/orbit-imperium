@@ -1,5 +1,5 @@
 import { test, expect, type Locator } from './fixtures/test'
-import { body, shellFixture } from './fixtures/game'
+import { body, installGameFixture, shellFixture } from './fixtures/game'
 import { withBootstrapResponse } from './fixtures/responses'
 
 async function expectSelected(input: Locator) {
@@ -19,74 +19,27 @@ async function expectSelected(input: Locator) {
     ])
 }
 
-for (const interaction of ['click', 'tap'] as const) {
-  test.describe(interaction, () => {
-    test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
-
-    for (const screen of [
-      'dispatch',
-      'transport',
-      'shipyard',
-      'defense',
-    ] as const) {
-      test(`${screen} numbers are replaced after ${interaction} and refocus`, async ({
-        page,
-      }) => {
-        if (screen === 'shipyard' || screen === 'defense') {
-          await page.goto(
-            `/detail-playground?scene=${screen === 'shipyard' ? 'ship-ready' : 'defense-queued'}`,
-          )
-        } else {
-          await shellFixture(page, {
-            protocol: screen === 'dispatch' ? 4 : 2,
-            extraCapabilities: ['Transport'],
-            catalog: [
-              {
-                key: { kind: 'Ship', id: 'SmallCargo' },
-                requirements: [],
-                enabled: true,
-                mobile: true,
-                body_kinds: ['Planet'],
-              },
-            ],
-          })
-          await withBootstrapResponse(page, () => page.goto(
-            `/u/andromeda/b/${body.id}/${screen === 'dispatch' ? 'dispatch' : 'fleets'}`,
-          ))
-        }
-
-        const inputs = page.locator('input[inputmode="numeric"]:not([data-coordinate-input])')
-        await expect(inputs).toHaveCount(
-          screen === 'dispatch' ? 4 : screen === 'transport' ? 4 : 1,
-        )
-        for (const input of await inputs.all()) {
-          // Actual typing must replace both the initial value (including zero)
-          // and a previously edited value. fill() would hide selection bugs.
-          for (const value of ['5', '12']) {
-            await input.evaluate((element: HTMLInputElement) => element.blur())
-            await input[interaction]()
-            await expectSelected(input)
-            await page.keyboard.type(value)
-            await expect(input).toHaveValue(value)
-          }
-          // While already editing, normal caret navigation still works.
-          await page.keyboard.press('ArrowLeft')
-          await page.keyboard.type('3')
-          await expect(input).toHaveValue('132')
-          await input.click()
-          await expect
-            .poll(() =>
-              input.evaluate(
-                (element: HTMLInputElement) =>
-                  element.selectionStart === element.selectionEnd,
-              ),
-            )
-            .toBe(true)
-        }
-      })
-    }
+// NumberInput's mouse/touch selection permutations live in components/form.spec.ts.
+// Keep one application assertion that Dispatch actually wires those controls.
+test('dispatch numbers are replaced after click and refocus', async ({ page }) => {
+  await installGameFixture(page, {
+    protocol: 4,
+    extraCapabilities: ['Transport'],
+    catalog: [{ key: { kind: 'Ship', id: 'SmallCargo' }, requirements: [], enabled: true, mobile: true, body_kinds: ['Planet'] }],
   })
-}
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
+  const inputs = page.locator('input[inputmode="numeric"]:not([data-coordinate-input])')
+  await expect(inputs).toHaveCount(4)
+  for (const input of await inputs.all()) {
+    for (const value of ['5', '12']) {
+      await input.evaluate((element: HTMLInputElement) => element.blur())
+      await input.click()
+      await expectSelected(input)
+      await page.keyboard.type(value)
+      await expect(input).toHaveValue(value)
+    }
+  }
+})
 
 test('coordinates are one tab stop with colon and space advancement', async ({
   page,

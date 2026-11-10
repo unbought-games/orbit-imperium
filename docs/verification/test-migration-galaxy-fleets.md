@@ -1,0 +1,290 @@
+# Galaxy and fleet test boundary migration
+
+Base: `a119915ffaeb881a7f54d65542478f4788bd4210`.
+
+## Implementation
+
+- `GalaxyHarvestPresentation` owns the actual responsive ActionSheet/ActionPopover and form. `GalaxyHarvestAction` retains the real hook, coordinator commands and recovery. No launch logic was replicated in the component fixture.
+- `FleetInventoryView` renders a confirmed snapshot without a live coordinator or session subscription. The existing `FleetInventory` wrapper retains the authoritative store subscription and universe context.
+- Three isolated scene registrations are needed in the parent's shared component entrypoint: `galaxy-harvest` -> `GalaxyHarvestScenario`, `fleet-inventory` -> `FleetInventoryScenario`, and `galaxy-disclosure` -> `GalaxyDisclosureScenario`, all exported from `apps/web/tests/components/galaxy-fleet.scenarios.tsx`.
+- The component fixture rejects all API requests. It uses real production surfaces, form, model selectors, tooltips, inventory renderer and native disclosure. Scene callbacks only observe presentation output; they do not claim that commands were admitted or persisted.
+
+## Coverage and remaining integration
+
+Twenty-six expanded application cases move to twenty-seven component cases and six deterministic inventory model cases. The second group is pending parent serial validation. The existing harvest, Galaxy projection, debris, fleet-order and mission-presentation units retain numerical/eligibility/state coverage. The remaining application cases stay **required feature integration** pending further decomposition; this commit does not shrink CI selection or declare the entire 97-case inventory migrated.
+
+Keep actual application journeys for Galaxy quick actions, paid command/reconciliation, body and route switching, history, row-link navigation, coordinate overlays, and moon intent. A generic isolated surface cannot prove those callers pass the correct identity/context or retain keyed disclosure state. Do not silently deselect the remaining cases on the strength of these component tests.
+
+The final rapid-Galaxy-toast scenario is owned by the HUD migration and is untouched here. Its failure/repair disposition must be taken from that owner.
+
+## Validation and failures
+
+- New inventory model cases initially passed 5/6 under an accidentally unpinned Node23 shell. The grouping case failed because the new fixture omitted ship cost metadata: the production comparator correctly fell back to name order. Inspected `ship-order.ts`, the original browser fixture and this new test's history. Its single repair supplies the original costs and keeps the expected order unchanged.
+- Pinned Node24.18.0: all six inventory model cases passed (349ms runner). The combined inventory/harvest/debris/fleet-movement/mission-presentation run passed 37 cases across five files (335ms runner).
+- Initial component attempt under the unpinned shell was stopped during preparation; no test assertion executed. A subsequent pinned launch was cancelled during dependency setup at the parent's request to serialize validation on the overloaded host. Neither is passing validation.
+- Duplicate local typechecks were cancelled, not reported as passes. Parent serial integration must run component tests, typechecks, retained browser journeys, and desktop/mobile visual capture before reducing any CI selection.
+- Temporary copies of the parent's harness/runner were used locally and are not part of this commit. No database, Docker, external publication or full-suite validation was started by this migration. Task-owned browser/runner/typecheck processes were stopped.
+
+## Original expanded scenario dispositions
+
+Full suite ancestry and project are retained because file plus leaf title is not unique. “Retained” means the existing assertion remains required, not an explicit-only quarantine.
+
+| Project / baseline spec ID | Full title path | Disposition | Named retained/replacement coverage |
+|---|---|---|---|
+| `default` / `5d0ea436ccce26fd8b47-67a5f55a3d81012fb30d` | fleet-inventory.spec.ts > stationed inventory separates exact counts and Shipyard links at 320px | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-3f57adaf84642ae6b862` | fleet-inventory.spec.ts > stationed inventory separates exact counts and Shipyard links at 390px | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-084d64e117576dfc09e0` | fleet-inventory.spec.ts > stationed inventory separates exact counts and Shipyard links at 1280px | Retained application journey | Original case: Shipyard route, selected world, refresh, fleet slots and detail-page omission |
+| `default` / `5d0ea436ccce26fd8b47-d9d2b53e336600b45d36` | fleet-inventory.spec.ts > empty stationed inventory retains a useful Shipyard destination | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-c1e7a16dbaf8e85a4f05` | fleet-inventory.spec.ts > inventory retains stationed ships without showing zero-only rows | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-9bbe5df91643a7afcd81` | fleet-inventory.spec.ts > inventory retains flying ships without showing zero-only rows | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-58dfd8896643c95039a2` | fleet-inventory.spec.ts > inventory retains queued ships without showing zero-only rows | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-8a91e2d788d3981317b9` | fleet-inventory.spec.ts > inventory retains empty ships without showing zero-only rows | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-9d813dd9cc09367da75f` | fleet-inventory.spec.ts > stationed ships show shared groups at 390px | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `5d0ea436ccce26fd8b47-c69ca4f0f19b26e9eef5` | fleet-inventory.spec.ts > stationed ships show shared groups at 1440px | Moved to component/model | galaxy-fleet.component.spec.ts: inventory table / empty inventory; fleet-inventory-model.test.ts: all 6 cases. Original 1280px application case retains actual route/world-switch wiring. |
+| `default` / `c48ab2615fbc1a308573-2c23a960046375ec808e` | galaxy-cards.spec.ts > alliance mates are clearly marked and follow current membership at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-a7d39acbbcc2abca8ecc` | galaxy-cards.spec.ts > alliance mates are clearly marked and follow current membership at 1280px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-41845bad1f9f9229ea45` | galaxy-cards.spec.ts > protection is a green player status with an accessible explanation and blocks hostile actions until refreshed | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-7a27cb9ce811b800ca57` | galaxy-cards.spec.ts > vacation and inactivity coexist; tooltips support hover, keyboard, tap and dismissal | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-96b9779bededc454b266` | galaxy-cards.spec.ts > every row keeps its Actions control and your selected planet can harvest its own debris | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-916f56bb54ecb832ef2e` | galaxy-cards.spec.ts > system navigation, unavailable worlds and retry preserve eligibility and exact debris amounts | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-6d8be951f51c6f1e83ba` | galaxy-cards.spec.ts > planet Actions opens the Transport draft | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-736ecc47ef21f9750f75` | galaxy-cards.spec.ts > planet Actions opens the Attack draft | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-c96ff1389a2a18c70ace` | galaxy-cards.spec.ts > one coordinate link supports copy, navigation and keyboard focus restoration | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-e60b1c615bcb00bf1ed1` | galaxy-cards.spec.ts > shared columns align all debris and controls; mobile rows reach both edges without horizontal overflow | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-fda143e0ec2bc4d7f4e8` | galaxy-cards.spec.ts > empty positions offer Colonize only when supported, and preserve the coordinate draft | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-9735251de4a589e43d94` | galaxy-cards.spec.ts > incoming fleets and report details use the supplied public name without an identity request | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-83a71b5963403d7b19f1` | galaxy-cards.spec.ts > supporter preview compares identities without a session or game requests | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-c8ff91ded6a798986834` | galaxy-cards.spec.ts > Galaxy uses the signed-in supporter identity for the owned planet | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-56e392eb4bb33f95e2ad` | galaxy-cards.spec.ts > galaxy controls stay compact with touch-sized targets at 320px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-67b1b8ff041559514d4d` | galaxy-cards.spec.ts > galaxy controls stay compact with touch-sized targets at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-726c396ea37cd890096e` | galaxy-cards.spec.ts > galaxy controls stay compact with touch-sized targets at 1280px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-a6472e74d443e50f44cf` | galaxy-cards.spec.ts > one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-bbcb6d726fb30795fc96` | galaxy-cards.spec.ts > galaxy espionage explains quote failures in the banner without navigating or launching | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-9035e65f2978e46447f6` | galaxy-cards.spec.ts > galaxy espionage is unavailable without a stationed probe | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-78dace806a113d8e1368` | galaxy-cards.spec.ts > galaxy probe countdown ticks without reloading rows or fetching the system | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-6af14cd5a0706ce5ab72` | galaxy-cards.spec.ts > typed coordinates commit together, validate universe bounds, and follow history | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-4675e1e868e9399df9da` | galaxy-cards.spec.ts > a delayed response never replaces a newer typed destination | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-d7903cd87bfe53e7ba8c` | galaxy-cards.spec.ts > six fleets collapse to one summary, expand individually, and preserve expansion during refresh | Moved to component | galaxy-fleet.component.spec.ts: flight summary preserves native disclosure through refreshed countdowns; game-projection.test.ts retains galaxyFlights selection/reconciliation |
+| `default` / `c48ab2615fbc1a308573-3769cd0df91350d2f692` | galaxy-cards.spec.ts > Spy acknowledges optimistically at a fixed size and fades back at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-bff29a91029a8a08b90f` | galaxy-cards.spec.ts > Spy acknowledges optimistically at a fixed size and fades back at 1280px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-962776c8008afb2bffac` | galaxy-cards.spec.ts > a rejected launch clears the optimistic check and reports the authoritative error in the banner | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-3d5db6c21dfc5f5f1b62` | galaxy-cards.spec.ts > mobile harvest opens at half height, derives the count, and Customize preserves destination | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-ae91dbd3fc1a8fc0255d` | galaxy-cards.spec.ts > mobile harvest explains No recyclers available on the selected planet. | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-b5cfea11b5fa46bdab79` | galaxy-cards.spec.ts > mobile harvest explains No fleet slots available. Wait for a fleet to return. | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-9beb0b92da76e23bc2fa` | galaxy-cards.spec.ts > mobile harvest caps the default and validates manual quantities | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-85987052a7f8a83f5516` | galaxy-cards.spec.ts > mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-93d04b91d45285bc284e` | galaxy-cards.spec.ts > closing mobile harvest while quoting never launches a stale selection | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-bf8267bcd58a444e7871` | galaxy-cards.spec.ts > desktop Harvest opens an anchored popover, selects the quantity and preserves explicit Customize | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-319efbfbf5fbaf3bd05e` | galaxy-cards.spec.ts > coordinate Harvest shares the quick form and restores its opener at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-0ac93198d16af3919dfe` | galaxy-cards.spec.ts > coordinate Harvest shares the quick form and restores its opener at 1280px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-39aa913c60a044446aab` | galaxy-cards.spec.ts > mobile harvest displays fuel quote failures without creating a departure | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-57ef0492243388865f85` | galaxy-cards.spec.ts > Harvest preserves the edited quantity when switching between popover and sheet | Moved to component | galaxy-fleet.component.spec.ts: harvest edits survive popover/sheet changes and release scroll locking |
+| `default` / `c48ab2615fbc1a308573-a17d3aec20911c3c0575` | galaxy-cards.spec.ts > desktop Harvest shares blocked-state explanations and fits near the viewport edge | Moved to component/model | galaxy-fleet.component.spec.ts: blocked desktop harvest stays inside a short viewport and restores its opener; galaxy-harvest.test.ts retains independent blocker derivation |
+| `default` / `c48ab2615fbc1a308573-70dbf7146bb1e7dde992` | galaxy-cards.spec.ts > desktop Harvest sends the edited quantity with Enter through the shared launch path | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-d4030f8ed9c54c55ba9c` | galaxy-cards.spec.ts > browser-history navigation away from a harvest target does not reopen its popover on return | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-faa8f8a1f48f4bd9559e` | galaxy-cards.spec.ts > Galaxy and Fleets are separate destinations with nested Dispatch at 320px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-0e29b47a7fb339cac8a7` | galaxy-cards.spec.ts > Galaxy and Fleets are separate destinations with nested Dispatch at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-0f7bd55c6b6ab1c580fd` | galaxy-cards.spec.ts > Galaxy and Fleets are separate destinations with nested Dispatch at 768px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-c21a2d2e25ad378477fd` | galaxy-cards.spec.ts > Galaxy and Fleets are separate destinations with nested Dispatch at 1440px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-0cde17131555df8e32ce` | galaxy-cards.spec.ts > debris art and amounts open quick harvest with keyboard access at 390px | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-ec34027aed0c7e6a8d7d` | galaxy-cards.spec.ts > debris quick harvest preserves blocked mission explanations at 390px | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-ee2e111d9be9a6e74fd7` | galaxy-cards.spec.ts > debris art and amounts open quick harvest with keyboard access at 1280px | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-b140263ed42f93d86626` | galaxy-cards.spec.ts > debris quick harvest preserves blocked mission explanations at 1280px | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-ba56c791ef3ce6199839` | galaxy-cards.spec.ts > debris quick harvest follows capability eligibility and supports own and empty positions | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-b4133ca36d029bc64123` | galaxy-cards.spec.ts > Espionage throttling shows only the cooldown explanation at 1280px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-03faf47db83cde5b9005` | galaxy-cards.spec.ts > Espionage throttling shows only the cooldown explanation at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-ed9d179d58feb6e9f314` | galaxy-cards.spec.ts > Harvest throttling shows only the cooldown explanation at 1280px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-4cf620a6241e4a40ed56` | galaxy-cards.spec.ts > Harvest throttling shows only the cooldown explanation at 390px | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-f7bd12999709a5b46379` | galaxy-cards.spec.ts > deuterium debris and quick harvest at 1440 | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-b76a8f3533ab9d2e6620` | galaxy-cards.spec.ts > deuterium debris and quick harvest at 390 | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-21028759b311c21394a1` | galaxy-cards.spec.ts > zero debris deuterium stays hidden in galaxy and quick harvest at 1440 | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-b2cfe455a0b3fc4a00fd` | galaxy-cards.spec.ts > zero debris deuterium stays hidden in galaxy and quick harvest at 390 | Moved to isolated Galaxy row / harvest component | galaxy-position.component.spec.ts: identical scenario title/viewport; real GalaxyPosition, GalaxyDebris and GalaxyHarvestPresentation. Production harvest/debris selectors remain covered by galaxy-harvest.test.ts and galaxy-position.test.ts. Actual command and route journeys remain required. |
+| `default` / `c48ab2615fbc1a308573-fe62fd648d9ec4da8aa6` | galaxy-cards.spec.ts > desktop Harvest keeps its Actions anchor when the planet changes | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-fca28c2c2b0ee6a7b495` | galaxy-cards.spec.ts > a probe in flight to one target leaves Spy available for the other targets | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
+| `default` / `c48ab2615fbc1a308573-db418e05d23e4aa0369b` | galaxy-cards.spec.ts > rapid Galaxy spying keeps a compact actionable toast stack at 1440x900 | Other owner: HUD retirement; unchanged here | HUD migration record; do not reset repair history |
+| `default` / `c48ab2615fbc1a308573-48fa7c221f352681af6a` | galaxy-cards.spec.ts > touch status tooltips > a tap opens each simultaneous status and an outside tap dismisses it | Restored required feature integration | Original touch-only scenario restored unchanged; new combined-modality component migration retired after its single repair failed |
+| `default` / `9c4a90075213ce439feb-5fa7f8560db44d65f8e3` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 320px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-cca4d5458232f697ec30` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-6c50bd98bd241b51d52b` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-29581042116202c1672e` | mission-fleets.spec.ts > fleets row opens details without stealing controls at 390px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-fe9daee2127107f8eead` | mission-fleets.spec.ts > fleets row opens details without stealing controls at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-286b82a5d50be016b3a9` | mission-fleets.spec.ts > overview row opens details without stealing controls at 390px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-a61c209f8424c1188268` | mission-fleets.spec.ts > overview row opens details without stealing controls at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-f42a107bf34d64b3d12e` | mission-fleets.spec.ts > fleets incoming fleet shares the flight card and discloses intelligence at 390px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-8fb33718887c5577112f` | mission-fleets.spec.ts > fleets incoming fleet shares the flight card and discloses intelligence at 1280px | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-0ac2155b27f8d73fc6f5` | mission-fleets.spec.ts > overview incoming fleet shares the flight card and discloses intelligence at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-03411e745265959f0243` | mission-fleets.spec.ts > overview incoming fleet shares the flight card and discloses intelligence at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-d42e41fcc066f2b8ad3d` | mission-fleets.spec.ts > fleets incoming disclosure state stays with its fleet across snapshot changes | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-c9aabc76df550bf2e618` | mission-fleets.spec.ts > overview incoming disclosure state stays with its fleet across snapshot changes | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
+| `default` / `9c4a90075213ce439feb-25b112003cbcc069e119` | mission-fleets.spec.ts > fleet row touch feedback > fleets touchdown and cancellation preserve scrolling and child controls | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `9c4a90075213ce439feb-9bc9fc4b957cbff665c2` | mission-fleets.spec.ts > fleet row touch feedback > overview touchdown and cancellation preserve scrolling and child controls | Moved to component; caller journeys retained | fleet-card.component.spec.ts: matching article/list row, touch or incoming cases at mobile/desktop. Original desktop row journeys retain native modified links, coordinate menus and actual routing; Overview incoming journeys retain HUD embedding; keyed snapshot cases remain required.
+| `default` / `faf25f149ed786d6994b-617af40ce12b512907a2` | moon-fleets.spec.ts > moon fleet operations 1440 > launches from local inventory and supplies moon defenders from the parent | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-9f21fa3de34e8c3e0d52` | moon-fleets.spec.ts > moon fleet operations 1440 > Galaxy moon actions and quick espionage bind the moon rather than its planet | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-aba839a220aa3cf1e4cb` | moon-fleets.spec.ts > moon fleet operations 1440 > delivery reports retain lunar destination links at shared coordinates | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-c366d7713f2882860f18` | moon-fleets.spec.ts > moon fleet operations 1440 > moon quick-espionage failures remain visible on the Galaxy row | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-23330e6e3b6cadc182da` | moon-fleets.spec.ts > moon fleet operations 1440 > moon dispatch shows observed attack and espionage protection before review | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-724f12c59cc1425aa246` | moon-fleets.spec.ts > moon fleet operations 390 > launches from local inventory and supplies moon defenders from the parent | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-a4f51178b93a1041a421` | moon-fleets.spec.ts > moon fleet operations 390 > Galaxy moon actions and quick espionage bind the moon rather than its planet | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-3827c0f3de6ba59ddb61` | moon-fleets.spec.ts > moon fleet operations 390 > delivery reports retain lunar destination links at shared coordinates | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-530f3eefc81b4d30c242` | moon-fleets.spec.ts > moon fleet operations 390 > moon quick-espionage failures remain visible on the Galaxy row | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+| `default` / `faf25f149ed786d6994b-501fcd6dc064d3d6b07d` | moon-fleets.spec.ts > moon fleet operations 390 > moon dispatch shows observed attack and espionage protection before review | Retained required feature integration | Original case retained: actual Moon/Planet intent, routing, command or selected-origin wiring is not established by isolated inventory/harvest views. |
+
+## Component first-run evidence and one authored-test repair
+
+Parent integrated `3ca92a78` as `a12173ea` and ran the ten component cases: nine
+passed; the combined status case failed after its touch phase when the next
+iteration used `locator.focus()` and expected a keyboard tooltip. The focused
+Inactive trigger was present, but no tooltip opened. Base UI's installed
+`useFocus` deliberately opens only for focus-visible input; the preceding tap
+left pointer modality active. Programmatic focus was not a keyboard gesture.
+
+The one repair traverses Tab then Shift+Tab to the target and asserts focus before
+the same tooltip assertion. It preserves touch, keyboard, outside dismissal and
+all status assertions, introduces no timeout or product change, and is not an
+unchanged retry. Parent retains the failure log `/tmp/orbit-galaxy-components-first.log`
+and artifacts under `test-results/test-strategy/galaxy-components-first`. Validation
+of this repair remains with parent serial execution.
+
+## Disclosure membership coverage correction
+
+Independent review found that the initial isolated disclosure scenario refreshed
+only the clock while the removed integration case also changed projected fleet
+membership after one fleet returned. The scene now removes the departed entry
+from its prepared projection on refresh, and the component case asserts five
+remaining entries, the updated accessible summary and continued expansion.
+`game-projection.test.ts` separately retains the real outbound/returning
+classification. This closes the missing DOM-retention assertion without claiming
+that static model coverage can prove it. Parent validates this correction.
+
+## Combined status component retired; original coverage restored
+
+The parent's single repaired run failed again: after actual keyboard traversal,
+the assertion matched both the departing Vacation tooltip and the new Inactive
+tooltip during exit. Both expected UI states were present; this second authored
+test defect is not a product failure or infrastructure incident. Removed the new
+combined keyboard-then-touch component scenario outright under the one-repair
+rule, without another stabilization or renamed replacement.
+
+Restored the original `touch status tooltips > a tap opens each simultaneous
+status and an outside tap dismisses it` application scenario exactly from
+`a119915f`; it never contained this added mixed-modality sequence. Its history and
+assertions remain intact. The existing application vacation/inactivity
+hover/keyboard scenario and `info-tooltip-state.test.ts` retain their independent
+protection. Combined-modality new coverage is lost; status component migration
+is deferred, not fixed by a passing retry. Evidence: parent log
+`/tmp/orbit-galaxy-components-repair.log` and
+`test-results/test-strategy/galaxy-components-repair`. No rerun requested.
+
+## Second group: fleet cards and recall interaction
+
+`MissionFleetCardPresentation` renders actual outgoing card markup, row-link
+interaction and local disclosure from prepared snapshots. `MissionFleetCard`
+retains the live coordinator subscription, time projection and real command
+actions. `FleetRecallPresentation` owns review/keep/confirm interaction;
+`FleetRecall` retains command admission and pending-state derivation. No
+command state, snapshot or business eligibility is duplicated in local state.
+
+New required scene registrations from `fleet-card.scenarios.tsx`:
+
+- `fleet-cards-article`: `FleetArticleScenario`
+- `fleet-cards-list`: `FleetListScenario`
+
+Ten isolated cases cover both container semantics and mobile/desktop cards:
+hover/press, dragging out onto a child control, local ship disclosure through a
+snapshot refresh, keyboard focus outlines, text-selection suppression of row
+navigation, review/keep/confirm callbacks and pending controls, incoming hidden
+intelligence, equal own/incoming geometry, touch cancellation and real
+router-link activation. These use the real production card, recall control,
+IncomingFleet, row-link hook, links and CSS. The scene's memory router observes
+link activation without mounting application/session/network clients.
+
+Six expanded application cases are replaced: two mobile row-control variants,
+two touch-cancellation variants and two fleet-page incoming-card variants.
+Actual desktop route/new-tab/context-menu journeys, Overview-to-HUD incoming
+embedding, keyed incoming insertion/removal across both application callers,
+and the active-fleet/recall journeys remain required. All ten lunar cases also
+remain required: they protect actual selected-Moon identity, parent-supplied
+defense, report links, quick-action command targets and observed protection
+through the application. A generic component callback cannot prove those
+caller bindings. No original body-intent assertion was dropped.
+
+Production and new test files pass scoped formatting, ESLint for production
+changes, whitespace and parser checks. Full component/type/application and
+desktop/mobile visual validation remain assigned to the parent, per serialized
+validation instructions. No new browser, build or full typecheck was started.
+
+## Third group: real Galaxy row/debris interactions
+
+Register `galaxy-position` -> `GalaxyPositionScenario` from
+`galaxy-position.scenarios.tsx`. Eight cases move with their original names and
+viewport variants: mixed/deuterium-only fields, zero/missing deuterium, actual
+debris art/resource hit areas and keyboard operation, and blocked-harvest
+explanations. The prepared scene mounts real GalaxyPosition rows in the
+production subgrid and passes their actual Harvest callback into the extracted
+responsive surface. Counts and eligibility are derived by production
+`galaxyHarvest` / `harvestCountError`; there is no copied launch controller or
+pretend server. The component fixture prohibits API requests, preserving the
+original no-quote/no-command-on-open assertion.
+
+The cases retain resource names/colors, exact accessible amounts, mobile sheet
+geometry, desktop opacity/bounds, focus restoration, image/text/native keyboard
+activation, blocked controls and overflow assertions. Actual Galaxy route,
+command, reservation and history behavior remain in the existing quick-action
+journeys. Sticky toolbar/navigation geometry and status tooltip application
+cases remain required; neither is covered merely by the isolated row.
+
+No browser, full typecheck or build was launched for this group. Formatting,
+parser and whitespace checks passed; parent serial validation and visual
+inspection are still required before final CI selection changes.
+
+## Fleet-card first-run evidence and one authored-test repair
+
+The parent's first fleet-card component run passed six cases; all four incoming
+article/list and mobile/desktop variants failed at the same exact-text assertion
+before reaching geometry or disclosure checks. The new assertion expected only
+`6m 0s`; the existing `FleetFlightRoute` timer deliberately renders the
+`fleetFlight` label and time together: `Arrives in 6m 0s`. This was an incorrect
+new expectation, not a product defect.
+
+Its single repair retains exact text equality and includes the existing prefix
+in both initial and refreshed expectations (`Arrives in 5m 59s`). Inspected
+`IncomingFleet`, `FleetFlightRoute`, `ShipComposition`, the scene timestamp and
+remaining incoming assertions: visibility states remove the exact ship list,
+retain local disclosure, and preserve the scheduled arrival `datetime`; shared
+card geometry uses the same production CSS class. No production code, assertion
+strength, timeout or retry policy changes. Parent owns the one affected rerun.
+Evidence: `/tmp/orbit-fleet-cards-first.log` and parent artifacts under
+`test-results/test-strategy/fleet-cards-first`. The unexecuted downstream
+assertions are not reported as passed.
+
+## Galaxy-position first-run evidence and one scene repair
+
+The parent's integrated component run passed seven of eight Galaxy-position
+cases. The 390px keyboard debris case completed its interactions but failed the
+unchanged document-overflow assertion after closing the sheet: `scrollWidth` was
+408 instead of 390. The screenshot also showed clipped left-edge planet art.
+
+This is a scene container defect. Production `GameShell` supplies inline padding
+from `--shell-inline-gutter`; Galaxy's `.screen` cancels that gutter with negative
+inline margins below 768px. The isolated scene applied `.screen` directly to an
+unpadded root. At this viewport the 18px gutter explains the additional positive
+right overflow. The other mobile checks observed an open modal, whose document
+locking concealed the underlying fixture overflow; their passes did not prove
+the closed row layout.
+
+The single repair supplies the caller's gutter on an outer main and keeps the
+real Galaxy `.screen` inside it. No production CSS or overflow assertion changed;
+there is no clipping, width cap or hidden-overflow workaround. The fixture's
+capability `reason: Available` correction already made by the parent is separate
+and is not duplicated here. Parent retains evidence under
+`test-results/test-strategy/components-integrated` and
+`/tmp/orbit-components-integrated.log`, and owns the affected validation. No
+browser, build or typecheck was run for this repair.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

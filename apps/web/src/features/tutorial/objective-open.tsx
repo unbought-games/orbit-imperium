@@ -13,6 +13,20 @@ export function ObjectiveOpen({
   data: TutorialData
 }) {
   const universe = useUniverseName()
+  return (
+    <ObjectiveOpenLink universe={universe} objective={objective} data={data} />
+  )
+}
+
+export function ObjectiveOpenLink({
+  universe,
+  objective,
+  data,
+}: {
+  universe: string
+  objective: Objective
+  data: TutorialData
+}) {
   const target = objectiveDestination(objective, data)
   if (!target)
     return (

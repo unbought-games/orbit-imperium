@@ -1,3 +1,4 @@
+import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
 import { ContentColumn } from '../../ui/content-column'
 import { Plus, ArrowLeft, Users } from 'lucide-react'
@@ -20,7 +21,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import { Navigate, useNavigate, useSearch } from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
-import { AlliancesController, can } from '../../client-model/alliances'
+import { AlliancesController } from '../../client-model/alliances'
 import type { Coordinator } from '../../client-model/coordinator'
 import { useGameSession } from '../../shell/session-context'
 import { Button, ButtonLink, ButtonLinkAnchor } from '../../ui/button'
@@ -149,19 +150,7 @@ function AllianceWorkspace({
     const pending = controller.store.getState().pending
     if (pending && (await controller.retry())) complete(pending.action)
   }
-  const tabs = detail
-    ? [
-        'Board',
-        ...(can(detail, 'ViewMembers') ? ['Members'] : []),
-        ...(can(detail, 'ViewApplications') ? ['Applications'] : []),
-        ...(detail.roles &&
-        (can(detail, 'ManageRoles') || can(detail, 'AssignRoles'))
-          ? ['Roles']
-          : []),
-        'Settings',
-        ...(can(detail, 'ViewAudit') ? ['Audit'] : []),
-      ]
-    : []
+  const tabs = allianceSections(detail ?? null)
   const active = tabs.includes(tab) ? tab : 'Board'
   const visiblePlayers =
     !detail || discovering || (selected && selected !== detail.summary.id)

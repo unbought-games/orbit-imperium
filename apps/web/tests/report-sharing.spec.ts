@@ -33,7 +33,7 @@ const shared = {
   payload: { ...payload, target: { owner: 'participant-1', kind: 'Planet' } },
 }
 for (const width of [390, 1440]) {
-  test(`public report is readable without game initialization at ${width}px`, async ({
+  test(`public report is readable without game initialization at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })
@@ -323,52 +323,6 @@ for (const width of [390, 1440])
     ).toHaveAttribute('aria-pressed', 'true')
   })
 
-test('public combat shows loot and keeps historical names without a profile session', async ({
-  page,
-}) => {
-  const p = {
-    owner: 'participant-1',
-    origin: { Fleet: 'participant-2' },
-    side: 'Attacker',
-    units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '10' }],
-    technology: [1, 2, 3],
-  }
-  const report = {
-    ...shared,
-    options: { include_identity: true, include_coordinates: false },
-    player_names: { 'participant-1': 'Name at publication' },
-    payload: {
-      kind: 'Combat',
-      at: payload.observed_at,
-      outcome: 'AttackerVictory',
-      participants: [p],
-      survivors: [p],
-      recovered: [],
-      gross_losses: [],
-      rounds: [],
-      loot: payload.resources.value,
-      debris: { metal: '0', crystal: '0', deuterium: '0' },
-    },
-  }
-  await page.route(`**/api/v4/shared-reports/${token}`, (route) =>
-    route.fulfill({ json: report }),
-  )
-  await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
-  await expect(
-    page.getByRole('heading', { name: 'Attacker victory' }),
-  ).toBeVisible()
-  await expect(
-    page.getByText('Name at publication', { exact: true }).first(),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('heading', { name: 'Loot', exact: true }),
-  ).toBeVisible()
-  await diagnosticScreenshot(page, {
-    path: 'test-results/shared-combat-desktop.png',
-    fullPage: true,
-  })
-})
-
 test('included coordinates and names work without account navigation', async ({
   page,
 }) => {
@@ -433,23 +387,5 @@ for (const width of [1440, 390]) {
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await diagnosticScreenshot(page, {path: `test-results/shared-espionage-grouped-${width}x1000.png`, fullPage: true})
-  })
-}
-
-for (const width of [1440, 390]) {
-  test(`shared reports follow bot display at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    let kind = 'bot'
-    await page.route(`**/api/v4/shared-reports/${token}`, route => route.fulfill({ json: {
-      ...shared, options: { include_identity: true, include_coordinates: false },
-      player_names: { 'participant-1': 'Harvester' }, player_kinds: { 'participant-1': kind },
-    } }))
-    for (const display of ['visible', 'hidden']) {
-      kind = display === 'visible' ? 'bot' : 'human'
-      await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))
-      await expect(page.getByText('Harvester', { exact: true })).toBeVisible()
-      await expect(page.getByLabel('Bot', { exact: true })).toHaveCount(display === 'visible' ? 1 : 0)
-      await diagnosticScreenshot(page, { path: `test-results/bot-shared-report-${display}-${width}x1000.png` })
-    }
   })
 }

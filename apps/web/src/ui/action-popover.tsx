@@ -13,7 +13,8 @@ import {
   FloatingFocusManager,
   FloatingPortal,
 } from '@floating-ui/react'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
+import { useReducedMotion } from './use-reduced-motion'
 import { X } from 'lucide-react'
 import { Button } from './button'
 import { Heading } from './typography'

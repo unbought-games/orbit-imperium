@@ -21,7 +21,9 @@
     "art:export": "node scripts/export-atlas-art.mjs",
     "news:build": "node scripts/news-history.mjs && node scripts/news.mjs",
     "release:suggest": "node scripts/prepare-release.mjs --suggest",
-    "release:prepare": "node scripts/prepare-release.mjs"
+    "release:prepare": "node scripts/prepare-release.mjs",
+    "test:components": "node scripts/ui-e2e.mjs --components",
+    "test:component-types": "tsc --noEmit -p apps/web/tests/components"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

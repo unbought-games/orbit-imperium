@@ -1,3 +1,4 @@
+import type { TutorialData } from '../../client-model/tutorial-engine'
 import type { Page } from '../../shell/routes'
 import { ConfirmationButton } from '../../ui/confirmation-button'
 import { useTutorial } from './use-tutorial'
@@ -7,11 +8,31 @@ import styles from './tutorial.module.css'
 /** Presentation changes reveal navigation; progress and rewards stay authoritative. */
 export function TutorialExperienceAction({ page }: { page: Page }) {
   const tutorial = useTutorial()
-  if (
-    page !== 'briefing' ||
-    !tutorial.data?.beginner ||
-    !hasIncompleteBriefing(tutorial.data)
+  return (
+    <TutorialExperienceControl
+      page={page}
+      data={tutorial.data}
+      pending={tutorial.pending}
+      onConfirm={() => {
+        if (tutorial.model.store.getState().tutorial.data?.beginner)
+          void tutorial.setBeginner(false)
+      }}
+    />
   )
+}
+
+export function TutorialExperienceControl({
+  page,
+  data,
+  pending,
+  onConfirm,
+}: {
+  page: Page
+  data: TutorialData | null
+  pending: boolean
+  onConfirm: () => void
+}) {
+  if (page !== 'briefing' || !data?.beginner || !hasIncompleteBriefing(data))
     return null
   return (
     <div className={styles.experienceAction}>
@@ -22,7 +43,7 @@ export function TutorialExperienceAction({ page }: { page: Page }) {
         confirmLabel="Enter Full Experience"
         confirmVariant="primary"
         cancelLabel="Stay in beginner mode"
-        disabled={tutorial.pending}
+        disabled={pending}
         review={
           <>
             <p>
@@ -36,10 +57,7 @@ export function TutorialExperienceAction({ page }: { page: Page }) {
             </p>
           </>
         }
-        onConfirm={() => {
-          if (tutorial.model.store.getState().tutorial.data?.beginner)
-            void tutorial.setBeginner(false)
-        }}
+        onConfirm={onConfirm}
       >
         Enter Full Experience
       </ConfirmationButton>

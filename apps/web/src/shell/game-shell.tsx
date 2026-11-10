@@ -1,3 +1,4 @@
+import { GameShellFrame } from './game-shell-frame'
 import { ArrivalScene } from '../features/arrival/arrival-scene'
 import { TutorialExperienceAction } from '../features/tutorial/experience-action'
 import { TutorialSync } from '../features/tutorial/use-tutorial'
@@ -17,30 +18,19 @@ import {
 } from '@tanstack/react-router'
 import { useGameSession } from './session-context'
 import { ScreenContext } from './screen-context'
-import {
-  bodyPages,
-  resolveDestination,
-  resolveNamedDestination,
-} from './routes'
+import { bodyPages, resolveNamedDestination } from './routes'
 import { withoutBodySearch } from './page-search'
 import { routeTarget } from './route-target'
-import { catalogSlug } from './catalog-routes'
 import styles from './game-shell.module.css'
 import { Heading, Text } from '../ui/typography'
 import { Link } from '../ui/link'
 import { ButtonLink } from '../ui/button'
-import { Brand } from '../ui/brand'
 import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import { ResourceStrip } from '../ui/resource-strip'
 import { bodyName, coordinates } from '../ui/format'
-import { BodySelector } from './body-selector'
-import { Navigation } from './navigation'
 import { buildPages, pageTitles } from './navigation-model'
 import { ArrowLeft } from 'lucide-react'
-import { usePinnedHeader } from './use-pinned-header'
-import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
 import { developmentActivity, developmentBlockers } from './navigation-activity'
 export function GameShell() {
   const { model, view } = useGameSession()
@@ -53,10 +43,8 @@ export function GameShell() {
 }
 
 function GameShellContent() {
-  const pinned = usePinnedHeader()
   const { commands, view, model, logout, universeName } = useGameSession()
   const unreadReports = useStore(model.store, hasUnreadReports)
-  const incomingHostile = hasIncomingHostileFleet(view)
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
   const matches = useMatches()
@@ -242,222 +230,124 @@ function GameShellContent() {
       ? `Empire — ${body ? bodyName(body) : 'Planet'} ${body ? coordinates(body) : ''}`
       : pageTitles[page]
   return (
-    <div
-      className={styles['game-shell']}
-      ref={pinned.shell}
-      data-has-command-hud={view.protocol === 4 || undefined}
+    <GameShellFrame
+      view={view}
+      body={body}
+      page={page}
+      universeName={universeName}
+      unreadReports={unreadReports}
+      activity={developmentActivity(model.store.getState(), body?.id)}
+      blockers={developmentBlockers(model.store.getState(), body?.id)}
+      onSelectBody={selectBody}
+      onLogout={() => void logout()}
+      onVisit={(p) =>
+        void model.recordPresence(
+          [
+            'overview',
+            'resources',
+            'resource-settings',
+            'facilities',
+            'shipyard',
+            'defense',
+            'dispatch',
+          ].includes(p)
+            ? 'BodyVisit'
+            : 'AccountVisit',
+          [
+            'overview',
+            'resources',
+            'resource-settings',
+            'facilities',
+            'shipyard',
+            'defense',
+            'dispatch',
+          ].includes(p)
+            ? (body?.id ?? null)
+            : null,
+        )
+      }
+      footer={<CommandHud body={body?.id} onDraft={prepareDispatch} />}
     >
       <TutorialSync />
-      <div className={styles['shell-columns']}>
-        <div className={styles.header} ref={pinned.header}>
-          <header className={styles.identity} data-touch-control="">
-            <Brand
-              className={styles.brand}
-              {...routeTarget(universeName, 'overview', body?.id)}
-            />
-            <span className={styles.universeName} aria-label="Current universe">
-              {universeName}
-            </span>
-          </header>
-          <Navigation
-            hasUnreadReports={unreadReports}
-            activity={developmentActivity(model.store.getState(), body?.id)}
-            blockers={developmentBlockers(model.store.getState(), body?.id)}
-            view={view}
+      <ContentColumn
+        as="main"
+        width={
+          page === 'briefing'
+            ? 'reading'
+            : page === 'dispatch'
+              ? 'focused'
+              : 'full'
+        }
+        id="main"
+        tabIndex={-1}
+        className={styles['work-area']}
+      >
+        <ErrorBannerSlot model={model} />
+        {view.protocol === 4 && (
+          <EmpireDeletionNotice
+            deletion={view.empire_deletion}
             body={body?.id}
-            page={page}
-            onLogout={() => void logout()}
-            onVisit={(p) =>
-              void model.recordPresence(
-                [
-                  'overview',
-                  'resources',
-                  'resource-settings',
-                  'facilities',
-                  'shipyard',
-                  'defense',
-                  'dispatch',
-                ].includes(p)
-                  ? 'BodyVisit'
-                  : 'AccountVisit',
-                [
-                  'overview',
-                  'resources',
-                  'resource-settings',
-                  'facilities',
-                  'shipyard',
-                  'defense',
-                  'dispatch',
-                ].includes(p)
-                  ? (body?.id ?? null)
-                  : null,
-              )
-            }
-          >
-            {(navigation) => (
-              <div
-                className={`${styles.worldBar} ${incomingHostile ? styles.hostile : ''}`}
-                role="group"
-                aria-label="Planet and resources"
-              >
-                <span className={styles.hostileStatus} role="status">
-                  {incomingHostile
-                    ? view.protocol === 4 &&
-                      view.missiles?.some((f) => !f.outgoing)
-                      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
-                      : 'Incoming hostile fleet: attack or espionage detected.'
-                    : ''}
-                </span>
-                <div className={styles['mobile-context']}>
-                  <BodySelector
-                    bodies={view.bodies}
-                    selected={body?.id}
-                    onSelect={selectBody}
-                  />
-                </div>
-                {navigation}
-                <div className={styles.masthead}>
-                  {body ? (
-                    <ResourceStrip
-                      view={view}
-                      body={body}
-                      renderStorageWarning={(building, warning) =>
-                        resolveDestination(
-                          {
-                            universe: view.binding.universe,
-                            page: 'resources',
-                            body: body.id,
-                            item: catalogSlug(building),
-                          },
-                          view,
-                        ).available ? (
-                          <Link
-                            {...routeTarget(
-                              universeName,
-                              'resources',
-                              body.id,
-                              building,
-                            )}
-                          >
-                            {warning}
-                          </Link>
-                        ) : (
-                          warning
-                        )
-                      }
-                      energyLink={
-                        resolveDestination(
-                          {
-                            universe: view.binding.universe,
-                            page: 'resource-settings',
-                            body: body.id,
-                          },
-                          view,
-                        ).available ? (
-                          <Link
-                            {...routeTarget(
-                              universeName,
-                              'resource-settings',
-                              body.id,
-                            )}
-                            aria-label="Energy — resource settings"
-                          />
-                        ) : undefined
-                      }
-                    />
-                  ) : (
-                    <span />
-                  )}
-                </div>
-              </div>
-            )}
-          </Navigation>
-        </div>
-        <div className={styles.center}>
-          <ContentColumn
-            as="main"
-            width={
-              page === 'briefing'
-                ? 'reading'
-                : page === 'dispatch'
-                  ? 'focused'
-                  : 'full'
-            }
-            id="main"
-            tabIndex={-1}
-            className={styles['work-area']}
-          >
-            <ErrorBannerSlot model={model} />
-            {view.protocol === 4 && (
-              <EmpireDeletionNotice
-                deletion={view.empire_deletion}
-                body={body?.id}
-                universeName={universeName}
-              />
-            )}
-            <div
-              className={
-                hideRouteHeading ? styles.routeHeading : styles['page-heading']
-              }
+            universeName={universeName}
+          />
+        )}
+        <div
+          className={
+            hideRouteHeading ? styles.routeHeading : styles['page-heading']
+          }
+        >
+          {page === 'dispatch' && view.protocol !== 4 && (
+            <ButtonLink
+              variant="secondary"
+              size="icon-small"
+              aria-label="Back to fleets"
+              title="Back to fleets"
+              {...routeTarget(universeName, 'fleets', body?.id)}
             >
-              {page === 'dispatch' && view.protocol !== 4 && (
-                <ButtonLink
-                  variant="secondary"
-                  size="icon-small"
-                  aria-label="Back to fleets"
-                  title="Back to fleets"
-                  {...routeTarget(universeName, 'fleets', body?.id)}
-                >
-                  <ArrowLeft size={18} aria-hidden="true" />
-                </ButtonLink>
-              )}
-              <Heading level={1} tabIndex={-1} ref={heading}>
-                {title}
-              </Heading>
-              <TutorialExperienceAction page={page} />
-            </div>
-            {!available ? (
-              <StatePanel title="Choose an available destination">
-                <Text>{route?.reason}</Text>
-                <Link
-                  {...routeTarget(universeName, 'overview', view.bodies[0]?.id)}
-                >
-                  Open your universe overview
-                </Link>
-              </StatePanel>
-            ) : (
-              <ScreenContext.Provider
-                value={{
-                  universeName,
-                  commands,
-                  view,
-                  model,
-                  logout,
-                  route,
-                  body,
-                  prepareDispatch,
-                }}
-              >
-                {page === 'fleets' && view.protocol !== 4 && (
-                  <ButtonLink
-                    {...routeTarget(universeName, 'dispatch', body?.id)}
-                  >
-                    Dispatch Fleet
-                  </ButtonLink>
-                )}
-                <VacationNotice
-                  vacation={view.protocol === 4 ? view.vacation : undefined}
-                  body={body?.id}
-                  universeName={universeName}
-                />
-                {/* Mount once at the canonical route, avoiding duplicate reads during redirects. */}
-                {!canonicalizing && <Outlet />}
-              </ScreenContext.Provider>
-            )}
-          </ContentColumn>
+              <ArrowLeft size={18} aria-hidden="true" />
+            </ButtonLink>
+          )}
+          <Heading level={1} tabIndex={-1} ref={heading}>
+            {title}
+          </Heading>
+          <TutorialExperienceAction page={page} />
         </div>
-      </div>
-      <CommandHud body={body?.id} onDraft={prepareDispatch} />
-    </div>
+        {!available ? (
+          <StatePanel title="Choose an available destination">
+            <Text>{route?.reason}</Text>
+            <Link
+              {...routeTarget(universeName, 'overview', view.bodies[0]?.id)}
+            >
+              Open your universe overview
+            </Link>
+          </StatePanel>
+        ) : (
+          <ScreenContext.Provider
+            value={{
+              universeName,
+              commands,
+              view,
+              model,
+              logout,
+              route,
+              body,
+              prepareDispatch,
+            }}
+          >
+            {page === 'fleets' && view.protocol !== 4 && (
+              <ButtonLink {...routeTarget(universeName, 'dispatch', body?.id)}>
+                Dispatch Fleet
+              </ButtonLink>
+            )}
+            <VacationNotice
+              vacation={view.protocol === 4 ? view.vacation : undefined}
+              body={body?.id}
+              universeName={universeName}
+            />
+            {/* Mount once at the canonical route, avoiding duplicate reads during redirects. */}
+            {!canonicalizing && <Outlet />}
+          </ScreenContext.Provider>
+        )}
+      </ContentColumn>
+    </GameShellFrame>
   )
 }

@@ -1,5 +1,5 @@
 import { AttackGroupAction } from './attack-groups'
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { ChevronDown, RotateCcw } from 'lucide-react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
@@ -45,16 +45,37 @@ export function FleetRecall({
   fleetId: string
   fleet?: S['OwnMission4']
 }) {
-  const [reviewing, setReviewing] = useState(false)
   const state = useStore(model.store)
   const command = {
     type: 'World',
     action: { type: 'RecallMission', fleet: fleetId },
   } as const
-  const pending = pendingCommand(state, command)
-  const estimate = fleet
-    ? recallEstimate(fleet, currentServerTime(state))
-    : null
+  return (
+    <FleetRecallPresentation
+      fleet={fleet}
+      pending={pendingCommand(state, command)}
+      now={currentServerTime(state)}
+      onRecall={() => {
+        void model.send(command)
+      }}
+    />
+  )
+}
+
+/** Confirmation interaction is independent of command transport. */
+export function FleetRecallPresentation({
+  fleet,
+  pending,
+  now,
+  onRecall,
+}: {
+  fleet?: S['OwnMission4']
+  pending: boolean
+  now: number
+  onRecall: () => void
+}) {
+  const [reviewing, setReviewing] = useState(false)
+  const estimate = fleet ? recallEstimate(fleet, now) : null
   return (
     <div
       className={fleetStyles.recall}
@@ -83,7 +104,7 @@ export function FleetRecall({
             <Button
               disabled={pending || fleet?.can_recall === false}
               onClick={() => {
-                void model.send(command)
+                onRecall()
                 setReviewing(false)
               }}
             >
@@ -111,30 +132,82 @@ export function FleetRecall({
   )
 }
 
-export function MissionFleetCard({
-  model,
-  view,
-  fleet,
-  detail,
-  origin,
-  as: Container = 'article',
-  linkEnabled = true,
-}: {
-  model: Coordinator
+type MissionFleetCardProps = {
   view: S['BoundView4']
   fleet: S['OwnMission4']
   detail: boolean
   origin: string
   as?: 'article' | 'li'
   linkEnabled?: boolean
-}) {
+}
+
+export function MissionFleetCard({
+  model,
+  ...props
+}: MissionFleetCardProps & { model: Coordinator }) {
   const universeName = useUniverseName()
   const state = useStore(model.store)
   const now = currentServerTime(state)
+  const { fleet, view } = props
+  return (
+    <MissionFleetCardPresentation
+      {...props}
+      universeName={universeName}
+      now={now}
+      tutorial={state.tutorial.data}
+      actions={
+        <>
+          {fleet.intent.mission === 'Attack' &&
+            fleet.leg === 'Outbound' &&
+            fleet.can_recall &&
+            now < fleet.due_at &&
+            !fleet.attack_group &&
+            view.capabilities.some(
+              (c) => c.capability === 'AllianceAttacks' && c.enabled,
+            ) && (
+              <AttackGroupAction
+                model={model}
+                action={{ type: 'CreateAttackGroup', fleet: fleet.id }}
+              >
+                Create attack group
+              </AttackGroupAction>
+            )}
+          {fleet.attack_group && <Text>Alliance attack · shared arrival</Text>}
+          {(fleet.can_recall ||
+            pendingCommand(state, {
+              type: 'World',
+              action: { type: 'RecallMission', fleet: fleet.id },
+            })) && (
+            <FleetRecall model={model} fleetId={fleet.id} fleet={fleet} />
+          )}
+        </>
+      }
+    />
+  )
+}
+
+/** Snapshot-driven card behavior; the caller supplies real command controls. */
+export function MissionFleetCardPresentation({
+  view,
+  fleet,
+  detail,
+  origin,
+  as: Container = 'article',
+  linkEnabled = true,
+  universeName,
+  now,
+  tutorial,
+  actions,
+}: MissionFleetCardProps & {
+  universeName: string
+  now: number
+  tutorial: Parameters<typeof ownFleetSummary>[2]
+  actions?: ReactNode
+}) {
   const [showShips, setShowShips] = useState(detail)
   const shipsId = useId()
   const { linkRef, rowProps } = useRowLink(!detail && linkEnabled)
-  const row = ownFleetSummary(view, fleet, state.tutorial.data)
+  const row = ownFleetSummary(view, fleet, tutorial)
   const count = fleetShipCount(fleet.ships)
   return (
     <Container
@@ -245,29 +318,7 @@ export function MissionFleetCard({
           )}
         </div>
       </div>
-      <div className={fleetStyles.actions}>
-        {fleet.intent.mission === 'Attack' &&
-          fleet.leg === 'Outbound' &&
-          fleet.can_recall &&
-          now < fleet.due_at &&
-          !fleet.attack_group &&
-          view.capabilities.some(
-            (c) => c.capability === 'AllianceAttacks' && c.enabled,
-          ) && (
-            <AttackGroupAction
-              model={model}
-              action={{ type: 'CreateAttackGroup', fleet: fleet.id }}
-            >
-              Create attack group
-            </AttackGroupAction>
-          )}
-        {fleet.attack_group && <Text>Alliance attack · shared arrival</Text>}
-        {(fleet.can_recall ||
-          pendingCommand(state, {
-            type: 'World',
-            action: { type: 'RecallMission', fleet: fleet.id },
-          })) && <FleetRecall model={model} fleetId={fleet.id} fleet={fleet} />}
-      </div>
+      <div className={fleetStyles.actions}>{actions}</div>
       {detail && (
         <>
           <div className={styles.fuel}>

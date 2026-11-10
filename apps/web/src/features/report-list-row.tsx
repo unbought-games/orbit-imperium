@@ -1,4 +1,4 @@
-import { debrisResourceKinds, resourceKinds } from './debris-resources'
+import { ReportPreviewFacts } from './report-preview-facts'
 import { usePlayerDisplays } from '../shell/player-profiles-context'
 import { reportMetric, type ReportSort } from './report-triage'
 import { CoordinateLink } from './coordinate-link'
@@ -6,11 +6,10 @@ import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { routeTarget } from '../shell/route-target'
 import { Link } from '../ui/link'
-import { ResourceMark } from '../ui/resource-mark'
 import { ResourceNumber } from '../ui/number-value'
 import { Panel } from '../ui/panel'
 import type { PlayerNames } from './player-label'
-import { label, coordinates } from '../ui/format'
+import { coordinates } from '../ui/format'
 import { exactTime } from './mission-presentation'
 import {
   reportPreview,
@@ -189,42 +188,7 @@ export function ReportListRow({
             )}
           </span>
         )}
-        {preview.facts.length > 0 && (
-          <span className={styles.preview}>
-            {preview.facts.map((fact, index) => (
-              <span className={styles.fact} key={index}>
-                {index > 0 && <span aria-hidden="true">·</span>}
-                {typeof fact === 'string' ? (
-                  fact
-                ) : (
-                  <>
-                    {fact.label && <span>{fact.label}:</span>}
-                    {(fact.debris
-                      ? debrisResourceKinds(fact.resources.deuterium)
-                      : resourceKinds
-                    ).map((resource) => (
-                      <span
-                        key={resource}
-                        className={styles.resourceValue}
-                        title={label(resource)}
-                      >
-                        <ResourceMark
-                          resource={resource}
-                          width={16}
-                          height={16}
-                          aria-hidden={false}
-                          role="img"
-                          aria-label={label(resource)}
-                        />
-                        <ResourceNumber value={fact.resources[resource]} />
-                      </span>
-                    ))}
-                  </>
-                )}
-              </span>
-            ))}
-          </span>
-        )}
+        <ReportPreviewFacts facts={preview.facts} />
       </div>
 
       <time

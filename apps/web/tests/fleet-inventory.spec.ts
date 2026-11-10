@@ -133,7 +133,7 @@ function inventoryFixture() {
   }
 }
 
-for (const width of [320, 390, 1280]) {
+for (const width of [1280]) {
   test(`stationed inventory separates exact counts and Shipyard links at ${width}px`, async ({
     page,
   }) => {
@@ -203,68 +203,5 @@ for (const width of [320, 390, 1280]) {
     await expect(
       page.getByRole('heading', { name: 'Mission details', exact: true }),
     ).toBeVisible()
-  })
-}
-
-test('empty stationed inventory retains a useful Shipyard destination', async ({
-  page,
-}) => {
-  await installGameFixture(page, {
-    protocol: 4,
-    bodies: [{ ...body, inventories: [] }],
-  })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
-  const panel = page.getByRole('region', {
-    name: 'Stationed ships',
-    exact: true,
-  })
-  await expect(panel).toContainText('No ships stationed here.')
-  await expect(panel).toContainText('Ship details are unavailable.')
-  await expect(
-    panel.getByRole('link', { name: 'Open Shipyard' }),
-  ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/shipyard`)
-})
-
-for (const source of ['stationed', 'flying', 'queued', 'empty'] as const) {
-  test(`inventory retains ${source} ships without showing zero-only rows`, async ({ page }) => {
-    const options = inventoryFixture()
-    options.bodies[0].inventories = source === 'stationed'
-      ? [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '1' }]
-      : []
-    options.missions.fleets = source === 'flying' ? options.missions.fleets.slice(0, 1) : []
-    options.manufacturing = source === 'queued' ? options.manufacturing.slice(0, 1) : []
-    await installGameFixture(page, options)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
-    const panel = page.getByRole('region', { name: 'Stationed ships', exact: true })
-    await expect(panel.getByRole('table')).toHaveCount(source === 'empty' ? 0 : 1)
-    if (source !== 'empty') {
-      await expect(panel.getByRole('cell')).toHaveText([
-        source === 'stationed' ? '1' : '0',
-        source === 'flying' ? '5' : '0',
-        source === 'queued' ? '3' : '0',
-      ])
-    }
-    await expect(panel.getByRole('link', { name: 'Open Shipyard' })).toBeVisible()
-  })
-}
-
-for (const width of [390, 1440]) {
-  test(`stationed ships show shared groups at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const options = inventoryFixture()
-    options.bodies[0].inventories = [
-      { item: { kind: 'Ship', id: 'SmallCargo' }, count: '42' },
-      { item: { kind: 'Ship', id: 'LightFighter' }, count: '16' },
-      { item: { kind: 'Ship', id: 'SolarSatellite' }, count: '8' },
-    ]
-    await installGameFixture(page, options)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
-    const panel = page.getByRole('region', { name: 'Stationed ships', exact: true })
-    await expect(panel.getByRole('rowheader')).toHaveText(['Military', 'Light Fighter', 'Civil', 'Solar Satellite', 'Small Cargo'])
-    await diagnosticScreenshot(page.locator('main header').first(), { path: `test-results/fleets-slots-header-${width}x1000.png` })
-    await panel.scrollIntoViewIfNeeded()
-    await panel.evaluate(element => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 80))
-    await diagnosticScreenshot(panel, { path: `test-results/stationed-groups-${width}x1000.png` })
-    expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   })
 }

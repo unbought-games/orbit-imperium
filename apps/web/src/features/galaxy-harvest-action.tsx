@@ -26,6 +26,39 @@ export function GalaxyHarvestAction({
   onCustomize: () => void
 }) {
   const harvest = useGalaxyHarvest(model, origin, position, open, onClose)
+  return (
+    <GalaxyHarvestPresentation
+      harvest={harvest}
+      position={position}
+      open={open}
+      onClose={onClose}
+      onCustomize={onCustomize}
+      returnFocusRef={returnFocusRef}
+      onRecover={() => {
+        if (harvest.commandId) void model.recover(harvest.commandId)
+      }}
+    />
+  )
+}
+
+/** The responsive surface owns focus and presentation; the action owns commands. */
+export function GalaxyHarvestPresentation({
+  harvest,
+  position,
+  open,
+  onClose,
+  onCustomize,
+  returnFocusRef,
+  onRecover,
+}: {
+  harvest: ReturnType<typeof useGalaxyHarvest>
+  position: HarvestPosition
+  open: boolean
+  onClose: () => void
+  onCustomize: () => void
+  returnFocusRef: RefObject<HTMLElement | null>
+  onRecover: () => void
+}) {
   const mobile = useMobileLayout()
   const input = useRef<HTMLInputElement>(null)
   const { galaxy, system, position: slot } = position.coordinates
@@ -43,9 +76,7 @@ export function GalaxyHarvestAction({
       position={position}
       inputRef={input}
       onCustomize={onCustomize}
-      onRecover={() => {
-        if (harvest.commandId) void model.recover(harvest.commandId)
-      }}
+      onRecover={onRecover}
     />
   )
   return mobile ? (

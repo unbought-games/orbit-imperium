@@ -262,8 +262,10 @@ async function cancellationFixture(page: Page, lateOptions = false) {
   }
 }
 
-for (const width of [390, 1440]) {
-  for (const lateOptions of [false, true]) {
+// Response order permutations are deterministic in progression-inspection.test.ts.
+// Keep one application cancellation-to-next-command wiring journey.
+for (const width of [390]) {
+  for (const lateOptions of [false]) {
     test(`cancellation restores eligible detail actions at ${width}px with old options delivered ${lateOptions ? 'after' : 'before'} confirmation`, async ({
       page,
     }) => {
@@ -368,7 +370,9 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
 })
 
 for (const kind of ['construction', 'research'] as const) {
-  for (const elapsed of [29_999, 30_000, 30_001, 29 * 3_600_000]) {
+  // work-cancellation.test.ts owns all elapsed boundaries and long-duration text.
+  // Keep native focus, Escape, confirmation and rejection for both actual consumers.
+  for (const elapsed of kind === 'construction' ? [29_999, 30_000] : [30_000]) {
     test(`${kind} cancellation uses server elapsed ${elapsed}ms`, async ({ page }) => {
       await page.clock.install({ time: now - 60_000 })
       await page.clock.pauseAt(now)

@@ -1,26 +1,30 @@
+import { createIntelligenceRefresh } from './intelligence-refresh'
 import {
   reportLoad,
   reportRequestScope,
 } from '../../client-model/report-engine'
 import { useOrbCaption } from './use-orb-caption'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useReducer } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../../client-model/coordinator'
+import { changedHudTargets, type HudTarget } from './model'
+
 import {
-  changedHudTargets,
-  noticeKey,
-  incomingThreats,
-  incomingKey,
-  type HudNotice,
-  type HudTarget,
-} from './model'
+  initialNotificationHistory,
+  notificationHistory,
+  recentNotifications,
+  visibleNotifications,
+} from './notification-history'
 
 /** This hook stores only interaction history/IDs; all game facts come from the game store. */
 export function useCommandHud(model: Coordinator) {
   const state = useStore(model.store)
   const caption = useOrbCaption(model)
-  const [notices, setNotices] = useState<HudNotice[]>([])
-  const [dismissed, setDismissed] = useState<string[]>([])
+  const [history, dispatch] = useReducer(
+    notificationHistory,
+    state,
+    initialNotificationHistory,
+  )
   const [selection, select] = useState<HudTarget | 'inbox' | null>(null)
   const expanded = useRef(false)
   expanded.current = selection !== null
@@ -28,58 +32,24 @@ export function useCommandHud(model: Coordinator) {
   const refresh = useRef<() => void>(() => {})
   useEffect(() => {
     let before = model.store.getState()
-    // Existing threats matter immediately; historic actions and messages don't toast on login.
-    setNotices(
-      incomingThreats(before)
-        .slice(0, 3)
-        .map((f) => ({
-          kind: 'incoming',
-          id: incomingKey(f),
-          shownAt: before.now,
-        })),
-    )
+    dispatch({ type: 'reset', state: before })
     const stop = model.subscribe((after) => {
       const targets = changedHudTargets(before, after)
       before = after
-      if (targets.length)
-        setNotices((old) =>
-          [
-            ...old.filter((n) => after.now - n.shownAt < 7000),
-            ...targets.map((target) => ({ ...target, shownAt: after.now })),
-          ].slice(-3),
-        )
+      if (targets.length) dispatch({ type: 'arrived', targets, now: after.now })
     })
     return stop
   }, [model])
   useEffect(() => {
-    let active = true,
-      busy = false,
-      again = false
-    async function load() {
-      if (!active || document.hidden || !model.ready || model.stale) return
-      if (busy) {
-        again = true
-        return
-      }
-      busy = true
-      const results = await Promise.allSettled([
-        model.reports.refreshInbox(false, expanded.current),
-        model.refreshMailbox(),
-      ])
-      if (active)
-        setMailboxError(
-          results[1].status === 'rejected'
-            ? 'Some intelligence is unavailable. Try again.'
-            : '',
-        )
-      busy = false
-      if (again && active) {
-        again = false
-        void load()
-      }
-    }
-    refresh.current = () => void load()
-    void load()
+    const controller = createIntelligenceRefresh({
+      available: () => !document.hidden && model.ready && !model.stale,
+      reports: () => model.reports.refreshInbox(false, expanded.current),
+      mailbox: () => model.refreshMailbox(),
+      onMailboxError: setMailboxError,
+    })
+    const load = () => void controller.refresh()
+    refresh.current = load
+    load()
     let scope = reportRequestScope(model.store.getState())
     const stop = model.subscribe((next) => {
       if (reportRequestScope(next) !== scope) {
@@ -92,19 +62,19 @@ export function useCommandHud(model: Coordinator) {
     window.addEventListener('focus', wake)
     document.addEventListener('visibilitychange', wake)
     return () => {
-      active = false
+      controller.dispose()
       stop()
       clearInterval(timer)
       window.removeEventListener('focus', wake)
       document.removeEventListener('visibilitychange', wake)
     }
   }, [model])
-  const recent = notices.filter((n) => state.now - n.shownAt < 7000).reverse()
+  const recent = recentNotifications(history, state.now)
   return {
     state,
     caption,
     recent,
-    toasts: recent.filter((n) => !dismissed.includes(noticeKey(n))),
+    toasts: visibleNotifications(history, state.now),
     selection,
     select,
     inboxError:
@@ -113,8 +83,7 @@ export function useCommandHud(model: Coordinator) {
         ? 'Some intelligence is unavailable. Try again.'
         : ''),
     retry: () => refresh.current(),
-    dismiss: (target: HudTarget) =>
-      setDismissed((old) => [...old.slice(-30), noticeKey(target)]),
+    dismiss: (target: HudTarget) => dispatch({ type: 'dismissed', target }),
   }
 }
 export type CommandHudState = ReturnType<typeof useCommandHud>

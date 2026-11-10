@@ -4,7 +4,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import { changeReportSelection } from './report-cleanup'
 type Header = components['schemas']['ReportHeader4']
 export function useReportCleanup(
-  model: Coordinator,
+  model: Pick<Coordinator, 'store' | 'send'>,
   clearSelection: () => void,
 ) {
   const [submitting, setSubmitting] = useState(false)

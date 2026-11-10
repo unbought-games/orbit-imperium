@@ -20,7 +20,7 @@ DB_SUITES = $(basename $(notdir $(wildcard crates/storage-postgres/tests/*.rs)))
 DB_TARGETS = $(addprefix _db-,$(DB_SUITES))
 DB_JOBS ?= 4
 
-.PHONY: check test-tooling test-client test-server test-db test-ui prepare-server _server _database _static $(DB_TARGETS)
+.PHONY: check test-tooling test-client test-server test-db test-ui test-components test-journeys test-features prepare-server _server _database _static $(DB_TARGETS)
 check: test-tooling test-client test-server
 	cargo clippy --workspace --all-targets --features orbit-server/test-support -- -D warnings
 	$(MAKE) _static
@@ -30,6 +30,7 @@ _static:
 	cargo fmt --all --check
 	npm run lint
 	npm run format:check
+	npm run test:component-types
 	node scripts/check-contracts.mjs
 	node scripts/check-boundaries.mjs
 
@@ -87,6 +88,15 @@ $(DB_TARGETS): _db-%:
 
 test-ui:
 	npm run test:ui $(if $(UI_SHARD),-- --shard=$(UI_SHARD))
+
+test-components:
+	npm run test:components $(if $(UI_SHARD),-- --shard=$(UI_SHARD))
+
+test-journeys:
+	ORBIT_BROWSER_SUITE=journeys $(MAKE) test-ui
+
+test-features:
+	ORBIT_BROWSER_SUITE=features $(MAKE) test-ui
 
 db-up:
 	docker compose up -d --wait db

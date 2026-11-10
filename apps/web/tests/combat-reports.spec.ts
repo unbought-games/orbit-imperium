@@ -23,8 +23,10 @@ const resources = (m: number, c: number, d = 0) => ({
   crystal: String(BigInt(c) * 1000000n),
   deuterium: String(BigInt(d) * 1000000n),
 })
-for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espionage']) {
-  test(`capture current ${size} combat report`, async ({ page }) => {
+// Outcome, legacy-fire and detected-espionage facts live in report-presentation.test.ts.
+// Keep distinct scale/layout and coordinate/harvest route wiring here.
+for (const size of ['small', 'huge', 'deuterium']) {
+  test(`combat ${size} report preserves layout and contextual navigation`, async ({ page }) => {
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1') mkdirSync(output, { recursive: true })
     await page.setViewportSize({ width: 1440, height: 1000 })
     await page.clock.setFixedTime(new Date('2026-10-22T18:00:00Z'))
@@ -206,6 +208,7 @@ for (const size of ['small', 'huge', 'defender', 'legacy', 'deuterium', 'espiona
           explosions,
           ...counts
         } = round
+        void shots // Combined shots are deliberately omitted from attributed rounds.
         const split = (value: string, i: number) =>
           String(
             i === 0 ? BigInt(value) / 2n : BigInt(value) - BigInt(value) / 2n,
@@ -458,54 +461,3 @@ test.describe('explosion counter explanation', () => {
     }
   })
 })
-
-for (const visible of [false, true]) {
-  test(`shared combat participant locations ${visible ? 'visible' : 'redacted'}`, async ({ page }) => {
-    const token = id(76)
-    const locations = [
-      { name: 'Luna Outpost', kind: 'Moon', coordinates: { galaxy: 2, system: 24, position: 5 } },
-      { name: 'Outer Colony', kind: 'Planet', coordinates: { galaxy: 3, system: 100, position: 8 } },
-      { name: 'Nova Roma', kind: 'Planet', coordinates: { galaxy: 1, system: 372, position: 10 } },
-    ]
-    const participants = locations.map((location, index) => ({
-      owner: index === 2 ? 'defender' : 'attacker',
-      side: index === 2 ? 'Defender' : 'Attacker',
-      origin: index === 2 ? { Stationed: 'target' } : { Fleet: `fleet-${index}` },
-      location: visible ? location : { kind: location.kind, coordinates_hidden: true },
-      technology: [1, 2, 3], units: units({ LightFighter: 5 }),
-    }))
-    await page.route(`**/api/v4/shared-reports/${token}`, route => route.fulfill({ json: {
-      report: id(77), observed_at: 1792692000000,
-      options: { include_identity: visible, include_coordinates: visible },
-      player_names: { attacker: visible ? 'Vega' : 'Player 1', defender: visible ? 'Sol' : 'Player 2' },
-      payload: { kind: 'Combat', outcome: 'Draw',
-        ...(visible ? { target: locations[2].coordinates, target_name: locations[2].name, target_kind: 'Planet' } : {}),
-        participants, survivors: participants, recovered: [], rounds: [],
-      },
-    } }))
-    await withFixtureResponse(
-      page,
-      response => new URL(response.url()).pathname === `/api/v4/shared-reports/${token}`,
-      () => page.goto(`/reports/shared/${token}`),
-    )
-    const forces = page.getByRole('region', { name: 'Forces and losses' })
-    await expect(forces.getByRole('article')).toHaveCount(3)
-    for (const [index, location] of locations.entries()) {
-      const force = forces.getByRole('article').nth(index)
-      if (visible) {
-        await expect(force).toContainText(location.name)
-        await expect(force.locator('[data-coordinate]')).toHaveCount(1)
-      } else {
-        await expect(force).toContainText('Coordinates hidden')
-        await expect(force.locator('[data-coordinate]')).toHaveCount(0)
-        await expect(page.getByText(location.name, { exact: false })).toHaveCount(0)
-      }
-    }
-    for (const width of [1440, 390]) {
-      await page.setViewportSize({ width, height: 1000 })
-      await page.evaluate(() => document.fonts.ready)
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await diagnosticScreenshot(page, { path: `${output}/shared-${visible ? 'visible' : 'redacted'}-${width}.png`, fullPage: true })
-    }
-  })
-}

@@ -423,7 +423,7 @@ for (const width of [390, 1280]) {
     })
   }
 }
-test('development bootstrap uses one request and never inserts login or connection screens', async ({
+test('development bootstrap uses one request and never inserts login or connection screens', { tag: '@journey' }, async ({
   page,
 }) => {
 
@@ -463,7 +463,7 @@ test('development bootstrap uses one request and never inserts login or connecti
     await page.evaluate(() => Reflect.get(window, 'startupFlashes')),
   ).toEqual([])
 })
-test('unavailable startup stays distinct from anonymous and still supports manual retry', async ({
+test('unavailable startup stays distinct from anonymous and still supports manual retry', { tag: '@journey' }, async ({
   page,
 }) => {
 
@@ -596,7 +596,7 @@ for (const signup of [false, true]) {
   })
 }
 
-test('a populated HTML payload renders without a bootstrap request', async ({
+test('a populated HTML payload renders without a bootstrap request', { tag: '@journey' }, async ({
   page,
 }) => {
   const { bootstrapFixture } = await import('../src/test-support/bootstrap')
@@ -753,7 +753,7 @@ for (const restoreDuringSubmit of [false, true]) {
 }
 
 for (const signup of [false, true]) {
-  test(`public ${signup ? 'signup' : 'login'} keeps native entry, edits and busy feedback`, async ({
+  test(`public ${signup ? 'signup' : 'login'} keeps native entry, edits and busy feedback`, { tag: '@journey' }, async ({
     page,
   }) => {
     await page.route('**/api/v1/bootstrap', (route) =>

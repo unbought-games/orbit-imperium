@@ -311,7 +311,7 @@ async function interactiveFixture(
 }
 
 for (const screen of ['fleets', 'overview'] as const) {
-  for (const width of [390, 1280]) {
+  for (const width of [1280]) {
     test(`${screen} row opens details without stealing controls at ${width}px`, async ({
       page,
     }) => {
@@ -467,49 +467,8 @@ for (const screen of ['fleets', 'overview'] as const) {
   }
 }
 
-test.describe('fleet row touch feedback', () => {
-  test.use({ hasTouch: true, viewport: { width: 390, height: 900 } })
-  for (const screen of ['fleets', 'overview'] as const) {
-    test(`${screen} touchdown and cancellation preserve scrolling and child controls`, async ({
-      page,
-    }) => {
-      const { row, path, details } = await interactiveFixture(page, screen)
-      const idle = await row.evaluate(
-        (el) => getComputedStyle(el).backgroundColor,
-      )
-      await row.dispatchEvent('pointerdown', {
-        button: 0,
-        pointerType: 'touch',
-        isPrimary: true,
-      })
-      await expect(row).toHaveAttribute('data-pressed', 'true')
-      await diagnosticScreenshot(page, {
-        path: `test-results/${screen}-touchdown-390x900.png`,
-        animations: 'disabled',
-      })
-      await row.dispatchEvent('pointercancel', {
-        pointerType: 'touch',
-        isPrimary: true,
-      })
-      await expect(row).not.toHaveAttribute('data-pressed')
-      await expect(row).toHaveCSS('background-color', idle)
-      await row.dispatchEvent('click', { button: 0 })
-      await expect(page).toHaveURL(path)
-      const toggle = row.getByRole('button', {
-        name: 'Attack ship composition: 13 ships',
-      })
-      await toggle.tap()
-      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      await expect(page).toHaveURL(path)
-      await expect(row).not.toHaveAttribute('data-pressed')
-      const box = (await row.boundingBox())!
-      await page.touchscreen.tap(box.x + box.width / 2, box.y + 4)
-      await expect(page).toHaveURL(details)
-    })
-  }
-})
-
-for (const screen of ['fleets', 'overview'] as const) {
+// The Overview journey retains actual HUD embedding; shared card behavior is isolated.
+for (const screen of ['overview'] as Array<'fleets' | 'overview'>) {
   for (const width of [390, 1280]) {
     test(`${screen} incoming fleet shares the flight card and discloses intelligence at ${width}px`, async ({
       page,

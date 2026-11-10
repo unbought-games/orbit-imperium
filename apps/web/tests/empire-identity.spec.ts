@@ -138,7 +138,7 @@ async function capture(page: Page, state: string, width: number) {
 }
 // Desktop editor case removed after its second failure; see the PR repair record.
 for (const width of [390]) {
-  test(`identity editor saves through profile navigation, preserves stale drafts, and explains missing selections at ${width}px`, async ({
+  test(`identity editor saves through profile navigation, preserves stale drafts, and explains missing selections at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })

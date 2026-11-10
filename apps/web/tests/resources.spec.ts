@@ -9,7 +9,7 @@ import { captureCatalog } from './fixtures/catalog-capture'
 import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse } from './fixtures/responses'
+import { trackFixtureResponses, withBootstrapResponse } from './fixtures/responses'
 
 function production(): components['schemas']['ProductionDto'] {
   return {
@@ -1451,6 +1451,7 @@ test('construction cancellation is reachable in the building queue and recovers 
 test('resource accrual enables an open quote even while the next server snapshot is delayed', async ({
   page,
 }) => {
+  const settleOverview = trackFixtureResponses(page, request => request.method() === 'POST' && request.url().endsWith('/overview'))
   await page.clock.install()
   await setup(page, true)
   let release!: () => void
@@ -1475,7 +1476,9 @@ test('resource accrual enables an open quote even while the next server snapshot
       .locator('strong'),
   ).toHaveText('63')
   release()
-  await page.unrouteAll({ behavior: 'wait' })
+  // Keep interception installed until the isolated context closes. Removing it
+  // here lets a reconciliation retry escape to the real backend.
+  await settleOverview()
 })
 
 test('active construction stays visible without covering current work at enlarged text sizes', async ({
@@ -1580,7 +1583,8 @@ for (const dismissFirst of ['message', 'saved action'] as const) {
       await message.getByRole('button', { name: 'Dismiss message' }).click()
     }
     await expect(page.getByLabel('Action needs attention')).toHaveCount(0)
-    await context.setOffline(false)
+    // This context is test-scoped. Restoring connectivity would schedule fresh
+    // delivery while Playwright is tearing down its HTTP interception.
   })
 }
 
@@ -1769,10 +1773,15 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     await setup(page)
     await page.getByRole('link', { name: 'Empire', exact: true }).click()
+    // The Empire route moves focus on commit. Finish that transition before
+    // focusing the persistent energy link and sending a real keyboard event.
+    await expect(page.locator('main h1')).toHaveText('Empire — Planet [1:371:12]')
+    await expect(page.locator('main h1')).toBeFocused()
     const menu = page.getByRole('navigation', { name: 'Menu destinations' })
     const settings = await menuDestination(page, 'Resource settings')
     await expect(settings).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resource-settings`)
     await settings.focus()
+    await expect(settings).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(menu).not.toBeVisible()
     await expect(page.locator('main h1')).toHaveText('Resource settings')
@@ -1871,25 +1880,6 @@ test('production sliders support mouse, keyboard bounds and final saves', async 
   }
 })
 
-test('energy links retain details and native modifier and keyboard navigation', async ({ page, context }) => {
-  await setup(page)
-  const link = page.getByRole('link', { name: 'Energy — resource settings' })
-  const href = await link.getAttribute('href')
-  expect(href).toContain(`/b/${body.id}/resource-settings`)
-  await link.focus()
-  await expect(page.getByRole('tooltip', { name: 'Energy', exact: true })).toContainText('supplied')
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('tooltip', { name: 'Energy', exact: true })).toHaveCount(0)
-  const original = page.url()
-  const [tab] = await Promise.all([context.waitForEvent('page'), link.click({ modifiers: ['ControlOrMeta'] })])
-  await expect(page).toHaveURL(original)
-  await tab.close()
-  await link.focus()
-  await link.press('Enter')
-  await expect(page).toHaveURL(new RegExp(`${body.id}/resource-settings$`))
-  await expect(page.getByRole('slider', { name: 'metal mine production' })).toBeVisible()
-})
-
 test('touch taps navigate to energy settings and set a production slider', async ({ browser }) => {
   const context = await browser.newContext({ hasTouch: true, viewport: { width: 390, height: 844 } })
   const page = await context.newPage()
@@ -1902,6 +1892,7 @@ test('touch taps navigate to energy settings and set a production slider', async
   await expect(metal).toHaveValue('50')
   await expect.poll(() => sent.length).toBe(1)
   expect(sent[0].command).toMatchObject({ type: 'SetProduction', settings: { metal_mine: 50 } })
+  await expect(page.getByRole('region', { name: 'Production controls' }).getByRole('status')).toHaveText('All changes saved automatically.')
   await context.close()
 })
 

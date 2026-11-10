@@ -75,6 +75,24 @@ export function ProgressionObjectiveCard({
   status: { ready: boolean; text: string }
 }) {
   const universe = useUniverseName()
+  return (
+    <ProgressionObjectiveCardView
+      objective={objective}
+      status={status}
+      universe={universe}
+    />
+  )
+}
+
+export function ProgressionObjectiveCardView({
+  objective,
+  status,
+  universe,
+}: {
+  objective: Objective
+  status: { ready: boolean; text: string }
+  universe: string
+}) {
   const action = objective.next_action
   if (action?.type !== 'Progression') return null
   const request = action.request

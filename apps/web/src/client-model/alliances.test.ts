@@ -189,6 +189,9 @@ it('recovers an expired board cursor and manual refresh starts at the newest pag
   })
   expect(controller.store.getState().view?.alliance).toEqual(current.alliance)
   expect(controller.store.getState().error).toBe('')
+  expect(controller.store.getState().notice).toBe(
+    'The noticeboard changed. Showing the newest notices.',
+  )
   await controller.refresh({
     type: 'Detail',
     alliance: 'alliance',
@@ -291,3 +294,53 @@ it.each([false, true])(
     expect(controller.store.getState().pending).toBeNull()
   },
 )
+
+it('publishing replaces the board with the authoritative page instead of appending to stale notices', async () => {
+  const old = memberView()
+  const post = (id: string, pinned = false) => ({
+    id,
+    author: 'p',
+    author_name: 'Pilot',
+    title: id,
+    body: id,
+    pinned,
+    created_at: 0,
+    updated_at: 0,
+  })
+  old.alliance!.posts = [post('pinned', true), post('rolled-off')]
+  const refreshed = {
+    ...old,
+    alliance: {
+      ...old.alliance!,
+      revision: 2,
+      posts: [post('new'), post('pinned', true)],
+      next_post_before: 'server-cursor',
+    },
+  }
+  const read = vi.fn().mockResolvedValueOnce(old).mockResolvedValue(refreshed)
+  const controller = new AlliancesController({
+    read,
+    newId: () => 'publish',
+    command: async () => ({
+      command_id: 'publish',
+      alliance: 'alliance',
+      revision: 2,
+    }),
+  })
+  await controller.refresh()
+  await controller.run({
+    type: 'CreatePost',
+    alliance: 'alliance',
+    title: 'new',
+    body: 'new',
+  })
+  expect(
+    controller.store.getState().view?.alliance?.posts?.map((p) => p.id),
+  ).toEqual(['new', 'pinned'])
+  expect(controller.store.getState().view?.alliance?.posts?.[1].pinned).toBe(
+    true,
+  )
+  expect(controller.store.getState().view?.alliance?.next_post_before).toBe(
+    'server-cursor',
+  )
+})

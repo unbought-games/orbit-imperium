@@ -173,40 +173,14 @@ for (const mode of modes) {
         name: 'Main navigation',
         exact: true,
       })
-      await selectionIs(
-        nav.getByRole('link', { name: 'Develop', exact: true }),
-        mode.touch,
-      )
-      if (mode.width >= 1024)
-        await selectionIs(page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true }), mode.touch)
-      await selectionIs(
-        page.getByRole('link', {
-          name: 'Energy — resource settings',
-          exact: true,
-        }),
-        mode.touch,
-      )
+      // Shell control and resource-popup selection checks run for this exact
+      // input mode in shell-selection.component.spec.ts. Keep content and real
+      // cross-route catalog/Galaxy/HUD behavior here.
       // Ordinary coordinate links remain native copy targets, not control chrome.
       await selectionIs(
         page.getByRole('link', { name: /View .* in galaxy/ }).first(),
         false,
       )
-      const metal = page.getByRole('button', {
-        name: 'Metal details',
-        exact: true,
-      })
-      if (mode.touch) await selectionIs(metal, true)
-      await metal.click()
-      const details = page.getByRole('dialog', { name: 'Metal', exact: true })
-      await selectionIs(details.getByText('Available', { exact: false }), false)
-      await page.keyboard.press('Escape')
-      const worlds = page.getByRole('combobox', { name: 'Selected body' })
-      if (mode.touch) await selectionIs(worlds, true)
-      await worlds.click()
-      const option = page.getByRole('option').first()
-      if (mode.touch) await selectionIs(option, true)
-      await option.click()
-      await expect(page.getByRole('listbox')).toHaveCount(0)
       await nav.getByRole('link', { name: 'Develop', exact: true }).click()
       const tile = page.getByRole('link', {
         name: 'Upgrade Metal Mine',

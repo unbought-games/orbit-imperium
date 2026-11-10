@@ -904,7 +904,7 @@ for (const width of [320, 390, 1280]) {
   })
 }
 
-test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', async ({
+test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', { tag: '@journey' }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -1388,57 +1388,6 @@ function probeFleet(
   }
 }
 
-test('six fleets collapse to one summary, expand individually, and preserve expansion during refresh', async ({
-  page,
-}) => {
-  const now = 1793000000000
-  await page.clock.install({ time: now - 1000 })
-  await page.clock.pauseAt(now)
-  let revision = 1
-  const missions: components['schemas']['MissionView4'] = {
-    incoming: [],
-    score_value_micro: '0',
-    fleet_slots: '8',
-    fleets: Array.from({ length: 6 }, (_, i) => probeFleet(i, now)),
-  }
-  let sampledAt = now
-  const options = {
-    missions,
-    viewerRevision: () => String(revision),
-    sampledAt: () => sampledAt,
-  }
-  await setup(page, null, options)
-  const target = rows(page).nth(1)
-  const summary = target.getByLabel('Show 6 fleets to [1:371:2]', {
-    exact: true,
-  })
-  await expect(summary).toHaveText('6 fleets · next in 1m 0sDetails')
-  await expect(target.getByRole('listitem')).toHaveCount(0)
-  await summary.focus()
-  await page.keyboard.press('Enter')
-  await expect(target.getByRole('listitem')).toHaveCount(6)
-  await expect(target.getByRole('listitem').first()).toHaveText(
-    'Espionage en route · 1m 0s',
-  )
-  await page.clock.fastForward(5000)
-  await expect(summary).toContainText('next in 55s')
-  missions.fleets[0].leg = 'Returning'
-  revision++
-  sampledAt = now + 5000
-  await refreshGame(page)
-  await page.clock.runFor(1)
-  await expect(target.getByRole('listitem')).toHaveCount(5)
-  await expect(target.getByLabel('Show 5 fleets to [1:371:2]')).toContainText(
-    'next in 1m 55s',
-  )
-  await expect(
-    rows(page)
-      .first()
-      .getByRole('group', { name: /^Your fleets/ }),
-  ).toContainText('returning')
-  await expect(rows(page)).toHaveCount(15)
-})
-
 for (const width of [390, 1280])
   test(`Spy acknowledges optimistically at a fixed size and fades back at ${width}px`, async ({
     page,
@@ -1556,6 +1505,8 @@ test('a rejected launch clears the optimistic check and reports the authoritativ
   await expect(button).toBeEnabled()
 })
 
+
+
 test.describe('touch status tooltips', () => {
   test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
   test('a tap opens each simultaneous status and an outside tap dismisses it', async ({
@@ -1667,7 +1618,7 @@ test('mobile harvest caps the default and validates manual quantities', async ({
   await expect(actions(page, 2)).toBeFocused()
 })
 
-test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', async ({ page }) => {
+test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', { tag: '@journey' }, async ({ page }) => {
   await setupHarvest(page)
   let quotes = 0, launches = 0
   let release!: () => void
@@ -1789,38 +1740,7 @@ test('mobile harvest displays fuel quote failures without creating a departure',
   expect(launches).toBe(0)
 })
 
-test('Harvest preserves the edited quantity when switching between popover and sheet', async ({ page }) => {
-  await setupHarvest(page)
-  await page.setViewportSize({ width: 1280, height: 900 })
-  const surface = await openHarvest(page)
-  await surface.getByRole('textbox', { name: 'Recyclers', exact: true }).fill('2')
-  await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.getByRole('button', { name: 'Resize action sheet', exact: true })).toBeFocused()
-  await expect(surface.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await expect(surface.getByRole('textbox', { name: 'Recyclers', exact: true })).toBeFocused()
-  await expect(surface.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
-  expect(await page.evaluate(() => document.body.style.position)).toBe('')
-})
-
-test('desktop Harvest shares blocked-state explanations and fits near the viewport edge', async ({ page }) => {
-  await setupHarvest(page, '0', '0')
-  await page.setViewportSize({ width: 800, height: 550 })
-  const popover = await openHarvest(page)
-  await expect(popover).toContainText('No recyclers available')
-  await expect(popover).toContainText('No fleet slots available')
-  await expect(popover.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
-  await expect(popover.getByRole('button', { name: 'Dismiss popover', exact: true })).toBeFocused()
-  const box = (await popover.boundingBox())!
-  expect(box.x).toBeGreaterThanOrEqual(12)
-  expect(box.y).toBeGreaterThanOrEqual(12)
-  expect(box.x + box.width).toBeLessThanOrEqual(788)
-  expect(box.y + box.height).toBeLessThanOrEqual(538)
-  await popover.getByRole('button', { name: 'Dismiss popover', exact: true }).click()
-  await expect(popover).not.toBeVisible()
-})
-
-test('desktop Harvest sends the edited quantity with Enter through the shared launch path', async ({ page }) => {
+test('desktop Harvest sends the edited quantity with Enter through the shared launch path', { tag: '@journey' }, async ({ page }) => {
   await setupHarvest(page)
   await page.setViewportSize({ width: 1280, height: 900 })
   let launches = 0
@@ -1943,72 +1863,6 @@ for (const width of [320, 390, 768, 1440]) {
   })
 }
 
-for (const width of [390, 1280]) {
-  test(`debris art and amounts open quick harvest with keyboard access at ${width}px`, async ({ page }) => {
-    await setupHarvest(page)
-    await page.setViewportSize({ width, height: 844 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const trigger = rows(page).nth(1).getByRole('button', {
-      name: 'Quick harvest debris at [1:371:2]: Metal 40,000, Crystal 1', exact: true,
-    })
-    const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
-    const requests: string[] = []
-    page.on('request', request => {
-      if (request.url().endsWith('/commands') ||
-          (request.url().endsWith('/world') && request.postDataJSON().type === 'FleetQuote')) requests.push(request.url())
-    })
-    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
-    // The hit area ends at the content, not at the edge of the grid column.
-    const buttonBox = (await trigger.boundingBox())!
-    const amountsBox = (await trigger.locator(':scope > span').boundingBox())!
-    expect(buttonBox.x + buttonBox.width).toBeCloseTo(amountsBox.x + amountsBox.width, 1)
-    if (width === 1280) {
-      await page.mouse.click(buttonBox.x + buttonBox.width + 20, buttonBox.y + buttonBox.height / 2)
-      await expect(dialog).not.toBeVisible()
-    }
-    await page.keyboard.press('Tab')
-    await trigger.focus()
-    await expect(trigger).toBeFocused()
-    await diagnosticScreenshot(page, { path: `test-results/debris-trigger-${width}x844.png`, animations: 'disabled' })
-    // The image and resource text are both inside the same native button.
-    await trigger.locator('img').click()
-    await expect(dialog).toBeVisible()
-    await expect(dialog).toContainText('Debris at [1:371:2]')
-    await expect(dialog.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('3')
-    await expect(dialog.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
-    await diagnosticScreenshot(page, { path: `test-results/debris-harvest-${width}x844.png`, animations: 'disabled' })
-    await page.keyboard.press('Escape')
-    await expect(dialog).not.toBeVisible()
-    await expect(trigger).toBeFocused()
-    await trigger.getByText(width === 390 ? '40K' : '40,000', { exact: true }).filter({ visible: true }).click()
-    await expect(dialog).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(trigger).toBeFocused()
-    for (const key of ['Enter', 'Space']) {
-      await trigger.press(key)
-      await expect(dialog).toBeVisible()
-      await page.keyboard.press('Escape')
-      await expect(dialog).not.toBeVisible()
-      await expect(trigger).toBeFocused()
-    }
-    expect(requests).toEqual([])
-    await expect(page).toHaveURL(/\/galaxy$/)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
-  })
-
-  test(`debris quick harvest preserves blocked mission explanations at ${width}px`, async ({ page }) => {
-    await setupHarvest(page, '0', '0')
-    await page.setViewportSize({ width, height: 844 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await rows(page).nth(1).getByRole('button', { name: /^Quick harvest debris/ }).click()
-    const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
-    await expect(dialog).toContainText('No recyclers available')
-    await expect(dialog).toContainText('No fleet slots available')
-    await expect(dialog.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
-    await diagnosticScreenshot(page, { path: `test-results/debris-blocked-${width}x844.png`, animations: 'disabled' })
-  })
-}
-
 test('debris quick harvest follows capability eligibility and supports own and empty positions', async ({ page }) => {
   await setup(page, null, { extraCapabilities: [] })
   await expect(rows(page).nth(1)).toContainText('1,500')
@@ -2073,79 +1927,6 @@ for (const mission of ['Espionage', 'Harvest'] as const) {
       expect(submissions).toBe(1)
     })
   }
-}
-
-for (const width of [1440, 390]) {
-  test(`deuterium debris and quick harvest at ${width}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    await setup(page, null, {
-      catalog: recyclerCatalog,
-      bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'Recycler' }, count: '30' }] }],
-      missions: { fleets: [], incoming: [], fleet_slots: '3', score_value_micro: '0' },
-    }, {
-      2: { debris: { field_identity: id(42), metal: '300000', crystal: '180000', deuterium: '60000' } },
-      4: { debris: { field_identity: id(43), metal: '0', crystal: '0', deuterium: '40001' } },
-    })
-    const mixed = rows(page).nth(1).getByRole('button', { name: /^Quick harvest debris/ })
-    const only = rows(page).nth(3).getByRole('button', { name: /^Quick harvest debris/ })
-    await expect(mixed).toHaveAccessibleName(/Deuterium 60,000/)
-    await expect(only).toHaveAccessibleName(/Metal 0, Crystal 0, Deuterium 40,001/)
-    await expect(mixed.getByRole('img', { name: 'Deuterium', exact: true })).toHaveAttribute('data-resource', 'deuterium')
-    await page.evaluate(() => document.fonts.ready)
-    await diagnosticScreenshot(page, { path: `test-results/deuterium-galaxy-${width}x1000.png`, fullPage: false })
-    for (const [trigger, needed] of [[mixed, '27'], [only, '3']] as const) {
-      await trigger.click()
-      const form = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
-      await expect(form).toBeVisible()
-      if (width === 390) {
-        const panel = form.getByRole('region', { name: 'Harvest mission sheet', exact: true })
-        await expect.poll(async () => (await panel.boundingBox())?.y).toBeCloseTo(522, 0)
-      } else {
-        await expect(form.locator(':scope > div').first()).toHaveCSS('opacity', '1')
-      }
-      await expect(form.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue(needed)
-      await expect(form).toContainText(`${needed} needed to collect all debris`)
-      await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
-      await expect(form.getByRole('img', { name: 'Deuterium', exact: true })).toBeVisible()
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-      await diagnosticScreenshot(page, { path: `test-results/deuterium-harvest-${needed === '27' ? 'mixed' : 'only'}-${width}x1000.png`, fullPage: false })
-      await page.keyboard.press('Escape')
-      await expect(form).not.toBeVisible()
-    }
-  })
-}
-
-for (const width of [1440, 390]) {
-  test(`zero debris deuterium stays hidden in galaxy and quick harvest at ${width}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await setup(page, null, {
-      catalog: recyclerCatalog,
-      bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'Recycler' }, count: '30' }] }],
-      missions: { fleets: [], incoming: [], fleet_slots: '3', score_value_micro: '0' },
-    }, {
-      2: { debris: { field_identity: id(42), metal: '300000', crystal: '180000', deuterium: '0' } },
-    })
-    for (const index of [1, 3]) {
-      const trigger = rows(page).nth(index).getByRole('button', { name: /^Quick harvest debris/ })
-      await expect(trigger).not.toHaveAccessibleName(/Deuterium/)
-      await expect(trigger.getByRole('img', { name: 'Deuterium', exact: true })).toHaveCount(0)
-      await expect(trigger.getByRole('img', { name: 'Metal', exact: true })).toBeVisible()
-      await expect(trigger.getByRole('img', { name: 'Crystal', exact: true })).toBeVisible()
-    }
-    await page.evaluate(() => document.fonts.ready)
-    await diagnosticScreenshot(page, { path: `test-results/zero-deuterium-galaxy-${width}x1000.png`, fullPage: false })
-    await rows(page).nth(1).getByRole('button', { name: /^Quick harvest debris/ }).click()
-    const form = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
-    await expect(form).toBeVisible()
-    await expect(form.getByRole('img', { name: 'Deuterium', exact: true })).toHaveCount(0)
-    await expect(form.getByRole('img', { name: 'Metal', exact: true })).toBeVisible()
-    await expect(form.getByRole('img', { name: 'Crystal', exact: true })).toBeVisible()
-    await expect(form.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('24')
-    await expect(form.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    await diagnosticScreenshot(page, { path: `test-results/zero-deuterium-harvest-${width}x1000.png`, fullPage: false })
-  })
 }
 
 test('desktop Harvest keeps its Actions anchor when the planet changes', async ({ page }) => {
@@ -2213,177 +1994,3 @@ test('a probe in flight to one target leaves Spy available for the other targets
   await expect(spy(page, 2)).toBeEnabled()
   await expect(spy(page, 3)).toBeEnabled()
 })
-
-for (const [width, height] of [[1440, 900]]) {
-  test(`rapid Galaxy spying keeps a compact actionable toast stack at ${width}x${height}`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height });
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.clock.setFixedTime(new Date());
-    let revision = 1;
-    const missions: components["schemas"]["MissionView4"] = {
-      fleets: [],
-      incoming: [],
-      score_value_micro: "0",
-      fleet_slots: "20",
-    };
-    const targets = Object.fromEntries(
-      Array.from({ length: 14 }, (_, i) => [
-        i + 2,
-        {
-          body: targetBody({ id: id(21 + i), owner: id(31 + i) }),
-        },
-      ]),
-    );
-    await setup(
-      page,
-      null,
-      { missions, viewerRevision: () => String(revision) },
-      targets,
-    );
-    await expect(rows(page)).toHaveCount(15);
-    await routeWorld(page, async (route) => {
-      const request = route.request().postDataJSON();
-      if (request.type !== "FleetQuote") return route.fallback();
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          request_id: request.context.request_id,
-          viewer_revision: String(revision),
-          sampled_at: Date.now(),
-          as_of_ms: Date.now(),
-          data: {
-            intent: request.intent,
-            profile_hash: "a".repeat(64),
-            terms_hash: "b".repeat(64),
-            distance: 1000,
-            speeds: [["EspionageProbe", "100000000"]],
-            duration_ms: 120000,
-            fuel: "1000000",
-            capacity: "5000000",
-            maximum_payload: "4000000",
-            slot_limit: "20",
-          },
-        },
-      });
-    });
-    await page.route("**/commands", async (route) => {
-      const { gameplay } = route.request().postDataJSON();
-      const intent = gameplay.command.action.intent;
-      const position = Number(intent.destination.id.split("-").at(-1)) - 19;
-      const fleet = {
-        ...probeFleet(missions.fleets.length, Date.now()),
-        intent,
-        destination: { galaxy: 1, system: 371, position },
-      };
-      missions.fleets.push(fleet);
-      revision++;
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: "Committed",
-          result_ids: [fleet.id],
-          minimum_viewer_revision: String(revision),
-        },
-      });
-    });
-    const notices = page.getByLabel("Recent game events");
-    for (const position of [2, 3, 4]) {
-      await spy(page, position).evaluate((el) =>
-        el.scrollIntoView({ block: "center" }),
-      );
-      await withGalaxyResponse(page, () => spy(page, position).click());
-      await expect(notices.getByTestId("swipeable-toast")).toHaveCount(
-        position - 1,
-      );
-      await expect(rows(page).nth(position - 1)).toContainText(
-        "Espionage en route",
-      );
-    }
-    const cards = notices.getByTestId("swipeable-toast");
-    const top = notices.locator('[data-toast-depth="0"]');
-    await expect(notices.getByRole("button")).toHaveCount(1);
-    await expect(top).toContainText("[1:371:4]");
-    await expect(top.getByRole("button")).toHaveCSS("opacity", "1");
-    const topBox = (await top.boundingBox())!;
-    const stackBox = (await notices.boundingBox())!;
-    expect(stackBox.height).toBe(topBox.height);
-    for (const covered of await notices.locator("[inert]").all()) {
-      expect(
-        await covered.evaluate((el) => getComputedStyle(el).pointerEvents),
-      ).toBe("none");
-      const box = (await covered.boundingBox())!;
-      expect(topBox.y - box.y).toBeLessThanOrEqual(12);
-    }
-    await diagnosticScreenshot(page, {
-      path: `test-results/toast-stack/galaxy-stacked-${width}x${height}.png`,
-    });
-
-    await top.getByRole("button").focus();
-    await page.keyboard.press("Escape");
-    await expect(cards).toHaveCount(2);
-    await expect(top).toContainText("[1:371:3]");
-    await expect(top.getByRole("button")).toBeFocused();
-
-    // Keep moving down the real list while new notices replace the oldest.
-    for (let position = 5; position <= 15; position++) {
-      await spy(page, position).evaluate((el) =>
-        el.scrollIntoView({ block: "center" }),
-      );
-      await withGalaxyResponse(page, () => spy(page, position).click());
-      await expect(rows(page).nth(position - 1)).toContainText(
-        "Espionage en route",
-      );
-      // Dismissing a notice does not change the existing three-event history cap.
-      await expect(cards).toHaveCount(position < 7 ? 2 : 3);
-      await expect(top).toContainText(`[1:371:${position}]`);
-    }
-    expect(missions.fleets).toHaveLength(14);
-    await expect(top.getByRole("button")).toHaveCSS("opacity", "1");
-    await diagnosticScreenshot(page, {
-      path: `test-results/toast-stack/galaxy-last-target-${width}x${height}.png`,
-    });
-
-    // A short drag settles without opening. Successive swipes promote the next
-    // notice, and covered cards cannot receive focus or pointer input.
-    const swipe = async (distance: number) => {
-      const box = (await top.boundingBox())!;
-      const x = box.x + box.width / 2,
-        y = box.y + box.height / 2;
-      await page.mouse.move(x, y);
-      await page.mouse.down();
-      await page.mouse.move(x + distance, y, { steps: 10 });
-      await page.mouse.up();
-    };
-    await swipe(10);
-    await expect(cards).toHaveCount(3);
-    await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(top.getByTestId("swipeable-toast")).toHaveCSS(
-      "transform",
-      "none",
-    );
-    await swipe(95);
-    await expect(cards).toHaveCount(2);
-    await expect(top).toContainText("[1:371:14]");
-    await swipe(-95);
-    await expect(cards).toHaveCount(1);
-    await expect(top).toContainText("[1:371:13]");
-    await diagnosticScreenshot(page, {
-      path: `test-results/toast-stack/galaxy-promoted-${width}x${height}.png`,
-    });
-    await top.getByRole("button").focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await top.getByRole("button").focus();
-    await page.keyboard.press("Escape");
-    await expect(cards).toHaveCount(0);
-    await expect(page.getByTestId("command-orb")).toBeFocused();
-  });
-}

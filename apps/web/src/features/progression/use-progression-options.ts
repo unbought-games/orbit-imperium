@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { canonical } from '../../client-model/commands'
 import {
-  canonical,
-  type BoundProgressionOptions,
-} from '../../client-model/commands'
+  currentInspection,
+  inspectProgressionOptions,
+  type ProgressionInspection,
+} from './progression-inspection'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { ProgressionProps } from './shared'
 import {
@@ -13,55 +15,22 @@ import {
   type ProgressionRequest,
 } from './options'
 
-type Response = {
-  key: string
-  proposal: BoundProgressionOptions | null
-  error: string
-}
-
 function useServerProgressionOptions(
   model: Coordinator,
   request: ProgressionRequest | null,
   context: string,
 ) {
-  const [response, setResponse] = useState<Response | null>(null)
+  const [response, setResponse] = useState<ProgressionInspection | null>(null)
   const [attempt, setAttempt] = useState(0)
   const requestKey = canonical(request)
   const key = canonical([requestKey, context, attempt])
   useEffect(() => {
     const captured = JSON.parse(requestKey) as ProgressionRequest | null
     if (!captured) return
-    let active = true
-    void model.options(captured).then(
-      (proposal) => {
-        if (active)
-          setResponse({
-            key,
-            proposal,
-            error: proposal
-              ? ''
-              : 'Construction is unavailable. Retry after reconnecting.',
-          })
-      },
-      () => {
-        if (active)
-          setResponse({
-            key,
-            proposal: null,
-            error:
-              'Unable to inspect this action. Check your connection and try again.',
-          })
-      },
-    )
-    return () => {
-      active = false
-    }
+    return inspectProgressionOptions(model, captured, key, setResponse).cancel
   }, [model, requestKey, key])
-  const current = request && response?.key === key ? response : null
   return {
-    proposal: current?.proposal ?? null,
-    loading: !!request && !current,
-    error: current?.error ?? '',
+    ...currentInspection(request, key, response),
     retry: () => setAttempt((value) => value + 1),
   }
 }

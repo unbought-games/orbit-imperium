@@ -85,7 +85,7 @@ for (const width of [1440, 390]) {
   test.describe(`planet page routing at ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } })
     for (const [slug, title, query] of pages) {
-      test(`${title}: legacy normalization, planet switching and history keep page context`, async ({
+      test(`${title}: legacy normalization, planet switching and history keep page context`, { tag: (title === 'Messages') ? '@journey' : [] }, async ({
         page,
       }) => {
         const purchases = await fixture(page)
@@ -205,7 +205,7 @@ test('message selection retains the selected planet', async ({ page }) => {
   await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/messages#details`)
 })
 
-test('public alliance entry keeps its query and hash when resolving the universe name', async ({
+test('public alliance entry keeps its query and hash when resolving the universe name', { tag: '@journey' }, async ({
   page,
 }) => {
   await fixture(page)
@@ -239,7 +239,7 @@ test('canonical planet context wins over a redundant legacy query', async ({
   ).toHaveAttribute('data-value', id(6))
 })
 
-test('anonymous direct links retain their canonical path, query and hash through the login gate', async ({
+test('anonymous direct links retain their canonical path, query and hash through the login gate', { tag: '@journey' }, async ({
   page,
 }) => {
   await fixture(page)

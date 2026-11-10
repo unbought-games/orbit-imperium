@@ -110,7 +110,7 @@ async function hostedFixture(
 
 for (const width of [390, 1440]) {
   for (const returning of [false, true]) {
-    test(`hosted ${returning ? 'sign-in' : 'registration'} takes one homepage click and returns to the game at ${width}px`, async ({
+    test(`hosted ${returning ? 'sign-in' : 'registration'} takes one homepage click and returns to the game at ${width}px`, { tag: (returning && width === 1440) ? '@journey' : [] }, async ({
       page,
       baseURL,
     }) => {
@@ -149,7 +149,7 @@ for (const width of [390, 1440]) {
     })
   }
 
-  test(`hosted enrollment failure keeps the account and retries into the game at ${width}px`, async ({
+  test(`hosted enrollment failure keeps the account and retries into the game at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
     page,
     baseURL,
   }) => {

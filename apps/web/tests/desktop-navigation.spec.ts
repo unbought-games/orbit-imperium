@@ -4,103 +4,110 @@ import { body, id, shellFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
-for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440, 700, 2], [2560, 1100, 1]]) {
-  test(`desktop navigation preserves context, scrolling and alerts at ${width}x${height}, ${textScale * 100}% text`, async ({ page }) => {
-    await page.setViewportSize({ width, height })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    let unread = false
-    let revision = 1
-    const bodies = Array.from({ length: 9 }, (_, index) => ({
-      ...body,
-      id: index === 0 ? body.id : id(index + 20),
-      name: index === 0 ? 'Homeworld' : `Colony with a long name ${index}`,
-      coordinates: { galaxy: 1, system: 371, position: index + 1 },
-    }))
-    const purchases = await shellFixture(page, {
-      protocol: 4,
-      bodies,
-      extraCapabilities: ['Reports'],
-      missions: { fleets: [], incoming: [], fleet_slots: '8', score_value_micro: '0' },
-      hasUnreadReports: () => unread,
-      viewerRevision: () => String(revision),
-    })
-    await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% }` })
-    const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-    const main = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    const develop = page.getByRole('navigation', { name: 'Develop navigation', exact: true })
-    await expect(main).toHaveCount(1)
-    await expect(sidebar).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Menu', exact: true })).toBeHidden()
-    await expect(sidebar.getByText('Andromeda')).toHaveCount(0)
-    await expect(sidebar.getByText('Resource settings', { exact: true })).toHaveCount(0)
-    await expect(develop.getByRole('link')).toHaveText(['Resources', 'Facilities', 'Research', 'Shipyard', 'Defense'])
-    const brand = sidebar.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
-    await expect(brand).toBeVisible()
-    const bounds = (await sidebar.boundingBox())!
-    expect(bounds.x).toBeGreaterThanOrEqual(0)
-    expect(bounds.y).toBe(0)
-    expect(bounds.height).toBe(height)
-    const world = page.getByRole('group', { name: 'Planet and resources' })
-    expect((await world.boundingBox())!.x).toBeGreaterThanOrEqual(bounds.x + bounds.width)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await main.getByRole('link', { name: 'Develop', exact: true }).click()
-    await expect(page.locator('main h1')).toHaveText('Resources')
-    await develop.getByRole('link', { name: 'Research', exact: true }).focus()
-    await page.keyboard.press('Enter')
-    await expect(page.locator('main h1')).toHaveText('Research')
-    await expect(page.locator('main h1')).toBeFocused()
-    await expect(develop.getByRole('link', { name: 'Research', exact: true })).toHaveAttribute('aria-current', 'page')
-    await selectBody(page, bodies[8].id)
-    await expect(page).toHaveURL(new RegExp(`/b/${bodies[8].id}/research$`))
-    await page.goBack()
-    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/research$`))
-    await withBootstrapResponse(page, () => page.reload())
-    await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% }` })
-    await expect(develop.getByRole('link', { name: 'Research', exact: true })).toHaveAttribute('aria-current', 'page')
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-    expect((await sidebar.boundingBox())!.y).toBe(0)
-    expect((await world.boundingBox())!.y).toBe(0)
-    const settings = sidebar.getByRole('button', { name: 'Account menu', exact: true })
-    await settings.scrollIntoViewIfNeeded()
-    await expect(settings).toBeInViewport({ ratio: 1 })
-    await settings.focus()
-    await expect(settings).toBeFocused()
-    unread = true
-    revision++
-    await refreshGame(page)
-    const reports = sidebar.getByRole('link', { name: 'Reports — unread reports', exact: true })
-    await reports.scrollIntoViewIfNeeded()
-    await expect(reports.getByLabel('Unread reports', { exact: true })).toBeVisible()
-    const badge = (await reports.getByLabel('Unread reports', { exact: true }).boundingBox())!
-    const row = (await reports.boundingBox())!
-    expect(badge.x + badge.width).toBeLessThanOrEqual(row.x + row.width)
-    await reports.click()
-    await expect(page.locator('main h1')).toHaveText('Reports')
-    unread = false
-    revision++
-    await refreshGame(page)
-    await expect(sidebar.getByRole('link', { name: 'Reports', exact: true }).getByLabel('Unread reports')).toHaveCount(0)
-    expect(purchases()).toBe(0)
-    await diagnosticScreenshot(page, { path: `test-results/desktop-navigation/reports-${width}x${height}-${textScale}.png` })
+// Geometry/text-scale permutations live in shell-navigation.component.spec.ts.
+// This journey retains real route focus, body history, reload and server refresh wiring.
+test('desktop navigation preserves body history, reload and report refresh', { tag: '@journey' }, async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  let unread = false
+  let revision = 1
+  const bodies = Array.from({ length: 9 }, (_, index) => ({
+    ...body,
+    id: index === 0 ? body.id : id(index + 20),
+    name: index === 0 ? 'Homeworld' : `Colony with a long name ${index}`,
+    coordinates: { galaxy: 1, system: 371, position: index + 1 },
+  }))
+  const purchases = await shellFixture(page, {
+    protocol: 4,
+    bodies,
+    extraCapabilities: ['Reports'],
+    missions: {
+      fleets: [],
+      incoming: [],
+      fleet_slots: '8',
+      score_value_micro: '0',
+    },
+    hasUnreadReports: () => unread,
+    viewerRevision: () => String(revision),
   })
-}
+  const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
+  const main = page.getByRole('navigation', {
+    name: 'Main navigation',
+    exact: true,
+  })
+  const develop = page.getByRole('navigation', {
+    name: 'Develop navigation',
+    exact: true,
+  })
+  await main.getByRole('link', { name: 'Develop', exact: true }).click()
+  await expect(page.locator('main h1')).toHaveText('Resources')
+  await develop.getByRole('link', { name: 'Research', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('main h1')).toHaveText('Research')
+  await expect(page.locator('main h1')).toBeFocused()
+  await expect(
+    develop.getByRole('link', { name: 'Research', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
+  await selectBody(page, bodies[8].id)
+  await expect(page).toHaveURL(new RegExp(`/b/${bodies[8].id}/research$`))
+  await page.goBack()
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/research$`))
+  await withBootstrapResponse(page, () => page.reload())
+  await expect(
+    develop.getByRole('link', { name: 'Research', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
+  // Preserve the original post-reload geometry/focus check in the real shell.
+  const world = page.getByRole('group', { name: 'Planet and resources' })
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  expect((await sidebar.boundingBox())!.y).toBe(0)
+  expect((await world.boundingBox())!.y).toBe(0)
+  const settings = sidebar.getByRole('button', {
+    name: 'Account menu',
+    exact: true,
+  })
+  await settings.scrollIntoViewIfNeeded()
+  await expect(settings).toBeInViewport({ ratio: 1 })
+  await settings.focus()
+  await expect(settings).toBeFocused()
+  unread = true
+  revision++
+  await refreshGame(page)
+  const reports = sidebar.getByRole('link', {
+    name: 'Reports — unread reports',
+    exact: true,
+  })
+  await reports.scrollIntoViewIfNeeded()
+  await expect(
+    reports.getByLabel('Unread reports', { exact: true }),
+  ).toBeVisible()
+  await reports.click()
+  await expect(page.locator('main h1')).toHaveText('Reports')
+  unread = false
+  revision++
+  await refreshGame(page)
+  await expect(
+    sidebar
+      .getByRole('link', { name: 'Reports', exact: true })
+      .getByLabel('Unread reports'),
+  ).toHaveCount(0)
+  expect(purchases()).toBe(0)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/desktop-navigation/reports-1440x900-1.png',
+  })
+})
 
-test('sidebar uses full touch targets on a large touch viewport', async ({ browser }) => {
+// Touch geometry is isolated in shell-controls.component.spec.ts; retain route wiring here.
+test('touch sidebar opens Settings and Facilities in the application', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, hasTouch: true })
   const page = await context.newPage()
   try {
     await shellFixture(page)
     const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-    const small = await sidebar.locator('a, button').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().height < 44).map(node => node.textContent))
-    expect(small).toEqual([])
-    await sidebar.getByRole('button', {name: 'Account menu', exact: true}).tap()
-    const accountMenu = page.getByRole('menu', {name: 'Account menu', exact: true})
+    await sidebar.getByRole('button', { name: 'Account menu', exact: true }).tap()
+    const accountMenu = page.getByRole('menu', { name: 'Account menu', exact: true })
     await expect(accountMenu).toBeVisible()
-    await expect(accountMenu.getByRole('menuitem')).toHaveText(['My Orbit profile', 'Settings', 'Logout'])
-    await expect(accountMenu.getByRole('menuitem', { name: 'My Orbit profile' })).toHaveAttribute('href', '/profile')
-    for (const item of await accountMenu.getByRole('menuitem').all())
-      expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-    await diagnosticScreenshot(page, {path: 'test-results/account-sidebar-touch-1024x900.png'})
     await accountMenu.getByRole('menuitem', { name: 'Settings', exact: true }).tap()
     await expect(page.getByRole('heading', { name: 'Universe settings', exact: true })).toBeVisible()
     await expect(accountMenu).toBeHidden()
@@ -152,62 +159,56 @@ test('tablet brand keeps a full touch target without overlapping resource contro
 })
 
 
-for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
-  test(`navigation always uses a bottom bar or sidebar at ${width}px`, async ({ page }) => {
+// The component fixture has no CommandHud or real Menu destination. Keep both
+// application integrations at every original bottom-bar breakpoint.
+for (const width of [390, 767, 768, 961, 1023]) {
+  test(`command HUD stays above bottom navigation and Menu opens at ${width}px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page, {
       protocol: 4,
-      missions: { fleets: [], incoming: [], fleet_slots: '8', score_value_micro: '0' },
+      missions: {
+        fleets: [],
+        incoming: [],
+        fleet_slots: '8',
+        score_value_micro: '0',
+      },
     })
-    const navigation = page.getByRole('navigation', { name: 'Main navigation', exact: true })
+    const navigation = page.getByRole('navigation', {
+      name: 'Main navigation',
+      exact: true,
+    })
     await expect(navigation).toHaveCount(1)
-    if (width < 1024) {
-      await expect(navigation).toHaveCSS('position', 'fixed')
-      const bounds = (await navigation.boundingBox())!
-      expect(bounds.y + bounds.height).toBeCloseTo(900, 0)
-      expect(bounds.x).toBe(0)
-      expect(bounds.width).toBe(width)
-      const hud = page.getByRole('button', { name: 'Open command HUD', exact: true })
-      const hudBounds = (await hud.boundingBox())!
-      expect(hudBounds.y + hudBounds.height).toBeLessThanOrEqual(bounds.y)
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-      expect((await navigation.boundingBox())!.y).toBeCloseTo(bounds.y, 0)
-      await page.evaluate(() => window.scrollTo(0, 0))
-      if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await expect(page.getByTestId('orb-caption')).toHaveCount(0, { timeout: 10000 })
-      await diagnosticScreenshot(page, { path: `test-results/navigation-bottom-${width}x900.png`, fullPage: false })
-      await navigation.getByRole('link', { name: 'Menu', exact: true }).click()
-      await expect(page.getByRole('navigation', { name: 'Menu destinations', exact: true })).toBeVisible()
-    } else {
-      const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-      await expect(sidebar).toBeVisible()
-      await expect(sidebar).toHaveCSS('position', 'fixed')
-    }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const bounds = (await navigation.boundingBox())!
+    const hud = page.getByRole('button', {
+      name: 'Open command HUD',
+      exact: true,
+    })
+    const hudBounds = (await hud.boundingBox())!
+    expect(hudBounds.y + hudBounds.height).toBeLessThanOrEqual(bounds.y)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+      await expect(page.getByTestId('orb-caption')).toHaveCount(0, {
+        timeout: 10000,
+      })
+    await diagnosticScreenshot(page, {
+      path: `test-results/navigation-bottom-${width}x900.png`,
+      fullPage: false,
+    })
+    await navigation.getByRole('link', { name: 'Menu', exact: true }).click()
+    await expect(
+      page.getByRole('navigation', { name: 'Menu destinations', exact: true }),
+    ).toBeVisible()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
   })
 }
 
-test('shrinking the desktop account menu closes its portal and focuses the mobile menu', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await shellFixture(page)
-  const account = page.getByRole('button', { name: 'Account menu', exact: true })
-  await account.click()
-  const popup = page.getByRole('menu', { name: 'Account menu', exact: true })
-  await expect(popup).toBeVisible()
-  await page.setViewportSize({ width: 390, height: 900 })
-  await expect(popup).toBeHidden()
-  const mobileMenu = page.getByRole('link', { name: 'Menu', exact: true })
-  await expect(mobileMenu).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('navigation', { name: 'Menu destinations', exact: true })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await expect(account).toHaveAttribute('aria-expanded', 'false')
-  await account.click()
-  await expect(popup).toBeVisible()
-})
-
 for (const width of [390, 320]) {
-  test(`menu page preserves tab navigation, history and settings access at ${width}px`, async ({page}) => {
+  test(`menu page preserves tab navigation, history and settings access at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({page}) => {
     await page.setViewportSize({width, height:844})
     await page.emulateMedia({reducedMotion:'reduce'})
     await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => shellFixture(page, {

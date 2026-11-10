@@ -1,0 +1,263 @@
+# Test strategy overhaul verification
+
+Base revision: `a119915ffaeb881a7f54d65542478f4788bd4210`.
+
+## Changes and coverage accounting
+
+Application browser checks now use a temporary, precompiled fixture bundle.
+Compilation finishes before assertions begin; development previews are retained,
+but this artifact is not used for releases. Isolated components use a separate
+test-only gallery, actual production views/controllers, controlled external
+ports, and a guard against game API traffic and page errors.
+
+CI keeps three disjoint required classes: tagged application journeys, isolated
+components, and remaining feature integrations. The inventory policy checks their
+union, shard forwarding, and placement of every browser file. Unconverted unique
+browser assertions remain required; they are not quarantined or described as
+unit coverage. Full-system acceptance and production-homepage checks retain their
+separate purposes. Routine execution-deadline and merge-protection policies are
+unchanged.
+
+Detailed original-scenario dispositions and named replacements:
+
+- [Dispatch](test-migration-dispatch.md)
+- [HUD](test-migration-hud.md)
+- [Progression](test-migration-progression.md)
+- [Catalog content](test-migration-catalog-content.md)
+- [Reports](test-migration-reports.md)
+- [Shell and profiles](test-migration-shell-profiles.md)
+- [Shell components](test-migration-shell-components.md)
+- [Social and alliances](test-migration-social-components.md)
+- [Galaxy and fleets](test-migration-galaxy-fleets.md)
+- [Tutorial and settings](test-migration-tutorial-settings.md)
+
+The integration-owned moves preserve all 12 action-sheet assertions, 48 isolated
+detail-preview cases, and three identity typography cases in the component
+gallery. The three detail cases involving real application completion/routing
+remain application tests. NumberInput selection/caret/native submission uses
+two isolated mouse/touch cases, with a representative Dispatch wiring case and
+both coordinate-entry application cases retained. LoadingPresence timing remains
+in its unit tests; two component cases retain geometry, inert content and focus.
+The remaining directory journey verifies actual query delivery, editable controls
+and recovery without installing a clock that can already be in the past.
+
+## Baseline and failure accounting
+
+Dependency installation took approximately four seconds. The baseline client
+run passed 1,498 tests in 165 files in 9.40 seconds. The original application
+suite ran 1,183 cases: 1,167 passed and 16 failed in 1,859.056 seconds, after
+6.881 seconds of module preparation. No retries were enabled.
+
+Parallel validation across separate worktrees caused shared-host contention:
+load reached 45.5 on 12 cores. The run remains failed validation. Contention is
+not proof that every assertion failure was infrastructure-caused, and these
+failures are not counted as 16 proven flakes. Evidence was retained under
+`test-results/test-strategy/baseline-a119915f`. Subsequent expensive validation
+has one owner and runs serially across chats; this is now in AGENTS and the skill.
+
+The first integrated application run passed 834 of 835 cases in 735.465 seconds,
+after 4.693 seconds of bundle preparation, with two workers. Its one failure
+waited for a development `tsr-split` URL rather than the actual built Defense
+chunk. Inspection of Vite's emitted asset manifest identified the corresponding
+chunk. The interception now handles that built path while preserving the held
+preload, body switch, direct load and history assertions. The affected case
+passed in 3.4 seconds of runner time. This was a fixture-runner compatibility
+correction, not an unchanged retry or a timeout increase.
+
+The first integrated component run passed 257 of 272 cases in 287.222 seconds
+with one worker. The individual ledgers retain its authored-fixture failures and
+repairs. Ambiguous locators, missing price metadata, missing caller layout
+context, diagnostic-output overflow and invalid touch cleanup were diagnosed
+before repair. The combined-modality tooltip replacement failed again after its
+one repair; it was removed and the unchanged original touch-only application
+coverage restored. That unsuccessful migration did not erase source coverage.
+
+## Product defects and review findings
+
+Component isolation exposed Motion's initial-only preference hook in the action
+sheet/popover. Both now use the existing subscribing reduced-motion hook. The
+popover test proved the old exit delay remained after changing preference; the
+repaired product passes without relaxing that assertion. Its new test then needed
+one explained clock repair to execute FloatingFocusManager's queued focus frame.
+
+Toast activation now distinguishes pointer gestures from fresh keyboard/assistive
+activation. Raw pointer movement prevents an accidental open before Motion's drag
+callback; cancellation does not permanently disable keyboard activation.
+
+Independent review prevented coverage loss: four healthy production-settings
+cases and a mounted profile update were restored; buffered HUD pagination remains
+covered; expired-noticeboard live status remains covered; and fleet disclosure
+now verifies changed membership while staying expanded. Controller tests are not
+credited with those DOM, storage, focus or route contracts.
+
+## Integration status
+
+Final inventory: **816 application cases** (39 tagged journeys and 777 remaining
+required feature integrations), **272 isolated component cases**, and the
+separate 10-case built-homepage check. The small journey cohort is implemented;
+the remaining feature integrations are still mandatory. This does not claim that
+every application contract has become an isolated component.
+
+| Validation | Result |
+|---|---|
+| Component suite after explained repairs | 272 passed, no skips/retries; 144.831 s with two workers |
+| Post-consolidation navigation, selection, social and alliance files | 38 passed; 41.333 s with two workers |
+| Final public-directory entry variants | 2 passed; 0.901 s with two workers |
+| Final application inventory reconciled against passing runs | All 816 full title paths/projects have passing evidence; no missing case |
+| Tooling | 130 passed; one existing opt-in Docker check skipped |
+| Client | 1,744 passed in 186 files; 6.37 s |
+| Rust workspace, bridge and storage-library runs | 752 + 47 + 10 passed; execution 29.761 s, 1.034 s and 0.019 s |
+| Clippy, Rust formatting, frontend lint/format, contracts and boundaries | Passed |
+| Component/fixture TypeScript | Passed |
+| Production frontend build and prerender | Passed after the fixture typing correction below |
+| Built-homepage production assets | 10 passed; 3.3 s |
+
+The complete `make check` attempt passed its tests/static checks but failed its
+last build step on a newly authored readonly-array fixture type in
+`alliances/recruit.test.ts`. Replaced its deep readonly assertion with the actual
+mutable input tuple contract. The affected six tests passed (0.270 s runner),
+and the complete `npm run build` phase then passed. That failed attempt remains
+recorded; no Rust or already-passing browser run was repeated for this type-only
+correction. New component fixture types also caught a missing capability reason
+and a widened protocol discriminant before final validation.
+
+The application evidence comes from the full integrated run, its one explained
+bundle-URL repair, and the changed files after consolidation. Reconciliation uses
+full suite ancestry and project, not file plus leaf title, which is not unique.
+The full-run starting revision was
+`93cc09fea72b4f1f32c2864bef4dea3a1147ebfe` with working-change SHA-256
+`1e7a235f976ba67e261a77cb56139379e04c6eab20babba7f11c0e14ebc3f2f5`.
+The validated implementation snapshot is
+`80839e2484ee82b10624fdf1c91ed61107f930ef`; the following commit only records this
+verification revision. Local runner allocation wait was not separately measured; no GitHub CI,
+merge-queue delay or post-merge result is claimed.
+
+Inspected final real-component captures for notifications and Harvest controls at
+1280×900 and 390×844, including the popover/sheet branches and changed motion
+preference while open. Crops are in `test-results/test-strategy/visual/` and are
+displayed in the originating chat. The first manual capture attempt used Vite's
+default port and failed before browser startup because another service owned it;
+the capture then used the existing reserved-port helper. Initial notification
+captures caught the entrance fade; refreshed captures wait for the actual settled
+opacity/transform, without changing the component or adding a sleep.
+
+All validation browsers and Vite servers were closed. Application test bundles
+were removed by the runner; retained failure logs, reports, traces and screenshots
+remain local under `test-results/test-strategy/`. No Docker resources were started
+for this frontend migration. Lockfiles and CHANGELOG remain unchanged. No PR,
+push, deployment or repository-protection change is part of this verification.
+
+## Phase-one PR integration
+
+PR #385 integrates main `b3aaae7c6a240fd5ff1e96bf7c5185521e43fcf3` to resolve
+the player-profile test conflict. Preserve main's documented retirement of the
+recurring three-report identity scenario and this branch's other coverage
+migrations. The briefing acknowledgement hook composes with the extracted
+Tutorial presentation boundary; all new main assertions remain selected.
+
+The combined inventory is 819 application cases: 39 journeys and 780 required
+feature integrations. Relative to the local 816-case snapshot, main adds three
+briefing scenarios and one announcement scenario, and removes the recurring
+report-identity case. Component inventory remains 272.
+
+Affected profile/tutorial browser validation: 21 passed, 4.866 s bundle
+preparation and 29.6 s runner with two workers; no retries. Relevant tutorial
+and identity units: 67 passed, 1.08 s runner. CI selection/workflow policy:
+14 passed, 9.199 s. Artifacts are under
+`test-results/test-strategy/pr385-integration/`.
+
+The first component typecheck after merging main failed because local
+node_modules lacked main's newly added Markdown declaration dependency. Refresh
+from the committed lockfile with npm ci before repeating the typecheck/build;
+this is stale local dependency setup, not a test assertion failure.
+
+After the lockfile install, component TypeScript and the complete production
+frontend build/prerender passed. No source workaround or dependency version
+change was needed. Native runners closed browsers/servers and removed temporary
+application bundles. Remote CI and merge-queue evidence follow separately.
+
+### PR #385: component compilation crossed the assertion window
+
+CI run `42835800347`, attempt 1, head `8b260552`, job `129897661485`
+failed `real detail preview mine-zero keeps its decision above the phone fold
+without game requests`; 271 other component cases passed. All 819 application
+cases and native checks passed on that head. This is a test-runner preparation
+defect, not evidence of GitHub outage or a product regression.
+
+The retained trace contains 701 development-module requests after navigation.
+HTML arrived at 14:39:52.770 UTC, the lazy detail module at 14:39:53.023, and its
+transitive module graph continued arriving through 14:39:57.419. The initial
+heading assertion ran for five seconds and missed the completed render; the
+14:39:58.044 artwork request and failure snapshot show the expected Metal Mine
+and First Build UI. No API requests or page errors were recorded.
+
+Inspected original `detail-playground.spec.ts` history and the repair ledger as
+well as the moved component file. No earlier repair to this scenario was found.
+This is its one repair: the shared runner now precompiles both fixture
+boundaries, including the component gallery and its separate report entrypoint,
+then serves immutable assets. The previous preparation only transformed the
+component entry and left lazy scene imports to the browser. All gallery callers
+share the correction; no scenario, assertion, fake clock, timeout, retry or
+failure diagnostic changes. Existing repairs retain their history.
+
+Original logs and artifacts are retained locally under
+`test-results/test-strategy/pr385-ci-attempt1/` and in GitHub artifact
+`13773298455`. This chat owns the repair, full component validation and CI/queue
+follow-through. No independent follow-up repair is left unassigned.
+
+Repair validation: all 272 component tests passed, no retries/skips (4.290 s
+compilation, 117.562 s runner, two workers). All 39 application journeys passed
+through the unified runner (5.115 s compilation, 23.7 s runner, three workers).
+All 14 CI selection/workflow checks passed (10.840 s); runner syntax, formatting
+and whitespace checks passed. Both native runners cleaned up their browser,
+server and temporary bundles. CI run `42835800347` ultimately passed every
+other job, including all PostgreSQL groups; its aggregate gate correctly failed
+for the component assertion. Fresh CI is required on the repair commit.
+
+### PR #385: second CI component failure
+
+Run `42838492232` on `1e079589` passed all 819 application cases, native checks,
+all PostgreSQL groups and automated review. The precompiled component suite
+passed 271 cases, including the previously failed mine-zero case, and failed the
+touch-swipe/promoted-tap case. That scenario already had its single repair.
+The [HUD ledger](test-migration-hud.md#pr-385-recurring-native-touch-scenario-retired)
+records the retained trace, unexplained activation, retirement and exact lost
+native-touch protection. No retry or further stabilization was applied. The
+component inventory is now 271; all 819 application cases stay required.
+
+Retirement validation: all five remaining native HUD component cases passed
+(1.9 s runner, two workers), 16 swipe/prepared-toast unit cases passed (0.566 s),
+and all 14 CI selection/workflow checks passed (9.608 s). Formatting and
+whitespace checks passed. The component runner closed Chromium and its server
+and removed the temporary bundle. The user requested a review hold: follow
+fresh CI and review findings, then leave PR #385 open without queue enrollment
+or merge.
+
+## Main integration after the review hold
+
+Resolve conflicts against main `9a477a8e` (including PR #384 missile-report
+coverage and PR #383 announcement documentation). Preserve both branches' test
+retirements rather than reviving exhausted scenarios: the client-update session
+rotation scenarios remain absent, main's desktop quiet-recovery click variant
+remains absent, and main's retired desktop vacation journey remains absent.
+Keep main's surviving mobile vacation journey in the required `@journey` cohort;
+do not restore blocker/rejection application permutations already migrated to
+isolated components. The two normal-motion shell cases retired on main also
+remain absent, with its new deterministic navigation-motion coverage intact.
+
+Current application inventory: 816 cases, consisting of 39 journeys and 777
+feature integrations; isolated component inventory remains 271. The net change
+from 819 is main's removal of one recovery and two shell variants. Vacation
+retains one journey, now its existing mobile variant. Coverage maps and the
+continuation ownership counts are reconciled. No production conflict required
+a new source fix, and no additional scenario repair is claimed.
+
+Conflict-resolution validation: all 73 affected application cases passed in
+`client-update`, `vacation`, `shell` and `espionage-reports` (4.939 s
+bundle preparation, 65.444 s runner, two workers, no
+retries/skips). All 142 focused report/content/combat-model/navigation-motion
+unit tests passed (1.24 s), and all 14 CI selection/workflow checks passed
+(11.372 s). Whitespace checks passed; no unresolved files remain. Browser/server
+and temporary bundles were cleaned up. Artifacts are under
+`test-results/test-strategy/pr385-main-conflicts/`. Fresh CI must verify this
+merge commit; the owner review hold remains in effect.

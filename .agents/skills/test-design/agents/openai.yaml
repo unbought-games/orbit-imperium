@@ -1,0 +1,3 @@
+interface:
+  display_name: "Test Design"
+  short_description: "Choose test layers and diagnose Orbit CI failures"

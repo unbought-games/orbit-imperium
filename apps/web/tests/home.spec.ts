@@ -226,7 +226,7 @@ test('both landing invitations respect disabled registration', async ({
   await expect(page).toHaveURL(/\/login$/)
 })
 
-test('returning players go straight to their empire without loading marketing images', async ({
+test('returning players go straight to their empire without loading marketing images', { tag: '@journey' }, async ({
   page,
 }) => {
   const images: string[] = []

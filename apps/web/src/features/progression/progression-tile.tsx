@@ -4,7 +4,11 @@ import type { ProgressionProps } from './shared'
 import type { ProgressionRequest } from './options'
 import { useCatalogCost } from './use-progression-options'
 import { BuildingQuickBuild } from './building-quick-build'
-import { canAfford } from '../../client-model/resources'
+import {
+  catalogCostRequest,
+  catalogTileBody,
+  catalogUnaffordable,
+} from './catalog-tile-model'
 
 /** Keeps server cost inputs separate from affordability, which follows live balances. */
 export function ProgressionTile({
@@ -17,19 +21,9 @@ export function ProgressionTile({
   view: ProgressionProps['view']
   request: ProgressionRequest | null
 }) {
-  const cost = useCatalogCost(
-    model,
-    view,
-    tile.disabled || tile.locked || tile.progress ? null : request,
-  )
-  const body = request
-    ? view.bodies.find(
-        (body) =>
-          body.id ===
-          (request.type === 'Research' ? request.host : request.body),
-      )
-    : null
-  const unaffordable = !!cost && !!body && !canAfford(cost, body.amounts)
+  const cost = useCatalogCost(model, view, catalogCostRequest(request, tile))
+  const body = catalogTileBody(view, request)
+  const unaffordable = catalogUnaffordable(view, request, cost)
   const props = {
     ...tile,
     inspectable: request?.type === 'Upgrade',
