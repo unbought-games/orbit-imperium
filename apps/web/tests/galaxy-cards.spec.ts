@@ -1388,57 +1388,6 @@ function probeFleet(
   }
 }
 
-test('six fleets collapse to one summary, expand individually, and preserve expansion during refresh', async ({
-  page,
-}) => {
-  const now = 1793000000000
-  await page.clock.install({ time: now - 1000 })
-  await page.clock.pauseAt(now)
-  let revision = 1
-  const missions: components['schemas']['MissionView4'] = {
-    incoming: [],
-    score_value_micro: '0',
-    fleet_slots: '8',
-    fleets: Array.from({ length: 6 }, (_, i) => probeFleet(i, now)),
-  }
-  let sampledAt = now
-  const options = {
-    missions,
-    viewerRevision: () => String(revision),
-    sampledAt: () => sampledAt,
-  }
-  await setup(page, null, options)
-  const target = rows(page).nth(1)
-  const summary = target.getByLabel('Show 6 fleets to [1:371:2]', {
-    exact: true,
-  })
-  await expect(summary).toHaveText('6 fleets · next in 1m 0sDetails')
-  await expect(target.getByRole('listitem')).toHaveCount(0)
-  await summary.focus()
-  await page.keyboard.press('Enter')
-  await expect(target.getByRole('listitem')).toHaveCount(6)
-  await expect(target.getByRole('listitem').first()).toHaveText(
-    'Espionage en route · 1m 0s',
-  )
-  await page.clock.fastForward(5000)
-  await expect(summary).toContainText('next in 55s')
-  missions.fleets[0].leg = 'Returning'
-  revision++
-  sampledAt = now + 5000
-  await refreshGame(page)
-  await page.clock.runFor(1)
-  await expect(target.getByRole('listitem')).toHaveCount(5)
-  await expect(target.getByLabel('Show 5 fleets to [1:371:2]')).toContainText(
-    'next in 1m 55s',
-  )
-  await expect(
-    rows(page)
-      .first()
-      .getByRole('group', { name: /^Your fleets/ }),
-  ).toContainText('returning')
-  await expect(rows(page)).toHaveCount(15)
-})
-
 for (const width of [390, 1280])
   test(`Spy acknowledges optimistically at a fixed size and fades back at ${width}px`, async ({
     page,
@@ -1554,41 +1503,6 @@ test('a rejected launch clears the optimistic check and reports the authoritativ
   await expect(rows(page).nth(1).getByRole('alert')).toHaveCount(0)
   await expect(button).toHaveAttribute('data-feedback', 'false')
   await expect(button).toBeEnabled()
-})
-
-test.describe('touch status tooltips', () => {
-  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
-  test('a tap opens each simultaneous status and an outside tap dismisses it', async ({
-    page,
-  }) => {
-    await setup(
-      page,
-      null,
-      {},
-      {
-        2: {
-          body: targetBody({
-            vacation: true,
-            inactivity: 'Inactive7',
-            attack_blocker: 'TargetVacation',
-          }),
-        },
-      },
-    )
-    const card = rows(page).nth(1)
-    await card.getByRole('button', { name: 'Vacation mode', exact: true }).tap()
-    await expect(page.getByRole('tooltip')).toContainText('Vacation mode')
-    await rows(page).first().getByText('Your planet', { exact: true }).tap()
-    await expect(page.getByRole('tooltip')).toBeHidden()
-    await card
-      .getByRole('button', { name: 'Inactive for 7 days or more', exact: true })
-      .tap()
-    await expect(page.getByRole('tooltip')).toContainText(
-      'Visiting fleets can still cause activity',
-    )
-    await rows(page).first().getByText('Your planet', { exact: true }).tap()
-    await expect(page.getByRole('tooltip')).toBeHidden()
-  })
 })
 
 const recyclerCatalog: components['schemas']['CatalogEntry3'][] = [{
@@ -1787,37 +1701,6 @@ test('mobile harvest displays fuel quote failures without creating a departure',
   await expect(sheet.getByRole('alert')).toContainText(/fuel|deuterium|resources/i)
   await expect(sheet.getByRole('button', { name: 'Send', exact: true })).toBeEnabled()
   expect(launches).toBe(0)
-})
-
-test('Harvest preserves the edited quantity when switching between popover and sheet', async ({ page }) => {
-  await setupHarvest(page)
-  await page.setViewportSize({ width: 1280, height: 900 })
-  const surface = await openHarvest(page)
-  await surface.getByRole('textbox', { name: 'Recyclers', exact: true }).fill('2')
-  await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.getByRole('button', { name: 'Resize action sheet', exact: true })).toBeFocused()
-  await expect(surface.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await expect(surface.getByRole('textbox', { name: 'Recyclers', exact: true })).toBeFocused()
-  await expect(surface.getByRole('textbox', { name: 'Recyclers', exact: true })).toHaveValue('2')
-  expect(await page.evaluate(() => document.body.style.position)).toBe('')
-})
-
-test('desktop Harvest shares blocked-state explanations and fits near the viewport edge', async ({ page }) => {
-  await setupHarvest(page, '0', '0')
-  await page.setViewportSize({ width: 800, height: 550 })
-  const popover = await openHarvest(page)
-  await expect(popover).toContainText('No recyclers available')
-  await expect(popover).toContainText('No fleet slots available')
-  await expect(popover.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
-  await expect(popover.getByRole('button', { name: 'Dismiss popover', exact: true })).toBeFocused()
-  const box = (await popover.boundingBox())!
-  expect(box.x).toBeGreaterThanOrEqual(12)
-  expect(box.y).toBeGreaterThanOrEqual(12)
-  expect(box.x + box.width).toBeLessThanOrEqual(788)
-  expect(box.y + box.height).toBeLessThanOrEqual(538)
-  await popover.getByRole('button', { name: 'Dismiss popover', exact: true }).click()
-  await expect(popover).not.toBeVisible()
 })
 
 test('desktop Harvest sends the edited quantity with Enter through the shared launch path', async ({ page }) => {

@@ -24,6 +24,19 @@ export function FleetInventory({
   // Inventory and queues must come from the same confirmed snapshot, not launch overlays.
   const view = useStore(model.store, (state) => state.view)
   if (!view || view.protocol === 2) return null
+  return <FleetInventoryView view={view} origin={origin} universe={universe} />
+}
+
+/** Confirmed snapshot presentation, independent of session and transport lifetime. */
+export function FleetInventoryView({
+  view,
+  origin,
+  universe,
+}: {
+  view: Parameters<typeof fleetInventoryRows>[0]
+  origin: string
+  universe: string
+}) {
   const body = view.bodies.find((candidate) => candidate.id === origin)
   if (!body) return null
   const ships = fleetInventoryRows(view, body)
