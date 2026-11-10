@@ -1,3 +1,7 @@
+import { UsersRound } from 'lucide-react'
+import { EmptyState } from '../../ui/empty-state'
+import { ButtonLinkAnchor } from '../../ui/button'
+import applicationStyles from './applications.module.css'
 import { RecruitmentSettings } from './recruitment-settings'
 import { PlayerName } from '../player-name'
 import { can, type AllianceDetail } from '../../client-model/alliances'
@@ -15,13 +19,39 @@ export function Applications({
   run: Run
   busy: boolean
 }) {
+  const hasApplications = !!detail.applications?.length
+  const recruitmentLink = (
+    <ButtonLinkAnchor
+      variant="secondary"
+      size={hasApplications ? 'inline' : 'default'}
+      href={`/alliances/${detail.summary.universe}/${detail.summary.id}`}
+    >
+      Recruitment page
+    </ButtonLinkAnchor>
+  )
   return (
     <section className={styles.stack} aria-label="Recruitment applications">
-      <h3>Applications</h3>
-      <p>
-        Existing applications can be processed even when recruitment is closed.
-      </p>
-      {!detail.applications?.length && <p>No pending applications.</p>}
+      {hasApplications ? (
+        <header className={applicationStyles.header}>
+          <h3>Applications</h3>
+          {recruitmentLink}
+        </header>
+      ) : (
+        <EmptyState
+          icon={UsersRound}
+          title="No pending applications"
+          description="Your next ally could be a link away. Share your recruitment page to help players find your alliance."
+          actions={recruitmentLink}
+          headingLevel={3}
+          className={applicationStyles.empty}
+        />
+      )}
+      {hasApplications && detail.summary.recruitment === 'Closed' && (
+        <p className={applicationStyles.hint}>
+          Recruitment is closed. You can still accept or reject these
+          applications.
+        </p>
+      )}
       {detail.applications?.map((application) => (
         <article className={styles.card} key={application.id}>
           <h4>

@@ -124,7 +124,9 @@ test('role form delegates permissions, member editor assigns multiple roles and 
   await page
     .getByRole('button', { name: 'Accept New Pilot', exact: true })
     .click()
-  await expect(page.getByText('No pending applications.')).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'No pending applications' }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Roles', exact: true }).click()
   await page.getByText('Create a custom role', { exact: true }).click()
   await page
@@ -554,3 +556,47 @@ test('rejected member-role edits retain selections and explain the failure insid
     'Scout',
   )
 })
+
+for (const width of [1440, 390]) {
+  test(`applications recruitment link moves into the empty state at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await mount('alliance-panels')
+    await page
+      .getByRole('button', { name: 'Applications', exact: true })
+      .click()
+    const section = page.getByRole('region', {
+      name: 'Recruitment applications',
+    })
+    const link = section.getByRole('link', { name: 'Recruitment page' })
+    await expect(link).toHaveAttribute('href', '/alliances/universe/alliance')
+    const title = await section
+      .getByRole('heading', { name: 'Applications', exact: true })
+      .boundingBox()
+    const action = await link.boundingBox()
+    expect(title).not.toBeNull()
+    expect(action).not.toBeNull()
+    expect(action!.x).toBeGreaterThan(title!.x + title!.width)
+    expect(
+      Math.abs(action!.y + action!.height / 2 - title!.y - title!.height / 2),
+    ).toBeLessThan(2)
+    await section
+      .getByRole('button', { name: 'Accept New Pilot', exact: true })
+      .click()
+    const empty = section.getByRole('region', {
+      name: 'No pending applications',
+    })
+    await expect(
+      empty.getByRole('link', { name: 'Recruitment page' }),
+    ).toBeVisible()
+    await expect(link).toHaveCount(1)
+    await expect(section.getByRole('article')).toHaveCount(0)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+  })
+}

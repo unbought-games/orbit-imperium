@@ -24,7 +24,7 @@ import { bindingKey } from '../../client-model/commands'
 import { AlliancesController } from '../../client-model/alliances'
 import type { Coordinator } from '../../client-model/coordinator'
 import { useGameSession } from '../../shell/session-context'
-import { Button, ButtonLink, ButtonLinkAnchor } from '../../ui/button'
+import { Button, ButtonLink } from '../../ui/button'
 import { ConfirmAction, Markdown, Summary, type Run } from './shared'
 import { usePublicAlliance } from '../../client-model/use-public-alliance'
 import { Board } from './board'
@@ -306,12 +306,6 @@ function AllianceWorkspace({
                   {!discovering && detail ? (
                     <>
                       <Summary summary={detail.summary} />
-                      <ButtonLinkAnchor
-                        variant="secondary"
-                        href={`/alliances/${universe}/${detail.summary.id}`}
-                      >
-                        Public recruitment page
-                      </ButtonLinkAnchor>
                       <nav
                         className={styles.tabs}
                         aria-label="Alliance sections"
