@@ -390,6 +390,7 @@
   bottom: 32px;
   right: 94px;
   width: min(254px, calc(100vw - 130px));
+  isolation: isolate;
 }
 .toastStackItem {
   position: relative;
