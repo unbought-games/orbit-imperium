@@ -8,6 +8,9 @@ export async function loadAnnouncements(signal: AbortSignal) {
   })
   if (!response.ok) throw Error('Announcements unavailable')
   const text = await response.text()
-  if (text.length > 1_048_576) throw Error('Announcement feed too large')
+  // Storage caps the serialized feed at 1 MiB. HTTP adds a fixed-size revision
+  // envelope (a SHA-256 string or null), which needs its own bounded allowance.
+  if (new TextEncoder().encode(text).byteLength > 1_048_576 + 128)
+    throw Error('Announcement feed too large')
   return parseAnnouncementFeed(JSON.parse(text))
 }
