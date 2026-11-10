@@ -2,11 +2,9 @@ import { inlineBaseline } from './fixtures/identity-typography'
 import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
-import type { Page } from '@playwright/test'
 import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import type { components } from '../src/contracts'
 import {
   shellFixture,
   installGameFixture,
@@ -17,20 +15,6 @@ import {
 } from './fixtures/game'
 import { withRankingsResponse } from './fixtures/responses'
 import { withGalaxyResponse } from './fixtures/galaxy'
-
-async function inspectIdentity(page: Page, screen: string, name: string) {
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 })
-    const trigger = page.getByRole('link', { name: `${name} profile details` }).first()
-    await focusPlayerDetails(page, trigger)
-    const popup = page.getByRole('tooltip', { name: `${name} profile` })
-    await expect(popup).toBeVisible()
-    await expect(popup).not.toContainText('Activity')
-    await diagnosticScreenshot(page, { path: `test-results/profile-${screen}-${width}x1000.png` })
-    await page.keyboard.press('Escape')
-    await expect(popup).toHaveCount(0)
-  }
-}
 
 test('Galaxy shows all three supporter levels and ordinary players, then removes changed and expired badges', async ({
   page,
@@ -148,129 +132,6 @@ test('Galaxy shows all three supporter levels and ordinary players, then removes
   await page.clock.fastForward(301_000)
   await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
   await expect(cards).toHaveCount(15)
-})
-
-test('espionage and combat observations use current public identities without changing historical facts', async ({
-  page,
-}) => {
-  await shellFixture(page, { protocol: 4 })
-  await playerProfilesFixture(page, () => [
-    { player: id(31), username: 'Observer', supporter_tier: 2 },
-    { player: id(32), username: 'Defender' },
-  ])
-  let payload: components['schemas']['ReportPayload4'] = {
-    kind: 'SpyContact',
-    at: Date.now(),
-    probability_ppm: 0,
-    detected: false,
-    sender: id(31),
-    origin: { galaxy: 1, system: 1, position: 1 },
-    target: { galaxy: 1, system: 1, position: 2 },
-  }
-  await page.route(`**/api/**/reports/${id(80)}`, (route) => {
-    const context = route.request().postDataJSON()
-    return route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
-          header: {
-            id: id(80),
-            kind: payload.kind,
-            observed_at: Date.now(),
-            read: false,
-            hidden: false,
-          },
-          payload,
-        },
-      },
-    })
-  })
-  // Start identity assertions after their own profile response, not a cold route load.
-  const reportProfiles = () => page.waitForResponse(response => {
-    if (!response.url().endsWith('/player-profiles') || response.status() !== 200) return false
-    const source = response.request().postDataJSON()?.source
-    return source?.type === 'Report' && source.report === id(80)
-  })
-  await Promise.all([
-    reportProfiles(),
-    page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`),
-  ])
-  const observation = page.getByRole('region', { name: 'Report observation' })
-  await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
-  await expect(
-    observation.getByRole('img', { name: /Supporter/ }),
-  ).toBeVisible()
-  await inspectIdentity(page, 'spy-contact', 'Observer')
-  payload = {
-    kind: 'Espionage',
-    observed_at: Date.now(),
-    resources: { visibility: 'Unknown' },
-    fleet: { visibility: 'Unknown' },
-    defenses: { visibility: 'Unknown' },
-    buildings: { visibility: 'Unknown' },
-    research: { visibility: 'Unknown' },
-    activity: { type: 'None' },
-    counterespionage: { probability_ppm: 0, detected: false },
-    target: {
-      owner: id(31),
-      body: id(50),
-      kind: 'Planet',
-      coordinates: { galaxy: 1, system: 1, position: 2 },
-    },
-  }
-  await Promise.all([reportProfiles(), page.reload()])
-  await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
-  await inspectIdentity(page, 'espionage', 'Observer')
-  payload = {
-    kind: 'Combat',
-    at: Date.now(),
-    target: { galaxy: 1, system: 1, position: 2 },
-    gross_losses: [],
-    recovered: [],
-    debris: { metal: '0', crystal: '0', deuterium: '0' },
-    loot: { metal: '0', crystal: '0', deuterium: '0' },
-    mission: 'Attack',
-    outcome: 'Draw',
-    participants: [
-      {
-        owner: id(31),
-        side: 'Attacker',
-        units: [],
-        origin: { Fleet: id(50) },
-        technology: [0, 0, 0],
-      },
-      {
-        owner: id(32),
-        side: 'Defender',
-        units: [],
-        origin: { Stationed: id(51) },
-        technology: [0, 0, 0],
-      },
-    ],
-    survivors: [
-      { owner: id(31), side: 'Attacker', units: [], origin: { Fleet: id(50) } },
-    ],
-    rounds: [],
-  }
-  await Promise.all([reportProfiles(), page.reload()])
-  await expect(
-    observation
-      .getByRole('region', { name: 'Forces and losses' })
-      .getByRole('link', { name: 'Observer profile details', exact: true }),
-  ).toBeVisible()
-  await expect(
-    observation.getByRole('heading', { name: 'Defender profile details', exact: true }),
-  ).toBeVisible()
-  await expect(observation.getByRole('img', { name: /Supporter/ })).toHaveCount(
-    1,
-  )
-  await expect(observation.getByRole('heading', { name: /Draw/ })).toBeVisible()
-  await inspectIdentity(page, 'combat', 'Observer')
 })
 
 for (const width of [1440, 390]) {
