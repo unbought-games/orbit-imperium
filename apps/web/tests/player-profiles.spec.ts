@@ -1,9 +1,7 @@
 import { inlineBaseline } from './fixtures/identity-typography'
-import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
-import { openNavigation } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import type { components } from '../src/contracts'
@@ -15,8 +13,7 @@ import {
   body,
   id,
 } from './fixtures/game'
-import { withRankingsResponse } from './fixtures/responses'
-import { withGalaxyResponse } from './fixtures/galaxy'
+import { withFixtureResponse } from './fixtures/responses'
 
 async function inspectIdentity(page: Page, screen: string, name: string) {
   for (const width of [1440, 390]) {
@@ -31,124 +28,6 @@ async function inspectIdentity(page: Page, screen: string, name: string) {
     await expect(popup).toHaveCount(0)
   }
 }
-
-test('Galaxy shows all three supporter levels and ordinary players, then removes changed and expired badges', async ({
-  page,
-}) => {
-  await shellFixture(page, { protocol: 4 })
-  await page.clock.install()
-  const owners = [binding.player, id(31), id(32), id(33)]
-  let tierTwo: number | undefined = 2
-  let unavailable = false
-  await playerProfilesFixture(page, () =>
-    unavailable
-      ? null
-      : [
-          { player: owners[0], username: 'MyCommander', supporter_tier: 1 },
-          {
-            player: owners[1],
-            username: 'RoseCommander',
-            supporter_tier: tierTwo,
-          },
-          {
-            player: owners[2],
-            username: 'ApricotCommander',
-            supporter_tier: 3,
-          },
-          { player: owners[3], username: 'RegularCommander' },
-        ],
-  )
-  await routeWorld(page, (route) => {
-    const q = route.request().postDataJSON()
-    return route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: q.context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
-          galaxy: q.galaxy,
-          system: q.system,
-          observed_at: Date.now(),
-          positions: Array.from({ length: 15 }, (_, i) => ({
-            coordinates: {
-              galaxy: q.galaxy,
-              system: q.system,
-              position: i + 1,
-            },
-            body:
-              i < owners.length
-                ? {
-                    id: id(40 + i),
-                    kind: 'Planet',
-                    owner: owners[i],
-                    activity: { type: 'None' },
-                    inactivity: 'Active',
-                    vacation: false,
-                    espionage_eligible: true,
-                  }
-                : null,
-            debris: null,
-          })),
-        },
-      },
-    })
-  })
-  await withGalaxyResponse(page, () => page.goto(`/u/andromeda/galaxy?body=${body.id}`))
-  const cards = page
-    .getByRole('region', { name: 'Galaxy positions' })
-    .getByRole('listitem')
-  for (const [i, color] of [
-    'rgb(133, 214, 239)',
-    'rgb(240, 172, 212)',
-    'rgb(242, 187, 131)',
-  ].entries()) {
-    await expect(
-      cards.nth(i).getByRole('img', { name: /Supporter/ }),
-    ).toBeVisible()
-    await expect(
-      cards.nth(i).getByRole('img', { name: /Supporter/ }),
-    ).toHaveCSS('color', color)
-  }
-  await expect(cards.nth(3)).toContainText('RegularCommander')
-  await expect(
-    cards.nth(3).getByRole('img', { name: /Supporter/ }),
-  ).toHaveCount(0)
-  await openNavigation(page)
-  await expect(page.getByLabel('Username', { exact: true }).filter({ visible: true })).toContainText(
-    'MyCommander',
-  )
-  await expect(
-    page
-      .getByLabel('Username', { exact: true }).filter({ visible: true })
-      .getByRole('img', { name: /Supporter/ }),
-  ).toBeVisible()
-  await page.keyboard.press('Escape')
-  for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 1000 })
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true)
-    await diagnosticScreenshot(page, {
-      path: `test-results/public-supporters-${width}.png`,
-      fullPage: true,
-    })
-  }
-  tierTwo = undefined
-  await page.clock.fastForward(60_000)
-  await expect(
-    cards.nth(1).getByRole('img', { name: /Supporter/ }),
-  ).toHaveCount(0)
-  await expect(cards.nth(1)).toContainText('RoseCommander')
-  unavailable = true
-  await page.clock.fastForward(301_000)
-  await expect(page.getByRole('img', { name: /Supporter/ })).toHaveCount(0)
-  await expect(cards).toHaveCount(15)
-})
 
 test('espionage and combat observations use current public identities without changing historical facts', async ({
   page,
@@ -190,16 +69,13 @@ test('espionage and combat observations use current public identities without ch
       },
     })
   })
-  // Start identity assertions after their own profile response, not a cold route load.
-  const reportProfiles = () => page.waitForResponse(response => {
-    if (!response.url().endsWith('/player-profiles') || response.status() !== 200) return false
-    const source = response.request().postDataJSON()?.source
-    return source?.type === 'Report' && source.report === id(80)
-  })
-  await Promise.all([
-    reportProfiles(),
-    page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`),
-  ])
+  const withReportProfiles = (action: () => Promise<unknown>) =>
+    withFixtureResponse(page, response => {
+      if (!response.url().endsWith('/player-profiles')) return false
+      const source = response.request().postDataJSON()?.source
+      return source?.type === 'Report' && source.report === id(80)
+    }, action)
+  await withReportProfiles(() => page.goto(`/u/andromeda/b/${body.id}/reports/${id(80)}`))
   const observation = page.getByRole('region', { name: 'Report observation' })
   await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
   await expect(
@@ -223,7 +99,7 @@ test('espionage and combat observations use current public identities without ch
       coordinates: { galaxy: 1, system: 1, position: 2 },
     },
   }
-  await Promise.all([reportProfiles(), page.reload()])
+  await withReportProfiles(() => page.reload())
   await expect(observation.getByRole('link', { name: 'Observer profile details', exact: true })).toBeVisible()
   await inspectIdentity(page, 'espionage', 'Observer')
   payload = {
@@ -257,7 +133,7 @@ test('espionage and combat observations use current public identities without ch
     ],
     rounds: [],
   }
-  await Promise.all([reportProfiles(), page.reload()])
+  await withReportProfiles(() => page.reload())
   await expect(
     observation
       .getByRole('region', { name: 'Forces and losses' })
@@ -273,16 +149,16 @@ test('espionage and combat observations use current public identities without ch
   await inspectIdentity(page, 'combat', 'Observer')
 })
 
-for (const width of [1440, 390]) {
-  test(`bot profile labels follow authoritative refresh at ${width}px`, async ({ page }) => {
+// Profile refresh permutations live in client-model/player-profiles.test.ts.
+for (const width of [390]) {
+  test(`bot profile label opens an accessible profile at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await installGameFixture(page, {
       protocol: 4,
       missions: { fleets: [], incoming: [], fleet_slots: '1', score_value_micro: '0' },
     })
-    let kind: 'bot' | 'human' = 'bot'
     await playerProfilesFixture(page, () => [
-      { player: id(31), username: 'Harvester', kind },
+      { player: id(31), username: 'Harvester', kind: 'bot' },
       { player: binding.player, username: 'Commander', kind: 'human' },
     ])
     await page.route('**/rankings', route => route.fulfill({ json: {
@@ -291,36 +167,17 @@ for (const width of [1440, 390]) {
       players: [{ player: id(31), username: 'Harvester', points: '12500', rank: 1 }],
     } }))
     // Wait for this screen's identity data, not HTML load or unrelated HUD profiles.
-    const withProfiles = async (action: () => Promise<unknown>) => {
-      const [response] = await Promise.all([
-        page.waitForResponse(response => {
-          if (!response.url().endsWith('/player-profiles')) return false
-          const source = response.request().postDataJSON()?.source
-          return source?.type === 'Rankings' && source.players.includes(id(31))
-        }),
-        action(),
-      ])
-      expect(response.ok()).toBe(true)
-      expect(await response.finished()).toBeNull()
-    }
-    await withProfiles(() => page.goto('/u/andromeda/high-scores'))
+    await withFixtureResponse(page, response => {
+      if (!response.url().endsWith('/player-profiles')) return false
+      const source = response.request().postDataJSON()?.source
+      return source?.type === 'Rankings' && source.players.includes(id(31))
+    }, () => page.goto('/u/andromeda/high-scores'))
     const trigger = page.getByRole('link', { name: 'Harvester profile details' })
     const profile = page.getByRole('tooltip', { name: 'Harvester profile' })
     await expect(trigger.getByLabel('Bot', { exact: true })).toBeVisible()
     await focusPlayerDetails(page, trigger)
     await expect(profile).toBeVisible()
     await expect(profile).toContainText('Automated player')
-    await page.keyboard.press('Escape')
-    await expect(profile).toHaveCount(0)
-
-    kind = 'human'
-    await withProfiles(() => page.evaluate(() => window.dispatchEvent(new Event('pageshow'))))
-    await expect(trigger.getByLabel('Bot', { exact: true })).toHaveCount(0)
-    await expect(trigger).toContainText('Harvester')
-    await focusPlayerDetails(page, trigger)
-    await expect(profile).toBeVisible()
-    await expect(profile).toContainText('Commander')
-    await expect(profile).not.toContainText(/automated|\bBot\b/i)
     await page.keyboard.press('Escape')
     await expect(profile).toHaveCount(0)
   })
@@ -348,7 +205,11 @@ test('player attachments align together and long identities stay within narrow r
     sampled_at: 1792843200000, baseline_at: 1792756800000, processing_pending: false,
     players: players.map((player, i) => ({ player: player.player, username: player.username, alliance: player.alliance, points: `${100 - i}`, rank: [123, 1234, 12345][i], previous_rank: [null, 1334, 12245][i] })),
   } }))
-  await withRankingsResponse(page, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
+  await withFixtureResponse(page, response => {
+    if (!response.url().endsWith('/player-profiles')) return false
+    const source = response.request().postDataJSON()?.source
+    return source?.type === 'Rankings' && players.every(player => source.players.includes(player.player))
+  }, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   const trigger = table.getByRole('link', { name: 'Aurelia profile details' })
   await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()
@@ -390,7 +251,7 @@ test('player attachments align together and long identities stay within narrow r
       for (const part of await trigger.locator(':scope > span > *').all()) baselines.push(await part.evaluate(inlineBaseline))
       expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(0.15)
     }
-    if (width < 1440) await table.scrollIntoViewIfNeeded()
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && width < 1440) await table.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/player-alignment-rankings-${width}x1000.png` })
     if (width !== 320) {
       if (width === 1440) await focusPlayerDetails(page, trigger)

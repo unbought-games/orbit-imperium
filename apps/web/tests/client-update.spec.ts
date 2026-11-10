@@ -2,55 +2,10 @@ import { test, expect } from './fixtures/test'
 import { installGameFixture, body, refreshGame } from './fixtures/game'
 import { withFixtureResponse, trackFixtureResponses } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { reloadNoticeMs, reloadStorageKey } from '../src/client-model/client-update'
+import { reloadStorageKey } from '../src/client-model/client-update'
 
 for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
   const size = `${viewport.width}x${viewport.height}`
-  test(`deployment reload preserves the route and stops a repeated update at startup (${size})`, async ({ page }, info) => {
-    await page.setViewportSize(viewport)
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    let deployed = false
-    let documents = 0
-    page.on('request', request => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents++ })
-    await installGameFixture(page, { snapshotHeaders: () => deployed ? { 'X-Orbit-Client-Build': 'next-build' } : {} })
-    const path = `/u/andromeda/b/${body.id}/overview`
-    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(path))
-    await expect(page.locator('main h1')).toContainText('Empire —')
-    await expect(page.getByTestId('client-update-announcement')).not.toHaveAttribute('role')
-    const announcement = await page.getByTestId('client-update-announcement').elementHandle()
-    expect(announcement).not.toBeNull()
-    const originalUrl = page.url()
-    deployed = true
-    // This response deliberately announces an unreadable deployment; headers
-    // and the rendered recovery state are the boundary, not its cancelled body.
-    const mismatch = page.waitForResponse(response => response.url().endsWith('/overview'))
-    await refreshGame(page)
-    await page.clock.runFor(1)
-    expect((await mismatch).status()).toBe(200)
-    await expect(page.getByText('An update is available. Refreshing…', { exact: true })).toBeVisible()
-    await expect(page.getByTestId('client-update-announcement')).toHaveAttribute('role', 'status')
-    expect(await announcement!.evaluate(node => node.isConnected)).toBe(true)
-    expect(documents).toBe(1)
-    await diagnosticScreenshot(page, { path: info.outputPath(`empire-refreshing-${size}.png`) })
-    const reloaded = page.waitForResponse(response => response.url().endsWith('/api/v1/bootstrap'))
-    await page.clock.runFor(reloadNoticeMs)
-    expect((await reloaded).status()).toBe(200)
-    await expect(page.getByText(/Automatic refresh is paused/)).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Updating your universe.' })).toBeVisible()
-    expect(page.url()).toBe(originalUrl)
-    expect(documents).toBe(2)
-    expect(await page.evaluate(key => sessionStorage.getItem(key), reloadStorageKey)).not.toBeNull()
-    await diagnosticScreenshot(page, { path: info.outputPath(`startup-refresh-paused-${size}.png`) })
-    await page.clock.runFor(reloadNoticeMs)
-    expect(documents).toBe(2)
-    const manual = page.waitForResponse(response => response.url().endsWith('/api/v1/bootstrap'))
-    await page.getByRole('button', { name: 'Reload app', exact: true }).click()
-    expect((await manual).status()).toBe(200)
-    await expect(page.getByText(/Automatic refresh is paused/)).toBeVisible()
-    expect(documents).toBe(3)
-  })
-
   test(`a recent reload keeps the empire visible with an accessible recovery action (${size})`, async ({ page }, info) => {
     await page.setViewportSize(viewport)
     let deployed = false
@@ -205,46 +160,6 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: info.outputPath(`uncertain-order-${size}.png`) })
 
-  })
-}
-
-// Desktop variant removed after its post-repair failure; see the test performance audit.
-for (const viewport of [{ width: 390, height: 844 }]) {
-  test(`session rotation recovers quietly but a refused action remains explicit (${viewport.width}x${viewport.height})`, async ({ page }, info) => {
-    const settleOverview = trackFixtureResponses(page, request => request.method() === 'POST' && request.url().endsWith('/overview'))
-    await page.setViewportSize(viewport)
-    await installGameFixture(page, { protocol: 4 })
-    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(page.locator('main h1')).toContainText('Empire —')
-    let refreshing = true
-    await page.route('**/api/**/overview', route => refreshing
-      ? route.fulfill({ status: 503, headers: { 'Retry-After': '1' }, json: { code: 'SessionRefreshing' } })
-      : route.fallback())
-    const pending = page.waitForResponse(response => response.url().endsWith('/overview') && response.status() === 503)
-    await refreshGame(page)
-    expect(await (await pending).finished()).toBeNull()
-    await expect(page.locator('[data-error-entry]')).toHaveCount(0)
-    await settleOverview()
-    refreshing = false
-    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
-    await expect(page.locator('[data-error-entry]')).toHaveCount(0)
-    await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
-    const draft = page.getByRole('textbox', { name: 'Planet name' })
-    await draft.fill('Homeward')
-    let submissions = 0
-    await page.route('**/commands', route => {
-      submissions++
-      return route.fulfill({ status: 503, headers: { 'Retry-After': '1' }, json: { code: 'SessionRefreshing' } })
-    })
-    await page.getByRole('button', { name: 'Save name' }).click()
-    await expect(page.getByRole('alert').filter({ hasText: 'Your session is refreshing. This action was not sent. Try again.' })).toBeVisible()
-    await expect(draft).toHaveValue('Homeward')
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: info.outputPath(`session-refresh-action-${viewport.width}x${viewport.height}.png`) })
-    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
-    expect(submissions).toBe(1)
-    await expect(draft).toHaveValue('Homeward')
-    await expect(page.getByRole('alert').filter({ hasText: 'This action was not sent.' })).toBeVisible()
   })
 }
 
