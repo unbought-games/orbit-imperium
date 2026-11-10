@@ -77,3 +77,19 @@ Added the required note ID, title and date, then successfully ran `npm run build
 locally (client bundling 3.91s; prerender bundling 0.371s). This is a deterministic
 build-content repair, not an unchanged-job retry or a browser-test repair.
 The full `make _static` check also passed before the initial push.
+
+Head `519dec7ccbacd9bfafc28339806a3dcac7d1a5f7` then passed native checks,
+all databases, automated review and seven browser shards. Run `42831197283`
+failed shard 8/8 on the two already-repaired normal-motion shell cases; its
+146 other cases passed (10.5m runner). The aggregate gate failed because of that
+browser result. Integrated main `b3aaae7c` to validate the interaction with its
+intentional Briefing animation, removed those two exhausted cases, and retained
+the reduced-motion cases plus a cheap sidebar stylesheet contract. The full
+failure/repair history is in the Test Czar ledger.
+
+After integration, both retained motion browser cases passed (1.992s preparation,
+3.4s runner), 23 existing focused client cases passed (0.421s combined runner),
+and the new stylesheet test passed after one import-fixture repair (0.145s
+runner). `make _static` passed. Refreshed all eight report captures against the
+integrated application; capture-only browsers and Vite exited normally. No
+queue entry or queue removal had occurred at this point.

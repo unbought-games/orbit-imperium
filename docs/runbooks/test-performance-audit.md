@@ -1,5 +1,33 @@
 # PR and main test performance audit
 
+## November 10, 2026: obsolete normal-motion shell assertions
+
+PR #384 run `42831197283` at head `519dec7c` failed the 390px and 1280px
+`navigation limits motion to desktop hover colors ... with no-preference` cases
+in browser job `129882198228`. Each recorded nine animation-start events and
+expected none. The integration includes main's intentional Briefing animation
+from PR #382; the test observes the entire document, not just navigation.
+The two reduced-motion variants passed, as did the native checks and databases.
+
+History confirms the same scenario already consumed its repair in PR #369
+(`17778e49704c9b54ccb00ab66a5648a1c78f82bd`), documented in
+`docs/verification/sidebar-hover-transitions.md`: its blanket no-motion assertion
+was expanded to allow requested sidebar color transitions. Removed the two
+failing normal-motion cases outright under the one-repair policy. Kept the two
+reduced-motion cases and all their assertions unchanged. No new exemptions,
+timeouts or unchanged retries were added. No production animation was changed.
+
+Retained cheap coverage in `navigation-motion.test.ts` checks the desktop and
+no-reduced-motion media guard, eligible sidebar controls, color-only 150ms
+transitions, and the required override of the global reset. Its first run hit
+Vitest's CSS-module stub through a raw import; after checking this ledger and
+its absent prior history, its one repair reads the stylesheet with Node instead.
+It passed in 0.145s. The two retained browser cases passed (1.992s preparation,
+3.4s runner total, 2.4s each). Briefing's dedicated browser cases already cover
+its intended animation and reduced-motion behavior. Audit found no other
+`uiMotionEvents` observer outside this scenario. There is no independent
+follow-up or shared helper defect left open.
+
 ## November 10, 2026: espionage missile disclosure fixtures
 
 New deterministic tests caught two fixture-authoring mistakes on their first
