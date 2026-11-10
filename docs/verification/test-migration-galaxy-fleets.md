@@ -11,7 +11,7 @@ Base: `a119915ffaeb881a7f54d65542478f4788bd4210`.
 
 ## Coverage and remaining integration
 
-Thirteen expanded application cases move to ten component cases and six deterministic inventory model cases. The existing harvest, Galaxy projection, debris, fleet-order and mission-presentation units retain numerical/eligibility/state coverage. The remaining application cases stay **required feature integration** pending further decomposition; this commit does not shrink CI selection or declare the entire 97-case inventory migrated.
+Twelve expanded application cases move to nine component cases and six deterministic inventory model cases. The existing harvest, Galaxy projection, debris, fleet-order and mission-presentation units retain numerical/eligibility/state coverage. The remaining application cases stay **required feature integration** pending further decomposition; this commit does not shrink CI selection or declare the entire 97-case inventory migrated.
 
 Keep actual application journeys for Galaxy quick actions, paid command/reconciliation, body and route switching, history, row-link navigation, coordinate overlays, and moon intent. A generic isolated surface cannot prove those callers pass the correct identity/context or retain keyed disclosure state. Do not silently deselect the remaining cases on the strength of these component tests.
 
@@ -102,7 +102,7 @@ Full suite ancestry and project are retained because file plus leaf title is not
 | `default` / `c48ab2615fbc1a308573-fe62fd648d9ec4da8aa6` | galaxy-cards.spec.ts > desktop Harvest keeps its Actions anchor when the planet changes | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
 | `default` / `c48ab2615fbc1a308573-fca28c2c2b0ee6a7b495` | galaxy-cards.spec.ts > a probe in flight to one target leaves Spy available for the other targets | Retained required feature integration | Original case retained: Galaxy caller wiring, navigation, command/reconciliation or responsive composition remains outside the migrated surface contract. |
 | `default` / `c48ab2615fbc1a308573-db418e05d23e4aa0369b` | galaxy-cards.spec.ts > rapid Galaxy spying keeps a compact actionable toast stack at 1440x900 | Other owner: HUD retirement; unchanged here | HUD migration record; do not reset repair history |
-| `default` / `c48ab2615fbc1a308573-48fa7c221f352681af6a` | galaxy-cards.spec.ts > touch status tooltips > a tap opens each simultaneous status and an outside tap dismisses it | Moved to component | galaxy-fleet.component.spec.ts > status interaction > simultaneous statuses support keyboard, touch and outside dismissal |
+| `default` / `c48ab2615fbc1a308573-48fa7c221f352681af6a` | galaxy-cards.spec.ts > touch status tooltips > a tap opens each simultaneous status and an outside tap dismisses it | Restored required feature integration | Original touch-only scenario restored unchanged; new combined-modality component migration retired after its single repair failed |
 | `default` / `9c4a90075213ce439feb-5fa7f8560db44d65f8e3` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 320px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-cca4d5458232f697ec30` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 390px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
 | `default` / `9c4a90075213ce439feb-6c50bd98bd241b51d52b` | mission-fleets.spec.ts > active fleets sort next events and retain readable details and recall at 1280px | Retained required feature integration | Original case retained: actual fleet/overview composition, keyed disclosure, row navigation, child controls, recall or scroll behavior. Models retain ordering/countdown facts only. |
@@ -155,3 +155,22 @@ remaining entries, the updated accessible summary and continued expansion.
 `game-projection.test.ts` separately retains the real outbound/returning
 classification. This closes the missing DOM-retention assertion without claiming
 that static model coverage can prove it. Parent validates this correction.
+
+## Combined status component retired; original coverage restored
+
+The parent's single repaired run failed again: after actual keyboard traversal,
+the assertion matched both the departing Vacation tooltip and the new Inactive
+tooltip during exit. Both expected UI states were present; this second authored
+test defect is not a product failure or infrastructure incident. Removed the new
+combined keyboard-then-touch component scenario outright under the one-repair
+rule, without another stabilization or renamed replacement.
+
+Restored the original `touch status tooltips > a tap opens each simultaneous
+status and an outside tap dismisses it` application scenario exactly from
+`a119915f`; it never contained this added mixed-modality sequence. Its history and
+assertions remain intact. The existing application vacation/inactivity
+hover/keyboard scenario and `info-tooltip-state.test.ts` retain their independent
+protection. Combined-modality new coverage is lost; status component migration
+is deferred, not fixed by a passing retry. Evidence: parent log
+`/tmp/orbit-galaxy-components-repair.log` and
+`test-results/test-strategy/galaxy-components-repair`. No rerun requested.

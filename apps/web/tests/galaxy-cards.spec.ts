@@ -1505,6 +1505,43 @@ test('a rejected launch clears the optimistic check and reports the authoritativ
   await expect(button).toBeEnabled()
 })
 
+
+
+test.describe('touch status tooltips', () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
+  test('a tap opens each simultaneous status and an outside tap dismisses it', async ({
+    page,
+  }) => {
+    await setup(
+      page,
+      null,
+      {},
+      {
+        2: {
+          body: targetBody({
+            vacation: true,
+            inactivity: 'Inactive7',
+            attack_blocker: 'TargetVacation',
+          }),
+        },
+      },
+    )
+    const card = rows(page).nth(1)
+    await card.getByRole('button', { name: 'Vacation mode', exact: true }).tap()
+    await expect(page.getByRole('tooltip')).toContainText('Vacation mode')
+    await rows(page).first().getByText('Your planet', { exact: true }).tap()
+    await expect(page.getByRole('tooltip')).toBeHidden()
+    await card
+      .getByRole('button', { name: 'Inactive for 7 days or more', exact: true })
+      .tap()
+    await expect(page.getByRole('tooltip')).toContainText(
+      'Visiting fleets can still cause activity',
+    )
+    await rows(page).first().getByText('Your planet', { exact: true }).tap()
+    await expect(page.getByRole('tooltip')).toBeHidden()
+  })
+})
+
 const recyclerCatalog: components['schemas']['CatalogEntry3'][] = [{
   key: { kind: 'Ship', id: 'Recycler' }, enabled: true, mobile: true,
   body_kinds: ['Planet'], requirements: [],

@@ -7,7 +7,6 @@ import {
 import { GalaxyHarvestPresentation } from '../../src/features/galaxy-harvest-action'
 import { GalaxyActionMenu } from '../../src/features/galaxy-action-menu'
 import { GalaxyFlightSummary } from '../../src/features/galaxy-flight-summary'
-import { GalaxyPlayerStatuses } from '../../src/features/galaxy-player-status'
 import { FleetInventoryView } from '../../src/features/fleet-inventory'
 import {
   fleetPresentationFixture,
@@ -20,11 +19,8 @@ import {
 } from '../../src/client-model/galaxy-harvest'
 import type { GalaxyFlight } from '../../src/client-model/galaxy-fleets'
 import { Button } from '../../src/ui/button'
-import type { components } from '../../src/contracts'
 
-type S = components['schemas']
-
-function Routes({ children }: { children: ReactNode }) {
+export function FleetPresentationRoutes({ children }: { children: ReactNode }) {
   const [router] = useState(() =>
     createAppRouter({
       history: createMemoryHistory({ initialEntries: ['/'] }),
@@ -139,7 +135,7 @@ export function FleetInventoryScenario() {
     view.progression.manufacturing = []
   }
   return (
-    <Routes>
+    <FleetPresentationRoutes>
       <main style={{ padding: 16 }}>
         <Button
           onClick={() =>
@@ -157,43 +153,29 @@ export function FleetInventoryScenario() {
         </Button>
         <FleetInventoryView view={view} origin={origin} universe="Andromeda" />
       </main>
-    </Routes>
+    </FleetPresentationRoutes>
   )
 }
 
 export function GalaxyDisclosureScenario() {
   const [revision, setRevision] = useState(0)
-  const [inactiveLong, setInactiveLong] = useState(false)
   const flights: GalaxyFlight[] = Array.from({ length: 6 }, (_, index) => ({
     id: `fleet-${index}`,
     mission: index % 2 ? ('Harvest' as const) : ('Espionage' as const),
     dueAt: fleetFixtureTime + 60_000 + index * 1000,
     phase: 'en route' as const,
   })).filter((_, index) => revision === 0 || index !== 0)
-  const body: NonNullable<S['GalaxyPosition4']['body']> = {
-    id: 'target',
-    owner: 'other',
-    kind: 'Planet',
-    vacation: true,
-    inactivity: inactiveLong ? 'Inactive28' : 'Inactive7',
-    activity: { type: 'None' },
-    espionage_eligible: false,
-  }
+
   return (
     <main style={{ padding: 24 }}>
       <Button onClick={() => setRevision(revision + 1)}>
         Refresh snapshot
       </Button>
-      <Button onClick={() => setInactiveLong(true)}>
-        Mark long inactivity
-      </Button>
-      <GalaxyPlayerStatuses body={body} protectedTarget />
       <GalaxyFlightSummary
         flights={flights}
         now={fleetFixtureTime + revision * 1000}
         target="[1:371:2]"
       />
-      <Button>Outside target</Button>
     </main>
   )
 }

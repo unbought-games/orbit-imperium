@@ -248,47 +248,6 @@ test('flight summary preserves native disclosure through refreshed countdowns', 
   await expect(disclosure.locator('ul')).toBeHidden()
 })
 
-test.describe('status interaction', () => {
-  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
-  test('simultaneous statuses support keyboard, touch and outside dismissal', async ({
-    page,
-    mount,
-  }) => {
-    await mount('galaxy-disclosure')
-    for (const label of [
-      'Vacation mode',
-      'Inactive for 7 days or more',
-      'Beginner protection',
-    ]) {
-      const trigger = page.getByRole('button', { name: label, exact: true })
-      await trigger.focus()
-      // The previous phase used touch. Base UI correctly ignores non-focus-visible
-      // programmatic focus after touch; traverse with the actual keyboard before
-      // asserting the keyboard-triggered tooltip.
-      await page.keyboard.press('Tab')
-      await page.keyboard.press('Shift+Tab')
-      await expect(trigger).toBeFocused()
-      await expect(page.getByRole('tooltip')).toContainText(label)
-      await page.keyboard.press('Escape')
-      await expect(page.getByRole('tooltip')).toBeHidden()
-      await trigger.tap()
-      await expect(page.getByRole('tooltip')).toContainText(label)
-      await page.getByRole('button', { name: 'Outside target' }).tap()
-      await expect(page.getByRole('tooltip')).toBeHidden()
-    }
-    await page.getByRole('button', { name: 'Mark long inactivity' }).click()
-    await expect(
-      page.getByRole('button', { name: 'Inactive for 7 days or more' }),
-    ).toHaveCount(0)
-    await page
-      .getByRole('button', { name: 'Inactive for 28 days or more' })
-      .tap()
-    await expect(page.getByRole('tooltip')).toContainText(
-      'Inactive for 28 days or more',
-    )
-  })
-})
-
 test('empty inventory retains its useful Shipyard destination without fabricated catalog rows', async ({
   page,
   mount,
