@@ -1,5 +1,42 @@
 # PR and main test performance audit
 
+## November 10, 2026: PR #384 queue startup failures
+
+Queue run `42837687421` tested integration `946cd964c7256c1d0b9b079ee6e037dc4baac28d`
+for PR head `b7c4c918`. Native/database checks passed, but two browser cases
+failed and GitHub removed the PR from the queue once. This is not a successful
+merge or an infrastructure-outage diagnosis.
+
+- `client-update.spec.ts`: `a click during quiet session recovery is explicitly
+  refused (1440x1000)` failed its initial Empire-heading assertion before reaching
+  session recovery. Job `129904355451`, artifact `13775915646`. The failure
+  snapshot already contains the heading. This scenario originated in PR #348;
+  unlike the separate session-rotation scenario retired in PR #355, no prior
+  repair was found for this case. Bootstrap delivery is already response-gated;
+  the evidence does not establish the precise cause of the late render. Removed
+  this desktop variant under the unexplained-failure rule rather than applying
+  a speculative wait or rerunning unchanged.
+- `vacation.spec.ts`: `vacation review, commitment, minimum and return at 1280px`
+  failed to find Leave vacation mode after its final reload. Job `129904355556`,
+  artifact `13774304482`. The snapshot contains the enabled button. The journey
+  previously received the screenshot-helper repair documented in
+  `docs/verification/vacation.md` and the later response-gating sweep. Removed
+  the failed desktop variant outright; did not repair it again.
+
+The mobile variants remain, and vacation blocker/rejection coverage remains at
+both widths. The shared bootstrap-response helper is already used at both
+failure sites; inspection established no new helper defect to patch or delegate.
+Do not infer a diagnosed race or successful repair from these deletions.
+Retained deterministic protection includes coordinator tests for explicit refusal
+without sending, queueing or persistence, and engine vacation tests for exact
+minimum duration, production preservation, blockers and exit behavior.
+
+Validation: four retained browser cases passed (1.981s module preparation, 6.4s
+runner; cases 2.0–5.6s), 71 coordinator tests passed (0.684s runner), and eight
+engine vacation tests passed (0.39s preparation, 0.26s execution). No browser
+timeouts, assertions, production behavior or CI protections changed. Task-owned
+fixture servers and browsers exited; no database or Docker resources were started.
+
 ## November 10, 2026: obsolete normal-motion shell assertions
 
 PR #384 run `42831197283` at head `519dec7c` failed the 390px and 1280px

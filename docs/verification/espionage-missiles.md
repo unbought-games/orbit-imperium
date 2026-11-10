@@ -93,3 +93,15 @@ and the new stylesheet test passed after one import-fixture repair (0.145s
 runner). `make _static` passed. Refreshed all eight report captures against the
 integrated application; capture-only browsers and Vite exited normally. No
 queue entry or queue removal had occurred at this point.
+
+Head `b7c4c9188ca481e8376ee4ba99b0f718d43c5904` passed all 15 PR checks with no
+review findings and entered the queue at `2026-11-10T14:47:17Z`. Queue run
+`42837687421` on `946cd964c7256c1d0b9b079ee6e037dc4baac28d` failed two unrelated
+desktop browser cases (session-recovery startup and vacation return); removal
+was observed at 15:04:12Z. Shard 3 ran 8.6m, shard 8 ran 10.9m; other queue jobs
+passed. One queue enrollment and one removal occurred, with no unchanged rerun.
+Per the repository test policy, removed the unexplained recovery-startup variant
+and the already-repaired vacation variant. Full evidence/history is in the test
+repair ledger. Four retained browser cases, 71 coordinator tests and eight engine
+vacation tests passed. The report implementation and inspected captures did not
+change during this queue repair.
