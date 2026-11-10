@@ -92,8 +92,9 @@ queue CI was green.
 ## Completing the migration after phase one
 
 Phase one is PR #385. Its main-integrated inventory contains 819 application
-cases (39 tagged journeys and 780 other required cases), plus 272 isolated
-component cases. These counts are a starting inventory, not a target for how
+cases (39 tagged journeys and 780 other required cases), plus 271 isolated
+component cases after the documented CI retirement of one recurring touch
+scenario. These counts are a starting inventory, not a target for how
 many replacements to write. New tests added after this snapshot also need an
 owner and disposition.
 

@@ -347,3 +347,36 @@ The parent integrated this group and completed serial validation. See the
 [combined verification record](test-strategy-overhaul.md) for final inventory,
 passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
 “pending parent validation” entries above describe the historical handoff.
+
+## PR #385: recurring native-touch scenario retired
+
+CI run `42838492232`, attempt 1, head `1e079589`, component job
+`129907101270`, failed `touch swipe dismisses once without opening, and the
+promoted card accepts a native tap`. The swipe produced exactly one
+`command:build` dismissal and no opening. The report card became the sole
+accessible toast button, Playwright reported a successful native tap on the
+visible/enabled/stable card, but `Opened notices` remained `none`. The trace
+contains no API request or page error identifying a product failure mechanism.
+The expected report card remains in the failure DOM. Cause of the missing native
+activation is unclassified; this is not attributed to GitHub infrastructure.
+
+The earlier `touchCancel` cleanup failure and its single repair are recorded
+above. Applying the hard one-repair rule, remove this exact recurring browser
+scenario rather than stabilizing it again, renaming it, increasing its timeout
+or rerunning for luck. No production workaround is inferred from this trace.
+The shared component precompilation repair passed in this run, including the
+previously failing mine-zero scenario.
+
+Retained protection: `ui/toast-swipe.test.ts` covers deliberate swipe thresholds,
+exactly-once dismissal, canceled gestures, immediate reduced-motion completion,
+raw movement before delayed Motion callbacks, tap jitter, independent pointers
+and fresh activation. Remaining `hud-toasts.component.spec.ts` cases cover real
+mouse short-drag/click/swipe behavior, keyboard activation after cancellation,
+focus promotion/fallback and covered-card input exclusion.
+
+Lost protection is explicitly the native Chromium touch swipe followed by a tap
+on the newly promoted card; these retained tests do not claim that browser/input
+sequence. No replacement copy of the retired scenario is added. Logs/artifacts
+remain under `test-results/test-strategy/pr385-ci-attempt2/` and GitHub artifact
+`13776300190`. The originating chat owns the removal and subsequent CI checks.
+The final component inventory becomes 271; application inventory remains 819.

@@ -213,3 +213,22 @@ and whitespace checks passed. Both native runners cleaned up their browser,
 server and temporary bundles. CI run `42835800347` ultimately passed every
 other job, including all PostgreSQL groups; its aggregate gate correctly failed
 for the component assertion. Fresh CI is required on the repair commit.
+
+### PR #385: second CI component failure
+
+Run `42838492232` on `1e079589` passed all 819 application cases, native checks,
+all PostgreSQL groups and automated review. The precompiled component suite
+passed 271 cases, including the previously failed mine-zero case, and failed the
+touch-swipe/promoted-tap case. That scenario already had its single repair.
+The [HUD ledger](test-migration-hud.md#pr-385-recurring-native-touch-scenario-retired)
+records the retained trace, unexplained activation, retirement and exact lost
+native-touch protection. No retry or further stabilization was applied. The
+component inventory is now 271; all 819 application cases stay required.
+
+Retirement validation: all five remaining native HUD component cases passed
+(1.9 s runner, two workers), 16 swipe/prepared-toast unit cases passed (0.566 s),
+and all 14 CI selection/workflow checks passed (9.608 s). Formatting and
+whitespace checks passed. The component runner closed Chromium and its server
+and removed the temporary bundle. The user requested a review hold: follow
+fresh CI and review findings, then leave PR #385 open without queue enrollment
+or merge.
