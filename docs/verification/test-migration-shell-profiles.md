@@ -45,13 +45,11 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
   revision"; "waits for a restored command before rebasing new edits"; "queues
   behind a restored body command without an intent and resumes automatically";
   "shows restored %s settings, with newer local edits taking precedence"; and
-  "does not overlay restored production when %s". These replace the removed
-  rapid-edit, rejection and restored-production/legacy-upgrade permutations.
-  The surviving save/reload and slider journeys protect actual input bindings.
-  Removed browser-only detail: two simultaneous sliders, the exact transient
-  saving/error copy sequence and restored-command DOM projection during reload;
-  these are candidates for the parent's component harness, not claims made by
-  controller tests.
+  "does not overlay restored production when %s". These protect controller
+  invariants alongside the restored browser cases; they do not replace mounted
+  sliders after route remount, live saving/error banners, Retry wiring or real
+  browser-storage reload restoration. All four healthy production settings cases
+  remain unchanged from the base until interactive replacements exist.
 - `client-model/player-profiles.test.ts`: "shares a source request, refreshes
   changed tiers and clears removed support", "expires at the exact deadline
   even during an outage", "fences old responses on navigation and session
@@ -96,9 +94,9 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
 | resource cost details open by tap and fit a phone viewport | Touch details fit phone viewport. |
 | level zero buildings offer upgrades without a tear-down option | Upgrade-only control visibility for level zero; component migration candidate. |
 | building tiles open top details, preserve quoted commands, and restore keyboard focus | Detail route, command confirmation and returned keyboard focus. |
-| production autosaves rapid edits after reconciliation and keeps confirmed totals | Move to production-autosave controller tests named above; representative browser save retained. |
-| production rejection retains edits and retry preserves unrelated server changes | Move to production-autosave controller tests named above; error/retry controls remain in production throttling. |
-| production edits survive a restored ${restoredCommand} command | Move both production and legacy-upgrade variants to restored-command controller cases named above. |
+| production autosaves rapid edits after reconciliation and keeps confirmed totals | Retain unchanged from base: pending sliders across route remount, live saving status and reconciled totals; controller tests supplement these browser bindings. |
+| production rejection retains edits and retry preserves unrelated server changes | Retain unchanged from base: live rejection banner, retained edits and actual Retry wiring preserving unrelated server settings. |
+| production edits survive a restored ${restoredCommand} command | Retain both variants unchanged from base: actual browser-storage reload restoration and mounted pending-slider projection; controller tests supplement restored-command ordering. |
 | resources fit compact and touch layouts in all three states | Scene/building/settings geometry at 1440/768/390/320. |
 | a late inspection cannot overwrite another building or reopen dismissed details | Late response versus selected/dismissed detail wiring; component migration candidate. |
 | blocked quotes cannot purchase and details remain usable with reduced motion and enlarged text | Disabled submission plus reduced-motion/enlarged-text usability. |
@@ -132,7 +130,7 @@ readiness evidence, not proof that any unchanged rerun repairs the test.
 | --- | --- |
 | Galaxy shows all three supporter levels and ordinary players, then removes changed and expired badges | Retire defective broad scenario; deterministic and static replacements plus explicitly lost coverage above. |
 | espionage and combat observations use current public identities without changing historical facts | Retain Report-source identity link/tooltip focus, Escape and historical-report consumer wiring for spy/espionage/combat. |
-| bot profile labels follow authoritative refresh at ${width}px | Consolidate into "bot profile label opens an accessible profile at 390px"; bot-to-human state changes remain in controller source matrix, desktop popup/geometry covered by attachments and report cases. |
+| bot profile labels follow authoritative refresh at ${width}px | Retain "bot profile labels follow authoritative refresh at 390px", including bot-to-human refresh on the already-mounted consumer, removal of Bot and updated dossier. Consolidate only the duplicate desktop variant; source permutations remain in controller tests, desktop popup/geometry in attachments/report cases. |
 | player attachments align together and long identities stay within narrow rows | Retain measured baseline, narrow-cell containment and tooltip access at 1440/390/320; wait for Rankings identity delivery, and do screenshot-only scrolling only when capture is enabled. |
 
 ### client-update.spec.ts
@@ -316,3 +314,38 @@ its journey under another name. If classified as an infrastructure failure,
 record the concrete causal evidence separately. This adds one parent-baseline
 assertion failure to the evidence inventory, without changing the previously
 reported local failure count or the 67 retained-case count.
+
+## Static-review correction: restore healthy mounted-consumer coverage
+
+Parent review identified concrete coverage loss in the initial consolidation.
+Controller tests cannot establish React subscriptions, route remount behavior,
+rendered saving/error banners, Retry event wiring or browser-storage reload
+restoration. No failure justified retiring these healthy scenarios.
+
+Restored byte-for-byte from base `a119915ffaeb881a7f54d65542478f4788bd4210`:
+
+- `production autosaves rapid edits after reconciliation and keeps confirmed totals`
+- `production rejection retains edits and retry preserves unrelated server changes`
+- `production edits survive a restored production command`
+- `production edits survive a restored legacy upgrade command`
+
+Also restored the original mobile `bot profile labels follow authoritative
+refresh at 390px` live-update assertions. After a source-specific complete
+Rankings-profile response on page restoration, the already-mounted identity must
+remove Bot, retain Harvester, and open a dossier showing Commander without Bot or
+Automated player. The desktop duplicate remains consolidated. The shared
+`withFixtureResponse` helper continues to gate both initial and refresh delivery.
+
+The earlier initial-consolidation narrative and case counts are historical, not
+the final disposition. Final inventory is **71 retained browser cases** (four
+restored production cases added to the prior 67). Failure-driven retirements,
+resource-history keyboard ordering and recorded unresolved protocol-3 baseline
+failure are unchanged. No retired failing scenario was recreated.
+
+Validation for this follow-up is limited to exact source comparison of the
+restored production block and mobile refresh assertions, diff review and
+`git diff --check`. No browser, production build, full typecheck or other runner
+was launched. Parent owns serial integrated validation of all 71 retained cases,
+including the restored production cases and live mobile profile refresh. Earlier
+136-unit and browser results are historical checks, not validation of this
+follow-up revision.
