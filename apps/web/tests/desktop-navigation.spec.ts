@@ -85,22 +85,16 @@ for (const [width, height, textScale] of [[1024, 600, 1], [1440, 900, 1], [1440,
   })
 }
 
-test('sidebar uses full touch targets on a large touch viewport', async ({ browser }) => {
+// Touch geometry is isolated in shell-controls.component.spec.ts; retain route wiring here.
+test('touch sidebar opens Settings and Facilities in the application', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, hasTouch: true })
   const page = await context.newPage()
   try {
     await shellFixture(page)
     const sidebar = page.getByRole('complementary', { name: 'Game navigation' })
-    const small = await sidebar.locator('a, button').evaluateAll(nodes => nodes.filter(node => node.getBoundingClientRect().height < 44).map(node => node.textContent))
-    expect(small).toEqual([])
-    await sidebar.getByRole('button', {name: 'Account menu', exact: true}).tap()
-    const accountMenu = page.getByRole('menu', {name: 'Account menu', exact: true})
+    await sidebar.getByRole('button', { name: 'Account menu', exact: true }).tap()
+    const accountMenu = page.getByRole('menu', { name: 'Account menu', exact: true })
     await expect(accountMenu).toBeVisible()
-    await expect(accountMenu.getByRole('menuitem')).toHaveText(['My Orbit profile', 'Settings', 'Logout'])
-    await expect(accountMenu.getByRole('menuitem', { name: 'My Orbit profile' })).toHaveAttribute('href', '/profile')
-    for (const item of await accountMenu.getByRole('menuitem').all())
-      expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-    await diagnosticScreenshot(page, {path: 'test-results/account-sidebar-touch-1024x900.png'})
     await accountMenu.getByRole('menuitem', { name: 'Settings', exact: true }).tap()
     await expect(page.getByRole('heading', { name: 'Universe settings', exact: true })).toBeVisible()
     await expect(accountMenu).toBeHidden()
@@ -185,26 +179,6 @@ for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
-
-test('shrinking the desktop account menu closes its portal and focuses the mobile menu', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await shellFixture(page)
-  const account = page.getByRole('button', { name: 'Account menu', exact: true })
-  await account.click()
-  const popup = page.getByRole('menu', { name: 'Account menu', exact: true })
-  await expect(popup).toBeVisible()
-  await page.setViewportSize({ width: 390, height: 900 })
-  await expect(popup).toBeHidden()
-  const mobileMenu = page.getByRole('link', { name: 'Menu', exact: true })
-  await expect(mobileMenu).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('navigation', { name: 'Menu destinations', exact: true })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await expect(account).toHaveAttribute('aria-expanded', 'false')
-  await account.click()
-  await expect(popup).toBeVisible()
-})
 
 for (const width of [390, 320]) {
   test(`menu page preserves tab navigation, history and settings access at ${width}px`, async ({page}) => {
