@@ -195,7 +195,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
 test('cold Defense navigation retains named universe and planet through preloading, switching and direct loads', async ({
   page,
 }) => {
-  test.skip(!process.env.ORBIT_UI_E2E, 'Controls Vite route loading in the fixture browser suite.')
+  test.skip(!process.env.ORBIT_UI_E2E, 'Controls lazy route delivery in the fixture browser suite.')
   await page.setViewportSize({ width: 390, height: 844 })
   const purchases = await shellFixture(page, {
     universeName: 'Andromeda Prime',
@@ -210,7 +210,8 @@ test('cold Defense navigation retains named universe and planet through preloadi
   })
   await page.route(
     (url) =>
-      url.pathname.includes('defense') && url.search.includes('tsr-split'),
+      (url.pathname.includes('defense') && url.search.includes('tsr-split')) ||
+      /^\/assets\/u\._universe\.b\._body\.defense-[^/]+\.js$/.test(url.pathname),
     async (route) => {
       loading = true
       await gate
