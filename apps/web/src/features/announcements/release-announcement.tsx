@@ -1,7 +1,9 @@
 import { useGameSession } from '../../shell/session-context'
 import {
   Suspense,
+  lazy,
   useRef,
+  useLayoutEffect,
   type ComponentPropsWithRef,
   type ReactNode,
 } from 'react'
@@ -26,6 +28,8 @@ import { classes } from '../../ui/classes'
 import linkStyles from '../../ui/link.module.css'
 import { useReleaseAnnouncement } from './use-release-announcement'
 import styles from './release-announcement.module.css'
+
+const AnnouncementBody = lazy(() => import('./announcement-body'))
 
 type Trigger = (
   props?: ComponentPropsWithRef<'button'>,
@@ -74,6 +78,24 @@ export function ReleaseAnnouncement({
     ],
     whileElementsMounted: autoUpdate,
   })
+  useLayoutEffect(() => {
+    const bubble = floating.refs.floating.current
+    const trigger = floating.refs.domReference.current
+    return () => {
+      // A runtime withdrawal/expiry can remove the focused bubble without a
+      // dismissal click. Preserve keyboard position without recording it seen.
+      if (
+        bubble?.contains(document.activeElement) &&
+        trigger instanceof HTMLElement
+      )
+        trigger.focus({ preventScroll: true })
+    }
+  }, [
+    open,
+    announcement?.id,
+    floating.refs.floating,
+    floating.refs.domReference,
+  ])
   const interactions = useInteractions([
     useClick(floating.context),
     useDismiss(floating.context, { outsidePress: false }),
@@ -119,7 +141,7 @@ export function ReleaseAnnouncement({
               <h2>{announcement.title}</h2>
               <div className={styles.body}>
                 <Suspense fallback={null}>
-                  <announcement.Content />
+                  <AnnouncementBody announcement={announcement} />
                 </Suspense>
               </div>
               <div className={styles.actions}>
