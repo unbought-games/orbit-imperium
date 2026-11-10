@@ -9,6 +9,7 @@ import {
   diagnosticScreenshot,
 } from '../apps/web/tests/fixtures/diagnostic-screenshot.ts'
 import config from '../playwright.config.ts'
+import componentConfig from '../playwright.components.config.ts'
 
 test('diagnostic capture is opt-in and forwards options without swallowing failures', async (t) => {
   const original = process.env.ORBIT_TEST_SCREENSHOTS
@@ -134,7 +135,11 @@ test('browser diagnostics stay gated and all specs use the failure-only fixture'
             (item) => item.name.text === 'test',
           ),
       )
-      assert.equal(testImport?.moduleSpecifier.text, './fixtures/test', file)
+      assert.equal(
+        testImport?.moduleSpecifier.text,
+        file.startsWith('components/') ? './fixture' : './fixtures/test',
+        file,
+      )
     }
     function visit(node) {
       if (
@@ -151,6 +156,36 @@ test('browser diagnostics stay gated and all specs use the failure-only fixture'
     'fixtures/diagnostic-screenshot.ts',
     'fixtures/diagnostic-screenshot.ts',
   ])
+  assert.equal(componentConfig.use.screenshot, 'off')
+  assert.equal(
+    componentConfig.use.trace.screenshots,
+    false,
+    'successful traces must not capture screenshots',
+  )
+  const wrapper = ts.createSourceFile(
+    'fixture.ts',
+    readFileSync(new URL('components/fixture.ts', directory), 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+  )
+  const inherited = wrapper.statements.find(
+    (node) =>
+      ts.isImportDeclaration(node) &&
+      node.moduleSpecifier.text === '../fixtures/test',
+  )
+  const importedTest = inherited?.importClause?.namedBindings?.elements?.find(
+    (item) => item.propertyName?.text === 'test',
+  )
+  assert.ok(importedTest, 'components inherit the failure-only fixture')
+  const exportedTest = wrapper.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((node) => [...node.declarationList.declarations])
+    .find((node) => node.name.getText(wrapper) === 'test')
+  assert.equal(
+    exportedTest?.initializer?.expression?.getText(wrapper),
+    `${importedTest.name.text}.extend`,
+    'component test must extend that fixture',
+  )
 })
 
 test('disabled catalog evidence never touches the page, including image preparation', async (t) => {

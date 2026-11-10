@@ -224,3 +224,11 @@ was not run. No database, Docker project or backend server process was started. 
 servers were closed by their runners. Copies of the parent's in-progress component
 runner, fixture and entry scaffold were used locally for validation and removed
 afterward; none is included in this scoped commit.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

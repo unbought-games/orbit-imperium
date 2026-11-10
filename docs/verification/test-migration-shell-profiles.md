@@ -404,3 +404,11 @@ browser, production build or typecheck was launched. Parent owns gallery
 registration, component typecheck and serial
 `npm run test:components -- profile-display.component.spec.ts --workers=1`.
 No pass, timing or reliability claim is made for these newly authored cases.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

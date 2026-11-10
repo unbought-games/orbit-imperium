@@ -60,7 +60,7 @@ export const shipStatistics: S['ShipStatistics3'] = {
 /** Controlled transport data only. The real Coordinator, selectors and detail
  * hooks own projection, inspection, eligibility and rendering. No API client. */
 export async function createProgressionScene(params: URLSearchParams) {
-  const protocol = params.get('protocol') === '3' ? 3 : 4
+  const protocol: 3 | 4 = params.get('protocol') === '3' ? 3 : 4
   const { session, snapshot } = readyFixture(protocol)
   if (snapshot.view.protocol === 2)
     throw Error('Modern progression fixture required')

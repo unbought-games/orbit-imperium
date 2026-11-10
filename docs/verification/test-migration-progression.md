@@ -226,3 +226,11 @@ The technical-data keyboard application family remains in `catalog-pages.spec.ts
 - Initial tooling setup failed before collection because a regenerated local node_modules cache directory caused a dependency symlink to be nested; corrected the local symlink without installing packages. Initial collection then found an incorrect relative rules import (zero tests executed). After correcting that path, all eight assertions exposed missing mandatory production rows in the new fixture. Added the existing typed `productionFixture`; assertions were unchanged and all eight passed. These are recorded authoring/fixture failures, not infrastructure claims or hidden retries.
 - Scoped syntax parsing, formatting and whitespace checks were performed. No browser, production build or full typecheck was launched in this group, following the parent’s validation coordination. No new UI screenshots are claimed; production rendering code is unchanged.
 - Parent must register the two loaders, run component TypeScript and the 17 new cases serially, then validate the shortened retained application journeys. Do not count this authoring handoff as completed browser migration until those replacements pass. The existing DetailPlayground’s 48 migrated cases remain parent-owned and untouched.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

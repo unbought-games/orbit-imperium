@@ -339,3 +339,11 @@ Local validation is formatting, syntax-only parsing and diff review on
 The parent owns serial execution of this repaired case. A further test-defect
 failure exhausts its repair allowance and must not receive another stabilization
 patch; any independently evidenced product defect must still be fixed.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

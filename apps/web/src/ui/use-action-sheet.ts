@@ -11,11 +11,11 @@ import {
   animate,
   useDragControls,
   useMotionValue,
-  useReducedMotion,
   useTransform,
   type PanInfo,
 } from 'motion/react'
 import { lockSheetDocument, recessSheetSurface } from './action-sheet-effects'
+import { useReducedMotion } from './use-reduced-motion'
 import { useVisualViewport } from './use-visual-viewport'
 import {
   DEFAULT_SHEET_STOPS,
@@ -52,7 +52,7 @@ export type ActionSheetOptions = {
 export function useActionSheet(options: ActionSheetOptions) {
   const viewport = useVisualViewport()
   const maxHeight = sheetHeight(viewport.height)
-  const reduced = useReducedMotion() ?? false
+  const reduced = useReducedMotion()
   const points = sheetStops(options.snapPoints ?? DEFAULT_SHEET_STOPS)
   const mode = options.mode ?? 'snap'
   const dialog = useRef<HTMLDialogElement>(null)

@@ -165,7 +165,7 @@ jobs:
         run: git diff --exit-code -- Cargo.lock package-lock.json
 
   browser:
-    name: Fixture browser tests (${{ matrix.shard }}/${{ strategy.job-total }})
+    name: Browser tests (${{ matrix.suite }} ${{ matrix.shard }}/${{ matrix.shards }})
     needs: scope
     if: needs.scope.outputs.ui == 'true'
     runs-on: ubuntu-24.04
@@ -173,7 +173,16 @@ jobs:
       fail-fast: false
       max-parallel: 8
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        include:
+          - { suite: journeys, shard: 1, shards: 1 }
+          - { suite: components, shard: 1, shards: 1 }
+          # Keep unmigrated feature interactions required until their replacements pass.
+          - { suite: features, shard: 1, shards: 6 }
+          - { suite: features, shard: 2, shards: 6 }
+          - { suite: features, shard: 3, shards: 6 }
+          - { suite: features, shard: 4, shards: 6 }
+          - { suite: features, shard: 5, shards: 6 }
+          - { suite: features, shard: 6, shards: 6 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -197,20 +206,27 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify prerendered homepage production assets
-        if: matrix.shard == 1
+        if: matrix.suite == 'journeys'
         run: make test-homepage-built
-      - name: Run fixture browser tests
+      - name: Run selected browser boundary
         env:
-          UI_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
-        run: make test-ui
+          UI_SHARD: ${{ matrix.shard }}/${{ matrix.shards }}
+          BROWSER_SUITE: ${{ matrix.suite }}
+        run: |
+          if [ "$BROWSER_SUITE" = components ]; then
+            make test-components
+          else
+            ORBIT_BROWSER_SUITE="$BROWSER_SUITE" make test-ui
+          fi
       - name: Save browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          name: browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.suite }}-${{ matrix.shard }}
           path: |
             test-results/browser-ui/
             test-results/browser-homepage/
+            test-results/components/
           if-no-files-found: ignore
           retention-days: 7
       - name: Verify lockfiles remain unchanged

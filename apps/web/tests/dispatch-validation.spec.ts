@@ -277,7 +277,7 @@ async function prepareHistoricalDraft(page: Page) {
 // Historical report routing and a real launch exercise the application boundary.
 // Manual intent construction is covered by dispatch-requests.test.ts and the reset journey below.
 for (const historical of [true]) {
-  test(`owned-colony deploy launches with ${historical ? 'an edited historical draft' : 'manual coordinates'}`, async ({
+  test(`owned-colony deploy launches with ${historical ? 'an edited historical draft' : 'manual coordinates'}`, { tag: '@journey' }, async ({
     page,
   }) => {
     const state = await setup(page)
@@ -332,7 +332,7 @@ for (const historical of [true]) {
   })
 }
 
-test('successful dispatch resets ship and cargo quantities after preserving edits through review', async ({
+test('successful dispatch resets ship and cargo quantities after preserving edits through review', { tag: '@journey' }, async ({
   page,
 }) => {
   const state = await setup(page)

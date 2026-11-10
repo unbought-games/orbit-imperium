@@ -75,15 +75,25 @@ visual validation as not applicable.
 
 # Test coverage and execution
 
+Before designing, writing, reviewing, migrating, or repairing tests, or changing
+test fixtures/runners/CI selection, use the repository
+[test-design skill](.agents/skills/test-design/SKILL.md). Follow the
+[testing strategy](docs/architecture/testing-strategy.md): retain a small,
+deliberate browser merge gate and put most behavior at deterministic or isolated
+component boundaries. The strategy records migration status; do not assume the
+existing broad browser suite has already been replaced.
+
 - Add meaningful coverage for changed behavior at the cheapest useful layer. Prefer deterministic fixtures and controlled clocks. Do not omit tests or weaken assertions to obtain a passing run.
 - Every expensive test must name the regression it catches. Delete obsolete or redundant tests with a recorded rationale; replace worthwhile coverage at a cheaper layer. Test count is not the goal.
 - Keep arithmetic, authorization, replay, idempotency, state permutations and race schedules in deterministic unit/HTTP/database tests. Browser tests earn their cost through navigation, focus, submission, responsive layout or essential browser wiring.
 - Browser fixture navigation must establish the data needed by the next assertion. Register the matching response listener before navigation/reload, verify successful complete delivery, then assert observable UI state. `page.goto`, `page.reload`, HTML load and fake-clock advancement do not prove that lazy route data is ready. Reuse response-aware fixture helpers; do not duplicate ad hoc waits or make diagnostic screenshots establish readiness. Keep intentional loading/error tests explicitly response-gated.
 - A failing test gets one repair attempt. Search its history and the Test Czar repair ledger first. If inspection of the test and failure evidence cannot explain it, delete it. If it fails again after repair, delete it outright; do not rename the scenario, add another stabilization patch, increase timeouts or rerun for luck. Retain clearly useful protection in deterministic unit/HTTP tests and record the removed test, failure evidence, prior repair and retained coverage.
+- Classify failures before applying that rule. Confirmed GitHub, runner or external-service infrastructure failures do not consume a test repair attempt; retain evidence and distinguish them from assertion failures, product regressions and cancellations. Outage timing alone does not explain a failed assertion. Fix product regressions without deleting the test that exposes them; an unchanged green retry does not close a known test defect.
 - When failures reveal a shared test-design defect, record the pattern and audit the other callers of that fixture or pattern. Fix the common cause, preserve deliberate negative/race coverage, and give independent follow-up work an explicit owner and delivery path. A green retry never closes a known reliability defect.
 - A fake clock does not wait for HTTP or React. Do not advance to another scenario with earlier requests still in flight. Control response ordering and await observable state; never use sleeps, retries or timeout increases to hide a race. A passing retry is evidence of intermittency, not a repair.
 - Optional screenshot/video preparation must be inactive when capture is disabled. Retain failure diagnostics and independent behavior/layout/accessibility assertions.
 - Run applicable formatting, lint and focused checks before pushing. Measure setup, execution, runner wait and end-to-end merge delay separately; remove duplicate work before adding parallel jobs. Count failed attempts and queue removals even when the final run is green.
+- During parallel agent work on a shared machine, assign one validation owner and serialize browser suites, production builds and full typechecks across chats. Per-chat worker limits do not bound aggregate load. Parallelize implementation; hand off pending expensive checks instead of launching duplicate validation. Stop only task-owned processes and retain evidence for interrupted or contended runs.
 - Review findings need a concrete defect and failure mechanism. Batch real fixes, distinguish pre-existing issues and nits, and reassess after three repair rounds. Do not churn commits to satisfy speculative findings or use a round cap to ignore a real defect. Prioritize economy, auth, concurrency, migrations, deletion and CI/release risks; preserve existing approval and queue rules.
 - Routine CI has no configured job, step, suite or per-test execution deadlines. Use native no-limit settings explicitly where omission would restore a finite default. GitHub-hosted jobs remain subject to the platform's six-hour cap. Do not reintroduce restrictive CI deadlines without an explicit request.
 - Keep functional network timeouts, readiness failures and assertions that verify timeout behavior. Diagnose actual failures and slow setup; report results honestly.

@@ -904,7 +904,7 @@ for (const width of [320, 390, 1280]) {
   })
 }
 
-test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', async ({
+test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', { tag: '@journey' }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -1618,7 +1618,7 @@ test('mobile harvest caps the default and validates manual quantities', async ({
   await expect(actions(page, 2)).toBeFocused()
 })
 
-test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', async ({ page }) => {
+test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', { tag: '@journey' }, async ({ page }) => {
   await setupHarvest(page)
   let quotes = 0, launches = 0
   let release!: () => void
@@ -1740,7 +1740,7 @@ test('mobile harvest displays fuel quote failures without creating a departure',
   expect(launches).toBe(0)
 })
 
-test('desktop Harvest sends the edited quantity with Enter through the shared launch path', async ({ page }) => {
+test('desktop Harvest sends the edited quantity with Enter through the shared launch path', { tag: '@journey' }, async ({ page }) => {
   await setupHarvest(page)
   await page.setViewportSize({ width: 1280, height: 900 })
   let launches = 0

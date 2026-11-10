@@ -254,3 +254,11 @@ These failures overlap the parent-measured load of 45.5 on 12 cores. Late snapsh
 ## Repair history audit
 
 Read `docs/runbooks/test-performance-audit.md`, including the unexplained sidebar account-identity stall and removal around lines 880–910, and inspected `git log` for the three owned browser specs (notably fixture response gating `6292946b`, desktop-topbar `eb935120`, and navigation motion `b2f6b479`). The removed long-name account-identity browser case is not recreated. The separate Test Czar owner ledger is unavailable locally; that is not proof of no prior repairs. The one explained story setup repair above is recorded without resetting any inherited scenario’s repair history.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

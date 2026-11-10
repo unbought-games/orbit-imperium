@@ -65,7 +65,7 @@ it.each([
     },
     'You have five pending applications.',
   ],
-] as const)(
+] satisfies Array<[Partial<S['AllianceView']>, string]>)(
   'membership and pending applications explain why application controls are unavailable: %s',
   (state, message) => {
     const html = render(state)

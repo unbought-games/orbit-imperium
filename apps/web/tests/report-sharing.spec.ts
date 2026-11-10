@@ -33,7 +33,7 @@ const shared = {
   payload: { ...payload, target: { owner: 'participant-1', kind: 'Planet' } },
 }
 for (const width of [390, 1440]) {
-  test(`public report is readable without game initialization at ${width}px`, async ({
+  test(`public report is readable without game initialization at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })

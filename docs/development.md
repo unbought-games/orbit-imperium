@@ -50,6 +50,11 @@ Fresh worlds include the installed binary's standard content. Roll out the updat
 
 ## Testing
 
+For test placement and the planned migration to a small browser merge gate, read
+the [testing strategy](architecture/testing-strategy.md). Agents must use the
+[test-design skill](../.agents/skills/test-design/SKILL.md) when working on tests.
+The commands and CI description below describe the current implementation.
+
 GitHub Actions runs [CI](../.github/workflows/ci.yml) on pull requests and pushes to `main`. It runs tooling, client and server tests; client changes also run fixture-only browser tests, and backend/shared/unknown changes run database and browser tests. Documentation-only changes skip those two integration classes. Unknown diff bases conservatively run both. Fixture browser tests run on a separate disposable Ubuntu VM in parallel with the native checks and PostgreSQL tests, so browser feedback does not wait for Rust compilation. The existing `Build, lint and unit tests` check passes only when every selected job passes.
 
 Routine CI has **no configured job, step, suite or per-test execution deadlines**. Node uses its unlimited default, Vitest explicitly sets test/hook timeouts to zero, Nextest only reports slow tests, and fixture Playwright tests use zero test/global timeouts. The continuous release-image workflow also has no custom job deadline. GitHub-hosted jobs still have the platform's six-hour maximum; removing YAML limits cannot remove that cap.
@@ -62,7 +67,11 @@ Use controlled clocks and deterministic fixtures, investigate slow setup, and re
 | Client | `npm test` | `apps/web/vite.config.ts` |
 | Server without PostgreSQL | `make test-server` | `.config/nextest.toml` |
 | PostgreSQL integration | `make test-db` | `.config/nextest.toml` |
-| Browser with HTTP fixtures | `npm run test:ui` | `playwright.config.ts` |
+| Essential application journeys | `make test-journeys` | `playwright.config.ts`, `@journey` tag |
+| Remaining required feature integrations | `make test-features` | `playwright.config.ts` |
+| All application HTTP fixtures | `npm run test:ui` | `playwright.config.ts` |
+| Isolated interactive components | `npm run test:components` | `playwright.components.config.ts` |
+| Component and fixture types | `npm run test:component-types` | `apps/web/tests/components/tsconfig.json` |
 
 Install the pinned Node/npm/Rust tools and npm dependencies. Rust tests additionally need **cargo-nextest 0.9.114** (`cargo install cargo-nextest --version 0.9.114 --locked`, or the [official prebuilt binary](https://nexte.st/docs/installation/pre-built-binaries/)). CI installs that pinned prebuilt version. `make test-tooling` uses Node’s built-in test runner for all tooling tests; no separate environment or test dependencies are needed. No custom test scheduler or timing framework is used.
 

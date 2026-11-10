@@ -527,7 +527,7 @@ test('a successful HTTP response confirms deletion before the game view refreshe
 })
 
 
-test('triage selection follows filters and rejected bulk cleanup restores reports', async ({ page }) => {
+test('triage selection follows filters and rejected bulk cleanup restores reports', { tag: '@journey' }, async ({ page }) => {
   const fixture = await reportsFixture(page)
   await selectReports(page)
   await expect(page.getByText('Loading reports…', {exact: true})).toHaveCount(0)

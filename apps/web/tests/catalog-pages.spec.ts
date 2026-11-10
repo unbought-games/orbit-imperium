@@ -335,7 +335,7 @@ async function setup(page: Page, blocked = false, unitCost?: S['Resources'], opt
   return fixture
 }
 
-test('facility rows offer quick build while retaining detail-page confirmation', async ({
+test('facility rows offer quick build while retaining detail-page confirmation', { tag: '@journey' }, async ({
   page,
 }) => {
   const { sent, planet, blockers } = await setup(page, true)
@@ -1183,7 +1183,7 @@ for (const [width, hasTouch] of [[390, true], [1440, true], [1440, false]] as co
 }
 
 for (const width of [390, 1440]) {
-  test(`catalog deep links survive refresh and history without Escape dismissal at ${width}px`, async ({ page }) => {
+  test(`catalog deep links survive refresh and history without Escape dismissal at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const { sent } = await setup(page)
     for (const [tab, path, item, title, linkName] of [

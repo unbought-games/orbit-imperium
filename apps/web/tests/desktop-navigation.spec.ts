@@ -6,7 +6,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 // Geometry/text-scale permutations live in shell-navigation.component.spec.ts.
 // This journey retains real route focus, body history, reload and server refresh wiring.
-test('desktop navigation preserves body history, reload and report refresh', async ({
+test('desktop navigation preserves body history, reload and report refresh', { tag: '@journey' }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -208,7 +208,7 @@ for (const width of [390, 767, 768, 961, 1023]) {
 }
 
 for (const width of [390, 320]) {
-  test(`menu page preserves tab navigation, history and settings access at ${width}px`, async ({page}) => {
+  test(`menu page preserves tab navigation, history and settings access at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({page}) => {
     await page.setViewportSize({width, height:844})
     await page.emulateMedia({reducedMotion:'reduce'})
     await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => shellFixture(page, {

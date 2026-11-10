@@ -414,7 +414,7 @@ test('initial and background history errors remain visible and Refresh retries',
 // Application gate: command wiring plus the direct-message route and its return link.
 // Isolated components own layout, draft editing, menus and keyboard permutations.
 for (const width of [1440, 390]) {
-  test(`submits a direct message from its deep link and returns to the conversation list at ${width}px`, async ({
+  test(`submits a direct message from its deep link and returns to the conversation list at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })

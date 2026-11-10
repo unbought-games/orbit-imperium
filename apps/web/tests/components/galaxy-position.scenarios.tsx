@@ -36,7 +36,9 @@ export function GalaxyPositionScenario() {
   ]
   view.missions.fleets = []
   view.missions.fleet_slots = blocked ? '0' : '3'
-  view.capabilities = [{ capability: 'Harvest', enabled: true }]
+  view.capabilities = [
+    { capability: 'Harvest', enabled: true, reason: 'Available' },
+  ]
   view.catalog = [
     {
       key: { kind: 'Ship', id: 'Recycler' },

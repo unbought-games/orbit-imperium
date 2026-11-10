@@ -449,3 +449,11 @@ shows orb/action overlap. Parent owns HUD production/layout work; this task does
 not change those shared files or claim that overlap is fixed. Carry the captures
 into that owner's component/hit-target audit. The originating chat displays the
 final images inline.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

@@ -149,7 +149,7 @@ test('installation from a deep link declares the whole game as a standalone app'
   }
 })
 
-test('mobile game navigation stays in the same document and app scope', async ({
+test('mobile game navigation stays in the same document and app scope', { tag: '@journey' }, async ({
   page,
   context,
 }) => {

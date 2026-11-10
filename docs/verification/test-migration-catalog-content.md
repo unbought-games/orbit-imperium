@@ -353,3 +353,11 @@ Local evidence is preserved under `test-results/catalog-migration-evidence/`
 (browser log, focused-unit logs, type/lint logs, expanded inventories and copied
 failure artifacts). No screenshots were committed or uploaded. No production UI
 changed, so UI screenshot review for product changes does not apply.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

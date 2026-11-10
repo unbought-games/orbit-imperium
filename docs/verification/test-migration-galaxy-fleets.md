@@ -280,3 +280,11 @@ and is not duplicated here. Parent retains evidence under
 `test-results/test-strategy/components-integrated` and
 `/tmp/orbit-components-integrated.log`, and owns the affected validation. No
 browser, build or typecheck was run for this repair.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

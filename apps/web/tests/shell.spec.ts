@@ -192,7 +192,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
   })
 }
 
-test('cold Defense navigation retains named universe and planet through preloading, switching and direct loads', async ({
+test('cold Defense navigation retains named universe and planet through preloading, switching and direct loads', { tag: '@journey' }, async ({
   page,
 }) => {
   test.skip(!process.env.ORBIT_UI_E2E, 'Controls lazy route delivery in the fixture browser suite.')
@@ -916,7 +916,7 @@ test('phone keeps the thumb dock and world controls usable on the menu page', as
 
 // The old modal focus-lock/resize scenario was removed with the dialog.
 // desktop-navigation.spec.ts covers route persistence on resize and Back.
-test('mobile menu page signs out through the existing account session', async ({
+test('mobile menu page signs out through the existing account session', { tag: '@journey' }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -1082,7 +1082,7 @@ test('large world rosters scroll and retain funding context on player-wide route
   expect(purchases()).toBe(0)
 })
 
-test('navigation keeps shell identity mounted through rapid route changes', async ({
+test('navigation keeps shell identity mounted through rapid route changes', { tag: '@journey' }, async ({
   browser,
 }) => {
   const context = await browser.newContext({

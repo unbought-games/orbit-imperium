@@ -118,3 +118,11 @@ retained below; the original cases in these four files have no duplicate titles.
 - Temporary harness registrations/configuration copied into this isolated
   worktree are not part of the commits. No database/container was started.
   All task-owned typecheck processes were stopped; no browser/server was started.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

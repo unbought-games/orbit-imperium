@@ -196,7 +196,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1100, 390]) {
-  test(`Briefing navigation preserves the original command HUD and issues no orders ${width}`, async ({
+  test(`Briefing navigation preserves the original command HUD and issues no orders ${width}`, { tag: (width === 390) ? '@journey' : [] }, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -520,7 +520,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`full experience confirmation preserves briefing progress and rewards ${width}`, async ({
+  test(`full experience confirmation preserves briefing progress and rewards ${width}`, { tag: (width === 1440) ? '@journey' : [] }, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })

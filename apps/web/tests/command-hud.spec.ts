@@ -202,7 +202,7 @@ test('initial unread persists and mailbox failures remain recoverable; desktop r
   await diagnosticScreenshot(page,{path:`${output}/desktop-1440x900.png`})
 })
 
-test('real quick-build only acknowledges committed orders and leaves rejection visible',async({page})=>{
+test('real quick-build only acknowledges committed orders and leaves rejection visible', { tag: '@journey' },async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'})
   let reject=false
   await installGameFixture(page,{protocol:4,missions:emptyMissions(),catalog:[{key:{kind:'Building',id:'MetalMine'},enabled:true,mobile:false,body_kinds:['Planet'],requirements:[]}]})

@@ -5,7 +5,7 @@ import type { components } from '../src/contracts'
 import { withBootstrapResponse } from './fixtures/responses'
 
 for (const width of [390]) {
-  test(`request and cancel empire deletion ${width}px`, async ({ page }) => {
+  test(`request and cancel empire deletion ${width}px`, { tag: '@journey' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let deletion: components['schemas']['EmpireDeletionStatus4'] | undefined
     let revision = 1

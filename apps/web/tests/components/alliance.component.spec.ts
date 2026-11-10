@@ -173,11 +173,9 @@ test('saving an unrelated role retains an edited notice draft across unmount', a
   mount,
 }) => {
   await mount('alliance-panels')
-  const draft = page
-    .locator('form')
-    .filter({
-      has: page.getByRole('button', { name: 'Publish notice', exact: true }),
-    })
+  const draft = page.locator('form').filter({
+    has: page.getByRole('button', { name: 'Publish notice', exact: true }),
+  })
   await page.getByText('Write a notice', { exact: true }).click()
   await draft
     .getByRole('textbox', { name: 'Notice title', exact: true })

@@ -1,11 +1,11 @@
-import { test, expect } from './fixtures/test'
+import { test, expect } from './fixture'
 import {
   capCenterOffset,
   inlineBaseline,
   textLineMetrics,
-} from './fixtures/identity-typography'
-import { focusPlayerDetails } from './fixtures/profile-navigation'
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+} from '../fixtures/identity-typography'
+import { focusPlayerDetails } from '../fixtures/profile-navigation'
+import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 
 for (const width of [1440, 390, 320]) {
   test(`identity text retains baselines, paragraph rhythm and keyboard details at ${width}px`, async ({

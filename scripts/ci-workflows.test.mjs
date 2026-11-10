@@ -22,10 +22,12 @@ test('every workflow job uses an explicitly approved disposable runner', () => {
       // whose execution environment has not been reviewed here.
       if (file === 'publish-release.yml' && name === 'build') {
         assert.equal(job['runs-on'], '${{ matrix.runner }}')
-        assert.deepEqual(job.strategy.matrix, { include: [
-          { arch: 'amd64', runner: 'ubuntu-24.04' },
-          { arch: 'arm64', runner: 'ubuntu-24.04-arm' },
-        ] })
+        assert.deepEqual(job.strategy.matrix, {
+          include: [
+            { arch: 'amd64', runner: 'ubuntu-24.04' },
+            { arch: 'arm64', runner: 'ubuntu-24.04-arm' },
+          ],
+        })
       } else assert.equal(job['runs-on'], 'ubuntu-24.04', `${file}: ${name}`)
     }
   }
@@ -50,14 +52,23 @@ test('browser jobs configure Ubuntu mirrors before installing Linux dependencies
       const mirrorSetup = job.steps[mirrorIndex].run
       // Capture the actual shell output without writing the host's apt config.
       // apt treats space-separated metadata as part of the URL; it needs a tab.
-      const generated = spawnSync('bash', ['-e', '-c', mirrorSetup.replace(
-        'sudo tee /etc/apt/apt-mirrors.txt >/dev/null',
-        'cat',
-      )], { encoding: 'utf8' })
+      const generated = spawnSync(
+        'bash',
+        [
+          '-e',
+          '-c',
+          mirrorSetup.replace(
+            'sudo tee /etc/apt/apt-mirrors.txt >/dev/null',
+            'cat',
+          ),
+        ],
+        { encoding: 'utf8' },
+      )
       assert.equal(generated.status, 0, `${file}: ${generated.stderr}`)
-      assert.equal(generated.stdout,
+      assert.equal(
+        generated.stdout,
         'https://archive.ubuntu.com/ubuntu\tpriority:0\n' +
-        'https://security.ubuntu.com/ubuntu\tpriority:1\n',
+          'https://security.ubuntu.com/ubuntu\tpriority:1\n',
         file,
       )
     }
@@ -95,11 +106,18 @@ test('merge queue checks use the complete integration group without cancelling o
   const ci = workflows.find(({ file }) => file === 'ci.yml').workflow
   assert.deepEqual(ci.on.merge_group, { types: ['checks_requested'] })
   const scope = ci.jobs.scope.steps.find((step) => step.id === 'integration')
-  assert.equal(scope.env.BASE_SHA,
-    '${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}')
-  assert.equal(ci.concurrency.group,
-    "${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}")
-  assert.equal(ci.concurrency['cancel-in-progress'], "${{ github.event_name == 'pull_request' }}")
+  assert.equal(
+    scope.env.BASE_SHA,
+    '${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}',
+  )
+  assert.equal(
+    ci.concurrency.group,
+    "${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}",
+  )
+  assert.equal(
+    ci.concurrency['cancel-in-progress'],
+    "${{ github.event_name == 'pull_request' }}",
+  )
 })
 
 test('integration selection includes earlier queued changes and fails safe without a valid base', (t) => {
@@ -112,8 +130,10 @@ test('integration selection includes earlier queued changes and fails safe witho
       encoding: 'utf8',
       env: {
         ...process.env,
-        GIT_AUTHOR_NAME: 'CI fixture', GIT_AUTHOR_EMAIL: 'ci@example.test',
-        GIT_COMMITTER_NAME: 'CI fixture', GIT_COMMITTER_EMAIL: 'ci@example.test',
+        GIT_AUTHOR_NAME: 'CI fixture',
+        GIT_AUTHOR_EMAIL: 'ci@example.test',
+        GIT_COMMITTER_NAME: 'CI fixture',
+        GIT_COMMITTER_EMAIL: 'ci@example.test',
       },
     })
     assert.equal(result.status, 0, result.stderr)
@@ -128,15 +148,21 @@ test('integration selection includes earlier queued changes and fails safe witho
   }
   git('init', '--quiet')
   const base = commit('README.md')
-  const scope = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs.scope
-    .steps.find((step) => step.id === 'integration')
+  const scope = workflows
+    .find(({ file }) => file === 'ci.yml')
+    .workflow.jobs.scope.steps.find((step) => step.id === 'integration')
   const select = (sha) => {
     const output = join(root, 'outputs')
     writeFileSync(output, '')
     const result = spawnSync('bash', ['-e', '-c', scope.run], {
       cwd: repository,
       encoding: 'utf8',
-      env: { ...process.env, BASE_SHA: sha, RUNNER_TEMP: root, GITHUB_OUTPUT: output },
+      env: {
+        ...process.env,
+        BASE_SHA: sha,
+        RUNNER_TEMP: root,
+        GITHUB_OUTPUT: output,
+      },
     })
     assert.equal(result.status, 0, result.stderr)
     return readFileSync(output, 'utf8')
@@ -163,8 +189,18 @@ test('fixture browsers start independently of native compilation and stay routin
   assert.ok(jobs.native.steps.some((step) => step.run === 'make check'))
   assert.equal(jobs.database.needs, 'scope')
   assert.equal(jobs.database.if, "needs.scope.outputs.database == 'true'")
-  assert.ok(jobs.database.steps.some((step) => step.run === 'make test-db-${{ matrix.group }}'))
-  assert.ok(jobs.browser.steps.some((step) => step.run === 'make test-ui'))
+  assert.ok(
+    jobs.database.steps.some(
+      (step) => step.run === 'make test-db-${{ matrix.group }}',
+    ),
+  )
+  assert.ok(
+    jobs.browser.steps.some(
+      (step) =>
+        step.run?.includes('make test-ui') &&
+        step.run.includes('make test-components'),
+    ),
+  )
   assert.ok(
     !jobs.browser.steps.some((step) => /cargo|rustup/.test(step.run ?? '')),
   )
@@ -208,14 +244,25 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
     }).status
   assert.equal(run({}), 0)
   assert.equal(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'skipped' }), 0)
-  for (const key of ['SCOPE_RESULT', 'NATIVE_RESULT', 'DATABASE_RESULT', 'BROWSER_RESULT']) {
+  for (const key of [
+    'SCOPE_RESULT',
+    'NATIVE_RESULT',
+    'DATABASE_RESULT',
+    'BROWSER_RESULT',
+  ]) {
     for (const result of ['failure', 'cancelled', 'skipped']) {
       assert.notEqual(run({ [key]: result }), 0, `${key}=${result}`)
     }
   }
-  assert.equal(run({ DATABASE_SELECTED: 'false', DATABASE_RESULT: 'skipped' }), 0)
+  assert.equal(
+    run({ DATABASE_SELECTED: 'false', DATABASE_RESULT: 'skipped' }),
+    0,
+  )
   for (const result of ['success', 'failure', 'cancelled'])
-    assert.notEqual(run({ DATABASE_SELECTED: 'false', DATABASE_RESULT: result }), 0)
+    assert.notEqual(
+      run({ DATABASE_SELECTED: 'false', DATABASE_RESULT: result }),
+      0,
+    )
   assert.notEqual(run({ DATABASE_SELECTED: '' }), 0)
   assert.notEqual(run({ UI_SELECTED: '' }), 0)
   assert.notEqual(run({ UI_SELECTED: 'false' }), 0)
@@ -223,16 +270,26 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
 })
 
 test('database groups reuse trusted native dependencies and isolate Compose cleanup', () => {
-  const { native, database } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
-  const cache = job => job.steps.find(step => step.uses?.startsWith('Swatinem/rust-cache@')).with
+  const { native, database } = workflows.find(({ file }) => file === 'ci.yml')
+    .workflow.jobs
+  const cache = (job) =>
+    job.steps.find((step) => step.uses?.startsWith('Swatinem/rust-cache@')).with
   assert.equal(cache(native)['shared-key'], 'check-native')
   assert.equal(cache(database)['shared-key'], cache(native)['shared-key'])
-  assert.equal(cache(native)['save-if'], "${{ github.ref == 'refs/heads/main' }}")
+  assert.equal(
+    cache(native)['save-if'],
+    "${{ github.ref == 'refs/heads/main' }}",
+  )
   assert.equal(cache(database)['save-if'], false)
   assert.equal(database.strategy['fail-fast'], false)
-  assert.equal(database.env.COMPOSE_PROJECT_NAME, 'orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}')
+  assert.equal(
+    database.env.COMPOSE_PROJECT_NAME,
+    'orbit-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}',
+  )
   assert.equal(database.env.ORBIT_DB_PUBLISHED_PORT, '0')
-  const cleanup = database.steps.find(step => step.name === 'Remove disposable database and test files')
+  const cleanup = database.steps.find(
+    (step) => step.name === 'Remove disposable database and test files',
+  )
   assert.equal(cleanup.if, 'always()')
   assert.match(cleanup.run, /docker compose down --volumes --remove-orphans/)
 })
@@ -241,16 +298,24 @@ test('Rust CI avoids full dependency debug data before cache restore and through
   const checked = []
   for (const { file, workflow } of workflows) {
     for (const [name, job] of Object.entries(workflow.jobs)) {
-      const cache = job.steps.find(step => step.uses?.startsWith('Swatinem/rust-cache@'))
+      const cache = job.steps.find((step) =>
+        step.uses?.startsWith('Swatinem/rust-cache@'),
+      )
       if (!cache) continue
       checked.push(`${file}:${name}`)
       // A late step-only override would restore large incompatible artifacts first.
-      const builds = job.steps.filter(step => /make (check|test-db-|test-explicit)/.test(step.run ?? ''))
+      const builds = job.steps.filter((step) =>
+        /make (check|test-db-|test-explicit)/.test(step.run ?? ''),
+      )
       assert.ok(builds.length > 0, `${file}:${name}`)
       for (const step of [cache, ...builds]) {
         const env = { ...workflow.env, ...job.env, ...step.env }
         for (const profile of ['DEV', 'TEST'])
-          assert.equal(env[`CARGO_PROFILE_${profile}_DEBUG`], 'line-tables-only', `${file}:${name}:${profile}`)
+          assert.equal(
+            env[`CARGO_PROFILE_${profile}_DEBUG`],
+            'line-tables-only',
+            `${file}:${name}:${profile}`,
+          )
         assert.equal(env.CARGO_INCREMENTAL, '0')
       }
       // rust-cache hashes CARGO* into both its exact and fallback keys by default.
@@ -258,38 +323,76 @@ test('Rust CI avoids full dependency debug data before cache restore and through
       assert.notEqual(cache.with['add-rust-environment-hash-key'], 'false')
     }
   }
-  assert.deepEqual(checked.sort(), ['ci.yml:database', 'ci.yml:native', 'explicit-tests.yml:explicit'])
+  assert.deepEqual(checked.sort(), [
+    'ci.yml:database',
+    'ci.yml:native',
+    'explicit-tests.yml:explicit',
+  ])
 })
 
 test('browser shards run independently and Make forwards their native Playwright selector', () => {
-  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
+  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow
+    .jobs
   assert.equal(browser.strategy['fail-fast'], false)
   assert.equal(browser.strategy['max-parallel'], 8)
-  assert.deepEqual(browser.strategy.matrix.shard, [1, 2, 3, 4, 5, 6, 7, 8])
-  const run = browser.steps.find((step) => step.run === 'make test-ui')
-  assert.equal(run.env.UI_SHARD, '${{ matrix.shard }}/${{ strategy.job-total }}')
+  const jobs = browser.strategy.matrix.include
+  assert.deepEqual(
+    jobs.filter((job) => job.suite !== 'features'),
+    [
+      { suite: 'journeys', shard: 1, shards: 1 },
+      { suite: 'components', shard: 1, shards: 1 },
+    ],
+  )
+  const features = jobs.filter((job) => job.suite === 'features')
+  assert.deepEqual(
+    features.map((job) => job.shard),
+    Array.from({ length: features.length }, (_, index) => index + 1),
+  )
+  assert.ok(features.every((job) => job.shards === features.length))
+  const run = browser.steps.find((step) =>
+    step.run?.includes('make test-components'),
+  )
+  assert.equal(run.env.UI_SHARD, '${{ matrix.shard }}/${{ matrix.shards }}')
+  assert.equal(run.env.BROWSER_SUITE, '${{ matrix.suite }}')
   const root = new URL('../', import.meta.url)
-  for (const shard of ['', ...browser.strategy.matrix.shard.map(shard => `${shard}/8`)]) {
-    const dryRun = spawnSync('make', ['--no-print-directory', '-n', 'test-ui', `UI_SHARD=${shard}`], {
-      cwd: root,
-      encoding: 'utf8',
-    })
+  for (const job of [{ suite: 'all' }, ...jobs]) {
+    const shard = job.shard ? `${job.shard}/${job.shards}` : ''
+    const target = job.suite === 'components' ? 'test-components' : 'test-ui'
+    const command = job.suite === 'components' ? 'test:components' : 'test:ui'
+    const dryRun = spawnSync(
+      'make',
+      ['--no-print-directory', '-n', target, `UI_SHARD=${shard}`],
+      {
+        cwd: root,
+        encoding: 'utf8',
+      },
+    )
     assert.equal(dryRun.status, 0, dryRun.stderr)
-    assert.equal(dryRun.stdout.trim(), `npm run test:ui${shard ? ` -- --shard=${shard}` : ''}`)
+    assert.equal(
+      dryRun.stdout.trim(),
+      `npm run ${command}${shard ? ` -- --shard=${shard}` : ''}`,
+    )
   }
 })
 
 test('fixture browser failure diagnostics are downloadable without capturing successful tests', () => {
-  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow.jobs
-  const upload = browser.steps.find((step) => step.uses?.startsWith('actions/upload-artifact@'))
+  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow
+    .jobs
+  const upload = browser.steps.find((step) =>
+    step.uses?.startsWith('actions/upload-artifact@'),
+  )
   assert.equal(upload.if, 'failure()')
   assert.deepEqual(upload.with.path.trim().split('\n'), [
     'test-results/browser-ui/',
     'test-results/browser-homepage/',
+    'test-results/components/',
   ])
   assert.equal(upload.with['retention-days'], 7)
   assert.equal(upload.with['if-no-files-found'], 'ignore')
-  assert.equal(upload.with.name, 'browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}')
+  assert.equal(
+    upload.with.name,
+    'browser-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.suite }}-${{ matrix.shard }}',
+  )
 })
 
 test('routine CI and continuous image publication have no custom execution deadlines', () => {
@@ -299,7 +402,11 @@ test('routine CI and continuous image publication have no custom execution deadl
     for (const [name, job] of Object.entries(workflow.jobs)) {
       assert.equal(job['timeout-minutes'], undefined, `${file}: ${name}`)
       for (const step of job.steps)
-        assert.equal(step['timeout-minutes'], undefined, `${file}: ${name}: ${step.name}`)
+        assert.equal(
+          step['timeout-minutes'],
+          undefined,
+          `${file}: ${name}: ${step.name}`,
+        )
     }
   }
 })

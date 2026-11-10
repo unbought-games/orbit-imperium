@@ -320,3 +320,11 @@ Formatting is applied to changed social/recruitment specs and the ledger; the
 alliance file preserves existing formatting around untouched cases to keep the
 restoration/removal diff reviewable. `git diff --check` is the local structural
 verification, not a claim of runtime success.
+
+
+## Integrated verification
+
+The parent integrated this group and completed serial validation. See the
+[combined verification record](test-strategy-overhaul.md) for final inventory,
+passing runs, repairs, retained failures, visual evidence and cleanup. Earlier
+“pending parent validation” entries above describe the historical handoff.

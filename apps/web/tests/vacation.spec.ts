@@ -33,7 +33,7 @@ async function capture(page: Page, target: Page | Locator, options: Parameters<P
 }
 
 for (const width of [1280]) {
-  test(`vacation review, commitment, minimum and return at ${width}px`, async ({ page }) => {
+  test(`vacation review, commitment, minimum and return at ${width}px`, { tag: '@journey' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let now = Date.now()
     let revision = 1

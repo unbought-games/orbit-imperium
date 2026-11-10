@@ -338,7 +338,7 @@ for (const action of ['Join', 'Apply'] as const) {
 
 // Application gate: a submitted membership mutation changes the destination route.
 // Isolated components own role, draft, notice-editing and recruitment-form interactions.
-test('creates an alliance from its route and returns to membership home', async ({ page }) => {
+test('creates an alliance from its route and returns to membership home', { tag: '@journey' }, async ({ page }) => {
   const f = await fixture(page, null)
   const membership = (response: import('@playwright/test').Response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine'
   await withFixtureResponse(page, membership, () => page.goto('/u/andromeda/alliance/create'))
@@ -352,7 +352,7 @@ test('creates an alliance from its route and returns to membership home', async 
 })
 
 // Restored: controller state cannot prove the screen recovery live region.
-test('expired noticeboard cursors recover to fresh notices', async ({ page }) => {
+test('expired noticeboard cursors recover to fresh notices', { tag: '@journey' }, async ({ page }) => {
   const detail = own(); detail.next_post_before = id(851)
   await fixture(page, detail)
   const queries: S['AllianceQuery'][] = []
