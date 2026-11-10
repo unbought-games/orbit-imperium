@@ -6,6 +6,46 @@ Base: `a119915ffaeb881a7f54d65542478f4788bd4210`. Owner: shell component migrati
 
 `GameShellFrame` owns the existing shell DOM, sticky-header measurement, Navigation, BodySelector and ResourceStrip composition. `GameShell` retains route resolution, canonicalization, focus, presence recording, session effects, ScreenContext, content and CommandHud. No CSS, resource-settings implementation, router core, HUD or progression production modules changed. The prepared story uses the real frame, real Coordinator store, real tutorial state and a minimal memory router for production links; it starts no transport clients. Its content and navigation callback output are fixture slots, not replacements for application routing. The original application journeys retain that coverage.
 
+## Integrated selection failure: single explained repair
+
+The parent's first integrated Node 24 component run reported 257 passed / 15
+failed in 287.222 s with one worker. Evidence is preserved in
+`test-results/test-strategy/components-integrated/results.json` and the
+corresponding per-case errors/screenshots; runner log:
+`/tmp/orbit-components-integrated.log`. All 30 other shell component cases
+passed. Each of the five `shell-selection.component.spec.ts` input modes failed
+at the same strict locator check, before its selection-CSS assertion:
+`getByText('Available', { exact: false })` matched both the available-amount
+paragraph (`Available 6,661`) and `Flow unavailable` in the production-rate
+paragraph. The prepared story intentionally has no production-rate observation;
+this is valid state, not a product defect or a timing/infrastructure failure.
+
+History: this selector was introduced in `37ce097e`; no previous repair to these
+five selection cases appears in their Git history or the repository repair
+ledger. The prior inactive-tutorial repair concerned the separately executed
+layout/control cases, not these then-unrun selection cases. The original
+application fixture supplies production rates, which explains why its substring
+selector did not expose this ambiguity. Auditing the current test tree found no
+other equivalent substring selector; the catalog test uses an exact match in a
+different table and is unaffected.
+
+**One explained test repair:** select the actual paragraph whose text starts
+with the `Available` label:
+`details.locator('p').filter({ hasText: /^Available\b/ })`.
+The existing helper still requires that paragraph to be visible and its
+`-webkit-user-select` value not to be `none`. No `.first()`, assertion removal,
+fixture alteration, production change, timeout change or retry was introduced.
+The five-mode copying/selection contract and remaining interactions are intact.
+
+Only source syntax/format/whitespace checks run in this chat. The parent owns
+serial browser validation; this record does not claim the repair passes.
+Apply this repair before evaluating the pending application consolidation
+`1b5c9afeec973a1c1b036868d9b57ecf56a69a5b`. Keep the original five application
+selection cases and their shell assertions until all five repaired replacements
+pass. The consolidation's 11 navigation replacements passed in the integrated
+run; its selection prerequisite remains open. A repeated test failure must be
+handled under the one-repair rule, not another stabilization patch.
+
 ## Parent integration
 
 Register these imports from `./shell.story` in `apps/web/tests/components/main.tsx`:

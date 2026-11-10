@@ -60,7 +60,10 @@ for (const mode of modes) {
       if (mode.touch) await selectionIs(metal, true)
       await metal.click()
       const details = page.getByRole('dialog', { name: 'Metal', exact: true })
-      await selectionIs(details.getByText('Available', { exact: false }), false)
+      await selectionIs(
+        details.locator('p').filter({ hasText: /^Available\b/ }),
+        false,
+      )
       await page.keyboard.press('Escape')
       const worlds = page.getByRole('combobox', { name: 'Selected body' })
       if (mode.touch) await selectionIs(worlds, true)
