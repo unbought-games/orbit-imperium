@@ -236,3 +236,23 @@ cases remain required; neither is covered merely by the isolated row.
 No browser, full typecheck or build was launched for this group. Formatting,
 parser and whitespace checks passed; parent serial validation and visual
 inspection are still required before final CI selection changes.
+
+## Fleet-card first-run evidence and one authored-test repair
+
+The parent's first fleet-card component run passed six cases; all four incoming
+article/list and mobile/desktop variants failed at the same exact-text assertion
+before reaching geometry or disclosure checks. The new assertion expected only
+`6m 0s`; the existing `FleetFlightRoute` timer deliberately renders the
+`fleetFlight` label and time together: `Arrives in 6m 0s`. This was an incorrect
+new expectation, not a product defect.
+
+Its single repair retains exact text equality and includes the existing prefix
+in both initial and refreshed expectations (`Arrives in 5m 59s`). Inspected
+`IncomingFleet`, `FleetFlightRoute`, `ShipComposition`, the scene timestamp and
+remaining incoming assertions: visibility states remove the exact ship list,
+retain local disclosure, and preserve the scheduled arrival `datetime`; shared
+card geometry uses the same production CSS class. No production code, assertion
+strength, timeout or retry policy changes. Parent owns the one affected rerun.
+Evidence: `/tmp/orbit-fleet-cards-first.log` and parent artifacts under
+`test-results/test-strategy/fleet-cards-first`. The unexecuted downstream
+assertions are not reported as passed.

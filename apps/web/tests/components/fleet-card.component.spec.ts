@@ -127,7 +127,7 @@ for (const container of ['article', 'list'] as const) {
       await expect(
         incoming.getByRole('list', { name: 'Ship composition' }),
       ).toBeHidden()
-      await expect(incoming.getByRole('timer')).toHaveText('6m 0s')
+      await expect(incoming.getByRole('timer')).toHaveText('Arrives in 6m 0s')
       await expect(incoming).toHaveAttribute('data-flight-tone', 'enemy')
       await expect(
         incoming.getByRole('button', { name: 'Review recall' }),
@@ -157,7 +157,7 @@ for (const container of ['article', 'list'] as const) {
       )
       await page.getByRole('button', { name: 'Refresh fleet snapshot' }).click()
       await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      await expect(incoming.getByRole('timer')).toHaveText('5m 59s')
+      await expect(incoming.getByRole('timer')).toHaveText('Arrives in 5m 59s')
       await page
         .getByRole('button', { name: 'Show total intelligence' })
         .click()
