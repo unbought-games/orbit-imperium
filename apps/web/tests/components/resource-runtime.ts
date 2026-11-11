@@ -252,10 +252,10 @@ export async function createResourceScene(params: URLSearchParams) {
       context,
       request,
     ): Promise<BoundProgressionOptions> => {
-      if (failInspection) throw Error('Deliberately unavailable inspection')
-      if (optionsGate) await optionsGate
       queries++
       requests.push(request)
+      if (failInspection) throw Error('Deliberately unavailable inspection')
+      if (optionsGate) await optionsGate
       if (request.type === 'Transport')
         throw Error('Unexpected transport in progression component')
       if (

@@ -233,3 +233,23 @@ rows, 55 unchanged retained cases, one split/renamed retained case, 30 direct
 component dispositions and 22 split/lower-layer dispositions. No source scenario
 is silently deselected. Required global CI will validate integration with all
 other streams' existing tests; no broader local suite was duplicated.
+
+## PR follow-through
+
+PR: [#387](https://github.com/unbought-games/orbit-imperium/pull/387).
+Initial pushed head: `e34d61b23071fb22b6a021630f8b1ba8af1a201e` (documentation
+and registry formatting follow the validated implementation). CI run
+`42940950004` started on this head; the next correction supersedes that run.
+
+Final diff review found a scene-observability defect: inspection counters were
+incremented after the deliberate failure branch. Unexpected failed inspections
+could therefore escape the no-reinspection assertions. Count attempts before
+failure/holding, and extend the failed-scene contract assertion to require the
+recorded request. This is a fixture correction, not a product change. The five
+scene contract cases and three affected metadata/cached-affordability component
+cases passed after the correction. A preliminary textual edit matched no source;
+its unchanged focused run is redundant evidence, not validation of the correction.
+The existing assertions were neither removed nor relaxed.
+
+PR checks and automated review remain pending. No merge queue or deployment was
+used; final head/check identities will be appended after verification.

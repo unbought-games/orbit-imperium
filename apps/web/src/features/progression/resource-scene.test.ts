@@ -6,12 +6,18 @@ import { progressionCommand } from './options'
 it.each(['', 'blocked', 'active', 'failed'])(
   'validates resource scene contracts (%s)',
   async (mode) => {
-    const { model } = await createResourceScene(new URLSearchParams({ mode }))
+    const { model, queries, requests } = await createResourceScene(
+      new URLSearchParams({ mode }),
+    )
     expect(model.ready).toBe(true)
     if (mode === 'failed') {
       await expect(
         model.options({ type: 'Upgrade', body: id(5), building: 'MetalMine' }),
       ).rejects.toThrow('Deliberately')
+      expect(queries()).toBe(1)
+      expect(requests).toEqual([
+        { type: 'Upgrade', body: id(5), building: 'MetalMine' },
+      ])
       return
     }
     const options = await model.options({
@@ -33,7 +39,7 @@ it.each(['', 'blocked', 'active', 'failed'])(
     )
   },
 )
-it('settles production and construction commands through the real coordinator', async () => {
+it('settles construction and cancellation through the real coordinator', async () => {
   const { model, sent } = await createResourceScene(new URLSearchParams())
   const options = await model.options({
     type: 'Upgrade',
