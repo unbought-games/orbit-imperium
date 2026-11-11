@@ -104,6 +104,23 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {
       path: `test-results/briefing-unread-${width}x900.png`,
     })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      const book = await icon.locator('svg').boundingBox()
+      const bar = await page
+        .getByRole('group', { name: 'Planet and resources' })
+        .boundingBox()
+      const edgeScroll = book!.y + book!.height / 2 - (bar!.y + bar!.height)
+      for (const [state, scroll] of [
+        ['crossing', edgeScroll],
+        ['hidden', edgeScroll + 48],
+      ] as const) {
+        await page.evaluate((y) => window.scrollTo(0, y), scroll)
+        await diagnosticScreenshot(page, {
+          path: `test-results/briefing-${state}-${width}x900.png`,
+        })
+      }
+      await page.evaluate(() => window.scrollTo(0, 0))
+    }
     if (width === 1440) {
       await icon.hover()
       const enterTransitions = await icon.evaluate(async (el) => {

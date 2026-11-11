@@ -145,9 +145,9 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
   await expect(bar).toHaveCSS('border-bottom-style', 'solid')
   expect(
     await bar.evaluate(
-      (element) => getComputedStyle(element, '::before').backdropFilter,
+      (element) => getComputedStyle(element, '::before').backgroundColor,
     ),
-  ).toBe('blur(4px)')
+  ).toBe('rgb(7, 22, 32)')
   const initial = await bar.boundingBox()
   expect(initial!.y).toBe(0)
   expect(initial!.x).toBe(0)
@@ -238,7 +238,7 @@ for (const width of [320, 390]) {
 }
 
 for (const width of [768, 1440, 1920]) {
-  test(`desktop header dividers align with content at ${width}px`, async ({
+  test(`desktop header spans the top while submenu stays aligned at ${width}px`, async ({
     page,
     mount,
   }) => {
@@ -250,8 +250,24 @@ for (const width of [768, 1440, 1920]) {
       .getByRole('group', { name: 'Planet and resources' })
       .locator('../..')
     const content = (await page.locator('main#main').boundingBox())!
-    for (const divider of width < 1024 ? [header, submenu] : [header]) {
-      const bounds = (await divider.boundingBox())!
+    const headerBounds = (await header.boundingBox())!
+    const sidebar =
+      width >= 1024
+        ? await page
+            .getByRole('complementary', { name: 'Game navigation' })
+            .boundingBox()
+        : null
+    expect(headerBounds.x).toBeCloseTo(
+      sidebar ? sidebar.x + sidebar.width : 0,
+      1,
+    )
+    expect(
+      await header.evaluate((element) =>
+        element.contains(document.elementFromPoint(innerWidth - 1, 32)),
+      ),
+    ).toBe(true)
+    if (width < 1024) {
+      const bounds = (await submenu.boundingBox())!
       expect(bounds.x).toBeCloseTo(content.x, 1)
       expect(bounds.x + bounds.width).toBeCloseTo(content.x + content.width, 1)
     }
@@ -400,4 +416,58 @@ test('phone Develop navigation keeps full-size links on one keyboard-scrollable 
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(320)
+})
+
+// The sticky surface must cover decorations that extend beyond the content column.
+test('sticky resource bar covers the full top edge while content scrolls', async ({
+  page,
+  mount,
+}) => {
+  await mount('shell-default')
+  for (const width of [390, 768, 1024, 1440, 2200]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(() => window.scrollTo(0, 40))
+    const surface = await page
+      .getByRole('group', { name: 'Planet and resources' })
+      .evaluate((bar) => {
+        const header = bar.parentElement!.parentElement!
+        const sticky =
+          getComputedStyle(header).display === 'contents' ? bar : header
+        const rect = sticky.getBoundingClientRect()
+        const point = document.elementFromPoint(
+          innerWidth - 1,
+          rect.top + rect.height / 2,
+        )
+        return {
+          top: rect.top,
+          coversRightEdge: !!point && sticky.contains(point),
+          coversBelowEdge: sticky.contains(
+            document.elementFromPoint(innerWidth - 1, rect.bottom + 0.5),
+          ),
+          pageWidth: document.documentElement.scrollWidth,
+        }
+      })
+    expect(surface.top).toBe(0)
+    expect(surface.coversRightEdge).toBe(true)
+    expect(surface.coversBelowEdge).toBe(false)
+    expect(surface.pageWidth).toBe(width)
+  }
+})
+
+test('wide sticky header does not overflow a narrower layout viewport', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 2200, height: 900 })
+  await mount('shell-default')
+  // Model the 15px difference between viewport units and available layout width.
+  await page.addStyleTag({ content: 'body { width: calc(100% - 15px); }' })
+  const bounds = await page
+    .getByRole('group', { name: 'Planet and resources' })
+    .evaluate((bar) => ({
+      headerRight:
+        bar.parentElement!.parentElement!.getBoundingClientRect().right,
+      layoutRight: document.body.getBoundingClientRect().right,
+    }))
+  expect(bounds.headerRight).toBeLessThanOrEqual(bounds.layoutRight)
 })
