@@ -588,7 +588,21 @@ pub fn recipe_access(
         }
     }
     let advanced = counts[1] > 0 || layers.iter().any(|l| l.color != recipe.foreground);
-    if advanced {
+    // Version-3 permanent rewards include the composition rights needed to use
+    // them. Individual dyes, treatments and symbols were authorized above.
+    let permanently_usable = recipe.version == 3
+        && layers.iter().all(|layer| {
+            let item = catalog
+                .get(&layer.symbol)
+                .expect("validated installed layer");
+            let access = item.access.unwrap_or(if item.supporter {
+                CatalogAccess::Membership
+            } else {
+                CatalogAccess::Free
+            });
+            access == CatalogAccess::Free || grants.contains(&layer.symbol)
+        });
+    if advanced && !permanently_usable {
         return composition_access(policy, evidence, now);
     }
     InsigniaAccess::Available

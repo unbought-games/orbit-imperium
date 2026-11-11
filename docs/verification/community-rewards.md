@@ -70,3 +70,24 @@ capture cases are not retained in the routine browser suite.
 Thin account observation batching has a real fixture HTTP test plus stale-generation
 coverage. Profile reads use no full private owner response. Legacy title ownership
 reconciliation was explicitly deferred; no extra ownership migration was added.
+
+## Permanent version-3 composition rights
+
+Actual cross-service acceptance exposed a product 403 on Save & equip after a
+player permanently claimed both a dye and an emblem. The selected layer used the
+owned dye while the recipe foreground retained a different free dye. Individual
+item checks succeeded, but the final advanced-composition check still required
+active membership.
+
+The server now derives version-3 composition rights from free or permanently
+granted elements after validating every selected dye, treatment, element and group.
+Legacy version-2 composition rules remain enforced. The deterministic application
+regression `permanent_elements_and_owned_dyes_include_required_v3_composition_rights`
+covers the reported contrasting-color recipe, a granted stripe, rejection of
+unowned elements/dyes/treatments, and fallback after observation expiry.
+
+This follow-up was committed source-only under coordinated validation ownership.
+Formatting and diff checks passed; the new regression has not yet been compiled
+or executed. The currently built native executable is still from `e3a22bee`.
+Focused application validation, a fresh native build and the retained real-service
+save/equip acceptance must run before reporting this correction as validated.

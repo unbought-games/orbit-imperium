@@ -363,7 +363,10 @@ mod tests {
     use crate::*;
     use serde_json::json;
     fn catalog() -> InsigniaCatalog {
-        InsigniaCatalog::with_manifest(serde_json::from_value(json!({"version":3,"insignias":[],"dyes":[
+        InsigniaCatalog::with_manifest(serde_json::from_value(json!({"version":3,"insignias":[
+            {"id":"fixture-center","name":"Fixture center","group":"center","supporter":true,"sha256":"a".repeat(64)},
+            {"id":"fixture-stripe","name":"Fixture stripe","group":"stripes","supporter":true,"sha256":"b".repeat(64)}
+        ],"dyes":[
             {"id":"fixture-blue","name":"Fixture blue","color":"#123456","tier":"standard","access":"free","scope":"account"},
             {"id":"fixture-copper","name":"Fixture copper","color":"#aa6622","tier":"refined","access":"membership","scope":"account"},
             {"id":"fixture-violet","name":"Fixture violet","color":"#663399","tier":"mythic","access":"earned","scope":"account"}
@@ -417,6 +420,141 @@ mod tests {
             InsigniaAccess::NotInstalled
         );
     }
+    #[test]
+    fn permanent_elements_and_owned_dyes_include_required_v3_composition_rights() {
+        let mut catalog = catalog();
+        catalog.account_observation = Some(AccountCosmeticObservation {
+            expires_at: 100,
+            membership: false,
+            items: vec![("dye".into(), "fixture-copper".into())],
+        });
+        let evidence = SupporterEvidence {
+            known: true,
+            active: false,
+            expires_at: 100,
+        };
+        let grants = vec!["fixture-center".into(), "fixture-stripe".into()];
+        let mut design = recipe();
+        design.foreground = "dye:fixture-blue".into();
+        design.layers = Some(vec![InsigniaLayer {
+            symbol: "fixture-center".into(),
+            color: "dye:fixture-copper".into(),
+        }]);
+        assert_eq!(
+            recipe_access(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                50
+            ),
+            InsigniaAccess::Available,
+            "a claimed dye on a permanently granted center needs no active membership"
+        );
+        design.layers.as_mut().unwrap().push(InsigniaLayer {
+            symbol: "fixture-stripe".into(),
+            color: "dye:fixture-blue".into(),
+        });
+        assert_eq!(
+            recipe_access(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                50
+            ),
+            InsigniaAccess::Available,
+            "a permanently granted stripe includes its required slot"
+        );
+        assert_eq!(
+            effective_insignia(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                50
+            ),
+            design
+        );
+        assert_eq!(
+            recipe_access(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &[],
+                evidence,
+                50
+            ),
+            InsigniaAccess::SupporterRequired,
+            "composition rights never unlock an unowned restricted element"
+        );
+        design.finish = Some("fixture-brush".into());
+        assert_eq!(
+            recipe_access(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                50
+            ),
+            InsigniaAccess::SupporterRequired,
+            "composition rights never unlock an unowned treatment"
+        );
+        design.finish = None;
+        design.layers.as_mut().unwrap()[0].color = "dye:fixture-violet".into();
+        assert_eq!(
+            recipe_access(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                50
+            ),
+            InsigniaAccess::SupporterRequired,
+            "composition rights never unlock an unowned dye"
+        );
+        design.layers.as_mut().unwrap()[0].color = "dye:fixture-copper".into();
+        assert_eq!(
+            effective_insignia(
+                &catalog,
+                &design,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                101
+            ),
+            InsigniaRecipe::default(),
+            "expired account ownership observations still derive the free fallback"
+        );
+        let legacy = InsigniaRecipe {
+            version: 2,
+            foreground: "#123456".into(),
+            background: "#123456".into(),
+            layers: Some(vec![InsigniaLayer {
+                symbol: "fixture-center".into(),
+                color: "#aa6622".into(),
+            }]),
+            ..Default::default()
+        };
+        assert_eq!(
+            recipe_access(
+                &catalog,
+                &legacy,
+                CosmeticPolicy::Supporter,
+                &grants,
+                evidence,
+                50
+            ),
+            InsigniaAccess::SupporterRequired,
+            "legacy composition policy is unchanged"
+        );
+    }
+
     #[test]
     fn membership_never_unlocks_exclusive_dyes_and_owned_effect_never_grants_dye() {
         let c = catalog();
