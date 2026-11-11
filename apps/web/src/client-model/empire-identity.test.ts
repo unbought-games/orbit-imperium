@@ -38,11 +38,32 @@ describe('empire identity', () => {
     )
     expect(identityError({ ...identity, name: '<Roman> & Empire' })).toBe('')
   })
-  it('addresses the player with the catalog form of address', () => {
-    expect(addressCaption('Systems Online', 'Consul')).toBe('Welcome, Consul.')
-    expect(addressCaption('Updated', 'Consul')).toBe('Updated')
-    expect(addressCaption('Research complete.', 'Consul')).toBe(
-      'Consul, research complete.',
+  it('uses the catalog form of address only where copy addresses the player', () => {
+    expect(addressCaption('Welcome, {address}.', 'Consul')).toBe(
+      'Welcome, Consul.',
     )
+    expect(addressCaption('Welcome back, {address}.', 'Consul')).toBe(
+      'Welcome back, Consul.',
+    )
+    expect(addressCaption('Ready when you are, {address}.', 'Navigator')).toBe(
+      'Ready when you are, Navigator.',
+    )
+    // Catalog text is literal, including replacement-pattern characters.
+    expect(addressCaption('Welcome, {address}.', '$& Navigator')).toBe(
+      'Welcome, $& Navigator.',
+    )
+  })
+  it('preserves general updates and asides without a title or case changes', () => {
+    for (const text of [
+      'Updated',
+      'Refreshed',
+      'Research complete.',
+      'Connection lost.',
+      'Champagne means unread.',
+      'Whoops.',
+      'Good thing we sent the bad one.',
+    ]) {
+      expect(addressCaption(text, 'Consul')).toBe(text)
+    }
   })
 })

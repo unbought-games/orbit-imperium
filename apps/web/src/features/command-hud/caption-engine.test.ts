@@ -14,8 +14,8 @@ const advance = (ms: number) => vi.advanceTimersByTime(ms)
 it('all explanations expire; first-time education is not repeated', () => {
   const e = engine()
   e.handle([{ id: 'boot', kind: 'ready' }])
-  expect(e.snapshot()?.text).toBe('Systems Online')
-  advance(captionTiming('Systems Online').lifetimeMs)
+  expect(e.snapshot()?.text).toBe('Welcome, {address}.')
+  advance(captionTiming('Welcome, {address}.').lifetimeMs)
   expect(e.snapshot()).toBeNull()
   e.handle([{ id: 'mail', kind: 'unread' }])
   expect(e.snapshot()?.category).toBe('explanation')
@@ -119,15 +119,16 @@ it('existing threats can suppress new humor without suppressing explanations', (
   expect(e.snapshot()?.text).toBe('Connection lost.')
 })
 
-it('confirms refresh immediately, without a humor roll, and rotates through all 15 lines', () => {
+it('confirms refresh immediately, without a humor roll, and makes every line reachable', () => {
   const e = engine(() => 0.99)
   e.handle([{ id: 'refresh-1', kind: 'updated' }])
   const first = e.snapshot()!
   expect(first.category).toBe('updated')
-  expect(captionRules.updated.confirmations).toHaveLength(15)
   expect(
     captionRules.updated.confirmations.map((_, index) => {
-      const selection = engine(() => index / 15)
+      const selection = engine(
+        () => index / captionRules.updated.confirmations.length,
+      )
       selection.handle([{ id: 'refresh', kind: 'updated' }])
       return selection.snapshot()?.text
     }),
