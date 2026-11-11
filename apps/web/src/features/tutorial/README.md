@@ -39,7 +39,10 @@ Completion celebrations also enter through `TutorialAdvisor`:
   furthest directive in checklist order; they never wrap to earlier unfinished
   work. The Briefing page has no separate latest-receipt block.
 - A celebration takes priority over route lessons, waits while Command uplink is
-  open, and can be hidden/reopened with the orb. Following either link clears it.
+  open. Dismissing it with the orb or Escape, opening Command uplink, or following
+  either link clears it. Dismissal restores the orb's command action and suppresses
+  any underlying route lesson for the current visit; later visits and new receipts
+  can still show guidance.
   Displayed receipts do not automatically replay after refresh or reload.
 - This remains available in the full interface, including the last accomplishment.
   It never issues an order, grants resources, or infers completion from a timer.

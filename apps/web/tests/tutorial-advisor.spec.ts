@@ -182,7 +182,99 @@ for (const width of [1440, 390]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`confirmed briefing reward opens the orb, toggles, and navigates to the next job ${width}`, async ({
+  test(`dismissing a briefing reward restores Command uplink and later rewards still appear ${width}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const state = await installTutorialFixture(page)
+    state.data.recommended_objectives = ['metal-1']
+    await withFixtureResponse(page, tutorial, () => page.goto(briefing))
+    await withProgressionResponse(
+      page,
+      (r) => r.type === 'Upgrade',
+      () =>
+        page
+          .getByRole('link', { name: 'Open Metal Mine', exact: true })
+          .click(),
+    )
+    const orb = page.getByTestId('command-orb')
+    await expect(
+      page.getByRole('dialog', { name: 'Your Metal Mine', exact: true }),
+    ).toBeVisible()
+    const celebration = page.getByRole('dialog', {
+      name: 'Nicely done!',
+      exact: true,
+    })
+    await expect(celebration).toHaveCount(0)
+    state.earnMine()
+    await withFixtureResponse(page, tutorial, () => refreshGame(page))
+    await expect(celebration).toBeVisible()
+    await expect(
+      page.getByRole('dialog', { name: 'Your Metal Mine', exact: true }),
+    ).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: testInfo.outputPath(`directive-celebration-${width}x900.png`),
+    })
+    await orb.click()
+    await expect(celebration).toHaveCount(0)
+    await expect(orb).toHaveAttribute('aria-label', 'Open command HUD')
+    await diagnosticScreenshot(page, {
+      path: testInfo.outputPath(`dismissed-celebration-${width}x900.png`),
+    })
+    await withFixtureResponse(
+      page,
+      (response) =>
+        response.url().includes('/api/') &&
+        response.url().endsWith('/overview'),
+      () => refreshGame(page),
+    )
+    await expect(celebration).toHaveCount(0)
+    await orb.click()
+    const uplink = page.getByRole('dialog', {
+      name: 'Command uplink',
+      exact: true,
+    })
+    await expect(uplink).toBeVisible()
+    await expect(celebration).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: testInfo.outputPath(
+        `command-uplink-after-dismissal-${width}x900.png`,
+      ),
+    })
+    await page.keyboard.press('Escape')
+    await expect(uplink).toHaveCount(0)
+    await expect(orb).toBeFocused()
+    await orb.press('Enter')
+    await expect(uplink).toBeVisible()
+
+    // A genuinely new receipt still waits for commands to close, then appears.
+    state.setStage('complete')
+    await withFixtureResponse(page, tutorial, () => refreshGame(page))
+    await expect(celebration).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(celebration).toBeVisible()
+    await expect(celebration).toContainText('Briefing complete.')
+    await celebration
+      .getByRole('button', { name: 'Command uplink', exact: true })
+      .focus()
+    if (width === 1440) await page.keyboard.press('Escape')
+    else {
+      await celebration
+        .getByRole('button', { name: 'Command uplink', exact: true })
+        .click()
+      await expect(uplink).toBeVisible()
+      await expect(celebration).toHaveCount(0)
+      await page.keyboard.press('Escape')
+    }
+    await expect(celebration).toHaveCount(0)
+    await expect(orb).toBeFocused()
+    await orb.press('Enter')
+    await expect(uplink).toBeVisible()
+    await expect(celebration).toHaveCount(0)
+    expect(state.commands).toHaveLength(0)
+  })
+  test(`confirmed briefing reward opens the orb and navigates to the next job ${width}`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
@@ -236,12 +328,6 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {
       path: testInfo.outputPath(`directive-celebration-${width}x900.png`),
     })
-    await orb.click()
-    await expect(celebration).toHaveCount(0)
-    await withFixtureResponse(page, (r) => r.url().includes('/api/') && r.url().endsWith('/overview'), () => refreshGame(page))
-    await expect(celebration).toHaveCount(0)
-    await orb.click()
-    await expect(celebration).toBeVisible()
     const next = celebration.getByRole('region', { name: 'Next directive' })
     const link = next.getByRole('link')
     const destination = await link.getAttribute('href')
