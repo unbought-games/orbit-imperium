@@ -43,7 +43,6 @@ export function identityError(identity: EmpireIdentity) {
   return ''
 }
 export function addressCaption(text: string, address: string) {
-  if (text === 'Systems Online') return `Welcome, ${address}.`
-  if (text === 'Updated') return text
-  return `${address}, ${text.charAt(0).toLowerCase()}${text.slice(1)}`
+  // Copy opts into direct address; status updates and asides stay as written.
+  return text.replaceAll('{address}', () => address)
 }

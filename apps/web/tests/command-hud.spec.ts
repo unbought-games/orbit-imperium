@@ -613,8 +613,13 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await expect(caption).toHaveCount(0)
   f.conversations.push({contact:{player:id(99),username:'Nova',blocked:false,request:null,requested_by:null,accepted:false},latest:{id:id(851),sequence:'1',sender:id(99),body:'Scouts are ready.',sent_at:baseTime},unread:true})
   await f.refresh()
-  await expect(caption).toHaveText('Commander, champagne means unread.')
+  await expect(caption).toHaveText('Champagne means unread.')
   await diagnosticScreenshot(page,{path:`${output}/caption-education-390x844.png`})
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await page.setViewportSize({width:1440,height:900})
+    await diagnosticScreenshot(page,{path:`${output}/caption-education-1440x900.png`})
+    await page.setViewportSize({width:390,height:844})
+  }
   await page.clock.fastForward(6000)
   await expect(caption).toHaveCount(0)
   await expect(orb).toHaveAttribute('data-tone','champagne')
@@ -631,7 +636,7 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await f.refresh()
   await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
   await page.clock.fastForward(8000)
-  await expect(caption).toHaveText('Commander, whoops.')
+  await expect(caption).toHaveText('Whoops.')
   await expect(caption).toHaveAttribute('data-category','personality')
   await diagnosticScreenshot(page,{path:`${output}/caption-whoops-390x844.png`})
   // An urgent regular card still appears and interrupts the joke during cooldown.
@@ -660,7 +665,7 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await f.refresh()
   await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
   await page.clock.fastForward(8000)
-  await expect(caption).toHaveText('Commander, good thing we sent the bad one.')
+  await expect(caption).toHaveText('Good thing we sent the bad one.')
   await expect(caption.locator('span')).toHaveCSS('animation-name','none')
   await page.setViewportSize({width:320,height:740})
   const bounds=(await caption.boundingBox())!
@@ -1228,7 +1233,7 @@ test('foreground refresh confirms an accepted response with accessible reduced m
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.clock.install()
-  await page.addInitScript(() => { Math.random = () => 0 })
+  await page.addInitScript(() => { Math.random = () => 0.025 })
   await intelligenceFixture(page)
   await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   const caption = page.getByTestId('orb-caption')
@@ -1256,10 +1261,14 @@ test('foreground refresh confirms an accepted response with accessible reduced m
     await expect(pulse).toHaveCount(0)
     await expect(caption).toHaveCount(0)
     release()
-    await expect(caption).toHaveText('Updated')
-    await expect(page.getByRole('status').filter({ hasText: 'Updated' })).toBeVisible()
+    await expect(caption).toHaveText('Refreshed')
+    await expect(page.getByRole('status').filter({ hasText: 'Refreshed' })).toBeVisible()
     await expect(pulse.locator('span').first()).toHaveCSS('animation-name', 'none')
     await diagnosticScreenshot(page, { path: `${output}/updated-reduced-motion-390x844.png` })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await diagnosticScreenshot(page, { path: `${output}/updated-reduced-motion-1440x900.png` })
+    }
   } finally {
     release()
     await page.unrouteAll({ behavior: 'wait' })
@@ -1269,7 +1278,7 @@ test('foreground refresh confirms an accepted response with accessible reduced m
 test('return refresh animation preview at mobile and desktop sizes', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
   await page.emulateMedia({reducedMotion:'no-preference'})
-  await page.addInitScript(()=>{Math.random=()=>0})
+  await page.addInitScript(()=>{Math.random=()=>0.45})
   await page.clock.install()
   await intelligenceFixture(page)
   await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
@@ -1293,7 +1302,7 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   await setAppHidden(page, true)
   await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 25*60*1000)
   await setAppHidden(page, false)
-  await expect(page.getByTestId('orb-caption')).toHaveText('Updated')
+  await expect(page.getByTestId('orb-caption')).toHaveText('Welcome back, Commander.')
   const pulse=page.getByTestId('orb-refresh-pulse')
   expect(await pulse.locator('span').first().evaluate(el=>getComputedStyle(el).animationName)).toContain('refreshWave')
   if(process.env.ORBIT_TEST_SCREENSHOTS === '1') {
@@ -1306,18 +1315,18 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
     for(let frame=0;frame<40;frame++) {
       await animations.evaluate((items,time)=>items.forEach(({animation,start})=>{animation.currentTime=start+time}),frame*100)
       await diagnosticScreenshot(page,{path:`${output}/refresh-review-frames/frame-${String(frame+10).padStart(2,'0')}.png`})
-      if(frame===7) await diagnosticScreenshot(page,{path:`${output}/updated-390x844.png`})
+      if(frame===15) await diagnosticScreenshot(page,{path:`${output}/welcome-back-390x844.png`})
     }
-    await animations.evaluate(items=>items.forEach(({animation,start})=>{animation.currentTime=start+700}))
+    await animations.evaluate(items=>items.forEach(({animation,start})=>{animation.currentTime=start+1500}))
     await animations.dispose()
   }
   await page.setViewportSize({width:320,height:740})
   const bounds=(await page.getByTestId('orb-caption').boundingBox())!
   expect(bounds.x).toBeGreaterThanOrEqual(0)
-  await diagnosticScreenshot(page,{path:`${output}/updated-320x740.png`})
+  await diagnosticScreenshot(page,{path:`${output}/welcome-back-320x740.png`})
   await page.setViewportSize({width:1440,height:900})
   await expect(page.getByTestId('command-orb')).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/updated-desktop-1440x900.png`})
+  await diagnosticScreenshot(page,{path:`${output}/welcome-back-1440x900.png`})
 })
 
 for (const [width, height] of [[390, 844], [1440, 900]]) {
