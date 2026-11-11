@@ -11,7 +11,7 @@ export function PublicAlliancePage({
   invitation,
 }: {
   universe: string
-  alliance: string
+  alliance?: string
   invitation?: string
 }) {
   const { data, error, retry } = usePublicAlliance(

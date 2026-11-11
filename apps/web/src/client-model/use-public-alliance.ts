@@ -18,7 +18,7 @@ export function usePublicAlliance(
   useEffect(() => {
     const abort = new AbortController()
     store.setState({ data: null, error: '' })
-    if (alliance)
+    if (alliance || invitation)
       void readRecruitmentAlliance(universe, alliance, invitation, abort.signal)
         .then((data) => {
           if (!abort.signal.aborted) store.setState({ data })

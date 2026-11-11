@@ -80,7 +80,6 @@ export async function startGame() {
     root.render(
       <PublicAlliancePage
         universe={invitation[1]}
-        alliance={invitation[2]}
         invitation={invitation[2]}
       />,
     )

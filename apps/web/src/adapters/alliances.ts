@@ -89,14 +89,21 @@ export async function readAllianceInvitation(
 /** Recruitment links must never display one alliance while acting on another. */
 export async function readRecruitmentAlliance(
   universe: string,
-  alliance: string,
+  alliance: string | undefined,
   invitation: string | undefined,
   signal: AbortSignal,
 ): Promise<S['PublicAlliance']> {
-  const data = invitation
-    ? await readAllianceInvitation(universe, invitation, signal)
-    : await readPublicAlliance(universe, alliance, signal)
-  if (data.summary.id !== alliance || data.summary.universe !== universe)
+  let data: S['PublicAlliance']
+  if (invitation)
+    data = await readAllianceInvitation(universe, invitation, signal)
+  else {
+    if (!alliance) throw new Error('Alliance unavailable.')
+    data = await readPublicAlliance(universe, alliance, signal)
+  }
+  if (
+    (alliance && data.summary.id !== alliance) ||
+    data.summary.universe !== universe
+  )
     throw new Error(
       'This invitation does not match the requested alliance. Ask for a new link.',
     )

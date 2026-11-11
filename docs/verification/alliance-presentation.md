@@ -168,3 +168,14 @@ Logs: `/tmp/orbit-390-unit-fix.log`, `/tmp/orbit-390-shell-fix.log`, and
 `/tmp/orbit-390-browser-fix.log`. Final formatting, lint, component typecheck and
 production build passed (`/tmp/orbit-390-{format,lint,component-types,build}.log`;
 Vite 4.68 s, prerender 0.411 s). CI follows the pushed repair revision.
+
+Follow-up review of `6da891da2ab6956a9069fec43761b4843ee5623f` found that the
+public invitation entry had historically passed its token in the alliance-ID
+slot. The new shared identity check correctly rejected that value, breaking
+otherwise valid invitation pages. Removed that overload: token-only public
+lookup explicitly has no expected alliance ID, validates the universe, and uses
+the returned ID for the continuation link. Arrival/enrollment/welcome with known
+IDs still enforce both identity fields. Added adapter coverage and a short public
+entry/link test; no login or multi-document auth journey was recreated from the
+retired scenario. All 5 adapter tests and 6 invitation/arrival browser cases
+passed (0.401 s and 3.1 s respectively).

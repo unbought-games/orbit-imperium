@@ -23,6 +23,35 @@ beforeEach(() => {
   })
 })
 afterEach(() => vi.unstubAllGlobals())
+it('resolves a token-only invitation without treating the token as an alliance id', async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ summary, public_text: '' }))
+  vi.stubGlobal('fetch', fetch)
+  await expect(
+    readRecruitmentAlliance(
+      binding.universe,
+      undefined,
+      id(6),
+      new AbortController().signal,
+    ),
+  ).resolves.toMatchObject({ summary })
+  expect(fetch.mock.calls[0][0]).toContain(`/invitations/${id(6)}`)
+  fetch.mockResolvedValueOnce(
+    Response.json({
+      summary: { ...summary, universe: id(99) },
+      public_text: '',
+    }),
+  )
+  await expect(
+    readRecruitmentAlliance(
+      binding.universe,
+      undefined,
+      id(6),
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('does not match')
+})
 it('rejects recruitment documents for another alliance or universe before displaying admission choices', async () => {
   const fetch = vi.fn()
   vi.stubGlobal('fetch', fetch)
