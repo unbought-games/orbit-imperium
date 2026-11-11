@@ -15,7 +15,7 @@ import {
   id,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
-import { withFixtureResponse, withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { trackFixtureResponses, withFixtureResponse, withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 async function setup(
   page: Page,
@@ -2054,6 +2054,7 @@ for (const width of [390, 1280]) {
 // Browser regression: failed preference requests preserve edits and offer recovery.
 for (const width of [390, 1280]) {
   test(`probe settings recover from a failed save at ${width}px`, async ({ page }) => {
+    const settlePreferences = trackFixtureResponses(page, (request) => request.url().endsWith('/player-preferences'))
     await page.setViewportSize({ width, height: 844 })
     await setup(page, null, { missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '3' } })
     await expect(spy(page)).toBeEnabled()
@@ -2075,10 +2076,12 @@ for (const width of [390, 1280]) {
     await page.route('**/player-preferences', (route) => route.fulfill({ status: 503, json: { code: 'Unavailable' } }), { times: 1 })
     await page.getByRole('button', { name: 'Save probe count' }).click()
     await expect(page.getByText('Could not confirm the saved probe count. Reload the setting before trying again.')).toBeVisible()
+    // Rendering the failure can precede requestfinished; settle it before listening for the reload.
+    await settlePreferences()
     await expect(field).toHaveValue('4')
     await expect(page.getByRole('button', { name: 'Save probe count' })).toBeDisabled()
     await diagnosticScreenshot(page, { path: `test-results/probe-settings-error-${width}x844.png` })
-    await withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences'), () => page.getByRole('button', { name: 'Reload probe count' }).click())
+    await withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences') && !response.request().postDataJSON().preferences, () => page.getByRole('button', { name: 'Reload probe count' }).click())
     await expect(field).toHaveValue('4')
     await expect(page.getByRole('button', { name: 'Save probe count' })).toBeEnabled()
     await withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences'), () => page.getByRole('button', { name: 'Save probe count' }).click())

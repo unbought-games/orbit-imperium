@@ -114,3 +114,23 @@ Added the existing id/title/date metadata format and ran `npm run build`
 successfully (Vite client build 2.83 seconds, prerender bundle 207 ms; whole-command
 timing not recorded). No test was removed or relaxed. Other unfinished checks on
 the superseded head may be cancelled by the workflow's normal concurrency policy.
+
+Run `42957570112`, attempt 1, head `573c55d1e943170cbcaf955794420b36fcbf73c0`:
+feature shard 4 job `130316417145` failed only the new desktop preference recovery
+case (121 other cases passed). The reload response helper observed `ok=false` at
+line 2081; the failure snapshot showed recovery already completed with the edit
+`4` retained and Save enabled. The failed save's `requestfinished` event arrived
+after its error had rendered and was captured by the URL-only reload listener.
+This is the new test's first explained fixture repair, not a product regression.
+Git history and the repair ledger contain no prior repair for these new cases.
+
+Both viewport callers now use the existing `trackFixtureResponses` helper to
+drain the failed save before beginning reload, and the reload listener matches
+only a preference read. Audited the other preference response callers in the
+same spec: successful phases already await complete delivery; only the error
+phase omitted that boundary. No shared helper behavior was weakened. Both
+recovery cases passed with optional capture disabled (2.910-second preparation,
+3.2-second execution). The deterministic controller failure/preservation and
+serialization tests remain the lower-layer protection. This chat owns any new
+CI findings; a recurrence of this repaired test defect must follow the existing
+one-repair removal rule.
