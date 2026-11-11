@@ -261,7 +261,11 @@ for (const width of [768, 1440, 1920]) {
       sidebar ? sidebar.x + sidebar.width : 0,
       1,
     )
-    expect(headerBounds.x + headerBounds.width).toBe(width)
+    expect(
+      await header.evaluate((element) =>
+        element.contains(document.elementFromPoint(innerWidth - 1, 32)),
+      ),
+    ).toBe(true)
     if (width < 1024) {
       const bounds = (await submenu.boundingBox())!
       expect(bounds.x).toBeCloseTo(content.x, 1)
@@ -436,14 +440,30 @@ test('sticky resource bar covers the full top edge while content scrolls', async
         )
         return {
           top: rect.top,
-          right: rect.right,
           coversRightEdge: !!point && sticky.contains(point),
           pageWidth: document.documentElement.scrollWidth,
         }
       })
     expect(surface.top).toBe(0)
-    expect(surface.right).toBe(width)
     expect(surface.coversRightEdge).toBe(true)
     expect(surface.pageWidth).toBe(width)
   }
+})
+
+test('wide sticky header does not overflow a narrower layout viewport', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 2200, height: 900 })
+  await mount('shell-default')
+  // Model the 15px difference between viewport units and available layout width.
+  await page.addStyleTag({ content: 'body { width: calc(100% - 15px); }' })
+  const bounds = await page
+    .getByRole('group', { name: 'Planet and resources' })
+    .evaluate((bar) => ({
+      headerRight:
+        bar.parentElement!.parentElement!.getBoundingClientRect().right,
+      layoutRight: document.body.getBoundingClientRect().right,
+    }))
+  expect(bounds.headerRight).toBeLessThanOrEqual(bounds.layoutRight)
 })

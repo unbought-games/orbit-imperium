@@ -50,3 +50,30 @@ Browser suites ran serially after another local validation run finished. Their
 runners cleaned up their temporary bundles, browsers and port leases. No
 production build, deployment or PR was requested. CI wait and merge delay are
 not applicable; end-to-end local duration was not separately measured.
+
+## PR review follow-up
+
+PR #388's initial revision `a63582ab7dbc607f32c8b348bcfbcbc42558b910`
+passed all applicable CI checks. Review identified a valid classic-scrollbar
+case: `100vw` can exceed the available centered layout width. The outer surface
+now uses a fixed pseudo-element sized to the existing measured shell-header
+height; in-flow header margins include only the shell gutter and orb lane.
+
+An added isolated regression models a 15px difference between viewport units
+and available layout width. With the original CSS it fails as expected:
+header right 2192.5px exceeds the 2185px layout edge (4.068s preparation,
+1 expected failure). The corrected CSS passes all 13 shell-layout cases
+(4.879s preparation, 7.3s runner). The regression models the geometry; it does
+not claim to have enabled native classic scrollbars on macOS. An earlier
+exploratory native scrollbar-gutter check reserved no width in this browser.
+
+Surface coverage is asserted by hit testing at the viewport edge, including
+outside the centered shell, independently of the in-flow header's bounds.
+The original CSS was restored only for that deliberate negative check and then
+replaced with the validated correction before refreshing application captures.
+
+The corrected application passes both Briefing cases (4.693s preparation,
+8.6s runner); desktop/mobile crossing and hidden captures were refreshed and
+inspected. Focused ESLint, Prettier and whitespace checks also pass. These
+follow-up results cover `a63582ab` plus the review-fix diff, which is committed
+separately. Task-owned test runners cleaned up normally.

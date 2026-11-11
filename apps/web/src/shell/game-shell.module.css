@@ -199,12 +199,21 @@
   /* Cover the gutters and orb lane without moving the header's controls. */
   .header {
     --header-outset-end: calc(
-      var(--shell-inline-gutter) + var(--shell-hud-space) +
-        max(0px, (100vw - var(--shell-max-width)) / 2)
+      var(--shell-inline-gutter) + var(--shell-hud-space)
     );
     margin-inline: calc(-1 * var(--shell-inline-gutter))
       calc(-1 * var(--header-outset-end));
     padding-inline: var(--shell-inline-gutter) var(--header-outset-end);
+  }
+  /* Paint beyond the centered shell without adding scrollable layout width. */
+  .header::before {
+    content: '';
+    position: fixed;
+    inset: 0 0 auto;
+    height: var(--shell-header-height, 64px);
+    z-index: -1;
+    background: inherit;
+    border-bottom: inherit;
   }
   .page-heading h1,
   .routeHeading h1 {
@@ -290,6 +299,12 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     border-bottom-color: var(--border-navigation);
+  }
+  .header::before {
+    left: calc(
+      var(--shell-sidebar-width) +
+        max(0px, (100vw - var(--shell-max-width)) / 2)
+    );
   }
   .identity {
     display: none;
