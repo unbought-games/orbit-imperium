@@ -28,3 +28,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+.probeForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+}
+.probeForm label {
+  width: min(100%, 18rem);
+}
+
+.probeSettings {
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
+}

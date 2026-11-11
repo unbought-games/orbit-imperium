@@ -8289,6 +8289,44 @@
           }
         }
       }
+    },
+    "/api/v1/universes/{universe}/player-preferences": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayerPreferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved player preferences for the authenticated universe membership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerPreferencesResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-bot-category": "recovery-or-metadata"
+      }
     }
   },
   "components": {
@@ -13448,7 +13486,7 @@
               },
               "name": {
                 "type": "string",
-                "description": "1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
               }
             },
             "required": [
@@ -25681,6 +25719,58 @@
           "alliance",
           "invitation"
         ]
+      },
+      "PlayerPreferences": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "galaxy_probe_count"
+        ],
+        "properties": {
+          "galaxy_probe_count": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "not": {
+              "pattern": "[^0-9]"
+            }
+          }
+        }
+      },
+      "PlayerPreferencesRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context"
+        ],
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PlayerPreferences"
+          }
+        }
+      },
+      "PlayerPreferencesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "binding",
+          "request_id",
+          "preferences"
+        ],
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PlayerPreferences"
+          }
+        }
       }
     },
     "securitySchemes": {

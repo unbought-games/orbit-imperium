@@ -20,7 +20,12 @@ function withoutEntry<V>(map: ReadonlyMap<string, V>, key: string) {
 }
 
 /** Probes to different targets are independent; only a repeat click on one target waits. */
-export function useGalaxyEspionage(model: Coordinator, origin: string) {
+export function useGalaxyEspionage(
+  model: Coordinator,
+  origin: string,
+  count = '1',
+  unavailable: string | null = null,
+) {
   const state = useStore(model.store)
   const context = useRef({})
   const locks = useRef(new Set<string>())
@@ -40,7 +45,7 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
     }
   }, [model, origin])
   const send = async (target: Target) => {
-    if (locks.current.has(target.id)) return
+    if (unavailable || locks.current.has(target.id)) return
     const token = context.current
     const held = locks.current
     held.add(target.id)
@@ -53,6 +58,7 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
         origin,
         target,
         () => context.current === token,
+        count,
       )
       if (id && context.current === token)
         setCommands((current) => withEntry(current, target.id, id))
@@ -88,14 +94,19 @@ export function useGalaxyEspionage(model: Coordinator, origin: string) {
       ? dispatchFailure(attempt.receipt.code)
       : null
   }
-  const reason = probeAvailability(state, origin)
+  const reason = unavailable ?? probeAvailability(state, origin, count)
   return {
     state,
     forTarget: (target: Target) => ({
       send: () => void send(target),
+      count,
       paused: state.rateLimited,
       busy: sending.has(target.id) || pendingProbe(state, origin, target.id),
-      reason: sending.has(target.id) ? 'Sending a probe…' : reason,
+      reason: sending.has(target.id)
+        ? count === '1'
+          ? 'Sending a probe…'
+          : `Sending ${count} probes…`
+        : reason,
       error: rejection(target.id) ?? errors.get(target.id) ?? null,
       notice: errors.get(target.id) ?? null,
     }),

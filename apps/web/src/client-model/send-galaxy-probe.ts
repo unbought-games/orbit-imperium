@@ -13,11 +13,12 @@ export async function sendGalaxyProbe(
   origin: string,
   target: NonNullable<S['GalaxyPosition4']['body']>,
   current: () => boolean,
+  count = '1',
 ) {
   const state = model.store.getState()
   if (state.rateLimited) return
   const binding = state.binding
-  const blocked = probeAvailability(state, origin)
+  const blocked = probeAvailability(state, origin, count)
   if (blocked) throw Error(blocked)
   if (!binding || !current()) return
   if (target.owner === binding.player)
@@ -34,7 +35,7 @@ export async function sendGalaxyProbe(
       expected_kind: target.kind,
     },
     mission: 'Espionage',
-    ships: [{ owner: binding.player, ship_type: 'EspionageProbe', count: '1' }],
+    ships: [{ owner: binding.player, ship_type: 'EspionageProbe', count }],
     cargo: { metal: '0', crystal: '0', deuterium: '0' },
     speed_percent: 100,
   }

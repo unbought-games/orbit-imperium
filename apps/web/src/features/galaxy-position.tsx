@@ -62,6 +62,7 @@ export function GalaxyPosition({
   now?: number
   missileAction?: ComponentProps<typeof GalaxyActionMenu>['missileAction']
   espionage?: {
+    count?: string
     send: () => void
     busy: boolean
     paused?: boolean
@@ -70,6 +71,7 @@ export function GalaxyPosition({
     notice?: string | null
   }
   moonEspionage?: {
+    count?: string
     send: () => void
     busy: boolean
     paused?: boolean
@@ -234,6 +236,7 @@ export function GalaxyPosition({
           <div className={styles.quickActions}>
             {canTarget && !owned && (
               <GalaxySpyButton
+                count={espionage?.count}
                 key={`${origin}:${body.id}`}
                 name={body.name ?? target}
                 reason={spyReason}

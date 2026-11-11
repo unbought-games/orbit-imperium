@@ -29,6 +29,14 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn player_preferences(
+        &self,
+        binding: Binding,
+        preferences: Option<PlayerPreferences>,
+    ) -> Result<PlayerPreferences, StoreError> {
+        self.query_player_preferences(binding, preferences).await
+    }
+
     async fn empire_identities(
         &self,
         players: Vec<PlayerId>,

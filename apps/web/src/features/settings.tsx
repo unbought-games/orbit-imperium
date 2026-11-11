@@ -1,3 +1,4 @@
+import { GalaxyProbeSettings } from './galaxy-probe-settings'
 import { VacationSettings } from './vacation'
 import { EmpireDeletion } from './empire-deletion'
 import { InsigniaEditor } from './insignia-editor'
@@ -19,6 +20,7 @@ export function SettingsScreen() {
     <Section className={styles.screen}>
       <TaskHeader title="Settings" />
       <BetaNotice />
+      <GalaxyProbeSettings />
       <VacationSettings />
       <Section aria-label="Community">
         <Heading level={2}>Community</Heading>
