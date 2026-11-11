@@ -1,5 +1,6 @@
 .game-shell {
   --shell-sidebar-width: 224px;
+  --shell-hud-space: 0px;
   max-width: var(--shell-max-width);
   min-height: 100dvh;
   margin: auto;
@@ -21,9 +22,7 @@
   top: 0;
   z-index: 9;
   align-self: start;
-  background: color-mix(in srgb, var(--surface-page) 95%, transparent);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
+  background: var(--surface-page);
   border-bottom: 1px solid var(--border-accent);
 }
 .identity {
@@ -129,15 +128,13 @@
     position: relative;
     isolation: isolate;
   }
-  /* Keep blur off the ancestor of the fixed mobile navigation. */
+  /* Keep the opaque surface behind the mobile controls and threat indicator. */
   .worldBar::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: color-mix(in srgb, var(--surface-page) 90%, transparent);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    background: var(--surface-page);
   }
   .worldBar.hostile {
     border-bottom-color: #71323b;
@@ -199,6 +196,16 @@
   }
 }
 @media (min-width: 768px) {
+  /* Cover the gutters and orb lane without moving the header's controls. */
+  .header {
+    --header-outset-end: calc(
+      var(--shell-inline-gutter) + var(--shell-hud-space) +
+        max(0px, (100vw - var(--shell-max-width)) / 2)
+    );
+    margin-inline: calc(-1 * var(--shell-inline-gutter))
+      calc(-1 * var(--header-outset-end));
+    padding-inline: var(--shell-inline-gutter) var(--header-outset-end);
+  }
   .page-heading h1,
   .routeHeading h1 {
     scroll-margin-top: 120px;
@@ -255,7 +262,8 @@
 /* Give the desktop orb its own space beside the scrolling content. */
 @media (min-width: 1440px) {
   .game-shell[data-has-command-hud] {
-    padding-right: calc(var(--shell-inline-gutter) + 128px);
+    --shell-hud-space: 128px;
+    padding-right: calc(var(--shell-inline-gutter) + var(--shell-hud-space));
   }
 }
 
