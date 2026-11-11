@@ -232,16 +232,60 @@ pub(super) async fn image<S: GameStore + IdentityStore>(
         .into_response())
 }
 
+#[derive(Default, Deserialize)]
+pub(super) struct CollectiveQuery {
+    alliance: Option<Uuid>,
+}
 pub(super) async fn catalog<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
+    axum::extract::Query(query): axum::extract::Query<CollectiveQuery>,
 ) -> Result<Response, Problem> {
     authenticate(&s, &h, false).await?;
     let c = customization(&s)?;
-    let symbols:Vec<_>=c.catalog.symbols().iter().filter(|i|!i.supporter).map(|i|serde_json::json!({"id":i.id,"name":i.name,"group":i.group,"supporter":false,"access":"available","asset_url":i.asset_url()})).collect();
-    Ok(bound_api::no_store_json(
-        serde_json::json!({"templates":alliance_templates(),"symbols":symbols,"max_file_bytes":if c.media_limits.uploads_enabled {c.media_limits.file_bytes}else{0},"max_count":c.media_limits.count,"max_total_bytes":c.media_limits.total_bytes}),
-    ))
+    let grants = if let Some(alliance) = query.alliance {
+        s.updates
+            .alliance_cosmetic_grants(alliance)
+            .await
+            .map_err(ServiceError::from)?
+    } else {
+        vec![]
+    };
+    let grants = c.catalog.collective_grants(&grants);
+    let owns = |kind: &str, id: &str| grants.iter().any(|(k, i)| k == kind && i == id);
+    let symbols:Vec<_>=c.catalog.symbols().iter().filter(|i|(!i.supporter && i.access.is_none_or(|a|a==CatalogAccess::Free)) || owns("insignia",&i.id)).map(|i|serde_json::json!({"id":i.id,"name":i.name,"group":i.group,"supporter":false,"access":"available","asset_url":i.asset_url()})).collect();
+    let mut value = serde_json::json!({"templates":alliance_templates(),"symbols":symbols,"max_file_bytes":if c.media_limits.uploads_enabled {c.media_limits.file_bytes}else{0},"max_count":c.media_limits.count,"max_total_bytes":c.media_limits.total_bytes});
+    if query.alliance.is_some() {
+        value["dyes"] = serde_json::to_value(
+            c.catalog
+                .dyes()
+                .iter()
+                .filter(|d| d.access == CatalogAccess::Free || owns("dye", &d.id))
+                .collect::<Vec<_>>(),
+        )
+        .map_err(|_| ServiceError::InvariantFailure)?;
+        value["treatments"] = serde_json::to_value(
+            c.catalog
+                .treatments()
+                .iter()
+                .filter(|t| {
+                    t.access == CatalogAccess::Free
+                        || owns(
+                            if t.family == "finish" {
+                                "finish"
+                            } else {
+                                "effect"
+                            },
+                            &t.id,
+                        )
+                })
+                .collect::<Vec<_>>(),
+        )
+        .map_err(|_| ServiceError::InvariantFailure)?;
+        value["honors"] =
+            serde_json::to_value(grants).map_err(|_| ServiceError::InvariantFailure)?;
+    }
+    Ok(bound_api::no_store_json(value))
 }
 
 /// Public raster display of installed free symbols; private catalog originals
@@ -254,7 +298,7 @@ pub(super) async fn symbol<S: GameStore + IdentityStore>(
     let item = c
         .catalog
         .get(&id)
-        .filter(|i| !i.supporter)
+        .filter(|i| !i.supporter && i.access.is_none_or(|a| a == CatalogAccess::Free))
         .ok_or(ServiceError::NotFound)?;
     let bytes = c
         .assets
@@ -285,57 +329,110 @@ pub(super) async fn symbol<S: GameStore + IdentityStore>(
         .into_response())
 }
 
-pub(super) fn validate_crest<S>(
+pub(super) async fn validate_crest<S: IdentityStore>(
     s: &HttpState<S>,
     q: &AllianceCommandRequest,
 ) -> Result<(), Problem> {
-    if let AllianceAction::SavePresentation { edits, .. } = &q.action {
-        let c = customization(s)?;
+    if let AllianceAction::SavePresentation {
+        alliance, edits, ..
+    } = &q.action
+    {
+        let grants = s
+            .updates
+            .alliance_cosmetic_grants(*alliance)
+            .await
+            .map_err(ServiceError::from)?;
         for edit in edits {
             if let PresentationEdit::SetIdentity { value, .. } = edit
                 && let AllianceCrest::Composition { recipe } = &value.crest
+                && !collective_recipe_access(&customization(s)?.catalog, recipe, &grants)
             {
-                let symbols = std::iter::once(recipe.symbol.as_str())
-                    .chain(recipe.layers.iter().flatten().map(|l| l.symbol.as_str()));
-                if symbols
-                    .into_iter()
-                    .any(|id| c.catalog.get(id).is_none_or(|item| item.supporter))
-                    || recipe_access(
-                        &c.catalog,
-                        recipe,
-                        CosmeticPolicy::Unrestricted,
-                        &[],
-                        SupporterEvidence::default(),
-                        0,
-                    ) != InsigniaAccess::Available
-                {
-                    return Err(ServiceError::Conflict.into());
-                }
+                return Err(ServiceError::Conflict.into());
             }
         }
     }
     Ok(())
 }
-
-/// Display fallback only: saved recipes remain intact in the editor projection.
-pub(super) fn effective_identity<S>(s: &HttpState<S>, identity: &mut AllianceVisualIdentity) {
+fn collective_recipe_access(
+    catalog: &InsigniaCatalog,
+    recipe: &InsigniaRecipe,
+    grants: &[(String, String)],
+) -> bool {
+    let grants = catalog.collective_grants(grants);
+    let owns = |kind: &str, id: &str| grants.iter().any(|(k, i)| k == kind && i == id);
+    let symbols: Vec<_> = std::iter::once(recipe.symbol.as_str())
+        .chain(recipe.layers.iter().flatten().map(|l| l.symbol.as_str()))
+        .collect();
+    if symbols.iter().any(|id| {
+        catalog.get(id).is_none_or(|i| {
+            (i.supporter || i.access.is_some_and(|a| a != CatalogAccess::Free))
+                && !owns("insignia", id)
+        })
+    }) {
+        return false;
+    }
+    for color in std::iter::once(&recipe.foreground)
+        .chain(std::iter::once(&recipe.background))
+        .chain(recipe.layers.iter().flatten().map(|l| &l.color))
+    {
+        if let Some(id) = named_dye(color)
+            && catalog
+                .dye(id)
+                .is_none_or(|d| d.access != CatalogAccess::Free && !owns("dye", id))
+        {
+            return false;
+        }
+    }
+    for (kind, id) in recipe
+        .finish
+        .iter()
+        .map(|id| ("finish", id))
+        .chain(recipe.effect.iter().map(|id| ("effect", id)))
+    {
+        if catalog
+            .treatment(id)
+            .is_none_or(|t| t.access != CatalogAccess::Free && !owns(kind, id))
+        {
+            return false;
+        }
+    }
+    let mut catalog = catalog.clone();
+    catalog.account_observation = Some(AccountCosmeticObservation {
+        expires_at: i64::MAX,
+        membership: false,
+        items: grants.clone(),
+    });
+    let symbols = grants
+        .iter()
+        .filter(|(k, _)| k == "insignia")
+        .map(|(_, id)| id.clone())
+        .collect::<Vec<_>>();
+    recipe_access(
+        &catalog,
+        recipe,
+        CosmeticPolicy::Unrestricted,
+        &symbols,
+        SupporterEvidence::default(),
+        0,
+    ) == InsigniaAccess::Available
+}
+/// Grants are authoritative; unavailable definitions only change the projection.
+pub(super) async fn effective_identity<S: IdentityStore>(
+    s: &HttpState<S>,
+    alliance: uuid::Uuid,
+    identity: &mut AllianceVisualIdentity,
+) {
     if let AllianceCrest::Composition { recipe } = &identity.crest {
-        let available = s.customization.as_ref().is_some_and(|c| {
-            let symbols = std::iter::once(recipe.symbol.as_str())
-                .chain(recipe.layers.iter().flatten().map(|l| l.symbol.as_str()));
-            symbols
-                .into_iter()
-                .all(|id| c.catalog.get(id).is_some_and(|i| !i.supporter))
-                && recipe_access(
-                    &c.catalog,
-                    recipe,
-                    CosmeticPolicy::Unrestricted,
-                    &[],
-                    SupporterEvidence::default(),
-                    0,
-                ) == InsigniaAccess::Available
-        });
-        if !available {
+        let grants = s
+            .updates
+            .alliance_cosmetic_grants(alliance)
+            .await
+            .unwrap_or_default();
+        if !s
+            .customization
+            .as_ref()
+            .is_some_and(|c| collective_recipe_access(&c.catalog, recipe, &grants))
+        {
             identity.crest = AllianceCrest::default();
         }
     }

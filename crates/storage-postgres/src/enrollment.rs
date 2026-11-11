@@ -334,6 +334,7 @@ impl PgStore {
             )
             .await?;
             if machine_sleep.is_none() {
+                crate::community_rewards::capture_first_join(&mut tx, account, false).await?;
                 crate::arrival::enroll(&mut tx, u, player).await?;
                 crate::arrival::set_recruitment(&mut tx, u, player, recruitment).await?;
             }

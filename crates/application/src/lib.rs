@@ -1,3 +1,7 @@
+mod cosmetic_catalog;
+pub use cosmetic_catalog::*;
+mod community_rewards;
+pub use community_rewards::*;
 mod player_preferences;
 pub use player_preferences::*;
 pub mod announcements;

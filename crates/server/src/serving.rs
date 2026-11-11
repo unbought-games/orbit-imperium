@@ -15,7 +15,7 @@ use tokio::{
 };
 type ServeResult = Result<(), Box<dyn Error>>;
 
-pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
+pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
     let oidc = serve
         .oidc
         .clone()
@@ -77,6 +77,29 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
     let (drain_tx, drain_rx) = watch::channel(false);
     let analytics =
         crate::analytics::Integration::from_env(store.clone(), oidc.clone(), serve.origin.clone())?;
+    let rewards = crate::community_rewards::Integration::from_env(
+        store.clone(),
+        oidc.clone(),
+        serve.origin.clone(),
+        customization.as_ref(),
+    )?;
+    if let Some(rewards) = &rewards {
+        serve.profiles = serve
+            .profiles
+            .map(|profiles| profiles.with_rewards(rewards.observations.clone()));
+    }
+    let _rewards_worker = if serve.role.runs_worker() {
+        rewards.as_ref().map(|integration| {
+            BackgroundTask(tokio::spawn(integration.clone().run(drain_rx.clone())))
+        })
+    } else {
+        None
+    };
+    let rewards_router = rewards
+        .as_ref()
+        .map_or_else(crate::community_rewards::disabled_router, |integration| {
+            integration.router()
+        });
     let _analytics_worker = analytics
         .as_ref()
         .map(|integration| BackgroundTask(tokio::spawn(integration.clone().run(drain_rx.clone()))));
@@ -140,7 +163,8 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
                                 serve.profiles,
                                 customization.expect("API asset store prepared"),
                             )
-                            .merge(announcements.expect("API announcement storage prepared"));
+                            .merge(announcements.expect("API announcement storage prepared"))
+                            .merge(rewards_router);
                             #[cfg(feature = "test-support")]
                             let router = if let Some(lab) = lab_router {
                                 router.merge(lab)

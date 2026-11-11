@@ -151,6 +151,9 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
                     .map_err(|e| e.0)
             },
             |session| async move {
+                if s.oidc.is_some() {
+                    let _ = s.updates.capture_community_history(session.account).await;
+                }
                 read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
                     .await
             },
@@ -186,6 +189,9 @@ pub(super) async fn prepare_authenticated_bootstrap<S: GameStore + IdentityStore
             false,
             async { Ok((session, None)) },
             |session| async move {
+                if s.oidc.is_some() {
+                    let _ = s.updates.capture_community_history(session.account).await;
+                }
                 read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
                     .await
             },

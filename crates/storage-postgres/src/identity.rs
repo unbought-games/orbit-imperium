@@ -29,6 +29,15 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn capture_community_history(&self, account: AccountId) -> Result<(), StoreError> {
+        self.community_capture_history(account).await
+    }
+    async fn alliance_cosmetic_grants(
+        &self,
+        alliance: uuid::Uuid,
+    ) -> Result<Vec<(String, String)>, StoreError> {
+        self.read_alliance_cosmetic_grants(alliance).await
+    }
     async fn player_preferences(
         &self,
         binding: Binding,

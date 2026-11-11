@@ -320,15 +320,22 @@ impl AllianceVisualIdentity {
                         && s.bytes()
                             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
                 };
-                if !matches!(recipe.version, 1 | 2)
+                let recipe_color = |s: &str| {
+                    color(s)
+                        || (recipe.version == 3 && s.strip_prefix("dye:").is_some_and(identifier))
+                };
+                if !matches!(recipe.version, 1..=3)
+                    || (recipe.version != 3 && (recipe.finish.is_some() || recipe.effect.is_some()))
+                    || recipe.finish.as_ref().is_some_and(|id| !identifier(id))
+                    || recipe.effect.as_ref().is_some_and(|id| !identifier(id))
                     || !identifier(&recipe.symbol)
-                    || !color(&recipe.foreground)
-                    || !color(&recipe.background)
+                    || !recipe_color(&recipe.foreground)
+                    || !recipe_color(&recipe.background)
                     || recipe.layers.as_ref().is_some_and(|ls| {
                         ls.len() > 4
                             || ls
                                 .iter()
-                                .any(|l| !identifier(&l.symbol) || !color(&l.color))
+                                .any(|l| !identifier(&l.symbol) || !recipe_color(&l.color))
                     })
                 {
                     return invalid("invalid crest composition");

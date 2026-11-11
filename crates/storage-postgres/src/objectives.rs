@@ -79,6 +79,7 @@ pub(crate) async fn save(
             sqlx::query("INSERT INTO objective_runs(id,universe,epoch,beneficiary,program,data) VALUES($1,$2,$3,$4,$5,$6)")
                 .bind(id.0).bind(i.universe.0).bind(i.epoch.0).bind(run.beneficiary.0).bind(&run.program.id).bind(sqlx::types::Json(run)).execute(&mut **tx).await.map_err(db_error)?;
         }
+        crate::community_rewards::capture_onboarding(tx, run).await?;
     }
     Ok(())
 }

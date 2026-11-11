@@ -144,11 +144,14 @@ pub(super) async fn edit<S: GameStore + IdentityStore>(
             .map_or((&fallback, CosmeticPolicy::Unrestricted), |c| {
                 (&c.catalog, c.policy)
             });
-        let evidence = if policy == CosmeticPolicy::Supporter {
+        let (evidence, observation) = if policy == CosmeticPolicy::Supporter {
             super::empire_identity::evidence(&s, &p).await?
         } else {
-            SupporterEvidence::default()
+            (SupporterEvidence::default(), None)
         };
+        let mut catalog = catalog.clone();
+        catalog.account_observation = observation;
+        let catalog = &catalog;
         s.updates
             .edit_empire_identity(
                 account,

@@ -1,3 +1,5 @@
+mod community_rewards;
+pub use community_rewards::AccountRewardsClient;
 mod announcements;
 mod player_preferences;
 pub use announcements::router as announcement_router;

@@ -234,14 +234,14 @@ pub(super) async fn rankings<S: GameStore + IdentityStore>(
     let mut result = s.game.rankings(principal(&session, u)?, c).await?;
     for a in &mut result.alliances {
         if let Some(identity) = &mut a.alliance.visual_identity {
-            super::alliance_media::effective_identity(&s, identity);
+            super::alliance_media::effective_identity(&s, a.alliance.id, identity).await;
         }
     }
     for p in &mut result.players {
         if let Some(a) = &mut p.alliance
             && let Some(identity) = &mut a.visual_identity
         {
-            super::alliance_media::effective_identity(&s, identity);
+            super::alliance_media::effective_identity(&s, a.id, identity).await;
         }
     }
     if h.get("x-orbit-alliance-presentation")

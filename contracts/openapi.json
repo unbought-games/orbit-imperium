@@ -8327,6 +8327,117 @@
         },
         "x-bot-category": "recovery-or-metadata"
       }
+    },
+    "/api/v1/rewards": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Owner-only community rewards; never a public profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rewards/actions": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Owner-only community rewards; never a public profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommunityActionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rewards/invitation-preview": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe proposed attribution for authenticated owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityInvitationPreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rewards/marks": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Installed recognition with source history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityMarks"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rewards/alliances/{alliance}/honors": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Installed recognition with source history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunityAllianceHonors"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alliance",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -17725,6 +17836,12 @@
           },
           "title": {
             "$ref": "#/components/schemas/TitleDisplay"
+          },
+          "marks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CosmeticMark"
+            }
           }
         },
         "required": [
@@ -21975,7 +22092,8 @@
             "type": "integer",
             "enum": [
               1,
-              2
+              2,
+              3
             ]
           },
           "symbol": {
@@ -21984,11 +22102,11 @@
           },
           "foreground": {
             "type": "string",
-            "pattern": "^#[0-9a-fA-F]{6}$"
+            "pattern": "^(#[0-9a-fA-F]{6}|dye:[a-z0-9-]{1,64})$"
           },
           "background": {
             "type": "string",
-            "pattern": "^#[0-9a-fA-F]{6}$"
+            "pattern": "^(#[0-9a-fA-F]{6}|dye:[a-z0-9-]{1,64})$"
           },
           "layers": {
             "type": "array",
@@ -22006,6 +22124,14 @@
               "diamond",
               "hexagon"
             ]
+          },
+          "finish": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          },
+          "effect": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
           }
         },
         "required": [
@@ -22060,6 +22186,44 @@
             "items": {
               "$ref": "#/components/schemas/InsigniaAppearanceLayer"
             }
+          },
+          "rendering": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "foreground": {
+                "type": "string"
+              },
+              "background": {
+                "type": "string"
+              },
+              "finish": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CosmeticTreatment"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "effect": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CosmeticTreatment"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "foreground",
+              "background",
+              "finish",
+              "effect"
+            ]
           }
         },
         "required": [
@@ -22188,6 +22352,18 @@
           },
           "composition_access": {
             "$ref": "#/components/schemas/InsigniaAccess"
+          },
+          "dyes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CosmeticDye"
+            }
+          },
+          "treatments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CosmeticTreatment"
+            }
           }
         },
         "required": [
@@ -22869,7 +23045,7 @@
           },
           "color": {
             "type": "string",
-            "pattern": "^#[0-9a-fA-F]{6}$"
+            "pattern": "^(#[0-9a-fA-F]{6}|dye:[a-z0-9-]{1,64})$"
           }
         },
         "required": [
@@ -25685,6 +25861,29 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "dyes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CosmeticDye"
+            }
+          },
+          "treatments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CosmeticTreatment"
+            }
+          },
+          "honors": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
           }
         },
         "required": [
@@ -25771,6 +25970,3245 @@
             "$ref": "#/components/schemas/PlayerPreferences"
           }
         }
+      },
+      "CommunityOwner": {
+        "type": "object",
+        "properties": {
+          "contract_version": {
+            "type": "number",
+            "const": 1
+          },
+          "program": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "inactive",
+                  "active",
+                  "paused"
+                ]
+              },
+              "start_at": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "status",
+              "start_at"
+            ],
+            "additionalProperties": false
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "renown": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "object",
+                "properties": {
+                  "numerator": {
+                    "type": "string",
+                    "pattern": "^-?\\d+$"
+                  },
+                  "denominator": {
+                    "type": "string",
+                    "pattern": "^[1-9]\\d*$"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ],
+                "additionalProperties": false
+              },
+              "display": {
+                "type": "string"
+              },
+              "history": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "object",
+                      "properties": {
+                        "numerator": {
+                          "type": "string",
+                          "pattern": "^-?\\d+$"
+                        },
+                        "denominator": {
+                          "type": "string",
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      },
+                      "required": [
+                        "numerator",
+                        "denominator"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "source",
+                    "amount",
+                    "at",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "amount",
+              "display",
+              "history"
+            ],
+            "additionalProperties": false
+          },
+          "next_milestone": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "renown",
+                      "welcome",
+                      "engagement"
+                    ]
+                  },
+                  "label": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "threshold": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "selections": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "remaining": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "unlocked": {
+                    "type": "boolean"
+                  },
+                  "bonus": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "seconds": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 315576000
+                          },
+                          "giftable": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "seconds",
+                          "giftable"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "bonus_awarded": {
+                    "type": "boolean"
+                  },
+                  "offer_version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "dye",
+                            "finish",
+                            "effect",
+                            "emblem",
+                            "emblem_set",
+                            "title",
+                            "mark"
+                          ]
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "account",
+                            "game"
+                          ]
+                        },
+                        "game_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "item_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "access": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "membership",
+                            "earned"
+                          ]
+                        },
+                        "tier": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "surfaces": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          }
+                        },
+                        "supported_games": {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          }
+                        },
+                        "preview": {
+                          "type": "object",
+                          "properties": {
+                            "media_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                            },
+                            "color": {
+                              "type": "string",
+                              "pattern": "^#[0-9A-Fa-f]{6}$"
+                            },
+                            "renderer": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                            },
+                            "treatment": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "plain"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "finish"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {},
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "surface"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "finish"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pattern": {
+                                          "type": "string",
+                                          "enum": [
+                                            "satin",
+                                            "brushed",
+                                            "pearl",
+                                            "smoke",
+                                            "frost",
+                                            "enamel",
+                                            "etched",
+                                            "relief",
+                                            "glitter",
+                                            "foil",
+                                            "crosshatch",
+                                            "lenticular",
+                                            "ceramic",
+                                            "hammered",
+                                            "linen",
+                                            "carbon",
+                                            "stipple",
+                                            "patina",
+                                            "mosaic",
+                                            "contour",
+                                            "obsidian",
+                                            "gilded",
+                                            "crystalline",
+                                            "stardust"
+                                          ]
+                                        },
+                                        "strength": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "scale": {
+                                          "type": "number",
+                                          "minimum": 1,
+                                          "maximum": 32
+                                        },
+                                        "angle": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 360
+                                        }
+                                      },
+                                      "required": [
+                                        "pattern",
+                                        "strength",
+                                        "scale",
+                                        "angle"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "light"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "light"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pattern": {
+                                          "type": "string",
+                                          "enum": [
+                                            "gleam",
+                                            "rainbow",
+                                            "facets",
+                                            "oil",
+                                            "ripple",
+                                            "confetti",
+                                            "starfield",
+                                            "aurora",
+                                            "constellation",
+                                            "edge",
+                                            "halo",
+                                            "rays",
+                                            "eclipse",
+                                            "comet",
+                                            "pulse",
+                                            "scan",
+                                            "caustic",
+                                            "lightning",
+                                            "corona",
+                                            "supernova"
+                                          ]
+                                        },
+                                        "strength": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "duration_ms": {
+                                          "type": "integer",
+                                          "minimum": 1000,
+                                          "maximum": 20000
+                                        },
+                                        "scale": {
+                                          "type": "number",
+                                          "minimum": 1,
+                                          "maximum": 32
+                                        },
+                                        "angle": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 360
+                                        }
+                                      },
+                                      "required": [
+                                        "pattern",
+                                        "strength",
+                                        "duration_ms",
+                                        "scale",
+                                        "angle"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "interaction"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "interaction"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pattern": {
+                                          "type": "string",
+                                          "enum": [
+                                            "tilt",
+                                            "parallax",
+                                            "spotlight",
+                                            "reveal",
+                                            "tap-sweep",
+                                            "focus-trace",
+                                            "bevel",
+                                            "ripple",
+                                            "orbit",
+                                            "prism",
+                                            "lift",
+                                            "magnetic",
+                                            "iris",
+                                            "depth",
+                                            "starburst",
+                                            "portal"
+                                          ]
+                                        },
+                                        "strength": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "duration_ms": {
+                                          "type": "integer",
+                                          "minimum": 150,
+                                          "maximum": 3000
+                                        },
+                                        "depth": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 12
+                                        }
+                                      },
+                                      "required": [
+                                        "pattern",
+                                        "strength",
+                                        "duration_ms",
+                                        "depth"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "elements": {
+                              "minItems": 4,
+                              "maxItems": 4,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "reward_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  },
+                                  "item_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  },
+                                  "media_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  }
+                                },
+                                "required": [
+                                  "reward_id",
+                                  "item_id",
+                                  "media_id"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "payload": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "dye"
+                                },
+                                "dye_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "dye_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "finish",
+                                    "effect"
+                                  ]
+                                },
+                                "treatment_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "treatment_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "emblem"
+                                },
+                                "emblem_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "emblem_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "emblem_set"
+                                },
+                                "emblem_ids": {
+                                  "minItems": 4,
+                                  "maxItems": 4,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "emblem_ids"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "title",
+                                    "mark"
+                                  ]
+                                },
+                                "content_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "content_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "owned": {
+                          "type": "boolean"
+                        },
+                        "supported": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "scope",
+                        "item_id",
+                        "access",
+                        "tier",
+                        "surfaces",
+                        "supported_games",
+                        "preview",
+                        "payload",
+                        "owned",
+                        "supported"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "category",
+                  "label",
+                  "threshold",
+                  "selections",
+                  "remaining",
+                  "unlocked",
+                  "bonus",
+                  "bonus_awarded",
+                  "offer_version",
+                  "options"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "renown",
+                    "welcome",
+                    "engagement"
+                  ]
+                },
+                "label": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "threshold": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "selections": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "remaining": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "unlocked": {
+                  "type": "boolean"
+                },
+                "bonus": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "seconds": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 315576000
+                        },
+                        "giftable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "seconds",
+                        "giftable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "bonus_awarded": {
+                  "type": "boolean"
+                },
+                "offer_version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "dye",
+                          "finish",
+                          "effect",
+                          "emblem",
+                          "emblem_set",
+                          "title",
+                          "mark"
+                        ]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "account",
+                          "game"
+                        ]
+                      },
+                      "game_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      },
+                      "item_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      },
+                      "access": {
+                        "type": "string",
+                        "enum": [
+                          "free",
+                          "membership",
+                          "earned"
+                        ]
+                      },
+                      "tier": {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      "surfaces": {
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        }
+                      },
+                      "supported_games": {
+                        "maxItems": 50,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        }
+                      },
+                      "preview": {
+                        "type": "object",
+                        "properties": {
+                          "media_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          },
+                          "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9A-Fa-f]{6}$"
+                          },
+                          "renderer": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          },
+                          "treatment": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "renderer": {
+                                    "type": "string",
+                                    "const": "plain"
+                                  },
+                                  "family": {
+                                    "type": "string",
+                                    "const": "finish"
+                                  },
+                                  "parameters": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                  },
+                                  "reduced_motion": {
+                                    "type": "string",
+                                    "const": "static"
+                                  },
+                                  "sample_dye": {
+                                    "type": "string",
+                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                  }
+                                },
+                                "required": [
+                                  "renderer",
+                                  "family",
+                                  "parameters",
+                                  "reduced_motion",
+                                  "sample_dye"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "renderer": {
+                                    "type": "string",
+                                    "const": "surface"
+                                  },
+                                  "family": {
+                                    "type": "string",
+                                    "const": "finish"
+                                  },
+                                  "parameters": {
+                                    "type": "object",
+                                    "properties": {
+                                      "pattern": {
+                                        "type": "string",
+                                        "enum": [
+                                          "satin",
+                                          "brushed",
+                                          "pearl",
+                                          "smoke",
+                                          "frost",
+                                          "enamel",
+                                          "etched",
+                                          "relief",
+                                          "glitter",
+                                          "foil",
+                                          "crosshatch",
+                                          "lenticular",
+                                          "ceramic",
+                                          "hammered",
+                                          "linen",
+                                          "carbon",
+                                          "stipple",
+                                          "patina",
+                                          "mosaic",
+                                          "contour",
+                                          "obsidian",
+                                          "gilded",
+                                          "crystalline",
+                                          "stardust"
+                                        ]
+                                      },
+                                      "strength": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
+                                      },
+                                      "scale": {
+                                        "type": "number",
+                                        "minimum": 1,
+                                        "maximum": 32
+                                      },
+                                      "angle": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 360
+                                      }
+                                    },
+                                    "required": [
+                                      "pattern",
+                                      "strength",
+                                      "scale",
+                                      "angle"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "reduced_motion": {
+                                    "type": "string",
+                                    "const": "static"
+                                  },
+                                  "sample_dye": {
+                                    "type": "string",
+                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                  }
+                                },
+                                "required": [
+                                  "renderer",
+                                  "family",
+                                  "parameters",
+                                  "reduced_motion",
+                                  "sample_dye"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "renderer": {
+                                    "type": "string",
+                                    "const": "light"
+                                  },
+                                  "family": {
+                                    "type": "string",
+                                    "const": "light"
+                                  },
+                                  "parameters": {
+                                    "type": "object",
+                                    "properties": {
+                                      "pattern": {
+                                        "type": "string",
+                                        "enum": [
+                                          "gleam",
+                                          "rainbow",
+                                          "facets",
+                                          "oil",
+                                          "ripple",
+                                          "confetti",
+                                          "starfield",
+                                          "aurora",
+                                          "constellation",
+                                          "edge",
+                                          "halo",
+                                          "rays",
+                                          "eclipse",
+                                          "comet",
+                                          "pulse",
+                                          "scan",
+                                          "caustic",
+                                          "lightning",
+                                          "corona",
+                                          "supernova"
+                                        ]
+                                      },
+                                      "strength": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
+                                      },
+                                      "duration_ms": {
+                                        "type": "integer",
+                                        "minimum": 1000,
+                                        "maximum": 20000
+                                      },
+                                      "scale": {
+                                        "type": "number",
+                                        "minimum": 1,
+                                        "maximum": 32
+                                      },
+                                      "angle": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 360
+                                      }
+                                    },
+                                    "required": [
+                                      "pattern",
+                                      "strength",
+                                      "duration_ms",
+                                      "scale",
+                                      "angle"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "reduced_motion": {
+                                    "type": "string",
+                                    "const": "static"
+                                  },
+                                  "sample_dye": {
+                                    "type": "string",
+                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                  }
+                                },
+                                "required": [
+                                  "renderer",
+                                  "family",
+                                  "parameters",
+                                  "reduced_motion",
+                                  "sample_dye"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "renderer": {
+                                    "type": "string",
+                                    "const": "interaction"
+                                  },
+                                  "family": {
+                                    "type": "string",
+                                    "const": "interaction"
+                                  },
+                                  "parameters": {
+                                    "type": "object",
+                                    "properties": {
+                                      "pattern": {
+                                        "type": "string",
+                                        "enum": [
+                                          "tilt",
+                                          "parallax",
+                                          "spotlight",
+                                          "reveal",
+                                          "tap-sweep",
+                                          "focus-trace",
+                                          "bevel",
+                                          "ripple",
+                                          "orbit",
+                                          "prism",
+                                          "lift",
+                                          "magnetic",
+                                          "iris",
+                                          "depth",
+                                          "starburst",
+                                          "portal"
+                                        ]
+                                      },
+                                      "strength": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 1
+                                      },
+                                      "duration_ms": {
+                                        "type": "integer",
+                                        "minimum": 150,
+                                        "maximum": 3000
+                                      },
+                                      "depth": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 12
+                                      }
+                                    },
+                                    "required": [
+                                      "pattern",
+                                      "strength",
+                                      "duration_ms",
+                                      "depth"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "reduced_motion": {
+                                    "type": "string",
+                                    "const": "static"
+                                  },
+                                  "sample_dye": {
+                                    "type": "string",
+                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                  }
+                                },
+                                "required": [
+                                  "renderer",
+                                  "family",
+                                  "parameters",
+                                  "reduced_motion",
+                                  "sample_dye"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "elements": {
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "reward_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                },
+                                "item_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                },
+                                "media_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "reward_id",
+                                "item_id",
+                                "media_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "payload": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "dye"
+                              },
+                              "dye_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "dye_id"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "finish",
+                                  "effect"
+                                ]
+                              },
+                              "treatment_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "treatment_id"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "emblem"
+                              },
+                              "emblem_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "emblem_id"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "emblem_set"
+                              },
+                              "emblem_ids": {
+                                "minItems": 4,
+                                "maxItems": 4,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "emblem_ids"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "title",
+                                  "mark"
+                                ]
+                              },
+                              "content_id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "content_id"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "owned": {
+                        "type": "boolean"
+                      },
+                      "supported": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "kind",
+                      "scope",
+                      "item_id",
+                      "access",
+                      "tier",
+                      "surfaces",
+                      "supported_games",
+                      "preview",
+                      "payload",
+                      "owned",
+                      "supported"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "category",
+                "label",
+                "threshold",
+                "selections",
+                "remaining",
+                "unlocked",
+                "bonus",
+                "bonus_awarded",
+                "offer_version",
+                "options"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "milestone_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "reward_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "claimed_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "delivery": {
+                  "type": "string",
+                  "enum": [
+                    "account",
+                    "pending",
+                    "delivered"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "milestone_id",
+                "reward_id",
+                "claimed_at",
+                "delivery"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "collection": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "reward_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "reward": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "dye",
+                            "finish",
+                            "effect",
+                            "emblem",
+                            "emblem_set",
+                            "title",
+                            "mark"
+                          ]
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "account",
+                            "game"
+                          ]
+                        },
+                        "game_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "item_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "access": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "membership",
+                            "earned"
+                          ]
+                        },
+                        "tier": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "surfaces": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          }
+                        },
+                        "supported_games": {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          }
+                        },
+                        "preview": {
+                          "type": "object",
+                          "properties": {
+                            "media_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                            },
+                            "color": {
+                              "type": "string",
+                              "pattern": "^#[0-9A-Fa-f]{6}$"
+                            },
+                            "renderer": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                            },
+                            "treatment": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "plain"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "finish"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {},
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "surface"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "finish"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pattern": {
+                                          "type": "string",
+                                          "enum": [
+                                            "satin",
+                                            "brushed",
+                                            "pearl",
+                                            "smoke",
+                                            "frost",
+                                            "enamel",
+                                            "etched",
+                                            "relief",
+                                            "glitter",
+                                            "foil",
+                                            "crosshatch",
+                                            "lenticular",
+                                            "ceramic",
+                                            "hammered",
+                                            "linen",
+                                            "carbon",
+                                            "stipple",
+                                            "patina",
+                                            "mosaic",
+                                            "contour",
+                                            "obsidian",
+                                            "gilded",
+                                            "crystalline",
+                                            "stardust"
+                                          ]
+                                        },
+                                        "strength": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "scale": {
+                                          "type": "number",
+                                          "minimum": 1,
+                                          "maximum": 32
+                                        },
+                                        "angle": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 360
+                                        }
+                                      },
+                                      "required": [
+                                        "pattern",
+                                        "strength",
+                                        "scale",
+                                        "angle"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "light"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "light"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pattern": {
+                                          "type": "string",
+                                          "enum": [
+                                            "gleam",
+                                            "rainbow",
+                                            "facets",
+                                            "oil",
+                                            "ripple",
+                                            "confetti",
+                                            "starfield",
+                                            "aurora",
+                                            "constellation",
+                                            "edge",
+                                            "halo",
+                                            "rays",
+                                            "eclipse",
+                                            "comet",
+                                            "pulse",
+                                            "scan",
+                                            "caustic",
+                                            "lightning",
+                                            "corona",
+                                            "supernova"
+                                          ]
+                                        },
+                                        "strength": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "duration_ms": {
+                                          "type": "integer",
+                                          "minimum": 1000,
+                                          "maximum": 20000
+                                        },
+                                        "scale": {
+                                          "type": "number",
+                                          "minimum": 1,
+                                          "maximum": 32
+                                        },
+                                        "angle": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 360
+                                        }
+                                      },
+                                      "required": [
+                                        "pattern",
+                                        "strength",
+                                        "duration_ms",
+                                        "scale",
+                                        "angle"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "renderer": {
+                                      "type": "string",
+                                      "const": "interaction"
+                                    },
+                                    "family": {
+                                      "type": "string",
+                                      "const": "interaction"
+                                    },
+                                    "parameters": {
+                                      "type": "object",
+                                      "properties": {
+                                        "pattern": {
+                                          "type": "string",
+                                          "enum": [
+                                            "tilt",
+                                            "parallax",
+                                            "spotlight",
+                                            "reveal",
+                                            "tap-sweep",
+                                            "focus-trace",
+                                            "bevel",
+                                            "ripple",
+                                            "orbit",
+                                            "prism",
+                                            "lift",
+                                            "magnetic",
+                                            "iris",
+                                            "depth",
+                                            "starburst",
+                                            "portal"
+                                          ]
+                                        },
+                                        "strength": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "duration_ms": {
+                                          "type": "integer",
+                                          "minimum": 150,
+                                          "maximum": 3000
+                                        },
+                                        "depth": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 12
+                                        }
+                                      },
+                                      "required": [
+                                        "pattern",
+                                        "strength",
+                                        "duration_ms",
+                                        "depth"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reduced_motion": {
+                                      "type": "string",
+                                      "const": "static"
+                                    },
+                                    "sample_dye": {
+                                      "type": "string",
+                                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "renderer",
+                                    "family",
+                                    "parameters",
+                                    "reduced_motion",
+                                    "sample_dye"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "elements": {
+                              "minItems": 4,
+                              "maxItems": 4,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "reward_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  },
+                                  "item_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  },
+                                  "media_id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  }
+                                },
+                                "required": [
+                                  "reward_id",
+                                  "item_id",
+                                  "media_id"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "payload": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "dye"
+                                },
+                                "dye_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "dye_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "finish",
+                                    "effect"
+                                  ]
+                                },
+                                "treatment_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "treatment_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "emblem"
+                                },
+                                "emblem_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "emblem_id"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "const": "emblem_set"
+                                },
+                                "emblem_ids": {
+                                  "minItems": 4,
+                                  "maxItems": 4,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "emblem_ids"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "title",
+                                    "mark"
+                                  ]
+                                },
+                                "content_id": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200,
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "content_id"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "scope",
+                        "item_id",
+                        "access",
+                        "tier",
+                        "surfaces",
+                        "supported_games",
+                        "preview",
+                        "payload"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "permanent": {
+                  "type": "boolean"
+                },
+                "membership_access": {
+                  "type": "boolean"
+                },
+                "supported": {
+                  "type": "boolean"
+                },
+                "delivery": {
+                  "type": "string",
+                  "enum": [
+                    "account",
+                    "pending",
+                    "delivered"
+                  ]
+                }
+              },
+              "required": [
+                "reward_id",
+                "reward",
+                "permanent",
+                "membership_access",
+                "supported",
+                "delivery"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "membership": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "paid",
+                    "time",
+                    "lifetime"
+                  ]
+                }
+              },
+              "observed_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "available_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "saved_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "active_until": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "supporter_tier": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "const": 1
+                      },
+                      {
+                        "type": "number",
+                        "const": 2
+                      },
+                      {
+                        "type": "number",
+                        "const": 3
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "awards": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    "seconds": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "remaining_seconds": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "giftable": {
+                      "type": "boolean"
+                    },
+                    "convertible_to_gift": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "available",
+                        "active",
+                        "saved",
+                        "consumed",
+                        "gifted",
+                        "revoked"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "seconds",
+                    "remaining_seconds",
+                    "giftable",
+                    "convertible_to_gift",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "active",
+              "sources",
+              "observed_at",
+              "expires_at",
+              "available_seconds",
+              "saved_seconds",
+              "active_until",
+              "supporter_tier",
+              "awards"
+            ],
+            "additionalProperties": false
+          },
+          "invitations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "personal",
+                    "combined",
+                    "alliance_public"
+                  ]
+                },
+                "game_id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alliance": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "universe_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "epoch_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        },
+                        "alliance_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        }
+                      },
+                      "required": [
+                        "universe_id",
+                        "epoch_id",
+                        "alliance_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "code",
+                "kind",
+                "game_id",
+                "alliance"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "referrals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "public_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "stages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      },
+                      "complete": {
+                        "type": "boolean"
+                      },
+                      "renown": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "requirement": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "complete",
+                      "renown",
+                      "requirement"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "public_name",
+                "stages"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "gifts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "seconds": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "sent",
+                    "received"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "available",
+                    "linked",
+                    "accepted",
+                    "revoked"
+                  ]
+                },
+                "link_expires_at": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "recipient_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "bound_recipient_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "seconds",
+                "direction",
+                "state",
+                "link_expires_at",
+                "recipient_name",
+                "bound_recipient_name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "claim": {
+                "type": "boolean"
+              },
+              "invite": {
+                "type": "boolean"
+              },
+              "verify_discord": {
+                "type": "boolean"
+              },
+              "full_selection_url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "claim",
+              "invite",
+              "verify_discord",
+              "full_selection_url"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contract_version",
+          "program",
+          "observed_at",
+          "expires_at",
+          "renown",
+          "next_milestone",
+          "milestones",
+          "claims",
+          "collection",
+          "membership",
+          "invitations",
+          "referrals",
+          "gifts",
+          "capabilities"
+        ],
+        "additionalProperties": false
+      },
+      "CommunityActionRequest": {
+        "type": "object",
+        "properties": {
+          "contract_version": {
+            "type": "number",
+            "const": 1
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+          },
+          "action": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "claim"
+                  },
+                  "milestone_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "reward_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "offer_version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "milestone_id",
+                  "reward_id",
+                  "offer_version"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "accept_invitation"
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "preview_version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "code",
+                  "preview_version"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "create_invitation"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "personal",
+                      "combined",
+                      "alliance_public"
+                    ]
+                  },
+                  "game_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "alliance": {
+                    "type": "object",
+                    "properties": {
+                      "universe_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      },
+                      "epoch_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      },
+                      "alliance_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                      }
+                    },
+                    "required": [
+                      "universe_id",
+                      "epoch_id",
+                      "alliance_id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "activate_time"
+                  },
+                  "award_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "award_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "gift_time"
+                  },
+                  "award_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "recipient": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "award_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "convert_lifetime_time"
+                  },
+                  "award_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "award_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "issue_gift_link"
+                  },
+                  "gift_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "gift_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "cancel_gift_link"
+                  },
+                  "gift_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "gift_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "reissue_gift_link"
+                  },
+                  "gift_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "gift_id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "accept_gift"
+                  },
+                  "token": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "type",
+                  "token"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "assign_gift"
+                  },
+                  "gift_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                  },
+                  "recipient": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 30
+                  }
+                },
+                "required": [
+                  "type",
+                  "gift_id",
+                  "recipient"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "const": "verify_discord"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "contract_version",
+          "request_id",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "CommunityActionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": 1
+          },
+          "result": {
+            "type": "object"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/CommunityOwner"
+          }
+        },
+        "required": [
+          "contract_version",
+          "result",
+          "owner"
+        ]
+      },
+      "CommunityStatus": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CommunityOwner"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": {
+                "const": false
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          }
+        ]
+      },
+      "CosmeticDye": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "palette_id": {
+            "type": "string"
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "free",
+              "membership",
+              "earned"
+            ]
+          },
+          "scope": {
+            "const": "account"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/InsigniaAccess"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "tier",
+          "access",
+          "scope"
+        ]
+      },
+      "CosmeticTreatment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "finish",
+              "light",
+              "interaction"
+            ]
+          },
+          "renderer": {
+            "type": "string",
+            "enum": [
+              "plain",
+              "surface",
+              "light",
+              "interaction"
+            ]
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          },
+          "access": {
+            "type": "string",
+            "enum": [
+              "free",
+              "membership",
+              "earned"
+            ]
+          },
+          "scope": {
+            "const": "account"
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "emblem",
+                "collection",
+                "profile"
+              ]
+            }
+          },
+          "reduced_motion": {
+            "const": "static"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/InsigniaAccess"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "family",
+          "renderer",
+          "parameters",
+          "access",
+          "scope",
+          "surfaces",
+          "reduced_motion"
+        ]
+      },
+      "CommunityInvitationPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "personal",
+              "combined",
+              "alliance_public"
+            ]
+          },
+          "inviter_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "alliance_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "game_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requires_game_check": {
+            "type": "boolean"
+          },
+          "preview_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "inviter_name",
+          "alliance_name",
+          "game_id",
+          "requires_game_check",
+          "preview_version"
+        ]
+      },
+      "CosmeticMark": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "account",
+              "game"
+            ]
+          },
+          "game_id": {
+            "type": "string"
+          },
+          "owner_kind": {
+            "enum": [
+              "account",
+              "alliance"
+            ]
+          },
+          "access": {
+            "const": "earned"
+          },
+          "render": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "emblem"
+                  },
+                  "item_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9-]{1,64}$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "item_id"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "finish"
+                  },
+                  "item_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9-]{1,64}$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "item_id"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "effect"
+                  },
+                  "item_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9-]{1,64}$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "item_id"
+                ]
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "const": "support_duration"
+                  },
+                  "months": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1200
+                  }
+                },
+                "required": [
+                  "kind",
+                  "months"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "owner_kind",
+          "access",
+          "render"
+        ]
+      },
+      "CommunityMarks": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "marks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CosmeticMark"
+            }
+          },
+          "expires_at": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "marks",
+          "expires_at"
+        ]
+      },
+      "CommunityAllianceHonors": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "alliance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "honors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "honor_id": {
+                  "type": "string"
+                },
+                "reward_id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "item_id": {
+                  "type": "string"
+                },
+                "rule_version": {
+                  "type": "string"
+                },
+                "reached_at": {
+                  "type": "string"
+                },
+                "mark": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CosmeticMark"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "treatment": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CosmeticTreatment"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emblem_url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "honor_id",
+                "reward_id",
+                "kind",
+                "item_id",
+                "rule_version",
+                "reached_at",
+                "mark",
+                "treatment",
+                "emblem_url"
+              ]
+            }
+          }
+        },
+        "required": [
+          "alliance_id",
+          "honors"
+        ]
       }
     },
     "securitySchemes": {

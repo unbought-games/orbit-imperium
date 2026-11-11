@@ -1,4 +1,5 @@
 mod arrival;
+mod community_rewards;
 mod empire_identity;
 mod player_preferences;
 pub use empire_identity::grant_cosmetic;

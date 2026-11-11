@@ -136,6 +136,8 @@ pub const FREE_INSIGNIAS: &[(&str, &str, &[u8])] = &[
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InsigniaSymbol {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access: Option<CatalogAccess>,
     #[serde(default)]
     pub group: InsigniaGroup,
     pub id: String,
@@ -156,6 +158,14 @@ impl InsigniaSymbol {
 #[serde(deny_unknown_fields)]
 pub struct InsigniaManifest {
     #[serde(default)]
+    pub marks: Vec<CosmeticMark>,
+    #[serde(default)]
+    pub catalog_version: Option<String>,
+    #[serde(default)]
+    pub dyes: Vec<CosmeticDye>,
+    #[serde(default)]
+    pub treatments: Vec<CosmeticTreatment>,
+    #[serde(default)]
     pub titles: Vec<EmpireTitle>,
     pub version: u8,
     pub insignias: Vec<InsigniaSymbol>,
@@ -164,6 +174,11 @@ pub struct InsigniaManifest {
 /// Installed authoritative definitions; availability is always derived from these.
 #[derive(Clone, Debug)]
 pub struct InsigniaCatalog {
+    marks: Vec<CosmeticMark>,
+    pub catalog_version: Option<String>,
+    pub account_observation: Option<AccountCosmeticObservation>,
+    dyes: Vec<CosmeticDye>,
+    treatments: Vec<CosmeticTreatment>,
     titles: Vec<EmpireTitle>,
     symbols: Vec<InsigniaSymbol>,
 }
@@ -171,10 +186,16 @@ impl Default for InsigniaCatalog {
     fn default() -> Self {
         use sha2::Digest;
         Self {
+            catalog_version: None,
+            marks: vec![],
+            account_observation: None,
+            dyes: vec![],
+            treatments: vec![],
             titles: free_titles(),
             symbols: FREE_INSIGNIAS
                 .iter()
                 .map(|(id, name, bytes)| InsigniaSymbol {
+                    access: None,
                     group: bundled_group(id),
                     id: (*id).into(),
                     name: (*name).into(),
@@ -209,6 +230,42 @@ fn bundled_group(id: &str) -> InsigniaGroup {
 }
 
 impl InsigniaCatalog {
+    pub fn marks(&self) -> &[CosmeticMark] {
+        &self.marks
+    }
+    pub fn mark(&self, id: &str) -> Option<&CosmeticMark> {
+        self.marks.iter().find(|m| m.id == id)
+    }
+    pub fn collective_grants(&self, grants: &[(String, String)]) -> Vec<(String, String)> {
+        let mut concrete = grants.to_vec();
+        for (kind, id) in grants {
+            if kind == "mark"
+                && let Some(mark) = self
+                    .mark(id)
+                    .filter(|m| m.owner_kind == MarkOwner::Alliance)
+                && let Some((kind, id)) = mark.concrete_grant()
+            {
+                concrete.push((kind.into(), id.into()));
+            }
+        }
+        concrete.sort();
+        concrete.dedup();
+        concrete
+    }
+
+    pub fn dyes(&self) -> &[CosmeticDye] {
+        &self.dyes
+    }
+    pub fn treatments(&self) -> &[CosmeticTreatment] {
+        &self.treatments
+    }
+    pub fn dye(&self, id: &str) -> Option<&CosmeticDye> {
+        self.dyes.iter().find(|d| d.id == id)
+    }
+    pub fn treatment(&self, id: &str) -> Option<&CosmeticTreatment> {
+        self.treatments.iter().find(|d| d.id == id)
+    }
+
     pub fn titles(&self) -> &[EmpireTitle] {
         &self.titles
     }
@@ -223,12 +280,38 @@ impl InsigniaCatalog {
     }
     pub fn with_manifest(manifest: InsigniaManifest) -> Result<Self, String> {
         let mut catalog = Self::default();
-        if !matches!(manifest.version, 1 | 2)
+        if manifest
+            .catalog_version
+            .as_ref()
+            .is_some_and(|v| v.is_empty() || v.len() > 200 || v.chars().any(char::is_control))
+        {
+            return Err("Invalid catalog version".into());
+        }
+        catalog.catalog_version = manifest.catalog_version.clone();
+        if !matches!(manifest.version, 1..=3)
             || (manifest.version == 1 && !manifest.titles.is_empty())
+            || (manifest.version < 3
+                && (!manifest.dyes.is_empty() || !manifest.treatments.is_empty()))
+            || manifest.marks.len() > 256
+            || (manifest.version < 3 && !manifest.marks.is_empty())
+            || manifest.dyes.len() > 512
+            || manifest.treatments.len() > 256
             || manifest.insignias.len() > 256
             || manifest.titles.len() > 256
         {
             return Err("Unsupported or oversized cosmetic catalog".into());
+        }
+        for dye in manifest.dyes {
+            if !dye.valid() || catalog.dye(&dye.id).is_some() {
+                return Err("Invalid or duplicate dye".into());
+            }
+            catalog.dyes.push(dye);
+        }
+        for treatment in manifest.treatments {
+            if !treatment.valid() || catalog.treatment(&treatment.id).is_some() {
+                return Err("Invalid or duplicate treatment".into());
+            }
+            catalog.treatments.push(treatment);
         }
         for title in manifest.titles {
             if !valid_symbol_id(&title.id)
@@ -253,6 +336,12 @@ impl InsigniaCatalog {
                 return Err("Invalid or duplicate cosmetic catalog item".into());
             }
             catalog.symbols.push(item);
+        }
+        for mark in manifest.marks {
+            if !mark.valid(&catalog) || catalog.mark(&mark.id).is_some() {
+                return Err("Invalid or duplicate recognition mark".into());
+            }
+            catalog.marks.push(mark);
         }
         Ok(catalog)
     }
@@ -281,16 +370,22 @@ pub fn valid_insignia(recipe: &InsigniaRecipe) -> bool {
         s.len() == 7 && s.starts_with('#') && s.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
     }
     valid_symbol_id(&recipe.symbol)
-        && color(&recipe.foreground)
-        && color(&recipe.background)
+        && (color(&recipe.foreground)
+            || recipe.version == 3 && named_dye(&recipe.foreground).is_some())
+        && (color(&recipe.background)
+            || recipe.version == 3 && named_dye(&recipe.background).is_some())
+        && (recipe.version == 3 || recipe.finish.is_none() && recipe.effect.is_none())
+        && recipe.finish.as_ref().is_none_or(|id| valid_symbol_id(id))
+        && recipe.effect.as_ref().is_none_or(|id| valid_symbol_id(id))
         && match (&recipe.layers, recipe.version) {
             (None, 1) => recipe.shape.is_none(),
-            (Some(layers), 2) => {
+            (Some(layers), 2 | 3) => {
                 recipe.symbol == "compass"
                     && layers.len() <= 4
                     && layers.iter().enumerate().all(|(i, l)| {
                         valid_symbol_id(&l.symbol)
-                            && color(&l.color)
+                            && (color(&l.color)
+                                || recipe.version == 3 && named_dye(&l.color).is_some())
                             && !layers[..i].iter().any(|p| p.symbol == l.symbol)
                     })
             }
@@ -378,8 +473,21 @@ pub fn insignia_access(
     let Some(item) = catalog.get(symbol) else {
         return InsigniaAccess::NotInstalled;
     };
-    if !item.supporter || policy != CosmeticPolicy::Supporter || grants.iter().any(|s| s == symbol)
+    let requirement = item.access.unwrap_or(if item.supporter {
+        CatalogAccess::Membership
+    } else {
+        CatalogAccess::Free
+    });
+    if requirement == CatalogAccess::Free
+        || policy == CosmeticPolicy::All
+        || grants.iter().any(|s| s == symbol)
     {
+        return InsigniaAccess::Available;
+    }
+    if requirement == CatalogAccess::Earned {
+        return InsigniaAccess::SupporterRequired;
+    }
+    if policy == CosmeticPolicy::Unrestricted {
         return InsigniaAccess::Available;
     }
     if !evidence.known || evidence.expires_at <= now {
@@ -402,6 +510,48 @@ pub fn recipe_access(
 ) -> InsigniaAccess {
     if !valid_insignia(recipe) {
         return InsigniaAccess::NotInstalled;
+    }
+    if recipe.version == 3 {
+        for color in std::iter::once(&recipe.foreground)
+            .chain(std::iter::once(&recipe.background))
+            .chain(recipe.layers.iter().flatten().map(|l| &l.color))
+        {
+            if let Some(id) = named_dye(color) {
+                let Some(dye) = catalog.dye(id) else {
+                    return InsigniaAccess::NotInstalled;
+                };
+                let access =
+                    account_item_access(catalog, "dye", id, dye.access, policy, evidence, now);
+                if access != InsigniaAccess::Available {
+                    return access;
+                }
+            }
+        }
+        for (id, finish) in recipe
+            .finish
+            .iter()
+            .map(|id| (id, true))
+            .chain(recipe.effect.iter().map(|id| (id, false)))
+        {
+            let Some(t) = catalog.treatment(id) else {
+                return InsigniaAccess::NotInstalled;
+            };
+            if (t.family == "finish") != finish || !t.surfaces.iter().any(|s| s == "emblem") {
+                return InsigniaAccess::NotInstalled;
+            }
+            let access = account_item_access(
+                catalog,
+                if finish { "finish" } else { "effect" },
+                id,
+                t.access,
+                policy,
+                evidence,
+                now,
+            );
+            if access != InsigniaAccess::Available {
+                return access;
+            }
+        }
     }
     let Some(layers) = &recipe.layers else {
         return insignia_access(catalog, &recipe.symbol, policy, grants, evidence, now);
@@ -466,14 +616,61 @@ pub fn legacy_insignia_id(id: &str) -> bool {
     matches!(id, "compass" | "wings" | "spire" | "laurel")
 }
 
+/// Shared account ownership is an expiring observation. It never becomes an Orbit grant.
+pub fn account_item_access(
+    catalog: &InsigniaCatalog,
+    kind: &str,
+    id: &str,
+    access: CatalogAccess,
+    policy: CosmeticPolicy,
+    evidence: SupporterEvidence,
+    now: i64,
+) -> InsigniaAccess {
+    if access == CatalogAccess::Free
+        || policy == CosmeticPolicy::All
+        || catalog
+            .account_observation
+            .as_ref()
+            .is_some_and(|o| o.owns(kind, id, now))
+    {
+        return InsigniaAccess::Available;
+    }
+    if access == CatalogAccess::Earned {
+        return InsigniaAccess::SupporterRequired;
+    }
+    composition_access(policy, evidence, now)
+}
+
+/// Literal legacy colors may survive an edit, but cannot be newly authored by an
+/// official editor. Equipment and fallback never rewrite the saved recipe.
+pub fn named_color_edits(previous: Option<&InsigniaRecipe>, next: &InsigniaRecipe) -> bool {
+    let allowed = |color: &str, old: Option<&str>| named_dye(color).is_some() || old == Some(color);
+    allowed(&next.foreground, previous.map(|p| p.foreground.as_str()))
+        && allowed(&next.background, previous.map(|p| p.background.as_str()))
+        && next.layers.iter().flatten().all(|layer| {
+            allowed(
+                &layer.color,
+                previous
+                    .and_then(|p| p.layers.as_ref())
+                    .and_then(|ls| ls.iter().find(|l| l.symbol == layer.symbol))
+                    .map(|l| l.color.as_str()),
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     fn catalog() -> InsigniaCatalog {
         InsigniaCatalog::with_manifest(InsigniaManifest {
+            catalog_version: None,
+            marks: vec![],
+            dyes: vec![],
+            treatments: vec![],
             titles: vec![],
             version: 1,
             insignias: vec![InsigniaSymbol {
+                access: None,
                 group: InsigniaGroup::Legacy,
                 id: "test-star".into(),
                 name: "Test star".into(),
@@ -532,6 +729,7 @@ mod tests {
     fn manifests_reject_unknown_versions_duplicates_invalid_ids_and_hashes() {
         for id in ["compass", "../escape", "", "UPPER"] {
             let item = InsigniaSymbol {
+                access: None,
                 group: InsigniaGroup::Legacy,
                 id: id.into(),
                 name: "Example".into(),
@@ -540,6 +738,10 @@ mod tests {
             };
             assert!(
                 InsigniaCatalog::with_manifest(InsigniaManifest {
+                    catalog_version: None,
+                    marks: vec![],
+                    dyes: vec![],
+                    treatments: vec![],
                     titles: vec![],
                     version: 1,
                     insignias: vec![item]
@@ -550,6 +752,10 @@ mod tests {
         let item = catalog().get("test-star").unwrap().clone();
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                catalog_version: None,
+                marks: vec![],
+                dyes: vec![],
+                treatments: vec![],
                 titles: vec![],
                 version: 1,
                 insignias: vec![item.clone(), item.clone()]
@@ -558,14 +764,22 @@ mod tests {
         );
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                catalog_version: None,
+                marks: vec![],
+                dyes: vec![],
+                treatments: vec![],
                 titles: vec![],
-                version: 3,
+                version: 4,
                 insignias: vec![]
             })
             .is_err()
         );
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                catalog_version: None,
+                marks: vec![],
+                dyes: vec![],
+                treatments: vec![],
                 titles: vec![],
                 version: 1,
                 insignias: vec![InsigniaSymbol {
@@ -812,11 +1026,16 @@ mod tests {
     #[test]
     fn stripe_slots_and_group_colors_are_not_client_assertions() {
         let c = InsigniaCatalog::with_manifest(InsigniaManifest {
+            catalog_version: None,
+            marks: vec![],
+            dyes: vec![],
+            treatments: vec![],
             titles: vec![],
             version: 1,
             insignias: ["sample-a", "sample-b", "sample-c"]
                 .into_iter()
                 .map(|id| InsigniaSymbol {
+                    access: None,
                     group: InsigniaGroup::Stripes,
                     id: id.into(),
                     name: id.into(),
