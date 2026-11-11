@@ -1,3 +1,4 @@
+import { probePreferenceReason } from '../client-model/player-preferences'
 import { usePlayerPreferences } from '../shell/player-preferences-context'
 import { PhalanxAction } from './phalanx-action'
 import { publicMoonBody } from './galaxy-body'
@@ -47,9 +48,7 @@ export function Galaxy({
 }) {
   const preferences = usePlayerPreferences()
   const probeCount = preferences.preferences?.galaxy_probe_count
-  const preferenceReason =
-    preferences.error ||
-    (preferences.busy || !probeCount ? 'Loading saved probe count…' : null)
+  const preferenceReason = probePreferenceReason(preferences)
   const espionage = useGalaxyEspionage(
     model,
     origin,

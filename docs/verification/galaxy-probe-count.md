@@ -134,3 +134,14 @@ recovery cases passed with optional capture disabled (2.910-second preparation,
 serialization tests remain the lower-layer protection. This chat owns any new
 CI findings; a recurrence of this repaired test defect must follow the existing
 one-repair removal rule.
+
+Automated review `PRRT_kwDOVRgPYs62BmNl` identified a separate product issue:
+a failed/background preference read blocked Spy despite an already-confirmed
+count. Added a pure availability selector that keeps confirmed counts usable
+during reads and read failures. An explicit `saveUnconfirmed` interaction fact
+still blocks sending during an unresolved write, including failed rereads after
+that write, until a successful read or save confirms the value. Galaxy gains no
+text. Deterministic tests cover cached reads, failed initial reads, pending saves,
+failed saves, and recovery; 61 focused client tests passed (135 ms). Lint and
+application TypeScript passed. The review thread was already resolved by its bot;
+this repair addresses its concrete failure mechanism independently.

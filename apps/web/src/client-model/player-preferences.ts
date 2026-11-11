@@ -9,14 +9,23 @@ export function validProbeCount(value: string) {
 type State = {
   preferences: PlayerPreferences | null
   busy: boolean
+  saveUnconfirmed: boolean
   error: string
   message: string
 }
+/** Refresh failures do not invalidate a confirmed count; an uncertain write does. */
+export function probePreferenceReason(state: State): string | null {
+  if (state.saveUnconfirmed) return state.error || 'Saving probe count…'
+  if (!state.preferences) return state.error || 'Loading saved probe count…'
+  return null
+}
+
 /** One session-owned source for confirmed preferences; form drafts stay local. */
 export class PlayerPreferencesController {
   readonly store = createStore<State>(() => ({
     preferences: null,
     busy: false,
+    saveUnconfirmed: false,
     error: '',
     message: '',
   }))
@@ -42,12 +51,18 @@ export class PlayerPreferencesController {
     if (this.request) return false
     const request = new AbortController()
     this.request = request
-    this.store.setState({ busy: true, error: '', message: '' })
+    this.store.setState({
+      busy: true,
+      error: '',
+      message: '',
+      ...(preferences ? { saveUnconfirmed: true } : {}),
+    })
     try {
       const saved = await this.api(preferences, request.signal)
       if (this.request !== request) return false
       this.store.setState({
         preferences: saved,
+        saveUnconfirmed: false,
         message: preferences ? 'Probe count saved.' : '',
       })
       return true

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   PlayerPreferencesController,
+  probePreferenceReason,
   validProbeCount,
 } from './player-preferences'
 
@@ -41,9 +42,12 @@ describe('saved galaxy probe count', () => {
       .mockResolvedValueOnce({ galaxy_probe_count: '1' })
       .mockReturnValueOnce(save.promise)
       .mockRejectedValueOnce(Error('offline'))
+      .mockRejectedValueOnce(Error('still offline'))
+      .mockResolvedValueOnce({ galaxy_probe_count: '11' })
     const controller = new PlayerPreferencesController(api)
     await controller.load()
     const pending = controller.save('7')
+    expect(probePreferenceReason(controller.store.getState())).not.toBeNull()
     expect(controller.store.getState().preferences?.galaxy_probe_count).toBe(
       '1',
     )
@@ -51,6 +55,7 @@ describe('saved galaxy probe count', () => {
     expect(await controller.load()).toBe(false)
     save.resolve({ galaxy_probe_count: '7' })
     expect(await pending).toBe(true)
+    expect(probePreferenceReason(controller.store.getState())).toBeNull()
     expect(controller.store.getState().preferences?.galaxy_probe_count).toBe(
       '7',
     )
@@ -60,6 +65,42 @@ describe('saved galaxy probe count', () => {
     )
     expect(controller.store.getState().error).toContain('Could not confirm')
     expect(controller.store.getState().busy).toBe(false)
+    expect(probePreferenceReason(controller.store.getState())).not.toBeNull()
+    await controller.load()
+    expect(probePreferenceReason(controller.store.getState())).not.toBeNull()
+    await controller.load()
+    expect(probePreferenceReason(controller.store.getState())).toBeNull()
+    expect(controller.store.getState().preferences?.galaxy_probe_count).toBe(
+      '11',
+    )
+  })
+  it('keeps the confirmed count available during a refresh and after a read failure', async () => {
+    const controller = new PlayerPreferencesController(
+      vi
+        .fn()
+        .mockResolvedValueOnce({ galaxy_probe_count: '7' })
+        .mockRejectedValueOnce(Error('offline')),
+    )
+    await controller.load()
+    const refresh = controller.load()
+    expect(controller.store.getState().busy).toBe(true)
+    expect(probePreferenceReason(controller.store.getState())).toBeNull()
+    await refresh
+    expect(controller.store.getState().error).toContain('Could not load')
+    expect(probePreferenceReason(controller.store.getState())).toBeNull()
+    expect(controller.store.getState().preferences?.galaxy_probe_count).toBe(
+      '7',
+    )
+  })
+  it('blocks Spy until the first preference read succeeds', async () => {
+    const controller = new PlayerPreferencesController(
+      vi.fn().mockRejectedValueOnce(Error('offline')),
+    )
+    expect(probePreferenceReason(controller.store.getState())).not.toBeNull()
+    await controller.load()
+    expect(probePreferenceReason(controller.store.getState())).toContain(
+      'Could not load',
+    )
   })
   it('ignores responses after the session ends, including after a restart', async () => {
     const old = deferred<{ galaxy_probe_count: string }>()
