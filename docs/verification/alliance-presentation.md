@@ -179,3 +179,13 @@ IDs still enforce both identity fields. Added adapter coverage and a short publi
 entry/link test; no login or multi-document auth journey was recreated from the
 retired scenario. All 5 adapter tests and 6 invitation/arrival browser cases
 passed (0.401 s and 3.1 s respectively).
+
+A subsequent merge conflict required rebasing onto `6b485ba0` (main). The only
+conflict was the component scenario registry; retained both the newly merged
+resource scenario and the alliance presentation scenario. The integrated tree
+passed 1,783 client tests (194 files, 7.15 s), 15 shell/presentation component
+cases (4.0 s), component types, lint, formatting and the production build.
+Refreshed and inspected the threat-state desktop/mobile captures against the
+integrated styles. Manual CI run `42948314702` on the pre-integration `5d2af131`
+was cancelled as superseded; it is not counted as passing validation. The new
+revision requires fresh CI before queue enrollment.
