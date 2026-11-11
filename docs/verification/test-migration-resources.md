@@ -1,7 +1,7 @@
 # Stream 01 — resources, quotes and production controls
 
 Date: 2026-11-10. Owner chat: `01a1c830-b10b-7d70-a7b1-a96a254133af`.
-Branch: `emick/resources-test-migration`. **Implementation complete; PR validation pending.**
+Branch: `emick/resources-test-migration`. **Complete for stream 01; owner-review hold.**
 No enqueue, merge or deployment is authorized for this handoff.
 
 ## Scope and provenance
@@ -251,5 +251,47 @@ cases passed after the correction. A preliminary textual edit matched no source;
 its unchanged focused run is redundant evidence, not validation of the correction.
 The existing assertions were neither removed nor relaxed.
 
-PR checks and automated review remain pending. No merge queue or deployment was
-used; final head/check identities will be appended after verification.
+The implementation checks and automated review completed successfully as recorded
+below. No merge queue or deployment was used.
+
+
+## Final implementation CI and review record
+
+Verified implementation head: `974ba82fc81fa853ae5300bea651a29858cc243b`.
+[CI run 42941155278](https://github.com/unbought-games/orbit-imperium/actions/runs/42941155278)
+passed on its first attempt: native build/lint/unit checks, journeys, components,
+all six feature shards and the aggregate required gate. PostgreSQL was legitimately
+unselected by unchanged path relevance; the two local real PostgreSQL progression
+tests above passed independently. Cursor Bugbot completed successfully with no
+review threads/findings. Conventional Commit title and mergeability were verified.
+The PR remains open for the owner; no approval, queue, merge or deployment is claimed.
+
+The earlier run `42940950004` on `e34d61b2` was automatically canceled after the
+inspection-counter correction. Count: **one superseded CI attempt, zero failed
+CI attempts, zero unchanged reruns, zero queue removals**. A canceled attempt is
+not passing validation. The local authoring failures remain listed above.
+
+| CI phase | Job elapsed | Main check step (includes runner preparation/build where applicable) |
+| --- | ---: | ---: |
+| Native | 350s | 264s |
+| Journeys | 174s | 67s |
+| Components | 279s | 194s |
+| Feature shards 1–6 | 319 / 298 / 256 / 307 / 460 / 395s | 218 / 213 / 186 / 224 / 363 / 301s |
+
+Workflow creation-to-completion: **505s** (01:44:46–01:53:11 UTC, November 11;
+November 10 in the owner's timezone). Creation-to-first-job-start was 26s and
+includes dispatch/runner allocation; these were not separable in the saved
+metadata. Matrix jobs began 2–3s after scope selection completed. Browser npm
+installation took 34–58s and Chromium installation 21–26s; native dependencies
+and Rust cache/toolchain setup are separate from its check step. Step durations
+are not pure assertion time. PR creation-to-this-verified-result was 616s,
+including the superseded revision. Merge/queue delay is not applicable under the
+owner-review hold. These observations do not establish a future flake rate.
+
+This final documentation commit changes no executable code. Its own latest-head
+checks are available in [PR #387's Checks](https://github.com/unbought-games/orbit-imperium/pull/387/checks)
+and must pass before the originating chat reports readiness. All current and
+historical case dispositions, replacements, repair evidence, cleanup and retained
+integration contracts are recorded. There is no outstanding stream-01
+implementation slice or unvalidated replacement. Global cutover and operational
+reliability observation remain stream 10's separately scoped work.
