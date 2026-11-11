@@ -392,6 +392,8 @@ export async function installGameFixture(
           },
         },
       })
+    if (url.pathname === '/api/v1/rewards')
+      return route.fulfill({ json: {enabled:false} })
     if (url.pathname === '/api/v1/session')
       return route.fulfill({ json: session })
     if (url.pathname.endsWith('/settings'))

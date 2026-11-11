@@ -1,9 +1,12 @@
+import { useRewardsVisible } from '../../shell/community-rewards-context'
+import { AllianceHonors } from '../rewards/recognition'
 import type { ComponentProps } from 'react'
 import { ButtonLinkAnchor } from '../../ui/button'
 import { Board } from './board'
 import { Markdown } from './shared'
 import styles from './presentation.module.css'
 export function AllianceHall(props: ComponentProps<typeof Board>) {
+  const rewardsVisible = useRewardsVisible()
   const { detail } = props,
     hall = detail.presentation?.hall,
     summary = detail.summary
@@ -21,6 +24,7 @@ export function AllianceHall(props: ComponentProps<typeof Board>) {
             </p>
           )}
         </section>
+        {rewardsVisible && <AllianceHonors alliance={summary.id} />}
         <Board {...props} />
       </div>
       <aside className={styles.hallAside}>

@@ -1,3 +1,5 @@
+import { InvitationLinks } from '../rewards/invitations'
+import { useGameSession } from '../../shell/session-context'
 import { useState } from 'react'
 import { can, type AllianceDetail } from '../../client-model/alliances'
 import {
@@ -84,6 +86,7 @@ export function RecruitmentSettings({ detail, run, busy }: Props) {
 
 export function InvitationSettings({ detail, run, busy }: Props) {
   const [message, setMessage] = useState('')
+  const { view } = useGameSession()
   if (!can(detail, 'ManageRecruitment')) return null
   const path = detail.invitation
     ? `/invite/${detail.summary.universe}/${detail.invitation}`
@@ -99,6 +102,17 @@ export function InvitationSettings({ detail, run, busy }: Props) {
   }
   return (
     <>
+      <InvitationLinks
+        publicEnabled={!!detail.invitation}
+        entryPath={
+          path ?? `/alliances/${detail.summary.universe}/${detail.summary.id}`
+        }
+        alliance={{
+          universe_id: view.binding.universe,
+          epoch_id: view.binding.epoch,
+          alliance_id: detail.summary.id,
+        }}
+      />
       <SettingsSection
         title="Invitation link"
         description="A shareable link with no expiry. Your joining rules still apply."

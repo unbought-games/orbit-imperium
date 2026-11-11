@@ -29,6 +29,7 @@ import { Route as UUniverseMessagesRouteImport } from './routes/u.$universe.mess
 import { Route as UUniverseOverviewRouteImport } from './routes/u.$universe.overview'
 import { Route as UUniverseReportsRouteImport } from './routes/u.$universe.reports'
 import { Route as UUniverseResearchRouteImport } from './routes/u.$universe.research'
+import { Route as UUniverseRewardsRouteImport } from './routes/u.$universe.rewards'
 import { Route as UUniverseSettingsRouteImport } from './routes/u.$universe.settings'
 import { Route as UUniverseAllianceCreateRouteImport } from './routes/u.$universe.alliance_.create'
 import { Route as UUniverseAllianceDiscoverRouteImport } from './routes/u.$universe.alliance_.discover'
@@ -165,6 +166,11 @@ const UUniverseReportsRoute = UUniverseReportsRouteImport.update({
 const UUniverseResearchRoute = UUniverseResearchRouteImport.update({
   id: '/research',
   path: '/research',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseRewardsRoute = UUniverseRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseSettingsRoute = UUniverseSettingsRouteImport.update({
@@ -385,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/reports': typeof UUniverseReportsRouteWithChildren
   '/u/$universe/research': typeof UUniverseResearchRoute
+  '/u/$universe/rewards': typeof UUniverseRewardsRoute
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe/': typeof UUniverseIndexRoute
   '/u/$universe/alliance/create': typeof UUniverseAllianceCreateRoute
@@ -440,6 +447,7 @@ export interface FileRoutesByTo {
   '/u/$universe/messages': typeof UUniverseMessagesRoute
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/research': typeof UUniverseResearchRoute
+  '/u/$universe/rewards': typeof UUniverseRewardsRoute
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe': typeof UUniverseIndexRoute
   '/u/$universe/alliance/create': typeof UUniverseAllianceCreateRoute
@@ -497,6 +505,7 @@ export interface FileRoutesById {
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/reports': typeof UUniverseReportsRouteWithChildren
   '/u/$universe/research': typeof UUniverseResearchRoute
+  '/u/$universe/rewards': typeof UUniverseRewardsRoute
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe/': typeof UUniverseIndexRoute
   '/u/$universe/alliance_/create': typeof UUniverseAllianceCreateRoute
@@ -557,6 +566,7 @@ export interface FileRouteTypes {
     | '/u/$universe/overview'
     | '/u/$universe/reports'
     | '/u/$universe/research'
+    | '/u/$universe/rewards'
     | '/u/$universe/settings'
     | '/u/$universe/'
     | '/u/$universe/alliance/create'
@@ -612,6 +622,7 @@ export interface FileRouteTypes {
     | '/u/$universe/messages'
     | '/u/$universe/overview'
     | '/u/$universe/research'
+    | '/u/$universe/rewards'
     | '/u/$universe/settings'
     | '/u/$universe'
     | '/u/$universe/alliance/create'
@@ -668,6 +679,7 @@ export interface FileRouteTypes {
     | '/u/$universe/overview'
     | '/u/$universe/reports'
     | '/u/$universe/research'
+    | '/u/$universe/rewards'
     | '/u/$universe/settings'
     | '/u/$universe/'
     | '/u/$universe/alliance_/create'
@@ -856,6 +868,13 @@ declare module '@tanstack/react-router' {
       path: '/research'
       fullPath: '/u/$universe/research'
       preLoaderRoute: typeof UUniverseResearchRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/rewards': {
+      id: '/u/$universe/rewards'
+      path: '/rewards'
+      fullPath: '/u/$universe/rewards'
+      preLoaderRoute: typeof UUniverseRewardsRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/settings': {
@@ -1251,6 +1270,7 @@ interface UUniverseRouteChildren {
   UUniverseOverviewRoute: typeof UUniverseOverviewRoute
   UUniverseReportsRoute: typeof UUniverseReportsRouteWithChildren
   UUniverseResearchRoute: typeof UUniverseResearchRoute
+  UUniverseRewardsRoute: typeof UUniverseRewardsRoute
   UUniverseSettingsRoute: typeof UUniverseSettingsRoute
   UUniverseIndexRoute: typeof UUniverseIndexRoute
   UUniverseAllianceCreateRoute: typeof UUniverseAllianceCreateRoute
@@ -1291,6 +1311,7 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseOverviewRoute: UUniverseOverviewRoute,
   UUniverseReportsRoute: UUniverseReportsRouteWithChildren,
   UUniverseResearchRoute: UUniverseResearchRoute,
+  UUniverseRewardsRoute: UUniverseRewardsRoute,
   UUniverseSettingsRoute: UUniverseSettingsRoute,
   UUniverseIndexRoute: UUniverseIndexRoute,
   UUniverseAllianceCreateRoute: UUniverseAllianceCreateRoute,

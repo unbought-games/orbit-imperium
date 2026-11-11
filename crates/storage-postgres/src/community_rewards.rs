@@ -5,6 +5,21 @@ use orbit_engine::*;
 use serde_json::{Value, json};
 use sqlx::Row;
 
+const SNAPSHOT_RECIPIENTS: &str = r#"
+SELECT jsonb_build_object('subject',i.subject,
+    'joined_at',to_char(to_timestamp(h.joined_at::double precision/1000) AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'last_qualifying_date',to_char(max(p.date),'YYYY-MM-DD'))
+FROM jsonb_to_recordset($3::jsonb) AS h(player uuid,joined_at bigint)
+JOIN empire_profiles e ON e.player=h.player
+JOIN orbit_profiles o ON o.id=e.profile
+JOIN oidc_identity i ON i.account=o.account AND i.issuer=$1
+JOIN community_participation p ON p.account=o.account
+    AND p.recorded_at<=$2::text::timestamptz
+    AND p.date>(($2::text::timestamptz-interval '30 days') AT TIME ZONE 'UTC')::date
+WHERE NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=o.account)
+GROUP BY i.subject,h.joined_at ORDER BY i.subject LIMIT 1001
+"#;
+
 async fn utc_now(tx: &mut Tx<'_>) -> Result<(String, String), StoreError> {
     sqlx::query_as("SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD')")
         .fetch_one(&mut **tx).await.map_err(db_error)
@@ -22,7 +37,7 @@ async fn enqueue(
     Ok(())
 }
 async fn human_account(tx: &mut Tx<'_>, player: PlayerId) -> Result<Option<AccountId>, StoreError> {
-    let id: Option<uuid::Uuid> = sqlx::query_scalar("SELECT p.account FROM empire_profiles e JOIN orbit_profiles p ON p.id=e.profile WHERE e.player=$1 AND p.account IS NOT NULL AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=p.account)")
+    let id: Option<uuid::Uuid> = sqlx::query_scalar("SELECT p.account FROM empire_profiles e JOIN orbit_profiles p ON p.id=e.profile WHERE e.player=$1 AND p.account IS NOT NULL AND EXISTS(SELECT 1 FROM oidc_identity i WHERE i.account=p.account) AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=p.account)")
         .bind(player.0).fetch_optional(&mut **tx).await.map_err(db_error)?;
     Ok(id.map(AccountId))
 }
@@ -33,7 +48,7 @@ pub(crate) async fn capture_first_join(
     account: AccountId,
     historical: bool,
 ) -> Result<(), StoreError> {
-    let row = sqlx::query("SELECT count(*) AS empires,min(e.joined_at) AS first_at,count(*) FILTER(WHERE e.joined_at IS NULL) AS unknown FROM empire_profiles e JOIN orbit_profiles p ON p.id=e.profile WHERE p.account=$1 AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=p.account)")
+    let row = sqlx::query("SELECT count(*) AS empires,min(e.joined_at) AS first_at,count(*) FILTER(WHERE e.joined_at IS NULL) AS unknown FROM empire_profiles e JOIN orbit_profiles p ON p.id=e.profile WHERE p.account=$1 AND EXISTS(SELECT 1 FROM oidc_identity i WHERE i.account=p.account) AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=p.account)")
         .bind(account.0).fetch_one(&mut **tx).await.map_err(db_error)?;
     let first: Option<i64> = row.try_get("first_at").map_err(db_error)?;
     let unknown: i64 = row.try_get("unknown").map_err(db_error)?;
@@ -380,8 +395,33 @@ impl PgStore {
         } else {
             // History intervals survive leaving/disbanding. Only real retained
             // participation before the first crossing can qualify a recipient.
-            let recipients: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('subject',i.subject,'joined_at',to_char(to_timestamp(h.valid_from::double precision/1000) AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),'last_qualifying_date',to_char(max(p.date),'YYYY-MM-DD')) FROM alliance_affiliation_history h JOIN empire_profiles e ON e.player=h.player JOIN orbit_profiles o ON o.id=e.profile JOIN oidc_identity i ON i.account=o.account AND i.issuer=$1 JOIN community_participation p ON p.account=o.account AND p.universe=h.universe AND p.recorded_at<=$5::text::timestamptz AND p.date>(($5::text::timestamptz-interval '30 days') AT TIME ZONE 'UTC')::date WHERE h.universe=$2 AND h.epoch=$3 AND h.alliance=$4 AND to_timestamp(h.valid_from::double precision/1000)<=$5::text::timestamptz-interval '14 days' AND (h.valid_until IS NULL OR to_timestamp(h.valid_until::double precision/1000)>$5::text::timestamptz) AND $5::text::timestamptz<=now() AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=o.account) GROUP BY i.subject,h.valid_from ORDER BY i.subject LIMIT 1001")
-                .bind(issuer).bind(request.alliance.universe_id).bind(request.alliance.epoch_id).bind(request.alliance.alliance_id).bind(&request.reached_at).fetch_all(&mut *tx).await.map_err(db_error)?;
+            let histories=sqlx::query("SELECT h.id,h.player,h.alliance,h.valid_from,h.valid_until,EXISTS(SELECT 1 FROM empire_history e WHERE e.player=h.player AND e.at_ms=h.valid_from AND e.kind IN ('AllianceLeft','AllianceKicked','AllianceDisbanded') AND e.facts->>'alliance'=h.alliance::text) AS departure FROM alliance_affiliation_history h WHERE h.universe=$1 AND h.epoch=$2 AND h.alliance=$3 ORDER BY h.player,h.valid_from,h.id")
+                .bind(request.alliance.universe_id).bind(request.alliance.epoch_id).bind(request.alliance.alliance_id).fetch_all(&mut *tx).await.map_err(db_error)?;
+            let intervals = histories
+                .into_iter()
+                .map(|r| {
+                    Ok(AllianceAffiliationInterval {
+                        player: r.try_get("player").map_err(db_error)?,
+                        alliance: r.try_get("alliance").map_err(db_error)?,
+                        sequence: r.try_get("id").map_err(db_error)?,
+                        from: r.try_get("valid_from").map_err(db_error)?,
+                        until: r.try_get("valid_until").map_err(db_error)?,
+                        departure_boundary: r.try_get("departure").map_err(db_error)?,
+                    })
+                })
+                .collect::<Result<Vec<_>, StoreError>>()?;
+            let at = community_timestamp_millis(&request.reached_at).ok_or(StoreError::Conflict)?;
+            let tenures = community_alliance_tenures(intervals, at)
+                .into_iter()
+                .map(|(player, joined_at)| json!({"player":player,"joined_at":joined_at}))
+                .collect::<Vec<_>>();
+            let recipients: Vec<Value> = sqlx::query_scalar(SNAPSHOT_RECIPIENTS)
+                .bind(issuer)
+                .bind(&request.reached_at)
+                .bind(json!(tenures))
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(db_error)?;
             if recipients.len() > 1000 {
                 return Err(StoreError::Conflict);
             }
@@ -473,25 +513,39 @@ impl PgStore {
     ) -> Result<Value, StoreError> {
         let mut tx = self.pool.begin().await.map_err(db_error)?;
         alliance_lock(&mut tx, alliance).await?;
-        let identity:Option<(String,uuid::Uuid)>=sqlx::query_as("SELECT i.subject,m.player FROM oidc_identity i JOIN universe_memberships m ON m.account=i.account WHERE i.account=$1 AND i.issuer=$2 AND m.universe=$3 AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=i.account)")
+        let identity:Option<(String,Option<uuid::Uuid>)>=sqlx::query_as("SELECT i.subject,m.player FROM oidc_identity i LEFT JOIN universe_memberships m ON m.account=i.account AND m.universe=$3 WHERE i.account=$1 AND i.issuer=$2 AND NOT EXISTS(SELECT 1 FROM bot_participation b WHERE b.account=i.account)")
             .bind(account.0).bind(issuer).bind(alliance.universe_id).fetch_optional(&mut *tx).await.map_err(db_error)?;
         let (subject, player) = identity.ok_or(StoreError::NotFound)?;
-        let state = crate::alliances::persistence::load(
+        let state = match crate::alliances::persistence::load(
             &mut tx,
             UniverseId(alliance.universe_id),
             Epoch(alliance.epoch_id),
             alliance.alliance_id,
         )
-        .await?;
-        if !state
-            .permissions(PlayerId(player))
-            .contains(&orbit_engine::alliances::AlliancePermission::ManageRecruitment)
+        .await
         {
-            return Err(StoreError::NotFound);
-        }
-        let (at,until):(String,String)=sqlx::query_as("SELECT to_char(now() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),to_char((now()+interval '2 minutes') AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')").fetch_one(&mut *tx).await.map_err(db_error)?;
-        let key = format!("invitation-permission:{}:{operation}", account.0);
-        enqueue(&mut tx,account,&key,"alliance_permission",&at,json!({"alliance":alliance,"can_recruit":true,"is_member":true,"public_name":state.name,"evidence_ref":key,"valid_until":until})).await?;
+            Ok(state) => Some(state),
+            Err(StoreError::NotFound) => None,
+            Err(error) => return Err(error),
+        };
+        let is_member = state
+            .as_ref()
+            .is_some_and(|s| player.is_some_and(|p| s.is_member(PlayerId(p))));
+        let can_recruit = state.as_ref().is_some_and(|s| {
+            player.is_some_and(|p| {
+                s.permissions(PlayerId(p))
+                    .contains(&orbit_engine::alliances::AlliancePermission::ManageRecruitment)
+            })
+        });
+        // This is a new permission decision, not a replay of the client's action.
+        // Keep negative evidence too: Accounts can replay an already committed
+        // action before checking it, or reject a genuinely new unauthorized one.
+        let checked_at = crate::ordering::now(&mut tx).await?;
+        let (at,until):(String,String)=sqlx::query_as("SELECT to_char(to_timestamp($1::double precision/1000) AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'),to_char((to_timestamp($1::double precision/1000)+interval '2 minutes') AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')")
+            .bind(checked_at).fetch_one(&mut *tx).await.map_err(db_error)?;
+        let evidence = format!("invitation-check:{}", uuid::Uuid::new_v4());
+        let key = format!("invitation-permission:{}:{operation}:{evidence}", account.0);
+        enqueue(&mut tx,account,&key,"alliance_permission",&at,json!({"alliance":alliance,"can_recruit":can_recruit,"is_member":is_member,"public_name":state.map(|s|s.name).unwrap_or_else(||"Unavailable alliance".into()),"evidence_ref":evidence,"valid_until":until})).await?;
         let event:Value=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'subject',$2::text,'kind',kind,'occurred_at',occurred_at,'payload',payload) FROM community_outbox WHERE fact_key=$1")
             .bind(key).bind(subject).fetch_one(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;

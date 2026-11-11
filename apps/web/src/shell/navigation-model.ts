@@ -16,6 +16,7 @@ export const navigationGroups = [
 ] satisfies { title: string; pages: Page[] }[]
 export const pageTitles: Record<Page, string> = {
   menu: 'Menu',
+  rewards: 'Rewards',
   overview: 'Empire',
   briefing: 'Briefing',
   resources: 'Resources',

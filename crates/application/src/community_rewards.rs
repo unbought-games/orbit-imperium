@@ -136,6 +136,46 @@ pub fn community_onboarding_complete(
             .iter()
             .all(|objective| completed(&objective.id))
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AllianceAffiliationInterval {
+    pub player: uuid::Uuid,
+    pub alliance: uuid::Uuid,
+    pub sequence: i64,
+    pub from: i64,
+    pub until: Option<i64>,
+    pub departure_boundary: bool,
+}
+/// Derive continuous membership from historical display-name intervals. An
+/// explicit departure starts a new tenure even if rejoining at the same clock.
+pub fn community_alliance_tenures(
+    mut intervals: Vec<AllianceAffiliationInterval>,
+    at: i64,
+) -> Vec<(uuid::Uuid, i64)> {
+    intervals.sort_by_key(|i| (i.player, i.from, i.sequence));
+    let mut tenures: Vec<AllianceAffiliationInterval> = vec![];
+    for interval in intervals {
+        if let Some(previous) = tenures.last_mut()
+            && previous.player == interval.player
+            && previous.alliance == interval.alliance
+            && previous.until == Some(interval.from)
+            && !interval.departure_boundary
+        {
+            previous.until = interval.until;
+        } else {
+            tenures.push(interval);
+        }
+    }
+    tenures
+        .into_iter()
+        .filter(|i| {
+            i.from <= at
+                && i.until.is_none_or(|until| until > at)
+                && at.saturating_sub(i.from) >= 14 * 86_400_000
+        })
+        .map(|i| (i.player, i.from))
+        .collect()
+}
 #[cfg(test)]
 mod onboarding_tests {
     use super::*;
@@ -189,5 +229,70 @@ mod tests {
         assert_eq!(community_retry_seconds(0), 5);
         assert_eq!(community_retry_seconds(3), 40);
         assert_eq!(community_retry_seconds(u32::MAX), 3600);
+    }
+}
+
+#[cfg(test)]
+mod tenure_tests {
+    use super::*;
+    #[test]
+    fn renames_preserve_tenure_and_later_departure_preserves_crossing_recipient() {
+        let player = uuid::Uuid::from_u128(1);
+        let alliance = uuid::Uuid::from_u128(2);
+        let day = 86_400_000;
+        let intervals = vec![
+            AllianceAffiliationInterval {
+                player,
+                alliance,
+                sequence: 1,
+                from: 0,
+                until: Some(25 * day),
+                departure_boundary: false,
+            },
+            AllianceAffiliationInterval {
+                player,
+                alliance,
+                sequence: 2,
+                from: 25 * day,
+                until: Some(31 * day),
+                departure_boundary: false,
+            },
+        ];
+        assert_eq!(
+            community_alliance_tenures(intervals.clone(), 30 * day),
+            vec![(player, 0)]
+        );
+        assert!(community_alliance_tenures(intervals, 31 * day).is_empty());
+    }
+    #[test]
+    fn gaps_and_explicit_same_clock_rejoins_start_a_new_tenure() {
+        let player = uuid::Uuid::from_u128(1);
+        let alliance = uuid::Uuid::from_u128(2);
+        let day = 86_400_000;
+        for (next, explicit) in [(26 * day, true), (27 * day, false)] {
+            let intervals = vec![
+                AllianceAffiliationInterval {
+                    player,
+                    alliance,
+                    sequence: 1,
+                    from: 0,
+                    until: Some(26 * day),
+                    departure_boundary: false,
+                },
+                AllianceAffiliationInterval {
+                    player,
+                    alliance,
+                    sequence: 2,
+                    from: next,
+                    until: None,
+                    departure_boundary: explicit,
+                },
+            ];
+            assert!(community_alliance_tenures(intervals.clone(), 30 * day).is_empty());
+            assert_eq!(
+                community_alliance_tenures(intervals, 42 * day),
+                vec![(player, next)]
+            );
+        }
     }
 }

@@ -1,3 +1,4 @@
+import { useRewardsVisible } from '../shell/community-rewards-context'
 import { useTutorial } from './tutorial/use-tutorial'
 import {
   briefingEntryAvailable,
@@ -22,15 +23,21 @@ import styles from './menu.module.css'
 
 export function MenuScreen() {
   const { universeName, view, body, model, logout } = useGameScreen()
+  const rewardsVisible = useRewardsVisible()
   const { data: tutorial } = useTutorial()
   const visible = tutorialPages(tutorial, view.protocol === 4 ? view : null)
   const more = tutorialMorePages(visible)
   const groups: { title: string; pages: Page[] }[] = [
     ...navigationGroups.map((group) => ({
       ...group,
-      pages: group.pages.filter(
+      pages: [
+        ...group.pages,
+        ...(group.title === 'Community' && rewardsVisible
+          ? ['rewards' as const]
+          : []),
+      ].filter(
         (p) =>
-          (!visible || visible.has(p)) &&
+          (p === 'rewards' || !visible || visible.has(p)) &&
           (p !== 'briefing' || briefingEntryAvailable(tutorial, view.protocol)),
       ),
     })),

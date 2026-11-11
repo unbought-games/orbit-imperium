@@ -6,12 +6,16 @@ import { commandId } from './command-id'
 type S = components['schemas']
 export async function presentationCatalog(
   signal?: AbortSignal,
+  alliance?: string,
 ): Promise<S['AlliancePresentationCatalog']> {
-  const response = await fetch('/api/alliance-presentation/catalog', {
-    signal,
-    credentials: 'same-origin',
-    cache: 'no-store',
-  })
+  const response = await fetch(
+    `/api/alliance-presentation/catalog${alliance ? `?alliance=${encodeURIComponent(alliance)}` : ''}`,
+    {
+      signal,
+      credentials: 'same-origin',
+      cache: 'no-store',
+    },
+  )
   if (!response.ok)
     throw new Error('Alliance customization is unavailable. Please try again.')
   return validate('AlliancePresentationCatalog', await response.json())

@@ -1,3 +1,4 @@
+import { useRewardsVisible } from './community-rewards-context'
 import { useTutorial } from '../features/tutorial/use-tutorial'
 import {
   briefingEntryAvailable,
@@ -63,6 +64,7 @@ export function Navigation({
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
+  const rewardsVisible = useRewardsVisible()
   const { data: tutorial } = useTutorial()
   const visiblePages = tutorialPages(
     tutorial,
@@ -93,7 +95,13 @@ export function Navigation({
         tutorial?.beginner === false)
     )
       return null
-    if (!inMore && p !== 'menu' && visiblePages && !visiblePages.has(p))
+    if (
+      !inMore &&
+      p !== 'menu' &&
+      p !== 'rewards' &&
+      visiblePages &&
+      !visiblePages.has(p)
+    )
       return null
     const working = !primary && activity.has(p)
     const blocked = !primary && !working ? blockers.get(p) : undefined
@@ -245,6 +253,7 @@ export function Navigation({
           {sidebarDestination('alliance')}
           {sidebarDestination('messages')}
           {sidebarDestination('high-scores')}
+          {rewardsVisible && sidebarDestination('rewards')}
           {morePages.length > 0 && (
             <Disclosure
               className={styles.more}

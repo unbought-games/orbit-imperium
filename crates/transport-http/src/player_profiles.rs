@@ -210,24 +210,20 @@ impl AccountProfiles {
             .collect::<BTreeSet<_>>()
             .into_iter()
             .collect();
-        let cached = self
-            .cache
-            .resolve(&subjects, unbought_auth::now, |subjects| {
-                let client = self.client.clone();
-                async move { client.batch(&subjects).await }
-            })
-            .await;
-        let mut observations = BTreeMap::new();
-        if let Some(rewards) = &self.rewards {
-            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-            for subject in &subjects {
-                if let Ok(Some(observation)) =
-                    tokio::time::timeout_at(deadline, rewards.resolve(subject)).await
-                {
-                    observations.insert(subject.clone(), observation);
+        let (cached, observations) = tokio::join!(
+            self.cache
+                .resolve(&subjects, unbought_auth::now, |subjects| {
+                    let client = self.client.clone();
+                    async move { client.batch(&subjects).await }
+                }),
+            async {
+                if let Some(rewards) = &self.rewards {
+                    rewards.resolve_many(&subjects).await
+                } else {
+                    BTreeMap::new()
                 }
-            }
-        }
+            },
+        );
         let now = unbought_auth::now();
         identities
             .into_iter()
@@ -245,6 +241,10 @@ impl AccountProfiles {
                     .as_ref()
                     .and_then(|s| observations.get(s))
                     .cloned();
+                let expires_at = source.map_or(now + 30, Cached::expires_at);
+                let expires_at = account_cosmetics
+                    .as_ref()
+                    .map_or(expires_at, |o| o.expires_at.min(expires_at));
                 PlayerDisplay {
                     marks: None,
                     account_cosmetics,
@@ -259,7 +259,7 @@ impl AccountProfiles {
                     supporter_tier: profile.and_then(|p| p.supporter_tier),
                     observed_at: source
                         .map_or(if remote { 0 } else { now }, |entry| entry.observed_at),
-                    expires_at: source.map_or(now + 30, Cached::expires_at),
+                    expires_at,
                 }
             })
             .collect()
@@ -416,11 +416,15 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             a.visual_identity = None;
         }
     }
-    Ok(bound_api::no_store_json(PlayerProfiles {
-        binding,
-        request_id,
-        players,
-    }))
+    super::alliance_media::response(
+        &s,
+        &h,
+        PlayerProfiles {
+            binding,
+            request_id,
+            players,
+        },
+    )
 }
 
 /// Decoration only after archive authorization; never resolves arbitrary subjects.

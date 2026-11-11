@@ -32,4 +32,5 @@ export const pageIcons: Partial<Record<Page, LucideIcon>> = {
   reports: Mail,
   'combat-simulator': Swords,
   settings: Settings,
+  rewards: Trophy,
 }

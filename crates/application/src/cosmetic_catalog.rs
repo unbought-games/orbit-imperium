@@ -205,42 +205,88 @@ impl AccountCosmeticObservation {
     }
 }
 
+pub fn community_timestamp_millis(value: &str) -> Option<i64> {
+    chrono::DateTime::parse_from_rfc3339(value)
+        .ok()
+        .map(|v| v.timestamp_millis())
+}
 pub fn community_timestamp_seconds(value: &str) -> Option<i64> {
     chrono::DateTime::parse_from_rfc3339(value)
         .ok()
         .map(|v| v.timestamp())
 }
-pub fn account_cosmetic_observation(
-    owner: &serde_json::Value,
-    now: i64,
-) -> Option<AccountCosmeticObservation> {
-    if owner["contract_version"].as_u64() != Some(1) {
-        return None;
-    }
-    let observed = community_timestamp_seconds(owner["observed_at"].as_str()?)?;
-    let expires = community_timestamp_seconds(owner["expires_at"].as_str()?)?;
-    let membership_expires =
-        community_timestamp_seconds(owner["membership"]["expires_at"].as_str()?)?;
-    if observed > now + 5 || expires <= now || membership_expires <= now {
-        return None;
-    }
-    let mut items = Vec::new();
-    for item in owner["collection"].as_array()? {
-        let reward = &item["reward"];
-        if item["permanent"] == true && reward["scope"] == "account" {
-            let kind = reward["kind"].as_str()?;
-            let id = reward["item_id"].as_str()?;
-            if valid_symbol_id(id) && matches!(kind, "dye" | "finish" | "effect" | "title" | "mark")
-            {
-                items.push((kind.into(), id.into()));
-            }
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommunityObservations {
+    pub contract_version: u32,
+    pub observed_at: String,
+    pub observations: Vec<CommunityObservation>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommunityObservation {
+    pub subject: String,
+    pub expires_at: String,
+    pub membership: CommunityMembershipAccess,
+    pub entitlements: Vec<CommunityEntitlement>,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommunityMembershipAccess {
+    pub active: bool,
+}
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommunityEntitlement {
+    pub kind: String,
+    pub item_id: String,
+}
+impl CommunityObservations {
+    pub fn validate(
+        self,
+        subjects: &[String],
+        now: i64,
+    ) -> Option<BTreeMap<String, AccountCosmeticObservation>> {
+        let observed = community_timestamp_seconds(&self.observed_at)?;
+        if self.contract_version != 1 || observed > now + 5 || self.observations.len() > 100 {
+            return None;
         }
+        let mut result = BTreeMap::new();
+        let mut seen = std::collections::BTreeSet::new();
+        for observation in self.observations {
+            if !subjects.contains(&observation.subject) || !seen.insert(observation.subject.clone())
+            {
+                return None;
+            }
+            let expires = community_timestamp_seconds(&observation.expires_at)?
+                .min(observed + 60)
+                .min(now + 60);
+            if expires <= now {
+                continue;
+            }
+            let items = observation
+                .entitlements
+                .into_iter()
+                .filter(|e| {
+                    valid_symbol_id(&e.item_id)
+                        && matches!(
+                            e.kind.as_str(),
+                            "dye" | "finish" | "effect" | "title" | "mark"
+                        )
+                })
+                .map(|e| (e.kind, e.item_id))
+                .collect();
+            result.insert(
+                observation.subject,
+                AccountCosmeticObservation {
+                    expires_at: expires,
+                    membership: observation.membership.active,
+                    items,
+                },
+            );
+        }
+        Some(result)
     }
-    Some(AccountCosmeticObservation {
-        expires_at: expires.min(membership_expires).min(now + 60),
-        membership: owner["membership"]["active"].as_bool()?,
-        items,
-    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -439,20 +485,25 @@ mod tests {
         assert!(named_color_edits(None, &recipe()));
     }
     #[test]
-    fn observations_only_include_permanent_account_items_and_expire() {
-        let owner = json!({"contract_version":1,"observed_at":"2026-01-01T00:00:00Z","expires_at":"2026-01-01T00:10:00Z","membership":{"active":true,"expires_at":"2026-01-01T00:05:00Z"},"collection":[
-            {"permanent":true,"reward":{"scope":"account","kind":"dye","item_id":"fixture-blue"}},
-            {"permanent":false,"reward":{"scope":"account","kind":"dye","item_id":"fixture-copper"}},
-            {"permanent":true,"reward":{"scope":"game","kind":"title","item_id":"fixture-title"}}
-        ]});
+    fn observations_are_thin_subject_bound_and_expiring() {
+        let value = json!({"contract_version":1,"observed_at":"2026-01-01T00:00:00Z","observations":[{"subject":"owner","expires_at":"2026-01-01T00:10:00Z","membership":{"active":true},"entitlements":[{"kind":"dye","item_id":"fixture-blue"}]}]});
         let now = 1767225600;
-        let observation = account_cosmetic_observation(&owner, now).unwrap();
-        assert_eq!(observation.expires_at, now + 60);
+        let parse = || serde_json::from_value::<CommunityObservations>(value.clone()).unwrap();
+        let observations = parse().validate(&["owner".into()], now).unwrap();
+        assert_eq!(observations["owner"].expires_at, now + 60);
         assert_eq!(
-            observation.items,
+            observations["owner"].items,
             vec![("dye".into(), "fixture-blue".into())]
         );
-        assert!(observation.membership);
-        assert!(account_cosmetic_observation(&owner, now + 600).is_none());
+        assert!(parse().validate(&["another-owner".into()], now).is_none());
+        assert!(
+            parse()
+                .validate(&["owner".into()], now + 600)
+                .unwrap()
+                .is_empty()
+        );
+        let mut private = value;
+        private["renown"] = json!(123);
+        assert!(serde_json::from_value::<CommunityObservations>(private).is_err());
     }
 }

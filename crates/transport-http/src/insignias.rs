@@ -190,6 +190,8 @@ fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppe
 }
 #[derive(Serialize)]
 struct Symbol {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    requirement: Option<CatalogAccess>,
     group: InsigniaGroup,
     id: String,
     name: String,
@@ -294,7 +296,7 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
         .insignia_library(b)
         .await
         .map_err(ServiceError::from)?;
-    Ok(bound_api::no_store_json(project_state(
+    let mut state = project_state(
         b,
         q.context.request_id,
         library,
@@ -302,7 +304,13 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
         customization.policy,
         evidence,
         unbought_auth::now(),
-    )))
+    );
+    if headers.get("x-orbit-catalog").is_none_or(|h| h != "4") {
+        for symbol in &mut state.catalog {
+            symbol.requirement = None;
+        }
+    }
+    Ok(bound_api::no_store_json(state))
 }
 fn project_state(
     b: Binding,
@@ -330,6 +338,11 @@ fn project_state(
         .symbols()
         .iter()
         .map(|item| Symbol {
+            requirement: Some(item.access.unwrap_or(if item.supporter {
+                CatalogAccess::Membership
+            } else {
+                CatalogAccess::Free
+            })),
             group: item.group,
             id: item.id.clone(),
             name: item.name.clone(),

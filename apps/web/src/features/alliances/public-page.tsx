@@ -1,3 +1,5 @@
+import { AllianceHonors } from '../rewards/recognition'
+import { rememberInvitation } from '../../client-model/community-invitation'
 import { useEffect } from 'react'
 import { LoadingRegion } from '../../ui/loading-region'
 import { recruitmentEntryPath } from '../../client-model/recruitment'
@@ -20,6 +22,16 @@ export function PublicAlliancePage({
     invitation,
   )
   useEffect(() => {
+    const code = new URLSearchParams(location.search).get('rewards_invitation')
+    if (code && data?.summary.id) {
+      try {
+        rememberInvitation(localStorage, code)
+      } catch {
+        /* Optional local recall; acceptance is still explicit. */
+      }
+    }
+  }, [data?.summary.id])
+  useEffect(() => {
     document.title = `${data?.summary.name ?? 'Alliance'} · Orbit Imperium`
   }, [data?.summary.name])
   const destination = data
@@ -31,6 +43,7 @@ export function PublicAlliancePage({
         {data ? (
           <PublicAllianceTemplate
             data={data}
+            honors={<AllianceHonors alliance={data.summary.id} />}
             signinHref={`/login?${new URLSearchParams({ redirect: destination })}`}
             action={
               <ButtonLinkAnchor

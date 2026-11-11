@@ -1,0 +1,145 @@
+{
+  "contract_version": 1,
+  "program": {
+    "id": "sample-program",
+    "version": "v1",
+    "status": "active",
+    "start_at": "2026-01-01T00:00:00Z"
+  },
+  "observed_at": "2026-11-11T00:00:00Z",
+  "expires_at": "2099-01-01T00:00:00Z",
+  "renown": {
+    "amount": {
+      "numerator": "2",
+      "denominator": "1"
+    },
+    "display": "2",
+    "history": []
+  },
+  "next_milestone": null,
+  "milestones": [
+    {
+      "id": "sample-step",
+      "threshold": 2,
+      "selections": 2,
+      "remaining": 2,
+      "unlocked": true,
+      "bonus": null,
+      "bonus_awarded": false,
+      "offer_version": "sample-offer-v1",
+      "options": [
+        {
+          "id": "fixture:dye:ochre",
+          "name": "Sample ochre",
+          "kind": "dye",
+          "scope": "account",
+          "item_id": "sample-ochre",
+          "access": "free",
+          "tier": "standard",
+          "surfaces": [
+            "emblem"
+          ],
+          "supported_games": [
+            "orbit-imperium"
+          ],
+          "preview": {
+            "color": "#AA7733"
+          },
+          "payload": {
+            "type": "dye",
+            "dye_id": "sample-ochre"
+          },
+          "owned": false,
+          "supported": true
+        },
+        {
+          "id": "fixture:dye:teal",
+          "name": "Sample teal",
+          "kind": "dye",
+          "scope": "account",
+          "item_id": "sample-teal",
+          "access": "free",
+          "tier": "standard",
+          "surfaces": [
+            "emblem"
+          ],
+          "supported_games": [
+            "orbit-imperium"
+          ],
+          "preview": {
+            "color": "#337777"
+          },
+          "payload": {
+            "type": "dye",
+            "dye_id": "sample-teal"
+          },
+          "owned": false,
+          "supported": true
+        },
+        {
+          "id": "fixture:dye:slate",
+          "name": "Sample slate",
+          "kind": "dye",
+          "scope": "account",
+          "item_id": "sample-slate",
+          "access": "free",
+          "tier": "standard",
+          "surfaces": [
+            "emblem"
+          ],
+          "supported_games": [
+            "orbit-imperium"
+          ],
+          "preview": {
+            "color": "#556677"
+          },
+          "payload": {
+            "type": "dye",
+            "dye_id": "sample-slate"
+          },
+          "owned": false,
+          "supported": true
+        }
+      ],
+      "category": "renown",
+      "label": null
+    }
+  ],
+  "claims": [],
+  "collection": [],
+  "membership": {
+    "active": false,
+    "sources": [],
+    "observed_at": "2026-11-11T00:00:00Z",
+    "expires_at": "2099-01-01T00:00:00Z",
+    "available_seconds": 0,
+    "saved_seconds": 0,
+    "active_until": null,
+    "supporter_tier": null,
+    "awards": []
+  },
+  "invitations": [
+    {
+      "code": "sample-invite",
+      "kind": "personal",
+      "game_id": null,
+      "alliance": null
+    }
+  ],
+  "referrals": [],
+  "gifts": [],
+  "capabilities": {
+    "claim": true,
+    "invite": true,
+    "verify_discord": false,
+    "full_selection_url": "https://accounts.example.test/account/rewards"
+  },
+  "games": [
+    {
+      "id": "orbit-imperium",
+      "name": "Orbit Imperium",
+      "launch_url": "https://orbit.example.test/",
+      "linked": true
+    }
+  ]
+}

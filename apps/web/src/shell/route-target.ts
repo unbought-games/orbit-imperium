@@ -167,6 +167,12 @@ export function routeTarget(
             search: {},
           })
         : linkOptions({ to: '/u/$universe/high-scores', params, search: {} })
+    case 'rewards':
+      return linkOptions({
+        to: '/u/$universe/rewards',
+        params,
+        search: body ? { body } : {},
+      })
     case 'menu':
       return linkOptions({
         to: '/u/$universe/menu',

@@ -256,5 +256,29 @@ async fn evidence_recovery_and_award_sources_are_transactional() {
             .await,
         Err(StoreError::Conflict)
     ));
+
+    let empty_snapshot = AllianceSnapshotRequest {
+        contract_version: 1,
+        operation_id: format!("empty-snapshot:{}", Uuid::new_v4()),
+        alliance: callback.alliance.clone(),
+        honor_id: "fixture-empty-honor".into(),
+        reached_at: "2026-01-02T00:00:00Z".into(),
+    };
+    let empty = store
+        .community_alliance_snapshot("https://accounts.test/api/auth", &empty_snapshot)
+        .await
+        .unwrap();
+    assert_eq!(
+        empty["recipients"],
+        serde_json::json!([]),
+        "a valid empty eligibility set is durable, not a delivery failure"
+    );
+    assert_eq!(
+        store
+            .community_alliance_snapshot("https://accounts.test/api/auth", &empty_snapshot)
+            .await
+            .unwrap(),
+        empty
+    );
     pool.close().await;
 }

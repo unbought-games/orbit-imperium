@@ -158,7 +158,7 @@ for (const width of [1440, 390]) {
     await panel.getByRole('button', { name: 'Starwing', exact: true }).click()
     await expect(
       panel.getByRole('button', {
-        name: 'Test star · Supporter access required',
+        name: 'Test star · Membership access required',
       }),
     ).toBeDisabled()
     await panel.getByLabel('Symbol color', { exact: true }).fill('#f2ca74')
@@ -195,7 +195,7 @@ for (const width of [1440, 390]) {
     state.unknown = true
     await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
     await expect(panel).toContainText(
-      'Supporter verification is temporarily unavailable',
+      'Membership verification is temporarily unavailable',
     )
     await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
       'Aurelian expedition',
@@ -511,7 +511,7 @@ for (const width of [1440, 390]) {
     await panel.getByRole('button', { name: 'New design' }).click()
     await expect(panel.getByRole('button', { name: 'Test star', exact: true })).toHaveCount(0)
     await expect(panel.getByRole('button', { name: 'Wayfinder', exact: true })).toBeVisible()
-    await expect(panel).not.toContainText('Supporters can use additional symbols')
+    await expect(panel).not.toContainText('Members can use additional symbols')
     await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 72))
     await diagnosticScreenshot(page, { path: `test-results/catalog-community-${width}x1000.png` })
     const id = '00000000-0000-4000-8000-000000000031'

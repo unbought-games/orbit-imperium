@@ -27,6 +27,7 @@ pub struct Integration {
     callback_digest: [u8; 32],
     origin: String,
     permits: Semaphore,
+    callback_permits: Semaphore,
 }
 impl Integration {
     pub fn from_env(
@@ -85,7 +86,7 @@ impl Integration {
             catalog: customization.map(|c| c.catalog.clone()),
             catalog_status: json!({"contract_version":1,"catalog_pin":std::env::var("ORBIT_COSMETIC_CATALOG").ok(),
                 "catalog_version":if customization.is_some_and(|c|!c.catalog.dyes().is_empty() || !c.catalog.treatments().is_empty()) {3} else {2},
-                "catalog_ready":customization.is_some(),"catalog_versions":customization.and_then(|c|c.catalog.catalog_version.clone()).into_iter().collect::<Vec<_>>(),"supported_account_kinds":["dye","finish","effect","title"],
+                "catalog_ready":customization.is_some(),"catalog_versions":customization.and_then(|c|c.catalog.catalog_version.clone()).into_iter().collect::<Vec<_>>(),"supported_account_kinds":["dye","finish","effect","title","mark"],
                 "supported_renderers":["plain","surface","light","interaction"],"recipe_version":3,
                 "evidence_worker":true,"delivery_worker":true}),
             endpoint: endpoint.trim_end_matches('/').into(),
@@ -97,6 +98,7 @@ impl Integration {
             callback_digest,
             origin,
             permits: Semaphore::new(4),
+            callback_permits: Semaphore::new(4),
         })))
     }
     pub fn router(self: &Arc<Self>) -> Router {
@@ -150,6 +152,8 @@ impl Integration {
         if !status.is_success() {
             return Err(match status.as_u16() {
                 400 => StatusCode::BAD_REQUEST,
+                403 => StatusCode::FORBIDDEN,
+                404 => StatusCode::NOT_FOUND,
                 409 => StatusCode::CONFLICT,
                 429 => StatusCode::TOO_MANY_REQUESTS,
                 _ => StatusCode::SERVICE_UNAVAILABLE,
@@ -427,7 +431,7 @@ async fn invitation_evidence(
 ) -> Result<impl axum::response::IntoResponse, StatusCode> {
     callback_authorized(&s, &h)?;
     let _permit = s
-        .permits
+        .callback_permits
         .try_acquire()
         .map_err(|_| StatusCode::TOO_MANY_REQUESTS)?;
     Ok(response(
@@ -444,7 +448,7 @@ async fn alliance_snapshot(
 ) -> Result<impl axum::response::IntoResponse, StatusCode> {
     callback_authorized(&s, &h)?;
     let _permit = s
-        .permits
+        .callback_permits
         .try_acquire()
         .map_err(|_| StatusCode::TOO_MANY_REQUESTS)?;
     Ok(response(
@@ -463,7 +467,7 @@ async fn service_status(
     let runtime = s.store.community_status().await.map_err(store_status)?;
     let versions = s.catalog_status["catalog_versions"].clone();
     Ok(response(
-        json!({"contract_version":1,"ready":s.catalog_status["catalog_ready"]==true && runtime["worker_ready"]==true && runtime["worker_connected"]==true && versions.as_array().is_some_and(|v|!v.is_empty()),"catalog_versions":versions,"supported_kinds":["dye","finish","effect","title","emblem","emblem_set"],"deployment_id":s.deployment_id}),
+        json!({"contract_version":1,"ready":s.catalog_status["catalog_ready"]==true && runtime["worker_ready"]==true && runtime["worker_connected"]==true && versions.as_array().is_some_and(|v|!v.is_empty()),"catalog_versions":versions,"supported_kinds":["dye","finish","effect","title","mark","emblem","emblem_set"],"deployment_id":s.deployment_id}),
     ))
 }
 async fn service_diagnostics(
@@ -575,7 +579,10 @@ async fn alliance_honors(
             mark.and_then(|m| m.concrete_grant())
                 .filter(|(kind, _)| *kind == "insignia")
                 .and_then(|(_, id)| catalog.get(id))
-                .map(|item| item.asset_url())
+                .map(|item| format!(
+                    "/api/alliance-presentation/symbols/{}?alliance={alliance}",
+                    item.id
+                ))
         );
     }
     Ok(response(json!({"alliance_id":alliance,"honors":honors})))

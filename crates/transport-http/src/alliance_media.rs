@@ -293,12 +293,27 @@ pub(super) async fn catalog<S: GameStore + IdentityStore>(
 pub(super) async fn symbol<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     Path(id): Path<String>,
+    axum::extract::Query(query): axum::extract::Query<CollectiveQuery>,
 ) -> Result<Response, Problem> {
     let c = customization(&s)?;
+    let grants = if let Some(alliance) = query.alliance {
+        s.updates
+            .alliance_cosmetic_grants(alliance)
+            .await
+            .map_err(ServiceError::from)?
+    } else {
+        vec![]
+    };
+    let grants = c.catalog.collective_grants(&grants);
     let item = c
         .catalog
         .get(&id)
-        .filter(|i| !i.supporter && i.access.is_none_or(|a| a == CatalogAccess::Free))
+        .filter(|i| {
+            (!i.supporter && i.access.is_none_or(|a| a == CatalogAccess::Free))
+                || grants
+                    .iter()
+                    .any(|(kind, item)| kind == "insignia" && item == &i.id)
+        })
         .ok_or(ServiceError::NotFound)?;
     let bytes = c
         .assets
@@ -436,4 +451,81 @@ pub(super) async fn effective_identity<S: IdentityStore>(
             identity.crest = AllianceCrest::default();
         }
     }
+}
+
+/// Transport-only rendering data is never accepted as authored alliance state.
+pub(super) fn response<S>(
+    s: &HttpState<S>,
+    headers: &HeaderMap,
+    value: impl serde::Serialize,
+) -> Result<Response, Problem> {
+    let mut value = serde_json::to_value(value).map_err(|_| ServiceError::InvariantFailure)?;
+    fn project(
+        value: &mut serde_json::Value,
+        c: &Customization,
+        current: Option<Uuid>,
+        new_reader: bool,
+    ) {
+        let alliance = value
+            .get("summary")
+            .and_then(|s| s.get("id"))
+            .or_else(|| value.get("visual_identity").and_then(|_| value.get("id")))
+            .and_then(|v| v.as_str())
+            .and_then(|id| Uuid::parse_str(id).ok())
+            .or(current);
+        if let Some(crest) = value.get_mut("crest")
+            && crest["kind"] == "composition"
+            && let Ok(recipe) = serde_json::from_value::<InsigniaRecipe>(crest["recipe"].clone())
+            && recipe.version == 3
+        {
+            if new_reader {
+                let recipe = if c.catalog.get(&recipe.symbol).is_none() {
+                    InsigniaRecipe::default()
+                } else {
+                    recipe
+                };
+                let mut appearance = serde_json::to_value(c.appearance(recipe)).unwrap();
+                if let Some(id) = alliance {
+                    let public_url = |symbol: &str| {
+                        format!("/api/alliance-presentation/symbols/{symbol}?alliance={id}")
+                    };
+                    appearance["asset_url"] = serde_json::json!(public_url(
+                        appearance["recipe"]["symbol"].as_str().unwrap_or("compass")
+                    ));
+                    if let Some(layers) = appearance["layers"].as_array_mut() {
+                        for layer in layers {
+                            layer["asset_url"] = serde_json::json!(public_url(
+                                layer["symbol"].as_str().unwrap_or("compass")
+                            ));
+                        }
+                    }
+                }
+                crest["appearance"] = appearance;
+            } else {
+                crest["recipe"] = serde_json::to_value(InsigniaRecipe::default()).unwrap();
+            }
+        }
+        match value {
+            serde_json::Value::Object(map) => {
+                for (_, child) in map.iter_mut() {
+                    project(child, c, alliance, new_reader)
+                }
+            }
+            serde_json::Value::Array(array) => {
+                for child in array {
+                    project(child, c, alliance, new_reader)
+                }
+            }
+            _ => {}
+        }
+    }
+    if let Some(c) = &s.customization {
+        project(
+            &mut value,
+            c,
+            None,
+            headers.get("x-orbit-insignia").is_some_and(|h| h == "5"),
+        );
+    }
+    Ok(bound_api::no_store_json(value))
 }

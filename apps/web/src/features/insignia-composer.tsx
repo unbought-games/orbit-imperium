@@ -1,3 +1,4 @@
+import { CosmeticColor, CosmeticTreatments } from './rewards/cosmetic-controls'
 import type { InsigniaRecipe, InsigniaState } from '../adapters/insignias'
 import {
   backgroundShapes,
@@ -28,13 +29,16 @@ export function InsigniaComposer({
   busy: boolean
   onChange: (r: InsigniaRecipe) => void
 }) {
-  const advanced = compositionAvailable(snapshot, now)
+  const advanced =
+    !!snapshot.dyes?.length || compositionAvailable(snapshot, now)
   return (
     <div className={styles.composer}>
       <p>
-        {snapshot.policy === 'unrestricted'
-          ? 'Choose a center, an accent, and up to two stripes. Make each group your own color.'
-          : 'Choose one center and one accent. Supporters can add up to two stripes and use three element colors.'}
+        {snapshot.dyes?.length
+          ? 'Choose your elements, then combine accessible dyes with a finish and an effect. Permanent rewards remain usable without membership.'
+          : snapshot.policy === 'unrestricted'
+            ? 'Choose a center, an accent, and up to two stripes. Make each group your own color.'
+            : 'Choose one center and one accent. Members can add up to two stripes and use three element colors.'}
       </p>
       <fieldset disabled={busy}>
         <legend>Background shape</legend>
@@ -83,9 +87,9 @@ export function InsigniaComposer({
             {group === 'center'
               ? 'Center'
               : group === 'stripes'
-                ? snapshot.policy === 'unrestricted'
+                ? snapshot.policy === 'unrestricted' || snapshot.dyes?.length
                   ? 'Stripes · Up to 2'
-                  : 'Stripes · Supporter · Up to 2'
+                  : 'Stripes · Membership · Up to 2'
                 : 'Accents'}
           </legend>
           <div
@@ -129,7 +133,13 @@ export function InsigniaComposer({
                       size="medium"
                     />
                     <span>{item.name}</span>
-                    {item.supporter && <small>Supporter</small>}
+                    {item.supporter && (
+                      <small>
+                        {snapshot.library.permanent_symbols.includes(item.id)
+                          ? 'Yours permanently'
+                          : 'Membership'}
+                      </small>
+                    )}
                   </button>
                 )
               })}
@@ -139,68 +149,66 @@ export function InsigniaComposer({
           )}
         </fieldset>
       ))}
-      <div className={styles.colors}>
+      <div
+        className={styles.colors}
+        data-named-colors={snapshot.dyes?.length ? true : undefined}
+      >
         {advanced ? (
           elementGroups.map((group) => (
-            <label key={group}>
-              {group === 'center'
-                ? 'Center'
-                : group === 'stripes'
-                  ? 'Stripe'
-                  : 'Accent'}{' '}
-              color
-              <input
-                type="color"
-                aria-label={`${group === 'center' ? 'Center' : group === 'stripes' ? 'Stripe' : 'Accent'} color`}
+            <div key={group}>
+              <CosmeticColor
+                snapshot={snapshot}
+                label={`${group === 'center' ? 'Center' : group === 'stripes' ? 'Stripe' : 'Accent'} color`}
+                value={groupColor(snapshot, recipe, group) ?? recipe.foreground}
                 disabled={
                   busy || groupColor(snapshot, recipe, group) === undefined
                 }
-                value={groupColor(snapshot, recipe, group) ?? recipe.foreground}
-                aria-describedby={
-                  groupColor(snapshot, recipe, group) === undefined
-                    ? `insignia-${group}-color-help`
-                    : undefined
-                }
-                onChange={(e) =>
-                  onChange(
-                    setElementColor(snapshot, recipe, group, e.target.value),
-                  )
+                onChange={(color) =>
+                  onChange({
+                    ...setElementColor(snapshot, recipe, group, color),
+                    version: snapshot.dyes?.length ? 3 : recipe.version,
+                  })
                 }
               />
               {groupColor(snapshot, recipe, group) === undefined && (
-                <small id={`insignia-${group}-color-help`}>
-                  Select an element to set its color.
-                </small>
+                <small>Select an element to set its color.</small>
               )}
-            </label>
+            </div>
           ))
         ) : (
-          <label>
-            Element color
-            <input
-              type="color"
-              disabled={busy}
-              value={recipe.foreground}
-              onChange={(e) =>
-                onChange(
-                  setElementColor(snapshot, recipe, null, e.target.value),
-                )
-              }
-            />
-          </label>
-        )}
-        <label>
-          Background color
-          <input
-            type="color"
+          <CosmeticColor
+            snapshot={snapshot}
+            label="Element color"
+            value={recipe.foreground}
             disabled={busy}
-            value={recipe.background}
-            onChange={(e) =>
-              onChange({ ...recipe, background: e.target.value })
+            onChange={(color) =>
+              onChange({
+                ...setElementColor(snapshot, recipe, null, color),
+                version: snapshot.dyes?.length ? 3 : recipe.version,
+              })
             }
           />
-        </label>
+        )}
+        <CosmeticColor
+          snapshot={snapshot}
+          label="Background color"
+          value={recipe.background}
+          disabled={busy}
+          onChange={(color) =>
+            onChange({
+              ...recipe,
+              version: snapshot.dyes?.length ? 3 : recipe.version,
+              background: color,
+            })
+          }
+        />
       </div>
+      <CosmeticTreatments
+        snapshot={snapshot}
+        recipe={recipe}
+        busy={busy}
+        onChange={onChange}
+      />
       {!advanced && (
         <Button
           type="button"

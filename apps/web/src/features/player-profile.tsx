@@ -1,3 +1,4 @@
+import { RecognitionMark } from './rewards/recognition'
 import { usePlayerIdentity } from '../shell/player-profiles-context'
 import { useIdentityTitle } from '../client-model/use-identity-title'
 import type { ReactNode, Ref } from 'react'
@@ -95,6 +96,13 @@ export function PlayerProfile({
               : 'Public profile unavailable.'}
         </p>
       )}
+      {!historical && profile?.marks?.length ? (
+        <div aria-label="Contribution honors">
+          {profile.marks.map((mark) => (
+            <RecognitionMark key={mark.id} mark={mark} />
+          ))}
+        </div>
+      ) : null}
       {profile?.supporter_tier && (
         <p className={styles.subtitle}>
           Supports Orbit Imperium. Supporter status does not affect gameplay

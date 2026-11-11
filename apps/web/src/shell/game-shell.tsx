@@ -113,7 +113,7 @@ function GameShellContent() {
     available &&
     !params.coordinates &&
     !!body &&
-    (page === 'menu'
+    (page === 'menu' || page === 'rewards'
       ? !params.body && !search.body
       : !params.body || search.body !== undefined || canonicalPage !== page)
   // Default context is recorded once; later view changes must not silently select another planet.
@@ -127,7 +127,7 @@ function GameShellContent() {
           route.item ?? undefined,
         ),
         search:
-          page === 'menu'
+          page === 'menu' || page === 'rewards'
             ? { ...withoutBodySearch(location.search), body: body.id }
             : withoutBodySearch(location.search),
         hash: location.hash,
@@ -211,7 +211,7 @@ function GameShellContent() {
       ...(available
         ? {
             search:
-              page === 'menu'
+              page === 'menu' || page === 'rewards'
                 ? { ...withoutBodySearch(location.search), body: id }
                 : withoutBodySearch(location.search),
             hash: location.hash,
@@ -227,6 +227,7 @@ function GameShellContent() {
       page === 'fleets' ||
       (page === 'dispatch' && view.protocol === 4) ||
       page === 'settings' ||
+      page === 'rewards' ||
       page === 'menu' ||
       page === 'alliance' ||
       page === 'alliance-create' ||

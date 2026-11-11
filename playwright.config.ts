@@ -33,6 +33,7 @@ const uiFiles = [
   'terraformer.spec.ts',
   'industrial-buildings.spec.ts',
   'insignias.spec.ts',
+  'community-rewards.spec.ts',
   'desktop-navigation.spec.ts',
   'planet-abandonment.spec.ts',
   'mission-fleets.spec.ts',

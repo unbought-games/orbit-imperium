@@ -257,7 +257,7 @@ pub(super) async fn rankings<S: GameStore + IdentityStore>(
             }
         }
     }
-    Ok(no_store_json(result))
+    super::alliance_media::response(&s, &h, result)
 }
 
 pub(super) async fn report_share<S: GameStore + IdentityStore>(

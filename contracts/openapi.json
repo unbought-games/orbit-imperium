@@ -22178,7 +22178,7 @@
           },
           "asset_url": {
             "type": "string",
-            "pattern": "^/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg$"
+            "pattern": "^(?:/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg|/api/alliance-presentation/symbols/[a-z0-9-]{1,64}\\?alliance=[0-9a-f-]{36})$"
           },
           "layers": {
             "type": "array",
@@ -22298,6 +22298,13 @@
               "center",
               "stripes",
               "accents"
+            ]
+          },
+          "requirement": {
+            "enum": [
+              "free",
+              "membership",
+              "earned"
             ]
           }
         },
@@ -23067,7 +23074,7 @@
           },
           "asset_url": {
             "type": "string",
-            "pattern": "^/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg$"
+            "pattern": "^(?:/api/media/insignias/[a-z0-9-]{1,64}/[0-9a-f]{64}\\.svg|/api/alliance-presentation/symbols/[a-z0-9-]{1,64}\\?alliance=[0-9a-f-]{36})$"
           }
         },
         "required": [
@@ -25301,6 +25308,9 @@
               },
               "recipe": {
                 "$ref": "#/components/schemas/InsigniaRecipe"
+              },
+              "appearance": {
+                "$ref": "#/components/schemas/InsigniaAppearance"
               }
             },
             "required": [
@@ -26277,6 +26287,12 @@
                         "preview": {
                           "type": "object",
                           "properties": {
+                            "palette_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                            },
                             "media_id": {
                               "type": "string",
                               "minLength": 1,
@@ -26735,6 +26751,16 @@
                         "owned": {
                           "type": "boolean"
                         },
+                        "owned_components": {
+                          "maxItems": 4,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          }
+                        },
                         "supported": {
                           "type": "boolean"
                         }
@@ -26937,6 +26963,12 @@
                       "preview": {
                         "type": "object",
                         "properties": {
+                          "palette_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200,
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                          },
                           "media_id": {
                             "type": "string",
                             "minLength": 1,
@@ -27395,6 +27427,16 @@
                       "owned": {
                         "type": "boolean"
                       },
+                      "owned_components": {
+                        "maxItems": 4,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                        }
+                      },
                       "supported": {
                         "type": "boolean"
                       }
@@ -27467,7 +27509,8 @@
                   "enum": [
                     "account",
                     "pending",
-                    "delivered"
+                    "delivered",
+                    "revoked"
                   ]
                 }
               },
@@ -27574,6 +27617,12 @@
                         "preview": {
                           "type": "object",
                           "properties": {
+                            "palette_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                            },
                             "media_id": {
                               "type": "string",
                               "minLength": 1,
@@ -28064,7 +28113,8 @@
                   "enum": [
                     "account",
                     "pending",
-                    "delivered"
+                    "delivered",
+                    "revoked"
                   ]
                 }
               },
@@ -28075,6 +28125,37 @@
                 "membership_access",
                 "supported",
                 "delivery"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "launch_url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "linked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "launch_url",
+                "linked"
               ],
               "additionalProperties": false
             }
@@ -28455,6 +28536,7 @@
           "milestones",
           "claims",
           "collection",
+          "games",
           "membership",
           "invitations",
           "referrals",

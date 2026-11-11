@@ -69,7 +69,7 @@ export function usePresentationEditor(detail: AllianceDetail, run: Run) {
     let active = true
     setLoading(true)
     void Promise.all([
-      presentationCatalog(abort.signal),
+      presentationCatalog(abort.signal, detail.summary.id),
       allianceMedia(binding, csrf, detail.summary.id, { type: 'List' }),
     ])
       .then(([c, l]) => {

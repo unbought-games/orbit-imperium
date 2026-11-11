@@ -9446,6 +9446,8 @@ export interface components {
             access: components["schemas"]["InsigniaAccess"];
             /** @enum {string} */
             group?: "legacy" | "center" | "stripes" | "accents";
+            /** @enum {unknown} */
+            requirement?: "free" | "membership" | "earned";
         };
         InsigniaState: {
             binding: components["schemas"]["Binding"];
@@ -10117,6 +10119,7 @@ export interface components {
             /** @constant */
             kind: "composition";
             recipe: components["schemas"]["InsigniaRecipe"];
+            appearance?: components["schemas"]["InsigniaAppearance"];
         } | {
             /** @constant */
             kind: "upload";
@@ -10333,6 +10336,7 @@ export interface components {
                     surfaces: string[];
                     supported_games: string[];
                     preview: {
+                        palette_id?: string;
                         media_id?: string;
                         color?: string;
                         renderer?: string;
@@ -10420,6 +10424,7 @@ export interface components {
                         content_id: string;
                     };
                     owned: boolean;
+                    owned_components?: string[];
                     supported: boolean;
                 }[];
             } | null;
@@ -10453,6 +10458,7 @@ export interface components {
                     surfaces: string[];
                     supported_games: string[];
                     preview: {
+                        palette_id?: string;
                         media_id?: string;
                         color?: string;
                         renderer?: string;
@@ -10540,6 +10546,7 @@ export interface components {
                         content_id: string;
                     };
                     owned: boolean;
+                    owned_components?: string[];
                     supported: boolean;
                 }[];
             }[];
@@ -10550,7 +10557,7 @@ export interface components {
                 /** Format: date-time */
                 claimed_at: string;
                 /** @enum {string} */
-                delivery: "account" | "pending" | "delivered";
+                delivery: "account" | "pending" | "delivered" | "revoked";
             }[];
             collection: {
                 reward_id: string;
@@ -10569,6 +10576,7 @@ export interface components {
                     surfaces: string[];
                     supported_games: string[];
                     preview: {
+                        palette_id?: string;
                         media_id?: string;
                         color?: string;
                         renderer?: string;
@@ -10660,7 +10668,14 @@ export interface components {
                 membership_access: boolean;
                 supported: boolean;
                 /** @enum {string} */
-                delivery: "account" | "pending" | "delivered";
+                delivery: "account" | "pending" | "delivered" | "revoked";
+            }[];
+            games: {
+                id: string;
+                name: string;
+                /** Format: uri */
+                launch_url: string;
+                linked: boolean;
             }[];
             membership: {
                 active: boolean;

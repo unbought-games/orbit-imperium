@@ -122,5 +122,11 @@ Authenticated `/api/v1/rewards/marks` returns only the owner's installed marks a
 observation expiry. Public `/api/v1/rewards/alliances/{id}/honors` returns collective
 award history and supported rendering definitions, without member activity or
 recipient snapshots. Profile clients opt into permitted account honors with
-`X-Orbit-Rewards: 1`. Mark capability is withheld from activation until its frontend
-renderer is integrated and verified.
+`X-Orbit-Rewards: 1`. The supported mark renderer is part of the negotiated cosmetic reader. Its data
+is limited to published honors, never private contribution totals.
+
+
+Profile rendering uses the thin `/service/observations` endpoint in batches of at
+most 100 subjects. It receives only bounded membership access and account-owned
+cosmetic references, without balances, offers, gifts, financial data or history.
+The full owner endpoint serves the authenticated rewards destination separately.

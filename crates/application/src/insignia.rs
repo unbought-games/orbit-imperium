@@ -379,6 +379,7 @@ pub fn valid_insignia(recipe: &InsigniaRecipe) -> bool {
         && recipe.effect.as_ref().is_none_or(|id| valid_symbol_id(id))
         && match (&recipe.layers, recipe.version) {
             (None, 1) => recipe.shape.is_none(),
+            (None, 3) => true,
             (Some(layers), 2 | 3) => {
                 recipe.symbol == "compass"
                     && layers.len() <= 4
@@ -652,7 +653,10 @@ pub fn named_color_edits(previous: Option<&InsigniaRecipe>, next: &InsigniaRecip
                 &layer.color,
                 previous
                     .and_then(|p| p.layers.as_ref())
-                    .and_then(|ls| ls.iter().find(|l| l.symbol == layer.symbol))
+                    .and_then(|ls| {
+                        ls.iter()
+                            .find(|l| l.symbol == layer.symbol || l.color == layer.color)
+                    })
                     .map(|l| l.color.as_str()),
             )
         })

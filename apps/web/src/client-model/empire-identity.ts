@@ -24,9 +24,9 @@ export function effectiveTitle(
 export function titleAvailability(choice: TitleChoice['availability']) {
   return {
     available: 'Available',
-    supporter_required: 'Supporter title',
+    supporter_required: 'Membership title',
     earned_required: 'Earned through achievements',
-    unavailable: 'Supporter status temporarily unavailable',
+    unavailable: 'Membership status temporarily unavailable',
     not_installed: 'Not installed on this server',
   }[choice]
 }

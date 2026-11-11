@@ -3,6 +3,7 @@ import { universeSlug } from '../client-model/universe-name'
 import type { BoundView } from '../client-model/commands'
 export type Page =
   | 'menu'
+  | 'rewards'
   | 'overview'
   | 'briefing'
   | 'resources'
@@ -142,6 +143,7 @@ export function resolveDestination(
   if (
     !body &&
     page !== 'menu' &&
+    page !== 'rewards' &&
     page !== 'settings' &&
     page !== 'combat-simulator' &&
     page !== 'high-scores' &&

@@ -1,3 +1,4 @@
+import { CosmeticColor, CosmeticTreatments } from '../rewards/cosmetic-controls'
 import { useState, type ReactNode } from 'react'
 import type { components } from '../../contracts'
 import type { AllianceDetail } from '../../client-model/alliances'
@@ -6,7 +7,10 @@ import { Button, ButtonLinkAnchor } from '../../ui/button'
 import { Field, Input, Select } from '../../ui/form'
 import { LoadingRegion } from '../../ui/loading-region'
 import { InsigniaComposer } from '../insignia-composer'
-import { layeredRecipe } from '../../client-model/insignia-composer'
+import {
+  layeredRecipe,
+  compositionAppearance,
+} from '../../client-model/insignia-composer'
 import { AllianceCrestMark, AllianceArtwork } from './visual-identity'
 import type { Run } from './shared'
 import { ConfirmationButton } from '../../ui/confirmation-button'
@@ -153,11 +157,23 @@ function IdentityFields({ editor }: { editor: Editor }) {
   const snapshot: S['InsigniaState'] = {
     binding: view.binding,
     request_id: view.binding.player,
-    library: { designs: [], equipped: null, permanent_symbols: [] },
+    library: {
+      designs: [],
+      equipped: null,
+      permanent_symbols: editor.catalog?.symbols.map((s) => s.id) ?? [],
+    },
     catalog: editor.catalog?.symbols ?? [],
+    dyes: editor.catalog?.dyes?.map((d) => ({
+      ...d,
+      availability: 'available' as const,
+    })),
+    treatments: editor.catalog?.treatments?.map((t) => ({
+      ...t,
+      availability: 'available' as const,
+    })),
     policy: 'unrestricted',
     appearance: null,
-    expires_at: 0,
+    expires_at: Number.MAX_SAFE_INTEGER,
     composition_access: 'available',
   }
   function setRecipe(next: S['InsigniaRecipe']) {
@@ -199,30 +215,81 @@ function IdentityFields({ editor }: { editor: Editor }) {
         <div className={styles.colorFields}>
           <Field>
             Primary color
-            <input
-              type="color"
-              value={identity.primary}
-              onChange={(e) => set({ primary: e.target.value })}
-            />
+            {snapshot.dyes?.length ? (
+              <Select
+                value={identity.primary}
+                onChange={(e) => set({ primary: e.target.value })}
+              >
+                {!snapshot.dyes.some(
+                  (d) => d.access === 'free' && d.color === identity.primary,
+                ) && (
+                  <option value={identity.primary}>Saved theme color</option>
+                )}
+                {snapshot.dyes
+                  .filter((d) => d.access === 'free')
+                  .map((d) => (
+                    <option key={d.id} value={d.color}>
+                      {d.name}
+                    </option>
+                  ))}
+              </Select>
+            ) : (
+              <input
+                type="color"
+                value={identity.primary}
+                onChange={(e) => set({ primary: e.target.value })}
+              />
+            )}
           </Field>
           <Field>
             Secondary color
-            <input
-              type="color"
-              value={identity.secondary}
-              onChange={(e) => set({ secondary: e.target.value })}
-            />
+            {snapshot.dyes?.length ? (
+              <Select
+                value={identity.secondary}
+                onChange={(e) => set({ secondary: e.target.value })}
+              >
+                {!snapshot.dyes.some(
+                  (d) => d.access === 'free' && d.color === identity.secondary,
+                ) && (
+                  <option value={identity.secondary}>Saved theme color</option>
+                )}
+                {snapshot.dyes
+                  .filter((d) => d.access === 'free')
+                  .map((d) => (
+                    <option key={d.id} value={d.color}>
+                      {d.name}
+                    </option>
+                  ))}
+              </Select>
+            ) : (
+              <input
+                type="color"
+                value={identity.secondary}
+                onChange={(e) => set({ secondary: e.target.value })}
+              />
+            )}
           </Field>
         </div>
       </Section>
       <Section
         title="Crest"
-        description="Build an emblem or upload your own. All alliance customization is free."
+        description="Build an emblem, equip earned alliance distinctions, or upload your own. Recruitment honors belong to the alliance."
       >
         <div className={styles.crestPreview}>
           <AllianceCrestMark
             universe={view.binding.universe}
-            identity={identity}
+            identity={
+              recipe
+                ? {
+                    ...identity,
+                    crest: {
+                      kind: 'composition',
+                      recipe,
+                      appearance: compositionAppearance(snapshot, recipe),
+                    },
+                  }
+                : identity
+            }
           />
           <Select
             aria-label="Crest source"
@@ -260,7 +327,7 @@ function IdentityFields({ editor }: { editor: Editor }) {
         </div>
         {recipe ? (
           <>
-            {recipe.version === 1 ? (
+            {recipe.layers === undefined ? (
               <>
                 <Field>
                   Symbol
@@ -280,27 +347,39 @@ function IdentityFields({ editor }: { editor: Editor }) {
                   </Select>
                 </Field>
                 <div className={styles.colorFields}>
-                  <Field>
-                    Symbol color
-                    <input
-                      type="color"
-                      value={recipe.foreground}
-                      onChange={(e) =>
-                        setRecipe({ ...recipe, foreground: e.target.value })
-                      }
-                    />
-                  </Field>
-                  <Field>
-                    Background color
-                    <input
-                      type="color"
-                      value={recipe.background}
-                      onChange={(e) =>
-                        setRecipe({ ...recipe, background: e.target.value })
-                      }
-                    />
-                  </Field>
+                  <CosmeticColor
+                    snapshot={snapshot}
+                    label="Symbol color"
+                    value={recipe.foreground}
+                    disabled={editor.working}
+                    onChange={(color) =>
+                      setRecipe({
+                        ...recipe,
+                        version: snapshot.dyes?.length ? 3 : recipe.version,
+                        foreground: color,
+                      })
+                    }
+                  />
+                  <CosmeticColor
+                    snapshot={snapshot}
+                    label="Background color"
+                    value={recipe.background}
+                    disabled={editor.working}
+                    onChange={(color) =>
+                      setRecipe({
+                        ...recipe,
+                        version: snapshot.dyes?.length ? 3 : recipe.version,
+                        background: color,
+                      })
+                    }
+                  />
                 </div>
+                <CosmeticTreatments
+                  snapshot={snapshot}
+                  recipe={recipe}
+                  busy={editor.working}
+                  onChange={setRecipe}
+                />
                 <Button
                   variant="secondary"
                   type="button"
