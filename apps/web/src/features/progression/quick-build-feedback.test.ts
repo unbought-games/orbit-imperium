@@ -122,3 +122,36 @@ it('waits for an authoritative completion instead of advancing the level or repl
   state.view!.bodies[0].levels.SolarPlant = 2
   expect(quickBuildFeedback(state, target, gesture).phase).toBe('hammer')
 })
+
+it('keeps late confirmation pending after acknowledgment and changes to countdown only on confirmed work', () => {
+  const state = fixture('pending')
+  state.view!.constructions = []
+  const attempt = state.attempts.get('build')!
+  state.intents.set('build', {
+    quote: {
+      profile_hash: 'hash',
+      terms_hash: 'hash',
+      cost: { metal: '0', crystal: '0', deuterium: '0' },
+      duration: 60000,
+      target_level: 2,
+      fuel: '0',
+      capacity: '0',
+      maximum_payload: '0',
+    },
+    baseRevision: '1',
+    submittedAt: 100,
+  })
+  expect(quickBuildFeedback(state, target, gesture).phase).toBe('check')
+  state.now = 3100
+  expect(quickBuildFeedback(state, target, gesture).phase).toBe('pending')
+  state.now = 8100
+  expect(quickBuildFeedback(state, target, gesture).phase).toBe('pending')
+  state.view!.constructions = fixture().view!.constructions
+  state.attempts.set('build', {
+    ...attempt,
+    status: 'committed',
+    reconciled: true,
+  })
+  state.intents.clear()
+  expect(quickBuildFeedback(state, target, gesture).phase).toBe('countdown')
+})

@@ -369,10 +369,11 @@ test('rejected cancellation keeps construction active and every upgrade blocked'
   }
 })
 
-for (const kind of ['construction', 'research'] as const) {
+for (const kind of ['construction'] as const) {
   // work-cancellation.test.ts owns all elapsed boundaries and long-duration text.
-  // Keep native focus, Escape, confirmation and rejection for both actual consumers.
-  for (const elapsed of kind === 'construction' ? [29_999, 30_000] : [30_000]) {
+  // Components own both consumers' safe focus, Escape and rejection.
+  // Keep the application command and click-time confirmation-boundary wiring.
+  for (const elapsed of [29_999]) {
     test(`${kind} cancellation uses server elapsed ${elapsed}ms`, async ({ page }) => {
       await page.clock.install({ time: now - 60_000 })
       await page.clock.pauseAt(now)

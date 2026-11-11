@@ -60,6 +60,7 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  resources: async () => (await import('./resources.scenarios')).ResourcesScenario,
   'profile-display': async () =>
     (await import('./profile-display.scenarios')).ProfileDisplayScenario,
   'hud-toasts': async () =>
