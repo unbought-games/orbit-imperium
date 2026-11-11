@@ -134,6 +134,8 @@ export function ReleaseAnnouncement({
                 ref={arrow}
                 context={floating.context}
                 fill="var(--surface-raised)"
+                stroke="var(--border-accent)"
+                strokeWidth={1}
               />
               <span className={styles.label}>
                 <Sparkles size={16} aria-hidden="true" /> Now available
