@@ -231,9 +231,33 @@ pub(super) async fn rankings<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, c.binding)?;
-    Ok(no_store_json(
-        s.game.rankings(principal(&session, u)?, c).await?,
-    ))
+    let mut result = s.game.rankings(principal(&session, u)?, c).await?;
+    for a in &mut result.alliances {
+        if let Some(identity) = &mut a.alliance.visual_identity {
+            super::alliance_media::effective_identity(&s, identity);
+        }
+    }
+    for p in &mut result.players {
+        if let Some(a) = &mut p.alliance
+            && let Some(identity) = &mut a.visual_identity
+        {
+            super::alliance_media::effective_identity(&s, identity);
+        }
+    }
+    if h.get("x-orbit-alliance-presentation")
+        .and_then(|v| v.to_str().ok())
+        != Some("1")
+    {
+        for a in &mut result.alliances {
+            a.alliance.visual_identity = None;
+        }
+        for p in &mut result.players {
+            if let Some(a) = &mut p.alliance {
+                a.visual_identity = None;
+            }
+        }
+    }
+    Ok(no_store_json(result))
 }
 
 pub(super) async fn report_share<S: GameStore + IdentityStore>(

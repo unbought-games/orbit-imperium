@@ -6,6 +6,7 @@ pub(super) async fn enroll<S: IdentityStore>(
     session: AuthenticatedSession,
     universe: UniverseId,
     source: IpAddr,
+    recruitment: Option<RecruitmentIntent>,
 ) -> Result<Response, Problem> {
     if session.memberships.iter().any(|m| m.universe == universe) {
         return Ok(StatusCode::NO_CONTENT.into_response());
@@ -46,7 +47,7 @@ pub(super) async fn enroll<S: IdentityStore>(
     }
     // Storage rechecks the current admission policy atomically with enrollment.
     s.updates
-        .enroll_oidc(session.account, policy)
+        .enroll_oidc_with_recruitment(session.account, policy, recruitment)
         .await
         .map_err(ServiceError::from)?;
     Ok(StatusCode::NO_CONTENT.into_response())

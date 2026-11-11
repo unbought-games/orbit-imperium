@@ -144,3 +144,6 @@ pub use mission_sites::*;
 mod site_encounter;
 
 pub use site_encounter::validate_site_execution;
+
+mod cosmetic_recipe;
+pub use cosmetic_recipe::*;

@@ -1,3 +1,4 @@
+import { recruitmentFixture, alliance } from './fixtures/recruitment'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
@@ -71,7 +72,7 @@ for (const width of [1280, 390]) {
     })
     await page.route('**/arrival', (route) => {
       const { action } = route.request().postDataJSON()
-      arrival.push(action)
+      if (action.type !== 'Load') arrival.push(action)
       if (action.type === 'Complete') pending = false
       return route.fulfill({ json: { pending } })
     })
@@ -144,3 +145,102 @@ for (const width of [1280, 390]) {
     ])
   })
 }
+
+// Recruitment intent comes from the persisted arrival response, without URL state.
+test('a new commander applies during arrival and reaches Briefing while approval is pending', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  let pending = true
+  const fixture = await recruitmentFixture(page, {
+    arrivalPending: () => pending,
+  })
+  await page.route('**/api/v4/empire-profiles/**', (route) =>
+    route.fulfill({
+      json: {
+        player: binding.player,
+        profile: binding.account,
+        universe: binding.universe,
+        epoch: binding.epoch,
+        universe_name: 'Andromeda',
+        username: 'fixture',
+        display: null,
+        revision: 1,
+        owner: true,
+        removed: false,
+        closed: false,
+        public: false,
+        entries: [],
+        next: null,
+      },
+    }),
+  )
+  await page.route('**/arrival', (route) => {
+    const { action } = route.request().postDataJSON()
+    if (action.type === 'Complete') pending = false
+    return route.fulfill({
+      json: { pending, recruitment: { alliance, invitation: null } },
+    })
+  })
+  await withFixtureResponse(
+    page,
+    (r) =>
+      r.url().endsWith('/arrival') &&
+      r.request().postDataJSON().action.type === 'Load',
+    () => page.goto(`/u/andromeda/b/${body.id}/overview`),
+  )
+  const scene = page.getByRole('main', { name: 'Arrival' })
+  await scene.getByRole('button', { name: 'That’s me', exact: true }).click()
+  await scene.getByRole('button', { name: 'That’s it', exact: true }).click()
+  await scene
+    .getByRole('textbox', {
+      name: 'Every world deserves a name. What should we call it?',
+      exact: true,
+    })
+    .fill('Terra')
+  await withFixtureResponse(
+    page,
+    (r) => r.url().endsWith(`/alliances/${alliance}`),
+    () => scene.getByRole('button', { name: 'Name it', exact: true }).click(),
+  )
+  await expect(
+    scene.getByRole('heading', { name: 'Starlight Assembly', exact: true }),
+  ).toBeVisible()
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await diagnosticScreenshot(page, {
+      path: 'test-results/alliance-arrival-390x844.png',
+    })
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await diagnosticScreenshot(page, {
+      path: 'test-results/alliance-arrival-1440x1000.png',
+    })
+    await page.setViewportSize({ width: 390, height: 844 })
+  }
+  await scene
+    .getByRole('textbox', { name: 'Introduce yourself', exact: true })
+    .fill('Ready to explore together.')
+  await withFixtureResponse(
+    page,
+    (r) => r.url().endsWith('/alliances/commands'),
+    () =>
+      scene
+        .getByRole('button', { name: 'Send application', exact: true })
+        .click(),
+  )
+  await expect(
+    scene.getByText(
+      'Your application is with Starlight Assembly. You can start building while they review it.',
+      { exact: true },
+    ),
+  ).toBeVisible()
+  await diagnosticScreenshot(page, {
+    path: 'test-results/alliance-arrival-pending-390x844.png',
+  })
+  await scene.getByRole('button', { name: 'Continue', exact: true }).click()
+  await scene.getByRole('button', { name: 'Begin', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/briefing$`))
+  expect(fixture.commands.map((c) => c.action)).toEqual([
+    { type: 'Apply', alliance, text: 'Ready to explore together.' },
+  ])
+})

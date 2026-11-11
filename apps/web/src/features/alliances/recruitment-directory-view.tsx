@@ -1,3 +1,4 @@
+import { AllianceCrestMark } from './visual-identity'
 import { useRef, useState } from 'react'
 import {
   ArrowLeft,
@@ -289,7 +290,16 @@ export function RecruitmentDirectoryView({
                   {summaries.map((summary) => (
                     <li key={summary.id} className={styles.row}>
                       <div className={styles.identity}>
-                        <span className={styles.tag}>[{summary.tag}]</span>
+                        <span className={styles.tag}>
+                          {summary.visual_identity && (
+                            <AllianceCrestMark
+                              universe={universe}
+                              identity={summary.visual_identity}
+                              size="small"
+                            />
+                          )}{' '}
+                          [{summary.tag}]
+                        </span>
                         <h3>
                           {onSelect ? (
                             <button

@@ -1,3 +1,4 @@
+import type { components } from '../contracts'
 import { createStore } from 'zustand/vanilla'
 import { http, HttpError } from './http'
 import { ClientUpdateRequired } from './client-update'
@@ -150,17 +151,21 @@ export class RuntimeController {
     this.replace(runtime)
   }
   clearMessage = () => this.store.setState({ message: '' })
-  async authenticate(signup: boolean, name: string, password: string) {
+  async authenticate(
+    signup: boolean,
+    name: string,
+    password: string,
+    recruitment?: components['schemas']['RecruitmentIntent'],
+  ) {
     if (this.store.getState().busy) return
     this.pendingLogin = null
     const g = ++this.generation
     this.store.setState({ busy: true, message: '' })
     try {
       await this.accept(
-        await (signup ? this.api.signupBootstrap : this.api.loginBootstrap)(
-          name,
-          password,
-        ),
+        await (signup
+          ? this.api.signupBootstrap(name, password, recruitment)
+          : this.api.loginBootstrap(name, password)),
         signup ? 'signup' : 'login',
         g,
       )

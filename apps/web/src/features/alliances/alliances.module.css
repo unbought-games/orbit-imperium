@@ -258,15 +258,3 @@
   cursor: pointer;
   padding: 0.75rem 0;
 }
-.recruitmentImage {
-  display: grid;
-  gap: var(--space-3);
-  margin: 0;
-  max-width: 720px;
-}
-
-.recruitmentImage img {
-  display: block;
-  width: 100%;
-  height: auto;
-}

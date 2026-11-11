@@ -62,6 +62,8 @@ function LoadingExample() {
 const scenarios: Record<string, () => Promise<ComponentType>> = {
   resources: async () =>
     (await import('./resources.scenarios')).ResourcesScenario,
+  'alliance-presentation': async () =>
+    (await import('./alliance-presentation.story')).AlliancePresentationStory,
   'profile-display': async () =>
     (await import('./profile-display.scenarios')).ProfileDisplayScenario,
   'hud-toasts': async () =>

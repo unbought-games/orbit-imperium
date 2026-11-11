@@ -420,7 +420,7 @@ declare global {
 }
 export function AllianceStory() {
   const [scenario] = useState(setup),
-    [tab, setTab] = useState('Board'),
+    [tab, setTab] = useState('Hall'),
     [settingsSection, setSettingsSection] =
       useState<SettingsDestination>('Profile')
   const state = useStore(scenario.controller.store)
@@ -447,7 +447,7 @@ export function AllianceStory() {
           {state.notice && <p role="status">{state.notice}</p>}
           {detail && (
             <>
-              {tab === 'Board' && (
+              {tab === 'Hall' && (
                 <Board
                   detail={detail}
                   player={self}

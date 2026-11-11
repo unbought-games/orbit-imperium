@@ -237,14 +237,19 @@ export class AlliancesController {
       return false
     }
   }
-  async run(action: AllianceAction): Promise<boolean> {
+  async run(
+    action: AllianceAction,
+    expectedRevision?: number,
+  ): Promise<boolean> {
     if (this.store.getState().busy || this.store.getState().pending)
       return false
     const revision = ['Create', 'Join', 'Apply', 'Withdraw'].includes(
       action.type,
     )
       ? null
-      : (this.store.getState().view?.alliance?.revision ?? null)
+      : (expectedRevision ??
+        this.store.getState().view?.alliance?.revision ??
+        null)
     const pending = {
       command_id: this.ports.newId(),
       expected_revision: revision,
@@ -266,6 +271,7 @@ export class AlliancesController {
       if (['Leave', 'Disband', 'Transfer'].includes(pending.action.type))
         this.ports.onAccessLost?.()
       const preserveBoard = [
+        'SavePresentation',
         'CreatePost',
         'EditPost',
         'PinPost',
@@ -302,6 +308,18 @@ export class AlliancesController {
         })
         if (await this.load({ type: 'Mine' }, previousView?.alliance))
           this.store.setState({ error: message })
+        return false
+      }
+      if (status === 409 && pending.action.type === 'SavePresentation') {
+        this.store.setState({ busy: false, pending: null })
+        await this.load(
+          { type: 'Mine' },
+          previousView?.alliance,
+          '',
+          false,
+          true,
+        )
+        this.store.setState({ error: message })
         return false
       }
       if (accessLost(error)) this.ports.onAccessLost?.()

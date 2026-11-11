@@ -43,28 +43,47 @@ fn metadata(alliance: Option<&PublicAlliance>, url: &str) -> String {
         r#"<title>{title}</title><meta name="description" content="{description}"><meta property="og:type" content="website"><meta property="og:site_name" content="Orbit Imperium"><meta property="og:title" content="{title}"><meta property="og:description" content="{description}"><meta property="og:url" content="{url}"><meta name="twitter:card" content="summary_large_image">{image}"#
     )
 }
-fn render(alliance: &PublicAlliance, origin: &str, path: &str) -> Result<Vec<u8>, String> {
+fn render(
+    alliance: &PublicAlliance,
+    origin: &str,
+    path: &str,
+    art: &super::alliance_card_art::CardArt,
+) -> Result<Vec<u8>, String> {
     let options = render_options();
     let name_size = size(&alliance.summary.name, 64., 1040., 0., 600, &options)?;
     let world_size = size(&alliance.universe_name, 30., 1000., 0., 400, &options)?;
     let origin_size = size(origin, 22., 1040., 0., 400, &options)?;
     let path_size = size(path, 16., 1040., 0., 400, &options)?;
+    let identity = alliance.presentation.as_ref().map(|p| &p.identity);
+    let primary = identity
+        .map(|i| super::alliance_card_art::accent(&i.primary, "#cbb88e"))
+        .unwrap_or_else(|| "#cbb88e".into());
+    let secondary = identity
+        .map(|i| super::alliance_card_art::accent(&i.secondary, "#8ad8ec"))
+        .unwrap_or_else(|| "#8ad8ec".into());
+    let motto = identity
+        .map(|i| i.motto.as_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("Build an empire. Find your people. Play on equal terms.");
+    let motto_size = size(motto, 24., 1040., 0., 400, &options)?;
+    let artwork = super::alliance_card_art::markup(art);
     let svg = format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
 <defs><linearGradient id="space" x2="1" y2="1"><stop stop-color="#07121f"/><stop offset="1" stop-color="#172d40"/></linearGradient></defs>
-<rect width="1200" height="630" fill="url(#space)"/>
+<rect width="1200" height="630" fill="url(#space)"/>{artwork}
 <g fill="none" stroke="#6e9caf" stroke-opacity=".16"><circle cx="1080" cy="70" r="310"/><circle cx="1080" cy="70" r="250"/><circle cx="1080" cy="70" r="190"/></g>
-<path d="M64 64H1136M64 472H1136" stroke="#b6a37c" stroke-opacity=".5"/>
+<path d="M64 64H1136M64 472H1136" stroke="{primary}" stroke-opacity=".5"/>
 <g font-family="IBM Plex Sans" fill="#ece9df">
-<text x="64" y="112" fill="#cbb88e" font-size="22" letter-spacing="4">ORBIT IMPERIUM</text>
-<text x="64" y="180" fill="#8ad8ec" font-size="26" letter-spacing="3">[{tag}]</text>
+<text x="64" y="112" fill="{primary}" font-size="22" letter-spacing="4">ORBIT IMPERIUM</text>
+<text x="64" y="180" fill="{secondary}" font-size="26" letter-spacing="3">[{tag}]</text>
 <text x="64" y="263" font-size="{name_size}" font-weight="600">{name}</text>
 <text x="64" y="320" font-size="{world_size}" fill="#bdcbd5">{world}</text>
 <text x="64" y="390" font-size="26">{status}</text>
-<text x="64" y="432" font-size="20" fill="#bdcbd5">Build an empire. Find your people. Play on equal terms.</text>
+<text x="64" y="432" font-size="{motto_size}" fill="#bdcbd5">{motto}</text>
 <text x="64" y="520" font-size="{origin_size}" fill="#cbb88e">{origin}</text>
 <text x="64" y="560" font-size="{path_size}" fill="#bdcbd5">{path}</text>
 </g></svg>"##,
+        motto = escape(motto),
         tag = escape(&alliance.summary.tag),
         name = escape(&alliance.summary.name),
         world = escape(&alliance.universe_name),
@@ -127,10 +146,11 @@ async fn serve<S: GameStore + IdentityStore + Send + Sync + 'static>(
                     .into_response();
             }
         };
+        let art = super::alliance_card_art::load(&s, &alliance).await;
         let origin = s.config.origin.trim_end_matches('/').to_owned();
         return match tokio::task::spawn_blocking(move || {
             let _permit = permit;
-            render(&alliance, &origin, &path)
+            render(&alliance, &origin, &path, &art)
         })
         .await
         {
@@ -215,7 +235,9 @@ mod tests {
     use super::*;
     fn alliance() -> PublicAlliance {
         PublicAlliance {
+            presentation: None,
             summary: AllianceSummary {
+                visual_identity: None,
                 id: uuid::Uuid::nil(),
                 universe: UniverseId(uuid::Uuid::nil()),
                 tag: "STARS".into(),
@@ -244,10 +266,16 @@ mod tests {
     fn recruitment_card_renders_bounded_long_identity_to_png() {
         let mut a = alliance();
         if let Ok(path) = std::env::var("ORBIT_RECRUITMENT_CARD_CAPTURE") {
-            std::fs::write(path,render(&a,"https://orbit.example","/invite/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002").unwrap()).unwrap();
+            std::fs::write(path,render(&a,"https://orbit.example","/invite/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002",&Default::default()).unwrap()).unwrap();
         }
         a.summary.name = "WWWW WWWW WWWW WWWW WWWW WWWW WWWW WWWW WWWW WWWW".into();
-        let png = render(&a, "https://orbit.example", "/invite/world/link").unwrap();
+        let png = render(
+            &a,
+            "https://orbit.example",
+            "/invite/world/link",
+            &Default::default(),
+        )
+        .unwrap();
         let pixels = resvg::tiny_skia::Pixmap::decode_png(&png).unwrap();
         assert_eq!((pixels.width(), pixels.height()), (1200, 630));
     }

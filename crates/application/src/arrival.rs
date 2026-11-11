@@ -5,6 +5,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecruitmentIntent {
+    pub alliance: uuid::Uuid,
+    pub invitation: Option<uuid::Uuid>,
+}
+
 pub type BodyAppearances = BTreeMap<BodyId, u8>;
 
 /// Planet art slots whose climate matches an orbital position.
@@ -18,6 +25,7 @@ pub fn appearance_band(position: u32) -> RangeInclusive<u8> {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ArrivalPresentation {
+    pub recruitment: Option<RecruitmentIntent>,
     pub pending: bool,
     pub joined_at_ms: Option<i64>,
     pub appearances: BodyAppearances,
@@ -26,6 +34,8 @@ pub struct ArrivalPresentation {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum ArrivalAction {
+    Load,
+    SetRecruitment { intent: Option<RecruitmentIntent> },
     SetAppearance { body: BodyId, slot: u8 },
     Complete,
 }
@@ -39,6 +49,8 @@ pub struct ArrivalRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ArrivalState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recruitment: Option<RecruitmentIntent>,
     pub pending: bool,
 }
 
@@ -51,6 +63,10 @@ impl<S: GameStore> GameService<S> {
         Self::principal(p, request.context.binding)?;
         let binding = request.context.binding;
         match request.action {
+            ArrivalAction::Load => {}
+            ArrivalAction::SetRecruitment { intent } => {
+                self.store.set_arrival_recruitment(binding, intent).await?
+            }
             ArrivalAction::SetAppearance { body, slot } => {
                 self.store.set_body_appearance(binding, body, slot).await?
             }
@@ -58,6 +74,7 @@ impl<S: GameStore> GameService<S> {
         }
         let state = self.store.arrival_presentation(binding, vec![]).await?;
         Ok(ArrivalState {
+            recruitment: state.recruitment,
             pending: state.pending,
         })
     }

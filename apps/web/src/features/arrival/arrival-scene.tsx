@@ -1,3 +1,5 @@
+import { useArrivalRecruitment } from './use-arrival-recruitment'
+import { AllianceArrival } from './alliance-arrival'
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
 import { Dice5 } from 'lucide-react'
 import { AmbientOrb } from '../command-hud/hud-controls'
@@ -31,11 +33,14 @@ function after(lines: number): CSSProperties {
 
 export function ArrivalScene() {
   const arrival = useArrival()
+  const recruitment = useArrivalRecruitment()
+  const [skipping, setSkipping] = useState(false)
   const [step, setStep] = useState<ArrivalStep>('title')
   const [touched, setTouched] = useState(false)
   const question = useId()
   const exchange = useRef<HTMLElement>(null)
-  const advance = () => setStep(nextArrivalStep)
+  const advance = () =>
+    setStep((current) => nextArrivalStep(current, !!recruitment.intent))
   const { draft, setDraft, title } = arrival
   const nameError = planetNameError(draft.name)
   useEffect(() => {
@@ -157,9 +162,30 @@ export function ArrivalScene() {
                     {nameError}
                   </p>
                 )}
-                <Button type="submit">Name it</Button>
+                <Button type="submit" disabled={recruitment.loading}>
+                  Name it
+                </Button>
+                {recruitment.error && (
+                  <p role="alert">
+                    {recruitment.error}{' '}
+                    <Button variant="ghost" onClick={recruitment.retry}>
+                      Retry
+                    </Button>
+                  </p>
+                )}
               </Form>
             </>
+          )}
+          {step === 'alliance' && recruitment.intent && (
+            <AllianceArrival
+              alliance={recruitment.intent.alliance}
+              invitation={recruitment.intent.invitation ?? undefined}
+              onDismiss={recruitment.dismiss}
+              onContinue={() => {
+                if (skipping) void arrival.skip()
+                else setStep('farewell')
+              }}
+            />
           )}
           {step === 'farewell' && (
             <>
@@ -189,13 +215,18 @@ export function ArrivalScene() {
           )}
         </section>
       </div>
-      {step !== 'farewell' && (
+      {step !== 'farewell' && step !== 'alliance' && (
         <Button
           variant="ghost"
           size="small"
           className={styles.skip}
-          disabled={arrival.busy}
-          onClick={arrival.skip}
+          disabled={arrival.busy || recruitment.loading}
+          onClick={() => {
+            if (recruitment.intent) {
+              setSkipping(true)
+              setStep('alliance')
+            } else void arrival.skip()
+          }}
         >
           {arrival.busy ? 'Landing…' : 'Skip intro'}
         </Button>

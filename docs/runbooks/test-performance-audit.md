@@ -1621,3 +1621,27 @@ remaining profile browser cases passed (2.248s module preparation, 5.8s runner;
 individual cases 2.2s, 2.2s, 2.5s and 4.8s). The runner closed Chromium/Vite and
 released its port; no Docker or database setup was used. The original CI failure
 remains counted; the new head still requires fresh CI and merge-queue validation.
+
+
+### 2026-11-10 alliance presentation — new component cases retired
+
+Owner: alliance identity/recruitment implementation chat, branch
+`emick/alliance-identity-recruitment` (base `ea180d7f`).
+
+The new desktop/mobile cases `alliance templates retain invitation and gallery
+content without overflow at 1440px` and `... at 390px` were removed under the
+one-repair rule. Initial execution stalled on an exact label selector: the select's
+accessible combobox name was Template, while its wrapping label text included the
+option text. Inspected the rendered page, interrupted the task-owned runner, and
+made one repair to use the role/name selector. The next run failed both cases on
+an unscoped exact-text assertion matching the draft textarea and rendered paragraph.
+This was a test defect, not a product regression or infrastructure incident.
+No timeout increase, stabilization patch, or renamed browser replacement was used.
+
+Retained content, gallery, and private-data projection protection at deterministic
+model/static-render boundaries in `presentation-model.test.ts`. Actual responsive
+layout is inspected and captured in the implementation chat. The separate passing
+preview interaction case retains native dialog, unsaved content, Escape, and focus
+restoration coverage. Existing alliance component cases passed (23 total including
+the preview case in the second run). Application editor/arrival journeys remain
+separate integration coverage; the implementation chat owns their validation.

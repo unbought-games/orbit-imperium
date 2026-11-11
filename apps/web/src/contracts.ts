@@ -3785,6 +3785,8 @@ export interface paths {
                 header?: {
                     /** @description Opt in to effective insignia appearance. Omit to retain the legacy response shape during rolling upgrades. */
                     "X-Orbit-Insignia"?: "1";
+                    /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                    "X-Orbit-Alliance-Presentation"?: "1";
                 };
                 path: {
                     universe: string;
@@ -3975,7 +3977,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                    "X-Orbit-Alliance-Presentation"?: "1";
+                };
                 path: {
                     universe: string;
                 };
@@ -4272,7 +4277,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                    "X-Orbit-Alliance-Presentation"?: "1";
+                };
                 path: {
                     universe: string;
                 };
@@ -4534,7 +4542,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                    "X-Orbit-Alliance-Presentation"?: "1";
+                };
                 path: {
                     universe: string;
                     alliance: string;
@@ -5147,7 +5158,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                    "X-Orbit-Arrival"?: "1";
+                };
                 path: {
                     universe: string;
                 };
@@ -5681,6 +5695,252 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alliance-presentation/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Alliance presentation and media */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlliancePresentationCatalog"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/alliances/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Alliance presentation and media */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AllianceMediaRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AllianceMediaLibrary"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/alliances/{alliance}/media/{media}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Alliance presentation and media */
+        put: {
+            parameters: {
+                query: {
+                    epoch: string;
+                };
+                header?: never;
+                path: {
+                    universe: string;
+                    alliance: string;
+                    media: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AllianceMediaLibrary"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/alliance-media/{media}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Display authorized alliance media */
+        get: {
+            parameters: {
+                query?: {
+                    still?: boolean;
+                    size?: number;
+                };
+                header?: never;
+                path: {
+                    universe: string;
+                    media: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Raster image */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/png": string;
+                        "image/webp": string;
+                        "image/gif": string;
+                        "image/jpeg": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v4/universes/{universe}/alliances/{alliance}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download the published alliance recruitment card */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                    alliance: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Published recruitment image */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/png": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alliance-presentation/symbols/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public raster display of an installed free alliance symbol */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Free symbol raster */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/png": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5712,6 +5972,7 @@ export interface components {
         Login: {
             name: string;
             password: string;
+            recruitment?: components["schemas"]["RecruitmentIntent"];
         };
         Destination: {
             /** Format: uuid */
@@ -8252,6 +8513,7 @@ export interface components {
             universe: string;
             tag: string;
             name: string;
+            visual_identity?: components["schemas"]["AllianceVisualIdentity"];
         };
         AllianceScore: {
             rank: number;
@@ -8271,6 +8533,7 @@ export interface components {
             recruitment: components["schemas"]["AllianceRecruitment"];
             ranking?: components["schemas"]["AllianceScore"];
             recruitment_profile?: components["schemas"]["RecruitmentProfile"];
+            visual_identity?: components["schemas"]["AllianceVisualIdentity"];
         };
         AllianceRole: {
             /** Format: uuid */
@@ -8339,12 +8602,14 @@ export interface components {
             next_post_before?: string | null;
             audit?: components["schemas"]["AllianceAudit"][];
             invitation?: string | null;
+            presentation?: components["schemas"]["MemberAlliancePresentation"];
         };
         PublicAlliance: {
             summary: components["schemas"]["AllianceSummary"];
             public_text: string;
             universe_name?: string;
             enrollment_open?: boolean;
+            presentation?: components["schemas"]["PublicAlliancePresentation"];
         };
         AllianceQuery: {
             /** @constant */
@@ -8518,6 +8783,12 @@ export interface components {
             /** Format: uuid */
             alliance: string;
             enabled: boolean;
+        } | {
+            /** @constant */
+            type: "SavePresentation";
+            /** Format: uuid */
+            alliance: string;
+            edits: components["schemas"]["PresentationEdit"][];
         };
         AllianceCommandRequest: {
             context: components["schemas"]["QueryContext"];
@@ -9574,6 +9845,13 @@ export interface components {
         } | {
             /** @constant */
             type: "Complete";
+        } | {
+            /** @constant */
+            type: "Load";
+        } | {
+            /** @constant */
+            type: "SetRecruitment";
+            intent: components["schemas"]["RecruitmentIntent"] | null;
         };
         ArrivalRequest: {
             context: components["schemas"]["QueryContext"];
@@ -9581,6 +9859,7 @@ export interface components {
         };
         ArrivalState: {
             pending: boolean;
+            recruitment?: components["schemas"]["RecruitmentIntent"];
         };
         /** @description Human-readable event target. Role names and notice titles are preserved for new events; older events are resolved from surviving records. */
         AllianceAuditSubject: {
@@ -9589,6 +9868,157 @@ export interface components {
             label: string;
             /** Format: uuid */
             player?: string;
+        };
+        MediaPlacement: {
+            /** Format: uuid */
+            media_id: string;
+            x: number;
+            y: number;
+            mobile_x: number | null;
+            mobile_y: number | null;
+            alt: string;
+        };
+        AllianceCrest: {
+            /** @constant */
+            kind: "composition";
+            recipe: components["schemas"]["InsigniaRecipe"];
+        } | {
+            /** @constant */
+            kind: "upload";
+            /** Format: uuid */
+            media_id: string;
+        };
+        AllianceVisualIdentity: {
+            motto: string;
+            primary: string;
+            secondary: string;
+            crest: components["schemas"]["AllianceCrest"];
+            banner: components["schemas"]["MediaPlacement"] | null;
+        };
+        AllianceHall: {
+            welcome_markdown: string;
+            community_markdown: string;
+            background: components["schemas"]["MediaPlacement"] | null;
+        };
+        AllianceTemplateDocument: {
+            schema_version: number;
+            content: {
+                [key: string]: unknown;
+            };
+        };
+        AlliancePresentation: {
+            schema_version: number;
+            identity: components["schemas"]["AllianceVisualIdentity"];
+            hall: components["schemas"]["AllianceHall"];
+            active_template: string;
+            templates: {
+                [key: string]: components["schemas"]["AllianceTemplateDocument"];
+            };
+        };
+        PublicAlliancePresentation: {
+            schema_version: number;
+            identity: components["schemas"]["AllianceVisualIdentity"];
+            template_id: string;
+            document: components["schemas"]["AllianceTemplateDocument"];
+        };
+        MemberAlliancePresentation: {
+            public: components["schemas"]["PublicAlliancePresentation"];
+            hall: components["schemas"]["AllianceHall"];
+            editor?: components["schemas"]["AlliancePresentation"];
+        };
+        PresentationEdit: {
+            /** @constant */
+            type: "SetIdentity";
+            schema_version: number;
+            value: components["schemas"]["AllianceVisualIdentity"];
+        } | {
+            /** @constant */
+            type: "SetHall";
+            schema_version: number;
+            value: components["schemas"]["AllianceHall"];
+        } | {
+            /** @constant */
+            type: "SetTemplateDocument";
+            template_id: string;
+            document: components["schemas"]["AllianceTemplateDocument"];
+        } | {
+            /** @constant */
+            type: "SelectTemplate";
+            template_id: string;
+        };
+        MediaReceipt: {
+            sha256: string;
+            content_type: string;
+            bytes: number;
+        };
+        AllianceMedia: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            universe: string;
+            /** Format: uuid */
+            epoch: string;
+            /** Format: uuid */
+            alliance: string;
+            filename: string;
+            state: string;
+            declared_bytes: number;
+            created_at: number;
+            expires_at: number;
+            receipt: components["schemas"]["MediaReceipt"] | null;
+        };
+        AllianceMediaAction: {
+            /** @constant */
+            type: "List";
+        } | {
+            /** @constant */
+            type: "Begin";
+            /** Format: uuid */
+            media_id: string;
+            filename: string;
+            bytes: number;
+        } | {
+            /** @constant */
+            type: "Delete";
+            /** Format: uuid */
+            media_id: string;
+        };
+        AllianceMediaRequest: {
+            context: components["schemas"]["QueryContext"];
+            /** Format: uuid */
+            alliance: string;
+            action: components["schemas"]["AllianceMediaAction"];
+        };
+        AllianceMediaLibrary: {
+            media: components["schemas"]["AllianceMedia"][];
+            max_file_bytes: number;
+            max_total_bytes: number;
+            max_count: number;
+        };
+        TemplateField: {
+            key: string;
+            label: string;
+            kind: string;
+            max_length: number;
+        };
+        AllianceTemplateDefinition: {
+            id: string;
+            name: string;
+            description: string;
+            schema_version: number;
+            fields: components["schemas"]["TemplateField"][];
+        };
+        AlliancePresentationCatalog: {
+            templates: components["schemas"]["AllianceTemplateDefinition"][];
+            symbols: components["schemas"]["InsigniaSymbol"][];
+            max_file_bytes: number;
+            max_total_bytes: number;
+            max_count: number;
+        };
+        RecruitmentIntent: {
+            /** Format: uuid */
+            alliance: string;
+            invitation: string | null;
         };
     };
     responses: never;
@@ -10480,7 +10910,10 @@ export interface operations {
                 activity?: components["schemas"]["RecruitmentActivity"];
                 offset?: number;
             };
-            header?: never;
+            header?: {
+                /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                "X-Orbit-Alliance-Presentation"?: "1";
+            };
             path: {
                 universe: string;
             };
@@ -10592,7 +11025,10 @@ export interface operations {
     alliance_invitations: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection. */
+                "X-Orbit-Alliance-Presentation"?: "1";
+            };
             path: {
                 universe: string;
                 token: string;

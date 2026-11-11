@@ -10,6 +10,12 @@ export function Field({ className, ...props }: ComponentPropsWithRef<'label'>) {
 export function Input({ className, ...props }: ComponentPropsWithRef<'input'>) {
   return <input className={classes(styles.control, className)} {...props} />
 }
+export function Textarea({
+  className,
+  ...props
+}: ComponentPropsWithRef<'textarea'>) {
+  return <textarea className={classes(styles.control, className)} {...props} />
+}
 /** Compose leading/trailing accessories around an input, sharing one control frame. */
 export function InputGroup({
   className,

@@ -29,7 +29,10 @@ export const oidcHttp = {
     if (!response.ok) throw new Error('Unable to refresh account identity.')
     return response.json()
   },
-  async enroll(universe: string): Promise<void> {
+  async enroll(
+    universe: string,
+    recruitment?: { alliance: string; invitation: string | null },
+  ): Promise<void> {
     const session = await fetch('/api/v1/session').then((r) => r.json())
     const result = await fetch('/api/auth/enroll', {
       method: 'POST',
@@ -37,7 +40,10 @@ export const oidcHttp = {
         'content-type': 'application/json',
         'x-csrf-token': session.csrf,
       },
-      body: JSON.stringify({ universe }),
+      body: JSON.stringify({
+        universe,
+        ...(recruitment ? { recruitment } : {}),
+      }),
     })
     if (result.ok) bindAnalytics()
     if (!result.ok)

@@ -51,6 +51,27 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
+    if args.get(1).map(String::as_str) == Some("alliance-media") {
+        if args.get(2).map(String::as_str) == Some("--help") {
+            println!(
+                "orbit-server alliance-media cleanup\nReconcile expired uploads and deleted alliance media using DATABASE_URL and ORBIT_ASSET_*."
+            );
+            return Ok(());
+        }
+        if args.len() != 3 || args[2] != "cleanup" {
+            return Err("use alliance-media cleanup or --help".into());
+        }
+        let store = PgStore::connect(&env::var("DATABASE_URL")?).await?;
+        store.migrate().await?;
+        let assets = orbit_storage_assets::AssetConfig::parse(|key| env::var(key).ok())?
+            .connect()
+            .await?;
+        println!(
+            "Reconciled {} alliance media objects",
+            store.cleanup_alliance_media(assets.as_ref()).await?
+        );
+        return Ok(());
+    }
     if args.get(1).map(String::as_str) == Some("announcements") {
         return announcements_cli::run(announcements_cli::parse(&args[2..])?).await;
     }

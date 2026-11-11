@@ -1,3 +1,4 @@
+import { AllianceCrestMark } from './alliances/visual-identity'
 import { EmptyState } from '../ui/empty-state'
 import { useEffect, useLayoutEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -246,6 +247,13 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
                           className={styles.allianceName}
                           href={`/alliances/${encodeURIComponent(row.alliance.universe)}/${encodeURIComponent(row.alliance.id)}`}
                         >
+                          {row.alliance.visual_identity && (
+                            <AllianceCrestMark
+                              universe={row.alliance.universe}
+                              identity={row.alliance.visual_identity}
+                              size="inline"
+                            />
+                          )}{' '}
                           [{row.alliance.tag}] {row.alliance.name}
                         </a>
                         <span className={styles.memberCount}>

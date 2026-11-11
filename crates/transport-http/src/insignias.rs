@@ -4,6 +4,7 @@ use sha2::{Digest, Sha256};
 
 #[derive(Clone)]
 pub struct Customization {
+    pub media_limits: AllianceMediaLimits,
     pub policy: CosmeticPolicy,
     pub assets: Arc<dyn AssetStore>,
     pub catalog: InsigniaCatalog,
@@ -30,6 +31,7 @@ impl Customization {
             InsigniaCatalog::default()
         };
         let result = Self {
+            media_limits: Default::default(),
             policy,
             assets,
             catalog,
@@ -596,6 +598,7 @@ mod tests {
     #[tokio::test]
     async fn publication_does_not_require_permission_to_inspect_missing_keys() {
         let c = Customization {
+            media_limits: Default::default(),
             policy: CosmeticPolicy::Unrestricted,
             assets: Arc::new(Store::default()),
             catalog: InsigniaCatalog::default(),

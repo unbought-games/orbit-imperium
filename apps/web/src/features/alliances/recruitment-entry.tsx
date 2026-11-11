@@ -24,7 +24,7 @@ export function RecruitmentEntryPage({
       <a className={styles.brand} href="/">
         Orbit Imperium
       </a>
-      <h1>Join your alliance’s universe</h1>
+      <h1>Your world awaits.</h1>
       {error ? (
         <>
           <p role="alert">{error}</p>
@@ -43,9 +43,12 @@ export function RecruitmentEntryPage({
           ) : (
             <>
               <p>
-                Your account is ready. Join{' '}
-                <strong>{data.universe_name}</strong>, then decide whether to
-                join {data.summary.name} or play independently.
+                Begin your arrival in <strong>{data.universe_name}</strong>.
+                Your guide will help you{' '}
+                {data.summary.recruitment === 'Application'
+                  ? 'apply to'
+                  : 'join'}{' '}
+                {data.summary.name} once you’ve named your world.
               </p>
               {data.enrollment_open ? (
                 <Button
@@ -53,8 +56,8 @@ export function RecruitmentEntryPage({
                   onClick={() => void enrollment.enroll()}
                 >
                   {enrollment.busy
-                    ? 'Joining universe…'
-                    : `Join ${data.universe_name}`}
+                    ? 'Preparing your world…'
+                    : 'Begin your arrival'}
                 </Button>
               ) : (
                 <p>

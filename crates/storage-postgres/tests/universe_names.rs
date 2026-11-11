@@ -81,6 +81,7 @@ async fn creation_update_and_sessions_share_unique_authoritative_names() {
     assert_eq!(names.len(), 2);
     let signup = store
         .register(Registration {
+            recruitment: None,
             name: "named-player".into(),
             password_hash: "test".into(),
             policy: SignupPolicy {

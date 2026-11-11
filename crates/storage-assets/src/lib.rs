@@ -5,6 +5,7 @@ use object_store::{
 };
 use orbit_application::{AssetError, AssetFuture, AssetStore};
 use std::sync::Arc;
+use tokio_stream::StreamExt;
 
 #[derive(Clone, Debug)]
 pub enum AssetConfig {
@@ -80,7 +81,8 @@ impl AssetConfig {
                     .with_bucket_name(bucket)
                     .with_region(region)
                     .with_allow_http(*allow_http)
-                    .with_virtual_hosted_style_request(false);
+                    .with_virtual_hosted_style_request(false)
+                    .with_disable_bulk_delete(true);
                 if let Some(endpoint) = endpoint {
                     builder = builder.with_endpoint(endpoint);
                 }
@@ -112,6 +114,73 @@ fn error(e: object_store::Error) -> AssetError {
     }
 }
 impl AssetStore for BlobStore {
+    fn read_bounded<'a>(&'a self, name: &'a str, max_bytes: u64) -> AssetFuture<'a, Vec<u8>> {
+        Box::pin(async move {
+            let result = self.0.get(&key(name)?).await.map_err(error)?;
+            if result.meta.size > max_bytes {
+                return Err(AssetError::Unavailable);
+            }
+            let mut stream = result.into_stream();
+            let mut bytes = Vec::new();
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk.map_err(error)?;
+                if chunk.len() as u64 > max_bytes - bytes.len() as u64 {
+                    return Err(AssetError::Unavailable);
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(bytes)
+        })
+    }
+    fn create_immutable<'a>(
+        &'a self,
+        name: &'a str,
+        bytes: Vec<u8>,
+        max_bytes: u64,
+    ) -> AssetFuture<'a, ()> {
+        Box::pin(async move {
+            if bytes.len() as u64 > max_bytes {
+                return Err(AssetError::Unavailable);
+            }
+            let payload: object_store::PutPayload = bytes.into();
+            let path = key(name)?;
+            match self
+                .0
+                .put_opts(
+                    &path,
+                    payload.clone(),
+                    object_store::PutOptions {
+                        mode: object_store::PutMode::Create,
+                        ..Default::default()
+                    },
+                )
+                .await
+            {
+                Ok(_) => Ok(()),
+                Err(object_store::Error::AlreadyExists { .. }) => {
+                    if self
+                        .read_bounded(name, max_bytes)
+                        .await?
+                        .iter()
+                        .eq(payload.iter().flat_map(|chunk| chunk.iter()))
+                    {
+                        Ok(())
+                    } else {
+                        Err(AssetError::Unavailable)
+                    }
+                }
+                Err(e) => Err(error(e)),
+            }
+        })
+    }
+    fn delete<'a>(&'a self, name: &'a str) -> AssetFuture<'a, ()> {
+        Box::pin(async move {
+            match self.0.delete(&key(name)?).await {
+                Ok(_) | Err(object_store::Error::NotFound { .. }) => Ok(()),
+                Err(e) => Err(error(e)),
+            }
+        })
+    }
     fn read<'a>(&'a self, name: &'a str) -> AssetFuture<'a, Vec<u8>> {
         Box::pin(async move {
             let result = self.0.get(&key(name)?).await.map_err(error)?;
@@ -181,7 +250,7 @@ mod tests {
             HttpPath(key): HttpPath<String>,
             headers: HeaderMap,
             body: Bytes,
-        ) -> impl IntoResponse {
+        ) -> axum::response::Response {
             assert!(
                 headers["authorization"]
                     .to_str()
@@ -189,12 +258,34 @@ mod tests {
                     .starts_with("AWS4-HMAC-SHA256 Credential=fixture/")
             );
             assert!(headers.contains_key("x-amz-date"));
-            objects.lock().unwrap().insert(key, body.to_vec());
-            ([("etag", "\"fixture\"")], "")
+            let mut objects = objects.lock().unwrap();
+            if headers.get("if-none-match").is_some() && objects.contains_key(&key) {
+                return (
+                    StatusCode::PRECONDITION_FAILED,
+                    "<Error><Code>PreconditionFailed</Code></Error>",
+                )
+                    .into_response();
+            }
+            objects.insert(key, body.to_vec());
+            ([("etag", "\"fixture\"")], "").into_response()
+        }
+        async fn remove(
+            State(objects): State<Objects>,
+            HttpPath(key): HttpPath<String>,
+            headers: HeaderMap,
+        ) -> StatusCode {
+            assert!(
+                headers["authorization"]
+                    .to_str()
+                    .unwrap()
+                    .starts_with("AWS4-HMAC-SHA256 Credential=fixture/")
+            );
+            objects.lock().unwrap().remove(&key);
+            StatusCode::NO_CONTENT
         }
         let objects = Objects::default();
         let app = Router::new()
-            .route("/assets/{*key}", get(read).put(write))
+            .route("/assets/{*key}", get(read).put(write).delete(remove))
             .with_state(objects.clone());
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
@@ -203,6 +294,7 @@ mod tests {
             BlobStore(Arc::new(
                 AmazonS3Builder::new()
                     .with_bucket_name("assets")
+                    .with_disable_bulk_delete(true)
                     .with_region("us-east-2")
                     .with_endpoint(&endpoint)
                     .with_allow_http(true)
@@ -224,8 +316,73 @@ mod tests {
             .unwrap();
         assert_eq!(second.read("insignias/test.svg").await.unwrap(), b"<svg/>");
         assert_eq!(objects.lock().unwrap().len(), 1);
+        let media = "alliance-media/v1/u/e/a/id/original";
+        first
+            .create_immutable(media, b"first".to_vec(), 10)
+            .await
+            .unwrap();
+        second
+            .create_immutable(media, b"first".to_vec(), 10)
+            .await
+            .unwrap();
+        assert!(
+            second
+                .create_immutable(media, b"replacement".to_vec(), 20)
+                .await
+                .is_err()
+        );
+        assert_eq!(first.read_bounded(media, 10).await.unwrap(), b"first");
+        second.delete(media).await.unwrap();
+        second.delete(media).await.unwrap();
+        assert!(matches!(
+            first.read_bounded(media, 10).await,
+            Err(AssetError::NotFound)
+        ));
         server.abort();
         assert!(server.await.unwrap_err().is_cancelled());
+    }
+    #[tokio::test]
+    async fn immutable_objects_are_bounded_and_paths_cannot_escape() {
+        let dir = std::env::temp_dir().join(format!("orbit-media-{}", uuid::Uuid::new_v4()));
+        let store = AssetConfig::Files {
+            directory: dir.to_string_lossy().into(),
+        }
+        .connect()
+        .await
+        .unwrap();
+        let key = "alliance-media/v1/u/e/a/id/original";
+        let bytes = vec![7; 2 * 1024 * 1024];
+        store
+            .create_immutable(key, bytes.clone(), 3 * 1024 * 1024)
+            .await
+            .unwrap();
+        store
+            .create_immutable(key, bytes.clone(), 3 * 1024 * 1024)
+            .await
+            .unwrap();
+        assert!(
+            store
+                .create_immutable(key, vec![8; 2 * 1024 * 1024], 3 * 1024 * 1024)
+                .await
+                .is_err()
+        );
+        assert!(
+            store.read(key).await.is_err(),
+            "small catalog reads keep their original bound"
+        );
+        assert!(store.read_bounded(key, 1024).await.is_err());
+        assert_eq!(
+            store.read_bounded(key, 3 * 1024 * 1024).await.unwrap(),
+            bytes
+        );
+        assert!(store.delete("../outside").await.is_err());
+        store.delete(key).await.unwrap();
+        store.delete(key).await.unwrap();
+        assert!(matches!(
+            store.read_bounded(key, 3 * 1024 * 1024).await,
+            Err(AssetError::NotFound)
+        ));
+        tokio::fs::remove_dir_all(dir).await.unwrap();
     }
     #[tokio::test]
     async fn files_persist_across_instances_and_reject_path_escape() {

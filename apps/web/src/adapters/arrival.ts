@@ -19,6 +19,8 @@ export async function sendArrival(
       'POST',
       { context: { binding, request_id: commandId(crypto) }, action },
       csrf,
+      10000,
+      { 'X-Orbit-Arrival': '1' },
     ),
   )
 }

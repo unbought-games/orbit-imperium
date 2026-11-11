@@ -162,6 +162,19 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
     }
+    fn enroll_oidc_with_recruitment(
+        &self,
+        account: AccountId,
+        policy: SignupPolicy,
+        intent: Option<RecruitmentIntent>,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async move {
+            if intent.is_some() {
+                return Err(StoreError::UnsupportedProtocol);
+            }
+            self.enroll_oidc(account, policy).await
+        }
+    }
     fn enroll_oidc(
         &self,
         _account: AccountId,
@@ -267,6 +280,22 @@ pub trait GameStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<SocialCommandResult, StoreError>> + Send {
         async { Err(StoreError::UnsupportedProtocol) }
     }
+    fn alliance_media(
+        &self,
+        _binding: Binding,
+        _alliance: uuid::Uuid,
+        _action: MediaOperation,
+    ) -> impl std::future::Future<Output = Result<AllianceMediaLibrary, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
+    fn alliance_media_read(
+        &self,
+        _universe: UniverseId,
+        _id: uuid::Uuid,
+        _account: Option<AccountId>,
+    ) -> impl std::future::Future<Output = Result<AllianceMedia, StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
+    }
     fn alliance_query(
         &self,
         _q: AllianceQueryRequest,
@@ -352,6 +381,13 @@ pub trait GameStore: Send + Sync {
         _slot: u8,
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
+    }
+    fn set_arrival_recruitment(
+        &self,
+        _binding: Binding,
+        _intent: Option<RecruitmentIntent>,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
     }
     fn complete_arrival(
         &self,

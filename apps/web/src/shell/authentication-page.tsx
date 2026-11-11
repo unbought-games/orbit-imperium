@@ -47,7 +47,7 @@ export function AuthenticationPage({
       universeName={oidc.config.universes[0]?.name}
       message={message}
       errorRef={errorRef}
-      onSubmit={(event) => login(event, signup)}
+      onSubmit={(event) => login(event, signup, redirect)}
     />
   )
 }

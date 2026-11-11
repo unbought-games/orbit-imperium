@@ -1,4 +1,5 @@
 use crate::*;
+pub use orbit_engine::alliances::presentation::*;
 pub use orbit_engine::alliances::{
     AllianceAction, AlliancePermission, AllianceRecruitment, RecruitmentActivity,
     RecruitmentExperience, RecruitmentProfile,
@@ -6,9 +7,49 @@ pub use orbit_engine::alliances::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PublicAlliancePresentation {
+    pub schema_version: u16,
+    pub identity: AllianceVisualIdentity,
+    pub template_id: String,
+    pub document: AllianceTemplateDocument,
+}
+impl From<&AlliancePresentation> for PublicAlliancePresentation {
+    fn from(p: &AlliancePresentation) -> Self {
+        let supported = known_template(&p.active_template)
+            && p.templates
+                .get(&p.active_template)
+                .is_none_or(|d| d.schema_version == 1);
+        let id = if supported {
+            p.active_template.clone()
+        } else {
+            "flagship".into()
+        };
+        Self {
+            schema_version: 1,
+            identity: p.identity.clone(),
+            document: if supported {
+                p.templates.get(&id).cloned().unwrap_or_default()
+            } else {
+                Default::default()
+            },
+            template_id: id,
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MemberAlliancePresentation {
+    pub public: PublicAlliancePresentation,
+    pub hall: AllianceHall,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub editor: Option<AlliancePresentation>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AllianceIdentity {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visual_identity: Option<AllianceVisualIdentity>,
     pub id: Uuid,
     pub universe: UniverseId,
     pub tag: String,
@@ -28,6 +69,8 @@ pub struct AllianceScore {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AllianceSummary {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visual_identity: Option<AllianceVisualIdentity>,
     pub id: Uuid,
     pub universe: UniverseId,
     pub tag: String,
@@ -111,6 +154,8 @@ pub struct AllianceAudit {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AllianceDetail {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<MemberAlliancePresentation>,
     pub summary: AllianceSummary,
     pub public_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -136,6 +181,8 @@ pub struct AllianceDetail {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PublicAlliance {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<PublicAlliancePresentation>,
     pub summary: AllianceSummary,
     pub public_text: String,
     pub universe_name: String,

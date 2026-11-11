@@ -29,12 +29,13 @@ pub async fn serve(store: PgStore, serve: ServeConfig) -> ServeResult {
     };
     let customization = if let Some(config) = &serve.asset_store {
         let assets = config.connect().await?;
-        let customization = Customization::load(
+        let mut customization = Customization::load(
             serve.cosmetic_policy,
             assets,
             serve.cosmetic_catalog.as_deref(),
         )
         .await?;
+        customization.media_limits = serve.media_limits;
         Some(customization)
     } else {
         None

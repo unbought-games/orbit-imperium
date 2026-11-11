@@ -23,6 +23,7 @@ export function playerProfilesApi(binding: Binding, csrf: string) {
           'x-csrf-token': csrf,
           'x-orbit-insignia': '4',
           'x-orbit-identity': '1',
+          'x-orbit-alliance-presentation': '1',
         },
         body: JSON.stringify({ context: { binding, request_id }, source }),
       },

@@ -19,7 +19,7 @@ const detail: AllianceDetail = {
 }
 it('a leadership transfer removes administration destinations while preserving member destinations', () => {
   expect(allianceSections(detail)).toEqual([
-    'Board',
+    'Hall',
     'Members',
     'Applications',
     'Roles',
@@ -32,11 +32,11 @@ it('a leadership transfer removes administration destinations while preserving m
       permissions: ['ViewMembers', 'PublishPosts'],
       grantable_permissions: [],
     }),
-  ).toEqual(['Board', 'Members', 'Settings'])
+  ).toEqual(['Hall', 'Members', 'Settings'])
 })
 it('an assignment-only manager can inspect supplied roles without acquiring other management destinations', () => {
   expect(allianceSections({ ...detail, permissions: ['AssignRoles'] })).toEqual(
-    ['Board', 'Roles', 'Settings'],
+    ['Hall', 'Roles', 'Settings'],
   )
   expect(
     allianceSections({
@@ -44,7 +44,7 @@ it('an assignment-only manager can inspect supplied roles without acquiring othe
       permissions: ['AssignRoles'],
       roles: undefined,
     }),
-  ).toEqual(['Board', 'Settings'])
+  ).toEqual(['Hall', 'Settings'])
 })
 it('missing membership exposes no private navigation', () => {
   expect(allianceSections(null)).toEqual([])

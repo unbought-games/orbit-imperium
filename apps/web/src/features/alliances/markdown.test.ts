@@ -9,3 +9,12 @@ it('renders basic formatting while disabling HTML images embeds and unsafe proto
   expect(html).not.toMatch(/<(img|iframe|script)\b/)
   expect(html).not.toMatch(/href="(javascript:|data:|\/\/)/)
 })
+
+it('automatically links ordinary URLs and isolates external destinations', () => {
+  const html = allianceMarkdown(
+    'Meet us at https://discord.com/invite/example or [apply](https://example.com/apply).',
+  )
+  expect(html).toContain('href="https://discord.com/invite/example"')
+  expect(html).toContain('rel="noopener noreferrer"')
+  expect(html).toContain('target="_blank"')
+})

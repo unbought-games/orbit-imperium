@@ -173,6 +173,7 @@ mod tests {
         let a = PlayerId(uuid::Uuid::from_u128(1));
         let b = PlayerId(uuid::Uuid::from_u128(2));
         let alliance = AllianceIdentity {
+            visual_identity: None,
             id: uuid::Uuid::from_u128(3),
             universe: UniverseId(uuid::Uuid::from_u128(4)),
             tag: "OLD".into(),

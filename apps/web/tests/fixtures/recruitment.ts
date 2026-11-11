@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test'
-import { installGameFixture, binding, id } from './game'
+import { installGameFixture, binding, id, body } from './game'
 import type { components } from '../../src/contracts'
 type S = components['schemas']
 export const alliance = id(910),
@@ -36,9 +36,26 @@ export async function recruitmentFixture(
     enrolled = true,
     mode = 'Application' as S['AllianceRecruitment'],
     manager = false,
+    customization = false,
+    arrivalPending = undefined as (() => boolean) | undefined,
   } = {},
 ) {
-  await installGameFixture(page, { protocol: 4, missions: {fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'1'} })
+  await installGameFixture(page, {
+    protocol: 4,
+    missions: {
+      fleets: [],
+      incoming: [],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    },
+    ...(arrivalPending
+      ? {
+          arrivalPending,
+          homeworldId: body.id,
+          bodies: [{ ...body, name: 'Terra' }],
+        }
+      : {}),
+  })
   let signedIn = authenticated,
     hasEmpire = enrolled
   const data = structuredClone(publicData)
@@ -54,6 +71,88 @@ export async function recruitmentFixture(
         invitation: null,
       }
     : null
+  if (customization && detail) {
+    const identity: S['AllianceVisualIdentity'] = {
+      motto: '',
+      primary: '#cbb68d',
+      secondary: '#a4dbef',
+      banner: null,
+      crest: {
+        kind: 'composition',
+        recipe: {
+          version: 2,
+          symbol: 'compass',
+          foreground: '#cbb68d',
+          background: '#152b40',
+          layers: [],
+        },
+      },
+    }
+    const presentation: S['AlliancePresentation'] = {
+      schema_version: 1,
+      identity,
+      hall: { welcome_markdown: '', community_markdown: '', background: null },
+      active_template: 'flagship',
+      templates: {},
+    }
+    detail.presentation = {
+      public: {
+        schema_version: 1,
+        identity,
+        template_id: 'flagship',
+        document: { schema_version: 1, content: {} },
+      },
+      hall: presentation.hall,
+      editor: presentation,
+    }
+    data.presentation = detail.presentation.public
+    data.summary.visual_identity = identity
+    await page.route('**/api/alliance-presentation/catalog', (route) =>
+      route.fulfill({
+        json: {
+          templates: [
+            {
+              id: 'flagship',
+              name: 'Flagship',
+              description: 'Cinematic',
+              schema_version: 1,
+              fields: [
+                {
+                  key: 'hero_markdown',
+                  label: 'Hero introduction',
+                  kind: 'markdown',
+                  max_length: 1200,
+                },
+              ],
+            },
+          ],
+          symbols: [
+            {
+              id: 'compass',
+              name: 'Wayfinder',
+              supporter: false,
+              group: 'legacy',
+              access: 'available',
+              asset_url: `/api/media/insignias/compass/${'0'.repeat(64)}.svg`,
+            },
+          ],
+          max_file_bytes: 20971520,
+          max_total_bytes: 209715200,
+          max_count: 50,
+        },
+      }),
+    )
+    await page.route('**/alliances/media', (route) =>
+      route.fulfill({
+        json: {
+          media: [],
+          max_file_bytes: 20971520,
+          max_total_bytes: 209715200,
+          max_count: 50,
+        },
+      }),
+    )
+  }
   let applications: S['AllianceApplication'][] = []
   const commands: S['AllianceCommandRequest'][] = [],
     enrollments: unknown[] = []
@@ -160,6 +259,31 @@ export async function recruitmentFixture(
         permissions: [],
         grantable_permissions: [],
       }
+    if (action.type === 'SavePresentation' && detail?.presentation?.editor) {
+      const p = detail.presentation.editor
+      for (const edit of action.edits) {
+        if (edit.type === 'SetIdentity') p.identity = edit.value
+        if (edit.type === 'SetHall') p.hall = edit.value
+        if (edit.type === 'SetTemplateDocument')
+          p.templates[edit.template_id] = edit.document
+        if (edit.type === 'SelectTemplate') p.active_template = edit.template_id
+      }
+      data.summary.visual_identity = p.identity
+      data.presentation = {
+        schema_version: 1,
+        identity: p.identity,
+        template_id: p.active_template,
+        document: p.templates[p.active_template] ?? {
+          schema_version: 1,
+          content: {},
+        },
+      }
+      detail.presentation = {
+        editor: p,
+        public: data.presentation,
+        hall: p.hall,
+      }
+    }
     if (action.type === 'SetRecruitmentProfile')
       detail!.summary.recruitment_profile = action.profile
     if (action.type === 'SetInvitation')

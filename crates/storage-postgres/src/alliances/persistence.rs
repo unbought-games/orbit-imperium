@@ -50,6 +50,7 @@ pub(crate) async fn load(
     .collect::<Result<Vec<_>, StoreError>>()?;
     let applications=sqlx::query("SELECT id,player,text,created_at FROM alliance_applications WHERE alliance=$1 ORDER BY created_at,id").bind(id).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(|r|Ok(StateApplication{id:r.try_get("id").map_err(db_error)?,player:PlayerId(r.try_get("player").map_err(db_error)?),text:r.try_get("text").map_err(db_error)?,created_at:r.try_get("created_at").map_err(db_error)?})).collect::<Result<Vec<_>,StoreError>>()?;
     Ok(AllianceState {
+        presentation: crate::alliance_presentation::load(tx, id).await?,
         id,
         name: row.try_get("name").map_err(db_error)?,
         tag: row.try_get("tag").map_err(db_error)?,

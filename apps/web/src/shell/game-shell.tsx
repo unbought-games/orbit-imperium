@@ -107,18 +107,25 @@ function GameShellContent() {
   const heading = useRef<HTMLHeadingElement>(null)
   const previousPathname = useRef(location.pathname)
   const previousGalaxySite = useRef(location.search.site)
+  const canonicalPage =
+    page === 'alliance' && search.alliance ? 'alliance-discover' : page
   const canonicalizing =
     available &&
     !params.coordinates &&
     !!body &&
     (page === 'menu'
       ? !params.body && !search.body
-      : !params.body || search.body !== undefined)
+      : !params.body || search.body !== undefined || canonicalPage !== page)
   // Default context is recorded once; later view changes must not silently select another planet.
   useEffect(() => {
     if (canonicalizing && body) {
       void navigate({
-        ...routeTarget(universeName, page, body.id, route.item ?? undefined),
+        ...routeTarget(
+          universeName,
+          canonicalPage,
+          body.id,
+          route.item ?? undefined,
+        ),
         search:
           page === 'menu'
             ? { ...withoutBodySearch(location.search), body: body.id }
@@ -129,6 +136,7 @@ function GameShellContent() {
     }
   }, [
     canonicalizing,
+    canonicalPage,
     body?.id,
     location.search,
     location.hash,

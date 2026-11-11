@@ -345,6 +345,18 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             });
         }
         player.alliance = alliances.remove(&player.player);
+        if let Some(a) = &mut player.alliance
+            && let Some(identity) = &mut a.visual_identity
+        {
+            super::alliance_media::effective_identity(&s, identity);
+        }
+        if h.get("x-orbit-alliance-presentation")
+            .and_then(|v| v.to_str().ok())
+            != Some("1")
+            && let Some(a) = &mut player.alliance
+        {
+            a.visual_identity = None;
+        }
     }
     Ok(bound_api::no_store_json(PlayerProfiles {
         binding,

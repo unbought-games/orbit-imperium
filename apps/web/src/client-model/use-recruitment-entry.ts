@@ -28,7 +28,10 @@ export function useRecruitmentEntry(
     setBusy(true)
     setError('')
     try {
-      await oidcHttp.enroll(entry.universe)
+      await oidcHttp.enroll(entry.universe, {
+        alliance: entry.alliance,
+        invitation: entry.invitation ?? null,
+      })
       trackRecruitment('enrolled')
       window.location.replace(recruitmentEntryPath(entry))
     } catch (cause) {

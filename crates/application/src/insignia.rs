@@ -1,21 +1,7 @@
 //! Authored cosmetic choices, independent of simulation and billing.
 use crate::*;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, future::Future, pin::Pin};
-
-pub type AssetFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, AssetError>> + Send + 'a>>;
-#[derive(Debug, thiserror::Error)]
-pub enum AssetError {
-    #[error("asset not found")]
-    NotFound,
-    #[error("asset storage unavailable")]
-    Unavailable,
-}
-/// Opaque, application-generated keys; delivery URLs and access policy live above storage.
-pub trait AssetStore: Send + Sync {
-    fn read<'a>(&'a self, key: &'a str) -> AssetFuture<'a, Vec<u8>>;
-    fn write<'a>(&'a self, key: &'a str, bytes: Vec<u8>) -> AssetFuture<'a, ()>;
-}
+use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -27,47 +13,7 @@ pub enum CosmeticPolicy {
     All,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct InsigniaRecipe {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub shape: Option<InsigniaShape>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub layers: Option<Vec<InsigniaLayer>>,
-    pub version: u8,
-    pub symbol: String,
-    pub foreground: String,
-    pub background: String,
-}
-impl Default for InsigniaRecipe {
-    fn default() -> Self {
-        Self {
-            shape: None,
-            layers: None,
-            version: 1,
-            symbol: "compass".into(),
-            foreground: "#cbb68d".into(),
-            background: "#152b40".into(),
-        }
-    }
-}
-/// Basic backgrounds are free recipe choices, independent of catalog entitlements.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum InsigniaShape {
-    Shield,
-    Circle,
-    RoundedSquare,
-    Diamond,
-    Hexagon,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct InsigniaLayer {
-    pub symbol: String,
-    pub color: String,
-}
+pub use orbit_engine::{InsigniaLayer, InsigniaRecipe, InsigniaShape};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum InsigniaGroup {
@@ -175,6 +121,16 @@ pub const FREE_INSIGNIAS: &[(&str, &str, &[u8])] = &[
         "Mini stripes",
         include_bytes!("../assets/insignias/forge-mini-stripes.svg"),
     ),
+    (
+        "alliance-horizon-bands",
+        "Horizon bands",
+        include_bytes!("../assets/insignias/alliance-horizon-bands.svg"),
+    ),
+    (
+        "alliance-chevron-bands",
+        "Chevron bands",
+        include_bytes!("../assets/insignias/alliance-chevron-bands.svg"),
+    ),
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -231,6 +187,7 @@ impl Default for InsigniaCatalog {
 }
 fn bundled_group(id: &str) -> InsigniaGroup {
     match id {
+        "alliance-horizon-bands" | "alliance-chevron-bands" => InsigniaGroup::Stripes,
         "forge-wayfinder" => InsigniaGroup::Center,
         "forge-starwing" => InsigniaGroup::Center,
         "forge-ascendant" => InsigniaGroup::Center,

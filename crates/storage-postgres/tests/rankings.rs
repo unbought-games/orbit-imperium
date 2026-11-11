@@ -506,8 +506,16 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
                 .keys()
                 .map(String::as_str)
                 .collect::<Vec<_>>(),
-            vec!["enrollment_open", "public_text", "summary", "universe_name"]
+            vec![
+                "enrollment_open",
+                "presentation",
+                "public_text",
+                "summary",
+                "universe_name"
+            ]
         );
+        assert!(public_json["presentation"].get("hall").is_none());
+        assert!(public_json["presentation"].get("templates").is_none());
         for field in ["members", "leader", "roles", "activity"] {
             assert!(public_json["summary"].get(field).is_none());
         }

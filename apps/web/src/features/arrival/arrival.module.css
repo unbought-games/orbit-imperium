@@ -240,3 +240,47 @@
     transition: none !important;
   }
 }
+
+.allianceArrival {
+  display: grid;
+  gap: 22px;
+  text-align: left;
+  width: 100%;
+}
+.allianceIdentity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 22px 0;
+}
+.allianceIdentity h2 {
+  font: 1.65rem var(--font-editorial);
+  margin: 5px 0;
+}
+.allianceIdentity span {
+  color: var(--ice);
+  font-size: var(--font-size-xs);
+}
+.allianceArrival form,
+.allianceArrival fieldset {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.allianceArrival fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.allianceArrival textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+}
+
+.allianceIdentity > div {
+  min-width: 0;
+}
+.allianceIdentity h2 {
+  overflow-wrap: anywhere;
+}

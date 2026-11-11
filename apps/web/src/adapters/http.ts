@@ -100,13 +100,17 @@ export const http = {
       ),
     )
   },
-  async signupBootstrap(name: string, password: string) {
+  async signupBootstrap(
+    name: string,
+    password: string,
+    recruitment?: components['schemas']['RecruitmentIntent'],
+  ) {
     return validate<Bootstrap>(
       'Bootstrap',
       await request(
         '/api/v1/registration?bootstrap=true',
         'POST',
-        { name, password },
+        { name, password, ...(recruitment ? { recruitment } : {}) },
         undefined,
         20000,
         { 'X-Orbit-View-Metadata': '1' },
@@ -200,6 +204,8 @@ export function gamePort(
           'POST',
           context,
           csrf,
+          10000,
+          { 'X-Orbit-Alliance-Presentation': '1' },
         ),
       )
     },

@@ -1,3 +1,5 @@
+import presentationStyles from './presentation.module.css'
+import { PresentationPreview } from './presentation-preview'
 import type { SettingsDestination } from './settings'
 import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
@@ -20,7 +22,7 @@ import {
 import { AllianceDrafts, AllianceDraftContext } from './drafts'
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
-import { Navigate, useNavigate, useSearch } from '@tanstack/react-router'
+import { useNavigate, useSearch, useBlocker } from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
 import { AlliancesController } from '../../client-model/alliances'
 import type { Coordinator } from '../../client-model/coordinator'
@@ -28,7 +30,8 @@ import { useGameSession } from '../../shell/session-context'
 import { Button, ButtonLink } from '../../ui/button'
 import { ConfirmAction, Markdown, Summary, type Run } from './shared'
 import { usePublicAlliance } from '../../client-model/use-public-alliance'
-import { Board } from './board'
+import { AllianceHall } from './hall'
+import { AllianceIdentityHeader } from './visual-identity'
 import { Roles } from './roles'
 import { Roster, Applications, Settings, Audit } from './administration'
 import styles from './alliances.module.css'
@@ -40,6 +43,7 @@ const identityActions = new Set([
   'Kick',
   'Disband',
   'Update',
+  'SavePresentation',
   'Transfer',
 ])
 export function AllianceScreen({
@@ -50,21 +54,11 @@ export function AllianceScreen({
   discovering?: boolean
 }) {
   const { model, view } = useGameSession()
-  const { universeName, body } = useGameScreen()
   const search = useSearch({ strict: false }) as {
     alliance?: string
     welcome?: string
     invitation?: string
   }
-  if (!creating && !discovering && search.alliance)
-    return (
-      <Navigate
-        {...routeTarget(universeName, 'alliance-discover', body?.id)}
-        search={search}
-        hash
-        replace
-      />
-    )
   return (
     <AllianceWorkspace
       key={bindingKey(view.binding)}
@@ -107,6 +101,19 @@ function AllianceWorkspace({
     body?.id,
   )
   const [drafts] = useState(() => new AllianceDrafts())
+  const hasEdits = () =>
+    [...drafts.authored.values()].some(
+      (value) =>
+        !!value &&
+        typeof value === 'object' &&
+        'revision' in value &&
+        value.revision !== undefined,
+    )
+  const blocker = useBlocker({
+    shouldBlockFn: hasEdits,
+    enableBeforeUnload: hasEdits,
+    withResolver: true,
+  })
   const [controller] = useState(
     () =>
       new AlliancesController({
@@ -118,7 +125,7 @@ function AllianceWorkspace({
   )
   const state = useStore(controller.store)
   const refreshProfiles = useRefreshPlayerProfiles()
-  const [tab, setTab] = useState('Board')
+  const [tab, setTab] = useState('Hall')
   const [settingsSection, setSettingsSection] =
     useState<SettingsDestination>('Profile')
   const [selected, setSelected] = useState<string | undefined>(initialAlliance)
@@ -144,8 +151,8 @@ function AllianceWorkspace({
     setSelected(undefined)
     if (creating || discovering) void navigate(allianceTarget)
   }
-  const run: Run = async (action) => {
-    const ok = await controller.run(action)
+  const run: Run = async (action, expectedRevision) => {
+    const ok = await controller.run(action, expectedRevision)
     if (ok) complete(action)
     return ok
   }
@@ -154,7 +161,7 @@ function AllianceWorkspace({
     if (pending && (await controller.retry())) complete(pending.action)
   }
   const tabs = allianceSections(detail ?? null)
-  const active = tabs.includes(tab) ? tab : 'Board'
+  const active = tabs.includes(tab) ? tab : 'Hall'
   const visiblePlayers =
     !detail || discovering || (selected && selected !== detail.summary.id)
       ? []
@@ -168,12 +175,32 @@ function AllianceWorkspace({
                 entry.actor,
                 ...(entry.subject?.player ? [entry.subject.player] : []),
               ]) ?? [])
-            : active === 'Board'
+            : active === 'Hall'
               ? (detail.posts?.map((post) => post.author) ?? [])
               : []
   useProfilePlayers(visiblePlayers)
   return (
     <AllianceDraftContext.Provider value={drafts}>
+      {blocker.status === 'blocked' && (
+        <PresentationPreview open onClose={() => blocker.reset?.()}>
+          <div className={styles.screen}>
+            <h2>Leave without saving?</h2>
+            <p>Your alliance presentation has unsaved changes.</p>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                drafts.clear()
+                blocker.proceed?.()
+              }}
+            >
+              Leave without saving
+            </Button>
+            <Button variant="secondary" onClick={() => blocker.reset?.()}>
+              Keep editing
+            </Button>
+          </div>
+        </PresentationPreview>
+      )}
       <ContentColumn
         as="section"
         width={creating ? 'focused' : 'full'}
@@ -311,24 +338,28 @@ function AllianceWorkspace({
                 <div className={styles.stack}>
                   {!discovering && detail ? (
                     <>
-                      <Summary summary={detail.summary} />
+                      <AllianceIdentityHeader
+                        summary={detail.summary}
+                        hall={active === 'Hall'}
+                        background={detail.presentation?.hall.background}
+                      />
                       <nav
-                        className={styles.tabs}
+                        className={presentationStyles.editorTabs}
                         aria-label="Alliance sections"
                       >
                         {tabs.map((name) => (
-                          <Button
+                          <button
+                            type="button"
                             key={name}
-                            variant={active === name ? 'primary' : 'secondary'}
                             onClick={() => setTab(name)}
                             aria-current={active === name ? 'page' : undefined}
                           >
                             {name}
-                          </Button>
+                          </button>
                         ))}
                       </nav>
-                      {active === 'Board' && (
-                        <Board
+                      {active === 'Hall' && (
+                        <AllianceHall
                           detail={detail}
                           player={player}
                           run={run}

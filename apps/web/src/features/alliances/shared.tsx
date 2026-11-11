@@ -6,7 +6,10 @@ import type { AllianceAction } from '../../client-model/alliances'
 import { Button } from '../../ui/button'
 import { allianceMarkdown } from './markdown'
 import styles from './alliances.module.css'
-export type Run = (action: AllianceAction) => Promise<boolean>
+export type Run = (
+  action: AllianceAction,
+  expectedRevision?: number,
+) => Promise<boolean>
 export function Markdown({
   text,
   compact = false,

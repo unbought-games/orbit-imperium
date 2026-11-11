@@ -1,7 +1,13 @@
 import type { TitleChoice } from '../../client-model/empire-identity'
 import { planetNameError, trimmedPlanetName } from '../planet-name'
 
-export const arrivalSteps = ['title', 'planet', 'name', 'farewell'] as const
+export const arrivalSteps = [
+  'title',
+  'planet',
+  'name',
+  'alliance',
+  'farewell',
+] as const
 export type ArrivalStep = (typeof arrivalSteps)[number]
 
 export type ArrivalChoices = { title: string; slot: number; name: string }
@@ -18,7 +24,11 @@ export type ArrivalSave =
   | { type: 'rename'; name: string }
   | { type: 'complete' }
 
-export function nextArrivalStep(step: ArrivalStep): ArrivalStep {
+export function nextArrivalStep(
+  step: ArrivalStep,
+  alliance = false,
+): ArrivalStep {
+  if (step === 'name') return alliance ? 'alliance' : 'farewell'
   return arrivalSteps[
     Math.min(arrivalSteps.indexOf(step) + 1, arrivalSteps.length - 1)
   ]

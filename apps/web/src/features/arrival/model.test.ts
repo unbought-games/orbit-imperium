@@ -18,6 +18,8 @@ describe('arrival scene', () => {
   it('walks the steps in order and stays on the farewell', () => {
     expect(nextArrivalStep('title')).toBe('planet')
     expect(nextArrivalStep('name')).toBe('farewell')
+    expect(nextArrivalStep('name', true)).toBe('alliance')
+    expect(nextArrivalStep('alliance', true)).toBe('farewell')
     expect(nextArrivalStep('farewell')).toBe('farewell')
   })
 

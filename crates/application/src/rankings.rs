@@ -362,6 +362,7 @@ mod tests {
     fn alliance(id: u128, members: &[u128]) -> AllianceRankingObservation {
         AllianceRankingObservation {
             alliance: AllianceIdentity {
+                visual_identity: None,
                 id: uuid::Uuid::from_u128(id),
                 universe: UniverseId(uuid::Uuid::from_u128(99)),
                 name: format!("Alliance {id}"),

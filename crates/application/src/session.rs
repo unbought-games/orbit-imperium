@@ -16,6 +16,7 @@ pub struct SignupPolicy {
 }
 /// Hashed credentials and new session are committed with the starter grant.
 pub struct Registration {
+    pub recruitment: Option<RecruitmentIntent>,
     pub name: String,
     pub password_hash: String,
     pub policy: SignupPolicy,
@@ -86,6 +87,17 @@ impl<S: IdentityStore> SessionService<S> {
         policy: SignupPolicy,
         previous: Option<&str>,
     ) -> Result<LoginResult, ServiceError> {
+        self.signup_recruited(name, password, policy, previous, None)
+            .await
+    }
+    pub async fn signup_recruited(
+        &self,
+        name: &str,
+        password: &str,
+        policy: SignupPolicy,
+        previous: Option<&str>,
+        recruitment: Option<RecruitmentIntent>,
+    ) -> Result<LoginResult, ServiceError> {
         let name = name.trim().to_lowercase();
         if name.is_empty()
             || name.len() > 80
@@ -99,6 +111,7 @@ impl<S: IdentityStore> SessionService<S> {
         let session = self
             .store
             .register(Registration {
+                recruitment,
                 name,
                 password_hash: hash_password(password)?,
                 policy,

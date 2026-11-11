@@ -17,6 +17,8 @@ export async function allianceQuery(
       'POST',
       { context: { binding, request_id }, query },
       csrf,
+      10000,
+      { 'X-Orbit-Alliance-Presentation': '1' },
     ),
   )
   if (
@@ -41,6 +43,8 @@ export async function allianceCommand(
       'POST',
       { context: { binding, request_id: commandId(crypto) }, ...command },
       csrf,
+      10000,
+      { 'X-Orbit-Alliance-Presentation': '1' },
     ),
   )
   if (result.command_id !== command.command_id)
@@ -57,6 +61,7 @@ export async function readPublicAlliance(
     {
       signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
       credentials: 'omit',
+      headers: { 'X-Orbit-Alliance-Presentation': '1' },
       cache: 'no-store',
       referrerPolicy: 'no-referrer',
     },
@@ -100,6 +105,7 @@ async function readRecruitment<T>(
   const response = await fetch(path, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
     credentials: 'omit',
+    headers: { 'X-Orbit-Alliance-Presentation': '1' },
     cache: 'no-store',
     referrerPolicy: 'no-referrer',
   })

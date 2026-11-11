@@ -102,6 +102,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         directory: directory.to_string_lossy().into(),
     };
     let customization = Customization {
+        media_limits: Default::default(),
         policy: CosmeticPolicy::Unrestricted,
         assets: config.connect().await.unwrap(),
         catalog: catalog(),

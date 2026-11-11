@@ -32,8 +32,9 @@ export function InsigniaComposer({
   return (
     <div className={styles.composer}>
       <p>
-        Choose one center and one accent. Supporters can add up to two stripes
-        and use three element colors.
+        {snapshot.policy === 'unrestricted'
+          ? 'Choose a center, an accent, and up to two stripes. Make each group your own color.'
+          : 'Choose one center and one accent. Supporters can add up to two stripes and use three element colors.'}
       </p>
       <fieldset disabled={busy}>
         <legend>Background shape</legend>
@@ -82,7 +83,9 @@ export function InsigniaComposer({
             {group === 'center'
               ? 'Center'
               : group === 'stripes'
-                ? 'Stripes · Supporter · Up to 2'
+                ? snapshot.policy === 'unrestricted'
+                  ? 'Stripes · Up to 2'
+                  : 'Stripes · Supporter · Up to 2'
                 : 'Accents'}
           </legend>
           <div
