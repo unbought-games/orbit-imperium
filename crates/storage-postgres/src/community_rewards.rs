@@ -175,12 +175,12 @@ impl PgStore {
         }) {
             return Err(StoreError::Conflict);
         }
-        let authorization = serde_json::to_value(award).map_err(|_| StoreError::CorruptData)?;
-        sqlx::query("INSERT INTO community_award_receipts(award_id,account,authorization) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
-            .bind(&award.award_id).bind(account.0).bind(&authorization).execute(&mut *tx).await.map_err(db_error)?;
-        let saved: (uuid::Uuid, Value) = sqlx::query_as("SELECT account,authorization FROM community_award_receipts WHERE award_id=$1 FOR UPDATE")
+        let award_payload = serde_json::to_value(award).map_err(|_| StoreError::CorruptData)?;
+        sqlx::query("INSERT INTO community_award_receipts(award_id,account,award_payload) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
+            .bind(&award.award_id).bind(account.0).bind(&award_payload).execute(&mut *tx).await.map_err(db_error)?;
+        let saved: (uuid::Uuid, Value) = sqlx::query_as("SELECT account,award_payload FROM community_award_receipts WHERE award_id=$1 FOR UPDATE")
             .bind(&award.award_id).fetch_one(&mut *tx).await.map_err(db_error)?;
-        if saved != (account.0, authorization) {
+        if saved != (account.0, award_payload) {
             return Err(StoreError::Conflict);
         }
         match award.operation {
@@ -208,7 +208,7 @@ impl PgStore {
                 )
                 .await?;
                 let original: Option<(uuid::Uuid, Value)> = sqlx::query_as(
-                    "SELECT account,authorization FROM community_award_receipts WHERE award_id=$1",
+                    "SELECT account,award_payload FROM community_award_receipts WHERE award_id=$1",
                 )
                 .bind(source)
                 .fetch_optional(&mut *tx)
@@ -231,7 +231,7 @@ impl PgStore {
         tx.commit().await.map_err(db_error)
     }
     pub async fn community_pending_receipts(&self) -> Result<Vec<Value>, StoreError> {
-        sqlx::query_scalar("SELECT jsonb_build_object('award_id',award_id,'status','delivered','item_id',authorization->>'item_id') FROM community_award_receipts WHERE acknowledged_at IS NULL ORDER BY granted_at,award_id LIMIT 100")
+        sqlx::query_scalar("SELECT jsonb_build_object('award_id',award_id,'status','delivered','item_id',award_payload->>'item_id') FROM community_award_receipts WHERE acknowledged_at IS NULL ORDER BY granted_at,award_id LIMIT 100")
             .fetch_all(&self.pool).await.map_err(db_error)
     }
     pub async fn acknowledge_community_receipts(&self, ids: &[String]) -> Result<(), StoreError> {
@@ -439,9 +439,9 @@ impl PgStore {
             if reward["scope"] == "game" && reward["game_id"] != COMMUNITY_GAME_ID {
                 return Err(StoreError::Conflict);
             }
-            sqlx::query("INSERT INTO community_alliance_awards(universe,epoch,alliance,honor_id,reward_id,kind,item_id,rule_version,reached_at,authorization) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::text::timestamptz,$10) ON CONFLICT DO NOTHING")
+            sqlx::query("INSERT INTO community_alliance_awards(universe,epoch,alliance,honor_id,reward_id,kind,item_id,rule_version,reached_at,award_payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::text::timestamptz,$10) ON CONFLICT DO NOTHING")
                 .bind(alliance.universe_id).bind(alliance.epoch_id).bind(alliance.alliance_id).bind(honor_id).bind(id).bind(if kind=="emblem" {"insignia"} else {kind}).bind(item).bind(rule).bind(reached).bind(reward).execute(&mut *tx).await.map_err(db_error)?;
-            let saved:Value=sqlx::query_scalar("SELECT authorization FROM community_alliance_awards WHERE universe=$1 AND epoch=$2 AND alliance=$3 AND honor_id=$4 AND reward_id=$5")
+            let saved:Value=sqlx::query_scalar("SELECT award_payload FROM community_alliance_awards WHERE universe=$1 AND epoch=$2 AND alliance=$3 AND honor_id=$4 AND reward_id=$5")
                 .bind(alliance.universe_id).bind(alliance.epoch_id).bind(alliance.alliance_id).bind(honor_id).bind(id).fetch_one(&mut *tx).await.map_err(db_error)?;
             if ["id", "kind", "item_id", "scope", "game_id"]
                 .iter()

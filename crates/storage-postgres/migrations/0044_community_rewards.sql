@@ -28,7 +28,7 @@ CREATE INDEX community_outbox_pending ON community_outbox(retry_at,id) WHERE sta
 CREATE TABLE community_award_receipts (
     award_id text PRIMARY KEY,
     account uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    authorization jsonb NOT NULL,
+    award_payload jsonb NOT NULL,
     acknowledged_at timestamptz,
     granted_at timestamptz NOT NULL DEFAULT now()
 );
@@ -85,7 +85,7 @@ CREATE TABLE community_alliance_awards (
     item_id text NOT NULL,
     rule_version text NOT NULL,
     reached_at timestamptz NOT NULL,
-    authorization jsonb NOT NULL,
+    award_payload jsonb NOT NULL,
     PRIMARY KEY(universe,epoch,alliance,honor_id,reward_id)
 );
 CREATE INDEX community_alliance_awards_owner ON community_alliance_awards(alliance);
