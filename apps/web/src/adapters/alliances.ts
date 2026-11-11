@@ -86,6 +86,22 @@ export async function readAllianceInvitation(
     signal,
   )
 }
+/** Recruitment links must never display one alliance while acting on another. */
+export async function readRecruitmentAlliance(
+  universe: string,
+  alliance: string,
+  invitation: string | undefined,
+  signal: AbortSignal,
+): Promise<S['PublicAlliance']> {
+  const data = invitation
+    ? await readAllianceInvitation(universe, invitation, signal)
+    : await readPublicAlliance(universe, alliance, signal)
+  if (data.summary.id !== alliance || data.summary.universe !== universe)
+    throw new Error(
+      'This invitation does not match the requested alliance. Ask for a new link.',
+    )
+  return data
+}
 export async function readRecruitmentDirectory(
   universe: string,
   search: URLSearchParams,

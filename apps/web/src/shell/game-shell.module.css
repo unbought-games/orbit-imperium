@@ -70,6 +70,17 @@
 .center {
   grid-area: content;
 }
+.allianceThreat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  margin-block: 16px;
+  padding: 12px 16px;
+  border-inline-start: 3px solid #db777d;
+  background: color-mix(in srgb, #71323b 24%, var(--surface-page));
+  color: var(--text);
+}
 .work-area {
   container-type: inline-size;
   overflow-wrap: anywhere;

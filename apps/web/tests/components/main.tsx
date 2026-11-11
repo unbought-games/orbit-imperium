@@ -73,6 +73,8 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'progression-comparison': async () =>
     (await import('./progression.scenarios')).ProgressionComparisonScenario,
   'shell-default': async () => (await import('./shell.story')).ShellDefault,
+  'shell-alliance-threat': async () =>
+    (await import('./shell.story')).ShellAllianceThreat,
   'shell-named': async () => (await import('./shell.story')).ShellNamed,
   'shell-worlds': async () => (await import('./shell.story')).ShellWorlds,
   'shell-roster': async () => (await import('./shell.story')).ShellRoster,

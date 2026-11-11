@@ -129,3 +129,42 @@ was performed. Official hosting needs the companion reviewed IAM source applied
 before uploads, migration 0042 and matching API/frontend, followed by production
 upload/private-public/deletion verification. Self-hosters use the same storage
 contract and [operator guide](../operations/alliance-customization.md).
+
+## PR follow-through
+
+Published as [PR #390](https://github.com/unbought-games/orbit-imperium/pull/390)
+at `d29847f339e1aeed1950525293ae707186b854d8`. The companion infrastructure source
+passed CI/review and merged; no production apply or deployment was performed.
+
+The first application CI run, `42945292507`, passed native/database checks and
+all browser groups except `Browser tests (features 5/6)`, job `130276602039`.
+Its two failures were the 1440px/390px Alliance cases in
+`planet-page-routing.spec.ts`: they still demanded the intentionally removed
+planet selector. Updated those cases to assert its absence while retaining
+legacy destination/query/hash normalization, reload and no-command assertions.
+Planet switching/history remain covered on the other four destinations; an
+in-alliance planet-switch interaction no longer exists.
+
+Validated and fixed both automated review findings:
+
+- Recruitment documents are checked against both the requested alliance and
+  universe before the shared loader publishes them. A mismatched invitation
+  cannot supply displayed admission choices for another alliance. The adapter
+  test covers both invitation/direct reads, both identity mismatches, and success.
+- Alliance routes retain a visible incoming-threat status and fleet link while
+  continuing to omit the planet/resource strip. A prepared shell component test
+  verifies visible status, link and fitting bounds at 1440 × 1000 and 390 × 844;
+  both captured layouts were inspected and shown in the implementation chat.
+  A planetless application test caught the initial link calling a planet-only
+  route without a body. Fixed the product guard, retained the test unchanged,
+  and reran the affected browser group successfully.
+
+Repair validation: 15 adapter/hostile-fleet unit tests passed (0.344 s total),
+the shell component passed (5.069 s bundle preparation, 1.8 s runner, 0.830 s
+test), and 20 routing/recruitment/arrival browser tests passed (13.7 s runner).
+The preceding local run had 19 passed/1 failed in 17.5 s from the planetless
+product defect; it was not treated as a defective test or silently retried.
+Logs: `/tmp/orbit-390-unit-fix.log`, `/tmp/orbit-390-shell-fix.log`, and
+`/tmp/orbit-390-browser-fix.log`. Final formatting, lint, component typecheck and
+production build passed (`/tmp/orbit-390-{format,lint,component-types,build}.log`;
+Vite 4.68 s, prerender 0.411 s). CI follows the pushed repair revision.

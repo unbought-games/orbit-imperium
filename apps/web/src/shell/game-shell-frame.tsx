@@ -42,6 +42,11 @@ export function GameShellFrame({
 }) {
   const pinned = usePinnedHeader()
   const incomingHostile = hasIncomingHostileFleet(view)
+  const hostileMessage = incomingHostile
+    ? view.protocol === 4 && view.missiles?.some((f) => !f.outgoing)
+      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
+      : 'Incoming hostile fleet: attack or espionage detected.'
+    : ''
   const allianceArea = page.startsWith('alliance')
   return (
     <div
@@ -80,12 +85,7 @@ export function GameShellFrame({
                   aria-label="Planet and resources"
                 >
                   <span className={styles.hostileStatus} role="status">
-                    {incomingHostile
-                      ? view.protocol === 4 &&
-                        view.missiles?.some((f) => !f.outgoing)
-                        ? 'Incoming missile attack. Interceptors defend automatically at impact.'
-                        : 'Incoming hostile fleet: attack or espionage detected.'
-                      : ''}
+                    {hostileMessage}
                   </span>
                   <div className={styles['mobile-context']}>
                     <BodySelector
@@ -153,7 +153,19 @@ export function GameShellFrame({
             }
           </Navigation>
         </div>
-        <div className={styles.center}>{children}</div>
+        <div className={styles.center}>
+          {allianceArea && incomingHostile && (
+            <div className={styles.allianceThreat} role="status">
+              <span>{hostileMessage}</span>
+              {body && (
+                <Link {...routeTarget(universeName, 'fleets', body.id)}>
+                  View fleets
+                </Link>
+              )}
+            </div>
+          )}
+          {children}
+        </div>
       </div>
       {footer}
     </div>

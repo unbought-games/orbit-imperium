@@ -1645,3 +1645,19 @@ preview interaction case retains native dialog, unsaved content, Escape, and foc
 restoration coverage. Existing alliance component cases passed (23 total including
 the preview case in the second run). Application editor/arrival journeys remain
 separate integration coverage; the implementation chat owns their validation.
+
+## Alliance PR routing expectations — 2026-11-10
+
+PR #390 at `d29847f3`, CI run `42945292507`, job `130276602039`, failed the two
+Alliance viewport cases in `planet-page-routing.spec.ts` at the removed Selected
+body selector. This is an obsolete interaction expectation following the approved
+removal of the alliance planet/resource bar, not a timing failure. The first
+update retains legacy route/query/hash normalization, reload, absence of the bar,
+and no-command checks. In-place planet switching/history stay covered for the
+other four destinations; that interaction intentionally no longer exists inside
+alliance pages. Both updated cases passed locally in the 20-test routing/arrival/
+recruitment run. No retry, wait extension or selector fallback was introduced.
+
+That run also exposed a product defect in the new incoming-threat fleet link on a
+planetless account. The account-pages test was retained unchanged; guarding the
+planet-only link fixed it. The final affected run passed 20/20 in 13.7 seconds.

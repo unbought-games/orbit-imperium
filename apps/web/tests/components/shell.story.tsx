@@ -78,9 +78,21 @@ const roster = Array.from({ length: 12 }, (_, i) => ({
 const unexpected = async (): Promise<never> => {
   throw new Error('Shell presentation must not issue model commands or reads')
 }
-function preparedModel(bodies: BoundView['bodies']) {
+function preparedModel(bodies: BoundView['bodies'], hostile = false) {
   const view = readyFixture(4).snapshot.view
   view.bodies = bodies
+  if (hostile && view.protocol === 4) {
+    view.missions.incoming = [
+      {
+        sender: id(80),
+        origin: { galaxy: 1, system: 2, position: 3 },
+        target: bodies[0].id,
+        mission: 'Attack',
+        arrival_at: 10000,
+        ships: { visibility: 'Unknown' },
+      },
+    ]
+  }
   view.capabilities = [
     'Galaxy',
     'Research',
@@ -132,16 +144,20 @@ function preparedModel(bodies: BoundView['bodies']) {
 function Shell({
   bodies = [body, { ...body, id: id(6), kind: 'Moon' }],
   badges = false,
+  initialPage = 'overview',
+  hostile = false,
 }: {
   bodies?: BoundView['bodies']
   badges?: boolean
+  initialPage?: Page
+  hostile?: boolean
 }) {
   const [router] = useState(() => {
     function Sample() {
-      const [{ model, view }] = useState(() => preparedModel(bodies))
+      const [{ model, view }] = useState(() => preparedModel(bodies, hostile))
       const commands = useCommands(null)
       const [selected, select] = useState(bodies[0].id)
-      const [page, visit] = useState<Page>('overview')
+      const [page, visit] = useState<Page>(initialPage)
       const [unread, setUnread] = useState(badges)
       const [working, setWorking] = useState(badges)
       return (
@@ -212,6 +228,9 @@ function Shell({
   return <RouterProvider router={router} />
 }
 export const ShellDefault = () => <Shell />
+export const ShellAllianceThreat = () => (
+  <Shell initialPage="alliance" hostile />
+)
 export const ShellNamed = () => (
   <Shell bodies={[{ ...body, name: 'Nova Roma Research Colony' }]} />
 )

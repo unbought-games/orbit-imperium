@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react'
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
-import {
-  readAllianceInvitation,
-  readPublicAlliance,
-} from '../adapters/alliances'
+import { readRecruitmentAlliance } from '../adapters/alliances'
 export function usePublicAlliance(
   universe: string,
   alliance?: string,
@@ -22,11 +19,7 @@ export function usePublicAlliance(
     const abort = new AbortController()
     store.setState({ data: null, error: '' })
     if (alliance)
-      void (
-        invitation
-          ? readAllianceInvitation(universe, invitation, abort.signal)
-          : readPublicAlliance(universe, alliance, abort.signal)
-      )
+      void readRecruitmentAlliance(universe, alliance, invitation, abort.signal)
         .then((data) => {
           if (!abort.signal.aborted) store.setState({ data })
         })

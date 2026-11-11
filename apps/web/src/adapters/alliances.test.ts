@@ -1,5 +1,10 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
-import { allianceQuery, allianceCommand, readPublicAlliance } from './alliances'
+import {
+  allianceQuery,
+  allianceCommand,
+  readPublicAlliance,
+  readRecruitmentAlliance,
+} from './alliances'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const binding = { account: id(1), player: id(2), universe: id(3), epoch: id(4) }
@@ -18,6 +23,34 @@ beforeEach(() => {
   })
 })
 afterEach(() => vi.unstubAllGlobals())
+it('rejects recruitment documents for another alliance or universe before displaying admission choices', async () => {
+  const fetch = vi.fn()
+  vi.stubGlobal('fetch', fetch)
+  for (const invitation of [undefined, id(6)]) {
+    for (const wrong of [{ id: id(99) }, { universe: id(99) }]) {
+      fetch.mockResolvedValueOnce(
+        Response.json({ summary: { ...summary, ...wrong }, public_text: '' }),
+      )
+      await expect(
+        readRecruitmentAlliance(
+          binding.universe,
+          summary.id,
+          invitation,
+          new AbortController().signal,
+        ),
+      ).rejects.toThrow('does not match')
+    }
+    fetch.mockResolvedValueOnce(Response.json({ summary, public_text: '' }))
+    await expect(
+      readRecruitmentAlliance(
+        binding.universe,
+        summary.id,
+        invitation,
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ summary })
+  }
+})
 it('binds queries and CSRF and rejects mismatched responses', async () => {
   const fetch = vi.fn().mockImplementation(async (_, options) => {
     const { context, query } = JSON.parse(options.body)
