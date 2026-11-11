@@ -6,7 +6,7 @@ replacement-equivalence validation and final CI cutover remain open.
 
 | Stream | State | Last completed slice | Next slice | Implementation / verification revision |
 | --- | --- | --- | --- | --- |
-| 01 Resources/quotes | Not started | — | Quick-build restrictions and held quotes | — |
+| 01 Resources/quotes | Delegated | — | Whole stream authorized; begin with quick-build restrictions and held quotes | Chat `01a1c830-b10b-7d70-a7b1-a96a254133af` |
 | 02 Catalog/progression | Not started | — | Comparison controls/item variants | — |
 | 03 Dispatch/fleets | Not started | — | Submission/outcome feedback | — |
 | 04 Empire/settings | Not started | — | Present/carried wealth and inventory | — |
@@ -45,3 +45,14 @@ the PR/handoff. Do not merely write “tests pass” or “migration complete.�
 | Commands, guidance and obsolete scaffolding | 09/10 | Final Make/npm/config/skill audit | Open |
 | PR, merge group and resulting main validation | Final implementation owner | Exact revisions and all attempts | Open |
 | Five subsequent natural merged-PR lifecycles | 10 follow-up owner | First-attempt outcomes and phase timings, including infrastructure/cancellations | Open |
+
+## 2026-11-10: stream 01 assignment
+
+Assigned the full Resources, quotes and production controls workstream to chat
+`01a1c830-b10b-7d70-a7b1-a96a254133af` (Migrate resource and quote tests end to end).
+The owner explicitly requested implementation end to end and a PR. This supersedes
+the brief's generic first-slice stopping advice for this assignment. The chat owns
+implementation, coverage mapping, validation, CI and review fixes; it must leave
+the PR open for owner inspection without enqueueing or merging. No implementation
+or passing validation is claimed by this delegation record. Other streams remain
+unstarted.
