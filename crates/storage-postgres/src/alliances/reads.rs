@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) fn summary(row: &PgRow, universe: UniverseId) -> Result<AllianceSummary, StoreError> {
     Ok(AllianceSummary {
+        visual_identity: Some(Default::default()),
         id: row.try_get("id").map_err(db_error)?,
         universe,
         name: row.try_get("name").map_err(db_error)?,
@@ -53,6 +54,9 @@ impl PgStore {
         let epoch = Epoch(row.try_get("epoch").map_err(db_error)?);
         let scores = crate::rankings::alliance_scores_in_snapshot(&mut tx, universe, epoch).await?;
         let mut result = public_projection(&row, universe, &universe_name, enrollment_open)?;
+        let presentation = crate::alliance_presentation::public(&mut tx, result.summary.id).await?;
+        result.summary.visual_identity = Some(presentation.identity.clone());
+        result.presentation = Some(presentation);
         result.summary.ranking = scores.get(&result.summary.id).cloned();
         tx.commit().await.map_err(db_error)?;
         Ok(result)
@@ -126,7 +130,7 @@ impl PgStore {
         } else {
             BTreeMap::new()
         };
-        let alliances = rows
+        let mut alliances: Vec<PublicAlliance> = rows
             .iter()
             .map(|row| {
                 let mut alliance =
@@ -135,6 +139,11 @@ impl PgStore {
                 Ok(alliance)
             })
             .collect::<Result<_, _>>()?;
+        let mut summaries: Vec<_> = alliances.iter().map(|a| a.summary.clone()).collect();
+        crate::alliance_presentation::identities(&mut tx, &mut summaries).await?;
+        for (alliance, summary) in alliances.iter_mut().zip(summaries) {
+            alliance.summary = summary;
+        }
         tx.commit().await.map_err(db_error)?;
         Ok(RecruitmentDirectory {
             alliances,
@@ -274,6 +283,7 @@ impl PgStore {
         if let Some(detail) = &mut view.alliance {
             detail.summary.ranking = scores.get(&detail.summary.id).cloned();
         }
+        crate::alliance_presentation::identities(&mut tx, &mut view.directory).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(view)
     }
@@ -286,6 +296,7 @@ fn public_projection(
     enrollment_open: bool,
 ) -> Result<PublicAlliance, StoreError> {
     Ok(PublicAlliance {
+        presentation: None,
         summary: summary(row, universe)?,
         public_text: row.try_get("public_text").map_err(db_error)?,
         universe_name: name.into(),

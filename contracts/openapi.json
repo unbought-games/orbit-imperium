@@ -4558,6 +4558,18 @@
               ]
             },
             "description": "Opt in to effective insignia appearance. Omit to retain the legacy response shape during rolling upgrades."
+          },
+          {
+            "name": "X-Orbit-Alliance-Presentation",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -4750,6 +4762,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Orbit-Alliance-Presentation",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -5262,6 +5286,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Orbit-Alliance-Presentation",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -5579,6 +5615,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Orbit-Alliance-Presentation",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -6616,6 +6664,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Orbit-Arrival",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -7483,6 +7543,18 @@
               "type": "integer",
               "minimum": 0
             }
+          },
+          {
+            "name": "X-Orbit-Alliance-Presentation",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -7629,6 +7701,18 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Orbit-Alliance-Presentation",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Opt in to the alliance presentation/recruitment extension. Omission retains the legacy projection."
           }
         ],
         "responses": {
@@ -7940,6 +8024,271 @@
           }
         ]
       }
+    },
+    "/api/alliance-presentation/catalog": {
+      "get": {
+        "summary": "Alliance presentation and media",
+        "x-bot-category": "social-or-status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlliancePresentationCatalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v4/universes/{universe}/alliances/media": {
+      "post": {
+        "summary": "Alliance presentation and media",
+        "x-bot-category": "social-or-status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllianceMediaLibrary"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllianceMediaRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v4/universes/{universe}/alliances/{alliance}/media/{media}/content": {
+      "put": {
+        "summary": "Alliance presentation and media",
+        "x-bot-category": "social-or-status",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllianceMediaLibrary"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "alliance",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "media",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "epoch",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v4/universes/{universe}/alliance-media/{media}": {
+      "get": {
+        "summary": "Display authorized alliance media",
+        "x-bot-category": "public",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "media",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "still",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 32,
+              "maximum": 1600
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raster image",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v4/universes/{universe}/alliances/{alliance}/image": {
+      "get": {
+        "summary": "Download the published alliance recruitment card",
+        "x-bot-category": "public",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "alliance",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published recruitment image",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alliance-presentation/symbols/{id}": {
+      "get": {
+        "summary": "Public raster display of an installed free alliance symbol",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Free symbol raster",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8052,6 +8401,9 @@
           },
           "password": {
             "type": "string"
+          },
+          "recruitment": {
+            "$ref": "#/components/schemas/RecruitmentIntent"
           }
         },
         "required": [
@@ -13096,7 +13448,7 @@
               },
               "name": {
                 "type": "string",
-                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+                "description": "1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected."
               }
             },
             "required": [
@@ -18851,6 +19203,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "visual_identity": {
+            "$ref": "#/components/schemas/AllianceVisualIdentity"
           }
         },
         "required": [
@@ -18939,6 +19294,9 @@
           },
           "recruitment_profile": {
             "$ref": "#/components/schemas/RecruitmentProfile"
+          },
+          "visual_identity": {
+            "$ref": "#/components/schemas/AllianceVisualIdentity"
           }
         },
         "required": [
@@ -19240,6 +19598,9 @@
                 "type": "null"
               }
             ]
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/MemberAlliancePresentation"
           }
         },
         "required": [
@@ -19266,6 +19627,9 @@
           },
           "enrollment_open": {
             "type": "boolean"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/PublicAlliancePresentation"
           }
         },
         "required": [
@@ -19936,6 +20300,30 @@
               "type",
               "alliance",
               "enabled"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SavePresentation"
+              },
+              "alliance": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "edits": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PresentationEdit"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "alliance",
+              "edits"
             ]
           }
         ]
@@ -24538,6 +24926,41 @@
             "required": [
               "type"
             ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "Load"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SetRecruitment"
+              },
+              "intent": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RecruitmentIntent"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "intent"
+            ]
           }
         ]
       },
@@ -24563,6 +24986,9 @@
         "properties": {
           "pending": {
             "type": "boolean"
+          },
+          "recruitment": {
+            "$ref": "#/components/schemas/RecruitmentIntent"
           }
         },
         "required": [
@@ -24593,6 +25019,667 @@
         "required": [
           "kind",
           "label"
+        ]
+      },
+      "MediaPlacement": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "media_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "mobile_x": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mobile_y": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "x",
+          "y",
+          "mobile_x",
+          "mobile_y",
+          "alt"
+        ]
+      },
+      "AllianceCrest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "composition"
+              },
+              "recipe": {
+                "$ref": "#/components/schemas/InsigniaRecipe"
+              }
+            },
+            "required": [
+              "kind",
+              "recipe"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "upload"
+              },
+              "media_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "kind",
+              "media_id"
+            ]
+          }
+        ]
+      },
+      "AllianceVisualIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "motto": {
+            "type": "string"
+          },
+          "primary": {
+            "type": "string"
+          },
+          "secondary": {
+            "type": "string"
+          },
+          "crest": {
+            "$ref": "#/components/schemas/AllianceCrest"
+          },
+          "banner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaPlacement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "motto",
+          "primary",
+          "secondary",
+          "crest",
+          "banner"
+        ]
+      },
+      "AllianceHall": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "welcome_markdown": {
+            "type": "string"
+          },
+          "community_markdown": {
+            "type": "string"
+          },
+          "background": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaPlacement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "welcome_markdown",
+          "community_markdown",
+          "background"
+        ]
+      },
+      "AllianceTemplateDocument": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "content": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "schema_version",
+          "content"
+        ]
+      },
+      "AlliancePresentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "identity": {
+            "$ref": "#/components/schemas/AllianceVisualIdentity"
+          },
+          "hall": {
+            "$ref": "#/components/schemas/AllianceHall"
+          },
+          "active_template": {
+            "type": "string"
+          },
+          "templates": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AllianceTemplateDocument"
+            }
+          }
+        },
+        "required": [
+          "schema_version",
+          "identity",
+          "hall",
+          "active_template",
+          "templates"
+        ]
+      },
+      "PublicAlliancePresentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "identity": {
+            "$ref": "#/components/schemas/AllianceVisualIdentity"
+          },
+          "template_id": {
+            "type": "string"
+          },
+          "document": {
+            "$ref": "#/components/schemas/AllianceTemplateDocument"
+          }
+        },
+        "required": [
+          "schema_version",
+          "identity",
+          "template_id",
+          "document"
+        ]
+      },
+      "MemberAlliancePresentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "public": {
+            "$ref": "#/components/schemas/PublicAlliancePresentation"
+          },
+          "hall": {
+            "$ref": "#/components/schemas/AllianceHall"
+          },
+          "editor": {
+            "$ref": "#/components/schemas/AlliancePresentation"
+          }
+        },
+        "required": [
+          "public",
+          "hall"
+        ]
+      },
+      "PresentationEdit": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SetIdentity"
+              },
+              "schema_version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "value": {
+                "$ref": "#/components/schemas/AllianceVisualIdentity"
+              }
+            },
+            "required": [
+              "type",
+              "schema_version",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SetHall"
+              },
+              "schema_version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "value": {
+                "$ref": "#/components/schemas/AllianceHall"
+              }
+            },
+            "required": [
+              "type",
+              "schema_version",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SetTemplateDocument"
+              },
+              "template_id": {
+                "type": "string"
+              },
+              "document": {
+                "$ref": "#/components/schemas/AllianceTemplateDocument"
+              }
+            },
+            "required": [
+              "type",
+              "template_id",
+              "document"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "SelectTemplate"
+              },
+              "template_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "template_id"
+            ]
+          }
+        ]
+      },
+      "MediaReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sha256": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "sha256",
+          "content_type",
+          "bytes"
+        ]
+      },
+      "AllianceMedia": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "universe": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "epoch": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "alliance": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "declared_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "created_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expires_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "universe",
+          "epoch",
+          "alliance",
+          "filename",
+          "state",
+          "declared_bytes",
+          "created_at",
+          "expires_at",
+          "receipt"
+        ]
+      },
+      "AllianceMediaAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "List"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "Begin"
+              },
+              "media_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "type",
+              "media_id",
+              "filename",
+              "bytes"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "Delete"
+              },
+              "media_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "type",
+              "media_id"
+            ]
+          }
+        ]
+      },
+      "AllianceMediaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "alliance": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "$ref": "#/components/schemas/AllianceMediaAction"
+          }
+        },
+        "required": [
+          "context",
+          "alliance",
+          "action"
+        ]
+      },
+      "AllianceMediaLibrary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllianceMedia"
+            }
+          },
+          "max_file_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "max_total_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "max_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "media",
+          "max_file_bytes",
+          "max_total_bytes",
+          "max_count"
+        ]
+      },
+      "TemplateField": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "max_length": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "kind",
+          "max_length"
+        ]
+      },
+      "AllianceTemplateDefinition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateField"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "schema_version",
+          "fields"
+        ]
+      },
+      "AlliancePresentationCatalog": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllianceTemplateDefinition"
+            }
+          },
+          "symbols": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsigniaSymbol"
+            },
+            "minItems": 1
+          },
+          "max_file_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "max_total_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "max_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "templates",
+          "symbols",
+          "max_file_bytes",
+          "max_total_bytes",
+          "max_count"
+        ]
+      },
+      "RecruitmentIntent": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "alliance": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "invitation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "alliance",
+          "invitation"
         ]
       }
     },

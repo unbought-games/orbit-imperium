@@ -208,6 +208,15 @@ impl IdentityStore for PgStore {
         account: AccountId,
         policy: SignupPolicy,
     ) -> Result<(), StoreError> {
+        self.enroll_oidc_with_recruitment(account, policy, None)
+            .await
+    }
+    async fn enroll_oidc_with_recruitment(
+        &self,
+        account: AccountId,
+        policy: SignupPolicy,
+        recruitment: Option<RecruitmentIntent>,
+    ) -> Result<(), StoreError> {
         let mut c = self.acquire_pool(self.read_pool()?).await?;
         let name: String = sqlx::query_scalar("SELECT name FROM accounts WHERE id=$1")
             .bind(account.0)
@@ -218,6 +227,7 @@ impl IdentityStore for PgStore {
         let digest = unbought_auth::digest(&unbought_auth::random_secret());
         self.enroll_account(
             Registration {
+                recruitment,
                 name,
                 password_hash: "!oidc".into(),
                 policy,

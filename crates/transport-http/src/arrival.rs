@@ -9,9 +9,12 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
     let session = authenticate(&s, &h, true).await?;
     let u = UniverseId(id);
     bound_api::path_binding(u, q.context.binding)?;
-    let state = s
+    let mut state = s
         .game
         .arrival(bound_api::principal(&session, u)?, q)
         .await?;
+    if h.get("x-orbit-arrival").and_then(|v| v.to_str().ok()) != Some("1") {
+        state.recruitment = None;
+    }
     Ok(bound_api::no_store_json(state))
 }

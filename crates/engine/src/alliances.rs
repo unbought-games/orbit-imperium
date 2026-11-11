@@ -4,6 +4,8 @@ use crate::PlayerId;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use uuid::Uuid;
+pub mod presentation;
+pub use presentation::*;
 mod audit;
 pub use audit::AuditSubject;
 mod deletion;
@@ -95,6 +97,10 @@ pub enum AllianceAction {
         public_text: String,
         recruitment: AllianceRecruitment,
     },
+    SavePresentation {
+        alliance: Uuid,
+        edits: Vec<PresentationEdit>,
+    },
     SetRecruitmentProfile {
         alliance: Uuid,
         profile: RecruitmentProfile,
@@ -162,6 +168,7 @@ impl AllianceAction {
             | Self::Leave { alliance }
             | Self::Kick { alliance, .. }
             | Self::Update { alliance, .. }
+            | Self::SavePresentation { alliance, .. }
             | Self::SetRecruitmentProfile { alliance, .. }
             | Self::SetInvitation { alliance, .. }
             | Self::SaveRole { alliance, .. }
@@ -186,6 +193,7 @@ impl AllianceAction {
             Self::Leave { .. } => "Leave",
             Self::Kick { .. } => "Kick",
             Self::Update { .. } => "Update",
+            Self::SavePresentation { .. } => "SavePresentation",
             Self::SetRecruitmentProfile { .. } => "SetRecruitmentProfile",
             Self::SetInvitation { .. } => "SetInvitation",
             Self::SaveRole { .. } => "SaveRole",
@@ -259,6 +267,8 @@ pub struct StateAudit {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AllianceState {
+    #[serde(default)]
+    pub presentation: AlliancePresentation,
     pub id: Uuid,
     pub name: String,
     pub tag: String,
@@ -345,6 +355,7 @@ impl AllianceState {
             },
         ];
         Ok(Self {
+            presentation: Default::default(),
             id,
             name: name.trim().into(),
             tag: tag.trim().into(),
@@ -585,6 +596,10 @@ impl AllianceState {
                 self.tag = tag.trim().into();
                 self.public_text = public_text.clone();
                 self.recruitment = *recruitment;
+            }
+            SavePresentation { edits, .. } => {
+                self.require(actor, P::EditProfile)?;
+                self.presentation = self.presentation.edited(edits)?;
             }
             SetRecruitmentProfile { profile, .. } => {
                 self.require(actor, P::ManageRecruitment)?;

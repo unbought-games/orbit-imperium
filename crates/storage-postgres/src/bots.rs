@@ -195,6 +195,7 @@ impl PgStore {
         let result = self
             .enroll_machine(
                 Registration {
+                    recruitment: None,
                     name: name.trim().to_lowercase(),
                     password_hash: "!machine".into(),
                     policy: SignupPolicy {

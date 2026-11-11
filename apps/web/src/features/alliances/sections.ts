@@ -4,7 +4,7 @@ import { can, type AllianceDetail } from '../../client-model/alliances'
 export function allianceSections(detail: AllianceDetail | null) {
   if (!detail) return []
   return [
-    'Board',
+    'Hall',
     ...(can(detail, 'ViewMembers') ? ['Members'] : []),
     ...(can(detail, 'ViewApplications') ? ['Applications'] : []),
     ...(detail.roles &&

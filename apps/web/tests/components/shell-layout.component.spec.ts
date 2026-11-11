@@ -3,6 +3,35 @@ import { selectBody } from '../fixtures/body-selector'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { id } from '../../src/test-support/bootstrap'
 
+test('alliance pages retain a visible attack warning without the planet bar on desktop and mobile', async ({
+  page,
+  mount,
+}) => {
+  await mount('shell-alliance-threat')
+  for (const [width, height] of [
+    [1440, 1000],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height })
+    const warning = page
+      .getByRole('status')
+      .filter({ hasText: 'Incoming hostile fleet' })
+    await expect(warning).toBeVisible()
+    await expect(
+      page.getByRole('group', { name: 'Planet and resources' }),
+    ).toHaveCount(0)
+    await expect(
+      warning.getByRole('link', { name: 'View fleets' }),
+    ).toHaveAttribute('href', /\/fleets$/)
+    const bounds = await warning.boundingBox()
+    expect(bounds!.x).toBeGreaterThanOrEqual(0)
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, {
+      path: `test-results/alliance-threat-${width}x${height}.png`,
+    })
+  }
+})
+
 test('mobile resource stock uses icons and compact balances with capacity details on tap', async ({
   page,
   mount,

@@ -31,7 +31,8 @@ impl PgStore {
         .fetch_one(&mut *tx)
         .await
         .map_err(db_error)?;
-        let result = RankingFacts {
+        let visuals: Vec<(uuid::Uuid,sqlx::types::Json<AllianceVisualIdentity>)>=sqlx::query_as("SELECT p.alliance,p.identity FROM alliance_presentation p JOIN alliances a ON a.id=p.alliance WHERE a.universe=$1 AND a.epoch=$2 AND p.schema_version=1").bind(b.universe.0).bind(b.epoch.0).fetch_all(&mut *tx).await.map_err(db_error)?;
+        let mut result = RankingFacts {
             names: names
                 .into_iter()
                 .map(|(id, name)| (PlayerId(id), name))
@@ -64,6 +65,14 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
             history.commit().await.map_err(db_error)?;
+        }
+        for a in &mut result.alliances {
+            a.alliance.visual_identity = Some(Default::default());
+        }
+        for (id, visual) in visuals {
+            if let Some(a) = result.alliances.iter_mut().find(|a| a.alliance.id == id) {
+                a.alliance.visual_identity = Some(visual.0);
+            }
         }
         Ok(result)
     }
@@ -140,6 +149,7 @@ pub(crate) async fn source_facts(
             .into_iter()
             .map(|(id, name, tag, members)| AllianceRankingObservation {
                 alliance: AllianceIdentity {
+                    visual_identity: None,
                     id,
                     universe,
                     name,

@@ -106,6 +106,7 @@ impl PgStore {
         machine_sleep: Option<u16>,
     ) -> Result<AuthenticatedSession, StoreError> {
         let Registration {
+            recruitment,
             name,
             password_hash,
             policy,
@@ -334,6 +335,7 @@ impl PgStore {
             .await?;
             if machine_sleep.is_none() {
                 crate::arrival::enroll(&mut tx, u, player).await?;
+                crate::arrival::set_recruitment(&mut tx, u, player, recruitment).await?;
             }
             if !scoped {
                 sqlx::query("UPDATE world_heads SET revision=revision+1 WHERE universe=$1")

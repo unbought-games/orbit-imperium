@@ -1,3 +1,4 @@
+import { recruitmentFixture, alliance as recruitmentAlliance } from './fixtures/recruitment'
 import { withFixtureResponse } from './fixtures/responses'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -374,4 +375,78 @@ test('expired noticeboard cursors recover to fresh notices', { tag: '@journey' }
   await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
   expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)
   expect(queries.at(-1)).toEqual({type:'Detail',alliance,post_before:null})
+})
+
+
+// One application journey owns editor -> command -> refreshed public projection wiring.
+test('alliance presentation previews unsaved edits and publishes them through the real editor', async ({
+  page,
+}) => {
+  const fixture = await recruitmentFixture(page, {
+    manager: true,
+    customization: true,
+  })
+  const mine = (response: import('@playwright/test').Response) =>
+    response.url().endsWith('/alliances/query') &&
+    response.request().postDataJSON().query.type === 'Mine'
+  await withFixtureResponse(page, mine, () =>
+    page.goto('/u/andromeda/alliance'),
+  )
+  await withFixtureResponse(
+    page,
+    (r) => r.url().endsWith('/api/alliance-presentation/catalog'),
+    () =>
+      page
+        .getByRole('navigation', { name: 'Alliance sections' })
+        .getByRole('button', { name: 'Settings', exact: true })
+        .click(),
+  )
+  await page
+    .getByRole('textbox', { name: 'Motto', exact: true })
+    .fill('Good company. Uncharted space.')
+  await page
+    .getByRole('navigation', { name: 'Settings sections' })
+    .getByRole('button', { name: 'Public page', exact: true })
+    .click()
+  await page
+    .getByRole('textbox', { name: 'Hero introduction', exact: true })
+    .fill('Build something worth coming home to.')
+  await page
+    .getByRole('button', { name: 'Preview public page', exact: true })
+    .click()
+  const preview = page.getByRole('dialog', {
+    name: 'Preview · unsaved changes',
+    exact: true,
+  })
+  await expect(
+    preview.getByText('Build something worth coming home to.', { exact: true }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Close preview', exact: true }).click()
+  await withFixtureResponse(page, mine, () =>
+    page
+      .getByRole('button', { name: 'Save presentation', exact: true })
+      .click(),
+  )
+  await expect(
+    page.getByText('Alliance presentation saved.', { exact: true }),
+  ).toBeVisible()
+  const command = fixture.commands.find(
+    (c) => c.action.type === 'SavePresentation',
+  )!
+  expect(command.expected_revision).toBe(1)
+  expect(
+    command.action.type === 'SavePresentation' &&
+      command.action.edits.map((e) => e.type),
+  ).toEqual(['SetIdentity', 'SetTemplateDocument'])
+  await withFixtureResponse(
+    page,
+    (r) => r.url().endsWith(`/alliances/${recruitmentAlliance}`),
+    () => page.goto(`/alliances/${binding.universe}/${recruitmentAlliance}`),
+  )
+  await expect(
+    page.getByText('Good company. Uncharted space.', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Build something worth coming home to.', { exact: true }),
+  ).toBeVisible()
 })

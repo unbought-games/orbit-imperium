@@ -28,6 +28,7 @@ it('sends a bound view source and CSRF, never a subject or credential', async ()
     'x-csrf-token': 'csrf',
     'x-orbit-insignia': '4',
     'x-orbit-identity': '1',
+    'x-orbit-alliance-presentation': '1',
   })
 })
 it('rejects wrong bindings, request correlation, private fields and unknown tiers', async () => {

@@ -239,7 +239,7 @@ test('saving an unrelated role retains an edited notice draft across unmount', a
     .fill('Observer')
   await page.getByRole('button', { name: 'Create role', exact: true }).click()
   await expect(page.getByText('Observer', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Board', exact: true }).click()
+  await page.getByRole('button', { name: 'Hall', exact: true }).click()
   await expect(
     draft.getByRole('textbox', { name: 'Notice title', exact: true }),
   ).toHaveValue('Unpublished orders')
@@ -643,7 +643,7 @@ test('settings keep independent drafts and the selected section across rejected 
   await expect(page.getByLabel('Recruitment', { exact: true })).toHaveValue(
     'Closed',
   )
-  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await page.getByRole('button', { name: 'Identity', exact: true }).click()
   await expect(page.getByLabel('Alliance name', { exact: true })).toHaveValue(
     'Starlight Voyagers',
   )
@@ -652,7 +652,7 @@ test('settings keep independent drafts and the selected section across rejected 
   await expect(page.getByLabel('Recruitment', { exact: true })).toHaveValue(
     'Closed',
   )
-  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await page.getByRole('button', { name: 'Identity', exact: true }).click()
   await expect(page.getByLabel('Alliance name', { exact: true })).toHaveValue(
     'Starlight Voyagers',
   )
@@ -687,7 +687,7 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     const nav = page.getByRole('navigation', { name: 'Settings sections' })
     for (const name of [
-      'Profile',
+      'Identity',
       'Recruitment',
       'Invitations',
       'Leadership',

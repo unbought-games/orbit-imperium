@@ -1,3 +1,4 @@
+import { recruitmentEntry } from './recruitment'
 import { startSessionActivity } from '../adapters/session-activity'
 import { http, HttpError } from '../adapters/http'
 import { useEffect, useRef, type FormEvent } from 'react'
@@ -39,13 +40,21 @@ export function useAppSession() {
       document.removeEventListener('visibilitychange', wake)
     }
   }, [controller])
-  const login = (event: FormEvent<HTMLFormElement>, signup: boolean) => {
+  const login = (
+    event: FormEvent<HTMLFormElement>,
+    signup: boolean,
+    redirect?: string,
+  ) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
+    const entry = redirect ? recruitmentEntry(redirect) : null
     void controller.authenticate(
       signup,
       String(data.get('name')),
       String(data.get('password')),
+      entry
+        ? { alliance: entry.alliance, invitation: entry.invitation ?? null }
+        : undefined,
     )
   }
   const csrf =

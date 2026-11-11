@@ -19,6 +19,20 @@ pub(crate) async fn enroll(
     Ok(())
 }
 
+pub(crate) async fn set_recruitment(
+    tx: &mut Tx<'_>,
+    u: UniverseId,
+    player: PlayerId,
+    intent: Option<RecruitmentIntent>,
+) -> Result<(), StoreError> {
+    if intent.is_some_and(|i| i.alliance.is_nil() || i.invitation.is_some_and(|v| v.is_nil())) {
+        return Err(StoreError::Conflict);
+    }
+    sqlx::query("UPDATE empire_arrivals SET recruitment=$3 WHERE universe=$1 AND player=$2 AND completed_at_ms IS NULL")
+        .bind(u.0).bind(player.0).bind(intent.map(sqlx::types::Json)).execute(&mut **tx).await.map_err(db_error)?;
+    Ok(())
+}
+
 async fn appearances(
     tx: &mut Tx<'_>,
     u: UniverseId,
@@ -53,7 +67,7 @@ impl PgStore {
     ) -> Result<ArrivalPresentation, StoreError> {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
-        let row = sqlx::query("SELECT m.joined_at_ms, EXISTS(SELECT 1 FROM empire_arrivals a WHERE a.player=m.player AND a.completed_at_ms IS NULL) AS pending FROM universe_memberships m WHERE m.universe=$1 AND m.player=$2")
+        let row = sqlx::query("SELECT (SELECT recruitment FROM empire_arrivals a WHERE a.player=m.player AND a.completed_at_ms IS NULL) AS recruitment,m.joined_at_ms, EXISTS(SELECT 1 FROM empire_arrivals a WHERE a.player=m.player AND a.completed_at_ms IS NULL) AS pending FROM universe_memberships m WHERE m.universe=$1 AND m.player=$2")
             .bind(b.universe.0)
             .bind(b.player.0)
             .fetch_one(&mut *tx)
@@ -62,6 +76,10 @@ impl PgStore {
         let appearances = appearances(&mut tx, b.universe, bodies).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(ArrivalPresentation {
+            recruitment: row
+                .try_get::<Option<sqlx::types::Json<RecruitmentIntent>>, _>("recruitment")
+                .map_err(db_error)?
+                .map(|j| j.0),
             pending: row.try_get("pending").map_err(db_error)?,
             joined_at_ms: row.try_get("joined_at_ms").map_err(db_error)?,
             appearances,
@@ -123,6 +141,16 @@ impl PgStore {
         Ok(())
     }
 
+    pub(crate) async fn write_arrival_recruitment(
+        &self,
+        b: Binding,
+        intent: Option<RecruitmentIntent>,
+    ) -> Result<(), StoreError> {
+        let mut tx = self.arrival_write(b).await?;
+        set_recruitment(&mut tx, b.universe, b.player, intent).await?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(())
+    }
     pub(crate) async fn write_arrival_completion(&self, b: Binding) -> Result<(), StoreError> {
         let mut tx = self.arrival_write(b).await?;
         sqlx::query("UPDATE empire_arrivals SET completed_at_ms=floor(extract(epoch FROM clock_timestamp())*1000)::bigint WHERE player=$1 AND universe=$2 AND completed_at_ms IS NULL")

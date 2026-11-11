@@ -1,3 +1,4 @@
+import { PresentationEditor } from './presentation-editor'
 import { can, type AllianceDetail } from '../../client-model/alliances'
 import { Field, Input } from '../../ui/form'
 import { value, type Run } from './shared'
@@ -8,6 +9,9 @@ import styles from './settings.module.css'
 
 export type SettingsDestination =
   | 'Profile'
+  | 'Hall'
+  | 'Public page'
+  | 'Media'
   | 'Recruitment'
   | 'Invitations'
   | 'Leadership'
@@ -28,7 +32,14 @@ export function Settings({
   onSectionChange: (section: SettingsDestination) => void
 }) {
   const sections: SettingsDestination[] = [
-    ...(can(detail, 'EditProfile') ? ['Profile' as const] : []),
+    ...(can(detail, 'EditProfile')
+      ? [
+          'Profile' as const,
+          ...(detail.presentation?.editor
+            ? ['Hall' as const, 'Public page' as const, 'Media' as const]
+            : []),
+        ]
+      : []),
     ...(can(detail, 'ManageRecruitment')
       ? ['Recruitment' as const, 'Invitations' as const]
       : []),
@@ -45,7 +56,7 @@ export function Settings({
             aria-current={active === name ? 'page' : undefined}
             onClick={() => onSectionChange(name)}
           >
-            {name}
+            {name === 'Profile' ? 'Identity' : name}
           </button>
         ))}
       </nav>
@@ -112,6 +123,19 @@ export function Settings({
             </SettingsSection>
           </SettingsForm>
         )}
+        {detail.presentation?.editor &&
+          can(detail, 'EditProfile') &&
+          (active === 'Profile' ||
+            active === 'Hall' ||
+            active === 'Public page' ||
+            active === 'Media') && (
+            <PresentationEditor
+              detail={detail}
+              run={run}
+              busy={busy}
+              section={active === 'Profile' ? 'Identity' : active}
+            />
+          )}
         {active === 'Recruitment' && (
           <RecruitmentSettings detail={detail} run={run} busy={busy} />
         )}

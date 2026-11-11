@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 fn registration(policy: SignupPolicy, password_hash: &str) -> Registration {
     Registration {
+        recruitment: None,
         name: format!("topology-{}", Uuid::new_v4()),
         password_hash: password_hash.into(),
         policy,

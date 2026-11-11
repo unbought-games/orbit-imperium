@@ -5,9 +5,11 @@ import type { FormEvent } from 'react'
 // authoritative for every untouched field. This cache lives with the screen's
 // session and is discarded on access loss, never written to browser storage.
 export class AllianceDrafts {
+  readonly authored = new Map<string, unknown>()
   readonly fields = new Map<string, Map<string, string[]>>()
   clear = () => {
     this.fields.clear()
+    this.authored.clear()
   }
 }
 export const AllianceDraftContext = createContext<AllianceDrafts | null>(null)

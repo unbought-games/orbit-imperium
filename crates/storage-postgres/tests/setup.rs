@@ -84,6 +84,7 @@ async fn retries_preserve_players_secrets_rules_and_live_policy_and_reject_confl
     assert_eq!(result.configuration.immutable.speed, 3);
     store
         .register(Registration {
+            recruitment: None,
             name: "friend".into(),
             password_hash: "fixture".into(),
             policy: SignupPolicy {

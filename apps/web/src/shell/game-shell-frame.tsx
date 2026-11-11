@@ -42,6 +42,12 @@ export function GameShellFrame({
 }) {
   const pinned = usePinnedHeader()
   const incomingHostile = hasIncomingHostileFleet(view)
+  const hostileMessage = incomingHostile
+    ? view.protocol === 4 && view.missiles?.some((f) => !f.outgoing)
+      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
+      : 'Incoming hostile fleet: attack or espionage detected.'
+    : ''
+  const allianceArea = page.startsWith('alliance')
   return (
     <div
       className={styles['game-shell']}
@@ -69,86 +75,97 @@ export function GameShellFrame({
             onLogout={onLogout}
             onVisit={onVisit}
           >
-            {(navigation) => (
-              <div
-                className={`${styles.worldBar} ${incomingHostile ? styles.hostile : ''}`}
-                role="group"
-                aria-label="Planet and resources"
-              >
-                <span className={styles.hostileStatus} role="status">
-                  {incomingHostile
-                    ? view.protocol === 4 &&
-                      view.missiles?.some((f) => !f.outgoing)
-                      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
-                      : 'Incoming hostile fleet: attack or espionage detected.'
-                    : ''}
-                </span>
-                <div className={styles['mobile-context']}>
-                  <BodySelector
-                    bodies={view.bodies}
-                    selected={body?.id}
-                    onSelect={onSelectBody}
-                  />
-                </div>
-                {navigation}
-                <div className={styles.masthead}>
-                  {body ? (
-                    <ResourceStrip
-                      view={view}
-                      body={body}
-                      renderStorageWarning={(building, warning) =>
-                        resolveDestination(
-                          {
-                            universe: view.binding.universe,
-                            page: 'resources',
-                            body: body.id,
-                            item: catalogSlug(building),
-                          },
-                          view,
-                        ).available ? (
-                          <Link
-                            {...routeTarget(
-                              universeName,
-                              'resources',
-                              body.id,
-                              building,
-                            )}
-                          >
-                            {warning}
-                          </Link>
-                        ) : (
-                          warning
-                        )
-                      }
-                      energyLink={
-                        resolveDestination(
-                          {
-                            universe: view.binding.universe,
-                            page: 'resource-settings',
-                            body: body.id,
-                          },
-                          view,
-                        ).available ? (
-                          <Link
-                            {...routeTarget(
-                              universeName,
-                              'resource-settings',
-                              body.id,
-                            )}
-                            aria-label="Energy — resource settings"
-                          />
-                        ) : undefined
-                      }
+            {(navigation) =>
+              allianceArea ? (
+                navigation
+              ) : (
+                <div
+                  className={`${styles.worldBar} ${incomingHostile ? styles.hostile : ''}`}
+                  role="group"
+                  aria-label="Planet and resources"
+                >
+                  <span className={styles.hostileStatus} role="status">
+                    {hostileMessage}
+                  </span>
+                  <div className={styles['mobile-context']}>
+                    <BodySelector
+                      bodies={view.bodies}
+                      selected={body?.id}
+                      onSelect={onSelectBody}
                     />
-                  ) : (
-                    <span />
-                  )}
+                  </div>
+                  {navigation}
+                  <div className={styles.masthead}>
+                    {body ? (
+                      <ResourceStrip
+                        view={view}
+                        body={body}
+                        renderStorageWarning={(building, warning) =>
+                          resolveDestination(
+                            {
+                              universe: view.binding.universe,
+                              page: 'resources',
+                              body: body.id,
+                              item: catalogSlug(building),
+                            },
+                            view,
+                          ).available ? (
+                            <Link
+                              {...routeTarget(
+                                universeName,
+                                'resources',
+                                body.id,
+                                building,
+                              )}
+                            >
+                              {warning}
+                            </Link>
+                          ) : (
+                            warning
+                          )
+                        }
+                        energyLink={
+                          resolveDestination(
+                            {
+                              universe: view.binding.universe,
+                              page: 'resource-settings',
+                              body: body.id,
+                            },
+                            view,
+                          ).available ? (
+                            <Link
+                              {...routeTarget(
+                                universeName,
+                                'resource-settings',
+                                body.id,
+                              )}
+                              aria-label="Energy — resource settings"
+                            />
+                          ) : undefined
+                        }
+                      />
+                    ) : (
+                      <span />
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            }
           </Navigation>
         </div>
-        <div className={styles.center}>{children}</div>
+        <div className={styles.center}>
+          {allianceArea && incomingHostile && (
+            <div className={styles.allianceThreat} role="status">
+              <span>{hostileMessage}</span>
+              {body && (
+                <Link {...routeTarget(universeName, 'fleets', body.id)}>
+                  View fleets
+                </Link>
+              )}
+            </div>
+          )}
+          {children}
+        </div>
       </div>
       {footer}
     </div>

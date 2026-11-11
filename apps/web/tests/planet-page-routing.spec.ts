@@ -105,7 +105,18 @@ for (const width of [1440, 390]) {
         await expect(page).toHaveURL(canonical(body.id))
         await expect(page.locator('main h1')).toHaveText(destinationTitle)
         const selector = page.getByRole('combobox', { name: 'Selected body' })
-        await expect(selector).toHaveAttribute('data-value', body.id)
+        if (slug === 'alliance') {
+            // Alliance pages intentionally omit the planet/resource bar. Preserve
+            // legacy normalization and reload coverage without demanding its removal be undone.
+            await expect(selector).toHaveCount(0)
+            await open(page, () => page.reload())
+            await expect(page).toHaveURL(canonical(body.id))
+            await expect(page.locator('main h1')).toHaveText(destinationTitle)
+            await expect(selector).toHaveCount(0)
+            expect(purchases()).toBe(0)
+            return
+          }
+          await expect(selector).toHaveAttribute('data-value', body.id)
         await selector.click()
         await page.getByRole('option', { name: /Beta/ }).click()
         await expect(page).toHaveURL(canonical(id(6)))

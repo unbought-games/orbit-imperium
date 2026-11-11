@@ -129,6 +129,22 @@ impl GameStore for PgStore {
     ) -> Result<SocialCommandResult, StoreError> {
         self.commit_social(q).await
     }
+    async fn alliance_media(
+        &self,
+        b: Binding,
+        alliance: uuid::Uuid,
+        action: MediaOperation,
+    ) -> Result<AllianceMediaLibrary, StoreError> {
+        self.manage_alliance_media(b, alliance, action).await
+    }
+    async fn alliance_media_read(
+        &self,
+        universe: UniverseId,
+        id: uuid::Uuid,
+        account: Option<AccountId>,
+    ) -> Result<AllianceMedia, StoreError> {
+        self.read_alliance_media(universe, id, account).await
+    }
     async fn alliance_query(&self, q: AllianceQueryRequest) -> Result<AllianceView, StoreError> {
         self.read_alliances(q).await
     }
@@ -263,6 +279,13 @@ impl GameStore for PgStore {
         slot: u8,
     ) -> Result<(), StoreError> {
         self.write_body_appearance(binding, body, slot).await
+    }
+    async fn set_arrival_recruitment(
+        &self,
+        b: Binding,
+        intent: Option<RecruitmentIntent>,
+    ) -> Result<(), StoreError> {
+        self.write_arrival_recruitment(b, intent).await
     }
     async fn complete_arrival(&self, binding: Binding) -> Result<(), StoreError> {
         self.write_arrival_completion(binding).await

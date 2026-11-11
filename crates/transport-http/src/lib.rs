@@ -1,11 +1,14 @@
 mod announcements;
 pub use announcements::router as announcement_router;
+mod alliance_card_art;
 mod alliance_preview;
 mod arrival;
 mod empire_history;
 mod empire_identity;
 mod insignias;
 pub use insignias::Customization;
+mod alliance_images;
+mod alliance_media;
 mod alliances;
 mod bootstrap;
 mod bootstrap_html;
@@ -79,6 +82,7 @@ struct HttpState<S> {
     game: GameService<S>,
     sessions: SessionService<S>,
     config: HttpConfig,
+    alliance_media_work: Arc<Semaphore>,
     public_feed_work: Arc<Semaphore>,
     public_feed_budget: Mutex<rate_limit::LoginBudget>,
     alliance_public_budget: Mutex<rate_limit::LoginBudget>,
@@ -182,6 +186,7 @@ where
         updates: store,
         drain,
         config,
+        alliance_media_work: Arc::new(Semaphore::new(2)),
         public_feed_work: Arc::new(Semaphore::new(8)),
         public_feed_budget: Mutex::new(rate_limit::LoginBudget::new()),
         alliance_public_budget: Mutex::new(rate_limit::LoginBudget::new()),
@@ -327,6 +332,26 @@ where
             post(social::command::<S>).layer(DefaultBodyLimit::max(64 * 1024)),
         )
         .route(
+            "/api/alliance-presentation/catalog",
+            get(alliance_media::catalog::<S>),
+        )
+        .route(
+            "/api/alliance-presentation/symbols/{id}",
+            get(alliance_media::symbol::<S>),
+        )
+        .route(
+            "/api/v4/universes/{id}/alliances/media",
+            post(alliance_media::manage::<S>),
+        )
+        .route(
+            "/api/v4/universes/{u}/alliances/{alliance}/media/{media}/content",
+            axum::routing::put(alliance_media::upload::<S>).layer(DefaultBodyLimit::disable()),
+        )
+        .route(
+            "/api/v4/universes/{u}/alliance-media/{media}",
+            get(alliance_media::image::<S>),
+        )
+        .route(
             "/api/v4/universes/{id}/alliances/query",
             post(alliances::query::<S>),
         )
@@ -357,6 +382,10 @@ where
         .route(
             "/api/v4/universes/{id}/invitations/{token}",
             get(alliances::invitation::<S>),
+        )
+        .route(
+            "/api/v4/universes/{u}/alliances/{alliance}/image",
+            get(alliance_preview::image::<S>),
         )
         .route(
             "/api/v4/universes/{id}/alliances/{alliance}",
@@ -582,6 +611,8 @@ fn cookie<S>(s: &HttpState<S>, value: &str, age: u32) -> String {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Login {
+    #[serde(default)]
+    recruitment: Option<RecruitmentIntent>,
     name: String,
     password: String,
 }
@@ -690,11 +721,12 @@ async fn signup<S: GameStore + IdentityStore + Clone + 'static>(
     let prior = token(&h).map(str::to_owned);
     let service = s.sessions.clone();
     let work = match password_work::spawn(&s.password_work, move || {
-        tokio::runtime::Handle::current().block_on(service.signup(
+        tokio::runtime::Handle::current().block_on(service.signup_recruited(
             &request.name,
             &request.password,
             policy,
             prior.as_deref(),
+            request.recruitment,
         ))
     }) {
         Ok(work) => work,

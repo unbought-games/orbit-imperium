@@ -1153,3 +1153,46 @@ async fn display_policy_is_live_universe_scoped_and_preserves_machine_participat
         assert_eq!(status.policy.action_units_per_24h, Some(5));
     }
 }
+
+#[tokio::test]
+async fn alliance_media_reservations_charge_once_and_respect_machine_policy() {
+    let (store, _pool, u) = setup(2).await;
+    let b = store.create_bot(u, "media-bot", 0).await.unwrap();
+    let alliance = store
+        .alliance_command(AllianceCommandRequest {
+            context: context(b),
+            command_id: Uuid::new_v4(),
+            expected_revision: None,
+            action: AllianceAction::Create {
+                name: "Media Machines".into(),
+                tag: "MED".into(),
+            },
+        })
+        .await
+        .unwrap()
+        .alliance
+        .unwrap();
+    let id = Uuid::new_v4();
+    let begin = || {
+        MediaOperation::User(AllianceMediaAction::Begin {
+            media_id: id,
+            filename: "crest.png".into(),
+            bytes: 100,
+        })
+    };
+    store.alliance_media(b, alliance, begin()).await.unwrap();
+    store.alliance_media(b, alliance, begin()).await.unwrap();
+    assert_eq!(
+        store.bot_status(principal(b)).await.unwrap().allowance_used,
+        2
+    );
+    assert!(
+        matches!(store.alliance_media(b,alliance,MediaOperation::User(AllianceMediaAction::Begin{media_id:Uuid::new_v4(),filename:"other.png".into(),bytes:100})).await,Err(StoreError::BotDenied(d)) if d.code==BotDenialCode::BotBudgetExhausted)
+    );
+    let mut policy = store.universe_config(u).await.unwrap();
+    policy.policy.bots.enabled = false;
+    store.apply_universe_config(&policy).await.unwrap();
+    assert!(
+        matches!(store.alliance_media(b,alliance,MediaOperation::Authorize{media_id:id}).await,Err(StoreError::BotDenied(d)) if d.code==BotDenialCode::BotsDisabled)
+    );
+}

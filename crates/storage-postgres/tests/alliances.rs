@@ -23,6 +23,374 @@ struct LoginResult {
     token: String,
     csrf: String,
 }
+
+#[tokio::test]
+async fn presentation_preserves_templates_and_media_obeys_live_visibility_and_permissions() {
+    let f = Fixture::new().await;
+    let id = f.create(0, "Astral Veil", "VEIL").await;
+    f.update(0, id, AllianceRecruitment::Open).await;
+    f.command(1, AllianceAction::Join { alliance: id }, None)
+        .await;
+    let ids = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
+    for media_id in ids {
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                id,
+                MediaOperation::User(AllianceMediaAction::Begin {
+                    media_id,
+                    filename: format!("{media_id}.gif"),
+                    bytes: 100,
+                }),
+            )
+            .await
+            .unwrap();
+        let receipt = MediaReceipt {
+            sha256: "a".repeat(64),
+            content_type: "image/gif".into(),
+            bytes: 100,
+        };
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                id,
+                MediaOperation::Finalize {
+                    media_id,
+                    receipt: receipt.clone(),
+                },
+            )
+            .await
+            .unwrap();
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                id,
+                MediaOperation::Finalize { media_id, receipt },
+            )
+            .await
+            .unwrap();
+    }
+    let placement = |media_id| MediaPlacement {
+        media_id,
+        x: 50,
+        y: 50,
+        mobile_x: None,
+        mobile_y: None,
+        alt: "Test artwork".into(),
+    };
+    let identity = AllianceVisualIdentity {
+        banner: Some(placement(ids[0])),
+        ..Default::default()
+    };
+    let revision = f.detail(0, id).await.revision;
+    let command=f.request(0,AllianceAction::SavePresentation {alliance:id,edits:vec![
+        PresentationEdit::SetIdentity{schema_version:1,value:identity},
+        PresentationEdit::SetHall{schema_version:1,value:AllianceHall{background:Some(placement(ids[1])),welcome_markdown:"Private welcome".into(),..Default::default()}},
+        PresentationEdit::SetTemplateDocument{template_id:"transmission".into(),document:AllianceTemplateDocument{schema_version:1,content:json!({"letter_markdown":"A retained letter","hero_media":placement(ids[2])})}},
+    ]},Some(revision));
+    let saved = f.store.alliance_command(command.clone()).await.unwrap();
+    let replay = f.store.alliance_command(command).await.unwrap();
+    assert_eq!(saved.revision, replay.revision);
+    let public = f
+        .store
+        .public_alliance(f.bindings[0].universe, id)
+        .await
+        .unwrap();
+    assert_eq!(public.presentation.unwrap().template_id, "flagship");
+    let member = f.detail(1, id).await.presentation.unwrap();
+    assert!(member.editor.is_none());
+    assert_eq!(member.hall.welcome_markdown, "Private welcome");
+    assert!(
+        f.store
+            .alliance_media_read(f.bindings[0].universe, ids[0], None)
+            .await
+            .is_ok()
+    );
+    for asset in &ids[1..] {
+        assert!(
+            f.store
+                .alliance_media_read(f.bindings[0].universe, *asset, None)
+                .await
+                .is_err()
+        );
+    }
+    assert!(
+        f.store
+            .alliance_media_read(f.bindings[0].universe, ids[1], Some(f.bindings[1].account))
+            .await
+            .is_ok()
+    );
+    assert!(
+        f.store
+            .alliance_media_read(f.bindings[0].universe, ids[2], Some(f.bindings[1].account))
+            .await
+            .is_err()
+    );
+    assert!(
+        f.store
+            .alliance_media_read(f.bindings[0].universe, ids[2], Some(f.bindings[0].account))
+            .await
+            .is_ok()
+    );
+    assert!(
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                id,
+                MediaOperation::User(AllianceMediaAction::Delete { media_id: ids[2] })
+            )
+            .await
+            .is_err()
+    );
+    f.command(
+        0,
+        AllianceAction::SavePresentation {
+            alliance: id,
+            edits: vec![PresentationEdit::SelectTemplate {
+                template_id: "transmission".into(),
+            }],
+        },
+        saved.revision,
+    )
+    .await;
+    assert!(
+        f.store
+            .alliance_media_read(f.bindings[0].universe, ids[2], None)
+            .await
+            .is_ok()
+    );
+    let p = f.detail(0, id).await.presentation.unwrap().editor.unwrap();
+    assert_eq!(
+        p.templates["transmission"].content["letter_markdown"],
+        "A retained letter"
+    );
+    let revision = f.detail(0, id).await.revision;
+    f.command(
+        0,
+        AllianceAction::Transfer {
+            alliance: id,
+            player: f.bindings[1].player,
+        },
+        Some(revision),
+    )
+    .await;
+    assert!(
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                id,
+                MediaOperation::Authorize { media_id: ids[0] }
+            )
+            .await
+            .is_err()
+    );
+    assert!(f.detail(0, id).await.presentation.unwrap().editor.is_none());
+    let revision = f.detail(1, id).await.revision;
+    f.command(1, AllianceAction::Disband { alliance: id }, Some(revision))
+        .await;
+    assert!(
+        f.store
+            .alliance_media_read(f.bindings[0].universe, ids[0], None)
+            .await
+            .is_err()
+    );
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM alliance_media WHERE alliance=$1 AND state='deleting'",
+    )
+    .bind(id)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 3);
+}
+
+#[tokio::test]
+async fn concurrent_upload_reservations_cannot_exceed_capacity_or_cross_alliance_ownership() {
+    let f = Fixture::new().await;
+    let id = f.create(0, "Upload Group", "UPL").await;
+    for _ in 0..9 {
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                id,
+                MediaOperation::User(AllianceMediaAction::Begin {
+                    media_id: Uuid::new_v4(),
+                    filename: "large.gif".into(),
+                    bytes: ALLIANCE_MEDIA_MAX_BYTES,
+                }),
+            )
+            .await
+            .unwrap();
+    }
+    let a = Uuid::new_v4();
+    let b = Uuid::new_v4();
+    let reserve = |media_id| {
+        MediaOperation::User(AllianceMediaAction::Begin {
+            media_id,
+            filename: "last.gif".into(),
+            bytes: ALLIANCE_MEDIA_MAX_BYTES,
+        })
+    };
+    let (first, second) = tokio::join!(
+        f.store.alliance_media(f.bindings[0], id, reserve(a)),
+        f.store.alliance_media(f.bindings[0], id, reserve(b))
+    );
+    assert_ne!(first.is_ok(), second.is_ok());
+    let foreign = f.create(1, "Other Group", "OTH").await;
+    let asset = if first.is_ok() { a } else { b };
+    f.store
+        .alliance_media(
+            f.bindings[0],
+            id,
+            MediaOperation::Finalize {
+                media_id: asset,
+                receipt: MediaReceipt {
+                    sha256: "b".repeat(64),
+                    bytes: 100,
+                    content_type: "image/png".into(),
+                },
+            },
+        )
+        .await
+        .unwrap();
+    assert!(
+        f.store
+            .alliance_command(f.request(
+                1,
+                AllianceAction::SavePresentation {
+                    alliance: foreign,
+                    edits: vec![PresentationEdit::SetIdentity {
+                        schema_version: 1,
+                        value: AllianceVisualIdentity {
+                            crest: AllianceCrest::Upload { media_id: asset },
+                            ..Default::default()
+                        }
+                    }]
+                },
+                Some(f.detail(1, foreign).await.revision)
+            ))
+            .await
+            .is_err()
+    );
+    assert!(
+        f.store
+            .alliance_media(
+                f.bindings[1],
+                foreign,
+                MediaOperation::Authorize { media_id: asset }
+            )
+            .await
+            .is_err()
+    );
+}
+
+#[tokio::test]
+async fn prepared_output_reserves_its_actual_size_before_any_blob_write() {
+    let f = Fixture::new().await;
+    let alliance = f.create(0, "Prepared Media", "PRE").await;
+    let limits = AllianceMediaLimits {
+        file_bytes: 200,
+        total_bytes: 300,
+        count: 10,
+        uploads_enabled: true,
+    };
+    let configured = |action| MediaOperation::Configured {
+        limits,
+        action: Box::new(action),
+    };
+    let ids = [Uuid::new_v4(), Uuid::new_v4()];
+    for id in ids {
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                alliance,
+                configured(MediaOperation::User(AllianceMediaAction::Begin {
+                    media_id: id,
+                    filename: "compressed.png".into(),
+                    bytes: 50,
+                })),
+            )
+            .await
+            .unwrap();
+    }
+    let receipt = MediaReceipt {
+        sha256: "c".repeat(64),
+        content_type: "image/png".into(),
+        bytes: 200,
+    };
+    f.store
+        .alliance_media(
+            f.bindings[0],
+            alliance,
+            configured(MediaOperation::Prepare {
+                media_id: ids[0],
+                receipt: receipt.clone(),
+            }),
+        )
+        .await
+        .unwrap();
+    assert!(
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                alliance,
+                configured(MediaOperation::Prepare {
+                    media_id: ids[1],
+                    receipt
+                })
+            )
+            .await
+            .is_err()
+    );
+    let library = f
+        .store
+        .alliance_media(
+            f.bindings[0],
+            alliance,
+            configured(MediaOperation::User(AllianceMediaAction::List)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        library
+            .media
+            .iter()
+            .map(|m| m
+                .declared_bytes
+                .max(m.receipt.as_ref().map_or(0, |r| r.bytes)))
+            .sum::<u64>(),
+        250
+    );
+    assert!(library.media.iter().all(|m| m.state == "reserved"));
+    f.store
+        .alliance_media(
+            f.bindings[0],
+            alliance,
+            configured(MediaOperation::User(AllianceMediaAction::Delete {
+                media_id: ids[0],
+            })),
+        )
+        .await
+        .unwrap();
+    assert!(
+        f.store
+            .alliance_media(
+                f.bindings[0],
+                alliance,
+                configured(MediaOperation::Finalize {
+                    media_id: ids[0],
+                    receipt: MediaReceipt {
+                        sha256: "c".repeat(64),
+                        content_type: "image/png".into(),
+                        bytes: 200
+                    }
+                })
+            )
+            .await
+            .is_err(),
+        "a delayed finalize cannot resurrect a deletion tombstone"
+    );
+}
 impl Fixture {
     async fn new() -> Self {
         let url = std::env::var("TEST_DATABASE_URL").expect("use make _db-alliances");
@@ -222,8 +590,16 @@ async fn atomic_retries_races_privacy_history_and_revocation() {
             .keys()
             .map(String::as_str)
             .collect::<Vec<_>>(),
-        vec!["enrollment_open", "public_text", "summary", "universe_name"]
+        vec![
+            "enrollment_open",
+            "presentation",
+            "public_text",
+            "summary",
+            "universe_name"
+        ]
     );
+    assert!(public["presentation"].get("hall").is_none());
+    assert!(public["presentation"].get("editor").is_none());
     let old = f.detail(leader, won).await;
     let stale = f.request(
         leader,
@@ -625,6 +1001,178 @@ async fn http(
         status,
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap(),
     )
+}
+
+#[tokio::test]
+async fn http_upload_roundtrip_requires_csrf_and_only_publishes_attached_media() {
+    let f = Fixture::new().await;
+    let alliance = f.create(0, "Media Alliance", "MED").await;
+    let b = f.bindings[0];
+    let directory = std::env::temp_dir().join(format!("orbit-alliance-media-{}", Uuid::new_v4()));
+    let assets = orbit_storage_assets::AssetConfig::Files {
+        directory: directory.to_string_lossy().into(),
+    }
+    .connect()
+    .await
+    .unwrap();
+    let customization = orbit_transport_http::Customization::load(
+        CosmeticPolicy::Unrestricted,
+        assets.clone(),
+        None,
+    )
+    .await
+    .unwrap();
+    let config = orbit_transport_http::HttpConfig {
+        origin: "https://game.test".into(),
+        assets: "missing".into(),
+        login_per_minute: 30,
+        signup: None,
+        signup_per_minute: 5,
+        legacy_signup_enabled: true,
+        wake: None,
+        observer: None,
+    };
+    let (_tx, rx) = tokio::sync::watch::channel(false);
+    let app = orbit_transport_http::router_with_customization(
+        f.store.clone(),
+        config,
+        rx,
+        None,
+        None,
+        customization,
+    );
+    let media = Uuid::new_v4();
+    let bytes = include_bytes!("../../../apps/web/public/art/atlas/planet-01-96.webp");
+    let request = json!({"context":{"binding":b,"request_id":Uuid::new_v4()},"alliance":alliance,"action":{"type":"Begin","media_id":media,"filename":"planet.webp","bytes":bytes.len()}});
+    let url = format!("/api/v4/universes/{}/alliances/media", b.universe);
+    assert_eq!(
+        http(
+            &app,
+            &url,
+            Some(request.clone()),
+            None,
+            Some("https://game.test"),
+            true
+        )
+        .await
+        .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        http(
+            &app,
+            &url,
+            Some(request),
+            Some(&f.sessions[0]),
+            Some("https://game.test"),
+            true
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let upload = format!(
+        "/api/v4/universes/{}/alliances/{alliance}/media/{media}/content?epoch={}",
+        b.universe, b.epoch
+    );
+    for csrf in [false, true, true] {
+        let mut request = Request::put(&upload)
+            .header("cookie", format!("orbit_session={}", f.sessions[0].token))
+            .header("origin", "https://game.test")
+            .header("content-type", "application/octet-stream");
+        if csrf {
+            request = request.header("x-csrf-token", &f.sessions[0].csrf);
+        }
+        let response = app
+            .clone()
+            .oneshot(request.body(Body::from(bytes.as_slice())).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            if csrf {
+                StatusCode::OK
+            } else {
+                StatusCode::FORBIDDEN
+            }
+        );
+    }
+    let image = format!("/api/v4/universes/{}/alliance-media/{media}", b.universe);
+    let get = || Request::get(&image).body(Body::empty()).unwrap();
+    assert_eq!(
+        app.clone().oneshot(get()).await.unwrap().status(),
+        StatusCode::NOT_FOUND
+    );
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SavePresentation {
+            alliance,
+            edits: vec![PresentationEdit::SetIdentity {
+                schema_version: 1,
+                value: AllianceVisualIdentity {
+                    crest: AllianceCrest::Upload { media_id: media },
+                    ..Default::default()
+                },
+            }],
+        },
+        Some(d.revision),
+    )
+    .await;
+    let response = app.clone().oneshot(get()).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.headers()["content-type"], "image/webp");
+    assert_eq!(response.headers()["x-content-type-options"], "nosniff");
+    let poster = app
+        .clone()
+        .oneshot(
+            Request::get(format!("{image}?still=true&size=96"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(poster.status(), StatusCode::OK);
+    assert_eq!(poster.headers()["content-type"], "image/png");
+    let d = f.detail(0, alliance).await;
+    f.command(
+        0,
+        AllianceAction::SavePresentation {
+            alliance,
+            edits: vec![PresentationEdit::SetIdentity {
+                schema_version: 1,
+                value: Default::default(),
+            }],
+        },
+        Some(d.revision),
+    )
+    .await;
+    assert_eq!(
+        app.clone().oneshot(get()).await.unwrap().status(),
+        StatusCode::NOT_FOUND
+    );
+    let request = json!({"context":{"binding":b,"request_id":Uuid::new_v4()},"alliance":alliance,"action":{"type":"Delete","media_id":media}});
+    assert_eq!(
+        http(
+            &app,
+            &url,
+            Some(request),
+            Some(&f.sessions[0]),
+            Some("https://game.test"),
+            true
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    assert!(
+        f.store
+            .cleanup_alliance_media(assets.as_ref())
+            .await
+            .unwrap()
+            >= 1
+    );
+    tokio::fs::remove_dir_all(directory).await.unwrap();
 }
 #[tokio::test]
 async fn http_authentication_csrf_origin_scope_and_anonymous_privacy() {

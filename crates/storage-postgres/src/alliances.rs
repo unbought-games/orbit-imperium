@@ -137,6 +137,10 @@ impl PgStore {
         } else {
             None
         };
+        if matches!(q.action, AllianceAction::SavePresentation { .. }) {
+            crate::alliance_presentation::validate_media(&mut tx, state.id, &state.presentation)
+                .await?;
+        }
         let disbanded = effect.as_ref().is_some_and(|e| e.disbanded);
         let joined = effect
             .as_ref()
@@ -165,6 +169,9 @@ impl PgStore {
                 .map_err(db_error)?;
         } else {
             save(&mut tx, b, &state).await?;
+            if matches!(q.action, AllianceAction::SavePresentation { .. }) {
+                crate::alliance_presentation::save(&mut tx, state.id, &state.presentation).await?;
+            }
         }
         if let Some(player) = joined {
             // Withdrawal affects other alliances' revisions, so an administrator

@@ -3,6 +3,14 @@ use orbit_application::*;
 use orbit_engine::ReportId;
 use sqlx::{Postgres, Transaction};
 
+type CurrentAllianceRow = (
+    uuid::Uuid,
+    uuid::Uuid,
+    String,
+    String,
+    Option<sqlx::types::Json<AllianceVisualIdentity>>,
+);
+
 impl PgStore {
     pub(crate) async fn read_player_alliances(
         &self,
@@ -12,17 +20,18 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, binding).await?;
         let ids: Vec<_> = players.into_iter().map(|p| p.0).collect();
-        let rows: Vec<(uuid::Uuid, uuid::Uuid, String, String)> = sqlx::query_as(
-            "SELECT m.player,a.id,a.tag,a.name FROM alliance_memberships m JOIN alliances a ON a.id=m.alliance AND a.universe=m.universe AND a.epoch=m.epoch JOIN universe_memberships u ON u.universe=m.universe AND u.player=m.player WHERE m.universe=$1 AND m.epoch=$2 AND m.player=ANY($3)",
+        let rows: Vec<CurrentAllianceRow> = sqlx::query_as(
+            "SELECT m.player,a.id,a.tag,a.name,(SELECT identity FROM alliance_presentation p WHERE p.alliance=a.id AND p.schema_version=1) FROM alliance_memberships m JOIN alliances a ON a.id=m.alliance AND a.universe=m.universe AND a.epoch=m.epoch JOIN universe_memberships u ON u.universe=m.universe AND u.player=m.player WHERE m.universe=$1 AND m.epoch=$2 AND m.player=ANY($3)",
         ).bind(binding.universe.0).bind(binding.epoch.0).bind(ids)
             .fetch_all(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;
         Ok(rows
             .into_iter()
-            .map(|(player, id, tag, name)| {
+            .map(|(player, id, tag, name, visual)| {
                 (
                     PlayerId(player),
                     AllianceIdentity {
+                        visual_identity: Some(visual.map(|j| j.0).unwrap_or_default()),
                         id,
                         universe: binding.universe,
                         tag,
@@ -51,6 +60,7 @@ pub(crate) async fn capture_report_alliances(
             (
                 PlayerId(player),
                 AllianceIdentity {
+                    visual_identity: None,
                     id,
                     universe,
                     tag,

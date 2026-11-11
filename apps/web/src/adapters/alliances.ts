@@ -17,6 +17,8 @@ export async function allianceQuery(
       'POST',
       { context: { binding, request_id }, query },
       csrf,
+      10000,
+      { 'X-Orbit-Alliance-Presentation': '1' },
     ),
   )
   if (
@@ -41,6 +43,8 @@ export async function allianceCommand(
       'POST',
       { context: { binding, request_id: commandId(crypto) }, ...command },
       csrf,
+      10000,
+      { 'X-Orbit-Alliance-Presentation': '1' },
     ),
   )
   if (result.command_id !== command.command_id)
@@ -57,6 +61,7 @@ export async function readPublicAlliance(
     {
       signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
       credentials: 'omit',
+      headers: { 'X-Orbit-Alliance-Presentation': '1' },
       cache: 'no-store',
       referrerPolicy: 'no-referrer',
     },
@@ -81,6 +86,29 @@ export async function readAllianceInvitation(
     signal,
   )
 }
+/** Recruitment links must never display one alliance while acting on another. */
+export async function readRecruitmentAlliance(
+  universe: string,
+  alliance: string | undefined,
+  invitation: string | undefined,
+  signal: AbortSignal,
+): Promise<S['PublicAlliance']> {
+  let data: S['PublicAlliance']
+  if (invitation)
+    data = await readAllianceInvitation(universe, invitation, signal)
+  else {
+    if (!alliance) throw new Error('Alliance unavailable.')
+    data = await readPublicAlliance(universe, alliance, signal)
+  }
+  if (
+    (alliance && data.summary.id !== alliance) ||
+    data.summary.universe !== universe
+  )
+    throw new Error(
+      'This invitation does not match the requested alliance. Ask for a new link.',
+    )
+  return data
+}
 export async function readRecruitmentDirectory(
   universe: string,
   search: URLSearchParams,
@@ -100,6 +128,7 @@ async function readRecruitment<T>(
   const response = await fetch(path, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
     credentials: 'omit',
+    headers: { 'X-Orbit-Alliance-Presentation': '1' },
     cache: 'no-store',
     referrerPolicy: 'no-referrer',
   })

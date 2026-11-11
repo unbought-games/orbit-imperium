@@ -195,6 +195,7 @@ impl RuntimeRole {
     }
 }
 pub struct ServeConfig {
+    pub media_limits: orbit_application::AllianceMediaLimits,
     pub asset_store: Option<orbit_storage_assets::AssetConfig>,
     pub cosmetic_catalog: Option<String>,
     pub cosmetic_policy: orbit_application::CosmeticPolicy,
@@ -422,12 +423,18 @@ impl ServeConfig {
         {
             return Err("ORBIT_COSMETIC_CATALOG must be insignias/catalogs/<sha256>.json".into());
         }
+        let media_limits = if api {
+            orbit_application::AllianceMediaLimits::parse(get)?
+        } else {
+            Default::default()
+        };
         let asset_store = if api {
             Some(orbit_storage_assets::AssetConfig::parse(get)?)
         } else {
             None
         };
         Ok(Self {
+            media_limits,
             asset_store,
             cosmetic_catalog,
             cosmetic_policy,

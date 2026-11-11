@@ -1,3 +1,4 @@
+import { AllianceCrestMark } from './alliances/visual-identity'
 import { createContext } from 'react'
 import type { components } from '../contracts'
 import styles from './player-alliance.module.css'
@@ -37,10 +38,24 @@ export function AllianceTag({
       title={title}
       aria-label={`Alliance ${title}`}
     >
+      {alliance.visual_identity && (
+        <AllianceCrestMark
+          universe={alliance.universe}
+          identity={alliance.visual_identity}
+          size="inline"
+        />
+      )}{' '}
       [{alliance.tag}]
     </a>
   ) : (
     <span className={styles.tag} title={title}>
+      {alliance.visual_identity && (
+        <AllianceCrestMark
+          universe={alliance.universe}
+          identity={alliance.visual_identity}
+          size="inline"
+        />
+      )}{' '}
       [{alliance.tag}]
     </span>
   )

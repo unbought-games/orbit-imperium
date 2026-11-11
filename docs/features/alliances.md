@@ -91,3 +91,21 @@ Optional analytics distinguish invitation/directory page views and confirmed
 enrollment, application and joining events. Tokens, application text and link
 creator identity are not included in those custom events. These observations
 are not referral entitlements or an authoritative record of player retention.
+
+
+## Identity, Hall, and public presentation
+
+Alliance navigation opens the Hall, retaining game navigation while omitting the
+planet/resource strip in alliance views. Shared identity, private Hall prose, and
+per-template public content have separate sources. Flagship, Transmission, and
+Citadel use the same published identity; inactive template content is retained.
+The editor offers normal fields, Markdown/autolink support, a full-page preview,
+and explicit saves. Uploaded artwork is alliance-owned and customization is free.
+
+New-player recruitment appears inside the orb-led arrival sequence after planet
+naming. Local signup and universe enrollment retain the selected alliance as
+source intent; membership and applications still require explicit normal actions.
+Existing players use the direct welcome/admission path.
+
+See [Alliance customization and uploads](../operations/alliance-customization.md)
+for permissions, media lifecycle, storage, operator limits, and upgrade details.

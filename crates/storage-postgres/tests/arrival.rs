@@ -43,8 +43,12 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
         .await
         .unwrap();
     let sessions = SessionService::new(store.clone());
+    let recruitment = RecruitmentIntent {
+        alliance: Uuid::new_v4(),
+        invitation: None,
+    };
     let auth = sessions
-        .signup(
+        .signup_recruited(
             &format!("arrival-{}", Uuid::new_v4()),
             "password",
             SignupPolicy {
@@ -52,6 +56,7 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
                 max_players: 100,
             },
             None,
+            Some(recruitment),
         )
         .await
         .unwrap();
@@ -67,6 +72,28 @@ async fn signups_choose_an_orbit_matched_look_that_other_players_see_once() {
         .unwrap()
         .0;
     let game = GameService::new(store.clone());
+    let arrival = game
+        .arrival(principal(b), request(b, ArrivalAction::Load))
+        .await
+        .unwrap();
+    assert_eq!(
+        arrival.recruitment,
+        Some(recruitment),
+        "signup destination survives an independent read"
+    );
+    game.arrival(
+        principal(b),
+        request(b, ArrivalAction::SetRecruitment { intent: None }),
+    )
+    .await
+    .unwrap();
+    assert!(
+        game.arrival(principal(b), request(b, ArrivalAction::Load))
+            .await
+            .unwrap()
+            .recruitment
+            .is_none()
+    );
 
     let peer_view = game
         .world_view(principal(peer), context(peer))

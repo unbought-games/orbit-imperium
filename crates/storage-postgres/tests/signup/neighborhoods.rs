@@ -43,6 +43,7 @@ async fn galaxy_one_exhaustion_is_atomic_for_bots_and_signups_with_other_galaxie
     assert!(matches!(
         store
             .register(Registration {
+                recruitment: None,
                 name: name.clone(),
                 password_hash: "test-hash".into(),
                 policy: SignupPolicy {

@@ -10,6 +10,7 @@ const actions: Record<string, string> = {
   Leave: 'Left the alliance',
   Kick: 'Removed member',
   Update: 'Updated alliance settings',
+  SavePresentation: 'Updated alliance presentation',
   SetRecruitmentProfile: 'Updated recruitment preferences',
   SetInvitation: 'Changed invitation link',
   CreateInvitation: 'Created invitation link',

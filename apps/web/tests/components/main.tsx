@@ -62,6 +62,8 @@ function LoadingExample() {
 const scenarios: Record<string, () => Promise<ComponentType>> = {
   resources: async () =>
     (await import('./resources.scenarios')).ResourcesScenario,
+  'alliance-presentation': async () =>
+    (await import('./alliance-presentation.story')).AlliancePresentationStory,
   'profile-display': async () =>
     (await import('./profile-display.scenarios')).ProfileDisplayScenario,
   'hud-toasts': async () =>
@@ -71,6 +73,8 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'progression-comparison': async () =>
     (await import('./progression.scenarios')).ProgressionComparisonScenario,
   'shell-default': async () => (await import('./shell.story')).ShellDefault,
+  'shell-alliance-threat': async () =>
+    (await import('./shell.story')).ShellAllianceThreat,
   'shell-named': async () => (await import('./shell.story')).ShellNamed,
   'shell-worlds': async () => (await import('./shell.story')).ShellWorlds,
   'shell-roster': async () => (await import('./shell.story')).ShellRoster,

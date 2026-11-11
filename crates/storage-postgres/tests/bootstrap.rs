@@ -319,6 +319,7 @@ async fn explicit_audit_finds_latent_corruption_without_gameplay_lock_or_repair(
         .unwrap();
     let session = store
         .register(Registration {
+            recruitment: None,
             name: Uuid::new_v4().to_string(),
             password_hash: "!fixture-only".into(),
             policy,

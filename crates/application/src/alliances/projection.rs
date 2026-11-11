@@ -5,6 +5,7 @@ mod audit;
 
 pub fn alliance_summary(universe: UniverseId, state: &AllianceState) -> AllianceSummary {
     AllianceSummary {
+        visual_identity: Some(state.presentation.identity.clone()),
         id: state.id,
         universe,
         tag: state.tag.clone(),
@@ -121,6 +122,11 @@ pub fn alliance_detail(
         })
         .collect();
     Ok(Some(AllianceDetail {
+        presentation: Some(MemberAlliancePresentation {
+            public: (&state.presentation).into(),
+            hall: state.presentation.hall.clone(),
+            editor: has(AlliancePermission::EditProfile).then(|| state.presentation.clone()),
+        }),
         summary: alliance_summary(universe, state),
         public_text: state.public_text.clone(),
         invitation: has(AlliancePermission::ManageRecruitment).then_some(state.invitation),
@@ -192,6 +198,25 @@ mod tests {
         .unwrap()
     }
     #[test]
+    fn missing_templates_never_publish_an_inactive_documents_private_copy() {
+        let mut state = state();
+        state.presentation.active_template = "uninstalled-theme".into();
+        state.presentation.templates.insert(
+            "flagship".into(),
+            AllianceTemplateDocument {
+                schema_version: 1,
+                content: serde_json::json!({"hero_markdown":"Private unfinished draft"}),
+            },
+        );
+        let public = PublicAlliancePresentation::from(&state.presentation);
+        assert_eq!(public.template_id, "flagship");
+        assert_eq!(public.document.content, serde_json::json!({}));
+        assert_eq!(
+            state.presentation.templates["flagship"].content["hero_markdown"],
+            "Private unfinished draft"
+        );
+    }
+    #[test]
     fn privacy_is_omission_and_coarse_activity_has_exact_boundaries() {
         let mut s = state();
         let member = PlayerId(Uuid::from_u128(9));
@@ -260,6 +285,7 @@ mod tests {
             );
         }
         let public = serde_json::to_value(PublicAlliance {
+            presentation: None,
             summary: alliance_summary(UniverseId(Uuid::nil()), &s),
             public_text: s.public_text.clone(),
             universe_name: "Test".into(),

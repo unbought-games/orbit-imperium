@@ -191,7 +191,7 @@ pub(super) async fn callback<S: IdentityStore>(
         .map_err(ServiceError::from)?;
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     let path = hosted_auth::finish_entry(path, hosted_auth::universe(&s), |universe| {
-        oidc_enrollment::enroll(&s, session, universe, source)
+        oidc_enrollment::enroll(&s, session, universe, source, None)
     })
     .await;
     Ok((
@@ -303,6 +303,8 @@ mod display_tests {
 }
 #[derive(Deserialize)]
 pub(super) struct Enrollment {
+    #[serde(default)]
+    recruitment: Option<RecruitmentIntent>,
     universe: uuid::Uuid,
 }
 pub(super) async fn enroll<S: IdentityStore>(
@@ -322,7 +324,14 @@ pub(super) async fn enroll<S: IdentityStore>(
     }
     let session = authenticate(&s, &h, true).await?;
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
-    oidc_enrollment::enroll(&s, session, UniverseId(body.universe), source).await
+    oidc_enrollment::enroll(
+        &s,
+        session,
+        UniverseId(body.universe),
+        source,
+        body.recruitment,
+    )
+    .await
 }
 
 #[derive(Deserialize)]

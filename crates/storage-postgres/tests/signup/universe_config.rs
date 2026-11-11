@@ -14,6 +14,7 @@ fn create(speed: i32) -> UniverseCreate {
 }
 fn registration(universe: UniverseId) -> Registration {
     Registration {
+        recruitment: None,
         name: format!("config-{}", Uuid::new_v4()),
         password_hash: "test-hash".into(),
         policy: SignupPolicy {

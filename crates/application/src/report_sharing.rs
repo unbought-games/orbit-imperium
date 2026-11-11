@@ -475,6 +475,7 @@ mod tests {
             PlayerId(uuid::Uuid::parse_str(source["target"]["owner"].as_str().unwrap()).unwrap());
         let hidden = PlayerId(uuid::Uuid::from_u128(88));
         let affiliation = AllianceIdentity {
+            visual_identity: None,
             id: uuid::Uuid::from_u128(9),
             universe: UniverseId(uuid::Uuid::from_u128(10)),
             tag: "OLD".into(),
