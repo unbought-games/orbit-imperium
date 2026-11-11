@@ -14,6 +14,7 @@ import { AllianceDraftContext } from './drafts'
 import {
   defaultPresentation,
   editPresentationDraft,
+  editorMediaUsage,
   type PresentationDraft,
   type Presentation,
   type TemplateDocument,
@@ -204,7 +205,7 @@ export function usePresentationEditor(detail: AllianceDetail, run: Run) {
     }
   }
   async function remove(id: string) {
-    if (working) return false
+    if (working || editorMediaUsage(saved, draft, id).length > 0) return false
     setOperation('delete')
     setError('')
     try {

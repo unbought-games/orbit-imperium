@@ -189,3 +189,21 @@ Refreshed and inspected the threat-state desktop/mobile captures against the
 integrated styles. Manual CI run `42948314702` on the pre-integration `5d2af131`
 was cancelled as superseded; it is not counted as passing validation. The new
 revision requires fresh CI before queue enrollment.
+
+CI run `42949288403` passed all checks for integrated revision `0560a5c0`.
+The third review pass found two additional concrete edge cases, both repaired:
+media deletion now protects the union of saved and unsaved references, including
+inactive templates, with an independent guard in the editor operation; declining
+recruitment clears the local intent/URL immediately and persists that optional
+preference best-effort. Skipping into that step now moves to farewell before
+completing arrival, keeping a retry control if completion itself fails.
+
+Eight presentation model tests passed (0.319 s), including saved references that
+are detached only in a draft and newly selected draft-only crest/Hall/gallery
+media. Four arrival browser cases passed (3.0 s); the new case forces both intent
+read/write failures and one completion failure, then verifies retry reaches
+Briefing without sending an admission command. It passed on its first run.
+Formatting, lint and production build passed. Actual local media editing verified
+an unsaved Hall image is labeled and undeletable, then becomes unattached and
+deletable after discarding edits. Desktop/mobile captures of that state and the
+arrival retry were inspected and retained in the originating chat.

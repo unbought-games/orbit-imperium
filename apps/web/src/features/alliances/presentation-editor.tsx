@@ -14,7 +14,7 @@ import { Trash2 } from 'lucide-react'
 import {
   imagePlacement,
   mediaPath,
-  mediaUsage,
+  editorMediaUsage,
   publicWithDraft,
   templateGallery,
   templatePlacement,
@@ -688,8 +688,8 @@ function MediaLibrary({ editor }: { editor: Editor }) {
                 MiB
               </small>
               <small>
-                {mediaUsage(editor.saved, m.id).length
-                  ? `Used by ${mediaUsage(editor.saved, m.id).join(', ')}`
+                {editorMediaUsage(editor.saved, editor.draft, m.id).length
+                  ? `Used by ${editorMediaUsage(editor.saved, editor.draft, m.id).join(', ')}`
                   : 'Unattached · private'}
               </small>
               <ConfirmationButton
@@ -702,12 +702,14 @@ function MediaLibrary({ editor }: { editor: Editor }) {
                   <p>
                     {m.filename} will be removed from the alliance library.
                     Images used in saved templates or the Hall must be detached
-                    first.
+                    first. Save or discard edits before deleting an image they
+                    use.
                   </p>
                 }
                 confirmLabel="Delete image"
                 disabled={
-                  editor.working || mediaUsage(editor.saved, m.id).length > 0
+                  editor.working ||
+                  editorMediaUsage(editor.saved, editor.draft, m.id).length > 0
                 }
                 onConfirm={() => void editor.remove(m.id)}
               >

@@ -182,8 +182,8 @@ export function ArrivalScene() {
               invitation={recruitment.intent.invitation ?? undefined}
               onDismiss={recruitment.dismiss}
               onContinue={() => {
+                setStep('farewell')
                 if (skipping) void arrival.skip()
-                else setStep('farewell')
               }}
             />
           )}
@@ -203,7 +203,10 @@ export function ArrivalScene() {
                     {arrival.error}
                   </p>
                 )}
-                <Button onClick={arrival.finish} disabled={arrival.busy}>
+                <Button
+                  onClick={skipping ? arrival.skip : arrival.finish}
+                  disabled={arrival.busy}
+                >
                   {arrival.busy
                     ? 'Landing…'
                     : arrival.error

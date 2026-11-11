@@ -54,6 +54,19 @@ export function mediaUsage(p: Presentation, id: string): string[] {
   }
   return usage
 }
+export function editorMediaUsage(
+  saved: Presentation,
+  draft: Presentation,
+  id: string,
+): string[] {
+  const persisted = mediaUsage(saved, id)
+  return [
+    ...persisted,
+    ...mediaUsage(draft, id)
+      .filter((usage) => !persisted.includes(usage))
+      .map((usage) => `${usage} (unsaved)`),
+  ]
+}
 export const defaultIdentity: VisualIdentity = {
   motto: '',
   primary: '#cbb68d',

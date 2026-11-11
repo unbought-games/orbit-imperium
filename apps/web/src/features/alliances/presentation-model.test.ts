@@ -6,6 +6,7 @@ import {
   defaultPresentation,
   editPresentationDraft,
   mediaUsage,
+  editorMediaUsage,
   imagePlacement,
   mediaPath,
   publicWithDraft,
@@ -139,5 +140,29 @@ it('media usage includes retained inactive templates and private Hall references
   expect(mediaUsage(p, 'image')).toEqual([
     'Hall background',
     'transmission template',
+  ])
+})
+it('protects both saved media and unsaved crest, Hall and template selections from deletion', () => {
+  const saved = defaultPresentation()
+  saved.identity = { ...saved.identity, banner: imagePlacement('saved') }
+  const draft = structuredClone(saved)
+  draft.identity.banner = null
+  draft.identity.crest = { kind: 'upload', media_id: 'draft' }
+  draft.hall.background = imagePlacement('draft')
+  draft.templates.citadel = {
+    schema_version: 1,
+    content: { gallery: [imagePlacement('draft')] },
+  }
+  expect(editorMediaUsage(saved, draft, 'saved')).toEqual(['Shared banner'])
+  expect(editorMediaUsage(saved, draft, 'draft')).toEqual([
+    'Alliance crest (unsaved)',
+    'Hall background (unsaved)',
+    'citadel template (unsaved)',
+  ])
+  expect(editorMediaUsage(saved, saved, 'draft')).toEqual([])
+  expect(editorMediaUsage(draft, draft, 'draft')).toEqual([
+    'Alliance crest',
+    'Hall background',
+    'citadel template',
   ])
 })

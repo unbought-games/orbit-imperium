@@ -21,7 +21,7 @@ export function AllianceArrival({
   alliance: string
   invitation?: string
   onContinue: () => void
-  onDismiss: () => Promise<void>
+  onDismiss: () => void
 }) {
   const { model, view } = useGameSession(),
     refreshProfiles = useRefreshPlayerProfiles()
@@ -39,9 +39,7 @@ export function AllianceArrival({
       }),
   )
   const state = useStore(controller.store)
-  const [message, setMessage] = useState(''),
-    [dismissError, setDismissError] = useState(''),
-    [dismissing, setDismissing] = useState(false)
+  const [message, setMessage] = useState('')
   useEffect(() => {
     void controller.refresh()
     return () => controller.clear()
@@ -49,7 +47,7 @@ export function AllianceArrival({
   const data = publicAlliance.data,
     membership = state.view?.alliance,
     pending = state.view?.applications.some((a) => a.alliance === alliance)
-  const busy = state.busy || state.loading || !!state.pending || dismissing
+  const busy = state.busy || state.loading || !!state.pending
   async function submit() {
     if (!data || !state.view || busy) return
     const action =
@@ -61,16 +59,9 @@ export function AllianceArrival({
       trackRecruitment(action.type === 'Join' ? 'joined' : 'applied')
     }
   }
-  async function dismiss() {
-    setDismissing(true)
-    setDismissError('')
-    try {
-      await onDismiss()
-      onContinue()
-    } catch {
-      setDismissError('Your choice could not be saved. Please try again.')
-      setDismissing(false)
-    }
+  function dismiss() {
+    onDismiss()
+    onContinue()
   }
   return (
     <div className={styles.allianceArrival}>
@@ -195,11 +186,10 @@ export function AllianceArrival({
           </Button>
         )}
       </LoadingRegion>
-      {dismissError && <p role="alert">{dismissError}</p>}
       {!membership && !pending && (
         <Button
           variant="ghost"
-          disabled={state.busy || !!state.pending || dismissing}
+          disabled={state.busy || !!state.pending}
           onClick={() => void dismiss()}
         >
           Not now · continue my arrival

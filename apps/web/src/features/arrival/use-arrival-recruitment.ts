@@ -17,6 +17,7 @@ export function useArrivalRecruitment() {
   const [state, setState] = useState<ArrivalState | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
+    [dismissed, setDismissed] = useState(false),
     [reload, setReload] = useState(0)
   useEffect(() => {
     let active = true
@@ -62,19 +63,24 @@ export function useArrivalRecruitment() {
     search.invitation,
     reload,
   ])
-  const intent = search.alliance
-    ? { alliance: search.alliance, invitation: search.invitation ?? null }
-    : state?.recruitment
-  async function dismiss() {
-    await sendArrival({ account, player, universe, epoch }, csrf, {
-      type: 'SetRecruitment',
-      intent: null,
-    })
+  const intent = dismissed
+    ? null
+    : search.alliance
+      ? { alliance: search.alliance, invitation: search.invitation ?? null }
+      : state?.recruitment
+  function dismiss() {
+    setDismissed(true)
     setState((current) => (current ? { pending: current.pending } : null))
     const url = new URL(window.location.href)
     for (const key of ['alliance', 'invitation', 'welcome'])
       url.searchParams.delete(key)
     router.history.replace(url.pathname + url.search + url.hash)
+    // Declining is a local navigation choice. Persist it opportunistically;
+    // a failed preference write must not prevent completing arrival.
+    void sendArrival({ account, player, universe, epoch }, csrf, {
+      type: 'SetRecruitment',
+      intent: null,
+    }).catch(() => undefined)
   }
   return {
     intent,

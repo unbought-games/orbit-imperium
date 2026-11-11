@@ -4,6 +4,76 @@ import { withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
 import { binding, body, installGameFixture } from './fixtures/game'
 
+test('declining recruitment can finish arrival despite intent failure and retry a failed landing', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  let pending = true,
+    completions = 0
+  const fixture = await recruitmentFixture(page, {
+    arrivalPending: () => pending,
+  })
+  await page.route('**/arrival', (route) => {
+    const { action } = route.request().postDataJSON()
+    if (['Load', 'SetRecruitment'].includes(action.type))
+      return route.fulfill({ status: 503, json: { error: 'unavailable' } })
+    if (action.type === 'Complete') {
+      completions++
+      if (completions === 1)
+        return route.fulfill({ status: 503, json: { error: 'unavailable' } })
+      pending = false
+    }
+    return route.fulfill({ json: { pending } })
+  })
+  await withFixtureResponse(
+    page,
+    (r) => r.url().endsWith('/bootstrap'),
+    () => page.goto(`/u/andromeda/b/${body.id}/overview?alliance=${alliance}`),
+  )
+  const scene = page.getByRole('main', { name: 'Arrival' })
+  await scene.getByRole('button', { name: 'That’s me', exact: true }).click()
+  await scene.getByRole('button', { name: 'That’s it', exact: true }).click()
+  await scene
+    .getByRole('textbox', {
+      name: 'Every world deserves a name. What should we call it?',
+      exact: true,
+    })
+    .fill('Terra')
+  await expect(scene.getByRole('alert')).toContainText(
+    'invitation could not be loaded',
+  )
+  await withFixtureResponse(
+    page,
+    (r) => r.url().endsWith(`/alliances/${alliance}`),
+    () =>
+      scene.getByRole('button', { name: 'Skip intro', exact: true }).click(),
+  )
+  await scene
+    .getByRole('button', { name: 'Not now · continue my arrival', exact: true })
+    .click()
+  await expect(scene.getByRole('alert')).toContainText(
+    'choices could not be saved',
+  )
+  await expect(
+    scene.getByRole('button', { name: 'Try again', exact: true }),
+  ).toBeEnabled()
+  expect(new URL(page.url()).searchParams.has('alliance')).toBe(false)
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await diagnosticScreenshot(page, {
+      path: 'test-results/alliance-decline-retry-390x844.png',
+    })
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await diagnosticScreenshot(page, {
+      path: 'test-results/alliance-decline-retry-1440x1000.png',
+    })
+  }
+  await scene.getByRole('button', { name: 'Try again', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/briefing$`))
+  expect(completions).toBe(2)
+  expect(fixture.commands).toEqual([])
+})
+
 // Catches: the scene must save title and look, complete arrival, and hand off
 // to Briefing through real routing, focus and responsive carousel controls.
 for (const width of [1280, 390]) {
