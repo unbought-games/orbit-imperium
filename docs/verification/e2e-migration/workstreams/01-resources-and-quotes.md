@@ -1,6 +1,6 @@
 # 01 — Resources, quotes and production controls
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1c830-b10b-7d70-a7b1-a96a254133af` for the full workstream and PR follow-through; see [assignment record](../STATUS.md#2026-11-10-stream-01-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
