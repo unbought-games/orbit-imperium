@@ -441,11 +441,15 @@ test('sticky resource bar covers the full top edge while content scrolls', async
         return {
           top: rect.top,
           coversRightEdge: !!point && sticky.contains(point),
+          coversBelowEdge: sticky.contains(
+            document.elementFromPoint(innerWidth - 1, rect.bottom + 0.5),
+          ),
           pageWidth: document.documentElement.scrollWidth,
         }
       })
     expect(surface.top).toBe(0)
     expect(surface.coversRightEdge).toBe(true)
+    expect(surface.coversBelowEdge).toBe(false)
     expect(surface.pageWidth).toBe(width)
   }
 })

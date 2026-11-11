@@ -211,6 +211,7 @@
     position: fixed;
     inset: 0 0 auto;
     height: var(--shell-header-height, 64px);
+    box-sizing: border-box;
     z-index: -1;
     background: inherit;
     border-bottom: inherit;

@@ -77,3 +77,20 @@ The corrected application passes both Briefing cases (4.693s preparation,
 inspected. Focused ESLint, Prettier and whitespace checks also pass. These
 follow-up results cover `a63582ab` plus the review-fix diff, which is committed
 separately. Task-owned test runners cleaned up normally.
+
+## Final edge alignment
+
+Review of `0db2fcfb` identified a one-pixel overlay-height defect: pseudo-elements
+do not match the global `*` border-box rule. Added explicit border-box sizing and
+an assertion that the header does not intercept points below its measured edge.
+
+The shared source checkout switched to another chat's branch before the first
+attempt at this correction. The resulting 11 shell cases and 2 Briefing cases
+were for that other revision and are excluded from this PR's validation. No
+changes were made to that branch. Work continued in an isolated managed worktree
+at `0db2fcfbb0a374877c755df1b63be443dce7b78d` plus this final edge-sizing diff.
+
+All 13 shell cases pass (3.842s preparation, 6.1s runner); both Briefing cases
+pass (4.750s preparation, 8.8s runner). Focused ESLint, Prettier and whitespace
+checks pass. Desktop/mobile crossing and fully-hidden captures were refreshed,
+inspected and copied outside the temporary worktree for delivery in the chat.
