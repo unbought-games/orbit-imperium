@@ -145,3 +145,18 @@ text. Deterministic tests cover cached reads, failed initial reads, pending save
 failed saves, and recovery; 61 focused client tests passed (135 ms). Lint and
 application TypeScript passed. The review thread was already resolved by its bot;
 this repair addresses its concrete failure mechanism independently.
+
+Run `42958826018`, head `bc22cc60166eb54a409b3e3b4b35cfa1d93d4808`, passed
+all browser shards and native checks, but PostgreSQL rest failed
+`membership_join_upgrade_preserves_unknowns_and_old_writers` at migrations.rs:842.
+Its whole-row comparison excluded only `joined_at_ms`; the new defaulted
+`galaxy_probe_count` column made the expected old three-field row differ.
+The assertion was unchanged since `7e578e60` and has no repair-ledger entry.
+This first explained test-contract repair excludes the new column from the
+old-field preservation comparison and independently asserts that retained rows
+and old-writer inserts both default to `1`. No assertion was dropped. An audit
+of membership row JSON comparisons found no other callers requiring updates.
+
+`make test-db DB_SUITES='migrations player_preferences' DB_JOBS=1` passed all 18
+tests: preparation 1.99 seconds, each runner preparation 100 ms, migration
+execution 9.727 seconds, preference HTTP/database execution 3.166 seconds.

@@ -834,11 +834,12 @@ async fn membership_join_upgrade_preserves_unknowns_and_old_writers() {
     store.migrate().await.unwrap();
     // Previous binaries accept the compatible tail and still read/write their columns.
     store.migrate_with_for_test(&older).await.unwrap();
-    let after: serde_json::Value =
-        sqlx::query_scalar("SELECT to_jsonb(m) - 'joined_at_ms' FROM universe_memberships m")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let after: serde_json::Value = sqlx::query_scalar(
+        "SELECT to_jsonb(m) - 'joined_at_ms' - 'galaxy_probe_count' FROM universe_memberships m",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(before, after);
     assert_eq!(
         sqlx::query_scalar::<_, Option<i64>>("SELECT joined_at_ms FROM universe_memberships")
@@ -866,6 +867,16 @@ async fn membership_join_upgrade_preserves_unknowns_and_old_writers() {
     assert_eq!(
         sqlx::query_scalar::<_, i64>(
             "SELECT count(*) FROM universe_memberships WHERE joined_at_ms IS NULL"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        2
+    );
+    // The new preference defaults for retained memberships and old binaries' inserts.
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM universe_memberships WHERE galaxy_probe_count = '1'"
         )
         .fetch_one(&pool)
         .await
