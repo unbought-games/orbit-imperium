@@ -103,3 +103,14 @@ execution), and the real HTTP/PostgreSQL test with migration 0043 (21.00-second
 preparation, 230-ms runner preparation, 3.211-second execution). Source lint,
 formatting, both TypeScript checks, contracts, boundaries and Rust formatting
 passed again. Current screenshots were inspected and shown before PR creation.
+
+## PR CI repair
+
+PR #393 run `42957288650`, attempt 1, head `2cfa706e50d1e481bdb10a86c941098d7b26eeba`:
+the journey job `130315339375` failed during `news:build`, before browser
+assertions, because the new change note lacked required YAML frontmatter.
+This was a product build defect, not a test defect or infrastructure failure.
+Added the existing id/title/date metadata format and ran `npm run build`
+successfully (Vite client build 2.83 seconds, prerender bundle 207 ms; whole-command
+timing not recorded). No test was removed or relaxed. Other unfinished checks on
+the superseded head may be cancelled by the workflow's normal concurrency policy.

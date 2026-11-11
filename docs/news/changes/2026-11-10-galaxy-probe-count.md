@@ -1,4 +1,8 @@
-# Remember your Galaxy probe count
+---
+id: galaxy-probe-count
+title: Remember your Galaxy probe count
+date: '2026-11-10T23:10:00-05:00'
+---
 
 You can choose how many espionage probes Galaxy’s Spy action sends in Settings →
 Galaxy espionage. The count defaults to one and is saved for your empire in each
