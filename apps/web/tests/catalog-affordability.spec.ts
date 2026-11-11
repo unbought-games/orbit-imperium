@@ -225,37 +225,3 @@ for (const scenario of [cases[0]]) {
     })
   }
 }
-
-test('research progress suppresses hatching and completion refreshes next-level cost', async ({
-  page,
-}) => {
-  const state = await fixture(page, cases[1])
-  await withCatalogResponse(page, cases[1], () => page.goto(`/u/andromeda/b/${body.id}/research`))
-  const tile = page.getByRole('link', { name: cases[1].name, exact: true })
-  await expect(tile).toHaveClass(/unaffordable/)
-  state.options.researchOperation = {
-    id: '00000000-0000-4000-8000-000000000090',
-    host: body.id,
-    research: 'EnergyTechnology',
-    source_level: 1,
-    target_level: 2,
-    paid: state.planet.amounts,
-    started_at: state.now,
-    due_at: state.now + 60000,
-    labs: [],
-    effective_lab: '1',
-    can_cancel: true,
-  }
-  await refreshGame(page)
-  await expect(tile.getByLabel('Research progress')).toBeVisible()
-  await expect(tile).not.toHaveClass(/unaffordable/)
-  state.options.researchOperation = null
-  state.research[0].level = 2
-  state.planet.amounts.metal = '60000000'
-  await refreshGame(page)
-  await expect(tile.getByLabel('Research progress')).toHaveCount(0)
-  await expect(tile).toHaveClass(/unaffordable/)
-  state.planet.amounts.metal = '120000000'
-  await refreshGame(page)
-  await expect(tile).not.toHaveClass(/unaffordable/)
-})

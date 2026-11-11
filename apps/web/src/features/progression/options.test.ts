@@ -1,3 +1,6 @@
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { ProgressionBlockers } from './quote-review'
 import type { components } from '../../contracts'
 import { fleetInventoryRows } from '../fleet-inventory-model'
 import { unitCounts } from './unit-counts'
@@ -784,3 +787,33 @@ it.each([
   change(current)
   expect(progressionContext(current)).not.toBe(progressionContext(view))
 })
+
+it.each(['PrerequisiteMissing', 'NoFreeField', 'ActiveConstruction'] as const)(
+  'preserves server restriction %s even when every resource is affordable',
+  (code) => {
+    const current = structuredClone(view)
+    current.bodies[0].amounts = {
+      metal: '60000000',
+      crystal: '15000000',
+      deuterium: '0',
+    }
+    const blocker = {
+      code,
+      requirement: null,
+      required: null,
+      actual: null,
+      resource: null,
+      unit: null,
+    }
+    const source = { ...proposal, blockers: [blocker] }
+    expect(currentProgressionOptions(source, current)?.blockers).toEqual([
+      blocker,
+    ])
+    expect(source.blockers).toEqual([blocker])
+    expect(
+      renderToStaticMarkup(
+        createElement(ProgressionBlockers, { proposal: source }),
+      ),
+    ).toContain(code.replace(/([a-z])([A-Z])/g, '$1 $2'))
+  },
+)
