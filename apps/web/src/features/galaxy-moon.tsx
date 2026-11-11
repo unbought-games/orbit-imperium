@@ -74,6 +74,7 @@ export function GalaxyMoon({
         <>
           {body.owner !== player && body.id !== origin && (
             <GalaxySpyButton
+              count={espionage?.count}
               name={`Moon ${formatCoordinates({ coordinates: position.coordinates })}`}
               reason={reason}
               busy={espionage?.busy}

@@ -1,0 +1,162 @@
+# Galaxy probe count — issue #110
+
+Validated on 2026-11-10 against base `6b485ba076cfb7541df0f8adece72252ef313e79`
+plus the uncommitted changes in this implementation. No PR, CI run, or merge was
+requested. Local runner allocation and merge-queue time are not applicable.
+
+## Behavior and boundaries
+
+- A positive decimal integer is stored on the universe membership, defaulting to
+  `1`. The setting is independent of inventory, planets, moons, and JavaScript
+  number precision. Each player/universe has one saved value.
+- The authenticated endpoint checks origin, CSRF, account/player, universe, and
+  epoch. Both reads and writes return `no-store` responses with request identity.
+  PostgreSQL tests prove persistence and isolation; browser fixtures do not.
+- The session-owned Zustand controller publishes confirmed values, serializes
+  saves/loads, preserves the last confirmed value on failure, and ignores old
+  responses after disposal. Edits live in the form. Failed saves require a reload
+  before resubmission because the server may have received an interrupted write.
+- The saved count is configured in Settings; Galaxy adds no text block. Inventory
+  after pending departures determines availability. Spy quotes and launches exactly
+  that count; it never silently reduces it.
+
+## Validation
+
+- `npm ci`: 26 seconds to prepare the initially empty frontend checkout.
+  Installed environment: Node 24.14.0/npm 11.9.0 (package engine warning for the
+  repository's 24.18.0/11.16.0 pins). Rust checks used the installed pinned 1.99.0
+  toolchain through `$HOME/.cargo/bin`.
+- `npm test -- src/client-model/player-preferences.test.ts src/client-model/game-projection.test.ts`:
+  59 passed; final execution 138 ms. Covers positive counts, exact quote/launch
+  quantities, insufficient inventory, request serialization, save failure, and
+  disposal fencing.
+- `cargo nextest run -p orbit-application --lib -E 'test(player_preferences)'`:
+  1 passed; cold preparation 28.09 seconds, execution 13 ms.
+- `make test-db DB_SUITES=player_preferences DB_JOBS=1`: 1 real HTTP/PostgreSQL
+  test passed. Preparation 39.30 seconds; cached runner preparation 240 ms;
+  execution 3.314 seconds. Covers defaults, large counts, persistence through a
+  new connection, a second universe for the same account, another player, bad
+  counts, stale epochs, wrong universe, missing authentication, origin, and CSRF.
+- Fixture browser checks: saved count/reload/exact Spy submission and failed-save
+  recovery at 390×844 and 1280×844 passed. Final bundle preparation 3.202 seconds,
+  Playwright run 7.9 seconds. The existing no-probes and independent-target Spy
+  checks also passed in the preceding run (3.479-second preparation, 8.6-second
+  execution for four cases).
+- ESLint, source formatting, application and component/fixture TypeScript,
+  OpenAPI drift/classification checks, workspace/browser boundaries,
+  `cargo fmt --all --check`, and `git diff --check` passed.
+- `cargo clippy -p orbit-application -p orbit-transport-http -p orbit-storage-postgres --lib --features orbit-storage-postgres/test-support -- -D warnings`:
+  passed in 18.76 seconds.
+- Full `make check`, production build, and explicit full-system acceptance were
+  not run. Application fixtures exercised the real frontend with HTTP fixtures;
+  the database test exercised the real endpoint and storage separately.
+
+## Findings and repairs
+
+- Initial browser setup could not import Vite because dependencies were absent;
+  resolved with `npm ci`. Docker was initially stopped; started it and used a
+  disposable Compose project rather than a development database.
+- A temporary baseline screenshot probe had an ambiguous Settings heading
+  locator. Its failure screenshot supplied the baseline; the temporary probe
+  was removed. It was diagnostic code, not retained regression coverage.
+- The first new browser journey was interrupted after 48.9 seconds while waiting
+  for a preferences response. Its screenshot showed an unavailable destination:
+  the new Settings link used a display universe name instead of its route slug.
+  Fixed the product link with `universeSlug`; subsequent runs passed. No timeout
+  increases, weakened assertions, or test repair attempts were used.
+- Contract validation caught missing bot-accounting metadata on the new route.
+  Added the appropriate `recovery-or-metadata` classification; the check passed.
+- Visual inspection caught the Settings section heading hidden under the fixed
+  header after hash navigation. Added the existing shell-aware scroll margin,
+  switched the Galaxy link to the shared Link component, and refreshed captures.
+
+## Visual evidence and cleanup
+
+Captured and inspected the running frontend at 390×844 and 1280×844 for:
+Settings loading, invalid input, saved confirmation, failed save/reload; Galaxy
+ready, insufficient inventory, and pending departure. Current captures are
+`test-results/probe-{settings,galaxy}-<state>-<width>x844.png` and are displayed
+in the implementation chat. Images were not uploaded or added to a PR.
+
+The browser runner removed its temporary bundles and stopped its owned servers.
+The database runner dropped its test database. Compose project
+`orbit-probes-50ae`, its container, network, and volume were removed successfully.
+No existing tests were deleted or removed from CI selection.
+
+## Owner follow-up and PR preparation
+
+The owner requested removal of the Galaxy count summary and all accompanying
+text, then explicitly invoked the PR workflow. Removed the entire summary,
+settings link, status/error text and reload control from Galaxy without adding
+replacement text. The Settings form and existing Spy button tooltips remain.
+Updated the browser journeys to enter Settings directly and assert that Galaxy
+contains no count summary or settings link. All four focused browser cases
+passed (3.516-second bundle preparation, 9.4-second Playwright execution), and
+Galaxy captures were refreshed at both sizes.
+
+Main advanced to `fba82df` during implementation. Its alliance migration occupies
+0042, so this change uses 0043 for player preferences before rebasing.
+
+Rebased implementation `4d2278f` on `fba82df` passed the same 59 client tests
+(155 ms), all four focused browser cases (3.220-second preparation, 9.2-second
+execution), and the real HTTP/PostgreSQL test with migration 0043 (21.00-second
+preparation, 230-ms runner preparation, 3.211-second execution). Source lint,
+formatting, both TypeScript checks, contracts, boundaries and Rust formatting
+passed again. Current screenshots were inspected and shown before PR creation.
+
+## PR CI repair
+
+PR #393 run `42957288650`, attempt 1, head `2cfa706e50d1e481bdb10a86c941098d7b26eeba`:
+the journey job `130315339375` failed during `news:build`, before browser
+assertions, because the new change note lacked required YAML frontmatter.
+This was a product build defect, not a test defect or infrastructure failure.
+Added the existing id/title/date metadata format and ran `npm run build`
+successfully (Vite client build 2.83 seconds, prerender bundle 207 ms; whole-command
+timing not recorded). No test was removed or relaxed. Other unfinished checks on
+the superseded head may be cancelled by the workflow's normal concurrency policy.
+
+Run `42957570112`, attempt 1, head `573c55d1e943170cbcaf955794420b36fcbf73c0`:
+feature shard 4 job `130316417145` failed only the new desktop preference recovery
+case (121 other cases passed). The reload response helper observed `ok=false` at
+line 2081; the failure snapshot showed recovery already completed with the edit
+`4` retained and Save enabled. The failed save's `requestfinished` event arrived
+after its error had rendered and was captured by the URL-only reload listener.
+This is the new test's first explained fixture repair, not a product regression.
+Git history and the repair ledger contain no prior repair for these new cases.
+
+Both viewport callers now use the existing `trackFixtureResponses` helper to
+drain the failed save before beginning reload, and the reload listener matches
+only a preference read. Audited the other preference response callers in the
+same spec: successful phases already await complete delivery; only the error
+phase omitted that boundary. No shared helper behavior was weakened. Both
+recovery cases passed with optional capture disabled (2.910-second preparation,
+3.2-second execution). The deterministic controller failure/preservation and
+serialization tests remain the lower-layer protection. This chat owns any new
+CI findings; a recurrence of this repaired test defect must follow the existing
+one-repair removal rule.
+
+Automated review `PRRT_kwDOVRgPYs62BmNl` identified a separate product issue:
+a failed/background preference read blocked Spy despite an already-confirmed
+count. Added a pure availability selector that keeps confirmed counts usable
+during reads and read failures. An explicit `saveUnconfirmed` interaction fact
+still blocks sending during an unresolved write, including failed rereads after
+that write, until a successful read or save confirms the value. Galaxy gains no
+text. Deterministic tests cover cached reads, failed initial reads, pending saves,
+failed saves, and recovery; 61 focused client tests passed (135 ms). Lint and
+application TypeScript passed. The review thread was already resolved by its bot;
+this repair addresses its concrete failure mechanism independently.
+
+Run `42958826018`, head `bc22cc60166eb54a409b3e3b4b35cfa1d93d4808`, passed
+all browser shards and native checks, but PostgreSQL rest failed
+`membership_join_upgrade_preserves_unknowns_and_old_writers` at migrations.rs:842.
+Its whole-row comparison excluded only `joined_at_ms`; the new defaulted
+`galaxy_probe_count` column made the expected old three-field row differ.
+The assertion was unchanged since `7e578e60` and has no repair-ledger entry.
+This first explained test-contract repair excludes the new column from the
+old-field preservation comparison and independently asserts that retained rows
+and old-writer inserts both default to `1`. No assertion was dropped. An audit
+of membership row JSON comparisons found no other callers requiring updates.
+
+`make test-db DB_SUITES='migrations player_preferences' DB_JOBS=1` passed all 18
+tests: preparation 1.99 seconds, each runner preparation 100 ms, migration
+execution 9.727 seconds, preference HTTP/database execution 3.166 seconds.

@@ -15,7 +15,7 @@ import {
   id,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { trackFixtureResponses, withFixtureResponse, withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 async function setup(
   page: Page,
@@ -1994,3 +1994,97 @@ test('a probe in flight to one target leaves Spy available for the other targets
   await expect(spy(page, 2)).toBeEnabled()
   await expect(spy(page, 3)).toBeEnabled()
 })
+
+// Browser regression: Settings -> Galaxy wiring, reload and exact Spy submission.
+for (const width of [390, 1280]) {
+  test(`saved Galaxy probe count survives reload and controls Spy at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await setup(page, null, { missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '3' } })
+    await expect(spy(page)).toBeEnabled()
+    await expect(page.getByText(/Spy sends|Change probe count/)).toHaveCount(0)
+    const preferenceResponse = (action: () => Promise<unknown>) => withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences'), action)
+    await preferenceResponse(() => page.goto('/u/andromeda/settings#galaxy-espionage'))
+    const field = page.getByRole('textbox', { name: 'Probes per spy mission' })
+    await expect(field).toHaveValue('1')
+    await field.fill('0')
+    await expect(page.getByText('Enter a positive whole number.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save probe count' })).toBeDisabled()
+    await diagnosticScreenshot(page, { path: `test-results/probe-settings-invalid-${width}x844.png` })
+    await field.fill('3')
+    await preferenceResponse(() => page.getByRole('button', { name: 'Save probe count' }).click())
+    await expect(page.getByText('Probe count saved.')).toBeVisible()
+    await preferenceResponse(() => page.reload())
+    await expect(field).toHaveValue('3')
+    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
+    await expect(page.getByText(/Spy sends|Change probe count/)).toHaveCount(0)
+    await expect(spy(page)).toBeDisabled()
+    await expect(spy(page)).toHaveAttribute('title', 'Not enough espionage probes: 3 required, 2 available on the selected world.')
+    await diagnosticScreenshot(page, { path: `test-results/probe-galaxy-insufficient-${width}x844.png` })
+    await preferenceResponse(() => page.goto('/u/andromeda/settings#galaxy-espionage'))
+    await field.fill('2')
+    await preferenceResponse(() => page.getByRole('button', { name: 'Save probe count' }).click())
+    await expect(page.getByText('Probe count saved.')).toBeVisible()
+    await diagnosticScreenshot(page, { path: `test-results/probe-settings-saved-${width}x844.png` })
+    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
+    await expect(spy(page)).toBeEnabled()
+    await expect(spy(page)).toHaveAttribute('title', 'Send 2 espionage probes')
+    await diagnosticScreenshot(page, { path: `test-results/probe-galaxy-ready-${width}x844.png` })
+    await routeWorld(page, async (route) => {
+      const request = route.request().postDataJSON()
+      if (request.type !== 'FleetQuote') return route.fallback()
+      expect(request.intent.ships).toEqual([{ owner: binding.player, ship_type: 'EspionageProbe', count: '2' }])
+      await route.fulfill({ json: { protocol: 4, binding, request_id: request.context.request_id,
+        viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: {
+          intent: request.intent, profile_hash: 'a'.repeat(64), terms_hash: 'b'.repeat(64), distance: 1000,
+          speeds: [['EspionageProbe', '100000000']], duration_ms: 120000, fuel: '1000000', capacity: '10000000', maximum_payload: '9000000', slot_limit: '3',
+        } } })
+    })
+    await page.route('**/commands', async (route) => {
+      const { gameplay } = route.request().postDataJSON()
+      expect(gameplay.command.action.intent.ships[0].count).toBe('2')
+      await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [id(80)], minimum_viewer_revision: '2' } })
+    })
+    await withFixtureResponse(page, (response) => response.url().endsWith('/commands'), () => spy(page).click())
+    await expect(rows(page).nth(1)).toContainText('Espionage departure pending')
+    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/galaxy`))
+    await diagnosticScreenshot(page, { path: `test-results/probe-galaxy-sent-${width}x844.png` })
+  })
+}
+
+// Browser regression: failed preference requests preserve edits and offer recovery.
+for (const width of [390, 1280]) {
+  test(`probe settings recover from a failed save at ${width}px`, async ({ page }) => {
+    const settlePreferences = trackFixtureResponses(page, (request) => request.url().endsWith('/player-preferences'))
+    await page.setViewportSize({ width, height: 844 })
+    await setup(page, null, { missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '3' } })
+    await expect(spy(page)).toBeEnabled()
+    await expect(page.getByText(/Spy sends|Change probe count/)).toHaveCount(0)
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    await page.route('**/player-preferences', async (route) => {
+      await gate
+      await route.fallback()
+    })
+    const loaded = withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences'), () => page.goto('/u/andromeda/settings#galaxy-espionage'))
+    const field = page.getByRole('textbox', { name: 'Probes per spy mission' })
+    await expect(field).toBeDisabled()
+    await diagnosticScreenshot(page, { path: `test-results/probe-settings-loading-${width}x844.png` })
+    release()
+    await loaded
+    await expect(field).toBeEnabled()
+    await field.fill('4')
+    await page.route('**/player-preferences', (route) => route.fulfill({ status: 503, json: { code: 'Unavailable' } }), { times: 1 })
+    await page.getByRole('button', { name: 'Save probe count' }).click()
+    await expect(page.getByText('Could not confirm the saved probe count. Reload the setting before trying again.')).toBeVisible()
+    // Rendering the failure can precede requestfinished; settle it before listening for the reload.
+    await settlePreferences()
+    await expect(field).toHaveValue('4')
+    await expect(page.getByRole('button', { name: 'Save probe count' })).toBeDisabled()
+    await diagnosticScreenshot(page, { path: `test-results/probe-settings-error-${width}x844.png` })
+    await withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences') && !response.request().postDataJSON().preferences, () => page.getByRole('button', { name: 'Reload probe count' }).click())
+    await expect(field).toHaveValue('4')
+    await expect(page.getByRole('button', { name: 'Save probe count' })).toBeEnabled()
+    await withFixtureResponse(page, (response) => response.url().endsWith('/player-preferences'), () => page.getByRole('button', { name: 'Save probe count' }).click())
+    await expect(page.getByText('Probe count saved.')).toBeVisible()
+  })
+}

@@ -1409,6 +1409,61 @@ describe('galaxy fleet actions', () => {
     expect(model.send).toHaveBeenCalledExactlyOnceWith(command, terms)
   })
 
+  it('quotes and launches the chosen count and blocks insufficient or invalid counts', async () => {
+    const store = createGameStore()
+    store.setState(spyState())
+    const model = {
+      store,
+      world: vi.fn(async () => terms),
+      send: vi.fn(async () => 'command'),
+    }
+    await sendGalaxyProbe(model, 'body', at.body!, () => true, '2')
+    expect(model.world.mock.calls[0]).toEqual([
+      {
+        type: 'FleetQuote',
+        intent: {
+          ...spyIntent,
+          ships: [
+            {
+              owner: spyIntent.ships[0].owner,
+              ship_type: 'EspionageProbe',
+              count: '2',
+            },
+          ],
+        },
+      },
+    ])
+    expect(model.send.mock.calls[0]).toEqual([
+      {
+        type: 'World',
+        action: {
+          type: 'LaunchFleet',
+          intent: {
+            ...spyIntent,
+            ships: [
+              {
+                owner: spyIntent.ships[0].owner,
+                ship_type: 'EspionageProbe',
+                count: '2',
+              },
+            ],
+          },
+          expected_terms_hash: terms.terms_hash,
+        },
+      },
+      terms,
+    ])
+    model.world.mockClear()
+    model.send.mockClear()
+    for (const count of ['3', '9007199254740993', '0', '-1', '1.5']) {
+      await expect(
+        sendGalaxyProbe(model, 'body', at.body!, () => true, count),
+      ).rejects.toThrow()
+    }
+    expect(model.world).not.toHaveBeenCalled()
+    expect(model.send).not.toHaveBeenCalled()
+  })
+
   it.each(['before', 'during'])(
     'leaves throttled probe feedback to the banner when blocked %s sending',
     async (when) => {

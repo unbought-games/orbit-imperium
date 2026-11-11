@@ -1,3 +1,4 @@
+import { PlayerPreferencesProvider } from './player-preferences-context'
 import { InsigniaProvider } from './insignia-context'
 import {
   createContext,
@@ -45,7 +46,9 @@ export function PlayerProfilesProvider({
         csrf={csrf}
         changed={controller.refreshAll}
       >
-        {children}
+        <PlayerPreferencesProvider binding={view.binding} csrf={csrf}>
+          {children}
+        </PlayerPreferencesProvider>
       </InsigniaProvider>
     </PlayerProfilesContext.Provider>
   )

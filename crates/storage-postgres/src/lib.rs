@@ -1,5 +1,6 @@
 mod arrival;
 mod empire_identity;
+mod player_preferences;
 pub use empire_identity::grant_cosmetic;
 mod empire_history;
 pub use empire_history::{correct_history_event, record_campaign_closure, record_campaign_result};

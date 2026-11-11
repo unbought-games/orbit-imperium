@@ -1,4 +1,5 @@
 mod announcements;
+mod player_preferences;
 pub use announcements::router as announcement_router;
 mod alliance_card_art;
 mod alliance_preview;
@@ -217,6 +218,10 @@ where
         .route(
             "/api/public/v1/universes/{id}/planets",
             get(public_universe::planets::<S>).options(public_universe::options),
+        )
+        .route(
+            "/api/v1/universes/{id}/player-preferences",
+            post(player_preferences::handle::<S>),
         )
         .route(
             "/api/v1/universes/{id}/insignias",

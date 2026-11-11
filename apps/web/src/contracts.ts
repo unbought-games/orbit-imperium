@@ -5941,6 +5941,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/universes/{universe}/player-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PlayerPreferencesRequest"];
+                };
+            };
+            responses: {
+                /** @description Saved player preferences for the authenticated universe membership */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PlayerPreferencesResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10019,6 +10060,19 @@ export interface components {
             /** Format: uuid */
             alliance: string;
             invitation: string | null;
+        };
+        PlayerPreferences: {
+            galaxy_probe_count: string;
+        };
+        PlayerPreferencesRequest: {
+            context: components["schemas"]["QueryContext"];
+            preferences?: components["schemas"]["PlayerPreferences"];
+        };
+        PlayerPreferencesResponse: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            preferences: components["schemas"]["PlayerPreferences"];
         };
     };
     responses: never;

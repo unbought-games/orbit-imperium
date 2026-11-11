@@ -1,3 +1,4 @@
+import { validProbeCount } from './player-preferences'
 import type { components } from '../contracts'
 import type { GameState } from './game-store'
 import {
@@ -87,7 +88,10 @@ export function pendingProbe(state: GameState, origin: string, target: string) {
 export function probeAvailability(
   state: GameState,
   origin: string,
+  requested = '1',
 ): string | null {
+  if (!validProbeCount(requested))
+    return 'Enter a positive whole number of probes.'
   if (!state.ready || state.stale || state.view?.protocol !== 4)
     return 'Reconnect before sending a probe.'
   if (
@@ -103,6 +107,8 @@ export function probeAvailability(
     )?.count ?? '0'
   if (BigInt(count) < 1n)
     return 'No espionage probes available on the selected planet.'
+  if (BigInt(count) < BigInt(requested))
+    return `Not enough espionage probes: ${requested} required, ${count} available on the selected world.`
   if (
     BigInt(occupiedFleetSlots(state)) >= BigInt(state.view.missions.fleet_slots)
   )

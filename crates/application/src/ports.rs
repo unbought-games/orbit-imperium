@@ -1,5 +1,13 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn player_preferences(
+        &self,
+        _binding: Binding,
+        _preferences: Option<PlayerPreferences>,
+    ) -> impl std::future::Future<Output = Result<PlayerPreferences, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+
     fn empire_identities(
         &self,
         _players: Vec<PlayerId>,

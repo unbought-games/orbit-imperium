@@ -6,12 +6,14 @@ import styles from './galaxy.module.css'
 /** A local click acknowledgement, not a second source of fleet state. */
 export function GalaxySpyButton({
   name,
+  count = '1',
   reason,
   busy,
   paused,
   error,
   onSend,
 }: {
+  count?: string
   name: string
   reason?: string | null
   busy?: boolean
@@ -33,7 +35,12 @@ export function GalaxySpyButton({
       data-feedback={showCheck}
       disabled={!!reason || busy || paused || showCheck}
       title={
-        showCheck ? 'Probe requested' : (reason ?? 'Send one espionage probe')
+        showCheck
+          ? 'Probe requested'
+          : (reason ??
+            (count === '1'
+              ? 'Send one espionage probe'
+              : `Send ${count} espionage probes`))
       }
       aria-label={showCheck ? `Probe requested for ${name}` : `Spy on ${name}`}
       aria-busy={busy}

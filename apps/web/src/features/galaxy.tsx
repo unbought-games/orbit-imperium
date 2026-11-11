@@ -1,3 +1,5 @@
+import { probePreferenceReason } from '../client-model/player-preferences'
+import { usePlayerPreferences } from '../shell/player-preferences-context'
 import { PhalanxAction } from './phalanx-action'
 import { publicMoonBody } from './galaxy-body'
 import { useProfileSource } from '../shell/player-profiles-context'
@@ -44,7 +46,15 @@ export function Galaxy({
     targetKind?: DispatchDraft['targetKind'],
   ) => void
 }) {
-  const espionage = useGalaxyEspionage(model, origin)
+  const preferences = usePlayerPreferences()
+  const probeCount = preferences.preferences?.galaxy_probe_count
+  const preferenceReason = probePreferenceReason(preferences)
+  const espionage = useGalaxyEspionage(
+    model,
+    origin,
+    probeCount ?? '1',
+    preferenceReason,
+  )
   const tutorial = useTutorial()
   const [harvestSelection, setHarvestSelection] = useState<{
     field: string

@@ -160,6 +160,7 @@ export async function installGameFixture(
     )
     return route.fulfill({ response, body: html })
   })
+  let preferences = { galaxy_probe_count: '1' }
   await page.route('**/api/**', async (route) => {
     const request = route.request(),
       url = new URL(request.url())
@@ -181,6 +182,10 @@ export async function installGameFixture(
       })
     if (url.pathname === '/api/announcements') return route.fallback()
     const context = request.postDataJSON()
+    if (url.pathname.endsWith('/player-preferences')) {
+      if (context.preferences) preferences = context.preferences
+      return route.fulfill({ json: { ...context.context, preferences } })
+    }
     if (url.pathname.endsWith('/world') && context?.type === 'Tutorial')
       return inactiveTutorial(route, options.viewerRevision?.() ?? '1')
     if (url.pathname.endsWith('/player-profiles'))
