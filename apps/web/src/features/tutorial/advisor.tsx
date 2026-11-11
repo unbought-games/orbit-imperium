@@ -71,25 +71,34 @@ export function TutorialAdvisor({
   const scope = bindingKey(view.binding)
   const celebration = useAdvisorCelebration(scope, data)
   const celebrating = celebration.receipts.length > 0
-  const tip = celebrating
-    ? {
-        title: 'Nicely done!',
-        triggerLabel: 'briefing accomplishment',
-        paragraphs: [],
-      }
-    : lesson
-      ? advisorLessons[lesson]
-      : null
-  const bubble = useAdvisorVisit(scope, celebration.event ?? lesson, suspended)
+  const finishCelebration = () => {
+    const trigger = bubble.refs.domReference.current
+    if (trigger instanceof HTMLElement) trigger.focus({ preventScroll: true })
+    bubble.finish(lesson)
+    celebration.clear()
+  }
+  const bubble = useAdvisorVisit(
+    scope,
+    celebration.event ?? lesson,
+    suspended,
+    celebrating ? finishCelebration : undefined,
+  )
+  const tip = bubble.finished
+    ? null
+    : celebrating
+      ? {
+          title: 'Nicely done!',
+          triggerLabel: 'briefing accomplishment',
+          paragraphs: [],
+        }
+      : lesson
+        ? advisorLessons[lesson]
+        : null
   useRememberCelebration(
     scope,
     celebration.receipts.map((receipt) => receipt.id),
     bubble.open,
   )
-  const finishCelebration = () => {
-    bubble.setExpanded(false)
-    celebration.clear()
-  }
   return (
     <>
       {children(
@@ -155,7 +164,8 @@ export function TutorialAdvisor({
                     const trigger = bubble.refs.domReference.current
                     if (trigger instanceof HTMLElement)
                       trigger.focus({ preventScroll: true })
-                    bubble.setExpanded(false)
+                    if (celebrating) finishCelebration()
+                    else bubble.setExpanded(false)
                     onOpenCommands()
                   }}
                 >
@@ -174,6 +184,7 @@ function useAdvisorVisit(
   scope: string,
   lesson: string | null,
   suspended: boolean,
+  onDismiss?: () => void,
 ) {
   // The visit ID is interaction history, not a copy of route/game data. Reset
   // only the disclosure choice when entering another lesson; keep the orb mounted.
@@ -181,16 +192,22 @@ function useAdvisorVisit(
     scope,
     lesson,
     expanded: lesson ? !advisorHistory.seen(scope, lesson) : false,
+    finished: false,
   }))
   if (visit.scope !== scope || visit.lesson !== lesson) {
     setVisit({
       scope,
       lesson,
       expanded: lesson ? !advisorHistory.seen(scope, lesson) : false,
+      finished: false,
     })
   }
   const setExpanded = (expanded: boolean) =>
-    setVisit({ scope, lesson, expanded })
+    setVisit({ scope, lesson, expanded, finished: false })
+  // Dismissing an accomplishment returns this visit to commands, including
+  // when completion made another route lesson eligible underneath the bubble.
+  const finish = (nextLesson: string | null) =>
+    setVisit({ scope, lesson: nextLesson, expanded: false, finished: true })
   const open =
     lesson !== null && visit.lesson === lesson && visit.expanded && !suspended
   useEffect(() => {
@@ -199,7 +216,10 @@ function useAdvisorVisit(
   const arrow = useRef<SVGSVGElement>(null)
   const floating = useFloating({
     open,
-    onOpenChange: setExpanded,
+    onOpenChange: (expanded) => {
+      if (!expanded && onDismiss) onDismiss()
+      else setExpanded(expanded)
+    },
     placement: 'top-end',
     strategy: 'fixed',
     middleware: [
@@ -214,5 +234,13 @@ function useAdvisorVisit(
   const dismiss = useDismiss(floating.context, { outsidePress: false })
   const role = useRole(floating.context, { role: 'dialog' })
   const interactions = useInteractions([click, dismiss, role])
-  return { open, setExpanded, arrow, ...floating, ...interactions }
+  return {
+    open,
+    setExpanded,
+    finish,
+    finished: visit.finished,
+    arrow,
+    ...floating,
+    ...interactions,
+  }
 }
