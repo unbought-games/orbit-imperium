@@ -159,8 +159,7 @@ Focused client checks passed17 cases; native checks passed11, including escaping
 long-name raster output, nonshield shape/base colors and signed email return path.
 The disposable database/HTTP scenario passed binding/idempotency, targetB while
 already inA, spoofed target/CSRF, closed/full/existing-member handling, reset epoch
-and actual bootstrapB. A separate public-alliance departure scenario is authored
-and awaiting the next isolated test slot. Shared-target stale artifacts caused two
+and actual bootstrapB. The separate public-alliance departure scenario passed in an isolated database: public links survive creator departure, combined sponsorship drops with permission, and disabling the public link invalidates its destination. Shared-target stale artifacts caused two
 compile failures; final native build uses a task-owned target with local package
 artifacts rebuilt. No source APIs were removed to appease stale artifacts.
 
@@ -171,3 +170,12 @@ run and final affected2-case personal layout pass succeeded. Captures include
 and below-fold overview were inspected. Native isolated build and full web build
 passed. Root owns live database migration, role restart and the actual-player
 walkthrough; no production deployment or PR push is included in this revision.
+
+
+Final local lint, frontend formatting, Rust formatting and diff checks passed.
+The live walkthrough separately confirmed actual equipped identity and share PNG,
+signup-first signed continuation, automatic entry into the bound universe without
+a chooser, captured-email return to that universe, durable referral attribution,
+and one membership after repeated entry. Desktop/mobile and compact-height layouts
+were inspected. The running local stack was left up. These changes remain local;
+no new PR push, merge or production deployment is claimed.
