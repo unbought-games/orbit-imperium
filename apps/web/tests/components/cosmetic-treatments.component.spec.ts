@@ -1,12 +1,13 @@
 import { test, expect } from './fixture'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
-test.use({ hasTouch: true, reducedMotion: 'no-preference' })
+test.use({ hasTouch: true })
 for (const width of [1440, 390])
   test(`treatment families retain keyboard, touch and reduced-motion appearance at ${width}px`, async ({
     page,
     mount,
   }) => {
     await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
     await mount('cosmetic-treatments')
     for (const [family, count] of [
       ['surface', 24],

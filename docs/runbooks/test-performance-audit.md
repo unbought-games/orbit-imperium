@@ -1728,3 +1728,17 @@ Evidence: initial PR head `e3a22bee`, CI merge revision
 8.210 s; browser runner started 23:42:12 UTC, last completion 23:45:20 UTC,
 cancellation 00:02:41 UTC. Validation of the repair belongs to the coordinator's
 serialized browser slot; collection-only inspection is not a passing test run.
+
+### Treatment component media setup type correction
+
+Required `make check` at `d75dff21` passed 131 tooling, 1,809 client, the 791-test
+main Rust group, 50 bridge tests and 10 storage-library tests, Clippy, Rust
+formatting, ESLint and source formatting. Component typechecking then rejected
+`test.use({ reducedMotion: ... })` in the new treatment gallery: reducedMotion is
+not a top-level fixture option in the pinned Playwright version. File history and
+ledger show no earlier repair of this case. Its first correction uses the supported
+`page.emulateMedia` API before mounting, matching its existing reduced-motion
+transition and other component callers. All interaction and appearance assertions
+remain. This was a typecheck failure, not an observed browser assertion failure.
+The failed full command took 304.63 seconds; remaining static/build checks and the
+affected component case must pass before qualification.
