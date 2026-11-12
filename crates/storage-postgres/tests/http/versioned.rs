@@ -28,6 +28,7 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: false,

@@ -126,6 +126,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     let app = router_with_customization(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "apps/web/dist".into(),
             login_per_minute: 30,
@@ -529,6 +530,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         router_with_customization(
             fresh.clone(),
             HttpConfig {
+                account_url: None,
                 origin: "https://game.test".into(),
                 assets: "apps/web/dist".into(),
                 login_per_minute: 30,
@@ -693,6 +695,7 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
     let missing = router_with_customization(
         fresh.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "apps/web/dist".into(),
             login_per_minute: 30,

@@ -46,6 +46,7 @@ async fn saved_probe_count_is_private_persistent_and_scoped_to_the_full_membersh
     let app = orbit_transport_http::router(
         store.clone(),
         orbit_transport_http::HttpConfig {
+            account_url: None,
             origin: "http://localhost".into(),
             assets: "/absent".into(),
             login_per_minute: 100,

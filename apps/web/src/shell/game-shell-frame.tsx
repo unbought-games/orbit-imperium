@@ -24,6 +24,7 @@ export function GameShellFrame({
   onSelectBody,
   onVisit,
   onLogout,
+  accountUrl,
   children,
   footer,
 }: {
@@ -37,6 +38,7 @@ export function GameShellFrame({
   onSelectBody: (id: string) => void
   onVisit?: (page: Page) => void
   onLogout: () => void
+  accountUrl?: string | null
   children: ReactNode
   footer?: ReactNode
 }) {
@@ -54,7 +56,7 @@ export function GameShellFrame({
       ref={pinned.shell}
       data-has-command-hud={view.protocol === 4 || undefined}
     >
-      <div className={styles['shell-columns']}>
+      <div className={styles['shell-columns']} ref={pinned.columns}>
         <div className={styles.header} ref={pinned.header}>
           <header className={styles.identity} data-touch-control="">
             <Brand
@@ -73,6 +75,7 @@ export function GameShellFrame({
             body={body?.id}
             page={page}
             onLogout={onLogout}
+            accountUrl={accountUrl}
             onVisit={onVisit}
           >
             {(navigation) =>

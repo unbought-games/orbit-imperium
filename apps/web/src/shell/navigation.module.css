@@ -87,11 +87,11 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'world' 'secondary';
-    position: sticky;
+    position: fixed;
     top: 0;
+    inset-inline: 0;
     z-index: 9;
     align-self: start;
-    margin-inline: calc(-1 * var(--shell-inline-gutter));
   }
   .secondary {
     border-top: 0;
@@ -369,8 +369,8 @@
   z-index: 100;
 }
 .accountMenu {
-  width: var(--anchor-width);
-  min-width: 190px;
+  width: max-content;
+  min-width: var(--anchor-width);
   max-width: calc(100vw - 24px);
   padding: 5px;
   background: var(--surface-raised);

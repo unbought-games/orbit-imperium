@@ -473,6 +473,7 @@ async fn http_requires_origin_csrf_and_owner_and_never_bootstraps_anonymous_game
     let app = orbit_transport_http::router(
         f.store.clone(),
         orbit_transport_http::HttpConfig {
+            account_url: None,
             origin: "http://localhost".into(),
             assets: "/absent".into(),
             login_per_minute: 100,
@@ -938,6 +939,7 @@ async fn identity_http_edit_and_public_read_negotiate_catalog_and_reject_invalid
     let app = orbit_transport_http::router(
         f.store.clone(),
         orbit_transport_http::HttpConfig {
+            account_url: None,
             origin: "http://localhost".into(),
             assets: "/absent".into(),
             login_per_minute: 100,

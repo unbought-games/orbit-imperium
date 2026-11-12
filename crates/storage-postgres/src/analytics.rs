@@ -13,7 +13,7 @@ impl PgStore {
         config: &Value,
         journey: &Value,
     ) -> Result<uuid::Uuid, StoreError> {
-        let mut tx = self.pool.begin().await.map_err(db_error)?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         sqlx::query("SET LOCAL lock_timeout='1s'")
             .execute(&mut *tx)
             .await
@@ -23,10 +23,7 @@ impl PgStore {
             .execute(&mut *tx)
             .await
             .map_err(db_error)?;
-        let count:i64=sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1 AND created_at>now()-interval '1 day'").bind(account.0).fetch_one(&mut *tx).await.map_err(db_error)?;
-        if count >= 200 {
-            return Err(StoreError::Unavailable);
-        }
+        let mut count:i64=sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1 AND created_at>now()-interval '1 day'").bind(account.0).fetch_one(&mut *tx).await.map_err(db_error)?;
         let now:String=sqlx::query_scalar("SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')").fetch_one(&mut *tx).await.map_err(db_error)?;
         let property = config["propertyId"]
             .as_str()
@@ -51,9 +48,27 @@ impl PgStore {
         }
         let mut evidence = uuid::Uuid::nil();
         for (key, name, category, at, properties) in facts {
+            // Admission protects new facts, not retries of retained evidence. The
+            // account lock serializes both this check and the remaining budget.
+            let existing: Option<uuid::Uuid> =
+                sqlx::query_scalar("SELECT event_id FROM analytics_delivery WHERE fact_key=$1")
+                    .bind(&key)
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+            if let Some(saved) = existing {
+                if category == "custom" {
+                    evidence = saved;
+                }
+                continue;
+            }
+            if count >= 200 {
+                return Err(StoreError::RateLimited);
+            }
             let id = uuid::Uuid::new_v4();
             let payload = json!({"event_id":id,"property_id":property,"name":name,"schema_version":1,"producer":"server","category":category,"occurred_at":at,"clock":"server","visit_id":journey["visit_id"],"visitor_id":journey["visitor_id"],"subject":subject,"context":{"environment":config["environment"]},"collection":{"profile":"identified","policy_version":config["policyVersion"],"consent":true,"sample_rate":1,"dropped_events":0},"properties":properties});
             let saved:uuid::Uuid=sqlx::query_scalar("INSERT INTO analytics_delivery(event_id,fact_key,account,payload) VALUES($1,$2,$3,$4) ON CONFLICT(fact_key) DO UPDATE SET fact_key=excluded.fact_key RETURNING event_id").bind(id).bind(key).bind(account.0).bind(payload).fetch_one(&mut *tx).await.map_err(db_error)?;
+            count += 1;
             if category == "custom" {
                 evidence = saved;
             }

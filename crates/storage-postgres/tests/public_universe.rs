@@ -36,6 +36,7 @@ async fn setup() -> (PgStore, sqlx::PgPool, UniverseId, Router) {
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "missing".into(),
             login_per_minute: 30,

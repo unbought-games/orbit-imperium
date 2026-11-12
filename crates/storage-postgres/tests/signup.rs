@@ -336,6 +336,7 @@ async fn signup_http_origin_cookie_disabled_and_rate_limit() {
         .unwrap()
         .universe;
     let config = HttpConfig {
+        account_url: None,
         origin: "https://game.example".into(),
         assets: "missing".into(),
         login_per_minute: 30,
@@ -403,6 +404,7 @@ async fn signup_http_origin_cookie_disabled_and_rate_limit() {
     let closed = router(
         store,
         HttpConfig {
+            account_url: None,
             signup: None,
             ..config
         },

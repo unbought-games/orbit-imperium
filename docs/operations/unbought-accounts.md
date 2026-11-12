@@ -10,6 +10,15 @@ does not relax the OIDC library’s HTTPS/loopback requirements for issuers and 
 URLs at the accounts service. Its verification-return URL is
 `ORBIT_ORIGIN/api/auth/login?verify=true`.
 
+Set `ORBIT_ACCOUNT_URL=https://accounts.unbought.games/account` on the official
+API to show **Unbought Games account** in the desktop player menu. The URL is
+runtime configuration, exposed as `account_url` by `/api/auth/config`; restart
+the API after changing it. Unset or blank hides the link, so local development
+and self-hosted servers do not advertise official Accounts by default. An
+explicit absolute HTTP(S) URL can point a development instance at a local account
+service. URLs containing credentials or other schemes are rejected at startup.
+This setting controls a navigation link only; it does not change authentication.
+
 Homepage account links use `/api/auth/entry` (`?signup=true` for registration).
 Only the configured origin `https://orbitimperium.com` together with the official
 Accounts issuer starts authentication immediately. Community installations keep

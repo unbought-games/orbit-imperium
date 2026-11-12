@@ -662,6 +662,7 @@ async fn transport_requires_auth_csrf_binding_and_valid_content() {
     let f = Fixture::new().await;
     let u = f.bindings[0].universe;
     let config = orbit_transport_http::HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,

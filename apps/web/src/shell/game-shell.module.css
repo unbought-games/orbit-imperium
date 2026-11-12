@@ -7,6 +7,8 @@
   padding: 0 var(--shell-inline-gutter);
 }
 .shell-columns {
+  /* The viewport-fixed controls never participate in document overscroll. */
+  padding-top: var(--shell-header-height, 64px);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'header' 'content';
@@ -18,7 +20,7 @@
   grid-template-areas: 'identity world' 'secondary secondary';
   align-items: center;
   column-gap: clamp(12px, 2vw, 32px);
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 9;
   align-self: start;
@@ -211,6 +213,10 @@
   .header {
     --header-outset-end: calc(
       var(--shell-inline-gutter) + var(--shell-hud-space)
+    );
+    width: calc(
+      var(--shell-content-width) + var(--shell-inline-gutter) +
+        var(--header-outset-end)
     );
     margin-inline: calc(-1 * var(--shell-inline-gutter))
       calc(-1 * var(--header-outset-end));

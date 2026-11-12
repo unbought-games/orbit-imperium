@@ -181,3 +181,7 @@ required-features = ["test-support"]
 [[test]]
 name = "game_invitations"
 required-features = ["test-support"]
+
+[[test]]
+name = "pools"
+required-features = ["test-support"]

@@ -1854,3 +1854,17 @@ Validation at `67c1c846` plus this local cleanup diff:
   explicit acceptance suites were not run for the mechanical URL-example edits.
 - Final `npm run build` passed, including the full app TypeScript check and
   production/prerender bundles. Changes remain local and unpublished.
+
+## November 12, 2026: cancelled BEGIN fixture
+
+New `pools::cancelled_begin_does_not_poison_shared_store_refresh_pool` initially
+allowed an unused second connection slot. The same-backend assertion failed
+because acquisition could open another connection before the cancelled one had
+returned. No prior test history exists. Its one fixture repair reserves all other
+slots, retaining the actual cancellation gate and backend identity assertion.
+Both constructor cases pass and fail with SQLSTATE25001 when the protection is
+removed. No sleeps, retry loop, timeout increase or assertion removal was used.
+See [verification](../verification/cancelled-transaction-begin.md) for timings,
+known-broken execution and retained transaction/commit/rollback coverage. If the
+repaired fixture fails again due to a test defect, follow the one-repair rule;
+product regression failures remain actionable and do not justify deleting it.

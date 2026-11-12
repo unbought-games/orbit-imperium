@@ -60,6 +60,7 @@ use tokio::sync::{Mutex, Semaphore};
 
 #[derive(Clone)]
 pub struct HttpConfig {
+    pub account_url: Option<String>,
     pub origin: String,
     pub assets: String,
     pub login_per_minute: u32,

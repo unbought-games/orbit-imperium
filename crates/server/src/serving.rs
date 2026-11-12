@@ -136,6 +136,7 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
         let private_metrics = metrics.clone();
         let private_drain = drain_rx.clone();
         let config = HttpConfig {
+            account_url: serve.account_url,
             origin: serve.origin,
             assets: serve.assets,
             signup: prepared.signup,

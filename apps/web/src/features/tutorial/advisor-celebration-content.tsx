@@ -66,8 +66,14 @@ export function AdvisorCelebrationContent({
                 )
               : `${receipts.length} directives completed.`}
           </p>
-          {paid && <p>Rewards added automatically.</p>}
-          <ObjectiveReward reward={reward} variant="inline" />
+          <ObjectiveReward
+            reward={reward}
+            variant="inline"
+            className={styles.completionReward}
+          />
+          {paid && (
+            <p className={styles.rewardNote}>Rewards added automatically.</p>
+          )}
         </div>
       </div>
       {next && destination ? (

@@ -712,6 +712,7 @@ async fn http_site_selection_quote_and_reports_are_private_and_decimal_safe() {
     let app = orbit_transport_http::router(
         f.store.clone(),
         orbit_transport_http::HttpConfig {
+            account_url: None,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: true,

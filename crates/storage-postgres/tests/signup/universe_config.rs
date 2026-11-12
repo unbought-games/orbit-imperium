@@ -449,6 +449,7 @@ async fn universe_policy_two_http_instances_refresh_and_fail_closed() {
     store.create_universe(&request).await.unwrap();
     let u = request.universe;
     let config = HttpConfig {
+        account_url: None,
         origin: "https://game.example".into(),
         assets: "missing".into(),
         login_per_minute: 30,

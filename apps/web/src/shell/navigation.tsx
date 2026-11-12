@@ -20,6 +20,7 @@ import {
   ChevronsUpDown,
   Settings,
   Trophy,
+  UserRound,
   ArrowUpRight,
 } from 'lucide-react'
 import styles from './navigation.module.css'
@@ -52,6 +53,7 @@ export function Navigation({
   blockers,
   onVisit,
   onLogout,
+  accountUrl,
   children,
 }: {
   hasUnreadReports: boolean
@@ -62,6 +64,7 @@ export function Navigation({
   blockers: ReadonlyMap<Page, string>
   onVisit?: (page: Page) => void
   onLogout: () => void
+  accountUrl?: string | null
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
@@ -318,7 +321,7 @@ export function Navigation({
                     render={<a href="/profile" />}
                     className={styles.accountMenuItem}
                   >
-                    My Orbit profile
+                    <UserRound size={16} aria-hidden="true" /> My Orbit profile
                   </AccountMenu.LinkItem>
                   {rewardsVisible && (
                     <AccountMenu.LinkItem
@@ -363,6 +366,21 @@ export function Navigation({
                   >
                     <Settings size={16} aria-hidden="true" /> Settings
                   </AccountMenu.LinkItem>
+                  {accountUrl && (
+                    <AccountMenu.LinkItem
+                      closeOnClick
+                      render={<a href={accountUrl} />}
+                      className={styles.accountMenuItem}
+                    >
+                      <img
+                        src="/brand-unbought-symbol.svg"
+                        alt=""
+                        width={22}
+                        height={22}
+                      />
+                      Unbought Games account
+                    </AccountMenu.LinkItem>
+                  )}
                   <AccountMenu.Item
                     className={styles.accountMenuItem}
                     onClick={onLogout}
