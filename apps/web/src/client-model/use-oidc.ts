@@ -27,7 +27,11 @@ export function useOidcConfig() {
   return { state, retry }
 }
 
-export function oidcLoginPath(returnTo?: string, verify = false) {
+export function oidcLoginPath(
+  returnTo?: string,
+  verify = false,
+  signup = false,
+) {
   const path =
     returnTo?.startsWith('/') &&
     !returnTo.startsWith('//') &&
@@ -38,7 +42,7 @@ export function oidcLoginPath(returnTo?: string, verify = false) {
     })
       ? returnTo
       : '/'
-  return `/api/auth/login?${new URLSearchParams({ return_to: path, ...(verify ? { verify: 'true' } : {}) })}`
+  return `/api/auth/login?${new URLSearchParams({ return_to: path, ...(verify ? { verify: 'true' } : {}), ...(signup && !verify ? { signup: 'true' } : {}) })}`
 }
 
 export function useUniverseEnrollment() {

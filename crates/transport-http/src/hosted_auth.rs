@@ -132,6 +132,10 @@ mod tests {
     async fn callback_does_not_enroll_for_deep_links_community_servers_or_a_changed_binding() {
         let universe = UniverseId(uuid::Uuid::from_u128(7));
         for (path, configured) in [
+            (
+                "/invite/inv_sample?continue=%2Finvite%2Funiverse%2Ftoken".into(),
+                Some(universe),
+            ),
             ("/u/andromeda/overview".into(), Some(universe)),
             (
                 format!("/join/{}?alliance={}", universe.0, uuid::Uuid::from_u128(9)),

@@ -91,3 +91,34 @@ Formatting and diff checks passed; the new regression has not yet been compiled
 or executed. The currently built native executable is still from `e3a22bee`.
 Focused application validation, a fresh native build and the retained real-service
 save/equip acceptance must run before reporting this correction as validated.
+
+## Qualified baseline and game-first invitation follow-up
+
+The earlier source-only checkpoints above were subsequently qualified at
+`3eaccbeeee7cff08f00cce6b689749ff6c089caf`: CI run `43126812953` passed all build,
+unit, PostgreSQL and browser jobs. The composition correction and static SVG
+stroke join support were included. No merge or deployment occurred.
+
+The new invitation entry work supersedes that qualification and is source-only:
+
+- The public `/invite/<code>` page resolves the current session even though public
+  HTML embeds anonymous bootstrap. Authenticated accounts without a universe can
+  review/accept before normal enrollment. Signup/sign-in retain the exact local
+  invitation path through the existing OAuth transaction; no automatic attribution
+  or alliance admission is introduced.
+- Canonical links are game-scoped. Native alliance recruitment URLs and their
+  reward code remain intact; canonical alliance entries use only public IDs for
+  onward navigation. Unsafe external or malformed continuations are discarded.
+- Confirmation state comes from `accepted` and `attribution_locked` service fields,
+  including after reload. Pending local code recall is cleared after confirmed
+  attribution. A changed proposal needs a new confirmation.
+- Auth return/URL policy and server projection have deterministic coverage.
+  Browser cases cover public entry links, no-membership review and stale-preview
+  reconfirmation, reload after acceptance, already-fixed attribution, and personal
+  invitation creation. These are short game boundaries; the previously retired
+  multi-document mocked authentication journey is not recreated. Actual new-user
+  OAuth/signup and onboarding continuation remain explicit acceptance work.
+
+The follow-up requires focused tests, full static/build checks, desktop/mobile
+captures, new artifacts, exact-revision CI and real-service acceptance. Source
+formatting and generated contracts alone do not establish those outcomes.

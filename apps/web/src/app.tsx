@@ -1,6 +1,7 @@
 import { archivePath } from './client-model/empire-history-navigation'
 import { RecruitmentEntryPage } from './features/alliances/recruitment-entry'
 import { recruitmentEntry } from './client-model/recruitment'
+import { invitationReturnPath } from './client-model/invitation-entry'
 import { HostedJoin } from './features/hosted-join'
 import { hostedJoinUniverse } from './client-model/use-hosted-join'
 import { Provider } from 'jotai'
@@ -18,6 +19,13 @@ import { useAppSession } from './client-model/use-app-session'
 import { AuthContext } from './shell/auth-context'
 import { PlayerProfilesProvider } from './shell/player-profiles-context'
 export function App() {
+  const invitationPage = useLocation({
+    select: (location) =>
+      /^\/invite\/[^/]+\/?$/.test(location.pathname) ||
+      location.pathname === '/invitations' ||
+      ((location.pathname === '/login' || location.pathname === '/signup') &&
+        !!invitationReturnPath(location.search.redirect)),
+  })
   const archiveReturn = useLocation({
     select: (location) =>
       location.pathname === '/login' && archivePath(location.search.redirect),
@@ -40,7 +48,7 @@ export function App() {
   return (
     <AuthContext.Provider value={session}>
       <SkipLink />
-      {archiveReturn || runtime.status === 'anonymous' ? (
+      {invitationPage || archiveReturn || runtime.status === 'anonymous' ? (
         <Outlet />
       ) : runtime.status === 'authenticated' && allianceEntry ? (
         <RecruitmentEntryPage

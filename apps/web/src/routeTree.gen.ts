@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as InvitationsRouteImport } from './routes/invitations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as JoinUniverseRouteImport } from './routes/join.$universe'
 import { Route as UUniverseRouteImport } from './routes/u.$universe'
 import { Route as UUniverseIndexRouteImport } from './routes/u.$universe.index'
@@ -77,6 +79,11 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvitationsRoute = InvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -85,6 +92,11 @@ const LoginRoute = LoginRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteCodeRoute = InviteCodeRouteImport.update({
+  id: '/invite/$code',
+  path: '/invite/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinUniverseRoute = JoinUniverseRouteImport.update({
@@ -374,8 +386,10 @@ const UUniverseBBodyShipyardItemRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/invitations': typeof InvitationsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
@@ -433,8 +447,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/invitations': typeof InvitationsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
@@ -488,8 +504,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/invitations': typeof InvitationsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
@@ -549,8 +567,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/invitations'
     | '/login'
     | '/signup'
+    | '/invite/$code'
     | '/join/$universe'
     | '/u/$universe'
     | '/u/$universe/$'
@@ -608,8 +628,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/invitations'
     | '/login'
     | '/signup'
+    | '/invite/$code'
     | '/join/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
@@ -662,8 +684,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/invitations'
     | '/login'
     | '/signup'
+    | '/invite/$code'
     | '/join/$universe'
     | '/u/$universe'
     | '/u/$universe/$'
@@ -722,8 +746,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  InvitationsRoute: typeof InvitationsRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  InviteCodeRoute: typeof InviteCodeRoute
   JoinUniverseRoute: typeof JoinUniverseRoute
   UUniverseRoute: typeof UUniverseRouteWithChildren
 }
@@ -744,6 +770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invitations': {
+      id: '/invitations'
+      path: '/invitations'
+      fullPath: '/invitations'
+      preLoaderRoute: typeof InvitationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -756,6 +789,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$code': {
+      id: '/invite/$code'
+      path: '/invite/$code'
+      fullPath: '/invite/$code'
+      preLoaderRoute: typeof InviteCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join/$universe': {
@@ -1345,8 +1385,10 @@ const UUniverseRouteWithChildren = UUniverseRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  InvitationsRoute: InvitationsRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  InviteCodeRoute: InviteCodeRoute,
   JoinUniverseRoute: JoinUniverseRoute,
   UUniverseRoute: UUniverseRouteWithChildren,
 }

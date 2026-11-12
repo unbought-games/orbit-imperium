@@ -1,0 +1,14 @@
+.attribution {
+  margin-block: 1.5rem;
+  padding-block: 1rem;
+  border-block: 1px solid var(--border, #334653);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.actions > p {
+  flex-basis: 100%;
+}

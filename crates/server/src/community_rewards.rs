@@ -364,10 +364,8 @@ async fn action(
     if body.contract_version != 1 || body.request_id.is_empty() || body.request_id.len() > 200 {
         return Err(StatusCode::BAD_REQUEST);
     }
+    validate_invitation_game(&body.action)?;
     if body.action["type"] == "create_invitation" && body.action["kind"] != "personal" {
-        if body.action["game_id"] != "orbit-imperium" {
-            return Err(StatusCode::BAD_REQUEST);
-        }
         let alliance = serde_json::from_value(body.action["alliance"].clone())
             .map_err(|_| StatusCode::BAD_REQUEST)?;
         let event = s
@@ -494,33 +492,89 @@ async fn invitation_preview(
         .permits
         .try_acquire()
         .map_err(|_| StatusCode::TOO_MANY_REQUESTS)?;
-    let (_, identity) = s.session(&h, false).await?;
-    if query.code.is_empty() || query.code.len() > 200 {
+    if !valid_invitation_code(&query.code) {
         return Err(StatusCode::BAD_REQUEST);
     }
-    let result = s
-        .post(
-            "invitation-preview",
-            json!({"contract_version":1,"subject":identity.subject,"code":query.code}),
-        )
-        .await?;
+    // A public preview never creates attribution. Invalid/absent sessions may
+    // see only the same safe anonymous proposal; writes still require CSRF/auth.
+    let subject = match s.session(&h, false).await {
+        Ok((_, identity)) => Some(identity.subject),
+        Err(StatusCode::UNAUTHORIZED) => None,
+        Err(status) => return Err(status),
+    };
+    let mut request = json!({"contract_version":1,"code":query.code});
+    if let Some(subject) = subject {
+        request["subject"] = json!(subject);
+    }
+    let result = s.post("invitation-preview", request).await?;
+    Ok(response(public_invitation_preview(
+        result,
+        &query.code,
+        &s.origin,
+    )?))
+}
+
+fn valid_invitation_code(code: &str) -> bool {
+    !code.is_empty()
+        && code.len() <= 200
+        && code.as_bytes()[0].is_ascii_alphanumeric()
+        && code
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_.:-".contains(&b))
+}
+
+fn validate_invitation_game(action: &Value) -> Result<(), StatusCode> {
+    if action["type"] == "create_invitation" && action["game_id"] != "orbit-imperium" {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    Ok(())
+}
+
+fn public_invitation_preview(result: Value, code: &str, origin: &str) -> Result<Value, StatusCode> {
+    // Even a bad upstream registration cannot turn this bridge into an external redirect.
+    if result["code"] != code
+        || result["game_id"] != "orbit-imperium"
+        || result["url"] != format!("{}/invite/{code}", origin.trim_end_matches('/'))
+    {
+        return Err(StatusCode::BAD_GATEWAY);
+    }
     // Only safe proposed attribution. Never forward callback receipts/internal account IDs.
     let mut public = serde_json::Map::new();
+    let alliance = match result["kind"].as_str() {
+        Some("personal") => Value::Null,
+        Some("combined" | "alliance_public") => {
+            let mut identity = serde_json::Map::new();
+            for field in ["universe_id", "alliance_id"] {
+                let value = result["alliance"][field]
+                    .as_str()
+                    .ok_or(StatusCode::BAD_GATEWAY)?;
+                uuid::Uuid::parse_str(value).map_err(|_| StatusCode::BAD_GATEWAY)?;
+                identity.insert(field.into(), json!(value));
+            }
+            Value::Object(identity)
+        }
+        _ => return Err(StatusCode::BAD_GATEWAY),
+    };
+    public.insert("alliance".into(), alliance);
     for field in [
         "code",
         "kind",
         "inviter_name",
         "alliance_name",
         "game_id",
+        "game_name",
+        "url",
         "requires_game_check",
         "preview_version",
+        "accepted",
+        "attribution_locked",
     ] {
         public.insert(
             field.into(),
             result.get(field).cloned().ok_or(StatusCode::BAD_GATEWAY)?,
         );
     }
-    Ok(response(Value::Object(public)))
+    Ok(Value::Object(public))
 }
 
 async fn account_marks(
@@ -586,4 +640,56 @@ async fn alliance_honors(
         );
     }
     Ok(response(json!({"alliance_id":alliance,"honors":honors})))
+}
+
+#[cfg(test)]
+mod invitation_tests {
+    use super::*;
+
+    #[test]
+    fn every_invitation_creation_requires_this_game() {
+        for kind in ["personal", "combined", "alliance_public"] {
+            for game in [Value::Null, json!("other-game"), json!("orbit-imperium")] {
+                let action = json!({"type":"create_invitation","kind":kind,"game_id":game});
+                assert_eq!(
+                    validate_invitation_game(&action).is_ok(),
+                    game == "orbit-imperium"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn public_proposals_are_game_bound_and_exclude_private_evidence() {
+        for kind in ["personal", "combined", "alliance_public"] {
+            let result = json!({"code":"inv_sample","kind":kind,"inviter_name":"Sample commander","alliance_name":"Sample alliance","game_id":"orbit-imperium","game_name":"Orbit Imperium","url":"https://orbit.example/invite/inv_sample","requires_game_check":true,"preview_version":"v1","accepted":false,"attribution_locked":false,"alliance":{"universe_id":"00000000-0000-4000-8000-000000000003","alliance_id":"00000000-0000-4000-8000-000000000008","epoch_id":"private-unused"},"inviter_id":"private-id","evidence":{"receipt":"private-receipt"}});
+            let public =
+                public_invitation_preview(result.clone(), "inv_sample", "https://orbit.example")
+                    .unwrap();
+            assert_eq!(public["kind"], kind);
+            assert!(public.get("inviter_id").is_none());
+            assert!(public.get("evidence").is_none());
+            if kind == "personal" {
+                assert!(public["alliance"].is_null());
+            } else {
+                assert!(public["alliance"].get("epoch_id").is_none());
+            }
+            for (field, value) in [
+                ("game_id", "other-game"),
+                ("code", "other-code"),
+                ("url", "https://evil.example/invite/inv_sample"),
+            ] {
+                let mut forged = result.clone();
+                forged[field] = json!(value);
+                assert_eq!(
+                    public_invitation_preview(forged, "inv_sample", "https://orbit.example"),
+                    Err(StatusCode::BAD_GATEWAY)
+                );
+            }
+        }
+        for code in ["", "../escape", "code/other", "code\n", "<script>"] {
+            assert!(!valid_invitation_code(code));
+        }
+        assert!(valid_invitation_code("inv_A-b_9"));
+    }
 }

@@ -74,9 +74,6 @@
     "/api/v1/universes/{id}/overview": {
       "get": {
         "responses": {
-          "426": {
-            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
-          },
           "403": {
             "description": "Access or bot participation denied",
             "content": {
@@ -93,6 +90,9 @@
                 }
               }
             }
+          },
+          "426": {
+            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
           }
         },
         "parameters": [
@@ -133,9 +133,6 @@
     "/api/v1/universes/{id}/quotes": {
       "post": {
         "responses": {
-          "426": {
-            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
-          },
           "403": {
             "description": "Access or bot participation denied",
             "content": {
@@ -152,6 +149,9 @@
                 }
               }
             }
+          },
+          "426": {
+            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
           }
         },
         "requestBody": {
@@ -202,9 +202,6 @@
     "/api/v1/universes/{id}/commands": {
       "post": {
         "responses": {
-          "426": {
-            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
-          },
           "403": {
             "description": "Access or bot participation denied",
             "content": {
@@ -221,6 +218,9 @@
                 }
               }
             }
+          },
+          "426": {
+            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
           }
         },
         "requestBody": {
@@ -252,9 +252,6 @@
     "/api/v1/universes/{id}/commands/{commandId}": {
       "get": {
         "responses": {
-          "426": {
-            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
-          },
           "403": {
             "description": "Access or bot participation denied",
             "content": {
@@ -271,6 +268,9 @@
                 }
               }
             }
+          },
+          "426": {
+            "description": "Protocol 1 game routes retired; use v2 binding bootstrap."
           }
         },
         "parameters": [
@@ -4298,6 +4298,16 @@
               }
             }
           },
+          "413": {
+            "description": "BodyTooLarge",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "RateLimited; Retry-After seconds",
             "content": {
@@ -4310,16 +4320,6 @@
           },
           "503": {
             "description": "Unavailable; world busy or storage unavailable; retry",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "BodyTooLarge",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4405,6 +4405,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Authenticated, replayable recipient updates; SSE event game-update, JSON GameUpdate data, cursor as event id. Reconnect after EOF.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Typed service problem",
             "content": {
@@ -4508,16 +4518,6 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/Problem4"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Authenticated, replayable recipient updates; SSE event game-update, JSON GameUpdate data, cursor as event id. Reconnect after EOF.",
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -8384,7 +8384,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Safe proposed attribution for authenticated owner",
+            "description": "Safe game-specific proposed attribution; anonymous preview never accepts an invitation",
             "content": {
               "application/json": {
                 "schema": {
@@ -28147,6 +28147,10 @@
                   "type": "string",
                   "format": "uri"
                 },
+                "invitation_management_url": {
+                  "type": "string",
+                  "format": "uri"
+                },
                 "linked": {
                   "type": "boolean"
                 }
@@ -28155,6 +28159,7 @@
                 "id",
                 "name",
                 "launch_url",
+                "invitation_management_url",
                 "linked"
               ],
               "additionalProperties": false
@@ -28316,17 +28321,17 @@
                   ]
                 },
                 "game_id": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 200,
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                },
+                "game_name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
                 },
                 "alliance": {
                   "anyOf": [
@@ -28369,6 +28374,8 @@
                 "code",
                 "kind",
                 "game_id",
+                "game_name",
+                "url",
                 "alliance"
               ],
               "additionalProperties": false
@@ -28524,6 +28531,153 @@
               "full_selection_url"
             ],
             "additionalProperties": false
+          },
+          "financial_support": {
+            "type": "object",
+            "properties": {
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              },
+              "amount_minor": {
+                "type": "object",
+                "properties": {
+                  "numerator": {
+                    "type": "string",
+                    "pattern": "^-?\\d+$"
+                  },
+                  "denominator": {
+                    "type": "string",
+                    "pattern": "^[1-9]\\d*$"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ],
+                "additionalProperties": false
+              },
+              "completed_months": {
+                "type": "object",
+                "properties": {
+                  "numerator": {
+                    "type": "string",
+                    "pattern": "^-?\\d+$"
+                  },
+                  "denominator": {
+                    "type": "string",
+                    "pattern": "^[1-9]\\d*$"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ],
+                "additionalProperties": false
+              },
+              "gift_credit": {
+                "type": "object",
+                "properties": {
+                  "numerator": {
+                    "type": "string",
+                    "pattern": "^-?\\d+$"
+                  },
+                  "denominator": {
+                    "type": "string",
+                    "pattern": "^[1-9]\\d*$"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ],
+                "additionalProperties": false
+              },
+              "under_review": {
+                "type": "boolean"
+              },
+              "titles": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    "reward_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    "amount_minor": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "earned": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reward_id",
+                    "amount_minor",
+                    "earned"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "anniversaries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    "reward_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    },
+                    "months": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "earned": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "reward_id",
+                    "months",
+                    "earned"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "currency",
+              "amount_minor",
+              "completed_months",
+              "gift_credit",
+              "under_review",
+              "titles",
+              "anniversaries"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -28640,7 +28794,8 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200,
-                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$",
+                    "const": "orbit-imperium"
                   },
                   "alliance": {
                     "type": "object",
@@ -28674,7 +28829,8 @@
                 },
                 "required": [
                   "type",
-                  "kind"
+                  "kind",
+                  "game_id"
                 ],
                 "additionalProperties": false
               },
@@ -29058,16 +29214,52 @@
             ]
           },
           "game_id": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "const": "orbit-imperium"
           },
           "requires_game_check": {
             "type": "boolean"
           },
           "preview_version": {
             "type": "string"
+          },
+          "game_name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "alliance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "universe_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "alliance_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "universe_id",
+                  "alliance_id"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accepted": {
+            "type": "boolean"
+          },
+          "attribution_locked": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -29077,7 +29269,12 @@
           "alliance_name",
           "game_id",
           "requires_game_check",
-          "preview_version"
+          "preview_version",
+          "game_name",
+          "url",
+          "alliance",
+          "accepted",
+          "attribution_locked"
         ]
       },
       "CosmeticMark": {

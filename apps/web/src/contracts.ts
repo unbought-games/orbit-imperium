@@ -6074,7 +6074,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Safe proposed attribution for authenticated owner */
+                /** @description Safe game-specific proposed attribution; anonymous preview never accepts an invitation */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -10675,6 +10675,8 @@ export interface components {
                 name: string;
                 /** Format: uri */
                 launch_url: string;
+                /** Format: uri */
+                invitation_management_url: string;
                 linked: boolean;
             }[];
             membership: {
@@ -10702,7 +10704,10 @@ export interface components {
                 code: string;
                 /** @enum {string} */
                 kind: "personal" | "combined" | "alliance_public";
-                game_id: string | null;
+                game_id: string;
+                game_name: string;
+                /** Format: uri */
+                url: string;
                 alliance: {
                     universe_id: string;
                     epoch_id: string;
@@ -10736,6 +10741,34 @@ export interface components {
                 verify_discord: boolean;
                 full_selection_url: string;
             };
+            financial_support?: {
+                currency: string;
+                amount_minor: {
+                    numerator: string;
+                    denominator: string;
+                };
+                completed_months: {
+                    numerator: string;
+                    denominator: string;
+                };
+                gift_credit: {
+                    numerator: string;
+                    denominator: string;
+                };
+                under_review: boolean;
+                titles: {
+                    id: string;
+                    reward_id: string;
+                    amount_minor: number;
+                    earned: boolean;
+                }[];
+                anniversaries: {
+                    id: string;
+                    reward_id: string;
+                    months: number;
+                    earned: boolean;
+                }[];
+            };
         };
         CommunityActionRequest: {
             /** @constant */
@@ -10757,7 +10790,8 @@ export interface components {
                 type: "create_invitation";
                 /** @enum {string} */
                 kind: "personal" | "combined" | "alliance_public";
-                game_id?: string;
+                /** @constant */
+                game_id: "orbit-imperium";
                 alliance?: {
                     universe_id: string;
                     epoch_id: string;
@@ -10849,9 +10883,21 @@ export interface components {
             kind: "personal" | "combined" | "alliance_public";
             inviter_name: string | null;
             alliance_name: string | null;
-            game_id: string | null;
+            /** @constant */
+            game_id: "orbit-imperium";
             requires_game_check: boolean;
             preview_version: string;
+            game_name: string;
+            /** Format: uri */
+            url: string;
+            alliance: {
+                /** Format: uuid */
+                universe_id: string;
+                /** Format: uuid */
+                alliance_id: string;
+            } | null;
+            accepted: boolean;
+            attribution_locked: boolean;
         };
         CosmeticMark: {
             id: string;

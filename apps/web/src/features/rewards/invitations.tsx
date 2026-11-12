@@ -3,12 +3,13 @@ import {
   clearRememberedInvitation,
 } from '../../client-model/community-invitation'
 import { useState } from 'react'
+import { invitationShareUrl } from '../../client-model/invitation-entry'
 import type { CommunityInvitationPreview } from '../../adapters/community-rewards'
 import {
   useCommunityRewards,
   useOptionalCommunityRewards,
 } from '../../shell/community-rewards-context'
-import { Button } from '../../ui/button'
+import { Button, ButtonLinkAnchor } from '../../ui/button'
 import { ConfirmationButton } from '../../ui/confirmation-button'
 import { Field, Input } from '../../ui/form'
 import styles from './rewards.module.css'
@@ -38,6 +39,7 @@ export function InvitationLinks({
         const invitations = owner.invitations.filter(
           (i) =>
             i.kind === kind &&
+            i.game_id === 'orbit-imperium' &&
             (!alliance || i.alliance?.alliance_id === alliance.alliance_id),
         )
         const title =
@@ -69,9 +71,8 @@ export function InvitationLinks({
                   void controller.act({
                     type: 'create_invitation',
                     kind,
-                    ...(alliance
-                      ? { game_id: 'orbit-imperium', alliance }
-                      : {}),
+                    game_id: 'orbit-imperium',
+                    ...(alliance ? { alliance } : {}),
                   })
                 }
               >
@@ -79,15 +80,11 @@ export function InvitationLinks({
               </Button>
             ) : (
               invitations.map((invitation) => {
-                const link = entryPath
-                  ? new URL(entryPath, location.origin)
-                  : new URL(
-                      `/invite/${encodeURIComponent(invitation.code)}`,
-                      owner.capabilities.full_selection_url,
-                    )
-                if (entryPath)
-                  link.searchParams.set('rewards_invitation', invitation.code)
-                const url = link.href
+                const url = invitationShareUrl(
+                  invitation,
+                  location.origin,
+                  entryPath,
+                )
                 return (
                   <div className={styles.copyRow} key={invitation.code}>
                     <label>
@@ -100,15 +97,19 @@ export function InvitationLinks({
                     </label>
                     <Button
                       variant="secondary"
+                      disabled={!url}
                       onClick={() =>
                         void navigator.clipboard
-                          .writeText(url)
+                          .writeText(url!)
                           .then(() => setCopied(invitation.code))
                           .catch(() => setCopied('Select and copy the code.'))
                       }
                     >
                       {copied === invitation.code ? 'Copied' : 'Copy link'}
                     </Button>
+                    {!url && (
+                      <p>This invitation is unavailable on this server.</p>
+                    )}
                   </div>
                 )
               })
@@ -139,12 +140,18 @@ export function InvitationCode() {
     setError('')
     setPreview(null)
     try {
-      setPreview(
-        await controller.api.invitationPreview(
-          code.trim(),
-          new AbortController().signal,
-        ),
+      const next = await controller.api.invitationPreview(
+        code.trim(),
+        new AbortController().signal,
       )
+      setPreview(next)
+      if (next.attribution_locked) {
+        try {
+          clearRememberedInvitation(localStorage, next.code)
+        } catch {
+          /* Optional recall only. */
+        }
+      }
     } catch {
       setError(
         'This invitation could not be checked. Confirm the code and try again.',
@@ -154,7 +161,7 @@ export function InvitationCode() {
     }
   }
   async function accept() {
-    if (!preview) return
+    if (!preview || preview.attribution_locked) return
     const result = await controller.act({
       type: 'accept_invitation',
       code: preview.code,
@@ -191,6 +198,7 @@ export function InvitationCode() {
           Invitation code
           <Input
             value={code}
+            disabled={loading || busy}
             maxLength={200}
             onChange={(event) => {
               setCode(event.target.value)
@@ -216,25 +224,36 @@ export function InvitationCode() {
               ? `Sponsoring alliance: ${preview.alliance_name}`
               : 'No sponsoring alliance.'}
           </p>
-          <ConfirmationButton
-            dialogTitle="Accept this invitation?"
-            confirmLabel="Accept invitation"
-            confirmVariant="primary"
-            cancelLabel="Go back"
-            disabled={busy}
-            review={
-              <>
-                <p>
-                  {preview.inviter_name ?? 'Alliance-only invitation'}
-                  {preview.alliance_name ? ` · ${preview.alliance_name}` : ''}
-                </p>
-                <p>This attribution is fixed when accepted.</p>
-              </>
-            }
-            onConfirm={() => void accept()}
-          >
-            Accept this attribution
-          </ConfirmationButton>
+          {preview.attribution_locked ? (
+            <>
+              <p role="status">
+                {preview.accepted
+                  ? 'You’ve already accepted this invitation.'
+                  : 'You’ve already accepted another invitation. Your existing attribution stays in place.'}
+              </p>
+              <ButtonLinkAnchor href="/">Continue playing</ButtonLinkAnchor>
+            </>
+          ) : (
+            <ConfirmationButton
+              dialogTitle="Accept this invitation?"
+              confirmLabel="Accept invitation"
+              confirmVariant="primary"
+              cancelLabel="Go back"
+              disabled={busy}
+              review={
+                <>
+                  <p>
+                    {preview.inviter_name ?? 'Alliance-only invitation'}
+                    {preview.alliance_name ? ` · ${preview.alliance_name}` : ''}
+                  </p>
+                  <p>This attribution is fixed when accepted.</p>
+                </>
+              }
+              onConfirm={() => void accept()}
+            >
+              Accept this attribution
+            </ConfirmationButton>
+          )}
         </div>
       )}
     </section>

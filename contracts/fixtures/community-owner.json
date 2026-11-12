@@ -122,8 +122,10 @@
     {
       "code": "sample-invite",
       "kind": "personal",
-      "game_id": null,
-      "alliance": null
+      "game_id": "orbit-imperium",
+      "alliance": null,
+      "game_name": "Orbit Imperium",
+      "url": "https://orbit.example.test/invite/sample-invite"
     }
   ],
   "referrals": [],
@@ -139,7 +141,8 @@
       "id": "orbit-imperium",
       "name": "Orbit Imperium",
       "launch_url": "https://orbit.example.test/",
-      "linked": true
+      "linked": true,
+      "invitation_management_url": "https://orbit.example.test/invitations"
     }
   ]
 }

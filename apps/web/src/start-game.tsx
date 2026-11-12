@@ -119,7 +119,13 @@ export async function startGame() {
   }
   root.render(<ConnectionScreen />)
   void startAnalytics()
-  const initialRuntime = await loadInitialRuntime(browserDependencies())
+  // Public /invite documents deliberately embed anonymous bootstrap data.
+  // The recipient route must explicitly resolve the current session after OAuth;
+  // otherwise a freshly signed-in invitee would be shown sign-in again forever.
+  const initialRuntime = await loadInitialRuntime(
+    browserDependencies(),
+    /^\/invite\/[^/]+\/?$/.test(location.pathname),
+  )
   const router = createAppRouter()
   root.render(
     <BootstrapProvider initialRuntime={initialRuntime}>

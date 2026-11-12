@@ -374,6 +374,11 @@ export function RewardsScreen() {
                 </section>
                 <section aria-label="Invite friends">
                   <h2>Bring a friend</h2>
+                  <p>
+                    <ButtonLinkAnchor variant="ghost" href="/invitations">
+                      Manage your invitations →
+                    </ButtonLinkAnchor>
+                  </p>
                   <InvitationLinks />
                   <p>
                     <ButtonLink
