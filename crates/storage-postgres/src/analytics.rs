@@ -13,7 +13,7 @@ impl PgStore {
         config: &Value,
         journey: &Value,
     ) -> Result<uuid::Uuid, StoreError> {
-        let mut tx = self.pool.begin().await.map_err(db_error)?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         sqlx::query("SET LOCAL lock_timeout='1s'")
             .execute(&mut *tx)
             .await

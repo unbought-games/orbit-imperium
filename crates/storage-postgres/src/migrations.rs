@@ -172,7 +172,7 @@ impl PgStore {
     }
 
     pub(crate) async fn check_migrations(&self) -> Result<(), StoreError> {
-        let mut tx = self.pool.begin().await.map_err(crate::db_error)?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         for setting in [
             "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
             "SET LOCAL statement_timeout='1500ms'",

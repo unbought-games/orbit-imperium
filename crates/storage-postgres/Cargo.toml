@@ -173,3 +173,7 @@ required-features = ["test-support"]
 [[test]]
 name = "player_preferences"
 required-features = ["test-support"]
+
+[[test]]
+name = "pools"
+required-features = ["test-support"]

@@ -98,7 +98,7 @@ impl PgStore {
         command: CommandId,
         key: &SiteIssuanceKey,
     ) -> Result<(), StoreError> {
-        let mut tx = self.pool.begin().await.map_err(db_error)?;
+        let mut tx = self.begin_unlocked(&self.pool).await?;
         let value: serde_json::Value = sqlx::query_scalar(
             "SELECT input FROM commands WHERE universe=$1 AND command_id=$2 AND NOT done",
         )

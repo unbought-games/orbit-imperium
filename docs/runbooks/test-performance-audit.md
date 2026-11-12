@@ -1661,3 +1661,17 @@ recruitment run. No retry, wait extension or selector fallback was introduced.
 That run also exposed a product defect in the new incoming-threat fleet link on a
 planetless account. The account-pages test was retained unchanged; guarding the
 planet-only link fixed it. The final affected run passed 20/20 in 13.7 seconds.
+
+## November 12, 2026: cancelled BEGIN fixture
+
+New `pools::cancelled_begin_does_not_poison_shared_store_refresh_pool` initially
+allowed an unused second connection slot. The same-backend assertion failed
+because acquisition could open another connection before the cancelled one had
+returned. No prior test history exists. Its one fixture repair reserves all other
+slots, retaining the actual cancellation gate and backend identity assertion.
+Both constructor cases pass and fail with SQLSTATE25001 when the protection is
+removed. No sleeps, retry loop, timeout increase or assertion removal was used.
+See [verification](../verification/cancelled-transaction-begin.md) for timings,
+known-broken execution and retained transaction/commit/rollback coverage. If the
+repaired fixture fails again due to a test defect, follow the one-repair rule;
+product regression failures remain actionable and do not justify deleting it.

@@ -134,12 +134,18 @@ impl PgStore {
         pool: &PgPool,
     ) -> Result<crate::ordering::Tx<'static>, StoreError> {
         let connection = self.acquire_pool(pool).await?;
-        // Keep SQLx's owned pooled connection in the native transaction. Timing
-        // checkout separately excludes the BEGIN round-trip from pool waiting.
-        sqlx::Transaction::begin(connection, None)
-            .await
-            .map_err(db_error)
+        begin_owned(connection, None).await
     }
+    /// Gate the native BEGIN response with a database lock in cancellation tests.
+    #[cfg(feature = "test-support")]
+    pub async fn begin_refresh_with_for_test(
+        &self,
+        statement: &'static str,
+    ) -> Result<crate::ordering::Tx<'static>, StoreError> {
+        let connection = self.acquire_pool(self.refresh_pool()?).await?;
+        begin_owned(connection, Some(statement.into())).await
+    }
+
     pub fn pool_snapshots(&self) -> Vec<PoolSnapshot> {
         [
             ("control", Some(&self.pool)),
@@ -177,6 +183,23 @@ pub(crate) async fn world_edit_gate(
         .await
         .map_err(db_error)?;
     Ok(())
+}
+
+/// Finish only the BEGIN handshake independently of caller cancellation. SQLx
+/// 0.8 records transaction depth after awaiting the server response, so dropping
+/// that future early can return an untracked open transaction to the pool.
+/// Dropping a JoinHandle leaves the task running; once BEGIN completes, its
+/// unclaimed native Transaction is dropped and queues SQLx's normal rollback.
+/// No application query runs in this task, and it holds only the already-admitted
+/// pool slot. Completed transactions retain the normal caller-owned lifetime.
+async fn begin_owned(
+    connection: sqlx::pool::PoolConnection<sqlx::Postgres>,
+    statement: Option<std::borrow::Cow<'static, str>>,
+) -> Result<crate::ordering::Tx<'static>, StoreError> {
+    tokio::spawn(async move { sqlx::Transaction::begin(connection, statement).await })
+        .await
+        .map_err(|_| StoreError::Unavailable)?
+        .map_err(db_error)
 }
 
 #[cfg(test)]
