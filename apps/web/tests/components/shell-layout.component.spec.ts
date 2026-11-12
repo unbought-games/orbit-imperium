@@ -169,7 +169,7 @@ test('mobile top bar stays pinned while content scrolls beneath it and details r
   await mount('shell-default')
   const bar = page.getByRole('group', { name: 'Planet and resources' })
   const main = page.locator('main')
-  await expect(bar.locator('..')).toHaveCSS('position', 'sticky')
+  await expect(bar.locator('..')).toHaveCSS('position', 'fixed')
   await expect(bar).toHaveCSS('border-bottom-width', '1px')
   await expect(bar).toHaveCSS('border-bottom-style', 'solid')
   expect(
@@ -448,7 +448,7 @@ test('phone Develop navigation keeps full-size links on one keyboard-scrollable 
 })
 
 // The sticky surface must cover decorations that extend beyond the content column.
-test('sticky resource bar covers the full top edge while content scrolls', async ({
+test('fixed resource bar covers the full top edge while content scrolls', async ({
   page,
   mount,
 }) => {
@@ -480,6 +480,50 @@ test('sticky resource bar covers the full top edge while content scrolls', async
     expect(surface.coversRightEdge).toBe(true)
     expect(surface.coversBelowEdge).toBe(false)
     expect(surface.pageWidth).toBe(width)
+  }
+})
+
+test('planet controls and their divider stay together when the document moves below the viewport top', async ({
+  page,
+  mount,
+}) => {
+  await mount('shell-default')
+  for (const [width, height] of [
+    [390, 844],
+    [1440, 900],
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.evaluate(() => window.scrollTo(0, 0))
+    const bar = page.getByRole('group', { name: 'Planet and resources' })
+    const surface = width < 768 ? bar.locator('..') : bar.locator('../..')
+    await expect(surface).toHaveCSS('position', 'fixed')
+    const initial = (await surface.boundingBox())!
+    const main = (await page.locator('main').boundingBox())!
+    expect(main.y).toBeGreaterThanOrEqual(initial.height)
+
+    // Headless browsers cannot synthesize native rubber-banding. Displace the
+    // document to catch a sticky control separating from its fixed backdrop.
+    const displacement = await page.addStyleTag({
+      content: 'body { padding-top: 48px; }',
+    })
+    expect((await page.locator('main').boundingBox())!.y).toBe(main.y + 48)
+    expect((await surface.boundingBox())!.y).toBe(0)
+    expect((await bar.boundingBox())!.y).toBe(0)
+    if (width >= 768) {
+      expect(
+        await surface.evaluate((element) => ({
+          top: getComputedStyle(element, '::before').top,
+          height: getComputedStyle(element, '::before').height,
+        })),
+      ).toEqual({ top: '0px', height: `${initial.height}px` })
+    }
+    await diagnosticScreenshot(page, {
+      path: `test-results/fixed-header-displaced-${width}x${height}.png`,
+    })
+    await displacement.evaluate((element) => element.remove())
+    await diagnosticScreenshot(page, {
+      path: `test-results/fixed-header-${width}x${height}.png`,
+    })
   }
 })
 
