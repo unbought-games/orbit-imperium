@@ -520,7 +520,9 @@ test('planet controls and their divider stay together when the document moves be
     await diagnosticScreenshot(page, {
       path: `test-results/fixed-header-displaced-${width}x${height}.png`,
     })
-    await displacement.evaluate((element) => element.remove())
+    await displacement.evaluate((element) =>
+      element.parentNode?.removeChild(element),
+    )
     await diagnosticScreenshot(page, {
       path: `test-results/fixed-header-${width}x${height}.png`,
     })
