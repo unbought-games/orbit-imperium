@@ -15,6 +15,7 @@ import {
   rewardPreviewAvailable,
 } from './reward-preview'
 import { InvitationCode, InvitationLinks } from './invitations'
+import { AutomaticTitles } from './automatic-titles'
 import styles from './rewards.module.css'
 export function RewardsScreen() {
   const { owner, controller, visible, loading, busy, error, pending } =
@@ -156,6 +157,7 @@ export function RewardsScreen() {
                     </div>
                   </section>
                 )}
+                <AutomaticTitles owner={owner} player={view.binding.player} />
                 <section aria-label="Your reward choices">
                   <h2 ref={choicesHeading} tabIndex={-1}>
                     Your choices

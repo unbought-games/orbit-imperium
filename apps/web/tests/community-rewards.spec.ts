@@ -18,6 +18,7 @@ const ownerFixture = JSON.parse(
 )
 import type { components } from '../src/contracts'
 import type { Page } from '@playwright/test'
+import { automaticTitlesFixture } from '../src/test-support/automatic-titles'
 test.use({ hasTouch: true })
 type S = components['schemas']
 async function rewardsFixture(page: Page) {
@@ -264,5 +265,55 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(page, {
       path: `test-results/community-rewards-inactive-${width}x1000.png`,
     })
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`automatic Renown titles accompany cosmetic choices at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const { owner } = await rewardsFixture(page)
+    Object.assign(owner, automaticTitlesFixture())
+    await withFixtureResponse(
+      page,
+      (response) => new URL(response.url()).pathname === '/api/v1/rewards',
+      () =>
+        page.goto(
+          `/u/andromeda/b/00000000-0000-4000-8000-000000000005/rewards`,
+        ),
+    )
+    const titles = page.getByRole('region', {
+      name: 'Automatic milestone titles',
+    })
+    await expect(titles).toContainText('Sample Pathfinder')
+    await expect(titles).toContainText('Sample Stargazer')
+    await expect(titles).toContainText('Sample Voyager')
+    await expect(titles).toContainText('Cosmetic choices claimed.')
+    await expect(titles).toContainText(
+      'Plus 2 cosmetic choices available below.',
+    )
+    await expect(titles).toContainText('Awarded automatically at 5 Renown')
+    await expect(titles.getByRole('button')).toHaveCount(0)
+    await expect(
+      titles.getByRole('link', { name: 'Choose your displayed title' }),
+    ).toHaveAttribute('href', `/profiles/empire/${binding.player}`)
+    const choices = page.getByRole('region', { name: 'Your reward choices' })
+    await expect(
+      choices.getByRole('button', { name: 'Choose this reward' }),
+    ).toHaveCount(3)
+    await expect(choices).not.toContainText('Sample Stargazer')
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await titles.scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, {
+        path: `test-results/rewards-automatic-titles-${width}x1000.png`,
+        fullPage: true,
+      })
+    }
   })
 }

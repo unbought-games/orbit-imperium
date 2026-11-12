@@ -10358,112 +10358,9 @@ export interface components {
                 } | null;
                 bonus_awarded: boolean;
                 offer_version: string;
-                options: {
-                    id: string;
-                    name: string;
-                    /** @enum {string} */
-                    kind: "dye" | "finish" | "effect" | "emblem" | "emblem_set" | "title" | "mark";
-                    /** @enum {string} */
-                    scope: "account" | "game";
-                    game_id?: string;
-                    item_id: string;
-                    /** @enum {string} */
-                    access: "free" | "membership" | "earned";
-                    tier: string;
-                    surfaces: string[];
-                    supported_games: string[];
-                    preview: {
-                        palette_id?: string;
-                        media_id?: string;
-                        color?: string;
-                        renderer?: string;
-                        treatment?: {
-                            /** @constant */
-                            renderer: "plain";
-                            /** @constant */
-                            family: "finish";
-                            parameters: Record<string, never>;
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        } | {
-                            /** @constant */
-                            renderer: "surface";
-                            /** @constant */
-                            family: "finish";
-                            parameters: {
-                                /** @enum {string} */
-                                pattern: "satin" | "brushed" | "pearl" | "smoke" | "frost" | "enamel" | "etched" | "relief" | "glitter" | "foil" | "crosshatch" | "lenticular" | "ceramic" | "hammered" | "linen" | "carbon" | "stipple" | "patina" | "mosaic" | "contour" | "obsidian" | "gilded" | "crystalline" | "stardust";
-                                strength: number;
-                                scale: number;
-                                angle: number;
-                            };
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        } | {
-                            /** @constant */
-                            renderer: "light";
-                            /** @constant */
-                            family: "light";
-                            parameters: {
-                                /** @enum {string} */
-                                pattern: "gleam" | "rainbow" | "facets" | "oil" | "ripple" | "confetti" | "starfield" | "aurora" | "constellation" | "edge" | "halo" | "rays" | "eclipse" | "comet" | "pulse" | "scan" | "caustic" | "lightning" | "corona" | "supernova";
-                                strength: number;
-                                duration_ms: number;
-                                scale: number;
-                                angle: number;
-                            };
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        } | {
-                            /** @constant */
-                            renderer: "interaction";
-                            /** @constant */
-                            family: "interaction";
-                            parameters: {
-                                /** @enum {string} */
-                                pattern: "tilt" | "parallax" | "spotlight" | "reveal" | "tap-sweep" | "focus-trace" | "bevel" | "ripple" | "orbit" | "prism" | "lift" | "magnetic" | "iris" | "depth" | "starburst" | "portal";
-                                strength: number;
-                                duration_ms: number;
-                                depth: number;
-                            };
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        };
-                        elements?: {
-                            reward_id: string;
-                            item_id: string;
-                            media_id: string;
-                        }[];
-                    };
-                    payload: {
-                        /** @constant */
-                        type: "dye";
-                        dye_id: string;
-                    } | {
-                        /** @enum {string} */
-                        type: "finish" | "effect";
-                        treatment_id: string;
-                    } | {
-                        /** @constant */
-                        type: "emblem";
-                        emblem_id: string;
-                    } | {
-                        /** @constant */
-                        type: "emblem_set";
-                        emblem_ids: string[];
-                    } | {
-                        /** @enum {string} */
-                        type: "title" | "mark";
-                        content_id: string;
-                    };
-                    owned: boolean;
-                    owned_components?: string[];
-                    supported: boolean;
-                }[];
+                options: components["schemas"]["CommunityRewardOption"][];
+                /** @description Permanent titles awarded automatically at this milestone, separately from cosmetic selections. Grants do not equip a title. Omitted means an empty list. */
+                automatic_titles?: components["schemas"]["CommunityRewardOption"][];
             } | null;
             milestones: {
                 id: string;
@@ -10480,112 +10377,9 @@ export interface components {
                 } | null;
                 bonus_awarded: boolean;
                 offer_version: string;
-                options: {
-                    id: string;
-                    name: string;
-                    /** @enum {string} */
-                    kind: "dye" | "finish" | "effect" | "emblem" | "emblem_set" | "title" | "mark";
-                    /** @enum {string} */
-                    scope: "account" | "game";
-                    game_id?: string;
-                    item_id: string;
-                    /** @enum {string} */
-                    access: "free" | "membership" | "earned";
-                    tier: string;
-                    surfaces: string[];
-                    supported_games: string[];
-                    preview: {
-                        palette_id?: string;
-                        media_id?: string;
-                        color?: string;
-                        renderer?: string;
-                        treatment?: {
-                            /** @constant */
-                            renderer: "plain";
-                            /** @constant */
-                            family: "finish";
-                            parameters: Record<string, never>;
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        } | {
-                            /** @constant */
-                            renderer: "surface";
-                            /** @constant */
-                            family: "finish";
-                            parameters: {
-                                /** @enum {string} */
-                                pattern: "satin" | "brushed" | "pearl" | "smoke" | "frost" | "enamel" | "etched" | "relief" | "glitter" | "foil" | "crosshatch" | "lenticular" | "ceramic" | "hammered" | "linen" | "carbon" | "stipple" | "patina" | "mosaic" | "contour" | "obsidian" | "gilded" | "crystalline" | "stardust";
-                                strength: number;
-                                scale: number;
-                                angle: number;
-                            };
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        } | {
-                            /** @constant */
-                            renderer: "light";
-                            /** @constant */
-                            family: "light";
-                            parameters: {
-                                /** @enum {string} */
-                                pattern: "gleam" | "rainbow" | "facets" | "oil" | "ripple" | "confetti" | "starfield" | "aurora" | "constellation" | "edge" | "halo" | "rays" | "eclipse" | "comet" | "pulse" | "scan" | "caustic" | "lightning" | "corona" | "supernova";
-                                strength: number;
-                                duration_ms: number;
-                                scale: number;
-                                angle: number;
-                            };
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        } | {
-                            /** @constant */
-                            renderer: "interaction";
-                            /** @constant */
-                            family: "interaction";
-                            parameters: {
-                                /** @enum {string} */
-                                pattern: "tilt" | "parallax" | "spotlight" | "reveal" | "tap-sweep" | "focus-trace" | "bevel" | "ripple" | "orbit" | "prism" | "lift" | "magnetic" | "iris" | "depth" | "starburst" | "portal";
-                                strength: number;
-                                duration_ms: number;
-                                depth: number;
-                            };
-                            /** @constant */
-                            reduced_motion: "static";
-                            sample_dye: string;
-                        };
-                        elements?: {
-                            reward_id: string;
-                            item_id: string;
-                            media_id: string;
-                        }[];
-                    };
-                    payload: {
-                        /** @constant */
-                        type: "dye";
-                        dye_id: string;
-                    } | {
-                        /** @enum {string} */
-                        type: "finish" | "effect";
-                        treatment_id: string;
-                    } | {
-                        /** @constant */
-                        type: "emblem";
-                        emblem_id: string;
-                    } | {
-                        /** @constant */
-                        type: "emblem_set";
-                        emblem_ids: string[];
-                    } | {
-                        /** @enum {string} */
-                        type: "title" | "mark";
-                        content_id: string;
-                    };
-                    owned: boolean;
-                    owned_components?: string[];
-                    supported: boolean;
-                }[];
+                options: components["schemas"]["CommunityRewardOption"][];
+                /** @description Permanent titles awarded automatically at this milestone, separately from cosmetic selections. Grants do not equip a title. Omitted means an empty list. */
+                automatic_titles?: components["schemas"]["CommunityRewardOption"][];
             }[];
             claims: {
                 id: string;
@@ -11038,6 +10832,112 @@ export interface components {
                 /** Format: uuid */
                 universe_id: string;
             } | null;
+        };
+        CommunityRewardOption: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            kind: "dye" | "finish" | "effect" | "emblem" | "emblem_set" | "title" | "mark";
+            /** @enum {string} */
+            scope: "account" | "game";
+            game_id?: string;
+            item_id: string;
+            /** @enum {string} */
+            access: "free" | "membership" | "earned";
+            tier: string;
+            surfaces: string[];
+            supported_games: string[];
+            preview: {
+                palette_id?: string;
+                media_id?: string;
+                color?: string;
+                renderer?: string;
+                treatment?: {
+                    /** @constant */
+                    renderer: "plain";
+                    /** @constant */
+                    family: "finish";
+                    parameters: Record<string, never>;
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                } | {
+                    /** @constant */
+                    renderer: "surface";
+                    /** @constant */
+                    family: "finish";
+                    parameters: {
+                        /** @enum {string} */
+                        pattern: "satin" | "brushed" | "pearl" | "smoke" | "frost" | "enamel" | "etched" | "relief" | "glitter" | "foil" | "crosshatch" | "lenticular" | "ceramic" | "hammered" | "linen" | "carbon" | "stipple" | "patina" | "mosaic" | "contour" | "obsidian" | "gilded" | "crystalline" | "stardust";
+                        strength: number;
+                        scale: number;
+                        angle: number;
+                    };
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                } | {
+                    /** @constant */
+                    renderer: "light";
+                    /** @constant */
+                    family: "light";
+                    parameters: {
+                        /** @enum {string} */
+                        pattern: "gleam" | "rainbow" | "facets" | "oil" | "ripple" | "confetti" | "starfield" | "aurora" | "constellation" | "edge" | "halo" | "rays" | "eclipse" | "comet" | "pulse" | "scan" | "caustic" | "lightning" | "corona" | "supernova";
+                        strength: number;
+                        duration_ms: number;
+                        scale: number;
+                        angle: number;
+                    };
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                } | {
+                    /** @constant */
+                    renderer: "interaction";
+                    /** @constant */
+                    family: "interaction";
+                    parameters: {
+                        /** @enum {string} */
+                        pattern: "tilt" | "parallax" | "spotlight" | "reveal" | "tap-sweep" | "focus-trace" | "bevel" | "ripple" | "orbit" | "prism" | "lift" | "magnetic" | "iris" | "depth" | "starburst" | "portal";
+                        strength: number;
+                        duration_ms: number;
+                        depth: number;
+                    };
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                };
+                elements?: {
+                    reward_id: string;
+                    item_id: string;
+                    media_id: string;
+                }[];
+            };
+            payload: {
+                /** @constant */
+                type: "dye";
+                dye_id: string;
+            } | {
+                /** @enum {string} */
+                type: "finish" | "effect";
+                treatment_id: string;
+            } | {
+                /** @constant */
+                type: "emblem";
+                emblem_id: string;
+            } | {
+                /** @constant */
+                type: "emblem_set";
+                emblem_ids: string[];
+            } | {
+                /** @enum {string} */
+                type: "title" | "mark";
+                content_id: string;
+            };
+            owned: boolean;
+            owned_components?: string[];
+            supported: boolean;
         };
     };
     responses: never;
