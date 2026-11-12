@@ -1868,3 +1868,12 @@ See [verification](../verification/cancelled-transaction-begin.md) for timings,
 known-broken execution and retained transaction/commit/rollback coverage. If the
 repaired fixture fails again due to a test defect, follow the one-repair rule;
 product regression failures remain actionable and do not justify deleting it.
+
+## November 12, 2026: PR394 main integration
+
+After merging main6017f308, full Clippy/all-target compilation found the new
+`game_invitations` HTTP fixture omitted main's new optional `HttpConfig.account_url`
+field (E0063 at the fixture initializer). This is an integration compilation
+error, before database test execution, not a flaky assertion. Add explicit None,
+matching this fixture's no-external-account-link configuration. No behavior or
+assertions were removed; retain this failed attempt with the final qualification.

@@ -167,6 +167,7 @@ async fn invitation_issuance_and_http_enrollment_keep_the_bound_world_and_epoch(
     let app = router_with_auth(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.example.test".into(),
             assets: "absent".into(),
             login_per_minute: 100,
