@@ -51,3 +51,11 @@ fixture passes and detects the original product defect deterministically; no
 assertion, functional timeout or test was removed. No earlier history exists for
 this new test; the test repair ledger was checked. No UI changes; visual
 validation is not applicable. Remote CI and production verification are separate.
+
+## First PR CI result
+
+The first PR head's build and journey jobs both stopped at news generation because
+the new change note omitted required YAML frontmatter. No browser assertion
+failed. Added the existing required id/title/date fields and verified the news
+build (34 local updates) plus tooling tests locally (130 passed, one existing skip). This authored build-note defect is separate
+from the PostgreSQL cancellation regression; no check or assertion was weakened.
