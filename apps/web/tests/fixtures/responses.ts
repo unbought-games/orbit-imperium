@@ -15,6 +15,26 @@ export async function withFixtureResponse(
   matches: (response: Response) => boolean,
   navigate: () => Promise<unknown>,
 ) {
+  const response = await deliveredFixtureResponse(page, matches, navigate)
+  expect(response?.ok()).toBe(true)
+}
+
+/** Intentional error states still need complete delivery before changing scenarios. */
+export async function withFixtureResponseStatus(
+  page: Page,
+  matches: (response: Response) => boolean,
+  navigate: () => Promise<unknown>,
+  status: number,
+) {
+  const response = await deliveredFixtureResponse(page, matches, navigate)
+  expect(response?.status()).toBe(status)
+}
+
+async function deliveredFixtureResponse(
+  page: Page,
+  matches: (response: Response) => boolean,
+  navigate: () => Promise<unknown>,
+) {
   // A matching response from the page being replaced can be cancelled by the
   // navigation; only a delivered body ('requestfinished') is the boundary.
   const [request] = await Promise.all([
@@ -26,7 +46,7 @@ export async function withFixtureResponse(
     }),
     navigate(),
   ])
-  expect((await request.response())?.ok()).toBe(true)
+  return request.response()
 }
 
 const posted = (response: Response, path: string) =>

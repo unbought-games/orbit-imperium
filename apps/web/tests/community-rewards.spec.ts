@@ -2,7 +2,10 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { shellFixture, binding, playerProfilesFixture } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import {
+  withFixtureResponse,
+  withFixtureResponseStatus,
+} from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 const ownerFixture = JSON.parse(
   readFileSync(
@@ -218,12 +221,13 @@ for (const width of [1440, 390]) {
       fullPage: true,
     })
     server.offline = true
-    const failure = page.waitForResponse(
+    await withFixtureResponseStatus(
+      page,
       (r) =>
         new URL(r.url()).pathname === '/api/v1/rewards' && r.status() === 503,
+      () => page.getByRole('button', { name: 'Refresh', exact: true }).click(),
+      503,
     )
-    await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-    await failure
     await expect(page.getByRole('alert')).toContainText(
       'Rewards are temporarily unavailable',
     )
@@ -235,7 +239,8 @@ for (const width of [1440, 390]) {
     owner.program.start_at = null
     await withFixtureResponse(
       page,
-      (r) => new URL(r.url()).pathname === '/api/v1/rewards',
+      (r) =>
+        new URL(r.url()).pathname === '/api/v1/rewards' && r.status() === 200,
       () => page.getByRole('button', { name: 'Refresh', exact: true }).click(),
     )
     await expect(

@@ -160,6 +160,11 @@ export function InsigniaComposer({
                 snapshot={snapshot}
                 label={`${group === 'center' ? 'Center' : group === 'stripes' ? 'Stripe' : 'Accent'} color`}
                 value={groupColor(snapshot, recipe, group) ?? recipe.foreground}
+                description={
+                  groupColor(snapshot, recipe, group) === undefined
+                    ? 'Select an element to set its color.'
+                    : undefined
+                }
                 disabled={
                   busy || groupColor(snapshot, recipe, group) === undefined
                 }
@@ -170,9 +175,6 @@ export function InsigniaComposer({
                   })
                 }
               />
-              {groupColor(snapshot, recipe, group) === undefined && (
-                <small>Select an element to set its color.</small>
-              )}
             </div>
           ))
         ) : (

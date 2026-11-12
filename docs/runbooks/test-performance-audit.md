@@ -1661,3 +1661,41 @@ recruitment run. No retry, wait extension or selector fallback was introduced.
 That run also exposed a product defect in the new incoming-threat fleet link on a
 planetless account. The account-pages test was retained unchanged; guarding the
 planet-only link fixed it. The final affected run passed 20/20 in 13.7 seconds.
+
+## November 11, 2026: Community rewards initial CI repair batch
+
+PR #394, revision `e3a22bee`, run `43121596082` reported four failed jobs.
+These findings are distinct and do not establish infrastructure failure:
+
+- `adapters/player-profiles.test.ts` retained the previous reader header assertion.
+  Update the exact expectation to insignia reader 5 and rewards reader 1, preserving
+  the binding/CSRF and no-subject/no-credential assertions. No earlier repair for
+  this assertion was found in its file history or this ledger.
+- Four alliance component cases exposed a newly introduced production dependency
+  on GameSession inside the previously props-driven InvitationSettings. Move the
+  optional rewards link content to the live screen's composition boundary and
+  pass it as a slot through Settings. Keep the isolated fixtures and assertions;
+  do not install application sessions/network clients merely to silence them.
+- Both new rewards journeys could mistake the prior intentional 503 completion
+  for the later successful refresh. They waited for response headers rather than
+  complete delivery before changing the fixture policy. Their first behavioral
+  fixture repair uses the shared request-finished boundary with an expected error
+  status, then matches successful recovery explicitly. No sleep, timeout increase,
+  retry or screenshot-dependent readiness. Prior routing failure was a product
+  defect; earlier retired named-editor scenarios are separate and remain retired.
+- The existing empty-color-group browser cases caught a production accessibility
+  regression: the visible guidance lost its aria-describedby association when
+  color controls became shared. Restore that association for both native color
+  inputs and named-dye selects, with unique IDs. Preserve the browser assertions;
+  add cheap static semantic coverage for the shared control variants.
+
+Audited explicit failed-response waits in client-update, tutorial and alliance
+journeys: those callers await response.finished before their corresponding state
+transition; the rewards case omitted that delivery boundary. The new helper keeps
+existing success-only helpers strict and gives intentional errors an explicit
+status assertion. No broad fixture rewrite or test deselection is included.
+
+This batch is source-ready with formatting/diff checks only. Focused client,
+component and browser execution, screenshot spot checks, and CI verification are
+pending the coordinator's validation slot. Neither the previous local green run
+with optional captures nor an unchanged retry closes the known rewards test race.

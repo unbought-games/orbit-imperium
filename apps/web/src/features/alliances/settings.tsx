@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { PresentationEditor } from './presentation-editor'
 import { can, type AllianceDetail } from '../../client-model/alliances'
 import { Field, Input } from '../../ui/form'
@@ -23,6 +24,7 @@ export function Settings({
   busy,
   section,
   onSectionChange,
+  rewardLinks,
 }: {
   detail: AllianceDetail
   player: string
@@ -30,6 +32,7 @@ export function Settings({
   busy: boolean
   section: SettingsDestination
   onSectionChange: (section: SettingsDestination) => void
+  rewardLinks?: ReactNode
 }) {
   const sections: SettingsDestination[] = [
     ...(can(detail, 'EditProfile')
@@ -140,7 +143,12 @@ export function Settings({
           <RecruitmentSettings detail={detail} run={run} busy={busy} />
         )}
         {active === 'Invitations' && (
-          <InvitationSettings detail={detail} run={run} busy={busy} />
+          <InvitationSettings
+            detail={detail}
+            run={run}
+            busy={busy}
+            rewardLinks={rewardLinks}
+          />
         )}
         {(active === 'Leadership' || active === 'Membership') && (
           <MembershipSettings
