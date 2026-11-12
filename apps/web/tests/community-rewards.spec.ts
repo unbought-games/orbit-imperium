@@ -100,13 +100,20 @@ async function rewardsFixture(page: Page) {
         ),
       }),
     )
-  await page.route('**/api/v1/rewards', (route) =>
-    route.fulfill(
+  await page.route('**/api/v1/rewards', (route) => {
+    for (const invitation of owner.invitations) {
+      if (invitation.game_id === 'orbit-imperium')
+        invitation.url = new URL(
+          `/invite/${encodeURIComponent(invitation.code)}`,
+          route.request().url(),
+        ).href
+    }
+    return route.fulfill(
       server.offline
         ? { status: 503, json: { code: 'Unavailable' } }
         : { json: owner },
-    ),
-  )
+    )
+  })
   await page.route('**/api/v1/rewards/actions', (route) => {
     const { action } = route.request().postDataJSON()
     if (action.type === 'claim') {
@@ -220,6 +227,14 @@ for (const width of [1440, 390]) {
       path: `test-results/community-rewards-claimed-${width}x1000.png`,
       fullPage: true,
     })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await page
+        .getByRole('region', { name: 'Referral milestones', exact: true })
+        .scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, {
+        path: `test-results/community-invitations-${width}x1000.png`,
+      })
+    }
     server.offline = true
     await withFixtureResponseStatus(
       page,

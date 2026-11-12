@@ -1775,3 +1775,17 @@ the actual anonymous fixture and fresh-session assertions are unchanged.
 The failed Make command took209.70s. Rerun the affected unit file and web build;
 do not count the initially failed command as passing or repeat unrelated green
 checks to conceal its outcome.
+
+The final optional capture pass then exposed two defects in the separate hosted
+success cases (both widths), after their behavior-only and first capture runs
+had passed. Added capture preparation waited for all images, including offscreen
+lazy images; during that wait the legitimate 30-second background retry exposed
+a fixture CSRF mismatch. Initial no-membership bootstrap used invitation-csrf,
+while enrolled fallback bootstrap used fixture, yet the route asserted the former
+forever. Real enrollment does not rotate the authenticated session's CSRF.
+First repair of this success-case family: use the same fixture CSRF before/after
+enrollment and decode only eager public hero images during optional capture.
+The exact CSRF assertion remains; no broadened accepted-token list, timeout,
+sleep or retry is added. Capture preparation is absent when disabled. This run
+passed6/failed2 in1.1min and is retained as failed validation. The separate closed
+admission case's earlier repair count is unchanged; no scenario was renamed.

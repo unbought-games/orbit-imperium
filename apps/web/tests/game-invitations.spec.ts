@@ -8,6 +8,24 @@ import {
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { Page } from '@playwright/test'
 
+async function invitationScreenshot(
+  page: Page,
+  options: Parameters<Page['screenshot']>[0],
+) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+  // Optional visual evidence decodes eager public hero art, never offscreen lazy images or behavior readiness.
+  await page
+    .locator('img[fetchpriority="high"]')
+    .evaluateAll((images) =>
+      Promise.all(
+        images.map((image) =>
+          (image as HTMLImageElement).decode().catch(() => undefined),
+        ),
+      ),
+    )
+  await diagnosticScreenshot(page, options)
+}
+
 const code = 'inv_fixture-A_9'
 const ownerFixture = JSON.parse(
   readFileSync(
@@ -37,7 +55,7 @@ async function fixture(
               status: 'authenticated',
               session: {
                 account: binding.account,
-                csrf: 'invitation-csrf',
+                csrf: 'fixture',
                 expires_at: 9999999999999,
                 memberships: [],
               },
@@ -109,7 +127,7 @@ async function fixture(
   await page.route('**/api/v1/rewards/actions', (route) => {
     const body = route.request().postDataJSON()
     actions.push(body)
-    expect(route.request().headers()['x-csrf-token']).toBe('invitation-csrf')
+    expect(route.request().headers()['x-csrf-token']).toBe('fixture')
     if (unavailable)
       return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     if (body.action.type === 'create_invitation') hasInvitation = true
@@ -155,7 +173,7 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await diagnosticScreenshot(page, {
+    await invitationScreenshot(page, {
       path: `test-results/invitation-public-${width}x1000.png`,
       fullPage: true,
     })
@@ -178,7 +196,7 @@ for (const width of [1440, 390]) {
       page.getByRole('button', { name: /accept|retry/i }),
     ).toHaveCount(0)
     expect(actions).toEqual([])
-    await diagnosticScreenshot(page, {
+    await invitationScreenshot(page, {
       path: `test-results/invitation-unavailable-${width}x1000.png`,
       fullPage: true,
     })
@@ -237,7 +255,7 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-    await diagnosticScreenshot(page, {
+    await invitationScreenshot(page, {
       path: `test-results/invitation-management-${width}x1000.png`,
       fullPage: true,
     })
@@ -289,9 +307,9 @@ for (const width of [1440, 390]) {
     ).toHaveCount(0)
     expect(enrollments).toEqual([{ universe: binding.universe }])
     await expect(page.getByRole('button', { name: /accept/i })).toHaveCount(0)
-    await diagnosticScreenshot(page, {
+    await invitationScreenshot(page, {
       path: `test-results/invitation-hosted-play-${width}x1000.png`,
-      fullPage: true,
+      fullPage: false,
     })
   })
   test(`hosted invitation admission failure uses existing recovery at ${width}px`, async ({
@@ -302,7 +320,10 @@ for (const width of [1440, 390]) {
     const enrollments: unknown[] = []
     await page.route('**/api/auth/enroll', (route) => {
       enrollments.push(route.request().postDataJSON())
-      return route.fulfill({ status: 403, json: { code: 'Forbidden', status: 403, type: 'about:blank' } })
+      return route.fulfill({
+        status: 403,
+        json: { code: 'Forbidden', status: 403, type: 'about:blank' },
+      })
     })
     await withFixtureResponseStatus(
       page,
@@ -317,7 +338,7 @@ for (const width of [1440, 390]) {
       page.getByRole('button', { name: 'Try again', exact: true }),
     ).toBeEnabled()
     expect(enrollments).toEqual([{ universe: binding.universe }])
-    await diagnosticScreenshot(page, {
+    await invitationScreenshot(page, {
       path: `test-results/invitation-hosted-closed-${width}x1000.png`,
       fullPage: true,
     })

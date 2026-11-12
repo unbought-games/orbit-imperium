@@ -132,3 +132,15 @@ recovery. Servers without a hosted default retain the chooser. Focused client
 coverage passed39 tests; the focused browser group passed29 after the single
 status-only 403 fixture repair recorded in the repair ledger. Full qualification
 and refreshed artifact/capture evidence are still in progress.
+
+Local qualification completed with131 tooling,1822 client,793 main Rust,52 bridge
+and10 storage-library tests passing, plus Clippy, formatting, lint, component
+contracts/boundaries and the final production web/native builds. The initial Make
+command stopped at a fixture type annotation; the corrected file passed6 focused
+tests and the web build then passed. The browser group passed29 after its recorded
+repair; final capture validation passed13, with a separate2-case rewards capture
+refresh after correcting the specimen's canonical origin. An intermediate capture
+run failed2 cases on optional image preparation and fixture CSRF consistency;
+its first repair and retained evidence are in the ledger. Desktop/mobile captures
+were inspected. Exact-head CI and real-service signup/onboarding acceptance are
+separate remaining gates; no merge or deployment was performed.
