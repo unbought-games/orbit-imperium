@@ -1,6 +1,6 @@
 import type { CommunityOwner } from '../adapters/community-rewards'
 import type { components } from '../contracts'
-import fixture from '../../../../contracts/fixtures/community-owner.json'
+import fixture from '../../../../contracts/fixtures/community-owner.json' with { type: 'json' }
 
 // Independently authored free test content, unrelated to the hosted program.
 export function automaticTitlesFixture(): CommunityOwner {
