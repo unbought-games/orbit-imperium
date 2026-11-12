@@ -48,3 +48,12 @@ markup, retained full roadmap and claimed states, no mutation of source data,
 and all-locked/all-unlocked boundaries. The existing two browser cases now check
 the collapsed/expanded disclosure and inline title benefit; the coordinating
 owner will rerun those affected cases and refresh their captures.
+
+Final compact-roadmap validation at `3417fb5d` plus the then-pending approved
+navigation cleanup: both targeted browser cases passed in 4.7s, and the production
+web build/full app typecheck passed. Desktop/mobile actual-content captures were
+inspected. Actual 19-to-20 Renown granted the title permanently; the separate
+cosmetic claim and replay retained one award, receipt and native grant. The
+player's deliberately selected Captain title and identity revision stayed
+unchanged. The local API/client build was aligned before this walkthrough.
+No production deployment or content publication was performed.
