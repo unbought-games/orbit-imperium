@@ -37,7 +37,7 @@ const dependencies = (): RuntimeDependencies => ({
 })
 it('public invitation entry resolves a fresh authenticated session despite anonymous embedded data', async () => {
   const deps = dependencies()
-  deps.readEmbedded = vi.fn(() => ({
+  deps.readEmbedded = vi.fn<RuntimeDependencies['readEmbedded']>(() => ({
     version: 1,
     signup_enabled: false,
     result: { status: 'anonymous' },

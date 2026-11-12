@@ -1764,3 +1764,14 @@ History/ledger inspection found no prior repair of the new scenario. If it fails
 again as a fixture defect, retire it under the existing rule rather than stabilize
 it again. Browser setup was 4.704s; the interrupted run passed10, interrupted1,
 left18 unexecuted, and took approximately2.1min. Source qualification continues.
+
+Full qualification at the hosted follow-up passed131 tooling,1822 client,
+793 main Rust,52 bridge and10 storage-library tests, Clippy and all static checks.
+The final app typecheck rejected the new anonymous-bootstrap test mock because
+its unannotated vi.fn return widened the protocol literal from1 to number.
+This was a type declaration defect, not a browser/product assertion failure.
+Its first correction types the mock with RuntimeDependencies['readEmbedded'];
+the actual anonymous fixture and fresh-session assertions are unchanged.
+The failed Make command took209.70s. Rerun the affected unit file and web build;
+do not count the initially failed command as passing or repeat unrelated green
+checks to conceal its outcome.
