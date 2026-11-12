@@ -3,15 +3,58 @@ use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, State},
     http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
     routing::get,
 };
-use orbit_application::IdentityStore;
+use orbit_application::{IdentityStore, StoreError};
 use orbit_storage_postgres::PgStore;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use tokio::sync::{Semaphore, watch};
+// Fixed vocabulary only: never log tokens, request bodies, subjects or upstream
+// error text. A quota rejection is not an availability failure.
+fn failure(stage: &'static str, outcome: &'static str, status: StatusCode) -> StatusCode {
+    eprintln!(
+        "{}",
+        json!({"event":"analytics_bridge_failure","stage":stage,"outcome":outcome,"status":status.as_u16()})
+    );
+    status
+}
+fn capture_failure(error: StoreError) -> StatusCode {
+    if matches!(error, StoreError::RateLimited) {
+        failure("capture", "daily_budget", StatusCode::TOO_MANY_REQUESTS)
+    } else {
+        failure(
+            "capture",
+            "storage_unavailable",
+            StatusCode::SERVICE_UNAVAILABLE,
+        )
+    }
+}
+struct BridgeError(StatusCode);
+impl From<StatusCode> for BridgeError {
+    fn from(status: StatusCode) -> Self {
+        Self(status)
+    }
+}
+impl IntoResponse for BridgeError {
+    fn into_response(self) -> Response {
+        let mut response = self.0.into_response();
+        response.headers_mut().insert(
+            axum::http::header::CACHE_CONTROL,
+            "no-store".parse().unwrap(),
+        );
+        if self.0 == StatusCode::TOO_MANY_REQUESTS {
+            response
+                .headers_mut()
+                .insert(axum::http::header::RETRY_AFTER, "60".parse().unwrap());
+        }
+        response
+    }
+}
+
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Config {
@@ -113,8 +156,22 @@ impl Integration {
             .json(&body)
             .send()
             .await
-            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+            .map_err(|error| {
+                failure(
+                    "upstream",
+                    if error.is_timeout() {
+                        "timeout"
+                    } else {
+                        "transport"
+                    },
+                    StatusCode::SERVICE_UNAVAILABLE,
+                )
+            })?;
         if !response.status().is_success() {
+            eprintln!(
+                "{}",
+                json!({"event":"analytics_bridge_failure","stage":"upstream","outcome":"http_rejected","upstream_status":response.status().as_u16(),"status":503})
+            );
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         }
         if response.content_length().is_some_and(|n| n > 65536) {
@@ -202,7 +259,13 @@ impl Integration {
             .store
             .lookup_session(&digest)
             .await
-            .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
+            .map_err(|_| {
+                failure(
+                    "session",
+                    "storage_unavailable",
+                    StatusCode::SERVICE_UNAVAILABLE,
+                )
+            })?
             .ok_or(StatusCode::UNAUTHORIZED)?;
         Ok((session, identity))
     }
@@ -246,9 +309,9 @@ async fn bridge(
     State(s): State<Arc<Integration>>,
     h: HeaderMap,
     Json(body): Json<Request>,
-) -> Result<(HeaderMap, Json<Value>), StatusCode> {
+) -> Result<(HeaderMap, Json<Value>), BridgeError> {
     if blocked(&h) || h.get("origin").and_then(|v| v.to_str().ok()) != Some(s.origin.as_str()) {
-        return Err(StatusCode::FORBIDDEN);
+        return Err(StatusCode::FORBIDDEN.into());
     }
     let _permit = s
         .permits
@@ -264,7 +327,7 @@ async fn bridge(
                     .bytes()
                     .all(|c| c.is_ascii_alphanumeric() || b"._~-".contains(&c))
             {
-                return Err(StatusCode::BAD_REQUEST);
+                return Err(StatusCode::BAD_REQUEST.into());
             }
             s.post("/v1/journey/redeem",json!({"handoff":handoff,"audience":s.config.property_id,"visit_id":body.journey.visit_id,"visitor_id":body.journey.visitor_id})).await?;
             json!({"redeemed":true})
@@ -272,7 +335,7 @@ async fn bridge(
         "identify" => {
             let (session, identity) = s.session(&h).await?;
             if h.get("x-csrf-token").and_then(|v| v.to_str().ok()) != Some(session.csrf.as_str()) {
-                return Err(StatusCode::FORBIDDEN);
+                return Err(StatusCode::FORBIDDEN.into());
             }
             let evidence = s
                 .store
@@ -283,20 +346,21 @@ async fn bridge(
                     &journey,
                 )
                 .await
-                .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+                .map_err(capture_failure)?;
             let _ = s.dispatch().await;
-            if !s
-                .store
-                .analytics_delivered(evidence)
-                .await
-                .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?
-            {
+            if !s.store.analytics_delivered(evidence).await.map_err(|_| {
+                failure(
+                    "delivery_status",
+                    "storage_unavailable",
+                    StatusCode::SERVICE_UNAVAILABLE,
+                )
+            })? {
                 json!({"pending":true})
             } else {
                 s.post("/v1/identity/proof",json!({"property_id":s.config.property_id,"visit_id":body.journey.visit_id,"visitor_id":body.journey.visitor_id,"evidence_event_id":evidence})).await?
             }
         }
-        _ => return Err(StatusCode::BAD_REQUEST),
+        _ => return Err(StatusCode::BAD_REQUEST.into()),
     };
     Ok((
         HeaderMap::from_iter([(
@@ -305,4 +369,19 @@ async fn bridge(
         )]),
         Json(value),
     ))
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+    #[test]
+    fn exhausted_admission_is_throttled_but_storage_failure_remains_unavailable() {
+        let limited = BridgeError(capture_failure(StoreError::RateLimited)).into_response();
+        assert_eq!(limited.status(), StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(limited.headers()["retry-after"], "60");
+        assert_eq!(limited.headers()["cache-control"], "no-store");
+        let unavailable = BridgeError(capture_failure(StoreError::Unavailable)).into_response();
+        assert_eq!(unavailable.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert!(!unavailable.headers().contains_key("retry-after"));
+    }
 }

@@ -1,4 +1,4 @@
-use orbit_application::IdentityStore;
+use orbit_application::{IdentityStore, StoreError};
 use orbit_storage_postgres::PgStore;
 use serde_json::json;
 use uuid::Uuid;
@@ -86,5 +86,90 @@ async fn authoritative_identity_and_enrollment_are_immutable_and_recoverable() {
         .unwrap();
     assert!(!store.analytics_delivered(id).await.unwrap());
     assert!(store.claim_analytics().await.unwrap().is_empty());
+    // The daily admission budget must not reject replay of retained facts.
+    // Synthetic rows bring this account to the exact production boundary.
+    sqlx::query("INSERT INTO analytics_delivery(event_id,fact_key,account,payload) SELECT gen_random_uuid(),'budget-fixture:' || $1::text || ':' || n::text,$1,'{}'::jsonb FROM generate_series(1,198) n")
+        .bind(session.account.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let repeat = store
+        .capture_analytics(
+            session.account,
+            json!({"namespace":"ignored-on-replay","id":"ignored"}),
+            &config,
+            &journey,
+        )
+        .await
+        .unwrap();
+    assert_eq!(repeat, a);
+    let new_journey = json!({"visit_id":Uuid::new_v4(),"visitor_id":Uuid::new_v4()});
+    assert!(matches!(
+        store
+            .capture_analytics(session.account, json!({}), &config, &new_journey)
+            .await,
+        Err(StoreError::RateLimited)
+    ));
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1")
+        .bind(session.account.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        count, 200,
+        "replay and rejected admission must not add records"
+    );
+    let retained: serde_json::Value =
+        sqlx::query_scalar("SELECT payload FROM analytics_delivery WHERE event_id=$1")
+            .bind(a)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        retained, events[0],
+        "replay must retain authoritative evidence"
+    );
+    // A batch requiring two new facts cannot partially consume the last slot.
+    sqlx::query(
+        "UPDATE analytics_delivery SET created_at=now()-interval '2 days' WHERE fact_key=$1",
+    )
+    .bind(format!("budget-fixture:{}:1", session.account.0))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let second_policy = store
+        .ensure_signup_universe(Some(Uuid::new_v4().into()), Default::default(), Some(10))
+        .await
+        .unwrap();
+    store
+        .enroll_oidc(session.account, second_policy)
+        .await
+        .unwrap();
+    assert!(matches!(
+        store
+            .capture_analytics(session.account, json!({}), &config, &new_journey)
+            .await,
+        Err(StoreError::RateLimited)
+    ));
+    let after_rejected_batch: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1")
+            .bind(session.account.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        after_rejected_batch, 200,
+        "failed batch must roll back its first insert"
+    );
+    assert_eq!(
+        store
+            .capture_analytics(session.account, json!({}), &config, &journey)
+            .await
+            .unwrap(),
+        a,
+        "replay still discovers the new authoritative enrollment"
+    );
+    let after_enrollment: i64 = sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1 AND created_at>now()-interval '1 day'").bind(session.account.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(after_enrollment, 200);
     pool.close().await;
 }
