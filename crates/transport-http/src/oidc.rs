@@ -116,13 +116,13 @@ pub(super) async fn login<S: IdentityStore>(
     let secret = browser(&h)
         .map(str::to_owned)
         .unwrap_or_else(unbought_auth::random_secret);
-    let expected = if q.verify {
+    // Verification email returns may arrive without an Orbit session. Start
+    // ordinary authentication then; a supplied session must still revalidate
+    // and bind the transaction to its existing subject (never downgrade errors).
+    let expected = if let (true, Some(token)) = (q.verify, token(&h)) {
         Some(
             s.updates
-                .revalidate_oidc(
-                    &token_digest(token(&h).ok_or(ServiceError::Unauthenticated)?),
-                    rp,
-                )
+                .revalidate_oidc(&token_digest(token), rp)
                 .await
                 .map_err(session_error)?
                 .subject,
