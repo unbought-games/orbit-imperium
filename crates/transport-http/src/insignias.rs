@@ -106,6 +106,7 @@ fn valid_original(bytes: &[u8]) -> bool {
                         | "stroke-width"
                         | "stroke-linecap"
                         | "stroke-linejoin"
+                        | "stroke-miterlimit"
                         | "fill-rule"
                         | "clip-rule"
                         | "opacity"
@@ -822,11 +823,16 @@ mod tests {
     }
     #[test]
     fn installed_svg_cannot_reference_files_or_execute_content() {
+        // A bounded stroke join is ordinary static geometry in operator artwork.
+        assert!(valid_original(
+            br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M1 9L5 1L9 9" fill="none" stroke="#000000" stroke-width="1" stroke-linejoin="miter" stroke-miterlimit="4"/></svg>"##
+        ));
         for inner in [
             "<script>alert(1)</script>",
             "<image href=\"file:///etc/passwd\"/>",
             "<path onclick=\"alert(1)\"/>",
             "<path style=\"fill:url(file:///tmp/a)\"/>",
+            "<path stroke-miterlimit=\"url(file:///tmp/a)\"/>",
         ] {
             let svg = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">{inner}</svg>");
             assert!(!valid_original(svg.as_bytes()));
