@@ -179,3 +179,34 @@ a chooser, captured-email return to that universe, durable referral attribution,
 and one membership after repeated entry. Desktop/mobile and compact-height layouts
 were inspected. The running local stack was left up. These changes remain local;
 no new PR push, merge or production deployment is claimed.
+
+## Final PR394 main integration qualification
+
+Integrated main6017f308 with the approved navigation cleanup and automatic titles.
+Code qualification used30b56d1e, with the integration-fixture repair454eb5b2; final
+production build and consolidated release notes were checked at ec0f21cd.
+
+- Tooling:130passed, one deliberately explicit-only Docker case skipped (13.86s).
+- Full client suite:1832passed across205files (10.07s).
+- Native:800main,54configuration-bridge and10storage-library tests passed.
+  Preparation took97s/54.08s/8.17s; execution33.727s/2.747s/0.019s.
+- Full Clippy/all-target check passed after correcting the invitation fixture's
+  missing optional account_url field introduced by main. The initial compile
+  failure and precise repair are retained in the test-performance ledger.
+- Static checks passed: Rust/frontend formatting, lint, component types,
+  generated-contract drift/validation and architecture boundaries.
+- PostgreSQL: all12tests across game_invitations, community_rewards, insignias
+  and empire_history passed in isolated databases. Setup3.14s, compile43.85s,
+  total75.10s; the task-owned Compose project, databases, volume and network were
+  cleaned. No live database was changed.
+- Focused fixture browser:36passed, bundle preparation5.392s, runner1.1m, one
+  worker. Desktop/mobile captures were refreshed and inspected for invitation
+  entry, Rewards/title disclosure, account navigation and beginner More.
+- Production web build, full app typecheck, homepage prerender and consolidated
+  build-note output passed. Both external probe-preference credits remain in
+  the generated news page. No CHANGELOG or numbered-version edit was made.
+
+The native target was isolated from other worktrees, and expensive checks were
+serialized under the shared validation owner. No PR checks are inferred from
+these local results; remote-head CI and normal merge-queue validation remain
+separate publishing gates. No production deployment was performed.
