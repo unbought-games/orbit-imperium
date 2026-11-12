@@ -19,6 +19,7 @@ async fn one_source_cannot_exhaust_another_sources_login_budget() {
     let app = router(
         store,
         HttpConfig {
+            account_url: None,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: true,

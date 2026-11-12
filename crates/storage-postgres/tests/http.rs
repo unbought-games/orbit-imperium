@@ -37,6 +37,7 @@ async fn real_http_origin_csrf_cookie_and_privacy() {
     store.seed(u.into(), 1_000_000, 1, &pw).await.unwrap();
     let observations = Arc::new(HttpObservations::default());
     let config = HttpConfig {
+        account_url: None,
         signup: None,
         signup_per_minute: 5,
         legacy_signup_enabled: true,

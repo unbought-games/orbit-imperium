@@ -102,6 +102,7 @@ async fn anonymous_previews_expose_only_appearance_and_deleted_slots_remain_addr
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: temp.to_string_lossy().into_owned(),
             login_per_minute: 30,

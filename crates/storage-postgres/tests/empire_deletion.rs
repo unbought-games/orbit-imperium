@@ -461,6 +461,7 @@ async fn http_requires_recent_signin_and_retries_do_not_require_new_authenticati
     let f = Fixture::new().await;
     let b = f.binding;
     let config = orbit_transport_http::HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,
@@ -580,6 +581,7 @@ async fn local_account_can_enroll_through_http_only_in_its_configured_universe()
         .await
         .unwrap();
     let config = orbit_transport_http::HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,
@@ -755,6 +757,7 @@ async fn vacation_http_uses_normal_auth_and_returns_private_status() {
     let app = orbit_transport_http::router(
         f.store.clone(),
         orbit_transport_http::HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "missing".into(),
             login_per_minute: 30,

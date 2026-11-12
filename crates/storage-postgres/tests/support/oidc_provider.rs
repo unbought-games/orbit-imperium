@@ -84,6 +84,7 @@ async fn real_provider_commit_cutpoints_never_replay() {
     let app = router_with_auth(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "missing-assets".into(),
             login_per_minute: 30,

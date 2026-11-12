@@ -732,6 +732,7 @@ async fn http_scan_is_explicit_paid_post_with_csrf_and_free_authorized_report_re
     let app = router(
         f.store.clone(),
         HttpConfig {
+            account_url: None,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: true,

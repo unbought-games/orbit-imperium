@@ -2,6 +2,7 @@ import { bindAnalytics } from './optional-services'
 export interface OidcConfig {
   mode: 'oidc' | 'local'
   universes: { universe: string; name: string }[]
+  account_url?: string | null
   accounts_url?: string
   client_id?: string
   hosted_universe?: string | null

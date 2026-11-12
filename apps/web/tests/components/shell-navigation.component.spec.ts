@@ -137,3 +137,69 @@ for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
     ).toBe(true)
   })
 }
+
+// Native external navigation, popup sizing and breakpoint dismissal belong in a browser.
+test('configured account link supports keyboard navigation and stays out of the mobile popup', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mount('shell-account-link')
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click()
+  const menu = page.getByRole('menu', { name: 'Account menu', exact: true })
+  const link = menu.getByRole('menuitem', {
+    name: 'Unbought Games account',
+    exact: true,
+  })
+  await expect(link).toHaveAttribute('href', 'https://accounts.example/account')
+  await expect(link.locator('img')).toHaveJSProperty('naturalWidth', 1024)
+  const bounds = (await link.boundingBox())!
+  expect(
+    await link.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true)
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(1440)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/account-link/desktop-1440x900.png',
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(menu).toBeHidden()
+  await expect(
+    page.getByRole('button', { name: 'Account menu', exact: true }),
+  ).toBeHidden()
+  await diagnosticScreenshot(page, {
+    path: 'test-results/account-link/mobile-390x844.png',
+  })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click()
+  await page.route('https://accounts.example/account', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<h1>Account destination</h1>',
+    }),
+  )
+  await link.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL('https://accounts.example/account')
+  await expect(
+    page.getByRole('heading', { name: 'Account destination' }),
+  ).toBeVisible()
+})
+
+test('unconfigured account link is absent from the player menu', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mount('shell-default')
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click()
+  const menu = page.getByRole('menu', { name: 'Account menu', exact: true })
+  await expect(menu).toBeVisible()
+  await expect(
+    menu.getByRole('menuitem', { name: 'Unbought Games account', exact: true }),
+  ).toHaveCount(0)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/account-link/unconfigured-1440x900.png',
+  })
+})

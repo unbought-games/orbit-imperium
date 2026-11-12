@@ -55,6 +55,7 @@ async fn homepage_account_entry_keeps_community_auth_local_and_exposes_only_the_
                 policy: Arc::new(StdMutex::new(Ok(None))),
             },
             HttpConfig {
+                account_url: hosted.then(|| "https://accounts.unbought.games/account".into()),
                 origin: origin.into(),
                 assets: "absent".into(),
                 login_per_minute: 30,
@@ -90,6 +91,14 @@ async fn homepage_account_entry_keeps_community_auth_local_and_exposes_only_the_
         assert_eq!(response.status(), StatusCode::OK);
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         let config: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            config["account_url"],
+            if hosted {
+                serde_json::json!("https://accounts.unbought.games/account")
+            } else {
+                serde_json::Value::Null
+            }
+        );
         assert_eq!(
             config["hosted_universe"],
             if hosted {
@@ -352,6 +361,7 @@ async fn cancelled_login_and_signup_keep_the_shared_worker_limit_until_completio
             policy: Arc::new(StdMutex::new(Ok(None))),
         },
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "absent".into(),
             login_per_minute: 100,
@@ -423,6 +433,7 @@ async fn registration_observes_policy_changes_and_fails_closed_without_restart()
     let app = router(
         store,
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "absent".into(),
             login_per_minute: 30,
@@ -562,6 +573,7 @@ async fn blocked_policy_reads_are_bounded_for_registration_and_signup() {
     let app = router(
         store,
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "absent".into(),
             login_per_minute: 30,
@@ -618,6 +630,7 @@ async fn oidc_enrollment_obeys_live_policy_and_retries_after_admissions_close() 
             policy: policy.clone(),
         },
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "absent".into(),
             login_per_minute: 30,
@@ -819,6 +832,7 @@ async fn activity_renewal_requires_origin_csrf_and_cookie_and_only_sets_cookie_o
                 policy: Arc::new(StdMutex::new(Ok(None))),
             },
             HttpConfig {
+                account_url: None,
                 origin: configured_origin.into(),
                 assets: "absent".into(),
                 login_per_minute: 100,
@@ -909,6 +923,7 @@ async fn public_reports_need_no_session_but_sharing_management_requires_auth_ori
     let app = router(
         store,
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: concat!(env!("CARGO_MANIFEST_DIR"), "/../../apps/web").into(),
             login_per_minute: 100,
@@ -1040,6 +1055,7 @@ fn session_and_oidc_cookies_derive_all_attributes_from_browser_origin() {
         ("http://game.example", ""),
     ] {
         let config = HttpConfig {
+            account_url: None,
             origin: origin.into(),
             assets: "absent".into(),
             login_per_minute: 30,

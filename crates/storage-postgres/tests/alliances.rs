@@ -1023,6 +1023,7 @@ async fn http_upload_roundtrip_requires_csrf_and_only_publishes_attached_media()
     .await
     .unwrap();
     let config = orbit_transport_http::HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,
@@ -1180,6 +1181,7 @@ async fn http_authentication_csrf_origin_scope_and_anonymous_privacy() {
     let a = f.create(0, "HTTP Alliance", "WEB").await;
     let u = f.bindings[0].universe;
     let config = orbit_transport_http::HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,
@@ -1945,6 +1947,7 @@ async fn recruitment_http_previews_use_current_public_identity_and_revoke_old_li
     std::fs::create_dir(&assets.0).unwrap();
     std::fs::write(assets.0.join("index.html"),r#"<html><head><!--orbit-page-metadata:start--><title>Old</title><!--orbit-page-metadata:end--></head><body><script id="orbit-bootstrap" type="application/json"></script><div id="root"></div></body></html>"#).unwrap();
     let config = orbit_transport_http::HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: assets.0.to_string_lossy().into_owned(),
         login_per_minute: 30,

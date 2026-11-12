@@ -369,8 +369,8 @@
   z-index: 100;
 }
 .accountMenu {
-  width: var(--anchor-width);
-  min-width: 190px;
+  width: max-content;
+  min-width: var(--anchor-width);
   max-width: calc(100vw - 24px);
   padding: 5px;
   background: var(--surface-raised);
