@@ -168,17 +168,21 @@ export function routeTarget(
           })
         : linkOptions({ to: '/u/$universe/high-scores', params, search: {} })
     case 'rewards':
-      return linkOptions({
-        to: '/u/$universe/rewards',
-        params,
-        search: body ? { body } : {},
-      })
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/rewards',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({ to: '/u/$universe/rewards', params, search: {} })
     case 'menu':
-      return linkOptions({
-        to: '/u/$universe/menu',
-        params,
-        search: body ? { body } : {},
-      })
+      return body
+        ? linkOptions({
+            to: '/u/$universe/b/$body/menu',
+            params: { universe, body },
+            search: {},
+          })
+        : linkOptions({ to: '/u/$universe/menu', params, search: {} })
     case 'settings':
       return body
         ? linkOptions({

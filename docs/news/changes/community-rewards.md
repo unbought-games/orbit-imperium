@@ -9,5 +9,10 @@ and finishes and effects. Participating servers can enable the program after the
 account service and installed collection are ready. Availability depends on your
 server's deployment and configuration.
 
+Find Rewards in your account dropdown on desktop or the Account section at the
+bottom of the mobile menu.
+The page links directly to your full Renown progress and history in Unbought
+Accounts, with your Orbit reward choices below.
+
 Saved designs stay saved when membership ends or an item is temporarily unavailable.
 Self-hosted servers can keep running independently with their own installed content.

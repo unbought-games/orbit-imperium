@@ -218,7 +218,7 @@ for (const width of [390, 320]) {
     const tab = page.getByRole('link', {name:'Menu',exact:true})
     await tab.focus()
     await page.keyboard.press('Enter')
-    await expect(page).toHaveURL(new RegExp(`/menu\\?body=${body.id}$`))
+    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/menu$`))
     await expect(page.locator('main h1')).toBeFocused()
     const menu = page.getByRole('navigation', {name:'Menu destinations'})
     await expect(menu).toBeVisible()

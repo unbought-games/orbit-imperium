@@ -69,6 +69,16 @@ visual validation as not applicable.
 
 # Frontend state
 
+- Selected planets and moons belong in the URL path: `/u/<universe>/b/<body>/<page>`.
+  This applies to every game destination, including Menu and Rewards. Never
+  generate `?body=` or store selected-body context in search parameters. Use the
+  shared `routeTarget` helper for links and navigation. Planetless entry points
+  may resolve an owned body and replace the URL with its canonical path. Legacy
+  body queries are input-only compatibility: validate ownership, immediately
+  replace them with the path form, and remove the query before rendering a page.
+  Ordinary tests and examples must use canonical paths; legacy queries belong
+  only in explicitly named migration/rejection tests.
+
 - Use Zustand for shared game state. Keep one authoritative source for each value; derive affordability, eligibility, counts, and other computed values with pure selectors.
 - Jotai is approved for shared UI atoms accessed from multiple places. Do not duplicate game state in atoms or component state.
 - Keep local interaction state local. Store selection IDs and user edits, not copies of objects or values available from the game store.

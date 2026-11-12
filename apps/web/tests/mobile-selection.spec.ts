@@ -279,7 +279,7 @@ for (const touch of [true, false]) {
             },
           })
         })
-        await withRankingsResponse(page, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
+        await withRankingsResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/high-scores`))
         const rankingPages = page.getByRole('navigation', {
           name: 'Ranking pages',
           exact: true,

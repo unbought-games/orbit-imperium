@@ -102,7 +102,7 @@ test('active fleet routes show current public names and fit a phone', async ({
       ],
     },
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/fleets/${id(71)}?body=${body.id}`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets/${id(71)}`))
   // The legacy URL redirects and remounts the route. Wait before opening the
   // native details element so that navigation cannot close it after the click.
   await expect(page).toHaveURL(

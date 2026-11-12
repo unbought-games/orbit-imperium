@@ -252,7 +252,7 @@ for (const width of [1440, 390]) {
       })
     })
     await withGalaxyResponse(page, () =>
-      page.goto(`/u/andromeda/galaxy?body=${body.id}`),
+      page.goto(`/u/andromeda/b/${body.id}/galaxy`),
     )
     const card = page
       .getByRole('listitem')
@@ -428,7 +428,7 @@ for (const width of [1440, 390]) {
         },
       })
     })
-    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/galaxy?body=${body.id}`))
+    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
     // Full navigation restarts the game session before the world and profile
     // requests run. Check each readiness boundary before asserting identity.
     await expect(

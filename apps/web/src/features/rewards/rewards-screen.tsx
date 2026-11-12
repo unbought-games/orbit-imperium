@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState, useRef } from 'react'
 import { useStore } from 'zustand'
+import { ArrowUpRight } from 'lucide-react'
 import { useCommunityRewards } from '../../shell/community-rewards-context'
 import { InsigniaContext } from '../../shell/insignia-context'
 import { useGameScreen } from '../../shell/screen-context'
@@ -51,16 +52,16 @@ export function RewardsScreen() {
         <div>
           <Heading level={1}>Community rewards</Heading>
           <Text>
-            Your contributions across Unbought Games, and the rewards you keep.
+            Your Renown spans Unbought Games. Explore how it works, your full
+            progress, and your reward history in Unbought Accounts.
           </Text>
+          {owner && visible && (
+            <ButtonLinkAnchor href={owner.capabilities.full_selection_url}>
+              View Renown in Unbought Accounts
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </ButtonLinkAnchor>
+          )}
         </div>
-        <Button
-          variant="ghost"
-          disabled={loading || busy}
-          onClick={() => void controller.load()}
-        >
-          Refresh
-        </Button>
       </header>
       {error && (
         <div role="alert" className={styles.notice}>
@@ -106,12 +107,6 @@ export function RewardsScreen() {
                         ? `${remainingChoices} reward ${remainingChoices === 1 ? 'choice is' : 'choices are'} waiting for you.`
                         : 'New contributions bring the next reward closer.'}
                     </p>
-                    <ButtonLinkAnchor
-                      variant="ghost"
-                      href={owner.capabilities.full_selection_url}
-                    >
-                      Full collection and history in Accounts ↗
-                    </ButtonLinkAnchor>
                   </div>
                 </section>
                 {owner.program.status === 'paused' && (

@@ -90,6 +90,7 @@ it('keeps the opening focused while preserving optional destinations in More', (
     expect(pages?.has(page)).toBe(true)
   expect(tutorialMorePages(pages)).toEqual([
     'messages',
+    'alliance',
     'reports',
     'fleets',
     'dispatch',
@@ -129,7 +130,7 @@ it('introduces fleet navigation for ships and reports for operations without pro
   data.sites = tutorialFixture(true).sites
   const pages = tutorialPages(data, view)
   expect(pages?.has('reports')).toBe(true)
-  expect(tutorialMorePages(pages)).toEqual(['messages'])
+  expect(tutorialMorePages(pages)).toEqual(['messages', 'alliance'])
 })
 it('preserves two different private selections at the same anchor through URL reload', () => {
   const data = tutorialFixture(true)

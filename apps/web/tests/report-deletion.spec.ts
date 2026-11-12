@@ -278,7 +278,7 @@ for (const width of [1440, 390]) {
     expect(fixture.headers[1].read).toBe(false)
     await withReportListResponse(page, () => page.reload())
     await expect(rows).toHaveCount(1)
-    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`))
+    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`))
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
     await expect(
       page.getByRole('region', { name: 'Report observation' }),
@@ -314,7 +314,7 @@ for (const width of [1440, 390]) {
     expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44)
     await back.click()
     await expect(rows).toHaveCount(1)
-    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/reports/${fixture.headers[1].id}?body=${body.id}`))
+    await withReportResponse(page, fixture.headers[1].id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`))
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${fixture.headers[1].id}`)
     await page.getByRole('button', { name: 'Move to inbox' }).click()
     await expect(unread).toHaveCount(0)

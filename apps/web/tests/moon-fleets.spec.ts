@@ -432,7 +432,7 @@ for (const width of [1440, 390]) {
           },
         })
       })
-      await withReportResponse(page, report, () => page.goto(`/u/andromeda/reports/${report}?body=${moon.id}`))
+      await withReportResponse(page, report, () => page.goto(`/u/andromeda/b/${moon.id}/reports/${report}`))
       await page
         .getByRole('button', { name: /Hostile fleet inbound/ })
         .press('Escape')

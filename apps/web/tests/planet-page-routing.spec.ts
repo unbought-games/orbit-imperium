@@ -268,3 +268,30 @@ test('anonymous direct links retain their canonical path, query and hash through
   await expect(page).toHaveURL(/\/login\?/)
   expect(new URL(page.url()).searchParams.get('redirect')).toBe(target)
 })
+
+for (const slug of ['menu', 'rewards']) {
+  test(`${slug}: legacy entry becomes a body path and switching retains it through history and reload`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await fixture(page)
+    const open = (navigate: () => Promise<unknown>) => slug === 'rewards'
+      ? withFixtureResponse(page, response => new URL(response.url()).pathname === '/api/v1/rewards', navigate)
+      : boot(page, navigate)
+    const canonical = (planet: string) => `/u/andromeda/b/${planet}/${slug}#details`
+    await open(() => page.goto(`/u/andromeda/${slug}?body=${body.id}#details`))
+    await expect(page).toHaveURL(canonical(body.id))
+    const selector = page.getByRole('combobox', { name: 'Selected body' })
+    await expect(selector).toHaveAttribute('data-value', body.id)
+    await selector.click()
+    await page.getByRole('option', { name: /Beta/ }).click()
+    await expect(page).toHaveURL(canonical(id(6)))
+    await expect(selector).toHaveAttribute('data-value', id(6))
+    await page.goBack()
+    await expect(page).toHaveURL(canonical(body.id))
+    await page.goForward()
+    await expect(page).toHaveURL(canonical(id(6)))
+    await open(() => page.reload())
+    await expect(page).toHaveURL(canonical(id(6)))
+    await expect(selector).toHaveAttribute('data-value', id(6))
+    expect(new URL(page.url()).searchParams.has('body')).toBe(false)
+  })
+}

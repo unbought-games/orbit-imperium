@@ -19,6 +19,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Settings,
+  Trophy,
   ArrowUpRight,
 } from 'lucide-react'
 import styles from './navigation.module.css'
@@ -253,7 +254,6 @@ export function Navigation({
           {sidebarDestination('alliance')}
           {sidebarDestination('messages')}
           {sidebarDestination('high-scores')}
-          {rewardsVisible && sidebarDestination('rewards')}
           {morePages.length > 0 && (
             <Disclosure
               className={styles.more}
@@ -320,6 +320,29 @@ export function Navigation({
                   >
                     My Orbit profile
                   </AccountMenu.LinkItem>
+                  {rewardsVisible && (
+                    <AccountMenu.LinkItem
+                      closeOnClick
+                      render={
+                        <Link {...routeTarget(universeName, 'rewards', body)} />
+                      }
+                      className={styles.accountMenuItem}
+                      data-analytics="navigate_rewards"
+                      aria-current={page === 'rewards' ? 'page' : undefined}
+                      onClick={(event) => {
+                        if (
+                          event.button === 0 &&
+                          !event.metaKey &&
+                          !event.ctrlKey &&
+                          !event.shiftKey &&
+                          !event.altKey
+                        )
+                          onVisit?.('rewards')
+                      }}
+                    >
+                      <Trophy size={16} aria-hidden="true" /> Rewards
+                    </AccountMenu.LinkItem>
+                  )}
                   <AccountMenu.LinkItem
                     closeOnClick
                     render={

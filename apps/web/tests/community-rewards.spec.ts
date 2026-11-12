@@ -187,6 +187,69 @@ async function rewardsFixture(page: Page) {
   return { owner, designs, server }
 }
 for (const width of [1440, 390]) {
+  // Protect the distinct desktop popup and mobile destination routing.
+  test(`rewards opens from account navigation at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await rewardsFixture(page)
+    await withFixtureResponse(
+      page,
+      (r) => new URL(r.url()).pathname === '/api/v1/rewards',
+      () => page.goto('/u/andromeda/menu'),
+    )
+    let rewards
+    if (width >= 1024) {
+      const sidebar = page.getByRole('complementary', {
+        name: 'Game navigation',
+      })
+      await expect(
+        sidebar.getByRole('link', { name: 'Rewards', exact: true }),
+      ).toHaveCount(0)
+      await sidebar
+        .getByRole('button', { name: 'Account menu', exact: true })
+        .click()
+      rewards = page
+        .getByRole('menu', { name: 'Account menu', exact: true })
+        .getByRole('menuitem', { name: 'Rewards', exact: true })
+      await rewards.focus()
+      await expect(rewards).toBeFocused()
+    } else {
+      const menu = page.getByRole('navigation', { name: 'Menu destinations' })
+      const account = menu.getByRole('region', { name: 'Account', exact: true })
+      await expect(menu.getByRole('region').last()).toHaveAttribute(
+        'aria-label',
+        'Account',
+      )
+      await expect(
+        menu
+          .getByRole('region', { name: 'Community', exact: true })
+          .getByRole('link', { name: 'Rewards', exact: true }),
+      ).toHaveCount(0)
+      rewards = account.getByRole('link', { name: 'Rewards', exact: true })
+      await rewards.scrollIntoViewIfNeeded()
+    }
+    await expect(rewards).toBeVisible()
+    await expect(rewards).toHaveAttribute(
+      'href',
+      '/u/andromeda/b/00000000-0000-4000-8000-000000000005/rewards',
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/rewards-account-menu-${width}x900.png`,
+    })
+    if (width >= 1024) await page.keyboard.press('Enter')
+    else await rewards.tap()
+    await expect(page).toHaveURL(
+      /\/u\/andromeda\/b\/00000000-0000-4000-8000-000000000005\/rewards$/,
+    )
+    await expect(
+      page.getByRole('heading', { name: 'Community rewards', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('menu', { name: 'Account menu', exact: true }),
+    ).toHaveCount(0)
+  })
+
   test(`@journey rewards choice confirmation and delivery feedback at ${width}px`, async ({
     page,
   }) => {
@@ -200,6 +263,21 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole('heading', { name: 'Community rewards', exact: true }),
     ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Refresh', exact: true }),
+    ).toHaveCount(0)
+    const renown = page.getByRole('link', {
+      name: 'View Renown in Unbought Accounts',
+      exact: true,
+    })
+    await expect(renown).toHaveAttribute(
+      'href',
+      owner.capabilities.full_selection_url,
+    )
+    await expect(renown).toBeInViewport({ ratio: 1 })
+    await diagnosticScreenshot(page, {
+      path: `test-results/rewards-renown-link-${width}x1000.png`,
+    })
     const option = page.getByRole('article').filter({
       has: page.getByRole('heading', { name: 'Sample ochre', exact: true }),
     })
@@ -241,7 +319,7 @@ for (const width of [1440, 390]) {
       page,
       (r) =>
         new URL(r.url()).pathname === '/api/v1/rewards' && r.status() === 503,
-      () => page.getByRole('button', { name: 'Refresh', exact: true }).click(),
+      () => page.reload(),
       503,
     )
     await expect(page.getByRole('alert')).toContainText(
@@ -257,7 +335,7 @@ for (const width of [1440, 390]) {
       page,
       (r) =>
         new URL(r.url()).pathname === '/api/v1/rewards' && r.status() === 200,
-      () => page.getByRole('button', { name: 'Refresh', exact: true }).click(),
+      () => page.reload(),
     )
     await expect(
       page.getByText('Community rewards are not active on this server.'),

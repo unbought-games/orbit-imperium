@@ -19,7 +19,7 @@ async function reports(page: Page, payload: () => unknown, status = () => 200) {
   })
 }
 const canonicalReportUrl = `/u/andromeda/b/${body.id}/reports/${id(62)}`
-const reportUrl = `/u/andromeda/reports/${id(62)}?body=${body.id}`
+const reportUrl = `/u/andromeda/b/${body.id}/reports/${id(62)}`
 
 test('expanded espionage survives direct navigation, reload and historical observations on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -46,7 +46,7 @@ for (const protocol of [3, 4] as const) {
   test(`protocol ${protocol} game opens with expanded buildings`, async ({ page }) => {
     const levels = { ...body.levels, ...Object.fromEntries(schema.components.schemas.BuildingId3.enum.map(key => [key, 0])) }
     await shellFixture(page, { protocol, bodies: [{ ...body, levels }] })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/overview?body=${body.id}`))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     await expect(page.getByRole('heading', { name: /^Empire/, level: 1 })).toBeVisible()
     await withBootstrapResponse(page, () => page.reload())
     await expect(page.getByRole('heading', { name: /^Empire/, level: 1 })).toBeVisible()

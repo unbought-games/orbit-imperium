@@ -257,7 +257,7 @@ for (const size of ['small', 'huge', 'deuterium']) {
     await withFixtureResponse(
       page,
       response => new URL(response.url()).pathname === `/api/v4/universes/${binding.universe}/reports/${header.id}`,
-      () => page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`),
+      () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
     )
     const report = page.getByRole('region', { name: 'Report observation' })
     await expect(report.getByRole('heading', { level: 2 })).toHaveText(

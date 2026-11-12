@@ -138,7 +138,7 @@ for (const width of [1440, 390]) {
           const request = route.request().postDataJSON()
           await route.fulfill({json: bound(request.request_id, {header: {id: report, kind: payload.kind, observed_at: now, read: true, hidden: false}, payload})})
         })
-        await withFixtureResponse(page, r => r.url().endsWith(`/reports/${report}`), () => page.goto(`/u/andromeda/reports/${report}?body=${body.id}`))
+        await withFixtureResponse(page, r => r.url().endsWith(`/reports/${report}`), () => page.goto(`/u/andromeda/b/${body.id}/reports/${report}`))
         await expect(page.getByRole('region', {name: 'Report observation'})).toContainText('8,366 km')
         await diagnosticScreenshot(page, {path: `test-results/moon-${index ? 'combat' : 'notice'}-${width}x900.png`, fullPage: true})
         if (index === 0) {

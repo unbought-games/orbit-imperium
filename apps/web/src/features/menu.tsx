@@ -30,18 +30,17 @@ export function MenuScreen() {
   const groups: { title: string; pages: Page[] }[] = [
     ...navigationGroups.map((group) => ({
       ...group,
-      pages: [
-        ...group.pages,
-        ...(group.title === 'Community' && rewardsVisible
-          ? ['rewards' as const]
-          : []),
-      ].filter(
+      pages: group.pages.filter(
         (p) =>
-          (p === 'rewards' || !visible || visible.has(p)) &&
+          (!visible || visible.has(p)) &&
           (p !== 'briefing' || briefingEntryAvailable(tutorial, view.protocol)),
       ),
     })),
     ...(more.length ? [{ title: 'More', pages: more }] : []),
+    {
+      title: 'Account',
+      pages: [...(rewardsVisible ? ['rewards' as const] : []), 'settings'],
+    },
   ]
   const unread = useStore(model.store, hasUnreadReports)
   const count = useStore(model.store, unreadReportCount)

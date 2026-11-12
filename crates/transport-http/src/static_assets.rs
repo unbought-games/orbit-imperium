@@ -481,7 +481,7 @@ mod tests {
             "/",
             "/index.html",
             "/login",
-            "/u/00000000-0000-0000-0000-000000000001/overview?body=earth",
+            "/u/00000000-0000-0000-0000-000000000001/b/earth/overview?tab=details",
             "/u/00000000-0000-0000-0000-000000000001/unknown",
             "/unknown-ui-path",
         ] {
@@ -518,7 +518,7 @@ mod tests {
         let response = assets
             .router()
             .oneshot(
-                Request::head("/u/demo/overview?body=earth")
+                Request::head("/u/demo/b/earth/overview?tab=details")
                     .body(Body::empty())
                     .unwrap(),
             )

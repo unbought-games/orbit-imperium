@@ -682,7 +682,7 @@ test('incoming fleets and report details use the supplied public name without an
       },
     })
   })
-  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/reports/${reportId}?body=${body.id}`))
+  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('Commander Vega made espionage contact')
   names = undefined

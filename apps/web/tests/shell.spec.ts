@@ -234,7 +234,7 @@ test('cold Defense navigation retains named universe and planet through preloadi
   await withBootstrapResponse(page, () => page.reload())
   await expect(page.locator('main h1')).toHaveText('Defense')
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda-prime/research?body=${id(6)}`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda-prime/b/${id(6)}/research`))
   await nav.getByRole('link', { name: 'Defense', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Defense')
   await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
@@ -1244,7 +1244,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets/${fleet.id}`)
   await withBootstrapResponse(page, () => page.reload())
   await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/fleets/${fleet.id}?body=${body.id}`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`))
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   await expect(mission).toContainText('2,000')
   await mission.getByText('Flight path', { exact: true }).click()
@@ -1367,7 +1367,7 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
     path: 'test-results/fleets-unavailable-phone.png',
     fullPage: true,
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/settings?body=${body.id}`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings`))
   await expect(
     page.getByRole('heading', { name: 'Universe settings', exact: true }),
   ).toBeVisible()
@@ -2145,7 +2145,7 @@ test.describe('planet-scoped gameplay routes retain context and redirect old que
   for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch'], ['reports', 'Reports']]) {
     test(path, async ({ page }) => {
       const purchases = await installGameFixture(page, { protocol: 4 })
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/${path}?body=${body.id}`))
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${path}`))
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
       await expect(page.locator('main h1')).toHaveText(heading)
       await selectBody(page, id(6))

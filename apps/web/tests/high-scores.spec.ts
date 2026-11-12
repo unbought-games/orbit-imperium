@@ -25,7 +25,7 @@ test('High Scores keeps one snapshot through search and paging, finds me, and op
     const visible = new Set(source.players ?? [binding.player])
     return route.fulfill({ json: { binding, request_id: context.request_id, players: players.filter(p => visible.has(p.player)).map(p => ({ player: p.player, username: p.username, ...(p === players[0] ? { supporter_tier: 2 } : {}), observed_at: now, expires_at: now + 300 })) } })
   })
-  await withRankingsResponse(page, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
+  await withRankingsResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/high-scores`))
   await expect(page.getByRole('heading', { name: 'High Scores', exact: true })).toBeVisible()
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   await expect(table.getByRole('row')).toHaveCount(51)
@@ -129,7 +129,7 @@ test('a refresh removing the selected player closes details, restores useful foc
 test('browser navigation away from player details leaves the destination usable', async ({ page }) => {
   await installGameFixture(page, { protocol: 4 })
   await page.route('**/rankings', route => route.fulfill({ json: { binding, request_id: route.request().postDataJSON().request_id, sampled_at: 1000, processing_pending: false, players: [{ player: binding.player, username: 'Selected Commander', points: '12', rank: 1 }] } }))
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/overview?body=${body.id}`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   await openNavigation(page)
   await page.getByRole('link', { name: 'High Scores', exact: true }).click()
   await page.getByRole('table').getByRole('button', { name: 'Score details for Selected Commander: 12 points' }).click()

@@ -87,7 +87,7 @@ test('player attachments align together and long identities stay within narrow r
     if (!response.url().endsWith('/player-profiles')) return false
     const source = response.request().postDataJSON()?.source
     return source?.type === 'Rankings' && players.every(player => source.players.includes(player.player))
-  }, () => page.goto(`/u/andromeda/high-scores?body=${body.id}`))
+  }, () => page.goto(`/u/andromeda/b/${body.id}/high-scores`))
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   const trigger = table.getByRole('link', { name: 'Aurelia profile details' })
   await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()

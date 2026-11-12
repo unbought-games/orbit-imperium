@@ -49,12 +49,14 @@ import { Route as UUniverseBBodyFacilitiesRouteImport } from './routes/u.$univer
 import { Route as UUniverseBBodyFleetsRouteImport } from './routes/u.$universe.b.$body.fleets'
 import { Route as UUniverseBBodyGalaxyRouteImport } from './routes/u.$universe.b.$body.galaxy'
 import { Route as UUniverseBBodyHighScoresRouteImport } from './routes/u.$universe.b.$body.high-scores'
+import { Route as UUniverseBBodyMenuRouteImport } from './routes/u.$universe.b.$body.menu'
 import { Route as UUniverseBBodyMessagesRouteImport } from './routes/u.$universe.b.$body.messages'
 import { Route as UUniverseBBodyOverviewRouteImport } from './routes/u.$universe.b.$body.overview'
 import { Route as UUniverseBBodyReportsRouteImport } from './routes/u.$universe.b.$body.reports'
 import { Route as UUniverseBBodyResearchRouteImport } from './routes/u.$universe.b.$body.research'
 import { Route as UUniverseBBodyResourceSettingsRouteImport } from './routes/u.$universe.b.$body.resource-settings'
 import { Route as UUniverseBBodyResourcesRouteImport } from './routes/u.$universe.b.$body.resources'
+import { Route as UUniverseBBodyRewardsRouteImport } from './routes/u.$universe.b.$body.rewards'
 import { Route as UUniverseBBodySettingsRouteImport } from './routes/u.$universe.b.$body.settings'
 import { Route as UUniverseBBodyShipyardRouteImport } from './routes/u.$universe.b.$body.shipyard'
 import { Route as UUniverseBBodyAllianceCreateRouteImport } from './routes/u.$universe.b.$body.alliance_.create'
@@ -275,6 +277,11 @@ const UUniverseBBodyHighScoresRoute =
     path: '/b/$body/high-scores',
     getParentRoute: () => UUniverseRoute,
   } as any)
+const UUniverseBBodyMenuRoute = UUniverseBBodyMenuRouteImport.update({
+  id: '/b/$body/menu',
+  path: '/b/$body/menu',
+  getParentRoute: () => UUniverseRoute,
+} as any)
 const UUniverseBBodyMessagesRoute = UUniverseBBodyMessagesRouteImport.update({
   id: '/b/$body/messages',
   path: '/b/$body/messages',
@@ -304,6 +311,11 @@ const UUniverseBBodyResourceSettingsRoute =
 const UUniverseBBodyResourcesRoute = UUniverseBBodyResourcesRouteImport.update({
   id: '/b/$body/resources',
   path: '/b/$body/resources',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodyRewardsRoute = UUniverseBBodyRewardsRouteImport.update({
+  id: '/b/$body/rewards',
+  path: '/b/$body/rewards',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseBBodySettingsRoute = UUniverseBBodySettingsRouteImport.update({
@@ -424,12 +436,14 @@ export interface FileRoutesByFullPath {
   '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/menu': typeof UUniverseBBodyMenuRoute
   '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/reports': typeof UUniverseBBodyReportsRouteWithChildren
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/rewards': typeof UUniverseBBodyRewardsRoute
   '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/alliance/create': typeof UUniverseBBodyAllianceCreateRoute
@@ -481,11 +495,13 @@ export interface FileRoutesByTo {
   '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/menu': typeof UUniverseBBodyMenuRoute
   '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/rewards': typeof UUniverseBBodyRewardsRoute
   '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/alliance/create': typeof UUniverseBBodyAllianceCreateRoute
@@ -542,12 +558,14 @@ export interface FileRoutesById {
   '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/menu': typeof UUniverseBBodyMenuRoute
   '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/reports': typeof UUniverseBBodyReportsRouteWithChildren
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/rewards': typeof UUniverseBBodyRewardsRoute
   '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/alliance_/create': typeof UUniverseBBodyAllianceCreateRoute
@@ -605,12 +623,14 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/fleets'
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/menu'
     | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/reports'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/rewards'
     | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/alliance/create'
@@ -662,11 +682,13 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/facilities'
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/menu'
     | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/rewards'
     | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/alliance/create'
@@ -722,12 +744,14 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/fleets'
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/menu'
     | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/reports'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/rewards'
     | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/alliance_/create'
@@ -1036,6 +1060,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseBBodyHighScoresRouteImport
       parentRoute: typeof UUniverseRoute
     }
+    '/u/$universe/b/$body/menu': {
+      id: '/u/$universe/b/$body/menu'
+      path: '/b/$body/menu'
+      fullPath: '/u/$universe/b/$body/menu'
+      preLoaderRoute: typeof UUniverseBBodyMenuRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/messages': {
       id: '/u/$universe/b/$body/messages'
       path: '/b/$body/messages'
@@ -1076,6 +1107,13 @@ declare module '@tanstack/react-router' {
       path: '/b/$body/resources'
       fullPath: '/u/$universe/b/$body/resources'
       preLoaderRoute: typeof UUniverseBBodyResourcesRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/rewards': {
+      id: '/u/$universe/b/$body/rewards'
+      path: '/b/$body/rewards'
+      fullPath: '/u/$universe/b/$body/rewards'
+      preLoaderRoute: typeof UUniverseBBodyRewardsRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/b/$body/settings': {
@@ -1325,12 +1363,14 @@ interface UUniverseRouteChildren {
   UUniverseBBodyFleetsRoute: typeof UUniverseBBodyFleetsRouteWithChildren
   UUniverseBBodyGalaxyRoute: typeof UUniverseBBodyGalaxyRoute
   UUniverseBBodyHighScoresRoute: typeof UUniverseBBodyHighScoresRoute
+  UUniverseBBodyMenuRoute: typeof UUniverseBBodyMenuRoute
   UUniverseBBodyMessagesRoute: typeof UUniverseBBodyMessagesRoute
   UUniverseBBodyOverviewRoute: typeof UUniverseBBodyOverviewRoute
   UUniverseBBodyReportsRoute: typeof UUniverseBBodyReportsRouteWithChildren
   UUniverseBBodyResearchRoute: typeof UUniverseBBodyResearchRouteWithChildren
   UUniverseBBodyResourceSettingsRoute: typeof UUniverseBBodyResourceSettingsRoute
   UUniverseBBodyResourcesRoute: typeof UUniverseBBodyResourcesRouteWithChildren
+  UUniverseBBodyRewardsRoute: typeof UUniverseBBodyRewardsRoute
   UUniverseBBodySettingsRoute: typeof UUniverseBBodySettingsRoute
   UUniverseBBodyShipyardRoute: typeof UUniverseBBodyShipyardRouteWithChildren
   UUniverseBBodyAllianceCreateRoute: typeof UUniverseBBodyAllianceCreateRoute
@@ -1366,12 +1406,14 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseBBodyFleetsRoute: UUniverseBBodyFleetsRouteWithChildren,
   UUniverseBBodyGalaxyRoute: UUniverseBBodyGalaxyRoute,
   UUniverseBBodyHighScoresRoute: UUniverseBBodyHighScoresRoute,
+  UUniverseBBodyMenuRoute: UUniverseBBodyMenuRoute,
   UUniverseBBodyMessagesRoute: UUniverseBBodyMessagesRoute,
   UUniverseBBodyOverviewRoute: UUniverseBBodyOverviewRoute,
   UUniverseBBodyReportsRoute: UUniverseBBodyReportsRouteWithChildren,
   UUniverseBBodyResearchRoute: UUniverseBBodyResearchRouteWithChildren,
   UUniverseBBodyResourceSettingsRoute: UUniverseBBodyResourceSettingsRoute,
   UUniverseBBodyResourcesRoute: UUniverseBBodyResourcesRouteWithChildren,
+  UUniverseBBodyRewardsRoute: UUniverseBBodyRewardsRoute,
   UUniverseBBodySettingsRoute: UUniverseBBodySettingsRoute,
   UUniverseBBodyShipyardRoute: UUniverseBBodyShipyardRouteWithChildren,
   UUniverseBBodyAllianceCreateRoute: UUniverseBBodyAllianceCreateRoute,

@@ -1789,3 +1789,68 @@ The exact CSRF assertion remains; no broadened accepted-token list, timeout,
 sleep or retry is added. Capture preparation is absent when disabled. This run
 passed6/failed2 in1.1min and is retained as failed validation. The separate closed
 admission case's earlier repair count is unchanged; no scenario was renamed.
+
+## November 12, 2026: Rewards account navigation
+
+The new `rewards opens from account navigation` cases (1440px and 390px) cover
+keyboard activation/desktop popup closure and touch activation from the last
+mobile Account section. They also assert Rewards is absent from primary desktop
+navigation and mobile Community. Tested on `67c1c846` plus the local navigation
+changes; no CI run or publication.
+
+Initial run: two assertion failures because the new expected link omitted the
+existing selected-planet `?body=00000000-0000-4000-8000-000000000005` context.
+This was a test expectation defect, not a product routing defect. Both new cases
+consume their one repair: retain the exact pathname and selected-body query in
+both link and destination assertions. No prior repair exists for these new cases;
+the older reward choice/delivery journey repair history remains unchanged.
+
+After that correction, both passed (bundle preparation 4.698s; browser runner
+4.0s; individual cases 1.7s/1.6s). Initial preparation was 5.115s and failed cases
+6.7s/6.4s. No queue wait. Desktop 1440x900 and mobile 390x900 captures were inspected.
+The runner cleaned its temporary bundle and server. Navigation model/icon tests
+passed 3/3, and focused ESLint and diff whitespace checks passed.
+
+Rewards Refresh-button removal follow-up: the existing reward choice/delivery
+journey now uses response-gated browser reloads for its unavailable and inactive
+states, matching the remaining user action. It still checks automatic post-claim
+updates. Both desktop/mobile cases passed first attempt (preparation 5.939s;
+runner 8.2s; cases 3.9s/3.4s), with no new repair. The final header screenshots at
+1440x1000 and 390x1000 were inspected. Focused lint, formatting and diff checks
+passed; temporary fixture server and bundle were cleaned by the runner.
+
+## November 12, 2026: Correct the remaining body-query routes
+
+Correction to the Rewards account-navigation entry above: accepting the selected
+body query as the expected URL was an incorrect product-contract decision. Menu
+was left as a query-based exception in `e8a96d81b`; Rewards added the same pattern
+in `e3a22bee3`. The owner confirmed all selected-body destinations must use paths.
+The source defect is now fixed in `routeTarget` and `GameShell`, with canonical
+Menu/Rewards route files. The browser expectations now enforce the corrected
+product contract; this is not a stabilization repair or reset of prior history.
+
+AGENTS.md now requires body-path links on every game destination. The deterministic
+router test enumerates all page destinations. Ordinary fixture/acceptance URL
+examples were migrated across the repository; only deliberate legacy
+normalization/rejection cases retain body query inputs. Existing inbound
+compatibility still validates access and removes the query before rendering the
+canonical destination. Historical evidence above remains intact.
+
+Validation at `67c1c846` plus this local cleanup diff:
+
+- Six focused client files: 47 passed, 1.74s runner duration.
+- Focused application routing/navigation/rewards/tutorial: 25 passed; preparation
+  5.554s and browser runner 54.2s, one worker, no queue wait or failed cases.
+- Coverage includes legacy normalization, foreign-planet rejection, all existing
+  account pages, Menu/Rewards world switching/history/reload, desktop/mobile
+  navigation, selected-body links, reward claim/reload recovery, and Alliance
+  under beginner More. Renown CTA destination and initial viewport visibility
+  are checked at desktop and mobile sizes.
+- Desktop/mobile Rewards and beginner More screenshots were inspected; earlier
+  account-dropdown/mobile-menu captures were refreshed on the final routes.
+- Full frontend lint and formatting, Rust formatting, and diff checks passed.
+- Disposable browser bundle/server were cleaned by the existing runner. No
+  acceptance stack, database, or other chat's processes were changed. The broader
+  explicit acceptance suites were not run for the mechanical URL-example edits.
+- Final `npm run build` passed, including the full app TypeScript check and
+  production/prerender bundles. Changes remain local and unpublished.

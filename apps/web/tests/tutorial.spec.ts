@@ -504,7 +504,7 @@ for (const width of [1100, 390]) {
     await withFixtureResponse(page, tutorial, () => page.reload())
     await expect(job).toBeVisible()
     await withFixtureResponse(page, tutorial, () =>
-      page.goto(`/u/andromeda/briefing?body=${body.id}`),
+      page.goto(`/u/andromeda/b/${body.id}/briefing`),
     )
     await expect(page).toHaveURL(briefing)
     await withProgressionResponse(
@@ -543,7 +543,7 @@ for (const width of [1100, 390]) {
       ).not.toBeVisible()
       await menu.click()
     }
-    for (const name of ['Messages', 'Reports', 'Fleets', 'Facilities'])
+    for (const name of ['Messages', 'Alliance', 'Reports', 'Fleets', 'Facilities'])
       await expect(
         navigation.getByRole('link', { name, exact: true }),
       ).not.toBeVisible()
@@ -555,8 +555,15 @@ for (const width of [1100, 390]) {
       name: 'More navigation',
       exact: true,
     })
-    for (const name of ['Messages', 'Reports', 'Fleets', 'Facilities'])
+    for (const name of ['Messages', 'Alliance', 'Reports', 'Fleets', 'Facilities'])
       await expect(more.getByRole('link', { name, exact: true })).toBeVisible()
+    await expect(more.getByRole('link', { name: 'Alliance', exact: true })).toHaveAttribute(
+      'href',
+      `/u/andromeda/b/${body.id}/alliance`,
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/beginner-more-${width}x900.png`,
+    })
     await withFixtureResponse(
       page,
       (r) => r.url().endsWith('/social/query'),

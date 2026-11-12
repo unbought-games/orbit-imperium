@@ -87,7 +87,7 @@ for(const success of [true])test(`colonization ${success?'success links to a usa
   const request=route.request().postDataJSON()
   await route.fulfill({json:bound(request.request_id,{header:{id:id(81),kind,observed_at:1000,read:false,hidden:false},payload})})
  })
- await withReportResponse(page, id(81), () => page.goto(`/u/andromeda/reports/${id(81)}?body=${body.id}`))
+ await withReportResponse(page, id(81), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(81)}`))
  const report=page.getByRole('region',{name:'Report observation'})
  await expect(report).toContainText(success?'Colony established':'The position was occupied')
  for(const width of [320,390,768,1440]){
