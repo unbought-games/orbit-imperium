@@ -1877,3 +1877,35 @@ field (E0063 at the fixture initializer). This is an integration compilation
 error, before database test execution, not a flaky assertion. Add explicit None,
 matching this fixture's no-external-account-link configuration. No behavior or
 assertions were removed; retain this failed attempt with the final qualification.
+
+## November 12, 2026: canonical report URLs expose overbroad lunar mocks
+
+PR394 head d89dcf8d, CI run43289492445 attempt1, feature jobs131431839679 and
+131431839801 failed four expanded cases: both widths of `delivery reports retain
+lunar destination links at shared coordinates` and `shows planet and moon together
+and opens the creation notice and combat outcome`. Each failed in the report
+mock with null request_id, followed by aborted document navigation.
+
+The canonical body-path migration removed the old query suffix. The two mocks
+used `**/reports/<id>`, matching the HTML GET as well as the intended API POST.
+This is a fixture URL-boundary defect, not a game regression or infrastructure
+outage. File history and this ledger show no earlier failure repair for these
+scenarios; #378 added response-aware navigation as a coverage migration.
+
+One repair: constrain both mocks to `/api/v4/universes/*/reports/<id>` and use
+withReportResponse in the moon-creation loop so the navigation gate also requires
+the POST response. Keep all lunar identity, coordinate, report and layout checks.
+No sleeps, timeout changes, retries or weaker assertions. These cases consume
+this single fixture repair and retain their existing names.
+
+The report-mock audit found these two bare detail patterns. Other private report
+mocks are API-prefixed; report-sharing's bare `/reports/shared/<token>` handler is
+intentionally an HTML metadata fixture and stays separate from its API mock.
+Future private report fixtures must constrain the API path, not only a suffix
+that a page route can share. This originating lane owns the repair and exact-head
+CI follow-through; raw failed job logs and artifact IDs are retained with the
+publishing evidence.
+
+The four affected desktop/mobile cases passed locally after this repair (9.4s
+runner duration, one worker). The temporary fixture bundle/server were cleaned
+by the installed runner. Production code and visual captures are unchanged.

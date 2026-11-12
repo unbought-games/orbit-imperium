@@ -393,7 +393,7 @@ for (const width of [1440, 390]) {
     }) => {
       await fixture(page)
       const report = id(190)
-      await page.route(`**/reports/${report}`, async (route) => {
+      await page.route(`**/api/v4/universes/*/reports/${report}`, async (route) => {
         const request = route.request().postDataJSON()
         await route.fulfill({
           json: {
