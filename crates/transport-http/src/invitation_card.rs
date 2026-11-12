@@ -119,25 +119,29 @@ impl InvitationCard {
         );
         let emblem = self.emblem.as_ref().map_or(String::new(), |svg| {
             format!(
-                r#"<image href="{}" x="900" y="300" width="192" height="210"/>"#,
+                r#"<image href="{}" x="52" y="218" width="144" height="158"/>"#,
                 data(svg.as_bytes(), "image/svg+xml")
             )
         });
+        let identity_x = if self.emblem.is_some() { 224 } else { 52 };
+        let identity_width: f32 = if self.emblem.is_some() { 554. } else { 730. };
         let sender = bounded(&self.sender);
-        let sender_size = location_card::size(&sender, 66., 730., 0., 600, &options)?;
+        let sender_size = location_card::size(&sender, 66., identity_width, 0., 600, &options)?;
         let empire = bounded(&self.empire);
-        let empire_size = location_card::size(&empire, 26., 680., 0., 400, &options)?;
+        let empire_size =
+            location_card::size(&empire, 26., identity_width.min(680.), 0., 400, &options)?;
         let universe = format!("Join me in {}", bounded(&self.universe.name));
         let universe_size = location_card::size(&universe, 31., 720., 0., 600, &options)?;
         let sender = escape(&sender);
         let empire = escape(&empire);
         let universe = escape(&universe);
         let title = bounded(&self.title);
-        let title_size = location_card::size(&title, 19., 680., 0., 400, &options)?;
+        let title_size =
+            location_card::size(&title, 19., identity_width.min(680.), 0., 400, &options)?;
         let title = escape(&title);
         let speed = self.universe.speed;
         let svg = format!(
-            r##"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><defs><linearGradient id="shade"><stop stop-color="#03111c"/><stop offset=".62" stop-color="#03111c" stop-opacity=".9"/><stop offset="1" stop-color="#03111c" stop-opacity=".08"/></linearGradient></defs><rect width="1200" height="630" fill="#03111c"/><image href="{atmosphere}" width="1200" height="750"/><image href="{planet}" x="620" y="-130" width="840" height="840"/><rect width="1200" height="630" fill="url(#shade)"/><path d="M48 110H1152M48 540H1152" stroke="#cbb68d" stroke-opacity=".55"/><g font-family="IBM Plex Sans" fill="#edf4f7"><text x="52" y="72" font-size="26" letter-spacing="5" fill="#d9c398">ORBIT IMPERIUM</text><text x="52" y="174" font-size="16" letter-spacing="4" fill="#b8d9e8">YOUR PERSONAL INVITATION</text><text x="48" y="275" font-size="{sender_size}" font-weight="600">{sender}</text><text x="52" y="320" font-size="{title_size}" fill="#d9c398">{title}</text><text x="52" y="364" font-size="{empire_size}" fill="#b9ccd8">{empire}</text><text x="52" y="474" font-size="{universe_size}" font-weight="600">{universe}</text><text x="52" y="587" font-size="18" fill="#b8d9e8">{speed}× UNIVERSE · BUILD. EXPLORE. BELONG.</text></g>{emblem}</svg>"##
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><defs><linearGradient id="shade"><stop stop-color="#03111c"/><stop offset=".62" stop-color="#03111c" stop-opacity=".9"/><stop offset="1" stop-color="#03111c" stop-opacity=".08"/></linearGradient></defs><rect width="1200" height="630" fill="#03111c"/><image href="{atmosphere}" width="1200" height="750"/><image href="{planet}" x="620" y="-130" width="840" height="840"/><rect width="1200" height="630" fill="url(#shade)"/><path d="M48 110H1152M48 540H1152" stroke="#cbb68d" stroke-opacity=".55"/><g font-family="IBM Plex Sans" fill="#edf4f7"><text x="52" y="72" font-size="26" letter-spacing="5" fill="#d9c398">ORBIT IMPERIUM</text><text x="52" y="174" font-size="16" letter-spacing="4" fill="#b8d9e8">YOUR PERSONAL INVITATION</text><text x="{identity_x}" y="275" font-size="{sender_size}" font-weight="600">{sender}</text><text x="{identity_x}" y="320" font-size="{title_size}" fill="#d9c398">{title}</text><text x="{identity_x}" y="364" font-size="{empire_size}" fill="#b9ccd8">{empire}</text><text x="52" y="474" font-size="{universe_size}" font-weight="600">{universe}</text><text x="52" y="587" font-size="18" fill="#b8d9e8">{speed}× UNIVERSE · BUILD. EXPLORE. BELONG.</text></g>{emblem}</svg>"##
         );
         let tree = resvg::usvg::Tree::from_str(&svg, &options).map_err(|e| e.to_string())?;
         let mut pixels =
