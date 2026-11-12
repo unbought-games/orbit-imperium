@@ -120,14 +120,14 @@ async fn real_provider_commit_cutpoints_never_replay() {
         "{}?fixture_drop_response=1",
         fixture["token_endpoint"].as_str().unwrap()
     );
-    let http = &client;
-    let confidential = &config;
+    let http = client.clone();
+    let confidential = config.clone();
     let result = store
         .revalidate_oidc_for_test(
             &digests[0],
             issuer,
             &config.client_id,
-            |tokens| async move {
+            move |tokens| async move {
                 let response = http
                     .post(endpoint)
                     .basic_auth(&confidential.client_id, Some(&confidential.client_secret))
