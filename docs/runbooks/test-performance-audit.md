@@ -1699,3 +1699,32 @@ This batch is source-ready with formatting/diff checks only. Focused client,
 component and browser execution, screenshot spot checks, and CI verification are
 pending the coordinator's validation slot. Neither the previous local green run
 with optional captures nor an unchanged retry closes the known rewards test race.
+
+### Initial features shard 1: alliance catalog fixture contract
+
+The same run's job `130863238872` was canceled as superseded after 122 of its
+123 selected tests completed. The full log identifies missing test 36 as
+`alliance presentation previews unsaved edits and publishes them through the real
+editor`, not the mobile atlas case. Desktop atlas was test 123 and passed; mobile
+atlas was outside this shard. The last completed test alone was misleading.
+No failure artifact was uploaded for this canceled job. Its exact pending action
+was not captured, so cancellation remains incomplete validation rather than an
+assertion failure or proven runner incident.
+
+Source inspection nevertheless establishes a fixture contract defect introduced
+by this PR: the editor now requests `/api/alliance-presentation/catalog?alliance=…`,
+while both the recruitment fixture route and its response listener matched the
+old URL ending at `/catalog`. The route therefore misses the request, and the
+listener cannot complete. First explained repair: match the catalog pathname and
+verify the expected alliance query parameter in both places. Retain all preview,
+command, revision, public projection and content assertions. An audit found these
+were the only fixture route/listener callers of that endpoint. History points to
+PR #390 (`fba82df4`); no prior repair of this application journey was found in its
+history or ledger. The separately retired presentation component cases remain
+retired. No timeouts, retries, atlas changes or test deselection were added.
+
+Evidence: initial PR head `e3a22bee`, CI merge revision
+`bc4653ff4f749b639d2f83ab1b4bd805caea1844`, run attempt 1. Bundle preparation was
+8.210 s; browser runner started 23:42:12 UTC, last completion 23:45:20 UTC,
+cancellation 00:02:41 UTC. Validation of the repair belongs to the coordinator's
+serialized browser slot; collection-only inspection is not a passing test run.
