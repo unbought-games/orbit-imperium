@@ -31,16 +31,22 @@ export function ObjectiveTitle({ objective }: { objective: Objective }) {
 export function ObjectiveReward({
   reward,
   variant = 'card',
+  className,
 }: {
   reward: S['Resources']
   variant?: 'card' | 'inline'
+  className?: string
 }) {
   const resources = (['metal', 'crystal', 'deuterium'] as const).filter(
     (resource) => BigInt(reward[resource]) > 0n,
   )
   if (!resources.length) return null
   return (
-    <div className={styles.reward} data-variant={variant} aria-label="Reward">
+    <div
+      className={[styles.reward, className].filter(Boolean).join(' ')}
+      data-variant={variant}
+      aria-label="Reward"
+    >
       <span className={styles.rewardLabel}>Reward</span>
       <div className={styles.amounts}>
         {resources.map((resource) => (
