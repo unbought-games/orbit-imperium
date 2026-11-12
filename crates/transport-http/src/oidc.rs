@@ -74,7 +74,7 @@ pub(super) async fn configuration<S: IdentityStore>(
                     .is_some_and(|binding| binding.universe == universe.universe)
         })
         .collect();
-    Ok(([(header::CACHE_CONTROL, "no-store")], Json(serde_json::json!({"mode":if s.oidc.is_some(){"oidc"}else{"local"},"universes":universes,"client_id":s.oidc.as_ref().map(|r|r.configuration().client_id.as_str()),"hosted_universe":hosted_auth::universe(&s).map(|id| id.0),"accounts_url":s.oidc.as_ref().map(|r|r.configuration().issuer.trim_end_matches("/api/auth"))}))).into_response())
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(serde_json::json!({"mode":if s.oidc.is_some(){"oidc"}else{"local"},"universes":universes,"client_id":s.oidc.as_ref().map(|r|r.configuration().client_id.as_str()),"hosted_universe":hosted_auth::universe(&s).map(|id| id.0),"account_url":s.config.account_url,"accounts_url":s.oidc.as_ref().map(|r|r.configuration().issuer.trim_end_matches("/api/auth"))}))).into_response())
 }
 #[derive(Default, Deserialize)]
 pub(super) struct EntryQuery {

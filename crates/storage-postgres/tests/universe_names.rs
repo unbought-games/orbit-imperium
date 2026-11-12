@@ -124,6 +124,7 @@ async fn creation_update_and_sessions_share_unique_authoritative_names() {
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.example".into(),
             assets: "missing".into(),
             login_per_minute: 30,

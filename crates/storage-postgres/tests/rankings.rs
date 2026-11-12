@@ -121,6 +121,7 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
         .await
         .unwrap();
     let config = HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,

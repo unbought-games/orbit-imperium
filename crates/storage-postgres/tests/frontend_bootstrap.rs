@@ -30,6 +30,7 @@ async fn bootstrap_authentication_privacy_and_legacy_compatibility() {
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: assets.to_string_lossy().into_owned(),
             login_per_minute: 30,
@@ -207,6 +208,7 @@ async fn bootstrap_signup_and_expiry_keep_auth_outcomes_distinct() {
         .unwrap()
         .universe;
     let config = HttpConfig {
+        account_url: None,
         origin: "https://game.test".into(),
         assets: "missing".into(),
         login_per_minute: 30,

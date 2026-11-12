@@ -330,6 +330,7 @@ async fn bearer_http_scope_csrf_and_marked_cookie_enforcement() {
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             origin: "https://game.test".into(),
             assets: "missing".into(),
             signup: None,

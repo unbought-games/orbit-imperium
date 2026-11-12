@@ -1,3 +1,4 @@
+import { useOidcConfig } from '../client-model/use-oidc'
 import { GameShellFrame } from './game-shell-frame'
 import { ArrivalScene } from '../features/arrival/arrival-scene'
 import { TutorialExperienceAction } from '../features/tutorial/experience-action'
@@ -43,6 +44,7 @@ export function GameShell() {
 }
 
 function GameShellContent() {
+  const { state: accountConfig } = useOidcConfig()
   const { commands, view, model, logout, universeName } = useGameSession()
   const unreadReports = useStore(model.store, hasUnreadReports)
   const navigate = useNavigate()
@@ -239,6 +241,11 @@ function GameShellContent() {
       : pageTitles[page]
   return (
     <GameShellFrame
+      accountUrl={
+        accountConfig.status === 'ready'
+          ? accountConfig.config.account_url
+          : undefined
+      }
       view={view}
       body={body}
       page={page}

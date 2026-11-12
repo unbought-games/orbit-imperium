@@ -1,6 +1,22 @@
 use orbit_engine::{UniverseId, UniverseOptions, parse_speed};
 use uuid::Uuid;
 
+fn account_url(value: Option<String>) -> Result<Option<String>, String> {
+    let Some(value) = value.filter(|value| !value.trim().is_empty()) else {
+        return Ok(None);
+    };
+    let invalid = "ORBIT_ACCOUNT_URL must be an absolute HTTP(S) URL without credentials";
+    let url = reqwest::Url::parse(value.trim()).map_err(|_| invalid)?;
+    if !matches!(url.scheme(), "http" | "https")
+        || url.host_str().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        return Err(invalid.into());
+    }
+    Ok(Some(url.into()))
+}
+
 /// Validate an origin before using it for browser checks, links, or callbacks.
 fn browser_origin(origin: &str, allow_http: Option<&str>) -> Result<String, String> {
     let allow_http = match allow_http {
@@ -199,6 +215,7 @@ pub struct ServeConfig {
     pub asset_store: Option<orbit_storage_assets::AssetConfig>,
     pub cosmetic_catalog: Option<String>,
     pub cosmetic_policy: orbit_application::CosmeticPolicy,
+    pub account_url: Option<String>,
     pub profiles: Option<orbit_transport_http::AccountProfiles>,
     pub oidc: Option<unbought_auth::Configuration>,
     pub role: RuntimeRole,
@@ -438,6 +455,11 @@ impl ServeConfig {
             asset_store,
             cosmetic_catalog,
             cosmetic_policy,
+            account_url: if api {
+                account_url(get("ORBIT_ACCOUNT_URL"))?
+            } else {
+                None
+            },
             profiles,
             oidc,
             role,
@@ -528,6 +550,38 @@ impl SignupConfig {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn account_link_is_explicit_and_validated() {
+        assert_eq!(super::account_url(None).unwrap(), None);
+        assert_eq!(super::account_url(Some("  ".into())).unwrap(), None);
+        for value in [
+            "https://accounts.unbought.games/account",
+            "http://localhost:3100/account",
+        ] {
+            assert_eq!(
+                super::account_url(Some(value.into())).unwrap().as_deref(),
+                Some(value)
+            );
+        }
+        for value in [
+            "/account",
+            "javascript:alert(1)",
+            "https://user:password@accounts.test/account",
+        ] {
+            assert!(super::account_url(Some(value.into())).is_err());
+        }
+        let config = super::ServeConfig::parse(|key| match key {
+            "ORBIT_ALLOW_INSECURE_HTTP" => Some("1".into()),
+            "ORBIT_ACCOUNT_URL" => Some("https://accounts.unbought.games/account".into()),
+            _ => None,
+        })
+        .unwrap();
+        assert_eq!(
+            config.account_url.as_deref(),
+            Some("https://accounts.unbought.games/account")
+        );
+    }
+
     use super::*;
     #[test]
     fn defaults_enable_signup_and_invalid_settings_fail_closed() {

@@ -29,6 +29,7 @@ async fn negative_http_inputs_foreign_operations_and_hidden_revisions() {
     let app = router(
         store.clone(),
         HttpConfig {
+            account_url: None,
             signup: None,
             signup_per_minute: 5,
             legacy_signup_enabled: true,

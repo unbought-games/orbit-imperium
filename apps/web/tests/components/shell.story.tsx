@@ -146,11 +146,13 @@ function Shell({
   badges = false,
   initialPage = 'overview',
   hostile = false,
+  accountUrl,
 }: {
   bodies?: BoundView['bodies']
   badges?: boolean
   initialPage?: Page
   hostile?: boolean
+  accountUrl?: string
 }) {
   const [router] = useState(() => {
     function Sample() {
@@ -171,6 +173,7 @@ function Shell({
           }}
         >
           <GameShellFrame
+            accountUrl={accountUrl}
             view={view}
             body={bodies.find((b) => b.id === selected)}
             page={page}
@@ -265,4 +268,8 @@ export const ShellWideStocks = () => (
       },
     ]}
   />
+)
+
+export const ShellAccountLink = () => (
+  <Shell accountUrl="https://accounts.example/account" />
 )
