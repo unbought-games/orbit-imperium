@@ -28753,15 +28753,9 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "const": "accept_invitation"
+                    "const": "apply_invitation"
                   },
                   "code": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 200,
-                    "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
-                  },
-                  "preview_version": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200,
@@ -28770,8 +28764,7 @@
                 },
                 "required": [
                   "type",
-                  "code",
-                  "preview_version"
+                  "code"
                 ],
                 "additionalProperties": false
               },
@@ -29036,7 +29029,31 @@
             "const": 1
           },
           "result": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "invitation": {
+                "type": "string",
+                "enum": [
+                  "applied",
+                  "already_applied",
+                  "already_attributed"
+                ]
+              },
+              "code": {
+                "type": "string"
+              },
+              "game_id": {
+                "type": "string"
+              },
+              "game_name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
           },
           "owner": {
             "$ref": "#/components/schemas/CommunityOwner"

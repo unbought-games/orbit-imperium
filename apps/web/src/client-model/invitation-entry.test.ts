@@ -121,3 +121,28 @@ it('requires the Orbit game for personal and alliance invitation actions', () =>
       ).toThrow()
   }
 })
+
+it('applies a game invitation through one atomic action without preview consent input', () => {
+  const request = {
+    contract_version: 1,
+    request_id: 'operation',
+    action: { type: 'apply_invitation', code: 'inv_sample' },
+  }
+  expect(validate('CommunityActionRequest', request)).toEqual(request)
+  expect(() =>
+    validate('CommunityActionRequest', {
+      ...request,
+      action: { ...request.action, preview_version: 'obsolete' },
+    }),
+  ).toThrow()
+  expect(() =>
+    validate('CommunityActionRequest', {
+      ...request,
+      action: {
+        type: 'accept_invitation',
+        code: 'inv_sample',
+        preview_version: 'obsolete',
+      },
+    }),
+  ).toThrow()
+})

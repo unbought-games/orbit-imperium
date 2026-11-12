@@ -6,10 +6,9 @@ import {
   invitationContinuation,
 } from '../../client-model/invitation-entry'
 import { oidcLoginPath } from '../../client-model/use-oidc'
+import { rememberInvitation } from '../../client-model/community-invitation'
 import { PublicFrame } from '../public-frame'
-import { Button, ButtonLinkAnchor } from '../../ui/button'
-import { ConfirmationButton } from '../../ui/confirmation-button'
-import { LoadingRegion } from '../../ui/loading-region'
+import { ButtonLinkAnchor } from '../../ui/button'
 import { Heading, Text } from '../../ui/typography'
 import styles from './invitation-entry.module.css'
 
@@ -29,164 +28,55 @@ export function InvitationEntryPage({
       code={code}
       continuation={continuation}
       csrf={csrf}
-      sessionUnavailable={runtime.status === 'unavailable'}
     />
   )
 }
-
 function InvitationLanding({
   code,
   continuation,
   csrf,
-  sessionUnavailable,
 }: {
   code: string
   continuation?: string
   csrf?: string
-  sessionUnavailable: boolean
 }) {
-  const entry = useInvitationEntry(code, csrf)
-  const onward = invitationContinuation(continuation, entry.preview?.alliance)
-  const returnPath = invitationEntryPath(code, continuation)
+  const { preview } = useInvitationEntry(code, csrf)
+  const onward = invitationContinuation(continuation, preview?.alliance)
+  const returnPath = invitationEntryPath(code, onward) ?? '/'
   useEffect(() => {
     document.title = 'You’re invited · Orbit Imperium'
   }, [])
+  useEffect(() => {
+    if (!csrf) return
+    try {
+      rememberInvitation(localStorage, code)
+    } catch {
+      /* Play never depends on optional storage. */
+    }
+    // Native context survives in the return path. Neither preview nor attribution
+    // is a readiness gate for a player who is already signed in.
+    window.location.replace(onward)
+  }, [csrf, code, onward])
+  if (csrf) return <p role="status">Opening Orbit Imperium…</p>
   return (
     <PublicFrame>
-      <Heading level={1}>
-        {entry.accepted
-          ? 'Welcome aboard.'
-          : 'You’re invited to Orbit Imperium.'}
-      </Heading>
+      <Heading level={1}>Your galaxy awaits.</Heading>
       <Text>
-        Build your world, explore the galaxy and find your allies in a
-        persistent strategy universe.
+        Build your world, explore the galaxy and find your allies in Orbit
+        Imperium.
       </Text>
-      <LoadingRegion loading={entry.loading} label="Checking your invitation">
-        {entry.previewError && (
-          <div role="alert">
-            <p>{entry.previewError}</p>
-            <Button onClick={entry.retryPreview}>Check invitation again</Button>
-          </div>
-        )}
-        {entry.preview && (
-          <section
-            className={styles.attribution}
-            aria-label="Invitation attribution"
-          >
-            <h2>
-              {entry.accepted ? 'Invitation accepted' : 'Who receives credit'}
-            </h2>
-            <p>
-              {entry.preview.inviter_name
-                ? `Invited by ${entry.preview.inviter_name}.`
-                : 'This invitation has no personal inviter.'}
-            </p>
-            <p>
-              {entry.preview.alliance_name
-                ? `Alliance credit: ${entry.preview.alliance_name}.`
-                : 'No alliance receives credit.'}
-            </p>
-            {entry.preview.alliance_name && (
-              <p>
-                Accepting this invitation does not join the alliance. Its normal
-                admission rules still apply.
-              </p>
-            )}
-            {!csrf && (
-              <p>
-                Sign in or create your account to review the current attribution
-                before accepting. Opening this link does not accept it.
-              </p>
-            )}
-            {entry.error && <p role="alert">{entry.error}</p>}
-            {entry.preview.attribution_locked ? (
-              <div className={styles.actions}>
-                <p role="status">
-                  {entry.accepted
-                    ? 'Your invitation is accepted. You can continue into the game.'
-                    : 'You’ve already accepted another invitation. Your existing attribution stays in place.'}
-                </p>
-                <ButtonLinkAnchor href={onward}>
-                  {onward === '/'
-                    ? 'Continue to Orbit Imperium'
-                    : 'Continue to your alliance invitation'}
-                </ButtonLinkAnchor>
-              </div>
-            ) : sessionUnavailable ? (
-              <p role="alert">
-                Your sign-in could not be checked. Refresh this page before
-                continuing.
-              </p>
-            ) : csrf ? (
-              <>
-                <p>This attribution is fixed when you accept.</p>
-                {entry.pending ? (
-                  <Button
-                    disabled={entry.busy}
-                    onClick={() => void entry.accept()}
-                  >
-                    Retry acceptance
-                  </Button>
-                ) : (
-                  <ConfirmationButton
-                    dialogTitle="Accept this invitation?"
-                    confirmLabel="Accept invitation"
-                    confirmVariant="primary"
-                    cancelLabel="Keep reviewing"
-                    disabled={
-                      entry.busy ||
-                      entry.loading ||
-                      entry.preview.requires_game_check
-                    }
-                    review={
-                      <>
-                        <p>
-                          {entry.preview.inviter_name ??
-                            'Alliance-only invitation'}
-                          {entry.preview.alliance_name
-                            ? ` · ${entry.preview.alliance_name}`
-                            : ''}
-                        </p>
-                        <p>
-                          Your choice applies across Unbought Games and cannot
-                          be replaced by another invitation.
-                        </p>
-                      </>
-                    }
-                    onConfirm={() => void entry.accept()}
-                  >
-                    Accept this attribution
-                  </ConfirmationButton>
-                )}
-              </>
-            ) : (
-              returnPath && (
-                <div className={styles.actions}>
-                  <ButtonLinkAnchor
-                    href={oidcLoginPath(returnPath, false, true)}
-                  >
-                    Create your account
-                  </ButtonLinkAnchor>
-                  <ButtonLinkAnchor
-                    variant="secondary"
-                    href={oidcLoginPath(returnPath)}
-                  >
-                    Sign in
-                  </ButtonLinkAnchor>
-                </div>
-              )
-            )}
-          </section>
-        )}
-      </LoadingRegion>
-      {!entry.preview?.attribution_locked && (
+      {preview?.inviter_name && <p>Invited by {preview.inviter_name}.</p>}
+      {preview?.alliance_name && (
         <p>
-          <ButtonLinkAnchor variant="ghost" href={onward}>
-            Continue without accepting
-          </ButtonLinkAnchor>
+          Meet {preview.alliance_name}. Joining the alliance follows its normal
+          admission rules.
         </p>
       )}
+      <div className={styles.actions}>
+        <ButtonLinkAnchor href={oidcLoginPath(returnPath)}>
+          Play Orbit Imperium
+        </ButtonLinkAnchor>
+      </div>
     </PublicFrame>
   )
 }

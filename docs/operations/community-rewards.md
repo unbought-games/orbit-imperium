@@ -133,24 +133,28 @@ The full owner endpoint serves the authenticated rewards destination separately.
 
 ## Game invitations
 
-Registered game invitations enter Orbit at `/invite/<code>`. The public preview
-contains only proposed attribution and public game/alliance navigation metadata;
-opening it does not accept attribution or join an alliance. Sign-in and account
-creation use the existing identity flow with the exact local invitation return
-path. The invitation page resolves the current session separately from its public
-HTML, including for an account that has not enrolled in a universe yet.
+Registered game invitations enter Orbit at `/invite/<code>`. Anonymous visitors
+see the ordinary **Play Orbit Imperium** action, with optional inviter/alliance
+context. Authentication retains the exact local invitation return path through
+existing sign-in and account creation. Already signed-in players continue into
+play; neither a preview nor referral delivery is a game-readiness gate.
 
-Acceptance requires authenticated confirmation of the latest preview. A permission
-change requires another review. Confirmed attribution is read from the service on
-reload; an account with existing attribution cannot accept a replacement. Personal
-invitation creation and code review are available at `/invitations` and in Community
-rewards. Alliance sharing retains its native recruitment URL and reward code, then
-returns to that recruitment context after explicit review. Canonical alliance
-invitation links derive the existing public alliance page from public identifiers;
-normal enrollment and admission rules still apply.
+An optional authenticated entry coordinator applies the pending invitation with
+`apply_invitation { code }`. It persists a stable operation identity before
+sending, binds it to the acting account, and keeps it through navigation or
+transient service failures. Success or terminal invalid/self/ineligible/already
+attributed responses clear the pending intent. Authentication recovery, rate
+limits and outages retain it with bounded retries. Existing attribution is never
+replaced; the service applies current permissions and eligibility atomically.
+There is no separate referral acceptance button, dialog or preview-token check.
 
-The service credential scopes preview, creation and acceptance to this game. Every
-new invitation includes its registered game ID. Canonical links come from the
-registered origin, and Orbit rejects mismatched origins/games rather than using
-browser-provided redirect destinations. No new database migration is needed for
-this entry flow.
+Personal invitation creation is available at `/invitations` and in Community
+rewards. Alliance sharing retains its native recruitment URL and reward code.
+Known alliance context is carried through normal entry; optional public preview
+IDs may supply a continuation for anonymous canonical links. Normal enrollment
+and alliance admission still apply independently of referral credit.
+
+The service credential scopes preview, creation and application to this game.
+Every new invitation includes its registered game ID. Canonical links come from
+the registered origin; browser-provided external destinations are rejected. No
+new database migration is needed for this entry flow.

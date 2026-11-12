@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, binding } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import {
+  withFixtureResponse,
+  withFixtureResponseStatus,
+} from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { Page } from '@playwright/test'
 
@@ -20,7 +23,7 @@ const previewResponse = (response: import('@playwright/test').Response) =>
 async function fixture(
   page: Page,
   authenticated: boolean,
-  existingInvitation = true,
+  unavailable = false,
 ) {
   await installGameFixture(page, { protocol: 4 })
   await page.route('**/api/v1/bootstrap', (route) =>
@@ -54,20 +57,14 @@ async function fixture(
       },
     }),
   )
-  let previewVersion = 'v1'
-  let accepted = false
+  let hasInvitation = false
   const actions: {
     request_id: string
-    action: {
-      type: string
-      code?: string
-      preview_version?: string
-      game_id?: string
-    }
+    action: { type: string; code?: string; game_id?: string }
   }[] = []
   const owner = (origin: string) => ({
     ...ownerFixture,
-    invitations: existingInvitation
+    invitations: hasInvitation
       ? [
           {
             ...ownerFixture.invitations[0],
@@ -87,36 +84,34 @@ async function fixture(
     route.fulfill({ json: owner(new URL(route.request().url()).origin) }),
   )
   await page.route('**/api/v1/rewards/invitation-preview?*', (route) =>
-    route.fulfill({
-      json: {
-        code,
-        kind: previewVersion === 'v1' ? 'combined' : 'personal',
-        inviter_name: 'Fixture commander',
-        alliance_name: previewVersion === 'v1' ? 'Fixture alliance' : null,
-        alliance:
-          previewVersion === 'v1'
-            ? { universe_id: binding.universe, alliance_id: binding.player }
-            : null,
-        game_id: 'orbit-imperium',
-        game_name: 'Orbit Imperium',
-        url: `${new URL(route.request().url()).origin}/invite/${code}`,
-        requires_game_check: !authenticated,
-        preview_version: previewVersion,
-        accepted,
-        attribution_locked: accepted,
-      },
-    }),
+    route.fulfill(
+      unavailable
+        ? { status: 503, json: { code: 'Unavailable' } }
+        : {
+            json: {
+              code,
+              kind: 'personal',
+              inviter_name: 'Fixture commander',
+              alliance_name: null,
+              alliance: null,
+              game_id: 'orbit-imperium',
+              game_name: 'Orbit Imperium',
+              url: `${new URL(route.request().url()).origin}/invite/${code}`,
+              requires_game_check: false,
+              preview_version: 'v1',
+              accepted: false,
+              attribution_locked: false,
+            },
+          },
+    ),
   )
   await page.route('**/api/v1/rewards/actions', (route) => {
     const body = route.request().postDataJSON()
     actions.push(body)
-    if (body.action.type === 'create_invitation') existingInvitation = true
     expect(route.request().headers()['x-csrf-token']).toBe('invitation-csrf')
-    if (actions.length === 1 && body.action.type === 'accept_invitation') {
-      previewVersion = 'v2'
-      return route.fulfill({ status: 409, json: { code: 'StalePreview' } })
-    }
-    if (body.action.type === 'accept_invitation') accepted = true
+    if (unavailable)
+      return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+    if (body.action.type === 'create_invitation') hasInvitation = true
     return route.fulfill({
       json: {
         contract_version: 1,
@@ -128,7 +123,7 @@ async function fixture(
                 game_name: 'Orbit Imperium',
                 url: `${new URL(route.request().url()).origin}/invite/${code}`,
               }
-            : { accepted: true },
+            : { invitation: 'applied' },
         owner: owner(new URL(route.request().url()).origin),
       },
     })
@@ -137,78 +132,7 @@ async function fixture(
 }
 
 for (const width of [1440, 390]) {
-  test(`an existing attribution suppresses acceptance on both game entry points at ${width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const actions = await fixture(page, true)
-    await page.route('**/api/v1/rewards/invitation-preview?*', (route) =>
-      route.fulfill({
-        json: {
-          code,
-          kind: 'personal',
-          inviter_name: 'Fixture commander',
-          alliance_name: null,
-          alliance: null,
-          game_id: 'orbit-imperium',
-          game_name: 'Orbit Imperium',
-          url: `${new URL(route.request().url()).origin}/invite/${code}`,
-          requires_game_check: false,
-          preview_version: 'locked',
-          accepted: false,
-          attribution_locked: true,
-        },
-      }),
-    )
-    await withFixtureResponse(page, previewResponse, () =>
-      page.goto(`/invite/${code}`),
-    )
-    await expect(
-      page
-        .getByRole('status')
-        .filter({ hasText: 'already accepted another invitation' }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', {
-        name: 'Accept this attribution',
-        exact: true,
-      }),
-    ).toHaveCount(0)
-    await diagnosticScreenshot(page, {
-      path: `test-results/invitation-locked-${width}x1000.png`,
-      fullPage: true,
-    })
-    await withFixtureResponse(
-      page,
-      (r) => new URL(r.url()).pathname === '/api/v1/rewards',
-      () => page.goto('/invitations'),
-    )
-    await page
-      .getByRole('textbox', { name: 'Invitation code', exact: true })
-      .fill(code)
-    await withFixtureResponse(page, previewResponse, () =>
-      page
-        .getByRole('button', { name: 'Preview invitation', exact: true })
-        .click(),
-    )
-    await expect(
-      page
-        .getByRole('status')
-        .filter({ hasText: 'already accepted another invitation' }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', {
-        name: 'Accept this attribution',
-        exact: true,
-      }),
-    ).toHaveCount(0)
-    expect(actions).toEqual([])
-    await diagnosticScreenshot(page, {
-      path: `test-results/invitation-code-locked-${width}x1000.png`,
-      fullPage: true,
-    })
-  })
-  test(`game invitation offers exact signup/sign-in continuation without accepting at ${width}px`, async ({
+  test(`invitation entry has one normal Play action and preserves its auth return at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })
@@ -216,28 +140,14 @@ for (const width of [1440, 390]) {
     await withFixtureResponse(page, previewResponse, () =>
       page.goto(`/invite/${code}`),
     )
-    await expect(
-      page.getByRole('heading', { name: 'You’re invited to Orbit Imperium.' }),
-    ).toBeVisible()
-    await expect(
-      page.getByText('Alliance credit: Fixture alliance.'),
-    ).toBeVisible()
-    for (const [name, signup] of [
-      ['Create your account', 'true'],
-      ['Sign in', null],
-    ] as const) {
-      const href = await page
-        .getByRole('link', { name, exact: true })
-        .getAttribute('href')
-      const url = new URL(href!, page.url())
-      expect(url.pathname).toBe('/api/auth/login')
-      expect(url.searchParams.get('return_to')).toBe(`/invite/${code}`)
-      expect(url.searchParams.get('signup')).toBe(signup)
-    }
-    await withFixtureResponse(page, previewResponse, () => page.reload())
-    await expect(
-      page.getByRole('button', { name: 'Accept this attribution' }),
-    ).toHaveCount(0)
+    await expect(page.getByText('Invited by Fixture commander.')).toBeVisible()
+    const href = await page
+      .getByRole('link', { name: 'Play Orbit Imperium', exact: true })
+      .getAttribute('href')
+    const url = new URL(href!, page.url())
+    expect(url.pathname).toBe('/api/auth/login')
+    expect(url.searchParams.get('return_to')).toBe(`/invite/${code}`)
+    await expect(page.getByRole('button', { name: /accept/i })).toHaveCount(0)
     expect(actions).toEqual([])
     expect(
       await page.evaluate(
@@ -249,111 +159,78 @@ for (const width of [1440, 390]) {
       fullPage: true,
     })
   })
-  // This boundary starts after a verified login. Real OAuth/signup is explicit acceptance,
-  // not a recreated multi-document mocked authentication journey.
-  test(`signed-in invitee without an empire reviews changed attribution before enrollment at ${width}px`, async ({
+  test(`unavailable invitation context leaves Play available at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })
-    const actions = await fixture(page, true)
-    await withFixtureResponse(page, previewResponse, () =>
-      page.goto(`/invite/${code}`),
+    const actions = await fixture(page, false, true)
+    await withFixtureResponseStatus(
+      page,
+      previewResponse,
+      () => page.goto(`/invite/${code}`),
+      503,
     )
     await expect(
-      page.getByRole('heading', { name: 'Choose your universe' }),
+      page.getByRole('link', { name: 'Play Orbit Imperium', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: /accept|retry/i }),
     ).toHaveCount(0)
     expect(actions).toEqual([])
     await diagnosticScreenshot(page, {
-      path: `test-results/invitation-review-${width}x1000.png`,
+      path: `test-results/invitation-unavailable-${width}x1000.png`,
       fullPage: true,
     })
-    await page
-      .getByRole('button', { name: 'Accept this attribution', exact: true })
-      .click()
-    await withFixtureResponse(page, previewResponse, () =>
-      page
-        .getByRole('button', { name: 'Accept invitation', exact: true })
-        .click(),
-    )
-    await expect(page.getByText('No alliance receives credit.')).toBeVisible()
-    expect(actions).toHaveLength(1)
-    await page
-      .getByRole('button', { name: 'Accept this attribution', exact: true })
-      .click()
-    await withFixtureResponse(page, previewResponse, () =>
-      page
-        .getByRole('button', { name: 'Accept invitation', exact: true })
-        .click(),
-    )
-    await expect(
-      page.getByRole('heading', { name: 'Welcome aboard.' }),
-    ).toBeVisible()
-    await withFixtureResponse(page, previewResponse, () => page.reload())
-    await expect(
-      page.getByRole('heading', { name: 'Welcome aboard.' }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', {
-        name: 'Accept this attribution',
-        exact: true,
-      }),
-    ).toHaveCount(0)
-    expect(actions.map((a) => a.action.preview_version)).toEqual(['v1', 'v2'])
-    expect(actions[1].request_id).not.toBe(actions[0].request_id)
-    await diagnosticScreenshot(page, {
-      path: `test-results/invitation-accepted-${width}x1000.png`,
-      fullPage: true,
-    })
-    await withFixtureResponse(
-      page,
-      (r) => new URL(r.url()).pathname === '/api/auth/config',
-      () =>
-        page
-          .getByRole('link', {
-            name: 'Continue to Orbit Imperium',
-            exact: true,
-          })
-          .click(),
-    )
-    await expect(
-      page.getByRole('heading', { name: 'Choose your universe' }),
-    ).toBeVisible()
   })
-  test(`game invitation management works before universe enrollment at ${width}px`, async ({
+  test(`game invitation management creates a game link without a referral acceptance UI at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 })
-    const actions = await fixture(page, true, false)
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async () => {
+            throw Error('fixture clipboard denied')
+          },
+        },
+      }),
+    )
+    const actions = await fixture(page, true)
     await withFixtureResponse(
       page,
       (r) => new URL(r.url()).pathname === '/api/v1/rewards',
       () => page.goto('/invitations'),
     )
+    await page
+      .getByRole('button', { name: 'Copy invite link', exact: true })
+      .click()
     await expect(
-      page.getByRole('heading', { name: 'Invite friends to Orbit Imperium' }),
+      page.getByRole('button', { name: 'Copy invite link', exact: true }),
+    ).toBeEnabled()
+    const link = page.getByRole('textbox', {
+      name: 'Invitation link',
+      exact: true,
+    })
+    await expect(link).toHaveValue(new URL(`/invite/${code}`, page.url()).href)
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Select and copy the invitation link above.' }),
     ).toBeVisible()
-    await withFixtureResponse(
-      page,
-      (r) => new URL(r.url()).pathname === '/api/v1/rewards/actions',
-      () =>
-        page
-          .getByRole('button', {
-            name: 'Create personal invitation',
-            exact: true,
-          })
-          .click(),
-    )
+    await link.focus()
+    expect(
+      await link.evaluate(
+        (input: HTMLInputElement) =>
+          input.selectionEnd! - input.selectionStart!,
+      ),
+    ).toBe((await link.inputValue()).length)
     expect(actions[0].action).toEqual({
       type: 'create_invitation',
       kind: 'personal',
       game_id: 'orbit-imperium',
     })
-    await expect(
-      page.getByRole('button', { name: 'Copy link', exact: true }),
-    ).toBeEnabled()
-    await expect(
-      page.getByRole('heading', { name: 'Choose your universe' }),
-    ).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /accept/i })).toHaveCount(0)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -365,3 +242,23 @@ for (const width of [1440, 390]) {
     })
   })
 }
+// The real OAuth signup chain remains explicit acceptance. This fixture starts
+// with its resulting authenticated account and verifies no invitation interstitial.
+test('authenticated entry reaches normal enrollment despite rewards being unavailable', async ({
+  page,
+}) => {
+  await fixture(page, true, true)
+  const dispatched = page.waitForRequest(
+    (request) => new URL(request.url()).pathname === '/api/v1/rewards/actions',
+  )
+  await withFixtureResponse(
+    page,
+    (r) => new URL(r.url()).pathname === '/api/auth/config',
+    () => page.goto(`/invite/${code}`),
+  )
+  await expect(
+    page.getByRole('heading', { name: 'Choose your universe' }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: /accept/i })).toHaveCount(0)
+  expect((await dispatched).postDataJSON().action.code).toBe(code)
+})

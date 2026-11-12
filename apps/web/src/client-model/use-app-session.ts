@@ -1,4 +1,5 @@
 import { recruitmentEntry } from './recruitment'
+import { useInvitationDelivery } from './use-invitation-delivery'
 import { startSessionActivity } from '../adapters/session-activity'
 import { http, HttpError } from '../adapters/http'
 import { useEffect, useRef, type FormEvent } from 'react'
@@ -10,6 +11,7 @@ import { useCommands } from './use-commands'
 export function useAppSession() {
   const controller = useRuntimeController(),
     { runtime, busy, message } = useStore(controller.store)
+  useInvitationDelivery(runtime)
   const errorRef = useRef<HTMLParagraphElement>(null),
     navigate = useNavigate()
   const commands = useCommands(

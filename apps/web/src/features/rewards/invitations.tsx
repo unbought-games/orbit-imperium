@@ -1,16 +1,16 @@
-import {
-  rememberedInvitation,
-  clearRememberedInvitation,
-} from '../../client-model/community-invitation'
+import { rememberedInvitation } from '../../client-model/community-invitation'
 import { useState } from 'react'
-import { invitationShareUrl } from '../../client-model/invitation-entry'
-import type { CommunityInvitationPreview } from '../../adapters/community-rewards'
 import {
-  useCommunityRewards,
-  useOptionalCommunityRewards,
-} from '../../shell/community-rewards-context'
-import { Button, ButtonLinkAnchor } from '../../ui/button'
-import { ConfirmationButton } from '../../ui/confirmation-button'
+  copyGameInvitation,
+  invitationMatches,
+  type InvitationShareStatus,
+} from '../../client-model/invitation-sharing'
+import {
+  invitationShareUrl,
+  invitationEntryPath,
+} from '../../client-model/invitation-entry'
+import { useOptionalCommunityRewards } from '../../shell/community-rewards-context'
+import { Button } from '../../ui/button'
 import { Field, Input } from '../../ui/form'
 import styles from './rewards.module.css'
 export function InvitationLinks({
@@ -25,7 +25,7 @@ export function InvitationLinks({
   entryPath?: string
 }) {
   const rewards = useOptionalCommunityRewards()
-  const [copied, setCopied] = useState('')
+  const [shared, setShared] = useState<InvitationShareStatus>()
   if (!rewards?.visible || !rewards.owner) return null
   const { owner, controller, busy } = rewards
   const kinds = alliance
@@ -36,11 +36,8 @@ export function InvitationLinks({
   return (
     <div className={styles.inviteLinks}>
       {kinds.map((kind) => {
-        const invitations = owner.invitations.filter(
-          (i) =>
-            i.kind === kind &&
-            i.game_id === 'orbit-imperium' &&
-            (!alliance || i.alliance?.alliance_id === alliance.alliance_id),
+        const invitations = owner.invitations.filter((i) =>
+          invitationMatches(i, kind, alliance),
         )
         const title =
           kind === 'personal'
@@ -55,7 +52,7 @@ export function InvitationLinks({
               {kind === 'personal'
                 ? 'Personal credit only. Your alliance is not added.'
                 : kind === 'combined'
-                  ? 'Credit goes to you and this alliance. Recruitment permission is checked again when your friend accepts.'
+                  ? 'Credit goes to you and this alliance. Recruitment permission is checked again when your friend starts playing.'
                   : 'Alliance credit only. No member receives personal referral credit.'}
             </p>
             {kind === 'alliance_public' && !publicEnabled ? (
@@ -68,15 +65,17 @@ export function InvitationLinks({
                 variant="secondary"
                 disabled={busy || !owner.capabilities.invite}
                 onClick={() =>
-                  void controller.act({
-                    type: 'create_invitation',
+                  void copyGameInvitation({
                     kind,
-                    game_id: 'orbit-imperium',
-                    ...(alliance ? { alliance } : {}),
-                  })
+                    alliance,
+                    origin: location.origin,
+                    entryPath,
+                    controller,
+                    copy: (url) => navigator.clipboard.writeText(url),
+                  }).then(setShared)
                 }
               >
-                Create {title.toLowerCase()}
+                Copy invite link
               </Button>
             ) : (
               invitations.map((invitation) => {
@@ -88,10 +87,10 @@ export function InvitationLinks({
                 return (
                   <div className={styles.copyRow} key={invitation.code}>
                     <label>
-                      Invite code
+                      Invitation link
                       <input
                         readOnly
-                        value={invitation.code}
+                        value={url ?? ''}
                         onFocus={(event) => event.currentTarget.select()}
                       />
                     </label>
@@ -99,13 +98,21 @@ export function InvitationLinks({
                       variant="secondary"
                       disabled={!url}
                       onClick={() =>
-                        void navigator.clipboard
-                          .writeText(url!)
-                          .then(() => setCopied(invitation.code))
-                          .catch(() => setCopied('Select and copy the code.'))
+                        void copyGameInvitation({
+                          existing: invitation,
+                          kind,
+                          alliance,
+                          origin: location.origin,
+                          entryPath,
+                          controller,
+                          copy: (url) => navigator.clipboard.writeText(url),
+                        }).then(setShared)
                       }
                     >
-                      {copied === invitation.code ? 'Copied' : 'Copy link'}
+                      {shared?.code === invitation.code &&
+                      shared.status === 'copied'
+                        ? 'Copied'
+                        : 'Copy invite link'}
                     </Button>
                     {!url && (
                       <p>This invitation is unavailable on this server.</p>
@@ -118,144 +125,46 @@ export function InvitationLinks({
         )
       })}
       <p role="status">
-        {copied === 'Select and copy the code.' ? copied : ''}
+        {shared?.status === 'select'
+          ? 'Select and copy the invitation link above.'
+          : shared?.status === 'unavailable'
+            ? 'This invitation is unavailable on this server.'
+            : ''}
       </p>
     </div>
   )
 }
 export function InvitationCode() {
-  const { controller, busy } = useCommunityRewards()
   const [code, setCode] = useState(() => {
-      try {
-        return rememberedInvitation(localStorage)
-      } catch {
-        return ''
-      }
-    }),
-    [preview, setPreview] = useState<CommunityInvitationPreview | null>(null),
-    [error, setError] = useState(''),
-    [loading, setLoading] = useState(false)
-  async function inspect() {
-    setLoading(true)
-    setError('')
-    setPreview(null)
     try {
-      const next = await controller.api.invitationPreview(
-        code.trim(),
-        new AbortController().signal,
-      )
-      setPreview(next)
-      if (next.attribution_locked) {
-        try {
-          clearRememberedInvitation(localStorage, next.code)
-        } catch {
-          /* Optional recall only. */
-        }
-      }
+      return rememberedInvitation(localStorage)
     } catch {
-      setError(
-        'This invitation could not be checked. Confirm the code and try again.',
-      )
-    } finally {
-      setLoading(false)
+      return ''
     }
-  }
-  async function accept() {
-    if (!preview || preview.attribution_locked) return
-    const result = await controller.act({
-      type: 'accept_invitation',
-      code: preview.code,
-      preview_version: preview.preview_version,
-    })
-    if (result) {
-      try {
-        clearRememberedInvitation(localStorage, preview.code)
-      } catch {
-        /* Storage is optional. */
-      }
-      setPreview(null)
-      setCode('')
-      setError('Invitation accepted.')
-    } else {
-      await inspect()
-    }
-  }
+  })
+  const path = invitationEntryPath(code.trim())
   return (
     <section aria-label="Enter invitation code">
-      <h3>Have an invitation?</h3>
-      <p>
-        Review who receives credit before accepting. Joining an alliance still
-        follows its normal admission rules.
-      </p>
+      <h3>Have an invitation code?</h3>
       <form
         className={styles.copyRow}
         onSubmit={(event) => {
           event.preventDefault()
-          void inspect()
+          if (path) window.location.assign(path)
         }}
       >
         <Field>
           Invitation code
           <Input
             value={code}
-            disabled={loading || busy}
             maxLength={200}
-            onChange={(event) => {
-              setCode(event.target.value)
-              setPreview(null)
-            }}
+            onChange={(event) => setCode(event.target.value)}
           />
         </Field>
-        <Button type="submit" disabled={!code.trim() || loading || busy}>
-          {loading ? 'Checking…' : 'Preview invitation'}
+        <Button type="submit" disabled={!path}>
+          Play Orbit Imperium
         </Button>
       </form>
-      {error && <p role="status">{error}</p>}
-      {preview && (
-        <div className={styles.invitationPreview}>
-          <h4>Proposed credit</h4>
-          <p>
-            {preview.inviter_name
-              ? `Personal inviter: ${preview.inviter_name}`
-              : 'No personal inviter.'}
-          </p>
-          <p>
-            {preview.alliance_name
-              ? `Sponsoring alliance: ${preview.alliance_name}`
-              : 'No sponsoring alliance.'}
-          </p>
-          {preview.attribution_locked ? (
-            <>
-              <p role="status">
-                {preview.accepted
-                  ? 'You’ve already accepted this invitation.'
-                  : 'You’ve already accepted another invitation. Your existing attribution stays in place.'}
-              </p>
-              <ButtonLinkAnchor href="/">Continue playing</ButtonLinkAnchor>
-            </>
-          ) : (
-            <ConfirmationButton
-              dialogTitle="Accept this invitation?"
-              confirmLabel="Accept invitation"
-              confirmVariant="primary"
-              cancelLabel="Go back"
-              disabled={busy}
-              review={
-                <>
-                  <p>
-                    {preview.inviter_name ?? 'Alliance-only invitation'}
-                    {preview.alliance_name ? ` · ${preview.alliance_name}` : ''}
-                  </p>
-                  <p>This attribution is fixed when accepted.</p>
-                </>
-              }
-              onConfirm={() => void accept()}
-            >
-              Accept this attribution
-            </ConfirmationButton>
-          )}
-        </div>
-      )}
     </section>
   )
 }

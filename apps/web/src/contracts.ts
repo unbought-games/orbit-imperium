@@ -10782,9 +10782,8 @@ export interface components {
                 offer_version: string;
             } | {
                 /** @constant */
-                type: "accept_invitation";
+                type: "apply_invitation";
                 code: string;
-                preview_version: string;
             } | {
                 /** @constant */
                 type: "create_invitation";
@@ -10839,7 +10838,17 @@ export interface components {
         CommunityActionResponse: {
             /** @constant */
             contract_version: 1;
-            result: Record<string, never>;
+            result: {
+                /** @enum {string} */
+                invitation?: "applied" | "already_applied" | "already_attributed";
+                code?: string;
+                game_id?: string;
+                game_name?: string;
+                /** Format: uri */
+                url?: string;
+            } & {
+                [key: string]: unknown;
+            };
             owner: components["schemas"]["CommunityOwner"];
         };
         CommunityStatus: components["schemas"]["CommunityOwner"] | {

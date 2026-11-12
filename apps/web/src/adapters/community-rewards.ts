@@ -25,12 +25,14 @@ export function communityRewardsApi(csrf: string, send: typeof fetch = fetch) {
     schema: string,
     signal: AbortSignal,
     body?: CommunityActionRequest,
+    keepalive = false,
   ): Promise<T> {
     const response = await send(path, {
       method: body ? 'POST' : 'GET',
       credentials: 'same-origin',
       cache: 'no-store',
       signal: AbortSignal.any([signal, AbortSignal.timeout(12_000)]),
+      keepalive,
       headers: {
         'content-type': 'application/json',
         ...(body ? { 'x-csrf-token': csrf } : {}),
@@ -62,12 +64,17 @@ export function communityRewardsApi(csrf: string, send: typeof fetch = fetch) {
         signal,
       ),
     // Keep the same request ID for a retry; a new selection gets a new ID.
-    act: (request: CommunityActionRequest, signal: AbortSignal) =>
+    act: (
+      request: CommunityActionRequest,
+      signal: AbortSignal,
+      keepalive = false,
+    ) =>
       call<CommunityActionResponse>(
         '/api/v1/rewards/actions',
         'CommunityActionResponse',
         signal,
         request,
+        keepalive,
       ),
   }
 }

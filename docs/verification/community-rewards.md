@@ -99,26 +99,28 @@ The earlier source-only checkpoints above were subsequently qualified at
 unit, PostgreSQL and browser jobs. The composition correction and static SVG
 stroke join support were included. No merge or deployment occurred.
 
-The new invitation entry work supersedes that qualification and is source-only:
+The new frictionless invitation entry work supersedes that qualification and is
+source-only. An earlier, unexecuted confirmation UI checkpoint was replaced after
+the requested behavior changed; its confirmation cases are obsolete coverage,
+not failed tests or renamed repairs.
 
-- The public `/invite/<code>` page resolves the current session even though public
-  HTML embeds anonymous bootstrap. Authenticated accounts without a universe can
-  review/accept before normal enrollment. Signup/sign-in retain the exact local
-  invitation path through the existing OAuth transaction; no automatic attribution
-  or alliance admission is introduced.
-- Canonical links are game-scoped. Native alliance recruitment URLs and their
-  reward code remain intact; canonical alliance entries use only public IDs for
-  onward navigation. Unsafe external or malformed continuations are discarded.
-- Confirmation state comes from `accepted` and `attribution_locked` service fields,
-  including after reload. Pending local code recall is cleared after confirmed
-  attribution. A changed proposal needs a new confirmation.
-- Auth return/URL policy and server projection have deterministic coverage.
-  Browser cases cover public entry links, no-membership review and stale-preview
-  reconfirmation, reload after acceptance, already-fixed attribution, and personal
-  invitation creation. These are short game boundaries; the previously retired
-  multi-document mocked authentication journey is not recreated. Actual new-user
-  OAuth/signup and onboarding continuation remain explicit acceptance work.
+- Public `/invite/<code>` resolves the current session despite anonymous embedded
+  HTML. Anonymous users have one normal Play action; signed-in users proceed
+  without waiting for optional preview or referral delivery. OAuth retains the
+  code through the existing verified transaction. No alliance admission is implied.
+- Canonical links remain game-scoped. Native alliance URLs and reward codes remain
+  intact; safe known continuation paths survive authentication. Optional context
+  can never make an invalid or unavailable invitation a game entry blocker.
+- The entry coordinator persists one account-bound operation before dispatch,
+  coalesces concurrent attempts, throttles/retries transient failure, clears
+  terminal rejection, and ignores expired intent. Its request is independent of
+  the game readiness state and can finish during ordinary navigation.
+- Deterministic tests cover auth return safety, anonymous HTML versus fresh session,
+  game/origin binding, public projection, retry identity across documents, account
+  isolation, terminal/transient dispositions and expiry. Short browser cases cover
+  the Play link, optional-context failure, automatic authenticated entry and
+  in-game link creation. They do not recreate the retired mocked OAuth journey.
 
-The follow-up requires focused tests, full static/build checks, desktop/mobile
-captures, new artifacts, exact-revision CI and real-service acceptance. Source
-formatting and generated contracts alone do not establish those outcomes.
+Focused tests, full static/build checks, desktop/mobile captures, new artifacts,
+exact-revision CI and real-service signup/onboarding acceptance remain required.
+Source formatting and generated contracts alone do not establish those outcomes.

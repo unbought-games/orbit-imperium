@@ -31,8 +31,8 @@ function InvitationManagement() {
     <PublicFrame>
       <Heading level={1}>Invite friends to Orbit Imperium</Heading>
       <Text>
-        Share your invitation to the galaxy. Your friend reviews who receives
-        credit before accepting.
+        Share your invitation to the galaxy. Your friend follows the link to
+        start playing.
       </Text>
       {error && <p role="alert">{error}</p>}
       {pending && (
