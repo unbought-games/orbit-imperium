@@ -15,10 +15,12 @@ import { Field, Input } from '../../ui/form'
 import styles from './rewards.module.css'
 export function InvitationLinks({
   alliance,
+  universe = alliance?.universe_id,
   publicOnly = false,
   publicEnabled = true,
   entryPath,
 }: {
+  universe?: string
   alliance?: { universe_id: string; epoch_id: string; alliance_id: string }
   publicOnly?: boolean
   publicEnabled?: boolean
@@ -37,7 +39,7 @@ export function InvitationLinks({
     <div className={styles.inviteLinks}>
       {kinds.map((kind) => {
         const invitations = owner.invitations.filter((i) =>
-          invitationMatches(i, kind, alliance),
+          invitationMatches(i, kind, alliance, universe),
         )
         const title =
           kind === 'personal'
@@ -63,10 +65,11 @@ export function InvitationLinks({
             ) : invitations.length === 0 ? (
               <Button
                 variant="secondary"
-                disabled={busy || !owner.capabilities.invite}
+                disabled={busy || !universe || !owner.capabilities.invite}
                 onClick={() =>
                   void copyGameInvitation({
                     kind,
+                    universe: universe!,
                     alliance,
                     origin: location.origin,
                     entryPath,
@@ -101,6 +104,7 @@ export function InvitationLinks({
                         void copyGameInvitation({
                           existing: invitation,
                           kind,
+                          universe: universe!,
                           alliance,
                           origin: location.origin,
                           entryPath,

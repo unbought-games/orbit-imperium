@@ -90,20 +90,21 @@ impl PgStore {
         request: Registration,
         existing: Option<AccountId>,
     ) -> Result<AuthenticatedSession, StoreError> {
-        self.enroll_inner(request, existing, None).await
+        self.enroll_inner(request, existing, None, None).await
     }
     pub(crate) async fn enroll_machine(
         &self,
         request: Registration,
         sleep: u16,
     ) -> Result<AuthenticatedSession, StoreError> {
-        self.enroll_inner(request, None, Some(sleep)).await
+        self.enroll_inner(request, None, Some(sleep), None).await
     }
-    async fn enroll_inner(
+    pub(crate) async fn enroll_inner(
         &self,
         request: Registration,
         existing: Option<AccountId>,
         machine_sleep: Option<u16>,
+        expected_epoch: Option<Epoch>,
     ) -> Result<AuthenticatedSession, StoreError> {
         let Registration {
             recruitment,
@@ -117,6 +118,17 @@ impl PgStore {
         let u = policy.universe;
         loop {
             let (mut tx, scoped) = self.begin_enrollment(u).await?;
+            if let Some(expected) = expected_epoch {
+                let epoch: uuid::Uuid =
+                    sqlx::query_scalar("SELECT epoch FROM universes WHERE id=$1 FOR SHARE")
+                        .bind(u.0)
+                        .fetch_one(&mut *tx)
+                        .await
+                        .map_err(db_error)?;
+                if epoch != expected.0 {
+                    return Err(StoreError::Conflict);
+                }
+            }
             if machine_sleep.is_some() {
                 crate::bots::admission(&mut tx, u).await?;
             }

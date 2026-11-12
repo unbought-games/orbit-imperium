@@ -82,6 +82,7 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
         oidc.clone(),
         serve.origin.clone(),
         customization.as_ref(),
+        serve.assets.clone(),
     )?;
     if let Some(rewards) = &rewards {
         serve.profiles = serve

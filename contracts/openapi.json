@@ -8438,6 +8438,32 @@
           }
         ]
       }
+    },
+    "/api/v1/invitations/{code}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public game-owned invitation identity and destination; no attribution mutation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameInvitationPresentation"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -28368,6 +28394,52 @@
                       "type": "null"
                     }
                   ]
+                },
+                "destination": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "universe_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "epoch_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "player_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "alliance_id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "universe_id",
+                        "epoch_id",
+                        "player_id",
+                        "kind",
+                        "alliance_id"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -28818,12 +28890,17 @@
                       "alliance_id"
                     ],
                     "additionalProperties": false
+                  },
+                  "universe_id": {
+                    "type": "string",
+                    "format": "uuid"
                   }
                 },
                 "required": [
                   "type",
                   "kind",
-                  "game_id"
+                  "game_id",
+                  "universe_id"
                 ],
                 "additionalProperties": false
               },
@@ -29504,6 +29581,174 @@
         "required": [
           "alliance_id",
           "honors"
+        ]
+      },
+      "GameInvitationPresentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "personal",
+              "combined",
+              "alliance_public"
+            ]
+          },
+          "universe": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "epoch_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "speed": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "galaxies": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "systems_per_galaxy": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "players": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "max_players": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "signup_enabled": {
+                    "type": "boolean"
+                  },
+                  "art_slot": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 15
+                  }
+                },
+                "required": [
+                  "id",
+                  "epoch_id",
+                  "name",
+                  "speed",
+                  "galaxies",
+                  "systems_per_galaxy",
+                  "players",
+                  "max_players",
+                  "signup_enabled",
+                  "art_slot"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inviter": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "empire_name": {
+                    "type": "string"
+                  },
+                  "tagline": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "$ref": "#/components/schemas/TitleDisplay"
+                  },
+                  "insignia": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/InsigniaAppearance"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "empire_name",
+                  "tagline",
+                  "title",
+                  "insignia"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alliance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "universe_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "name",
+                  "id",
+                  "universe_id"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "status",
+          "universe",
+          "inviter",
+          "alliance"
         ]
       }
     },

@@ -32,6 +32,7 @@ export const oidcHttp = {
   async enroll(
     universe: string,
     recruitment?: { alliance: string; invitation: string | null },
+    invitationCode?: string,
   ): Promise<void> {
     const session = await fetch('/api/v1/session').then((r) => r.json())
     const result = await fetch('/api/auth/enroll', {
@@ -43,6 +44,7 @@ export const oidcHttp = {
       body: JSON.stringify({
         universe,
         ...(recruitment ? { recruitment } : {}),
+        ...(invitationCode ? { invitation_code: invitationCode } : {}),
       }),
     })
     if (result.ok) bindAnalytics()

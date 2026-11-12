@@ -12,12 +12,15 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::{Semaphore, watch};
+mod invitation_entry;
 
 pub struct Integration {
     pub observations: Arc<orbit_transport_http::AccountRewardsClient>,
     deployment_id: String,
     catalog_status: Value,
-    catalog: Option<orbit_application::InsigniaCatalog>,
+    customization: Option<orbit_transport_http::Customization>,
+    assets: String,
+    image_permits: Arc<Semaphore>,
     endpoint: String,
     issuer: String,
     token: String,
@@ -35,6 +38,7 @@ impl Integration {
         oidc: Option<unbought_auth::RelyingParty>,
         origin: String,
         customization: Option<&orbit_transport_http::Customization>,
+        assets: String,
     ) -> Result<Option<Arc<Self>>, Box<dyn std::error::Error>> {
         let Ok(token) = std::env::var("ORBIT_ACCOUNTS_REWARDS_CREDENTIAL") else {
             return Ok(None);
@@ -83,7 +87,9 @@ impl Integration {
         Ok(Some(Arc::new(Self {
             observations,
             deployment_id,
-            catalog: customization.map(|c| c.catalog.clone()),
+            customization: customization.cloned(),
+            assets,
+            image_permits: Arc::new(Semaphore::new(2)),
             catalog_status: json!({"contract_version":1,"catalog_pin":std::env::var("ORBIT_COSMETIC_CATALOG").ok(),
                 "catalog_version":if customization.is_some_and(|c|!c.catalog.dyes().is_empty() || !c.catalog.treatments().is_empty()) {3} else {2},
                 "catalog_ready":customization.is_some(),"catalog_versions":customization.and_then(|c|c.catalog.catalog_version.clone()).into_iter().collect::<Vec<_>>(),"supported_account_kinds":["dye","finish","effect","title","mark"],
@@ -103,6 +109,9 @@ impl Integration {
     }
     pub fn router(self: &Arc<Self>) -> Router {
         Router::new()
+            .route("/invite/{code}", get(invitation_entry::page))
+            .route("/invite/{code}/preview.png", get(invitation_entry::image))
+            .route("/api/v1/invitations/{code}", get(invitation_entry::preview))
             .route("/api/v1/rewards", get(owner))
             .route("/api/v1/rewards/actions", post(action))
             .route("/api/v1/rewards/marks", get(account_marks))
@@ -336,12 +345,14 @@ async fn owner(
         .community_capture_history(session.account)
         .await
         .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-    Ok(response(
-        s.post(
+    let owner = s
+        .post(
             "owner",
             json!({"contract_version":1,"subject":identity.subject}),
         )
-        .await?,
+        .await?;
+    Ok(response(
+        s.owner_destinations(session.account, owner).await?,
     ))
 }
 #[derive(Deserialize)]
@@ -354,7 +365,7 @@ struct ActionRequest {
 async fn action(
     State(s): State<Arc<Integration>>,
     h: HeaderMap,
-    Json(body): Json<ActionRequest>,
+    Json(mut body): Json<ActionRequest>,
 ) -> Result<impl axum::response::IntoResponse, StatusCode> {
     let _permit = s
         .permits
@@ -365,6 +376,17 @@ async fn action(
         return Err(StatusCode::BAD_REQUEST);
     }
     validate_invitation_game(&body.action)?;
+    if body.action["type"] == "apply_invitation" {
+        let code = body.action["code"]
+            .as_str()
+            .ok_or(StatusCode::BAD_REQUEST)?;
+        s.store
+            .game_invitation_destination(code, &s.issuer)
+            .await
+            .map_err(store_status)?
+            .ok_or(StatusCode::NOT_FOUND)?;
+    }
+    let creating = s.bind_created(&session, &mut body).await?;
     if body.action["type"] == "create_invitation" && body.action["kind"] != "personal" {
         let alliance = serde_json::from_value(body.action["alliance"].clone())
             .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -386,7 +408,21 @@ async fn action(
     s.observations.invalidate(&identity.subject);
     let result=s.post("actions", json!({"contract_version":1,"subject":identity.subject,"request_id":body.request_id,"action":body.action})).await;
     s.observations.invalidate(&identity.subject);
-    Ok(response(result?))
+    let mut result = result?;
+    if creating {
+        let code = result["result"]["code"]
+            .as_str()
+            .filter(|v| valid_invitation_code(v))
+            .ok_or(StatusCode::BAD_GATEWAY)?;
+        s.store
+            .finish_game_invitation(session.account, &s.issuer, &body.request_id, code)
+            .await
+            .map_err(store_status)?;
+    }
+    result["owner"] = s
+        .owner_destinations(session.account, result["owner"].take())
+        .await?;
+    Ok(response(result))
 }
 pub fn disabled_router() -> Router {
     Router::new().route(
@@ -591,7 +627,11 @@ async fn account_marks(
         .resolve(&identity.subject)
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
-    let catalog = s.catalog.as_ref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    let catalog = &s
+        .customization
+        .as_ref()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?
+        .catalog;
     let marks = catalog
         .marks()
         .iter()
@@ -617,7 +657,11 @@ async fn alliance_honors(
         .community_alliance_honors(alliance)
         .await
         .map_err(store_status)?;
-    let catalog = s.catalog.as_ref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    let catalog = &s
+        .customization
+        .as_ref()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?
+        .catalog;
     for honor in &mut honors {
         let mark = honor["item_id"]
             .as_str()

@@ -125,7 +125,14 @@
       "game_id": "orbit-imperium",
       "alliance": null,
       "game_name": "Orbit Imperium",
-      "url": "https://orbit.example.test/invite/sample-invite"
+      "url": "https://orbit.example.test/invite/sample-invite",
+      "destination": {
+        "universe_id": "00000000-0000-4000-8000-000000000003",
+        "epoch_id": "00000000-0000-4000-8000-000000000004",
+        "player_id": "00000000-0000-4000-8000-000000000002",
+        "kind": "personal",
+        "alliance_id": null
+      }
     }
   ],
   "referrals": [],

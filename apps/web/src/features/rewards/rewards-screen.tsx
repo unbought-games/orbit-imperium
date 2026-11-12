@@ -379,7 +379,7 @@ export function RewardsScreen() {
                       Manage your invitations →
                     </ButtonLinkAnchor>
                   </p>
-                  <InvitationLinks />
+                  <InvitationLinks universe={view.binding.universe} />
                   <p>
                     <ButtonLink
                       variant="ghost"

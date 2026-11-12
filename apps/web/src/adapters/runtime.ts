@@ -1,3 +1,4 @@
+import { embeddedForDestination } from '../client-model/bootstrap-target'
 import { Coordinator } from '../client-model/coordinator'
 import {
   validateInitialGame,
@@ -63,7 +64,11 @@ export function browserDependencies(): RuntimeDependencies {
     },
     createPort: gamePort,
     createUpdates: createGameUpdatesPort,
-    readEmbedded: () => readEmbeddedBootstrap(document),
+    readEmbedded: () =>
+      embeddedForDestination(
+        readEmbeddedBootstrap(document),
+        location.pathname,
+      ),
     fetchBootstrap: http.bootstrap,
   }
 }

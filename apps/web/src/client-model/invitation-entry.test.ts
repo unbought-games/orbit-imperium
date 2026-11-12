@@ -5,6 +5,7 @@ import {
   invitationReturnPath,
   invitationShareUrl,
   invitationContinuation,
+  boundInvitationPath,
 } from './invitation-entry'
 import { oidcLoginPath } from './use-oidc'
 import { validateAuthSearch } from '../shell/auth-search'
@@ -100,6 +101,7 @@ it('requires the Orbit game for personal and alliance invitation actions', () =>
         type: 'create_invitation',
         kind,
         game_id: 'orbit-imperium',
+        universe_id: '00000000-0000-4000-8000-000000000003',
         ...(kind === 'personal'
           ? {}
           : {
@@ -145,4 +147,31 @@ it('applies a game invitation through one atomic action without preview consent 
       },
     }),
   ).toThrow()
+})
+
+it('bound universe B wins over unrelated A continuations and ordinary home defaults', () => {
+  const universe = {
+    id: '00000000-0000-4000-8000-000000000093',
+    epoch_id: '00000000-0000-4000-8000-000000000094',
+    name: 'Orion Reach',
+    speed: 5,
+    galaxies: 2,
+    systems_per_galaxy: 100,
+    players: 3,
+    max_players: null,
+    signup_enabled: true,
+    art_slot: 4,
+  }
+  const preview = {
+    code: 'inv_sample',
+    status: 'ready' as const,
+    kind: 'personal' as const,
+    universe,
+    inviter: null,
+    alliance: null,
+  }
+  expect(boundInvitationPath(preview)).toBe('/u/orion-reach')
+  expect(boundInvitationPath(preview, continuation)).toBe('/u/orion-reach')
+  const native = `/alliances/${universe.id}/00000000-0000-4000-8000-000000000095`
+  expect(boundInvitationPath(preview, native)).toBe(native)
 })

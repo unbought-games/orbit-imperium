@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { Field, Select } from '../../ui/form'
 import { useAuthSession } from '../../shell/auth-context'
 import { AuthenticationPage } from '../../shell/authentication-page'
 import {
@@ -20,11 +22,21 @@ export function InvitationManagementPage() {
       csrf={runtime.session.csrf}
       changed={noGameRefresh}
     >
-      <InvitationManagement />
+      <InvitationManagement memberships={runtime.session.memberships} />
     </CommunityRewardsProvider>
   )
 }
-function InvitationManagement() {
+function InvitationManagement({
+  memberships,
+}: {
+  memberships: { universe: string; universe_name: string }[]
+}) {
+  const [selected, setSelected] = useState('')
+  const universe =
+    memberships.length === 1
+      ? memberships[0].universe
+      : memberships.find((m) => m.universe === selected)?.universe
+
   const { controller, owner, loading, busy, error, pending, visible } =
     useCommunityRewards()
   return (
@@ -44,7 +56,28 @@ function InvitationManagement() {
         <p role="status">Loading your invitations…</p>
       ) : visible ? (
         <>
-          <InvitationLinks />
+          {memberships.length > 1 && (
+            <Field>
+              Invite to universe
+              <Select
+                value={universe ?? ''}
+                onChange={(event) => setSelected(event.target.value)}
+              >
+                <option value="">Choose your universe</option>
+                {memberships.map((m) => (
+                  <option key={m.universe} value={m.universe}>
+                    {m.universe_name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          {memberships.length === 0 && (
+            <p>
+              Join a universe before inviting friends to play there with you.
+            </p>
+          )}
+          <InvitationLinks universe={universe} />
           <InvitationCode />
         </>
       ) : (

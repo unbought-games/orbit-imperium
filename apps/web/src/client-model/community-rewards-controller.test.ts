@@ -25,6 +25,9 @@ const api = (
 ): ReturnType<typeof communityRewardsApi> => ({
   owner: async () => owner(),
   act: async () => ({ contract_version: 1, result: {}, owner: owner() }),
+  invitation: async () => {
+    throw Error('unused')
+  },
   invitationPreview: async () => {
     throw Error('unused')
   },
@@ -126,6 +129,7 @@ it('a definitive recruitment denial releases the pending action for correction',
   )
   await controller.act({
     type: 'create_invitation',
+    universe_id: '00000000-0000-4000-8000-000000000003',
     kind: 'combined',
     game_id: 'orbit-imperium',
     alliance: { universe_id: 'u', epoch_id: 'e', alliance_id: 'a' },

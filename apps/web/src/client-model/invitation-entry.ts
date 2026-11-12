@@ -1,4 +1,22 @@
 /** Invitation entry is game-local. Never accept an arbitrary post-login destination. */
+import type { GameInvitationPresentation } from '../adapters/community-rewards'
+import { universeSlug } from './universe-name'
+
+export function boundInvitationPath(
+  preview: GameInvitationPresentation,
+  continuation?: unknown,
+): string {
+  if (!preview.universe) return '/'
+  const native = allianceInvitationContinuation(continuation)
+  if (
+    native &&
+    native.split('/')[2].toLowerCase() === preview.universe.id.toLowerCase()
+  )
+    return native
+  if (preview.alliance?.universe_id === preview.universe.id)
+    return `/alliances/${preview.universe.id}/${preview.alliance.id}`
+  return `/u/${universeSlug(preview.universe.name)}`
+}
 export const invitationCode = (code: string) =>
   /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/.test(code)
 

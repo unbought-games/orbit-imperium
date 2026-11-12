@@ -144,3 +144,30 @@ run failed2 cases on optional image preparation and fixture CSRF consistency;
 its first repair and retained evidence are in the ledger. Desktop/mobile captures
 were inspected. Exact-head CI and real-service signup/onboarding acceptance are
 separate remaining gates; no merge or deployment was performed.
+
+
+## Bound-universe personal invitation redesign
+
+The first impression now derives actual public sender identity and destination
+from an immutable Orbit issuance binding, with dedicated desktop/mobile layout,
+signup-first OAuth, marker-replaced server metadata and a1200×630PNG. Old unbound
+links explicitly require reissue. Native enrollment verifies the bound epoch in
+its transaction; authorized bootstrap selection prepares the requested universe
+rather than always the first membership. Public alliance links omit the creator.
+
+Focused client checks passed17 cases; native checks passed11, including escaping,
+long-name raster output, nonshield shape/base colors and signed email return path.
+The disposable database/HTTP scenario passed binding/idempotency, targetB while
+already inA, spoofed target/CSRF, closed/full/existing-member handling, reset epoch
+and actual bootstrapB. A separate public-alliance departure scenario is authored
+and awaiting the next isolated test slot. Shared-target stale artifacts caused two
+compile failures; final native build uses a task-owned target with local package
+artifacts rebuilt. No source APIs were removed to appease stale artifacts.
+
+Initial browser execution passed8/failed1 on real desktop decorative overflow.
+The decoration geometry was corrected with the assertion retained. The full9-case
+run and final affected2-case personal layout pass succeeded. Captures include
+1440×1000,390×1000 and compact1440×720/390×740; identity, CTA, above-fold destination
+and below-fold overview were inspected. Native isolated build and full web build
+passed. Root owns live database migration, role restart and the actual-player
+walkthrough; no production deployment or PR push is included in this revision.

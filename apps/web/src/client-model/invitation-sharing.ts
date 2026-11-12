@@ -11,9 +11,12 @@ export function invitationMatches(
   invitation: Invitation,
   kind: Invitation['kind'],
   alliance?: NonNullable<Invitation['alliance']>,
+  universe?: string,
 ) {
   return (
     invitation.game_id === 'orbit-imperium' &&
+    !!universe &&
+    invitation.destination?.universe_id === universe &&
     invitation.kind === kind &&
     (alliance
       ? invitation.alliance?.universe_id === alliance.universe_id &&
@@ -26,6 +29,7 @@ export function invitationMatches(
 /** One share action creates only when needed; clipboard denial leaves a usable URL. */
 export async function copyGameInvitation({
   existing,
+  universe,
   kind,
   alliance,
   origin,
@@ -34,6 +38,7 @@ export async function copyGameInvitation({
   copy,
 }: {
   existing?: Invitation
+  universe: string
   kind: Invitation['kind']
   alliance?: NonNullable<Invitation['alliance']>
   origin: string
@@ -47,6 +52,7 @@ export async function copyGameInvitation({
       type: 'create_invitation',
       kind,
       game_id: 'orbit-imperium',
+      universe_id: universe,
       ...(alliance ? { alliance } : {}),
     })
     if (!response) return
@@ -55,7 +61,7 @@ export async function copyGameInvitation({
     )
   }
   if (!invitation) return
-  if (!invitationMatches(invitation, kind, alliance))
+  if (!invitationMatches(invitation, kind, alliance, universe))
     return { code: invitation.code, status: 'unavailable' }
   const url = invitationShareUrl(invitation, origin, entryPath)
   if (!url) return { code: invitation.code, status: 'unavailable' }

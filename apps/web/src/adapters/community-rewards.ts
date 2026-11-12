@@ -11,6 +11,8 @@ export type CommunityActionResponse =
   components['schemas']['CommunityActionResponse']
 export type CommunityInvitationPreview =
   components['schemas']['CommunityInvitationPreview']
+export type GameInvitationPresentation =
+  components['schemas']['GameInvitationPresentation']
 export type CosmeticMark = components['schemas']['CosmeticMark']
 export type CommunityMarks = components['schemas']['CommunityMarks']
 export type CommunityAllianceHonors =
@@ -61,6 +63,12 @@ export function communityRewardsApi(csrf: string, send: typeof fetch = fetch) {
       call<CommunityInvitationPreview>(
         `/api/v1/rewards/invitation-preview?code=${encodeURIComponent(code)}`,
         'CommunityInvitationPreview',
+        signal,
+      ),
+    invitation: (code: string, signal: AbortSignal) =>
+      call<GameInvitationPresentation>(
+        `/api/v1/invitations/${encodeURIComponent(code)}`,
+        'GameInvitationPresentation',
         signal,
       ),
     // Keep the same request ID for a retry; a new selection gets a new ID.

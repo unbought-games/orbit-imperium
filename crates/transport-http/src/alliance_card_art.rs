@@ -118,16 +118,7 @@ pub(super) fn markup(art: &CardArt) -> String {
         } else {
             "#152b40"
         };
-        let (outline, height) = match art.shape.unwrap_or(InsigniaShape::Shield) {
-            InsigniaShape::Circle => (r#"<circle cx="50" cy="50" r="50"/>"#, 100),
-            InsigniaShape::RoundedSquare => (r#"<rect width="100" height="100" rx="15"/>"#, 100),
-            InsigniaShape::Diamond => (r#"<path d="M50 0 100 50 50 100 0 50Z"/>"#, 100),
-            InsigniaShape::Hexagon => (r#"<path d="M25 0H75L100 50 75 100H25L0 50Z"/>"#, 100),
-            InsigniaShape::Shield => (
-                r#"<path d="M24 0H76Q100 0 100 26V64Q100 110 58 110H42Q0 110 0 64V26Q0 0 24 0Z"/>"#,
-                110,
-            ),
-        };
+        let (outline, height) = crest_outline(art.shape);
         let image_height = height - 20;
         svg.push_str(&format!(r#"<g transform="translate(1010 95)"><defs><clipPath id="crest-shape">{outline}</clipPath></defs><g clip-path="url(#crest-shape)"><rect width="100" height="{height}" fill="{background}"/>"#));
         for (color, bytes) in &art.symbols {
@@ -163,4 +154,17 @@ pub(super) fn markup(art: &CardArt) -> String {
         svg.push_str("</g></g>");
     }
     svg
+}
+
+pub(super) fn crest_outline(shape: Option<InsigniaShape>) -> (&'static str, u32) {
+    match shape.unwrap_or(InsigniaShape::Shield) {
+        InsigniaShape::Circle => (r#"<circle cx="50" cy="50" r="50"/>"#, 100),
+        InsigniaShape::RoundedSquare => (r#"<rect width="100" height="100" rx="15"/>"#, 100),
+        InsigniaShape::Diamond => (r#"<path d="M50 0 100 50 50 100 0 50Z"/>"#, 100),
+        InsigniaShape::Hexagon => (r#"<path d="M25 0H75L100 50 75 100H25L0 50Z"/>"#, 100),
+        InsigniaShape::Shield => (
+            r#"<path d="M24 0H76Q100 0 100 26V64Q100 110 58 110H42Q0 110 0 64V26Q0 0 24 0Z"/>"#,
+            110,
+        ),
+    }
 }

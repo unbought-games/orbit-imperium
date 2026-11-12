@@ -133,31 +133,37 @@ The full owner endpoint serves the authenticated rewards destination separately.
 
 ## Game invitations
 
-Registered game invitations enter Orbit at `/invite/<code>`. Anonymous visitors
-see the ordinary **Play Orbit Imperium** action, with optional inviter/alliance
-context. Authentication retains the exact local invitation return path through
-existing sign-in and account creation. Already signed-in players continue into
-play; neither a preview nor referral delivery is a game-readiness gate.
+Orbit issues invitations for a specific universe where the inviter has a current
+membership. The active game supplies that universe; the standalone invitations
+page requires an explicit selection when an inviter has more than one. The game
+stores an immutable universe/epoch/player binding under the issuance request ID,
+then attaches the account service's returned code. Retries cannot change its
+world. Account attribution and its once-per-account rules remain in Accounts.
 
-An optional authenticated entry coordinator applies the pending invitation with
-`apply_invitation { code }`. It persists a stable operation identity before
-sending, binds it to the acting account, and keeps it through navigation or
-transient service failures. Success or terminal invalid/self/ineligible/already
-attributed responses clear the pending intent. Authentication recovery, rate
-limits and outages retain it with bounded retries. Existing attribution is never
-replaced; the service applies current permissions and eligibility atomically.
-There is no separate referral acceptance button, dialog or preview-token check.
+`/invite/<code>` presents the inviter's current public game identity, effective
+equipped appearance and the bound universe. Its HTML includes one escaped set of
+share metadata and a locally rendered PNG. It exposes no account identifiers,
+private history, resources or fleets. Alliance-public links never expose their
+creator and remain independent of that creator's continued membership; public
+link disablement or alliance removal still makes them unavailable.
 
-Personal invitation creation is available at `/invitations` and in Community
-rewards. Alliance sharing retains its native recruitment URL and reward code.
-When a hosted default is configured, invited accounts without a universe reuse
-the existing automatic enrollment and closed/full recovery; no arbitrary universe
-is chosen. Without a hosted default, the normal chooser remains. Known alliance
-context is carried through normal entry; optional public preview
-IDs may supply a continuation for anonymous canonical links. Normal enrollment
-and alliance admission still apply independently of referral credit.
+Anonymous entry opens the existing signed OAuth signup flow. The verified local
+invitation return path is also carried in the provider's signed query for email
+verification continuation. No external return URL or new authentication engine is
+introduced. After authentication, the ordinary CSRF enrollment endpoint resolves
+the invitation code and checks its epoch within the normal enrollment transaction,
+including existing-member retries. Capacity, signup policy, rate limits and normal
+alliance admission remain authoritative. A player in universe A can join and enter
+the invited B; bootstrap selects only an owned membership requested by the game URL.
+No selected-universe state is stored.
 
-The service credential scopes preview, creation and application to this game.
-Every new invitation includes its registered game ID. Canonical links come from
-the registered origin; browser-provided external destinations are rejected. No
-new database migration is needed for this entry flow.
+Old codes without a game binding, missing destinations and replaced epochs do not
+pick a current/default universe. The page explains that a fresh invitation is
+needed. Closed or full universes remain visible honestly; existing members may
+return. New invitations require the additive game-invitation migration before
+serving the new frontend.
+
+Referral application remains an optional authenticated background action. Its
+persisted operation ID survives navigation and transient failure and is bound to
+the acting account. It is never a separate acceptance dialog or gameplay readiness
+gate. Sharing uses one Copy invite link action with a selectable URL fallback.

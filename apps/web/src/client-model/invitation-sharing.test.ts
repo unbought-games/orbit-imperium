@@ -8,6 +8,7 @@ import type {
 
 const owner = structuredClone(fixture) as CommunityOwner
 const invitation = owner.invitations[0]
+const universe = invitation.destination!.universe_id
 it('one copy action creates when needed and subsequent sharing reuses the same invitation', async () => {
   const actions: CommunityAction[] = [],
     copied: string[] = []
@@ -23,6 +24,7 @@ it('one copy action creates when needed and subsequent sharing reuses the same i
   }
   const options = {
     kind: 'personal' as const,
+    universe,
     origin: 'https://orbit.example.test',
     controller,
     copy: async (url: string) => {
@@ -37,7 +39,12 @@ it('one copy action creates when needed and subsequent sharing reuses the same i
     await copyGameInvitation({ ...options, existing: invitation }),
   ).toEqual({ code: invitation.code, status: 'copied' })
   expect(actions).toEqual([
-    { type: 'create_invitation', kind: 'personal', game_id: 'orbit-imperium' },
+    {
+      type: 'create_invitation',
+      kind: 'personal',
+      game_id: 'orbit-imperium',
+      universe_id: universe,
+    },
   ])
   expect(copied).toEqual([invitation.url, invitation.url])
 })
@@ -45,6 +52,7 @@ it('clipboard rejection preserves the created invitation for the visible selecta
   const result = await copyGameInvitation({
     existing: invitation,
     kind: 'personal',
+    universe,
     origin: 'https://orbit.example.test',
     controller: {
       act: async () => {
@@ -64,12 +72,13 @@ it('alliance reuse matches the game and complete universe, epoch and alliance id
     alliance_id: 'alliance',
   }
   const combined = { ...invitation, kind: 'combined' as const, alliance }
-  expect(invitationMatches(combined, 'combined', alliance)).toBe(true)
+  expect(invitationMatches(combined, 'combined', alliance, universe)).toBe(true)
   expect(
     invitationMatches(
       { ...combined, game_id: 'other-game' },
       'combined',
       alliance,
+      universe,
     ),
   ).toBe(false)
   for (const field of ['universe_id', 'epoch_id', 'alliance_id'] as const)
@@ -80,5 +89,7 @@ it('alliance reuse matches the game and complete universe, epoch and alliance id
         alliance,
       ),
     ).toBe(false)
-  expect(invitationMatches(combined, 'alliance_public', alliance)).toBe(false)
+  expect(
+    invitationMatches(combined, 'alliance_public', alliance, universe),
+  ).toBe(false)
 })

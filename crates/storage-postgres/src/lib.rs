@@ -1,6 +1,7 @@
 mod arrival;
 mod community_rewards;
 mod empire_identity;
+mod game_invitations;
 mod player_preferences;
 pub use empire_identity::grant_cosmetic;
 mod empire_history;

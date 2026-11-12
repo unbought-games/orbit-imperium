@@ -6165,6 +6165,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/invitations/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Public game-owned invitation identity and destination; no attribution mutation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GameInvitationPresentation"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10713,6 +10750,16 @@ export interface components {
                     epoch_id: string;
                     alliance_id: string;
                 } | null;
+                destination?: {
+                    /** Format: uuid */
+                    universe_id: string;
+                    /** Format: uuid */
+                    epoch_id: string;
+                    /** Format: uuid */
+                    player_id: string;
+                    kind: string;
+                    alliance_id: string | null;
+                } | null;
             }[];
             referrals: {
                 id: string;
@@ -10796,6 +10843,8 @@ export interface components {
                     epoch_id: string;
                     alliance_id: string;
                 };
+                /** Format: uuid */
+                universe_id: string;
             } | {
                 /** @constant */
                 type: "activate_time";
@@ -10954,6 +11003,41 @@ export interface components {
                 treatment: components["schemas"]["CosmeticTreatment"] | null;
                 emblem_url: string | null;
             }[];
+        };
+        GameInvitationPresentation: {
+            code: string;
+            /** @enum {unknown} */
+            status: "ready" | "unavailable";
+            /** @enum {unknown} */
+            kind?: "personal" | "combined" | "alliance_public";
+            universe: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                epoch_id: string;
+                name: string;
+                speed: number;
+                galaxies: number;
+                systems_per_galaxy: number;
+                players: number;
+                max_players: number | null;
+                signup_enabled: boolean;
+                art_slot: number;
+            } | null;
+            inviter: {
+                name: string;
+                empire_name: string;
+                tagline: string;
+                title: components["schemas"]["TitleDisplay"];
+                insignia: components["schemas"]["InsigniaAppearance"] | null;
+            } | null;
+            alliance: {
+                name: string;
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                universe_id: string;
+            } | null;
         };
     };
     responses: never;

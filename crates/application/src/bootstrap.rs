@@ -85,7 +85,29 @@ impl<S: GameStore> GameService<S> {
         session: &AuthenticatedSession,
         request_id: Uuid,
     ) -> Result<Option<InitialGameSnapshot>, ServiceError> {
-        let Some(membership) = session.memberships.first() else {
+        self.initial_game_for(session, request_id, None).await
+    }
+    pub async fn initial_game_for(
+        &self,
+        session: &AuthenticatedSession,
+        request_id: Uuid,
+        target: Option<&str>,
+    ) -> Result<Option<InitialGameSnapshot>, ServiceError> {
+        let membership = if let Some(target) = target {
+            Some(
+                session
+                    .memberships
+                    .iter()
+                    .find(|m| {
+                        m.universe.0.to_string() == target
+                            || universe_route_key(&m.universe_name) == target
+                    })
+                    .ok_or(ServiceError::Forbidden)?,
+            )
+        } else {
+            session.memberships.first()
+        };
+        let Some(membership) = membership else {
             return Ok(None);
         };
         let p = Principal {
@@ -157,6 +179,17 @@ impl<S: GameStore> GameService<S> {
     }
 }
 
+/// Matches the public universe URL key in the browser and PostgreSQL.
+pub fn universe_route_key(name: &str) -> String {
+    name.chars()
+        .map(|c| match c {
+            ' ' => "-".into(),
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' => c.to_ascii_lowercase().to_string(),
+            _ => format!("~{:x}~", u32::from(c)),
+        })
+        .collect()
+}
+
 /// Nonsecret evidence for an authenticated caller's own identity lifetime.
 #[derive(Clone, Debug, Serialize)]
 pub struct OidcSessionMetadata {
@@ -164,4 +197,20 @@ pub struct OidcSessionMetadata {
     pub identity_valid_until: i64,
     /// Random generation changed only by a durably committed rotation or login.
     pub refresh_generation: String,
+}
+
+#[cfg(test)]
+mod route_key_tests {
+    use super::*;
+    #[test]
+    fn public_universe_keys_match_ascii_and_escaped_unicode_routes() {
+        for (name, key) in [
+            ("Orion Reach", "orion-reach"),
+            ("A/B", "a~2f~b"),
+            ("世界", "~4e16~~754c~"),
+            ("..", "~2e~~2e~"),
+        ] {
+            assert_eq!(universe_route_key(name), key);
+        }
+    }
 }
