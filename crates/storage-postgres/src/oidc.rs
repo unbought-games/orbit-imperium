@@ -2,8 +2,8 @@ use crate::*;
 use orbit_application::*;
 use unbought_auth::{Identity, LoginTransaction, Logout, RelyingParty, Tokens};
 
-// Finish before the HTTP bootstrap's five-second deadline. A durable claim
-// protects the provider commit boundary even if any caller cancels earlier.
+// Bound both request waiting and admitted work. A durable claim prevents token
+// replay; the admitted rotation must also survive ordinary caller cancellation.
 const REVALIDATION_BUDGET: std::time::Duration = std::time::Duration::from_secs(4);
 const PROVIDER_BUDGET: std::time::Duration = std::time::Duration::from_secs(2);
 impl PgStore {
@@ -90,12 +90,14 @@ impl PgStore {
         digest: &str,
         rp: &RelyingParty,
     ) -> Result<Identity, StoreError> {
+        let config = rp.configuration().clone();
+        let rp = rp.clone();
         self.oidc_revalidate_using(
             digest,
-            &rp.configuration().issuer,
-            &rp.configuration().client_id,
+            &config.issuer,
+            &config.client_id,
             false,
-            |tokens| async move { rp.revalidate(&tokens).await.map(|tokens| (tokens, None)) },
+            move |tokens| async move { rp.revalidate(&tokens).await.map(|tokens| (tokens, None)) },
         )
         .await
     }
@@ -109,37 +111,112 @@ impl PgStore {
         refresh: F,
     ) -> Result<Identity, StoreError>
     where
-        F: FnOnce(Tokens) -> Fut + Send,
-        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+        F: FnOnce(Tokens) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>>
+            + Send
+            + 'static,
     {
         let mut refresh = Some(refresh);
-        tokio::time::timeout(REVALIDATION_BUDGET, async {
+        let deadline = tokio::time::Instant::now() + REVALIDATION_BUDGET;
+        tokio::time::timeout_at(deadline, async {
             let mut waiting = None;
             loop {
-            let tokens = observe_auth_store(self.observer.clone(), AuthPhase::Read, async {
-                loop {
-                    let read = read_tokens(self.read_pool()?, digest, issuer, client);
-                    let result = if let Some(wait) = waiting.as_ref() {
-                        crate::oidc_wait::read_before_deadline(wait, read).await
-                    } else { read.await };
-                    match result {
-                        Err(StoreError::SessionRefreshing(ms)) => {
-                            crate::oidc_wait::retry(&self.refresh_waiters, digest, &mut waiting, ms).await?;
+                let tokens = observe_auth_store(self.observer.clone(), AuthPhase::Read, async {
+                    loop {
+                        let read = read_tokens(self.read_pool()?, digest, issuer, client);
+                        let result = if let Some(wait) = waiting.as_ref() {
+                            crate::oidc_wait::read_before_deadline(wait, read).await
+                        } else {
+                            read.await
+                        };
+                        match result {
+                            Err(StoreError::SessionRefreshing(ms)) => {
+                                crate::oidc_wait::retry(
+                                    &self.refresh_waiters,
+                                    digest,
+                                    &mut waiting,
+                                    ms,
+                                )
+                                .await?;
+                            }
+                            result => return result,
                         }
-                        result => return result,
                     }
+                })
+                .await?;
+                if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
+                    return Ok(tokens.identity);
                 }
-            }).await?;
-            if !activity && cached_identity(&tokens, issuer, client, unbought_auth::now())? {
-                return Ok(tokens.identity);
+                let connection = self.acquire_pool(self.refresh_pool()?).await?;
+                let result = if activity {
+                    // Activity renewal consumes no rotating capability and remains
+                    // caller-owned, so an abandoned renewal releases its slot promptly.
+                    self.oidc_refresh_attempt(
+                        connection,
+                        (digest, issuer, client),
+                        true,
+                        &mut refresh,
+                    )
+                    .await
+                } else {
+                    let store = self.clone();
+                    let binding = (digest.to_owned(), issuer.to_owned(), client.to_owned());
+                    let mut admitted_refresh = refresh.take();
+                    let (result, remaining) = tokio::spawn(async move {
+                        // Dropping the request's JoinHandle detaches this bounded work.
+                        // Keep the original absolute budget; never replay a capability
+                        // after provider ambiguity or a real persistence failure.
+                        let result = tokio::time::timeout_at(
+                            deadline,
+                            store.oidc_refresh_attempt(
+                                connection,
+                                (&binding.0, &binding.1, &binding.2),
+                                false,
+                                &mut admitted_refresh,
+                            ),
+                        )
+                        .await
+                        .unwrap_or(Err(StoreError::Unavailable));
+                        (result, admitted_refresh)
+                    })
+                    .await
+                    .map_err(|_| StoreError::Unavailable)?;
+                    refresh = remaining;
+                    result
+                };
+                match result {
+                    Err(StoreError::SessionRefreshing(ms)) => {
+                        crate::oidc_wait::retry(&self.refresh_waiters, digest, &mut waiting, ms)
+                            .await?;
+                    }
+                    result => return result,
+                }
             }
-            // Only the reserved refresh pool waits on the provider. The claim
-            // transaction commits BEFORE remote work, never after it.
-            let mut claim_timer = Some(AuthTimer::new(self.observer.clone(), AuthPhase::Claim));
-            let result = async {
+        })
+        .await
+        .map_err(|_| StoreError::Unavailable)?
+    }
+
+    // The connection is admitted before spawning: detached work can never exceed
+    // the existing reserved refresh capacity. Both transactions retain that slot.
+    async fn oidc_refresh_attempt<F, Fut>(
+        &self,
+        mut connection: sqlx::pool::PoolConnection<sqlx::Postgres>,
+        binding: (&str, &str, &str),
+        activity: bool,
+        refresh: &mut Option<F>,
+    ) -> Result<Identity, StoreError>
+    where
+        F: FnOnce(Tokens) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>>
+            + Send
+            + 'static,
+    {
+        let (digest, issuer, client) = binding;
+        let mut claim_timer = Some(AuthTimer::new(self.observer.clone(), AuthPhase::Claim));
+        let result = async {
                 // Both transactions borrow one reserved slot. A queued peer
                 // cannot consume it between the durable claim and remote work.
-                let mut connection = self.acquire_pool(self.refresh_pool()?).await?;
                 let mut tx = begin_refresh_transaction(&mut connection).await?;
                 let acquired: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtextextended($1,901324))")
                     .bind(digest).fetch_one(&mut *tx).await.map_err(db_error)?;
@@ -177,15 +254,10 @@ impl PgStore {
                 if let Some(mut timer) = claim_timer.take() { timer.finish(AuthOutcome::Success); }
                 self.finish_oidc_refresh(digest, tx, Some(claim), refresh.take().ok_or(StoreError::Conflict)?(tokens)).await
             }.await;
-            if let Some(mut timer) = claim_timer { timer.finish(AuthOutcome::from_store(&result)); }
-            match result {
-                Err(StoreError::SessionRefreshing(ms)) => {
-                    crate::oidc_wait::retry(&self.refresh_waiters, digest, &mut waiting, ms).await?;
-                }
-                result => return result,
-            }
-            }
-        }).await.map_err(|_| StoreError::Unavailable)?
+        if let Some(mut timer) = claim_timer {
+            timer.finish(AuthOutcome::from_store(&result));
+        }
+        result
     }
 
     async fn finish_oidc_refresh<Fut>(
@@ -196,7 +268,9 @@ impl PgStore {
         refresh: Fut,
     ) -> Result<Identity, StoreError>
     where
-        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>>
+            + Send
+            + 'static,
     {
         let remote = observe_auth_store(self.observer.clone(), AuthPhase::Provider, async {
             tokio::time::timeout(PROVIDER_BUDGET, refresh)
@@ -234,13 +308,15 @@ impl PgStore {
         digest: &str,
         rp: &RelyingParty,
     ) -> Result<Identity, StoreError> {
-        let config = rp.configuration();
+        let config = rp.configuration().clone();
+        let renewal = config.clone();
+        let rp = rp.clone();
         self.oidc_renew_using(
             digest,
             &config.issuer,
             &config.client_id,
-            |tokens| async move { rp.revalidate(&tokens).await },
-            |tokens| async move {
+            move |tokens| async move { rp.revalidate(&tokens).await },
+            move |tokens| async move {
                 let client = reqwest::Client::builder()
                     .timeout(PROVIDER_BUDGET)
                     .redirect(reqwest::redirect::Policy::none())
@@ -249,9 +325,9 @@ impl PgStore {
                 let response = client
                     .post(format!(
                         "{}/game-session/renew",
-                        config.issuer.trim_end_matches('/')
+                        renewal.issuer.trim_end_matches('/')
                     ))
-                    .basic_auth(&config.client_id, Some(&config.client_secret))
+                    .basic_auth(&renewal.client_id, Some(&renewal.client_secret))
                     .form(&[(
                         "token",
                         tokens
@@ -307,10 +383,12 @@ impl PgStore {
         renew: N,
     ) -> Result<Identity, StoreError>
     where
-        R: FnOnce(Tokens) -> RFut + Send,
-        RFut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
-        N: FnOnce(Tokens) -> NFut + Send,
-        NFut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+        R: FnOnce(Tokens) -> RFut + Send + 'static,
+        RFut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send + 'static,
+        N: FnOnce(Tokens) -> NFut + Send + 'static,
+        NFut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>>
+            + Send
+            + 'static,
     {
         self.oidc_revalidate_using(digest, issuer, client, false, |tokens| async move {
             revalidate(tokens).await.map(|tokens| (tokens, None))
@@ -332,10 +410,12 @@ impl PgStore {
         renew: N,
     ) -> Result<Identity, StoreError>
     where
-        R: FnOnce(Tokens) -> RFut + Send,
-        RFut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
-        N: FnOnce(Tokens) -> NFut + Send,
-        NFut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+        R: FnOnce(Tokens) -> RFut + Send + 'static,
+        RFut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send + 'static,
+        N: FnOnce(Tokens) -> NFut + Send + 'static,
+        NFut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>>
+            + Send
+            + 'static,
     {
         self.oidc_renew_using(digest, issuer, client, revalidate, renew)
             .await
@@ -350,8 +430,10 @@ impl PgStore {
         refresh: F,
     ) -> Result<Identity, StoreError>
     where
-        F: FnOnce(Tokens) -> Fut + Send,
-        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>> + Send,
+        F: FnOnce(Tokens) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = unbought_auth::Result<(Tokens, Option<i64>)>>
+            + Send
+            + 'static,
     {
         self.oidc_revalidate_using(digest, issuer, client, true, refresh)
             .await
@@ -379,8 +461,8 @@ impl PgStore {
         refresh: F,
     ) -> Result<Identity, StoreError>
     where
-        F: FnOnce(Tokens) -> Fut + Send,
-        Fut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send,
+        F: FnOnce(Tokens) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = unbought_auth::Result<Tokens>> + Send + 'static,
     {
         self.oidc_revalidate_using(digest, issuer, client, false, |tokens| async move {
             refresh(tokens).await.map(|tokens| (tokens, None))

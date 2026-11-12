@@ -378,7 +378,7 @@ async fn supporter_claims_follow_reauthentication_refresh_and_legacy_sessions() 
                 &digest,
                 &tokens.identity.issuer,
                 "orbit",
-                |mut tokens| async move {
+                move |mut tokens| async move {
                     tokens.identity.supporter_tier = tier;
                     tokens.validated_at = unbought_auth::now();
                     Ok(tokens)
@@ -632,7 +632,96 @@ async fn peers_wait_for_one_rotation_without_holding_connections_or_replaying_to
 }
 
 #[tokio::test]
-async fn logout_wins_over_a_late_refresh_and_cancelled_refresh_releases_its_lock() {
+async fn cancelled_caller_keeps_provider_and_persistence_rotation_alive() {
+    let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
+    let store = refresh_store(&url).await;
+    store.migrate().await.unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    for persist in [false, true] {
+        let tokens = refresh_fixture();
+        let issuer = tokens.identity.issuer.clone();
+        let digest = Uuid::new_v4().to_string();
+        let session = store
+            .complete_oidc_login(tokens, &digest, "csrf", None)
+            .await
+            .unwrap();
+        let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+            .fetch_one(&store.oidc_refresh_pool_for_test().unwrap())
+            .await
+            .unwrap();
+        let mut blocker = pool.begin().await.unwrap();
+        if persist {
+            sqlx::query("SELECT id FROM accounts WHERE id=$1 FOR UPDATE")
+                .bind(session.account.0)
+                .fetch_one(&mut *blocker)
+                .await
+                .unwrap();
+        }
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, held) = tokio::sync::oneshot::channel();
+        let running = {
+            let store = store.clone();
+            let digest = digest.clone();
+            let issuer = issuer.clone();
+            tokio::spawn(async move {
+                store
+                    .revalidate_oidc_for_test(&digest, &issuer, "orbit", |mut tokens| async move {
+                        entered.send(()).unwrap();
+                        held.await.unwrap();
+                        tokens.validated_at = unbought_auth::now();
+                        tokens.refresh_token = Some("surviving-rotation".into());
+                        Ok(tokens)
+                    })
+                    .await
+            })
+        };
+        started.await.unwrap();
+        let mut release = Some(release);
+        if persist {
+            release.take().unwrap().send(()).unwrap();
+            responsive(async {
+                loop {
+                    let blocked: bool = sqlx::query_scalar("SELECT COALESCE(wait_event_type='Lock',false) FROM pg_stat_activity WHERE pid=$1")
+                        .bind(pid).fetch_one(&pool).await.unwrap();
+                    if blocked { break; }
+                    tokio::task::yield_now().await;
+                }
+            }).await;
+        }
+        running.abort();
+        assert!(running.await.unwrap_err().is_cancelled());
+        if let Some(release) = release {
+            assert!(
+                release.send(()).is_ok(),
+                "caller cancellation must not drop the admitted provider request"
+            );
+        }
+        blocker.commit().await.unwrap();
+        responsive(store.revalidate_oidc_for_test(&digest, &issuer, "orbit", |_| async {
+            panic!("a peer must reuse the committed rotation without replaying the provider request")
+        })).await.unwrap();
+        let saved: serde_json::Value =
+            sqlx::query_scalar("SELECT payload FROM oidc_session WHERE digest=$1")
+                .bind(&digest)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(saved["refresh_token"], "surviving-rotation");
+        assert!(saved.get("rotation_claim_id").is_none());
+        assert_eq!(
+            store
+                .lookup_session(&digest)
+                .await
+                .unwrap()
+                .unwrap()
+                .account,
+            session.account
+        );
+    }
+}
+
+#[tokio::test]
+async fn logout_wins_over_a_late_refresh_even_if_the_caller_cancelled() {
     let url = std::env::var("TEST_DATABASE_URL").expect("use make test-db");
     let first = refresh_store(&url).await;
     let second = refresh_store(&url).await;
@@ -681,48 +770,27 @@ async fn logout_wins_over_a_late_refresh_and_cancelled_refresh_releases_its_lock
             }
         })
         .await;
+        let mut running = Some(running);
         if cancel {
+            let running = running.take().unwrap();
             running.abort();
             assert!(running.await.unwrap_err().is_cancelled());
-            let pool = sqlx::PgPool::connect(&url).await.unwrap();
-            let saved: serde_json::Value =
-                sqlx::query_scalar("SELECT payload FROM oidc_session WHERE digest=$1")
-                    .bind(&digest)
-                    .fetch_one(&pool)
-                    .await
-                    .unwrap();
-            // The pinned old consumer also cannot recover the consumed token.
-            let old_consumer: unbought_auth::Tokens = serde_json::from_value(saved).unwrap();
-            assert!(old_consumer.refresh_token.is_none());
-            assert_eq!(old_consumer.validated_at, 0);
-            // Move the persisted deadline, rather than sleep for expiry.
-            sqlx::query("UPDATE oidc_session SET payload=jsonb_set(payload,'{rotation_deadline_ms}','0') WHERE digest=$1")
-                .bind(&digest).execute(&pool).await.unwrap();
-            for store in [&first, &second] {
-                assert!(matches!(
-                    store
-                        .revalidate_oidc_for_test(
-                            &digest,
-                            &tokens.identity.issuer,
-                            "orbit",
-                            |_| async {
-                                panic!("cancelled rotation must never replay the old token")
-                            }
-                        )
-                        .await,
-                    Err(orbit_application::StoreError::Conflict)
-                ));
-            }
-        } else {
-            responsive(second.revoke_session(&digest)).await.unwrap();
-            assert!(first.lookup_session(&digest).await.unwrap().is_none());
-            release.send(()).unwrap();
+        }
+        responsive(second.revoke_session(&digest)).await.unwrap();
+        assert!(first.lookup_session(&digest).await.unwrap().is_none());
+        release.send(()).unwrap();
+        if let Some(running) = running {
             assert!(matches!(
                 running.await.unwrap(),
                 Err(orbit_application::StoreError::Conflict)
             ));
-            assert!(first.lookup_session(&digest).await.unwrap().is_none());
         }
+        // Wait for the admitted worker to release its single reserved slot,
+        // then prove its late provider result did not resurrect the session.
+        let _slot = responsive(first.oidc_refresh_pool_for_test().unwrap().acquire())
+            .await
+            .unwrap();
+        assert!(first.lookup_session(&digest).await.unwrap().is_none());
         assert!(matches!(
             responsive(peer).await.unwrap(),
             Err(orbit_application::StoreError::Conflict)
@@ -799,7 +867,7 @@ async fn only_activity_renews_and_logout_or_expiry_wins_over_late_renewal() {
     let deadline = unbought_auth::now() + i64::from(SESSION_IDLE_SECONDS);
     // Cached identity must not suppress foreground renewal.
     store
-        .renew_oidc_for_test(&digest, &issuer, "orbit", |tokens| async move {
+        .renew_oidc_for_test(&digest, &issuer, "orbit", move |tokens| async move {
             Ok((tokens, Some(deadline)))
         })
         .await
@@ -827,7 +895,7 @@ async fn only_activity_renews_and_logout_or_expiry_wins_over_late_renewal() {
             let issuer = issuer.clone();
             tokio::spawn(async move {
                 store
-                    .renew_oidc_for_test(&digest, &issuer, "orbit", |tokens| async move {
+                    .renew_oidc_for_test(&digest, &issuer, "orbit", move |tokens| async move {
                         entered.send(()).unwrap();
                         held.await.unwrap();
                         Ok((tokens, Some(deadline)))
@@ -946,7 +1014,7 @@ async fn interrupted_activity_preserves_committed_rotation_and_retries_with_late
                 &issuer,
                 "orbit",
                 |_| async { panic!("a recent committed validation should not rotate again") },
-                |tokens| async move {
+                move |tokens| async move {
                     assert_eq!(tokens.refresh_token.as_deref(), Some("committed-refresh"));
                     Ok((tokens, Some(deadline)))
                 },
@@ -995,7 +1063,7 @@ async fn ambiguous_rotation_never_replays_and_preserves_other_sessions() {
                 &digest,
                 &tokens.identity.issuer,
                 "orbit",
-                |mut fresh| async move {
+                move |mut fresh| async move {
                     // The provider has committed here. Either its response is lost or
                     // Orbit's later account update makes the local transaction fail.
                     fresh.refresh_token = Some("provider-committed-rotation".into());
