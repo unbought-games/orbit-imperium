@@ -294,7 +294,12 @@ for (const width of [1440, 390]) {
       'Plus 2 cosmetic choices available below.',
     )
     await expect(titles).toContainText('Awarded automatically at 5 Renown')
-    await expect(titles.getByRole('button')).toHaveCount(0)
+    await expect(
+      titles.getByRole('button', { name: 'Choose this reward' }),
+    ).toHaveCount(0)
+    await expect(
+      titles.getByText('Sample Pathfinder', { exact: true }),
+    ).toBeHidden()
     await expect(
       titles.getByRole('link', { name: 'Choose your displayed title' }),
     ).toHaveAttribute('href', `/profiles/empire/${binding.player}`)
@@ -302,7 +307,9 @@ for (const width of [1440, 390]) {
     await expect(
       choices.getByRole('button', { name: 'Choose this reward' }),
     ).toHaveCount(3)
-    await expect(choices).not.toContainText('Sample Stargazer')
+    await expect(
+      choices.getByRole('list', { name: 'Automatic title benefit' }),
+    ).toContainText('Sample Stargazer')
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -315,5 +322,16 @@ for (const width of [1440, 390]) {
         fullPage: true,
       })
     }
+    await titles
+      .locator('summary')
+      .filter({ hasText: 'View all 3 title milestones' })
+      .click()
+    await expect(
+      titles.getByText('Sample Pathfinder', { exact: true }),
+    ).toBeVisible()
+    await diagnosticScreenshot(page, {
+      path: `test-results/rewards-automatic-titles-expanded-${width}x1000.png`,
+      fullPage: true,
+    })
   })
 }

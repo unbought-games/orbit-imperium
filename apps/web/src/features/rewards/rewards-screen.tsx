@@ -15,7 +15,7 @@ import {
   rewardPreviewAvailable,
 } from './reward-preview'
 import { InvitationCode, InvitationLinks } from './invitations'
-import { AutomaticTitles } from './automatic-titles'
+import { AutomaticTitles, MilestoneTitles } from './automatic-titles'
 import styles from './rewards.module.css'
 export function RewardsScreen() {
   const { owner, controller, visible, loading, busy, error, pending } =
@@ -176,6 +176,7 @@ export function RewardsScreen() {
                               ? `${m.threshold} Renown`
                               : 'Welcome reward'}
                           </h3>
+                          <MilestoneTitles milestone={m} />
                           <p>
                             Choose {m.remaining} more · {m.selections} permanent
                             selection{m.selections === 1 ? '' : 's'} total

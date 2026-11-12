@@ -29,3 +29,22 @@ if either case fails later; no retry result is claimed here.
 The coordinating validation owner owns the targeted browser rerun, desktop/mobile
 captures, full typecheck and build. These are pending in this record. No duplicate
 browser run or shared-process restart was launched by the implementation lane.
+
+## Compact roadmap follow-up
+
+The validation owner reported both browser cases passed in 4.5s after the JSON
+import repair and inspected desktop/mobile captures. The real arrival setup
+failure was resolved by aligning the served client and API build; the explicitly
+selected Captain title persisted normally.
+
+Integration then supplied a 40-title roadmap. The UI now limits the default
+summary to the latest unlocked and next locked milestone, with the full list
+behind a closed disclosure. Each available cosmetic-choice milestone also shows
+its automatic title inline. This is a product-scope correction, not another test
+repair; the prior collection defect and its repair remain recorded above.
+
+The deterministic 40-title case checks exactly two summary rows, closed disclosure
+markup, retained full roadmap and claimed states, no mutation of source data,
+and all-locked/all-unlocked boundaries. The existing two browser cases now check
+the collapsed/expanded disclosure and inline title benefit; the coordinating
+owner will rerun those affected cases and refresh their captures.

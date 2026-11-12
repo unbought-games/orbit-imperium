@@ -1,6 +1,9 @@
 .section > p {
   max-width: 65ch;
 }
+.section > details {
+  margin-block: var(--space-3);
+}
 .milestones,
 .titles {
   list-style: none;
