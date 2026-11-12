@@ -676,9 +676,14 @@ async fn alliance_transitions_capture_real_join_kick_and_disband_reasons_once() 
 async fn empire_identity_enforces_ownership_revision_grants_and_retains_missing_selections() {
     let f = Fixture::new().await;
     let catalog = InsigniaCatalog::with_manifest(InsigniaManifest {
+        catalog_version: None,
+        marks: vec![],
+        dyes: vec![],
+        treatments: vec![],
         version: 2,
         insignias: vec![],
         titles: vec![EmpireTitle {
+            scope: CosmeticScope::Game,
             id: "fixture-earned".into(),
             label: "Fixture laureate".into(),
             address: "Laureate".into(),

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum CosmeticRequirement {
     Free,
+    #[serde(alias = "membership")]
     Supporter,
     Earned,
 }
@@ -13,10 +14,16 @@ pub enum CosmeticRequirement {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EmpireTitle {
+    #[serde(default = "game_scope", skip_serializing)]
+    pub scope: CosmeticScope,
     pub id: String,
     pub label: String,
     pub address: String,
     pub access: CosmeticRequirement,
+}
+
+fn game_scope() -> CosmeticScope {
+    CosmeticScope::Game
 }
 
 pub fn free_titles() -> Vec<EmpireTitle> {
@@ -36,6 +43,7 @@ pub fn free_titles() -> Vec<EmpireTitle> {
     ]
     .into_iter()
     .map(|label| EmpireTitle {
+        scope: CosmeticScope::Game,
         id: label.to_lowercase(),
         label: label.into(),
         address: label.into(),
@@ -98,7 +106,12 @@ pub fn title_access(
     };
     if title.access == CosmeticRequirement::Free
         || policy == CosmeticPolicy::All
-        || grants.iter().any(|g| g == id)
+        || (title.scope == CosmeticScope::Game && grants.iter().any(|g| g == id))
+        || (title.scope == CosmeticScope::Account
+            && catalog
+                .account_observation
+                .as_ref()
+                .is_some_and(|o| o.owns("title", id, now)))
     {
         return TitleAccess::Available;
     }
@@ -150,10 +163,16 @@ pub fn effective_title(
         id: id.into(),
         label: title.label.clone(),
         address: title.address.clone(),
-        expires_at: (title.access == CosmeticRequirement::Supporter
-            && policy == CosmeticPolicy::Supporter
-            && !grants.iter().any(|g| g == id))
-        .then_some(evidence.expires_at),
+        expires_at: if title.scope == CosmeticScope::Account
+            && title.access != CosmeticRequirement::Free
+        {
+            catalog.account_observation.as_ref().map(|o| o.expires_at)
+        } else {
+            (title.access == CosmeticRequirement::Supporter
+                && policy == CosmeticPolicy::Supporter
+                && !grants.iter().any(|g| g == id))
+            .then_some(evidence.expires_at)
+        },
     }
 }
 
@@ -179,6 +198,10 @@ mod tests {
     use super::*;
     fn catalog() -> InsigniaCatalog {
         InsigniaCatalog::with_manifest(InsigniaManifest {
+            catalog_version: None,
+            marks: vec![],
+            dyes: vec![],
+            treatments: vec![],
             version: 2,
             insignias: vec![],
             titles: [
@@ -187,6 +210,7 @@ mod tests {
             ]
             .into_iter()
             .map(|(id, access)| EmpireTitle {
+                scope: CosmeticScope::Game,
                 id: id.into(),
                 label: "Fixture title".into(),
                 address: "Fixture".into(),
@@ -317,9 +341,14 @@ mod tests {
         ] {
             assert!(
                 InsigniaCatalog::with_manifest(InsigniaManifest {
+                    catalog_version: None,
+                    marks: vec![],
+                    dyes: vec![],
+                    treatments: vec![],
                     version: 2,
                     insignias: vec![],
                     titles: vec![EmpireTitle {
+                        scope: CosmeticScope::Game,
                         id: id.into(),
                         label: label.into(),
                         address: address.into(),
@@ -332,6 +361,10 @@ mod tests {
         let title = catalog().titles()[12].clone();
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                catalog_version: None,
+                marks: vec![],
+                dyes: vec![],
+                treatments: vec![],
                 version: 2,
                 insignias: vec![],
                 titles: vec![title.clone(), title.clone()]
@@ -340,6 +373,10 @@ mod tests {
         );
         assert!(
             InsigniaCatalog::with_manifest(InsigniaManifest {
+                catalog_version: None,
+                marks: vec![],
+                dyes: vec![],
+                treatments: vec![],
                 version: 1,
                 insignias: vec![],
                 titles: vec![title]

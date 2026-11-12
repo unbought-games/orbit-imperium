@@ -33,6 +33,8 @@ const routes = [
   '/u/:universe/reports',
   '/u/:universe/reports/:item',
   '/u/:universe/b/:body/overview',
+  '/u/:universe/b/:body/menu',
+  '/u/:universe/b/:body/rewards',
   '/u/:universe/b/:body/resources',
   '/u/:universe/b/:body/facilities',
   '/u/:universe/b/:body/shipyard',

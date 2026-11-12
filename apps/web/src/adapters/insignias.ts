@@ -11,26 +11,37 @@ export function insigniasApi(
   binding: components['schemas']['Binding'],
   csrf: string,
 ) {
+  let catalogVersion = '4'
   return async (
     action: InsigniaAction,
     signal: AbortSignal,
   ): Promise<InsigniaState> => {
     const request_id = commandId(crypto)
-    const response = await fetch(
-      `/api/v1/universes/${binding.universe}/insignias`,
-      {
+    const send = (version: string) =>
+      fetch(`/api/v1/universes/${binding.universe}/insignias`, {
         method: 'POST',
         cache: 'no-store',
         credentials: 'same-origin',
         headers: {
           'content-type': 'application/json',
           'x-csrf-token': csrf,
-          'x-orbit-catalog': '3',
+          'x-orbit-catalog': version,
         },
         signal: AbortSignal.any([signal, AbortSignal.timeout(12_000)]),
         body: JSON.stringify({ context: { binding, request_id }, action }),
-      },
-    )
+      })
+    let response = await send(catalogVersion)
+    if (
+      response.status === 409 &&
+      action.type === 'Load' &&
+      catalogVersion === '4'
+    ) {
+      const legacy = await send('3')
+      if (legacy.ok) {
+        catalogVersion = '3'
+        response = legacy
+      }
+    }
     if (!response.ok)
       throw new HttpError(response.status, 'Insignia request failed')
     const state = validate<InsigniaState>(

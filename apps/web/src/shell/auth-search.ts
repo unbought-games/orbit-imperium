@@ -1,4 +1,5 @@
 import { archivePath } from '../client-model/empire-history-navigation'
+import { invitationReturnPath } from '../client-model/invitation-entry'
 import {
   recruitmentEntry,
   recruitmentEntryPath,
@@ -6,6 +7,8 @@ import {
 export function validateAuthSearch(search: Record<string, unknown>): {
   redirect?: string
 } {
+  const invitation = invitationReturnPath(search.redirect)
+  if (invitation) return { redirect: invitation }
   if (archivePath(search.redirect)) return { redirect: search.redirect }
   if (
     typeof search.redirect === 'string' &&

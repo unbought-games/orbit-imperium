@@ -1,3 +1,5 @@
+mod community_rewards;
+pub use community_rewards::AccountRewardsClient;
 mod announcements;
 mod player_preferences;
 pub use announcements::router as announcement_router;
@@ -17,7 +19,11 @@ mod bots;
 mod bound_api;
 mod home_seo;
 mod hosted_auth;
+mod invitation_identity;
 mod location_card;
+pub use invitation_identity::invitation_player;
+mod invitation_card;
+pub use invitation_card::InvitationCard;
 mod location_preview;
 mod oidc;
 mod oidc_enrollment;

@@ -376,7 +376,14 @@ export function tutorialPages(
 export function tutorialMorePages(pages: ReadonlySet<Page> | null): Page[] {
   return pages
     ? (
-        ['messages', 'reports', 'fleets', 'dispatch', 'facilities'] as Page[]
+        [
+          'messages',
+          'alliance',
+          'reports',
+          'fleets',
+          'dispatch',
+          'facilities',
+        ] as Page[]
       ).filter((page) => !pages.has(page))
     : []
 }

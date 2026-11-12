@@ -1,3 +1,4 @@
+import { CommunityRewardsProvider } from './community-rewards-context'
 import { PlayerPreferencesProvider } from './player-preferences-context'
 import { InsigniaProvider } from './insignia-context'
 import {
@@ -46,9 +47,11 @@ export function PlayerProfilesProvider({
         csrf={csrf}
         changed={controller.refreshAll}
       >
-        <PlayerPreferencesProvider binding={view.binding} csrf={csrf}>
-          {children}
-        </PlayerPreferencesProvider>
+        <CommunityRewardsProvider csrf={csrf} changed={controller.refreshAll}>
+          <PlayerPreferencesProvider binding={view.binding} csrf={csrf}>
+            {children}
+          </PlayerPreferencesProvider>
+        </CommunityRewardsProvider>
       </InsigniaProvider>
     </PlayerProfilesContext.Provider>
   )

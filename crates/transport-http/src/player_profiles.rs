@@ -9,6 +9,10 @@ use unbought_auth::{ProfileError, ProfileSnapshot, PublicProfile, PublicProfileC
 
 #[derive(Clone, Serialize)]
 pub struct PlayerDisplay {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    marks: Option<Vec<CosmeticMark>>,
+    #[serde(skip)]
+    pub(super) account_cosmetics: Option<AccountCosmeticObservation>,
     #[serde(skip)]
     access_known: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,9 +34,15 @@ pub struct PlayerDisplay {
 impl PlayerDisplay {
     pub(super) fn evidence(&self) -> SupporterEvidence {
         SupporterEvidence {
-            known: self.access_known,
-            active: self.supporter_tier.is_some(),
-            expires_at: self.expires_at,
+            known: self.account_cosmetics.is_some() || self.access_known,
+            active: self
+                .account_cosmetics
+                .as_ref()
+                .map_or(self.supporter_tier.is_some(), |o| o.membership),
+            expires_at: self
+                .account_cosmetics
+                .as_ref()
+                .map_or(self.expires_at, |o| o.expires_at),
         }
     }
 }
@@ -166,18 +176,27 @@ impl ProfileCache {
 }
 
 pub struct AccountProfiles {
+    rewards: Option<Arc<AccountRewardsClient>>,
     issuer: String,
     client: PublicProfileClient,
     cache: ProfileCache,
 }
 impl AccountProfiles {
+    pub fn with_rewards(mut self, rewards: Arc<AccountRewardsClient>) -> Self {
+        self.rewards = Some(rewards);
+        self
+    }
     pub(super) fn signed_in(&self, identity: &unbought_auth::Identity) {
         if identity.issuer == self.issuer {
             self.cache.invalidate(&identity.subject);
+            if let Some(rewards) = &self.rewards {
+                rewards.invalidate(&identity.subject);
+            }
         }
     }
     pub fn new(api_url: &str, issuer: &str, credential: &str) -> Result<Self, ProfileError> {
         Ok(Self {
+            rewards: None,
             issuer: issuer.into(),
             client: PublicProfileClient::new(api_url, issuer, credential)?,
             cache: ProfileCache::default(),
@@ -191,13 +210,20 @@ impl AccountProfiles {
             .collect::<BTreeSet<_>>()
             .into_iter()
             .collect();
-        let cached = self
-            .cache
-            .resolve(&subjects, unbought_auth::now, |subjects| {
-                let client = self.client.clone();
-                async move { client.batch(&subjects).await }
-            })
-            .await;
+        let (cached, observations) = tokio::join!(
+            self.cache
+                .resolve(&subjects, unbought_auth::now, |subjects| {
+                    let client = self.client.clone();
+                    async move { client.batch(&subjects).await }
+                }),
+            async {
+                if let Some(rewards) = &self.rewards {
+                    rewards.resolve_many(&subjects).await
+                } else {
+                    BTreeMap::new()
+                }
+            },
+        );
         let now = unbought_auth::now();
         identities
             .into_iter()
@@ -210,7 +236,18 @@ impl AccountProfiles {
                     None
                 };
                 let profile = source.and_then(|entry| entry.profile.as_ref());
+                let account_cosmetics = identity
+                    .subject
+                    .as_ref()
+                    .and_then(|s| observations.get(s))
+                    .cloned();
+                let expires_at = source.map_or(now + 30, Cached::expires_at);
+                let expires_at = account_cosmetics
+                    .as_ref()
+                    .map_or(expires_at, |o| o.expires_at.min(expires_at));
                 PlayerDisplay {
+                    marks: None,
+                    account_cosmetics,
                     identity: None,
                     title: None,
                     access_known: source.is_some(),
@@ -222,7 +259,7 @@ impl AccountProfiles {
                     supporter_tier: profile.and_then(|p| p.supporter_tier),
                     observed_at: source
                         .map_or(if remote { 0 } else { now }, |entry| entry.observed_at),
-                    expires_at: source.map_or(now + 30, Cached::expires_at),
+                    expires_at,
                 }
             })
             .collect()
@@ -272,6 +309,8 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                marks: None,
+                account_cosmetics: None,
                 identity: None,
                 title: None,
                 access_known: false,
@@ -286,9 +325,9 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             })
             .collect()
     };
-    let include_insignia = h
-        .get("x-orbit-insignia")
-        .is_some_and(|value| value == "1" || value == "2" || value == "3" || value == "4");
+    let include_insignia = h.get("x-orbit-insignia").is_some_and(|value| {
+        value == "1" || value == "2" || value == "3" || value == "4" || value == "5"
+    });
     let equipped = if include_insignia && s.customization.is_some() {
         s.updates
             .equipped_insignias(universe, players.iter().map(|p| p.player).collect())
@@ -313,6 +352,25 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             (&c.catalog, c.policy)
         });
     for player in &mut players {
+        let mut observed_catalog = catalog.clone();
+        observed_catalog.account_observation = player.account_cosmetics.clone();
+        let catalog = &observed_catalog;
+        if h.get("x-orbit-rewards").is_some_and(|v| v == "1")
+            && let Some(observation) = &player.account_cosmetics
+        {
+            player.marks = Some(
+                catalog
+                    .marks()
+                    .iter()
+                    .filter(|mark| {
+                        mark.owner_kind == MarkOwner::Account
+                            && observation.owns("mark", &mark.id, unbought_auth::now())
+                    })
+                    .cloned()
+                    .collect(),
+            );
+            player.expires_at = player.expires_at.min(observation.expires_at);
+        }
         if let Some(record) = identities.get(&player.player) {
             player.identity = Some(record.identity.clone());
             player.title = Some(effective_title(
@@ -329,7 +387,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         {
             let recipe = equipped.get(&player.player).map(|(recipe, grants)| {
                 effective_insignia(
-                    &c.catalog,
+                    catalog,
                     recipe,
                     c.policy,
                     grants,
@@ -348,7 +406,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         if let Some(a) = &mut player.alliance
             && let Some(identity) = &mut a.visual_identity
         {
-            super::alliance_media::effective_identity(&s, identity);
+            super::alliance_media::effective_identity(&s, a.id, identity).await;
         }
         if h.get("x-orbit-alliance-presentation")
             .and_then(|v| v.to_str().ok())
@@ -358,11 +416,15 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             a.visual_identity = None;
         }
     }
-    Ok(bound_api::no_store_json(PlayerProfiles {
-        binding,
-        request_id,
-        players,
-    }))
+    super::alliance_media::response(
+        &s,
+        &h,
+        PlayerProfiles {
+            binding,
+            request_id,
+            players,
+        },
+    )
 }
 
 /// Decoration only after archive authorization; never resolves arbitrary subjects.
@@ -387,6 +449,8 @@ pub(super) async fn archive_display<S: GameStore + IdentityStore>(
         identities
             .into_iter()
             .map(|i| PlayerDisplay {
+                marks: None,
+                account_cosmetics: None,
                 identity: None,
                 title: None,
                 access_known: false,
@@ -411,8 +475,10 @@ pub(super) async fn archive_display<S: GameStore + IdentityStore>(
             .await
             .map_err(ServiceError::from)?;
         if let Some((recipe, grants)) = equipped.get(&PlayerId(p.player)) {
+            let mut catalog = c.catalog.clone();
+            catalog.account_observation = display.account_cosmetics.clone();
             display.insignia = Some(c.appearance(effective_insignia(
-                &c.catalog,
+                &catalog,
                 recipe,
                 c.policy,
                 grants,

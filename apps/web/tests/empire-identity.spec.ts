@@ -297,7 +297,7 @@ for (const width of [1440, 390]) {
       (r) =>
         r.url().endsWith('/player-profiles') &&
         r.request().postDataJSON().source.type === 'Rankings',
-      () => page.goto(`/u/andromeda/high-scores?body=${body.id}`),
+      () => page.goto(`/u/andromeda/b/${body.id}/high-scores`),
     )
     const caption = page.getByTestId('orb-caption')
     await expect(caption).toHaveText('Welcome, Consul.')

@@ -32,8 +32,9 @@ export function symbolAccess(
   const item = snapshot.catalog.find((item) => item.id === symbol)
   if (!item) return 'not_installed'
   if (
-    !item.supporter ||
-    snapshot.policy === 'unrestricted' ||
+    item.requirement === 'free' ||
+    (!item.requirement && !item.supporter) ||
+    (snapshot.policy === 'unrestricted' && item.requirement !== 'earned') ||
     snapshot.library.permanent_symbols.includes(symbol)
   )
     return 'available'
@@ -42,7 +43,7 @@ export function symbolAccess(
 export function insigniaMessage(error: unknown) {
   if (error instanceof HttpError) {
     if (error.status === 403)
-      return 'This symbol requires supporter access or a permanent unlock.'
+      return 'This symbol requires membership access or a permanent unlock.'
     if (error.status === 409)
       return 'The design changed elsewhere, or your library is full. Reload the library, then discard changes to use the latest design or delete an unused design.'
     if (error.status === 400)

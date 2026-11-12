@@ -91,6 +91,19 @@ impl PgStore {
         let equip = match action {
             InsigniaAction::Load => None,
             InsigniaAction::Save { design, equip } => {
+                if policy == CosmeticPolicy::Supporter && !catalog.dyes().is_empty() {
+                    let previous: Option<sqlx::types::Json<InsigniaRecipe>> = sqlx::query_scalar(
+                        "SELECT recipe FROM insignia_designs WHERE account=$1 AND id=$2",
+                    )
+                    .bind(b.account.0)
+                    .bind(design.id)
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .map_err(db_error)?;
+                    if !named_color_edits(previous.as_ref().map(|v| &v.0), &design.recipe) {
+                        return Err(ServiceError::Forbidden);
+                    }
+                }
                 authorize(&design.recipe)?;
                 if design.revision == 0 {
                     let count: i64 = sqlx::query_scalar(

@@ -29,6 +29,15 @@ async fn memberships(
     .collect()
 }
 impl IdentityStore for PgStore {
+    async fn capture_community_history(&self, account: AccountId) -> Result<(), StoreError> {
+        self.community_capture_history(account).await
+    }
+    async fn alliance_cosmetic_grants(
+        &self,
+        alliance: uuid::Uuid,
+    ) -> Result<Vec<(String, String)>, StoreError> {
+        self.read_alliance_cosmetic_grants(alliance).await
+    }
     async fn player_preferences(
         &self,
         binding: Binding,
@@ -225,28 +234,25 @@ impl IdentityStore for PgStore {
         policy: SignupPolicy,
         recruitment: Option<RecruitmentIntent>,
     ) -> Result<(), StoreError> {
-        let mut c = self.acquire_pool(self.read_pool()?).await?;
-        let name: String = sqlx::query_scalar("SELECT name FROM accounts WHERE id=$1")
-            .bind(account.0)
-            .fetch_one(&mut *c)
+        self.enroll_oidc_expected(account, policy, recruitment, None)
             .await
-            .map_err(db_error)?;
-        drop(c);
-        let digest = unbought_auth::digest(&unbought_auth::random_secret());
-        self.enroll_account(
-            Registration {
-                recruitment,
-                name,
-                password_hash: "!oidc".into(),
-                policy,
-                digest: digest.clone(),
-                csrf: unbought_auth::random_secret(),
-                previous: None,
-            },
-            Some(account),
-        )
-        .await?;
-        self.revoke_session(&digest).await
+    }
+    async fn game_invitation_destination(
+        &self,
+        code: &str,
+        issuer: &str,
+    ) -> Result<Option<GameInvitationBinding>, StoreError> {
+        PgStore::game_invitation_destination(self, code, issuer).await
+    }
+    async fn enroll_oidc_at_epoch(
+        &self,
+        account: AccountId,
+        policy: SignupPolicy,
+        recruitment: Option<RecruitmentIntent>,
+        epoch: Epoch,
+    ) -> Result<(), StoreError> {
+        self.enroll_oidc_expected(account, policy, recruitment, Some(epoch))
+            .await
     }
 
     async fn universe_policy(
@@ -331,5 +337,40 @@ impl IdentityStore for PgStore {
             .await
             .map_err(db_error)?;
         Ok(())
+    }
+}
+
+impl PgStore {
+    async fn enroll_oidc_expected(
+        &self,
+        account: AccountId,
+        policy: SignupPolicy,
+        recruitment: Option<RecruitmentIntent>,
+        epoch: Option<Epoch>,
+    ) -> Result<(), StoreError> {
+        let mut c = self.acquire_pool(self.read_pool()?).await?;
+        let name: String = sqlx::query_scalar("SELECT name FROM accounts WHERE id=$1")
+            .bind(account.0)
+            .fetch_one(&mut *c)
+            .await
+            .map_err(db_error)?;
+        drop(c);
+        let digest = unbought_auth::digest(&unbought_auth::random_secret());
+        self.enroll_inner(
+            Registration {
+                recruitment,
+                name,
+                password_hash: "!oidc".into(),
+                policy,
+                digest: digest.clone(),
+                csrf: unbought_auth::random_secret(),
+                previous: None,
+            },
+            Some(account),
+            None,
+            epoch,
+        )
+        .await?;
+        self.revoke_session(&digest).await
     }
 }

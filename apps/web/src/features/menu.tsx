@@ -1,3 +1,4 @@
+import { useRewardsVisible } from '../shell/community-rewards-context'
 import { useTutorial } from './tutorial/use-tutorial'
 import {
   briefingEntryAvailable,
@@ -22,6 +23,7 @@ import styles from './menu.module.css'
 
 export function MenuScreen() {
   const { universeName, view, body, model, logout } = useGameScreen()
+  const rewardsVisible = useRewardsVisible()
   const { data: tutorial } = useTutorial()
   const visible = tutorialPages(tutorial, view.protocol === 4 ? view : null)
   const more = tutorialMorePages(visible)
@@ -35,6 +37,10 @@ export function MenuScreen() {
       ),
     })),
     ...(more.length ? [{ title: 'More', pages: more }] : []),
+    {
+      title: 'Account',
+      pages: [...(rewardsVisible ? ['rewards' as const] : []), 'settings'],
+    },
   ]
   const unread = useStore(model.store, hasUnreadReports)
   const count = useStore(model.store, unreadReportCount)

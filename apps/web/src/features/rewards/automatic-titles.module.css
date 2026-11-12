@@ -1,0 +1,36 @@
+.section > p {
+  max-width: 65ch;
+}
+.section > details {
+  margin-block: var(--space-3);
+}
+.milestones,
+.titles {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.milestones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+.milestone {
+  border-top: 1px solid var(--border-navigation);
+  padding-block: var(--space-3);
+}
+.titles,
+.titles li {
+  display: grid;
+  gap: var(--space-2);
+}
+.titles strong {
+  color: var(--champagne-light);
+  font-family: var(--font-editorial);
+  font-size: 1.25rem;
+}
+.titles span {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

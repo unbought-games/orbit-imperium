@@ -94,7 +94,7 @@ async function hostedFixture(
     expect(route.request().method()).toBe('POST')
     expect(route.request().headers()['x-csrf-token']).toBe('fixture')
     enrollments.push(route.request().postDataJSON())
-    if (failures-- > 0) return route.fulfill({ status: 403 })
+    if (failures-- > 0) return route.fulfill({ status: 403, json: { code: 'Forbidden', status: 403, type: 'about:blank' } })
     enrolled = true
     return route.fulfill({ status: 204 })
   })

@@ -5982,6 +5982,226 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Owner-only community rewards; never a public profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommunityStatus"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rewards/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CommunityActionRequest"];
+                };
+            };
+            responses: {
+                /** @description Owner-only community rewards; never a public profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommunityActionResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rewards/invitation-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    code: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Safe game-specific proposed attribution; anonymous preview never accepts an invitation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommunityInvitationPreview"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rewards/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Installed recognition with source history */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommunityMarks"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rewards/alliances/{alliance}/honors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    alliance: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Installed recognition with source history */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommunityAllianceHonors"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Public game-owned invitation identity and destination; no attribution mutation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GameInvitationPresentation"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8192,6 +8412,7 @@ export interface components {
             insignia?: components["schemas"]["InsigniaAppearance"];
             identity?: components["schemas"]["EmpireIdentity"];
             title?: components["schemas"]["TitleDisplay"];
+            marks?: components["schemas"]["CosmeticMark"][];
         };
         PlayerProfiles: {
             binding: components["schemas"]["Binding"];
@@ -9218,13 +9439,15 @@ export interface components {
         };
         InsigniaRecipe: {
             /** @enum {integer} */
-            version: 1 | 2;
+            version: 1 | 2 | 3;
             symbol: string;
             foreground: string;
             background: string;
             layers?: components["schemas"]["InsigniaLayer"][];
             /** @enum {string} */
             shape?: "shield" | "circle" | "rounded_square" | "diamond" | "hexagon";
+            finish?: string;
+            effect?: string;
         };
         InsigniaDesign: {
             /** Format: uuid */
@@ -9237,6 +9460,12 @@ export interface components {
             recipe: components["schemas"]["InsigniaRecipe"];
             asset_url: string;
             layers?: components["schemas"]["InsigniaAppearanceLayer"][];
+            rendering?: {
+                foreground: string;
+                background: string;
+                finish: components["schemas"]["CosmeticTreatment"] | null;
+                effect: components["schemas"]["CosmeticTreatment"] | null;
+            };
         };
         /** @enum {string} */
         InsigniaAccess: "available" | "supporter_required" | "unavailable" | "not_installed";
@@ -9254,6 +9483,8 @@ export interface components {
             access: components["schemas"]["InsigniaAccess"];
             /** @enum {string} */
             group?: "legacy" | "center" | "stripes" | "accents";
+            /** @enum {unknown} */
+            requirement?: "free" | "membership" | "earned";
         };
         InsigniaState: {
             binding: components["schemas"]["Binding"];
@@ -9266,6 +9497,8 @@ export interface components {
             appearance: components["schemas"]["InsigniaAppearance"] | null;
             expires_at: number;
             composition_access?: components["schemas"]["InsigniaAccess"];
+            dyes?: components["schemas"]["CosmeticDye"][];
+            treatments?: components["schemas"]["CosmeticTreatment"][];
         };
         InsigniaAction: {
             /** @enum {string} */
@@ -9923,6 +10156,7 @@ export interface components {
             /** @constant */
             kind: "composition";
             recipe: components["schemas"]["InsigniaRecipe"];
+            appearance?: components["schemas"]["InsigniaAppearance"];
         } | {
             /** @constant */
             kind: "upload";
@@ -10055,6 +10289,9 @@ export interface components {
             max_file_bytes: number;
             max_total_bytes: number;
             max_count: number;
+            dyes?: components["schemas"]["CosmeticDye"][];
+            treatments?: components["schemas"]["CosmeticTreatment"][];
+            honors?: string[][];
         };
         RecruitmentIntent: {
             /** Format: uuid */
@@ -10073,6 +10310,634 @@ export interface components {
             /** Format: uuid */
             request_id: string;
             preferences: components["schemas"]["PlayerPreferences"];
+        };
+        CommunityOwner: {
+            /** @constant */
+            contract_version: 1;
+            program: {
+                id: string;
+                version: string;
+                /** @enum {string} */
+                status: "inactive" | "active" | "paused";
+                start_at: string | null;
+            };
+            /** Format: date-time */
+            observed_at: string;
+            /** Format: date-time */
+            expires_at: string;
+            renown: {
+                amount: {
+                    numerator: string;
+                    denominator: string;
+                };
+                display: string;
+                history: {
+                    id: string;
+                    source: string;
+                    amount: {
+                        numerator: string;
+                        denominator: string;
+                    };
+                    /** Format: date-time */
+                    at: string;
+                    reason: string | null;
+                }[];
+            };
+            next_milestone: {
+                id: string;
+                /** @enum {string} */
+                category: "renown" | "welcome" | "engagement";
+                label: string | null;
+                threshold: number;
+                selections: number;
+                remaining: number;
+                unlocked: boolean;
+                bonus: {
+                    seconds: number;
+                    giftable: boolean;
+                } | null;
+                bonus_awarded: boolean;
+                offer_version: string;
+                options: components["schemas"]["CommunityRewardOption"][];
+                /** @description Permanent titles awarded automatically at this milestone, separately from cosmetic selections. Grants do not equip a title. Omitted means an empty list. */
+                automatic_titles?: components["schemas"]["CommunityRewardOption"][];
+            } | null;
+            milestones: {
+                id: string;
+                /** @enum {string} */
+                category: "renown" | "welcome" | "engagement";
+                label: string | null;
+                threshold: number;
+                selections: number;
+                remaining: number;
+                unlocked: boolean;
+                bonus: {
+                    seconds: number;
+                    giftable: boolean;
+                } | null;
+                bonus_awarded: boolean;
+                offer_version: string;
+                options: components["schemas"]["CommunityRewardOption"][];
+                /** @description Permanent titles awarded automatically at this milestone, separately from cosmetic selections. Grants do not equip a title. Omitted means an empty list. */
+                automatic_titles?: components["schemas"]["CommunityRewardOption"][];
+            }[];
+            claims: {
+                id: string;
+                milestone_id: string;
+                reward_id: string;
+                /** Format: date-time */
+                claimed_at: string;
+                /** @enum {string} */
+                delivery: "account" | "pending" | "delivered" | "revoked";
+            }[];
+            collection: {
+                reward_id: string;
+                reward: {
+                    id: string;
+                    name: string;
+                    /** @enum {string} */
+                    kind: "dye" | "finish" | "effect" | "emblem" | "emblem_set" | "title" | "mark";
+                    /** @enum {string} */
+                    scope: "account" | "game";
+                    game_id?: string;
+                    item_id: string;
+                    /** @enum {string} */
+                    access: "free" | "membership" | "earned";
+                    tier: string;
+                    surfaces: string[];
+                    supported_games: string[];
+                    preview: {
+                        palette_id?: string;
+                        media_id?: string;
+                        color?: string;
+                        renderer?: string;
+                        treatment?: {
+                            /** @constant */
+                            renderer: "plain";
+                            /** @constant */
+                            family: "finish";
+                            parameters: Record<string, never>;
+                            /** @constant */
+                            reduced_motion: "static";
+                            sample_dye: string;
+                        } | {
+                            /** @constant */
+                            renderer: "surface";
+                            /** @constant */
+                            family: "finish";
+                            parameters: {
+                                /** @enum {string} */
+                                pattern: "satin" | "brushed" | "pearl" | "smoke" | "frost" | "enamel" | "etched" | "relief" | "glitter" | "foil" | "crosshatch" | "lenticular" | "ceramic" | "hammered" | "linen" | "carbon" | "stipple" | "patina" | "mosaic" | "contour" | "obsidian" | "gilded" | "crystalline" | "stardust";
+                                strength: number;
+                                scale: number;
+                                angle: number;
+                            };
+                            /** @constant */
+                            reduced_motion: "static";
+                            sample_dye: string;
+                        } | {
+                            /** @constant */
+                            renderer: "light";
+                            /** @constant */
+                            family: "light";
+                            parameters: {
+                                /** @enum {string} */
+                                pattern: "gleam" | "rainbow" | "facets" | "oil" | "ripple" | "confetti" | "starfield" | "aurora" | "constellation" | "edge" | "halo" | "rays" | "eclipse" | "comet" | "pulse" | "scan" | "caustic" | "lightning" | "corona" | "supernova";
+                                strength: number;
+                                duration_ms: number;
+                                scale: number;
+                                angle: number;
+                            };
+                            /** @constant */
+                            reduced_motion: "static";
+                            sample_dye: string;
+                        } | {
+                            /** @constant */
+                            renderer: "interaction";
+                            /** @constant */
+                            family: "interaction";
+                            parameters: {
+                                /** @enum {string} */
+                                pattern: "tilt" | "parallax" | "spotlight" | "reveal" | "tap-sweep" | "focus-trace" | "bevel" | "ripple" | "orbit" | "prism" | "lift" | "magnetic" | "iris" | "depth" | "starburst" | "portal";
+                                strength: number;
+                                duration_ms: number;
+                                depth: number;
+                            };
+                            /** @constant */
+                            reduced_motion: "static";
+                            sample_dye: string;
+                        };
+                        elements?: {
+                            reward_id: string;
+                            item_id: string;
+                            media_id: string;
+                        }[];
+                    };
+                    payload: {
+                        /** @constant */
+                        type: "dye";
+                        dye_id: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "finish" | "effect";
+                        treatment_id: string;
+                    } | {
+                        /** @constant */
+                        type: "emblem";
+                        emblem_id: string;
+                    } | {
+                        /** @constant */
+                        type: "emblem_set";
+                        emblem_ids: string[];
+                    } | {
+                        /** @enum {string} */
+                        type: "title" | "mark";
+                        content_id: string;
+                    };
+                } | null;
+                permanent: boolean;
+                membership_access: boolean;
+                supported: boolean;
+                /** @enum {string} */
+                delivery: "account" | "pending" | "delivered" | "revoked";
+            }[];
+            games: {
+                id: string;
+                name: string;
+                /** Format: uri */
+                launch_url: string;
+                /** Format: uri */
+                invitation_management_url: string;
+                linked: boolean;
+            }[];
+            membership: {
+                active: boolean;
+                sources: ("paid" | "time" | "lifetime")[];
+                /** Format: date-time */
+                observed_at: string;
+                /** Format: date-time */
+                expires_at: string;
+                available_seconds: number;
+                saved_seconds: number;
+                active_until: string | null;
+                supporter_tier: (1 | 2 | 3) | null;
+                awards: {
+                    id: string;
+                    seconds: number;
+                    remaining_seconds: number;
+                    giftable: boolean;
+                    convertible_to_gift: boolean;
+                    /** @enum {string} */
+                    state: "available" | "active" | "saved" | "consumed" | "gifted" | "revoked";
+                }[];
+            };
+            invitations: {
+                code: string;
+                /** @enum {string} */
+                kind: "personal" | "combined" | "alliance_public";
+                game_id: string;
+                game_name: string;
+                /** Format: uri */
+                url: string;
+                alliance: {
+                    universe_id: string;
+                    epoch_id: string;
+                    alliance_id: string;
+                } | null;
+                destination?: {
+                    /** Format: uuid */
+                    universe_id: string;
+                    /** Format: uuid */
+                    epoch_id: string;
+                    /** Format: uuid */
+                    player_id: string;
+                    kind: string;
+                    alliance_id: string | null;
+                } | null;
+            }[];
+            referrals: {
+                id: string;
+                public_name: string | null;
+                stages: {
+                    id: string;
+                    complete: boolean;
+                    renown: number;
+                    requirement: string;
+                }[];
+            }[];
+            gifts: {
+                id: string;
+                seconds: number;
+                /** @enum {string} */
+                direction: "sent" | "received";
+                /** @enum {string} */
+                state: "available" | "linked" | "accepted" | "revoked";
+                link_expires_at: string | null;
+                recipient_name: string | null;
+                bound_recipient_name: string | null;
+            }[];
+            capabilities: {
+                claim: boolean;
+                invite: boolean;
+                verify_discord: boolean;
+                full_selection_url: string;
+            };
+            financial_support?: {
+                currency: string;
+                amount_minor: {
+                    numerator: string;
+                    denominator: string;
+                };
+                completed_months: {
+                    numerator: string;
+                    denominator: string;
+                };
+                gift_credit: {
+                    numerator: string;
+                    denominator: string;
+                };
+                under_review: boolean;
+                titles: {
+                    id: string;
+                    reward_id: string;
+                    amount_minor: number;
+                    earned: boolean;
+                }[];
+                anniversaries: {
+                    id: string;
+                    reward_id: string;
+                    months: number;
+                    earned: boolean;
+                }[];
+            };
+        };
+        CommunityActionRequest: {
+            /** @constant */
+            contract_version: 1;
+            request_id: string;
+            action: {
+                /** @constant */
+                type: "claim";
+                milestone_id: string;
+                reward_id: string;
+                offer_version: string;
+            } | {
+                /** @constant */
+                type: "apply_invitation";
+                code: string;
+            } | {
+                /** @constant */
+                type: "create_invitation";
+                /** @enum {string} */
+                kind: "personal" | "combined" | "alliance_public";
+                /** @constant */
+                game_id: "orbit-imperium";
+                alliance?: {
+                    universe_id: string;
+                    epoch_id: string;
+                    alliance_id: string;
+                };
+                /** Format: uuid */
+                universe_id: string;
+            } | {
+                /** @constant */
+                type: "activate_time";
+                award_id: string;
+            } | {
+                /** @constant */
+                type: "gift_time";
+                award_id: string;
+                recipient?: string;
+            } | {
+                /** @constant */
+                type: "convert_lifetime_time";
+                award_id: string;
+            } | {
+                /** @constant */
+                type: "issue_gift_link";
+                gift_id: string;
+            } | {
+                /** @constant */
+                type: "cancel_gift_link";
+                gift_id: string;
+            } | {
+                /** @constant */
+                type: "reissue_gift_link";
+                gift_id: string;
+            } | {
+                /** @constant */
+                type: "accept_gift";
+                token: string;
+            } | {
+                /** @constant */
+                type: "assign_gift";
+                gift_id: string;
+                recipient: string;
+            } | {
+                /** @constant */
+                type: "verify_discord";
+            };
+        };
+        CommunityActionResponse: {
+            /** @constant */
+            contract_version: 1;
+            result: {
+                /** @enum {string} */
+                invitation?: "applied" | "already_applied" | "already_attributed";
+                code?: string;
+                game_id?: string;
+                game_name?: string;
+                /** Format: uri */
+                url?: string;
+            } & {
+                [key: string]: unknown;
+            };
+            owner: components["schemas"]["CommunityOwner"];
+        };
+        CommunityStatus: components["schemas"]["CommunityOwner"] | {
+            /** @constant */
+            enabled: false;
+        };
+        CosmeticDye: {
+            id: string;
+            name: string;
+            color: string;
+            tier: string;
+            palette_id?: string;
+            /** @enum {string} */
+            access: "free" | "membership" | "earned";
+            /** @constant */
+            scope: "account";
+            availability?: components["schemas"]["InsigniaAccess"];
+        };
+        CosmeticTreatment: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            family: "finish" | "light" | "interaction";
+            /** @enum {string} */
+            renderer: "plain" | "surface" | "light" | "interaction";
+            parameters: {
+                [key: string]: string | number;
+            };
+            /** @enum {string} */
+            access: "free" | "membership" | "earned";
+            /** @constant */
+            scope: "account";
+            surfaces: ("emblem" | "collection" | "profile")[];
+            /** @constant */
+            reduced_motion: "static";
+            availability?: components["schemas"]["InsigniaAccess"];
+        };
+        CommunityInvitationPreview: {
+            code: string;
+            /** @enum {unknown} */
+            kind: "personal" | "combined" | "alliance_public";
+            inviter_name: string | null;
+            alliance_name: string | null;
+            /** @constant */
+            game_id: "orbit-imperium";
+            requires_game_check: boolean;
+            preview_version: string;
+            game_name: string;
+            /** Format: uri */
+            url: string;
+            alliance: {
+                /** Format: uuid */
+                universe_id: string;
+                /** Format: uuid */
+                alliance_id: string;
+            } | null;
+            accepted: boolean;
+            attribution_locked: boolean;
+        };
+        CosmeticMark: {
+            id: string;
+            name: string;
+            /** @enum {unknown} */
+            scope: "account" | "game";
+            game_id?: string;
+            /** @enum {unknown} */
+            owner_kind: "account" | "alliance";
+            /** @constant */
+            access: "earned";
+            render: {
+                /** @constant */
+                kind: "emblem";
+                item_id: string;
+            } | {
+                /** @constant */
+                kind: "finish";
+                item_id: string;
+            } | {
+                /** @constant */
+                kind: "effect";
+                item_id: string;
+            } | {
+                /** @constant */
+                kind: "support_duration";
+                months: number;
+            };
+        };
+        CommunityMarks: {
+            marks: components["schemas"]["CosmeticMark"][];
+            expires_at: number;
+        };
+        CommunityAllianceHonors: {
+            /** Format: uuid */
+            alliance_id: string;
+            honors: {
+                honor_id: string;
+                reward_id: string;
+                kind: string;
+                item_id: string;
+                rule_version: string;
+                reached_at: string;
+                mark: components["schemas"]["CosmeticMark"] | null;
+                treatment: components["schemas"]["CosmeticTreatment"] | null;
+                emblem_url: string | null;
+            }[];
+        };
+        GameInvitationPresentation: {
+            code: string;
+            /** @enum {unknown} */
+            status: "ready" | "unavailable";
+            /** @enum {unknown} */
+            kind?: "personal" | "combined" | "alliance_public";
+            universe: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                epoch_id: string;
+                name: string;
+                speed: number;
+                galaxies: number;
+                systems_per_galaxy: number;
+                players: number;
+                max_players: number | null;
+                signup_enabled: boolean;
+                art_slot: number;
+            } | null;
+            inviter: {
+                name: string;
+                empire_name: string;
+                tagline: string;
+                title: components["schemas"]["TitleDisplay"];
+                insignia: components["schemas"]["InsigniaAppearance"] | null;
+            } | null;
+            alliance: {
+                name: string;
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                universe_id: string;
+            } | null;
+        };
+        CommunityRewardOption: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            kind: "dye" | "finish" | "effect" | "emblem" | "emblem_set" | "title" | "mark";
+            /** @enum {string} */
+            scope: "account" | "game";
+            game_id?: string;
+            item_id: string;
+            /** @enum {string} */
+            access: "free" | "membership" | "earned";
+            tier: string;
+            surfaces: string[];
+            supported_games: string[];
+            preview: {
+                palette_id?: string;
+                media_id?: string;
+                color?: string;
+                renderer?: string;
+                treatment?: {
+                    /** @constant */
+                    renderer: "plain";
+                    /** @constant */
+                    family: "finish";
+                    parameters: Record<string, never>;
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                } | {
+                    /** @constant */
+                    renderer: "surface";
+                    /** @constant */
+                    family: "finish";
+                    parameters: {
+                        /** @enum {string} */
+                        pattern: "satin" | "brushed" | "pearl" | "smoke" | "frost" | "enamel" | "etched" | "relief" | "glitter" | "foil" | "crosshatch" | "lenticular" | "ceramic" | "hammered" | "linen" | "carbon" | "stipple" | "patina" | "mosaic" | "contour" | "obsidian" | "gilded" | "crystalline" | "stardust";
+                        strength: number;
+                        scale: number;
+                        angle: number;
+                    };
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                } | {
+                    /** @constant */
+                    renderer: "light";
+                    /** @constant */
+                    family: "light";
+                    parameters: {
+                        /** @enum {string} */
+                        pattern: "gleam" | "rainbow" | "facets" | "oil" | "ripple" | "confetti" | "starfield" | "aurora" | "constellation" | "edge" | "halo" | "rays" | "eclipse" | "comet" | "pulse" | "scan" | "caustic" | "lightning" | "corona" | "supernova";
+                        strength: number;
+                        duration_ms: number;
+                        scale: number;
+                        angle: number;
+                    };
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                } | {
+                    /** @constant */
+                    renderer: "interaction";
+                    /** @constant */
+                    family: "interaction";
+                    parameters: {
+                        /** @enum {string} */
+                        pattern: "tilt" | "parallax" | "spotlight" | "reveal" | "tap-sweep" | "focus-trace" | "bevel" | "ripple" | "orbit" | "prism" | "lift" | "magnetic" | "iris" | "depth" | "starburst" | "portal";
+                        strength: number;
+                        duration_ms: number;
+                        depth: number;
+                    };
+                    /** @constant */
+                    reduced_motion: "static";
+                    sample_dye: string;
+                };
+                elements?: {
+                    reward_id: string;
+                    item_id: string;
+                    media_id: string;
+                }[];
+            };
+            payload: {
+                /** @constant */
+                type: "dye";
+                dye_id: string;
+            } | {
+                /** @enum {string} */
+                type: "finish" | "effect";
+                treatment_id: string;
+            } | {
+                /** @constant */
+                type: "emblem";
+                emblem_id: string;
+            } | {
+                /** @constant */
+                type: "emblem_set";
+                emblem_ids: string[];
+            } | {
+                /** @enum {string} */
+                type: "title" | "mark";
+                content_id: string;
+            };
+            owned: boolean;
+            owned_components?: string[];
+            supported: boolean;
         };
     };
     responses: never;

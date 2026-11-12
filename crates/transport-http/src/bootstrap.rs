@@ -141,6 +141,10 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
     h: &HeaderMap,
 ) -> Bootstrap {
     let deadline = Deadline::now() + BUDGET;
+    let target = h
+        .get("x-orbit-universe")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
     let (mut result, enabled) = tokio::join!(
         assemble_observed(
             false,
@@ -151,8 +155,14 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
                     .map_err(|e| e.0)
             },
             |session| async move {
-                read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
-                    .await
+                if s.oidc.is_some() {
+                    let _ = s.updates.capture_community_history(session.account).await;
+                }
+                read_game_when_available(|| {
+                    s.game
+                        .initial_game_for(&session, uuid::Uuid::new_v4(), target.as_deref())
+                })
+                .await
             },
             deadline,
             s.config
@@ -186,6 +196,9 @@ pub(super) async fn prepare_authenticated_bootstrap<S: GameStore + IdentityStore
             false,
             async { Ok((session, None)) },
             |session| async move {
+                if s.oidc.is_some() {
+                    let _ = s.updates.capture_community_history(session.account).await;
+                }
                 read_game_when_available(|| s.game.initial_game(&session, uuid::Uuid::new_v4()))
                     .await
             },

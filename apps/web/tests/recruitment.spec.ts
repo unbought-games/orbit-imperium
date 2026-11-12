@@ -34,6 +34,15 @@ test('a public invitation resolves its token and links to the returned alliance'
 
 // Keep real public-route entry and populated-row layout. Filtering/empty results
 // and manager preference/invitation controls live in isolated component specs.
+test('a reward invitation carries normal entry back to its native alliance token page', async ({ page }) => {
+  await fixture(page, { authenticated: false, enrolled: false })
+  await withFixtureResponse(page, pathMatches(`/invitations/${token}`), () => page.goto(`${invitationPath}?rewards_invitation=inv_fixture`))
+  const href = await page.getByRole('link', { name: 'Apply to Starlight Assembly', exact: false }).getAttribute('href')
+  const destination = new URL(href!, 'https://orbit.invalid')
+  expect(destination.pathname).toBe('/invite/inv_fixture')
+  expect(destination.searchParams.get('continue')).toBe(invitationPath)
+})
+
 for (const width of [1440, 390]) {
   test.describe(`public recruitment entry ${width}px`, () => {
     test.use({

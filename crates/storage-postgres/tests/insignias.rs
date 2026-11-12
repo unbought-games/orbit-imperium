@@ -14,9 +14,14 @@ use uuid::Uuid;
 
 fn catalog() -> InsigniaCatalog {
     InsigniaCatalog::with_manifest(InsigniaManifest {
+        catalog_version: None,
+        marks: vec![],
+        dyes: vec![],
+        treatments: vec![],
         titles: vec![],
         version: 1,
         insignias: vec![InsigniaSymbol {
+            access: None,
             group: InsigniaGroup::Legacy,
             id: "test-star".into(),
             name: "Test star".into(),

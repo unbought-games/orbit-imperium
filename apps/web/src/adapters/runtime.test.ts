@@ -35,6 +35,27 @@ const dependencies = (): RuntimeDependencies => ({
   readEmbedded: () => bootstrapFixture(),
   fetchBootstrap: vi.fn(async () => bootstrapFixture()),
 })
+it('public invitation entry resolves a fresh authenticated session despite anonymous embedded data', async () => {
+  const deps = dependencies()
+  deps.readEmbedded = vi.fn<RuntimeDependencies['readEmbedded']>(() => ({
+    version: 1,
+    signup_enabled: false,
+    result: { status: 'anonymous' },
+  }))
+  const authenticated = bootstrapFixture()
+  if (authenticated.result.status !== 'authenticated') throw Error('fixture')
+  authenticated.result.session.memberships = []
+  authenticated.result.game = { status: 'no_membership' }
+  deps.fetchBootstrap = vi.fn(async () => authenticated)
+  const runtime = await loadInitialRuntime(deps, true)
+  expect(runtime.status).toBe('authenticated')
+  if (runtime.status !== 'authenticated')
+    throw Error('authenticated session required')
+  expect(runtime.session.memberships).toEqual([])
+  expect(runtime.game.status).toBe('no_membership')
+  expect(deps.readEmbedded).not.toHaveBeenCalled()
+  expect(deps.fetchBootstrap).toHaveBeenCalledOnce()
+})
 it('adopts embedded data without requesting startup data or retaining a second snapshot', async () => {
   const deps = dependencies()
   const runtime = await loadInitialRuntime(deps)

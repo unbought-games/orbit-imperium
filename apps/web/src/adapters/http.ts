@@ -1,3 +1,4 @@
+import { bootstrapTarget } from '../client-model/bootstrap-target'
 import { progressionOptionsLoader } from './progression-options'
 import { checkClientBuild } from './client-update'
 import { socialQuery, socialCommand } from './social'
@@ -79,10 +80,15 @@ export async function request(
 }
 export const http = {
   async bootstrap() {
+    const target =
+      typeof location === 'undefined'
+        ? undefined
+        : bootstrapTarget(location.pathname)
     return validate<Bootstrap>(
       'Bootstrap',
       await request('/api/v1/bootstrap', 'GET', undefined, undefined, 10000, {
         'X-Orbit-View-Metadata': '1',
+        ...(target ? { 'X-Orbit-Universe': target } : {}),
       }),
     )
   },

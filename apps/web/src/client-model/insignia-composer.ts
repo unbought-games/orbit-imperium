@@ -3,7 +3,7 @@ import type {
   InsigniaState,
   InsigniaAppearance,
 } from '../adapters/insignias'
-import { symbolAccess } from './insignias'
+import { symbolAccess, defaultInsignia } from './insignias'
 export type ElementGroup = 'center' | 'stripes' | 'accents'
 export const elementGroups: ElementGroup[] = ['center', 'stripes', 'accents']
 export const backgroundShapes = [
@@ -21,10 +21,34 @@ export const groupColor = (
 export const compositionAvailable = (s: InsigniaState, now: number) =>
   s.policy === 'unrestricted' ||
   (s.expires_at * 1000 > now && s.composition_access === 'available')
-export const groupOf = (s: InsigniaState, id: string) =>
+export const groupOf = (s: Pick<InsigniaState, 'catalog'>, id: string) =>
   s.catalog.find((e) => e.id === id)?.group ?? 'legacy'
 export function recipeAccess(s: InsigniaState, r: InsigniaRecipe, now: number) {
   if (r.version === 1) return symbolAccess(s, r.symbol, now)
+  if (r.version === 3) {
+    for (const color of [
+      r.foreground,
+      r.background,
+      ...(r.layers ?? []).map((l) => l.color),
+    ]) {
+      if (color.startsWith('dye:')) {
+        const dye = s.dyes?.find((d) => d.id === color.slice(4))
+        if (!dye) return 'not_installed'
+        if (dye.access !== 'free' && s.expires_at * 1000 <= now)
+          return 'unavailable'
+        if (dye.availability !== 'available')
+          return dye.availability ?? 'unavailable'
+      }
+    }
+    for (const id of [r.finish, r.effect].filter((id): id is string => !!id)) {
+      const t = s.treatments?.find((t) => t.id === id)
+      if (!t) return 'not_installed'
+      if (t.access !== 'free' && s.expires_at * 1000 <= now)
+        return 'unavailable'
+      if (t.availability !== 'available') return t.availability ?? 'unavailable'
+    }
+  }
+  if (r.layers === undefined) return symbolAccess(s, r.symbol, now)
   const layers = r.layers ?? []
   for (const l of layers) {
     const access = symbolAccess(s, l.symbol, now)
@@ -33,7 +57,16 @@ export function recipeAccess(s: InsigniaState, r: InsigniaRecipe, now: number) {
   const advanced = layers.some(
     (l) => groupOf(s, l.symbol) === 'stripes' || l.color !== r.foreground,
   )
-  return advanced && !compositionAvailable(s, now)
+  const permanentlyUsable =
+    r.version === 3 &&
+    layers.every((l) => {
+      const item = s.catalog.find((i) => i.id === l.symbol)
+      return (
+        item &&
+        (!item.supporter || s.library.permanent_symbols.includes(l.symbol))
+      )
+    })
+  return advanced && !permanentlyUsable && !compositionAvailable(s, now)
     ? s.expires_at * 1000 <= now
       ? 'unavailable'
       : (s.composition_access ?? 'unavailable')
@@ -42,7 +75,7 @@ export function recipeAccess(s: InsigniaState, r: InsigniaRecipe, now: number) {
 export function layeredRecipe(r: InsigniaRecipe): InsigniaRecipe {
   return {
     ...r,
-    version: 2,
+    version: r.version === 3 ? 3 : 2,
     symbol: 'compass',
     layers: [{ symbol: 'forge-wayfinder', color: r.foreground }],
   }
@@ -96,16 +129,32 @@ export function freeRecipe(
   }
 }
 export function compositionAppearance(
-  s: InsigniaState,
+  s: Pick<InsigniaState, 'catalog' | 'dyes' | 'treatments'>,
   r: InsigniaRecipe,
 ): InsigniaAppearance {
+  const resolveColor = (color: string) =>
+    color.startsWith('dye:')
+      ? (s.dyes?.find((d) => d.id === color.slice(4))?.color ??
+        defaultInsignia.foreground)
+      : color
   const asset_url =
     s.catalog.find((e) => e.id === r.symbol)?.asset_url ??
-    s.catalog[0].asset_url
+    s.catalog[0]?.asset_url ??
+    ''
   return {
     recipe: r,
     asset_url,
-    ...(r.version === 2
+    ...(r.version === 3
+      ? {
+          rendering: {
+            foreground: resolveColor(r.foreground),
+            background: resolveColor(r.background),
+            finish: s.treatments?.find((t) => t.id === r.finish) ?? null,
+            effect: s.treatments?.find((t) => t.id === r.effect) ?? null,
+          },
+        }
+      : {}),
+    ...(r.layers !== undefined
       ? {
           layers: elementGroups
             .flatMap((group) =>
@@ -113,8 +162,10 @@ export function compositionAppearance(
                 .filter((l) => groupOf(s, l.symbol) === group)
                 .map((l) => ({
                   ...l,
-                  asset_url: s.catalog.find((e) => e.id === l.symbol)!
-                    .asset_url,
+                  color: resolveColor(l.color),
+                  asset_url:
+                    s.catalog.find((e) => e.id === l.symbol)?.asset_url ??
+                    asset_url,
                 })),
             )
             .sort(
@@ -265,6 +316,29 @@ export function shuffleRecipe(
   now: number,
   random = Math.random,
 ): InsigniaRecipe {
+  if (s.dyes?.length) {
+    const dyes = s.dyes.filter((d) => d.availability === 'available')
+    if (!dyes.length) return r
+    const choose = () =>
+      `dye:${dyes[Math.min(dyes.length - 1, Math.floor(random() * dyes.length))].id}`
+    const colors = { center: choose(), stripes: choose(), accents: choose() }
+    const layers = elementGroups.flatMap((group) => {
+      const pool = s.catalog.filter(
+        (e) => e.group === group && symbolAccess(s, e.id, now) === 'available',
+      )
+      const item =
+        pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))]
+      return item ? [{ symbol: item.id, color: colors[group] }] : []
+    })
+    return {
+      ...r,
+      version: 3,
+      symbol: 'compass',
+      foreground: colors.center,
+      background: choose(),
+      layers,
+    }
+  }
   const palette =
       insigniaPalettes[Math.floor(random() * insigniaPalettes.length)],
     advanced = compositionAvailable(s, now)
@@ -294,5 +368,32 @@ export function shuffleRecipe(
     foreground: palette.colors.center,
     background: palette.backdrop,
     layers,
+  }
+}
+
+export function namedNewRecipe(
+  s: InsigniaState,
+  r: InsigniaRecipe,
+): InsigniaRecipe {
+  if (!s.dyes?.length) return r
+  const available = s.dyes.filter((d) => d.availability === 'available')
+  const nearest = (color: string) => {
+    if (color.startsWith('dye:')) return color
+    const rgb = (value: string) =>
+      [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16))
+    const target = rgb(color),
+      distance = (value: string) =>
+        rgb(value).reduce((sum, v, i) => sum + (v - target[i]) ** 2, 0)
+    const dye = [...available].sort(
+      (a, b) => distance(a.color) - distance(b.color),
+    )[0]
+    return dye ? `dye:${dye.id}` : color
+  }
+  return {
+    ...r,
+    version: 3,
+    foreground: nearest(r.foreground),
+    background: nearest(r.background),
+    layers: r.layers?.map((l) => ({ ...l, color: nearest(l.color) })) ?? [],
   }
 }

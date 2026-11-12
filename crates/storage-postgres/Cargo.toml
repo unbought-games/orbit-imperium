@@ -175,5 +175,13 @@ name = "player_preferences"
 required-features = ["test-support"]
 
 [[test]]
+name = "community_rewards"
+required-features = ["test-support"]
+
+[[test]]
+name = "game_invitations"
+required-features = ["test-support"]
+
+[[test]]
 name = "pools"
 required-features = ["test-support"]

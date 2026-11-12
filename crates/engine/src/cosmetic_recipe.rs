@@ -5,6 +5,10 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct InsigniaRecipe {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finish: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<InsigniaShape>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<InsigniaLayer>>,
@@ -16,6 +20,8 @@ pub struct InsigniaRecipe {
 impl Default for InsigniaRecipe {
     fn default() -> Self {
         Self {
+            finish: None,
+            effect: None,
             shape: None,
             layers: None,
             version: 1,

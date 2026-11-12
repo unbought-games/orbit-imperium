@@ -195,7 +195,7 @@ impl PgStore {
                 .ok_or(StoreError::CorruptData)?,
             CommitClaim::Scoped(_) => next_sequence(&mut tx, i.universe).await?,
         };
-        sqlx::query("INSERT INTO transition_journal(universe,cursor,input_id,input,facts,outcome) VALUES($1,$2,$3,$4,$5,$6)").bind(i.universe.0).bind(cursor).bind(i.id.0).bind(sqlx::types::Json(i)).bind(sqlx::types::Json(facts)).bind(sqlx::types::Json(outcome)).execute(&mut *tx).await.map_err(db_error)?;
+        sqlx::query("INSERT INTO transition_journal(universe,cursor,input_id,input,facts,outcome) VALUES($1,$2,$3,$4,$5,$6)").bind(i.universe.0).bind(cursor).bind(i.id.0).bind(sqlx::types::Json(i)).bind(sqlx::types::Json(facts)).bind(sqlx::types::Json(&outcome)).execute(&mut *tx).await.map_err(db_error)?;
         #[cfg(feature = "test-support")]
         {
             self.test_fault("after_writes").await?;
@@ -231,6 +231,9 @@ impl PgStore {
         {
             self.test_fault("before_commit").await?;
             self.test_input_fault("before_commit", i).await?;
+        }
+        if matches!(&outcome, TransitionResult::Applied(_)) {
+            crate::community_rewards::capture_command(&mut tx, i).await?;
         }
         let committed_at = now(&mut tx).await?;
         tx.commit().await.map_err(db_error)?;

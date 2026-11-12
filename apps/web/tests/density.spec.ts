@@ -176,7 +176,7 @@ for (const viewport of [
         },
       })
     })
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`))
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
     await firstViewport(page, [
       page.getByRole('heading', { name: 'Victory', exact: true }),
       page.getByRole('button', { name: 'Prepare harvest' }),
@@ -223,7 +223,7 @@ for (const viewport of [
     ).toHaveValue('Harvest')
     await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '372'))
     await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '10'))
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/reports/${header.id}?body=${body.id}`))
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await firstViewport(page, [
       page.getByRole('link', { name: 'Combat', exact: true }),
@@ -350,9 +350,8 @@ for (const width of [1280, 390]) {
       ['fleets', 'Fleets'],
       ['dispatch', 'Dispatch fleet'],
     ]) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/${route}?body=${body.id}`))
-      // The legacy URL replaces the route's heading during canonicalization.
-      // Measure the final planet-scoped screen, not the outgoing route.
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${route}`))
+      // Measure the selected planet's screen after navigation settles.
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${route}`)
       const heading = page.getByRole('heading', {
         name: title,

@@ -1662,6 +1662,199 @@ That run also exposed a product defect in the new incoming-threat fleet link on 
 planetless account. The account-pages test was retained unchanged; guarding the
 planet-only link fixed it. The final affected run passed 20/20 in 13.7 seconds.
 
+## November 11, 2026: Community rewards initial CI repair batch
+
+PR #394, revision `e3a22bee`, run `43121596082` reported four failed jobs.
+These findings are distinct and do not establish infrastructure failure:
+
+- `adapters/player-profiles.test.ts` retained the previous reader header assertion.
+  Update the exact expectation to insignia reader 5 and rewards reader 1, preserving
+  the binding/CSRF and no-subject/no-credential assertions. No earlier repair for
+  this assertion was found in its file history or this ledger.
+- Four alliance component cases exposed a newly introduced production dependency
+  on GameSession inside the previously props-driven InvitationSettings. Move the
+  optional rewards link content to the live screen's composition boundary and
+  pass it as a slot through Settings. Keep the isolated fixtures and assertions;
+  do not install application sessions/network clients merely to silence them.
+- Both new rewards journeys could mistake the prior intentional 503 completion
+  for the later successful refresh. They waited for response headers rather than
+  complete delivery before changing the fixture policy. Their first behavioral
+  fixture repair uses the shared request-finished boundary with an expected error
+  status, then matches successful recovery explicitly. No sleep, timeout increase,
+  retry or screenshot-dependent readiness. Prior routing failure was a product
+  defect; earlier retired named-editor scenarios are separate and remain retired.
+- The existing empty-color-group browser cases caught a production accessibility
+  regression: the visible guidance lost its aria-describedby association when
+  color controls became shared. Restore that association for both native color
+  inputs and named-dye selects, with unique IDs. Preserve the browser assertions;
+  add cheap static semantic coverage for the shared control variants.
+
+Audited explicit failed-response waits in client-update, tutorial and alliance
+journeys: those callers await response.finished before their corresponding state
+transition; the rewards case omitted that delivery boundary. The new helper keeps
+existing success-only helpers strict and gives intentional errors an explicit
+status assertion. No broad fixture rewrite or test deselection is included.
+
+This batch is source-ready with formatting/diff checks only. Focused client,
+component and browser execution, screenshot spot checks, and CI verification are
+pending the coordinator's validation slot. Neither the previous local green run
+with optional captures nor an unchanged retry closes the known rewards test race.
+
+### Initial features shard 1: alliance catalog fixture contract
+
+The same run's job `130863238872` was canceled as superseded after 122 of its
+123 selected tests completed. The full log identifies missing test 36 as
+`alliance presentation previews unsaved edits and publishes them through the real
+editor`, not the mobile atlas case. Desktop atlas was test 123 and passed; mobile
+atlas was outside this shard. The last completed test alone was misleading.
+No failure artifact was uploaded for this canceled job. Its exact pending action
+was not captured, so cancellation remains incomplete validation rather than an
+assertion failure or proven runner incident.
+
+Source inspection nevertheless establishes a fixture contract defect introduced
+by this PR: the editor now requests `/api/alliance-presentation/catalog?alliance=…`,
+while both the recruitment fixture route and its response listener matched the
+old URL ending at `/catalog`. The route therefore misses the request, and the
+listener cannot complete. First explained repair: match the catalog pathname and
+verify the expected alliance query parameter in both places. Retain all preview,
+command, revision, public projection and content assertions. An audit found these
+were the only fixture route/listener callers of that endpoint. History points to
+PR #390 (`fba82df4`); no prior repair of this application journey was found in its
+history or ledger. The separately retired presentation component cases remain
+retired. No timeouts, retries, atlas changes or test deselection were added.
+
+Evidence: initial PR head `e3a22bee`, CI merge revision
+`bc4653ff4f749b639d2f83ab1b4bd805caea1844`, run attempt 1. Bundle preparation was
+8.210 s; browser runner started 23:42:12 UTC, last completion 23:45:20 UTC,
+cancellation 00:02:41 UTC. Validation of the repair belongs to the coordinator's
+serialized browser slot; collection-only inspection is not a passing test run.
+
+### Treatment component media setup type correction
+
+Required `make check` at `d75dff21` passed 131 tooling, 1,809 client, the 791-test
+main Rust group, 50 bridge tests and 10 storage-library tests, Clippy, Rust
+formatting, ESLint and source formatting. Component typechecking then rejected
+`test.use({ reducedMotion: ... })` in the new treatment gallery: reducedMotion is
+not a top-level fixture option in the pinned Playwright version. File history and
+ledger show no earlier repair of this case. Its first correction uses the supported
+`page.emulateMedia` API before mounting, matching its existing reduced-motion
+transition and other component callers. All interaction and appearance assertions
+remain. This was a typecheck failure, not an observed browser assertion failure.
+The failed full command took 304.63 seconds; remaining static/build checks and the
+affected component case must pass before qualification.
+
+### Game invitation hosted recovery: first fixture repair
+
+At `b6807216` plus the uncommitted hosted-entry follow-up, focused browser
+qualification passed its first ten cases, then waited indefinitely in the new
+1440px hosted admission-failure case. Task-scoped interruption retained the stack
+at `withFixtureResponseStatus` / `requestfinished` and a screenshot showing the
+correct closed/full recovery UI with enabled Try again. This is incomplete
+validation, not a passing run or an evidenced provider/runner outage.
+
+The fixture returned a bare status-only 403. The pinned Playwright fulfillment
+implementation supplies Content-Length only for a nonempty body; unlike the
+successful 204, a 403 permits a body and this response never reached the shared
+finished-delivery boundary. The real endpoint returns a JSON problem response.
+First explained repair: provide that complete problem body, retaining the 403,
+request-finished boundary, configured-universe assertion and recovery controls.
+The same enrollment fixture in hosted-auth used the same bare 403 and receives
+the common correction. No timeout increase, hidden retry or assertion removal.
+History/ledger inspection found no prior repair of the new scenario. If it fails
+again as a fixture defect, retire it under the existing rule rather than stabilize
+it again. Browser setup was 4.704s; the interrupted run passed10, interrupted1,
+left18 unexecuted, and took approximately2.1min. Source qualification continues.
+
+Full qualification at the hosted follow-up passed131 tooling,1822 client,
+793 main Rust,52 bridge and10 storage-library tests, Clippy and all static checks.
+The final app typecheck rejected the new anonymous-bootstrap test mock because
+its unannotated vi.fn return widened the protocol literal from1 to number.
+This was a type declaration defect, not a browser/product assertion failure.
+Its first correction types the mock with RuntimeDependencies['readEmbedded'];
+the actual anonymous fixture and fresh-session assertions are unchanged.
+The failed Make command took209.70s. Rerun the affected unit file and web build;
+do not count the initially failed command as passing or repeat unrelated green
+checks to conceal its outcome.
+
+The final optional capture pass then exposed two defects in the separate hosted
+success cases (both widths), after their behavior-only and first capture runs
+had passed. Added capture preparation waited for all images, including offscreen
+lazy images; during that wait the legitimate 30-second background retry exposed
+a fixture CSRF mismatch. Initial no-membership bootstrap used invitation-csrf,
+while enrolled fallback bootstrap used fixture, yet the route asserted the former
+forever. Real enrollment does not rotate the authenticated session's CSRF.
+First repair of this success-case family: use the same fixture CSRF before/after
+enrollment and decode only eager public hero images during optional capture.
+The exact CSRF assertion remains; no broadened accepted-token list, timeout,
+sleep or retry is added. Capture preparation is absent when disabled. This run
+passed6/failed2 in1.1min and is retained as failed validation. The separate closed
+admission case's earlier repair count is unchanged; no scenario was renamed.
+
+## November 12, 2026: Rewards account navigation
+
+The new `rewards opens from account navigation` cases (1440px and 390px) cover
+keyboard activation/desktop popup closure and touch activation from the last
+mobile Account section. They also assert Rewards is absent from primary desktop
+navigation and mobile Community. Tested on `67c1c846` plus the local navigation
+changes; no CI run or publication.
+
+Initial run: two assertion failures because the new expected link omitted the
+existing selected-planet `?body=00000000-0000-4000-8000-000000000005` context.
+This was a test expectation defect, not a product routing defect. Both new cases
+consume their one repair: retain the exact pathname and selected-body query in
+both link and destination assertions. No prior repair exists for these new cases;
+the older reward choice/delivery journey repair history remains unchanged.
+
+After that correction, both passed (bundle preparation 4.698s; browser runner
+4.0s; individual cases 1.7s/1.6s). Initial preparation was 5.115s and failed cases
+6.7s/6.4s. No queue wait. Desktop 1440x900 and mobile 390x900 captures were inspected.
+The runner cleaned its temporary bundle and server. Navigation model/icon tests
+passed 3/3, and focused ESLint and diff whitespace checks passed.
+
+Rewards Refresh-button removal follow-up: the existing reward choice/delivery
+journey now uses response-gated browser reloads for its unavailable and inactive
+states, matching the remaining user action. It still checks automatic post-claim
+updates. Both desktop/mobile cases passed first attempt (preparation 5.939s;
+runner 8.2s; cases 3.9s/3.4s), with no new repair. The final header screenshots at
+1440x1000 and 390x1000 were inspected. Focused lint, formatting and diff checks
+passed; temporary fixture server and bundle were cleaned by the runner.
+
+## November 12, 2026: Correct the remaining body-query routes
+
+Correction to the Rewards account-navigation entry above: accepting the selected
+body query as the expected URL was an incorrect product-contract decision. Menu
+was left as a query-based exception in `e8a96d81b`; Rewards added the same pattern
+in `e3a22bee3`. The owner confirmed all selected-body destinations must use paths.
+The source defect is now fixed in `routeTarget` and `GameShell`, with canonical
+Menu/Rewards route files. The browser expectations now enforce the corrected
+product contract; this is not a stabilization repair or reset of prior history.
+
+AGENTS.md now requires body-path links on every game destination. The deterministic
+router test enumerates all page destinations. Ordinary fixture/acceptance URL
+examples were migrated across the repository; only deliberate legacy
+normalization/rejection cases retain body query inputs. Existing inbound
+compatibility still validates access and removes the query before rendering the
+canonical destination. Historical evidence above remains intact.
+
+Validation at `67c1c846` plus this local cleanup diff:
+
+- Six focused client files: 47 passed, 1.74s runner duration.
+- Focused application routing/navigation/rewards/tutorial: 25 passed; preparation
+  5.554s and browser runner 54.2s, one worker, no queue wait or failed cases.
+- Coverage includes legacy normalization, foreign-planet rejection, all existing
+  account pages, Menu/Rewards world switching/history/reload, desktop/mobile
+  navigation, selected-body links, reward claim/reload recovery, and Alliance
+  under beginner More. Renown CTA destination and initial viewport visibility
+  are checked at desktop and mobile sizes.
+- Desktop/mobile Rewards and beginner More screenshots were inspected; earlier
+  account-dropdown/mobile-menu captures were refreshed on the final routes.
+- Full frontend lint and formatting, Rust formatting, and diff checks passed.
+- Disposable browser bundle/server were cleaned by the existing runner. No
+  acceptance stack, database, or other chat's processes were changed. The broader
+  explicit acceptance suites were not run for the mechanical URL-example edits.
+- Final `npm run build` passed, including the full app TypeScript check and
+  production/prerender bundles. Changes remain local and unpublished.
+
 ## November 12, 2026: cancelled BEGIN fixture
 
 New `pools::cancelled_begin_does_not_poison_shared_store_refresh_pool` initially
@@ -1675,3 +1868,44 @@ See [verification](../verification/cancelled-transaction-begin.md) for timings,
 known-broken execution and retained transaction/commit/rollback coverage. If the
 repaired fixture fails again due to a test defect, follow the one-repair rule;
 product regression failures remain actionable and do not justify deleting it.
+
+## November 12, 2026: PR394 main integration
+
+After merging main6017f308, full Clippy/all-target compilation found the new
+`game_invitations` HTTP fixture omitted main's new optional `HttpConfig.account_url`
+field (E0063 at the fixture initializer). This is an integration compilation
+error, before database test execution, not a flaky assertion. Add explicit None,
+matching this fixture's no-external-account-link configuration. No behavior or
+assertions were removed; retain this failed attempt with the final qualification.
+
+## November 12, 2026: canonical report URLs expose overbroad lunar mocks
+
+PR394 head d89dcf8d, CI run43289492445 attempt1, feature jobs131431839679 and
+131431839801 failed four expanded cases: both widths of `delivery reports retain
+lunar destination links at shared coordinates` and `shows planet and moon together
+and opens the creation notice and combat outcome`. Each failed in the report
+mock with null request_id, followed by aborted document navigation.
+
+The canonical body-path migration removed the old query suffix. The two mocks
+used `**/reports/<id>`, matching the HTML GET as well as the intended API POST.
+This is a fixture URL-boundary defect, not a game regression or infrastructure
+outage. File history and this ledger show no earlier failure repair for these
+scenarios; #378 added response-aware navigation as a coverage migration.
+
+One repair: constrain both mocks to `/api/v4/universes/*/reports/<id>` and use
+withReportResponse in the moon-creation loop so the navigation gate also requires
+the POST response. Keep all lunar identity, coordinate, report and layout checks.
+No sleeps, timeout changes, retries or weaker assertions. These cases consume
+this single fixture repair and retain their existing names.
+
+The report-mock audit found these two bare detail patterns. Other private report
+mocks are API-prefixed; report-sharing's bare `/reports/shared/<token>` handler is
+intentionally an HTML metadata fixture and stays separate from its API mock.
+Future private report fixtures must constrain the API path, not only a suffix
+that a page route can share. This originating lane owns the repair and exact-head
+CI follow-through; raw failed job logs and artifact IDs are retained with the
+publishing evidence.
+
+The four affected desktop/mobile cases passed locally after this repair (9.4s
+runner duration, one worker). The temporary fixture bundle/server were cleaned
+by the installed runner. Production code and visual captures are unchanged.

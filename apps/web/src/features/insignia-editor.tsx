@@ -1,3 +1,4 @@
+import { CosmeticColor, CosmeticTreatments } from './rewards/cosmetic-controls'
 import { InsigniaComposer } from './insignia-composer'
 import {
   compositionAppearance,
@@ -134,7 +135,7 @@ export function InsigniaEditor() {
                       onChange={(e) => editor.edit({ name: e.target.value })}
                     />
                   </label>
-                  {design.recipe.version === 2 ? (
+                  {design.recipe.layers !== undefined ? (
                     <InsigniaComposer
                       snapshot={snapshot}
                       recipe={design.recipe}
@@ -178,7 +179,7 @@ export function InsigniaEditor() {
                                   aria-pressed={
                                     design.recipe.symbol === item.id
                                   }
-                                  aria-label={`${item.name}${access === 'available' ? '' : ' · Supporter access required'}`}
+                                  aria-label={`${item.name}${access === 'available' ? '' : ' · Membership access required'}`}
                                   disabled={access !== 'available'}
                                   onClick={() =>
                                     editor.edit({
@@ -219,7 +220,7 @@ export function InsigniaEditor() {
                                       : item.supporter
                                         ? snapshot.policy === 'unrestricted'
                                           ? 'Included'
-                                          : 'Supporter'
+                                          : 'Membership'
                                         : 'Free'}
                                   </small>
                                 </button>
@@ -235,46 +236,57 @@ export function InsigniaEditor() {
                                 item.supporter &&
                                 editor.access(item.id) === 'unavailable',
                             )
-                              ? 'Supporter verification is temporarily unavailable. Free and permanently unlocked symbols remain available.'
-                              : 'Supporters can use additional symbols. Permanent unlocks remain yours after membership ends.'}
+                              ? 'Membership verification is temporarily unavailable. Free and permanently unlocked symbols remain available.'
+                              : 'Members can use additional symbols. Permanent unlocks remain yours after membership ends.'}
                           </Text>
                         )}
-                      <div className={styles.colors}>
-                        <label>
-                          Symbol color
-                          <input
-                            type="color"
-                            aria-label="Symbol color"
-                            value={design.recipe.foreground}
-                            disabled={editor.busy}
-                            onChange={(e) =>
-                              editor.edit({
-                                recipe: {
-                                  ...design.recipe,
-                                  foreground: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Background color
-                          <input
-                            type="color"
-                            aria-label="Background color"
-                            value={design.recipe.background}
-                            disabled={editor.busy}
-                            onChange={(e) =>
-                              editor.edit({
-                                recipe: {
-                                  ...design.recipe,
-                                  background: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </label>
+                      <div
+                        className={styles.colors}
+                        data-named-colors={
+                          snapshot.dyes?.length ? true : undefined
+                        }
+                      >
+                        <CosmeticColor
+                          snapshot={snapshot}
+                          label="Symbol color"
+                          value={design.recipe.foreground}
+                          disabled={editor.busy}
+                          onChange={(color) =>
+                            editor.edit({
+                              recipe: {
+                                ...design.recipe,
+                                version: snapshot.dyes?.length
+                                  ? 3
+                                  : design.recipe.version,
+                                foreground: color,
+                              },
+                            })
+                          }
+                        />
+                        <CosmeticColor
+                          snapshot={snapshot}
+                          label="Background color"
+                          value={design.recipe.background}
+                          disabled={editor.busy}
+                          onChange={(color) =>
+                            editor.edit({
+                              recipe: {
+                                ...design.recipe,
+                                version: snapshot.dyes?.length
+                                  ? 3
+                                  : design.recipe.version,
+                                background: color,
+                              },
+                            })
+                          }
+                        />
                       </div>
+                      <CosmeticTreatments
+                        snapshot={snapshot}
+                        recipe={design.recipe}
+                        busy={editor.busy}
+                        onChange={(recipe) => editor.edit({ recipe })}
+                      />
                     </>
                   )}
                 </div>

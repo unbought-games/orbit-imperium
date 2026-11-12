@@ -365,7 +365,7 @@ for (const [kind, payload, linkName] of [
         },
       })
     })
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda-prime/reports/${header.id}?body=${body.id}`))
+    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda-prime/b/${body.id}/reports/${header.id}`))
     await expect(
       page.getByRole('link', { name: linkName, exact: true }),
     ).toBeVisible()

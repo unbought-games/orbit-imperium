@@ -106,6 +106,7 @@ fn valid_original(bytes: &[u8]) -> bool {
                         | "stroke-width"
                         | "stroke-linecap"
                         | "stroke-linejoin"
+                        | "stroke-miterlimit"
                         | "fill-rule"
                         | "clip-rule"
                         | "opacity"
@@ -138,6 +139,8 @@ fn valid_original(bytes: &[u8]) -> bool {
 #[derive(Clone, Serialize)]
 pub(super) struct InsigniaAppearance {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub rendering: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub layers: Option<Vec<AppearanceLayer>>,
     pub recipe: InsigniaRecipe,
     pub asset_url: String,
@@ -147,6 +150,11 @@ pub(super) struct AppearanceLayer {
     pub symbol: String,
     pub color: String,
     pub asset_url: String,
+}
+fn resolve_color(catalog: &InsigniaCatalog, color: &str) -> String {
+    named_dye(color)
+        .and_then(|id| catalog.dye(id))
+        .map_or_else(|| color.to_owned(), |d| d.color.clone())
 }
 fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppearance {
     let layers = recipe.layers.as_ref().map(|layers| {
@@ -163,12 +171,16 @@ fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppe
         })
         .map(|l| AppearanceLayer {
             symbol: l.symbol.clone(),
-            color: l.color.clone(),
+            color: resolve_color(catalog, &l.color),
             asset_url: catalog.get(&l.symbol).unwrap().asset_url(),
         })
         .collect()
     });
     InsigniaAppearance {
+        rendering: (recipe.version==3).then(||serde_json::json!({
+            "foreground":resolve_color(catalog,&recipe.foreground),"background":resolve_color(catalog,&recipe.background),
+            "finish":recipe.finish.as_ref().and_then(|id|catalog.treatment(id)),
+            "effect":recipe.effect.as_ref().and_then(|id|catalog.treatment(id))})),
         layers,
         asset_url: catalog
             .get(&recipe.symbol)
@@ -179,6 +191,8 @@ fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppe
 }
 #[derive(Serialize)]
 struct Symbol {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    requirement: Option<CatalogAccess>,
     group: InsigniaGroup,
     id: String,
     name: String,
@@ -188,6 +202,10 @@ struct Symbol {
 }
 #[derive(Serialize)]
 struct InsigniaState {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    dyes: Vec<serde_json::Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    treatments: Vec<serde_json::Value>,
     composition_access: InsigniaAccess,
     binding: Binding,
     request_id: uuid::Uuid,
@@ -202,19 +220,22 @@ async fn evidence<S: IdentityStore>(
     s: &HttpState<S>,
     b: Binding,
     policy: CosmeticPolicy,
-) -> Result<SupporterEvidence, ServiceError> {
+) -> Result<(SupporterEvidence, Option<AccountCosmeticObservation>), ServiceError> {
     if policy != CosmeticPolicy::Supporter {
-        return Ok(SupporterEvidence::default());
+        return Ok((SupporterEvidence::default(), None));
     }
     let Some(profiles) = &s.profiles else {
-        return Ok(SupporterEvidence::default());
+        return Ok((SupporterEvidence::default(), None));
     };
     let identities = s
         .updates
         .player_identities(b.universe, vec![b.player])
         .await?;
     let profile = profiles.display(identities).await.into_iter().next();
-    Ok(profile.map_or_else(SupporterEvidence::default, |p| p.evidence()))
+    Ok(profile.map_or_else(
+        || (SupporterEvidence::default(), None),
+        |p| (p.evidence(), p.account_cosmetics),
+    ))
 }
 pub(super) async fn handle<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -238,7 +259,9 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
         .map_err(ServiceError::from)?;
     // Old clients enumerate the initial symbols. Ask them to refresh their app
     // before editing a catalog/library they cannot faithfully represent.
-    if headers.get("x-orbit-catalog").is_none_or(|v| v != "3")
+    if headers
+        .get("x-orbit-catalog")
+        .is_none_or(|v| v != "3" && v != "4")
         && (customization
             .catalog
             .symbols()
@@ -251,16 +274,22 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
     {
         return Err(ServiceError::Conflict.into());
     }
-    let evidence = evidence(&s, b, customization.policy).await?;
+    if headers.get("x-orbit-catalog").is_none_or(|v| v != "4")
+        && (!customization.catalog.dyes().is_empty()
+            || !customization.catalog.treatments().is_empty()
+            || current_library
+                .designs
+                .iter()
+                .any(|d| d.recipe.version == 3))
+    {
+        return Err(ServiceError::Conflict.into());
+    }
+    let (evidence, observation) = evidence(&s, b, customization.policy).await?;
+    let mut catalog = customization.catalog.clone();
+    catalog.account_observation = observation;
     if !matches!(q.action, InsigniaAction::Load) {
         s.updates
-            .change_insignia(
-                b,
-                q.action,
-                &customization.catalog,
-                customization.policy,
-                evidence,
-            )
+            .change_insignia(b, q.action, &catalog, customization.policy, evidence)
             .await?;
     }
     let library = s
@@ -268,15 +297,21 @@ pub(super) async fn handle<S: GameStore + IdentityStore>(
         .insignia_library(b)
         .await
         .map_err(ServiceError::from)?;
-    Ok(bound_api::no_store_json(project_state(
+    let mut state = project_state(
         b,
         q.context.request_id,
         library,
-        &customization.catalog,
+        &catalog,
         customization.policy,
         evidence,
         unbought_auth::now(),
-    )))
+    );
+    if headers.get("x-orbit-catalog").is_none_or(|h| h != "4") {
+        for symbol in &mut state.catalog {
+            symbol.requirement = None;
+        }
+    }
+    Ok(bound_api::no_store_json(state))
 }
 fn project_state(
     b: Binding,
@@ -304,6 +339,11 @@ fn project_state(
         .symbols()
         .iter()
         .map(|item| Symbol {
+            requirement: Some(item.access.unwrap_or(if item.supporter {
+                CatalogAccess::Membership
+            } else {
+                CatalogAccess::Free
+            })),
             group: item.group,
             id: item.id.clone(),
             name: item.name.clone(),
@@ -325,6 +365,40 @@ fn project_state(
         now + 30
     };
     InsigniaState {
+        dyes: installed
+            .dyes()
+            .iter()
+            .map(|d| {
+                let mut value = serde_json::to_value(d).unwrap();
+                value["availability"] = serde_json::to_value(account_item_access(
+                    installed, "dye", &d.id, d.access, policy, evidence, now,
+                ))
+                .unwrap();
+                value
+            })
+            .collect(),
+        treatments: installed
+            .treatments()
+            .iter()
+            .map(|d| {
+                let mut value = serde_json::to_value(d).unwrap();
+                value["availability"] = serde_json::to_value(account_item_access(
+                    installed,
+                    if d.family == "finish" {
+                        "finish"
+                    } else {
+                        "effect"
+                    },
+                    &d.id,
+                    d.access,
+                    policy,
+                    evidence,
+                    now,
+                ))
+                .unwrap();
+                value
+            })
+            .collect(),
         binding: b,
         request_id,
         library,
@@ -341,8 +415,9 @@ fn project_state(
 }
 /// Do not send authored fields to clients whose strict schemas cannot represent them.
 pub(super) fn profile_recipe(recipe: InsigniaRecipe, version: Option<&str>) -> InsigniaRecipe {
-    if (recipe.shape.is_some() && version != Some("4"))
-        || (recipe.version == 2 && !matches!(version, Some("3" | "4")))
+    if (recipe.version == 3 && version != Some("5"))
+        || (recipe.shape.is_some() && !matches!(version, Some("4" | "5")))
+        || (recipe.version == 2 && !matches!(version, Some("3" | "4" | "5")))
         || (version == Some("1") && !legacy_insignia_id(&recipe.symbol))
     {
         InsigniaRecipe::default()
@@ -689,6 +764,7 @@ mod tests {
         let svg = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>";
         let hash = hex::encode(Sha256::digest(svg));
         let item = InsigniaSymbol {
+            access: None,
             group: InsigniaGroup::Legacy,
             id: "operator-circle".into(),
             name: "Operator circle".into(),
@@ -747,11 +823,16 @@ mod tests {
     }
     #[test]
     fn installed_svg_cannot_reference_files_or_execute_content() {
+        // A bounded stroke join is ordinary static geometry in operator artwork.
+        assert!(valid_original(
+            br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M1 9L5 1L9 9" fill="none" stroke="#000000" stroke-width="1" stroke-linejoin="miter" stroke-miterlimit="4"/></svg>"##
+        ));
         for inner in [
             "<script>alert(1)</script>",
             "<image href=\"file:///etc/passwd\"/>",
             "<path onclick=\"alert(1)\"/>",
             "<path style=\"fill:url(file:///tmp/a)\"/>",
+            "<path stroke-miterlimit=\"url(file:///tmp/a)\"/>",
         ] {
             let svg = format!("<svg xmlns=\"http://www.w3.org/2000/svg\">{inner}</svg>");
             assert!(!valid_original(svg.as_bytes()));

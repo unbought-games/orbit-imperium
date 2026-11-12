@@ -48,7 +48,24 @@ pub async fn grant_cosmetic(
     {
         return Err(StoreError::Conflict);
     }
-    sqlx::query("INSERT INTO cosmetic_grants(account,kind,item_id,source,reason) VALUES($1,$2,$3,$4,$5) ON CONFLICT(account,kind,item_id) DO NOTHING")
+    lock_cosmetic_source(tx, account, kind, item).await?;
+    sqlx::query("INSERT INTO cosmetic_grant_sources(account,kind,item_id,source,reason) VALUES($1,$2,$3,$4,$5) ON CONFLICT(account,kind,item_id,source) DO UPDATE SET granted_at=COALESCE(cosmetic_grant_sources.granted_at,now()),reason=CASE WHEN cosmetic_grant_sources.granted_at IS NULL THEN excluded.reason ELSE cosmetic_grant_sources.reason END")
         .bind(account.0).bind(kind).bind(item).bind(source).bind(reason).execute(&mut **tx).await.map_err(db_error)?;
+    sqlx::query("INSERT INTO cosmetic_grants(account,kind,item_id,source,reason) SELECT $1,$2,$3,$4,$5 WHERE EXISTS(SELECT 1 FROM cosmetic_grant_sources WHERE account=$1 AND kind=$2 AND item_id=$3 AND source=$4 AND revoked_at IS NULL) ON CONFLICT(account,kind,item_id) DO NOTHING")
+        .bind(account.0).bind(kind).bind(item).bind(source).bind(reason).execute(&mut **tx).await.map_err(db_error)?;
+    Ok(())
+}
+
+pub(crate) async fn lock_cosmetic_source(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    account: AccountId,
+    kind: &str,
+    item: &str,
+) -> Result<(), StoreError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,44))")
+        .bind(format!("cosmetic:{}:{kind}:{item}", account.0))
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
     Ok(())
 }

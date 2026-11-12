@@ -26,7 +26,8 @@ it('sends a bound view source and CSRF, never a subject or credential', async ()
   expect(fetch.mock.calls[0][1].headers).toEqual({
     'content-type': 'application/json',
     'x-csrf-token': 'csrf',
-    'x-orbit-insignia': '4',
+    'x-orbit-insignia': '5',
+    'x-orbit-rewards': '1',
     'x-orbit-identity': '1',
     'x-orbit-alliance-presentation': '1',
   })

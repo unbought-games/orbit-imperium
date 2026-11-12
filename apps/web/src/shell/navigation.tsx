@@ -1,3 +1,4 @@
+import { useRewardsVisible } from './community-rewards-context'
 import { useTutorial } from '../features/tutorial/use-tutorial'
 import {
   briefingEntryAvailable,
@@ -18,6 +19,7 @@ import {
   LogOut,
   ChevronsUpDown,
   Settings,
+  Trophy,
   UserRound,
   ArrowUpRight,
 } from 'lucide-react'
@@ -66,6 +68,7 @@ export function Navigation({
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
+  const rewardsVisible = useRewardsVisible()
   const { data: tutorial } = useTutorial()
   const visiblePages = tutorialPages(
     tutorial,
@@ -96,7 +99,13 @@ export function Navigation({
         tutorial?.beginner === false)
     )
       return null
-    if (!inMore && p !== 'menu' && visiblePages && !visiblePages.has(p))
+    if (
+      !inMore &&
+      p !== 'menu' &&
+      p !== 'rewards' &&
+      visiblePages &&
+      !visiblePages.has(p)
+    )
       return null
     const working = !primary && activity.has(p)
     const blocked = !primary && !working ? blockers.get(p) : undefined
@@ -314,6 +323,29 @@ export function Navigation({
                   >
                     <UserRound size={16} aria-hidden="true" /> My Orbit profile
                   </AccountMenu.LinkItem>
+                  {rewardsVisible && (
+                    <AccountMenu.LinkItem
+                      closeOnClick
+                      render={
+                        <Link {...routeTarget(universeName, 'rewards', body)} />
+                      }
+                      className={styles.accountMenuItem}
+                      data-analytics="navigate_rewards"
+                      aria-current={page === 'rewards' ? 'page' : undefined}
+                      onClick={(event) => {
+                        if (
+                          event.button === 0 &&
+                          !event.metaKey &&
+                          !event.ctrlKey &&
+                          !event.shiftKey &&
+                          !event.altKey
+                        )
+                          onVisit?.('rewards')
+                      }}
+                    >
+                      <Trophy size={16} aria-hidden="true" /> Rewards
+                    </AccountMenu.LinkItem>
+                  )}
                   <AccountMenu.LinkItem
                     closeOnClick
                     render={

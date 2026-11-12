@@ -1,3 +1,6 @@
+import { AllianceHonors } from '../rewards/recognition'
+import { rememberInvitation } from '../../client-model/community-invitation'
+import { invitationEntryPath } from '../../client-model/invitation-entry'
 import { useEffect } from 'react'
 import { LoadingRegion } from '../../ui/loading-region'
 import { recruitmentEntryPath } from '../../client-model/recruitment'
@@ -20,22 +23,37 @@ export function PublicAlliancePage({
     invitation,
   )
   useEffect(() => {
+    const code = new URLSearchParams(location.search).get('rewards_invitation')
+    if (code && data?.summary.id) {
+      try {
+        rememberInvitation(localStorage, code)
+      } catch {
+        /* Optional local recall; acceptance is still explicit. */
+      }
+    }
+  }, [data?.summary.id])
+  useEffect(() => {
     document.title = `${data?.summary.name ?? 'Alliance'} · Orbit Imperium`
   }, [data?.summary.name])
   const destination = data
     ? recruitmentEntryPath({ universe, alliance: data.summary.id, invitation })
     : ''
+  const rewardCode = new URLSearchParams(location.search).get(
+    'rewards_invitation',
+  )
+  const signinHref =
+    (rewardCode && invitationEntryPath(rewardCode, location.pathname)) ||
+    `/login?${new URLSearchParams({ redirect: destination })}`
   return (
     <main id="main">
       <LoadingRegion loading={!data && !error} label="Loading alliance…">
         {data ? (
           <PublicAllianceTemplate
             data={data}
-            signinHref={`/login?${new URLSearchParams({ redirect: destination })}`}
+            honors={<AllianceHonors alliance={data.summary.id} />}
+            signinHref={signinHref}
             action={
-              <ButtonLinkAnchor
-                href={`/login?${new URLSearchParams({ redirect: destination })}`}
-              >
+              <ButtonLinkAnchor href={signinHref}>
                 {data.summary.recruitment === 'Open'
                   ? `Join ${data.summary.name}`
                   : data.summary.recruitment === 'Application'

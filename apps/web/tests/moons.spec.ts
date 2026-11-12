@@ -2,7 +2,7 @@ import { routeWorld } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withReportResponse } from './fixtures/responses'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
@@ -134,11 +134,11 @@ for (const width of [1440, 390]) {
       const combat = {kind: 'Combat', at: now, target: body.coordinates, target_name: 'Nova Roma', target_kind: 'Planet', outcome: 'DefenderVictory', participants: [], rounds: [], survivors: [], gross_losses: [], recovered: [], debris: {metal: '1500300000000', crystal: '500100000000', deuterium: '0'}, loot: zero, moon_creation: {chance_percent: 20, moon: moon.id, diameter_km: 8366}}
       for (const [index, payload] of [created, combat].entries()) {
         const report = id(90 + index)
-        await page.route(`**/reports/${report}`, async route => {
+        await page.route(`**/api/v4/universes/*/reports/${report}`, async route => {
           const request = route.request().postDataJSON()
           await route.fulfill({json: bound(request.request_id, {header: {id: report, kind: payload.kind, observed_at: now, read: true, hidden: false}, payload})})
         })
-        await withFixtureResponse(page, r => r.url().endsWith(`/reports/${report}`), () => page.goto(`/u/andromeda/reports/${report}?body=${body.id}`))
+        await withReportResponse(page, report, () => page.goto(`/u/andromeda/b/${body.id}/reports/${report}`))
         await expect(page.getByRole('region', {name: 'Report observation'})).toContainText('8,366 km')
         await diagnosticScreenshot(page, {path: `test-results/moon-${index ? 'combat' : 'notice'}-${width}x900.png`, fullPage: true})
         if (index === 0) {

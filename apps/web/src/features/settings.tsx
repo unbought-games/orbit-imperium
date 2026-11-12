@@ -59,7 +59,7 @@ export function SettingsScreen() {
             {identity.supporter_tier && (
               <dd>
                 <Text>
-                  Supporter · Thank you for supporting unbought games.
+                  Supporter · Thank you for supporting Unbought Games.
                 </Text>
               </dd>
             )}

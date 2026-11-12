@@ -294,7 +294,7 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     page.getByRole('heading', { name: 'Destination unavailable', exact: true }),
   ).toBeVisible()
   const lookup = new URL(foreignReport)
-  lookup.searchParams.set('body', foreignView.bodies[0].id)
+  lookup.pathname = lookup.pathname.replace(/\/b\/[^/]+\//, `/b/${foreignView.bodies[0].id}/`)
   await page.goto(lookup.toString())
   await expect(
     page.getByRole('alert').filter({ hasText: 'This report was not found or is not available to your account.' }),

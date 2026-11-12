@@ -115,9 +115,7 @@ function GameShellContent() {
     available &&
     !params.coordinates &&
     !!body &&
-    (page === 'menu'
-      ? !params.body && !search.body
-      : !params.body || search.body !== undefined || canonicalPage !== page)
+    (!params.body || search.body !== undefined || canonicalPage !== page)
   // Default context is recorded once; later view changes must not silently select another planet.
   useEffect(() => {
     if (canonicalizing && body) {
@@ -128,10 +126,7 @@ function GameShellContent() {
           body.id,
           route.item ?? undefined,
         ),
-        search:
-          page === 'menu'
-            ? { ...withoutBodySearch(location.search), body: body.id }
-            : withoutBodySearch(location.search),
+        search: withoutBodySearch(location.search),
         hash: location.hash,
         replace: true,
       })
@@ -212,10 +207,7 @@ function GameShellContent() {
       ),
       ...(available
         ? {
-            search:
-              page === 'menu'
-                ? { ...withoutBodySearch(location.search), body: id }
-                : withoutBodySearch(location.search),
+            search: withoutBodySearch(location.search),
             hash: location.hash,
           }
         : {}),
@@ -229,6 +221,7 @@ function GameShellContent() {
       page === 'fleets' ||
       (page === 'dispatch' && view.protocol === 4) ||
       page === 'settings' ||
+      page === 'rewards' ||
       page === 'menu' ||
       page === 'alliance' ||
       page === 'alliance-create' ||

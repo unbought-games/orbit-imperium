@@ -6,6 +6,8 @@ import { expect, it } from 'vitest'
 import { createAppRouter } from './router'
 import { routeTarget } from './shell/route-target'
 import { validateAuthSearch } from './shell/auth-search'
+import { pageTitles } from './shell/navigation-model'
+import type { Page } from './shell/routes'
 
 it('matches separate home, login, and signup routes', async () => {
   for (const href of ['/', '/login', '/signup']) {
@@ -21,7 +23,7 @@ it('matches separate home, login, and signup routes', async () => {
 
 it('keeps only local game destinations in authentication return URLs', () => {
   for (const [redirect, expected] of [
-    ['/u/u/research?body=mars#details', '/u/u/research?body=mars#details'],
+    ['/u/u/b/mars/research#details', '/u/u/b/mars/research#details'],
     ['https://example.com', undefined],
     ['//example.com', undefined],
     ['/u/../../login', undefined],
@@ -45,12 +47,12 @@ it('matches concrete file routes and decodes planet and item parameters', async 
   for (const [href, page, params] of [
     ['/u/u/b/earth/resources', 'resources', { universe: 'u', body: 'earth' }],
     ['/u/u/b/mars/briefing', 'briefing', { universe: 'u', body: 'mars' }],
-    ['/u/u/research?body=mars', 'research', { universe: 'u' }],
-    ['/u/u/galaxy?body=mars', 'galaxy', { universe: 'u' }],
+    ['/u/u/b/mars/research', 'research', { universe: 'u', body: 'mars' }],
+    ['/u/u/b/mars/galaxy', 'galaxy', { universe: 'u', body: 'mars' }],
     [
-      '/u/u/fleets/fleet-1?body=earth',
+      '/u/u/b/earth/fleets/fleet-1',
       'fleets',
-      { universe: 'u', item: 'fleet-1' },
+      { universe: 'u', body: 'earth', item: 'fleet-1' },
     ],
     ['/u/u/reports/report-1', 'reports', { universe: 'u', item: 'report-1' }],
   ] as const) {
@@ -78,6 +80,15 @@ it('builds browser-history links and preserves funding context', () => {
   expect(
     router.buildLocation(routeTarget('u', 'fleets', 'mars', 'fleet-1')).href,
   ).toBe('/u/u/b/mars/fleets/fleet-1')
+})
+it('puts selected-body context in the path for every game destination', () => {
+  const router = createAppRouter({ history: createMemoryHistory() })
+  for (const page of Object.keys(pageTitles) as Page[]) {
+    const href = router.buildLocation(routeTarget('u', page, 'mars')).href
+    const url = new URL(href, 'https://orbit.example.test')
+    expect(url.pathname).toMatch(/^\/u\/u\/b\/mars\//)
+    expect(url.searchParams.has('body')).toBe(false)
+  }
 })
 it('unknown paths do not become gameplay pages', async () => {
   for (const href of [
@@ -108,6 +119,8 @@ it('rejects invalid funding query values at the route boundary', async () => {
 })
 
 const accountPages = [
+  'menu',
+  'rewards',
   'messages',
   'alliance',
   'high-scores',

@@ -1,3 +1,4 @@
+import { InvitationLinks } from '../rewards/invitations'
 import presentationStyles from './presentation.module.css'
 import { PresentationPreview } from './presentation-preview'
 import type { SettingsDestination } from './settings'
@@ -92,7 +93,7 @@ function AllianceWorkspace({
   welcome: boolean
   invitation?: string
 }) {
-  const { universeName, body } = useGameScreen()
+  const { universeName, body, view } = useGameScreen()
   const navigate = useNavigate()
   const allianceTarget = routeTarget(universeName, 'alliance', body?.id)
   const discoveryTarget = routeTarget(
@@ -383,6 +384,21 @@ function AllianceWorkspace({
                       )}
                       {active === 'Settings' && (
                         <Settings
+                          rewardLinks={
+                            <InvitationLinks
+                              publicEnabled={!!detail.invitation}
+                              entryPath={
+                                detail.invitation
+                                  ? `/invite/${detail.summary.universe}/${detail.invitation}`
+                                  : `/alliances/${detail.summary.universe}/${detail.summary.id}`
+                              }
+                              alliance={{
+                                universe_id: view.binding.universe,
+                                epoch_id: view.binding.epoch,
+                                alliance_id: detail.summary.id,
+                              }}
+                            />
+                          }
                           section={settingsSection}
                           onSectionChange={setSettingsSection}
                           detail={detail}

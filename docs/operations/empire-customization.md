@@ -302,3 +302,12 @@ IDs rather than copying separately distributed content into application artifact
 Focused checks: `make test-empire-identity`; disposable database checks:
 `make _db-empire_history _db-insignias _db-empire_history_upgrade` using the standard
 isolated Compose configuration. Back up the database and pinned catalog together.
+
+### Community catalog reader
+
+The optional [community rewards integration](community-rewards.md) adds manifest
+version 3, named account dyes, bounded treatments, and recipe version 3. It keeps
+account entitlement observations separate from game grants and membership access
+separate from paid supporter badges. Migration 0044 records every grant source in
+`cosmetic_grant_sources`; repeated legitimate awards for the same item preserve
+all provenance while the existing ownership key remains unique.

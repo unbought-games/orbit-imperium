@@ -107,7 +107,10 @@ export async function recruitmentFixture(
     }
     data.presentation = detail.presentation.public
     data.summary.visual_identity = identity
-    await page.route('**/api/alliance-presentation/catalog', (route) =>
+    const catalogRequest = (url: URL) =>
+      url.pathname === '/api/alliance-presentation/catalog' &&
+      url.searchParams.get('alliance') === alliance
+    await page.route(catalogRequest, (route) =>
       route.fulfill({
         json: {
           templates: [

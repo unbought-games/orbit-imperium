@@ -394,7 +394,13 @@ test('alliance presentation previews unsaved edits and publishes them through th
   )
   await withFixtureResponse(
     page,
-    (r) => r.url().endsWith('/api/alliance-presentation/catalog'),
+    (r) => {
+      const url = new URL(r.url())
+      return (
+        url.pathname === '/api/alliance-presentation/catalog' &&
+        url.searchParams.get('alliance') === recruitmentAlliance
+      )
+    },
     () =>
       page
         .getByRole('navigation', { name: 'Alliance sections' })

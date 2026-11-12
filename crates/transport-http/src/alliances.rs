@@ -15,15 +15,20 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
     let mut view = s.game.alliance_query(principal(&session, u)?, q).await?;
     for summary in &mut view.directory {
         if let Some(identity) = &mut summary.visual_identity {
-            super::alliance_media::effective_identity(&s, identity);
+            super::alliance_media::effective_identity(&s, summary.id, identity).await;
         }
     }
     if let Some(detail) = &mut view.alliance {
         if let Some(identity) = &mut detail.summary.visual_identity {
-            super::alliance_media::effective_identity(&s, identity);
+            super::alliance_media::effective_identity(&s, detail.summary.id, identity).await;
         }
         if let Some(presentation) = &mut detail.presentation {
-            super::alliance_media::effective_identity(&s, &mut presentation.public.identity);
+            super::alliance_media::effective_identity(
+                &s,
+                detail.summary.id,
+                &mut presentation.public.identity,
+            )
+            .await;
         }
     }
     if !presentation_enabled(&h) {
@@ -35,7 +40,7 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
             detail.summary.visual_identity = None;
         }
     }
-    Ok(no_store_json(view))
+    super::alliance_media::response(&s, &h, view)
 }
 pub(super) async fn command<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -47,7 +52,7 @@ pub(super) async fn command<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     path_binding(u, q.context.binding)?;
     s.game.require_protocol(session.account, u, 4).await?;
-    super::alliance_media::validate_crest(&s, &q)?;
+    super::alliance_media::validate_crest(&s, &q).await?;
     Ok(no_store_json(
         s.game.alliance_command(principal(&session, u)?, q).await?,
     ))
@@ -70,11 +75,11 @@ pub(super) async fn public<S: GameStore + IdentityStore>(
     }
     let mut data = s.game.public_alliance(UniverseId(universe), id).await?;
     if let Some(p) = &mut data.presentation {
-        super::alliance_media::effective_identity(&s, &mut p.identity);
+        super::alliance_media::effective_identity(&s, data.summary.id, &mut p.identity).await;
         data.summary.visual_identity = Some(p.identity.clone());
     }
     legacy_public(&h, &mut data);
-    let mut response = no_store_json(data);
+    let mut response = super::alliance_media::response(&s, &h, data)?;
     response
         .headers_mut()
         .insert("x-robots-tag", "noindex".parse().expect("static header"));
@@ -114,15 +119,16 @@ pub(super) async fn directory<S: GameStore + IdentityStore>(
         .await?;
     for alliance in &mut data.alliances {
         if let Some(identity) = &mut alliance.summary.visual_identity {
-            super::alliance_media::effective_identity(&s, identity);
+            super::alliance_media::effective_identity(&s, alliance.summary.id, identity).await;
         }
         if let Some(p) = &mut alliance.presentation {
-            super::alliance_media::effective_identity(&s, &mut p.identity);
+            super::alliance_media::effective_identity(&s, alliance.summary.id, &mut p.identity)
+                .await;
             alliance.summary.visual_identity = Some(p.identity.clone());
         }
         legacy_public(&h, alliance);
     }
-    Ok(no_store_json(data))
+    super::alliance_media::response(&s, &h, data)
 }
 pub(super) async fn invitation<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -138,11 +144,11 @@ pub(super) async fn invitation<S: GameStore + IdentityStore>(
         .alliance_invitation(UniverseId(universe), token)
         .await?;
     if let Some(p) = &mut data.presentation {
-        super::alliance_media::effective_identity(&s, &mut p.identity);
+        super::alliance_media::effective_identity(&s, data.summary.id, &mut p.identity).await;
         data.summary.visual_identity = Some(p.identity.clone());
     }
     legacy_public(&h, &mut data);
-    Ok(no_store_json(data))
+    super::alliance_media::response(&s, &h, data)
 }
 
 fn presentation_enabled(h: &HeaderMap) -> bool {

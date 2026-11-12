@@ -8,11 +8,20 @@ import joinStyles from './hosted-join.module.css'
 export function HostedJoin({
   universe,
   hasMembership,
+  destination = '/',
+  automatic = false,
 }: {
-  universe: string
+  universe?: string
   hasMembership: boolean
+  destination?: string
+  automatic?: boolean
 }) {
-  const { loading, busy, error, retry } = useHostedJoin(universe, hasMembership)
+  const { loading, busy, error, retry } = useHostedJoin(
+    universe,
+    hasMembership,
+    destination,
+    automatic,
+  )
   return (
     <PublicFrame>
       <Heading level={1}>Your account is ready.</Heading>

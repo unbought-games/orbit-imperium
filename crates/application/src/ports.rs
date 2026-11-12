@@ -1,5 +1,17 @@
 use crate::*;
 pub trait IdentityStore: Send + Sync {
+    fn capture_community_history(
+        &self,
+        _account: AccountId,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Ok(()) }
+    }
+    fn alliance_cosmetic_grants(
+        &self,
+        _alliance: uuid::Uuid,
+    ) -> impl std::future::Future<Output = Result<Vec<(String, String)>, StoreError>> + Send {
+        async { Ok(vec![]) }
+    }
     fn player_preferences(
         &self,
         _binding: Binding,
@@ -189,6 +201,25 @@ pub trait IdentityStore: Send + Sync {
         _policy: SignupPolicy,
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
+    }
+
+    /// Resolve only a currently valid, game-owned issuance binding.
+    fn game_invitation_destination(
+        &self,
+        _code: &str,
+        _issuer: &str,
+    ) -> impl std::future::Future<Output = Result<Option<GameInvitationBinding>, StoreError>> + Send
+    {
+        async { Ok(None) }
+    }
+    fn enroll_oidc_at_epoch(
+        &self,
+        _account: AccountId,
+        _policy: SignupPolicy,
+        _intent: Option<RecruitmentIntent>,
+        _epoch: Epoch,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async { Err(StoreError::UnsupportedProtocol) }
     }
 
     /// Persisted universe policy. None is reserved for explicitly configured

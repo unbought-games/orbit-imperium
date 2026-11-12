@@ -7,7 +7,11 @@ import {
   selectedInsigniaDesign,
   symbolAccess,
 } from '../client-model/insignias'
-import { recipeAccess, layeredRecipe } from '../client-model/insignia-composer'
+import {
+  recipeAccess,
+  layeredRecipe,
+  namedNewRecipe,
+} from '../client-model/insignia-composer'
 import type { InsigniaDesign } from '../adapters/insignias'
 
 export function useInsigniaEditor() {
@@ -63,7 +67,7 @@ export function useInsigniaEditor() {
         id: commandId(crypto),
         name: 'My insignia',
         recipe: snapshot?.catalog.some((e) => e.group === 'center')
-          ? layeredRecipe(defaultInsignia)
+          ? namedNewRecipe(snapshot, layeredRecipe(defaultInsignia))
           : { ...defaultInsignia },
         revision: 0,
       })

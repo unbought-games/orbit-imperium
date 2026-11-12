@@ -81,6 +81,14 @@ export function AllianceCrestMark({
         }}
       />
     )
+  if (crest.appearance)
+    return (
+      <EmpireInsignia
+        appearance={crest.appearance}
+        size={size}
+        label="Alliance crest"
+      />
+    )
   const recipe = crest.recipe
   const url = (id: string) =>
     id === 'compass'

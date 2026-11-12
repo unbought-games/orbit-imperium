@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as InvitationsRouteImport } from './routes/invitations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as InviteCodeRouteImport } from './routes/invite.$code'
 import { Route as JoinUniverseRouteImport } from './routes/join.$universe'
 import { Route as UUniverseRouteImport } from './routes/u.$universe'
 import { Route as UUniverseIndexRouteImport } from './routes/u.$universe.index'
@@ -29,6 +31,7 @@ import { Route as UUniverseMessagesRouteImport } from './routes/u.$universe.mess
 import { Route as UUniverseOverviewRouteImport } from './routes/u.$universe.overview'
 import { Route as UUniverseReportsRouteImport } from './routes/u.$universe.reports'
 import { Route as UUniverseResearchRouteImport } from './routes/u.$universe.research'
+import { Route as UUniverseRewardsRouteImport } from './routes/u.$universe.rewards'
 import { Route as UUniverseSettingsRouteImport } from './routes/u.$universe.settings'
 import { Route as UUniverseAllianceCreateRouteImport } from './routes/u.$universe.alliance_.create'
 import { Route as UUniverseAllianceDiscoverRouteImport } from './routes/u.$universe.alliance_.discover'
@@ -46,12 +49,14 @@ import { Route as UUniverseBBodyFacilitiesRouteImport } from './routes/u.$univer
 import { Route as UUniverseBBodyFleetsRouteImport } from './routes/u.$universe.b.$body.fleets'
 import { Route as UUniverseBBodyGalaxyRouteImport } from './routes/u.$universe.b.$body.galaxy'
 import { Route as UUniverseBBodyHighScoresRouteImport } from './routes/u.$universe.b.$body.high-scores'
+import { Route as UUniverseBBodyMenuRouteImport } from './routes/u.$universe.b.$body.menu'
 import { Route as UUniverseBBodyMessagesRouteImport } from './routes/u.$universe.b.$body.messages'
 import { Route as UUniverseBBodyOverviewRouteImport } from './routes/u.$universe.b.$body.overview'
 import { Route as UUniverseBBodyReportsRouteImport } from './routes/u.$universe.b.$body.reports'
 import { Route as UUniverseBBodyResearchRouteImport } from './routes/u.$universe.b.$body.research'
 import { Route as UUniverseBBodyResourceSettingsRouteImport } from './routes/u.$universe.b.$body.resource-settings'
 import { Route as UUniverseBBodyResourcesRouteImport } from './routes/u.$universe.b.$body.resources'
+import { Route as UUniverseBBodyRewardsRouteImport } from './routes/u.$universe.b.$body.rewards'
 import { Route as UUniverseBBodySettingsRouteImport } from './routes/u.$universe.b.$body.settings'
 import { Route as UUniverseBBodyShipyardRouteImport } from './routes/u.$universe.b.$body.shipyard'
 import { Route as UUniverseBBodyAllianceCreateRouteImport } from './routes/u.$universe.b.$body.alliance_.create'
@@ -76,6 +81,11 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvitationsRoute = InvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -84,6 +94,11 @@ const LoginRoute = LoginRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteCodeRoute = InviteCodeRouteImport.update({
+  id: '/invite/$code',
+  path: '/invite/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinUniverseRoute = JoinUniverseRouteImport.update({
@@ -165,6 +180,11 @@ const UUniverseReportsRoute = UUniverseReportsRouteImport.update({
 const UUniverseResearchRoute = UUniverseResearchRouteImport.update({
   id: '/research',
   path: '/research',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseRewardsRoute = UUniverseRewardsRouteImport.update({
+  id: '/rewards',
+  path: '/rewards',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseSettingsRoute = UUniverseSettingsRouteImport.update({
@@ -257,6 +277,11 @@ const UUniverseBBodyHighScoresRoute =
     path: '/b/$body/high-scores',
     getParentRoute: () => UUniverseRoute,
   } as any)
+const UUniverseBBodyMenuRoute = UUniverseBBodyMenuRouteImport.update({
+  id: '/b/$body/menu',
+  path: '/b/$body/menu',
+  getParentRoute: () => UUniverseRoute,
+} as any)
 const UUniverseBBodyMessagesRoute = UUniverseBBodyMessagesRouteImport.update({
   id: '/b/$body/messages',
   path: '/b/$body/messages',
@@ -286,6 +311,11 @@ const UUniverseBBodyResourceSettingsRoute =
 const UUniverseBBodyResourcesRoute = UUniverseBBodyResourcesRouteImport.update({
   id: '/b/$body/resources',
   path: '/b/$body/resources',
+  getParentRoute: () => UUniverseRoute,
+} as any)
+const UUniverseBBodyRewardsRoute = UUniverseBBodyRewardsRouteImport.update({
+  id: '/b/$body/rewards',
+  path: '/b/$body/rewards',
   getParentRoute: () => UUniverseRoute,
 } as any)
 const UUniverseBBodySettingsRoute = UUniverseBBodySettingsRouteImport.update({
@@ -368,8 +398,10 @@ const UUniverseBBodyShipyardItemRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/invitations': typeof InvitationsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
@@ -385,6 +417,7 @@ export interface FileRoutesByFullPath {
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/reports': typeof UUniverseReportsRouteWithChildren
   '/u/$universe/research': typeof UUniverseResearchRoute
+  '/u/$universe/rewards': typeof UUniverseRewardsRoute
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe/': typeof UUniverseIndexRoute
   '/u/$universe/alliance/create': typeof UUniverseAllianceCreateRoute
@@ -403,12 +436,14 @@ export interface FileRoutesByFullPath {
   '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/menu': typeof UUniverseBBodyMenuRoute
   '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/reports': typeof UUniverseBBodyReportsRouteWithChildren
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/rewards': typeof UUniverseBBodyRewardsRoute
   '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/alliance/create': typeof UUniverseBBodyAllianceCreateRoute
@@ -426,8 +461,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/invitations': typeof InvitationsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe/$': typeof UUniverseSplatRoute
   '/u/$universe/alliance': typeof UUniverseAllianceRoute
@@ -440,6 +477,7 @@ export interface FileRoutesByTo {
   '/u/$universe/messages': typeof UUniverseMessagesRoute
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/research': typeof UUniverseResearchRoute
+  '/u/$universe/rewards': typeof UUniverseRewardsRoute
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe': typeof UUniverseIndexRoute
   '/u/$universe/alliance/create': typeof UUniverseAllianceCreateRoute
@@ -457,11 +495,13 @@ export interface FileRoutesByTo {
   '/u/$universe/b/$body/facilities': typeof UUniverseBBodyFacilitiesRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/menu': typeof UUniverseBBodyMenuRoute
   '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/rewards': typeof UUniverseBBodyRewardsRoute
   '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/alliance/create': typeof UUniverseBBodyAllianceCreateRoute
@@ -480,8 +520,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/invitations': typeof InvitationsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/invite/$code': typeof InviteCodeRoute
   '/join/$universe': typeof JoinUniverseRoute
   '/u/$universe': typeof UUniverseRouteWithChildren
   '/u/$universe/$': typeof UUniverseSplatRoute
@@ -497,6 +539,7 @@ export interface FileRoutesById {
   '/u/$universe/overview': typeof UUniverseOverviewRoute
   '/u/$universe/reports': typeof UUniverseReportsRouteWithChildren
   '/u/$universe/research': typeof UUniverseResearchRoute
+  '/u/$universe/rewards': typeof UUniverseRewardsRoute
   '/u/$universe/settings': typeof UUniverseSettingsRoute
   '/u/$universe/': typeof UUniverseIndexRoute
   '/u/$universe/alliance_/create': typeof UUniverseAllianceCreateRoute
@@ -515,12 +558,14 @@ export interface FileRoutesById {
   '/u/$universe/b/$body/fleets': typeof UUniverseBBodyFleetsRouteWithChildren
   '/u/$universe/b/$body/galaxy': typeof UUniverseBBodyGalaxyRoute
   '/u/$universe/b/$body/high-scores': typeof UUniverseBBodyHighScoresRoute
+  '/u/$universe/b/$body/menu': typeof UUniverseBBodyMenuRoute
   '/u/$universe/b/$body/messages': typeof UUniverseBBodyMessagesRoute
   '/u/$universe/b/$body/overview': typeof UUniverseBBodyOverviewRoute
   '/u/$universe/b/$body/reports': typeof UUniverseBBodyReportsRouteWithChildren
   '/u/$universe/b/$body/research': typeof UUniverseBBodyResearchRouteWithChildren
   '/u/$universe/b/$body/resource-settings': typeof UUniverseBBodyResourceSettingsRoute
   '/u/$universe/b/$body/resources': typeof UUniverseBBodyResourcesRouteWithChildren
+  '/u/$universe/b/$body/rewards': typeof UUniverseBBodyRewardsRoute
   '/u/$universe/b/$body/settings': typeof UUniverseBBodySettingsRoute
   '/u/$universe/b/$body/shipyard': typeof UUniverseBBodyShipyardRouteWithChildren
   '/u/$universe/b/$body/alliance_/create': typeof UUniverseBBodyAllianceCreateRoute
@@ -540,8 +585,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/invitations'
     | '/login'
     | '/signup'
+    | '/invite/$code'
     | '/join/$universe'
     | '/u/$universe'
     | '/u/$universe/$'
@@ -557,6 +604,7 @@ export interface FileRouteTypes {
     | '/u/$universe/overview'
     | '/u/$universe/reports'
     | '/u/$universe/research'
+    | '/u/$universe/rewards'
     | '/u/$universe/settings'
     | '/u/$universe/'
     | '/u/$universe/alliance/create'
@@ -575,12 +623,14 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/fleets'
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/menu'
     | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/reports'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/rewards'
     | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/alliance/create'
@@ -598,8 +648,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/invitations'
     | '/login'
     | '/signup'
+    | '/invite/$code'
     | '/join/$universe'
     | '/u/$universe/$'
     | '/u/$universe/alliance'
@@ -612,6 +664,7 @@ export interface FileRouteTypes {
     | '/u/$universe/messages'
     | '/u/$universe/overview'
     | '/u/$universe/research'
+    | '/u/$universe/rewards'
     | '/u/$universe/settings'
     | '/u/$universe'
     | '/u/$universe/alliance/create'
@@ -629,11 +682,13 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/facilities'
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/menu'
     | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/rewards'
     | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/alliance/create'
@@ -651,8 +706,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/invitations'
     | '/login'
     | '/signup'
+    | '/invite/$code'
     | '/join/$universe'
     | '/u/$universe'
     | '/u/$universe/$'
@@ -668,6 +725,7 @@ export interface FileRouteTypes {
     | '/u/$universe/overview'
     | '/u/$universe/reports'
     | '/u/$universe/research'
+    | '/u/$universe/rewards'
     | '/u/$universe/settings'
     | '/u/$universe/'
     | '/u/$universe/alliance_/create'
@@ -686,12 +744,14 @@ export interface FileRouteTypes {
     | '/u/$universe/b/$body/fleets'
     | '/u/$universe/b/$body/galaxy'
     | '/u/$universe/b/$body/high-scores'
+    | '/u/$universe/b/$body/menu'
     | '/u/$universe/b/$body/messages'
     | '/u/$universe/b/$body/overview'
     | '/u/$universe/b/$body/reports'
     | '/u/$universe/b/$body/research'
     | '/u/$universe/b/$body/resource-settings'
     | '/u/$universe/b/$body/resources'
+    | '/u/$universe/b/$body/rewards'
     | '/u/$universe/b/$body/settings'
     | '/u/$universe/b/$body/shipyard'
     | '/u/$universe/b/$body/alliance_/create'
@@ -710,8 +770,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  InvitationsRoute: typeof InvitationsRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  InviteCodeRoute: typeof InviteCodeRoute
   JoinUniverseRoute: typeof JoinUniverseRoute
   UUniverseRoute: typeof UUniverseRouteWithChildren
 }
@@ -732,6 +794,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invitations': {
+      id: '/invitations'
+      path: '/invitations'
+      fullPath: '/invitations'
+      preLoaderRoute: typeof InvitationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -744,6 +813,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$code': {
+      id: '/invite/$code'
+      path: '/invite/$code'
+      fullPath: '/invite/$code'
+      preLoaderRoute: typeof InviteCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join/$universe': {
@@ -856,6 +932,13 @@ declare module '@tanstack/react-router' {
       path: '/research'
       fullPath: '/u/$universe/research'
       preLoaderRoute: typeof UUniverseResearchRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/rewards': {
+      id: '/u/$universe/rewards'
+      path: '/rewards'
+      fullPath: '/u/$universe/rewards'
+      preLoaderRoute: typeof UUniverseRewardsRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/settings': {
@@ -977,6 +1060,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UUniverseBBodyHighScoresRouteImport
       parentRoute: typeof UUniverseRoute
     }
+    '/u/$universe/b/$body/menu': {
+      id: '/u/$universe/b/$body/menu'
+      path: '/b/$body/menu'
+      fullPath: '/u/$universe/b/$body/menu'
+      preLoaderRoute: typeof UUniverseBBodyMenuRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
     '/u/$universe/b/$body/messages': {
       id: '/u/$universe/b/$body/messages'
       path: '/b/$body/messages'
@@ -1017,6 +1107,13 @@ declare module '@tanstack/react-router' {
       path: '/b/$body/resources'
       fullPath: '/u/$universe/b/$body/resources'
       preLoaderRoute: typeof UUniverseBBodyResourcesRouteImport
+      parentRoute: typeof UUniverseRoute
+    }
+    '/u/$universe/b/$body/rewards': {
+      id: '/u/$universe/b/$body/rewards'
+      path: '/b/$body/rewards'
+      fullPath: '/u/$universe/b/$body/rewards'
+      preLoaderRoute: typeof UUniverseBBodyRewardsRouteImport
       parentRoute: typeof UUniverseRoute
     }
     '/u/$universe/b/$body/settings': {
@@ -1251,6 +1348,7 @@ interface UUniverseRouteChildren {
   UUniverseOverviewRoute: typeof UUniverseOverviewRoute
   UUniverseReportsRoute: typeof UUniverseReportsRouteWithChildren
   UUniverseResearchRoute: typeof UUniverseResearchRoute
+  UUniverseRewardsRoute: typeof UUniverseRewardsRoute
   UUniverseSettingsRoute: typeof UUniverseSettingsRoute
   UUniverseIndexRoute: typeof UUniverseIndexRoute
   UUniverseAllianceCreateRoute: typeof UUniverseAllianceCreateRoute
@@ -1265,12 +1363,14 @@ interface UUniverseRouteChildren {
   UUniverseBBodyFleetsRoute: typeof UUniverseBBodyFleetsRouteWithChildren
   UUniverseBBodyGalaxyRoute: typeof UUniverseBBodyGalaxyRoute
   UUniverseBBodyHighScoresRoute: typeof UUniverseBBodyHighScoresRoute
+  UUniverseBBodyMenuRoute: typeof UUniverseBBodyMenuRoute
   UUniverseBBodyMessagesRoute: typeof UUniverseBBodyMessagesRoute
   UUniverseBBodyOverviewRoute: typeof UUniverseBBodyOverviewRoute
   UUniverseBBodyReportsRoute: typeof UUniverseBBodyReportsRouteWithChildren
   UUniverseBBodyResearchRoute: typeof UUniverseBBodyResearchRouteWithChildren
   UUniverseBBodyResourceSettingsRoute: typeof UUniverseBBodyResourceSettingsRoute
   UUniverseBBodyResourcesRoute: typeof UUniverseBBodyResourcesRouteWithChildren
+  UUniverseBBodyRewardsRoute: typeof UUniverseBBodyRewardsRoute
   UUniverseBBodySettingsRoute: typeof UUniverseBBodySettingsRoute
   UUniverseBBodyShipyardRoute: typeof UUniverseBBodyShipyardRouteWithChildren
   UUniverseBBodyAllianceCreateRoute: typeof UUniverseBBodyAllianceCreateRoute
@@ -1291,6 +1391,7 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseOverviewRoute: UUniverseOverviewRoute,
   UUniverseReportsRoute: UUniverseReportsRouteWithChildren,
   UUniverseResearchRoute: UUniverseResearchRoute,
+  UUniverseRewardsRoute: UUniverseRewardsRoute,
   UUniverseSettingsRoute: UUniverseSettingsRoute,
   UUniverseIndexRoute: UUniverseIndexRoute,
   UUniverseAllianceCreateRoute: UUniverseAllianceCreateRoute,
@@ -1305,12 +1406,14 @@ const UUniverseRouteChildren: UUniverseRouteChildren = {
   UUniverseBBodyFleetsRoute: UUniverseBBodyFleetsRouteWithChildren,
   UUniverseBBodyGalaxyRoute: UUniverseBBodyGalaxyRoute,
   UUniverseBBodyHighScoresRoute: UUniverseBBodyHighScoresRoute,
+  UUniverseBBodyMenuRoute: UUniverseBBodyMenuRoute,
   UUniverseBBodyMessagesRoute: UUniverseBBodyMessagesRoute,
   UUniverseBBodyOverviewRoute: UUniverseBBodyOverviewRoute,
   UUniverseBBodyReportsRoute: UUniverseBBodyReportsRouteWithChildren,
   UUniverseBBodyResearchRoute: UUniverseBBodyResearchRouteWithChildren,
   UUniverseBBodyResourceSettingsRoute: UUniverseBBodyResourceSettingsRoute,
   UUniverseBBodyResourcesRoute: UUniverseBBodyResourcesRouteWithChildren,
+  UUniverseBBodyRewardsRoute: UUniverseBBodyRewardsRoute,
   UUniverseBBodySettingsRoute: UUniverseBBodySettingsRoute,
   UUniverseBBodyShipyardRoute: UUniverseBBodyShipyardRouteWithChildren,
   UUniverseBBodyAllianceCreateRoute: UUniverseBBodyAllianceCreateRoute,
@@ -1324,8 +1427,10 @@ const UUniverseRouteWithChildren = UUniverseRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  InvitationsRoute: InvitationsRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  InviteCodeRoute: InviteCodeRoute,
   JoinUniverseRoute: JoinUniverseRoute,
   UUniverseRoute: UUniverseRouteWithChildren,
 }

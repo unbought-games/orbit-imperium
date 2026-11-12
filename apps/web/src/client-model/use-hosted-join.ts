@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { oidcHttp } from '../adapters/oidc'
 import { useOidcConfig } from './use-oidc'
 
@@ -8,31 +8,41 @@ export function hostedJoinUniverse(pathname: string): string | undefined {
   )?.[1]
 }
 
-export function useHostedJoin(universe: string, hasMembership: boolean) {
+export function useHostedJoin(
+  universe: string | undefined,
+  hasMembership: boolean,
+  destination = '/',
+  automatic = false,
+) {
   const { state, retry: retryConfig } = useOidcConfig()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const attempted = useRef(false)
+  const target =
+    universe ??
+    (state.status === 'ready' ? state.config.hosted_universe : undefined)
   const allowed =
     state.status === 'ready' &&
     state.config.mode === 'oidc' &&
-    state.config.hosted_universe === universe
+    !!target &&
+    state.config.hosted_universe === target
 
   useEffect(() => {
     if (state.status === 'ready' && (!allowed || hasMembership))
-      window.location.replace('/')
-  }, [state.status, allowed, hasMembership])
+      window.location.replace(destination)
+  }, [state.status, allowed, hasMembership, destination])
 
-  async function retry() {
+  const retry = useCallback(async () => {
     if (state.status === 'error') {
       retryConfig()
       return
     }
-    if (!allowed || hasMembership || busy) return
+    if (!allowed || !target || hasMembership || busy) return
     setBusy(true)
     setError('')
     try {
-      await oidcHttp.enroll(universe)
-      window.location.replace('/')
+      await oidcHttp.enroll(target)
+      window.location.replace(destination)
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -41,12 +51,27 @@ export function useHostedJoin(universe: string, hasMembership: boolean) {
       )
       setBusy(false)
     }
-  }
+  }, [
+    state.status,
+    retryConfig,
+    allowed,
+    target,
+    hasMembership,
+    busy,
+    destination,
+  ])
+  useEffect(() => {
+    if (automatic && allowed && !hasMembership && !attempted.current) {
+      attempted.current = true
+      void retry()
+    }
+  }, [automatic, allowed, hasMembership, retry])
 
   return {
     busy,
     loading:
       state.status === 'loading' ||
+      (automatic && allowed && !attempted.current) ||
       (state.status === 'ready' && (!allowed || hasMembership)),
     error:
       state.status === 'error'

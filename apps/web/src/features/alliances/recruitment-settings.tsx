@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { can, type AllianceDetail } from '../../client-model/alliances'
 import {
   emptyRecruitment,
@@ -82,7 +82,12 @@ export function RecruitmentSettings({ detail, run, busy }: Props) {
   )
 }
 
-export function InvitationSettings({ detail, run, busy }: Props) {
+export function InvitationSettings({
+  detail,
+  run,
+  busy,
+  rewardLinks,
+}: Props & { rewardLinks?: ReactNode }) {
   const [message, setMessage] = useState('')
   if (!can(detail, 'ManageRecruitment')) return null
   const path = detail.invitation
@@ -99,6 +104,7 @@ export function InvitationSettings({ detail, run, busy }: Props) {
   }
   return (
     <>
+      {rewardLinks}
       <SettingsSection
         title="Invitation link"
         description="A shareable link with no expiry. Your joining rules still apply."

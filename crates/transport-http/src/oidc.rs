@@ -116,13 +116,13 @@ pub(super) async fn login<S: IdentityStore>(
     let secret = browser(&h)
         .map(str::to_owned)
         .unwrap_or_else(unbought_auth::random_secret);
-    let expected = if q.verify {
+    // Verification email returns may arrive without an Orbit session. Start
+    // ordinary authentication then; a supplied session must still revalidate
+    // and bind the transaction to its existing subject (never downgrade errors).
+    let expected = if let (true, Some(token)) = (q.verify, token(&h)) {
         Some(
             s.updates
-                .revalidate_oidc(
-                    &token_digest(token(&h).ok_or(ServiceError::Unauthenticated)?),
-                    rp,
-                )
+                .revalidate_oidc(&token_digest(token), rp)
                 .await
                 .map_err(session_error)?
                 .subject,
@@ -139,7 +139,20 @@ pub(super) async fn login<S: IdentityStore>(
         )
         .await
         .map_err(provider_error)?;
-    let url = hosted_auth::authorization_url(url, hosted_auth::enabled(&s), q.signup && !q.verify);
+    let invite_entry = q
+        .return_to
+        .as_deref()
+        .is_some_and(hosted_auth::invitation_return);
+    let url = hosted_auth::authorization_url(
+        url,
+        hosted_auth::enabled(&s) || invite_entry,
+        q.signup && !q.verify,
+    );
+    let url = if invite_entry {
+        hosted_auth::invitation_authorization_url(url, q.return_to.as_deref().unwrap())?
+    } else {
+        url
+    };
     let cookie = s.config.session_cookie("orbit_oidc", &secret, 600);
     Ok((
         [
@@ -191,7 +204,7 @@ pub(super) async fn callback<S: IdentityStore>(
         .map_err(ServiceError::from)?;
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     let path = hosted_auth::finish_entry(path, hosted_auth::universe(&s), |universe| {
-        oidc_enrollment::enroll(&s, session, universe, source, None)
+        oidc_enrollment::enroll(&s, session, universe, source, None, None)
     })
     .await;
     Ok((
@@ -304,6 +317,8 @@ mod display_tests {
 #[derive(Deserialize)]
 pub(super) struct Enrollment {
     #[serde(default)]
+    invitation_code: Option<String>,
+    #[serde(default)]
     recruitment: Option<RecruitmentIntent>,
     universe: uuid::Uuid,
 }
@@ -323,6 +338,29 @@ pub(super) async fn enroll<S: IdentityStore>(
         return Err(ServiceError::Forbidden.into());
     }
     let session = authenticate(&s, &h, true).await?;
+    let expected_epoch = if let Some(code) = &body.invitation_code {
+        if code.len() > 200 {
+            return Err(ServiceError::Forbidden.into());
+        }
+        let issuer = &s
+            .oidc
+            .as_ref()
+            .ok_or(ServiceError::Forbidden)?
+            .configuration()
+            .issuer;
+        let binding = s
+            .updates
+            .game_invitation_destination(code, issuer)
+            .await
+            .map_err(ServiceError::from)?
+            .ok_or(ServiceError::NotFound)?;
+        if binding.universe_id != body.universe {
+            return Err(ServiceError::Forbidden.into());
+        }
+        Some(Epoch(binding.epoch_id))
+    } else {
+        None
+    };
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     oidc_enrollment::enroll(
         &s,
@@ -330,6 +368,7 @@ pub(super) async fn enroll<S: IdentityStore>(
         UniverseId(body.universe),
         source,
         body.recruitment,
+        expected_epoch,
     )
     .await
 }

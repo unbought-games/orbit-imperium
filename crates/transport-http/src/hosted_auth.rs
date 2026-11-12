@@ -33,6 +33,29 @@ pub(super) fn authorization_url(url: String, hosted: bool, signup: bool) -> Stri
     }
 }
 
+pub(super) fn invitation_return(path: &str) -> bool {
+    let path = path.split('?').next().unwrap_or(path);
+    let Some(code) = path.strip_prefix("/invite/") else {
+        return false;
+    };
+    !code.is_empty()
+        && code.len() <= 200
+        && code
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"_.:-".contains(&c))
+}
+/// Called after begin() has validated/stored the local return destination. The
+/// provider signs this parameter with the rest of its authorization query.
+pub(super) fn invitation_authorization_url(
+    url: String,
+    return_path: &str,
+) -> Result<String, ServiceError> {
+    let mut url = reqwest::Url::parse(&url).map_err(|_| ServiceError::InvariantFailure)?;
+    url.query_pairs_mut()
+        .append_pair("return_path", return_path);
+    Ok(url.into())
+}
+
 /// Called only with the return path recovered from a verified, consumed OIDC
 /// transaction. A public GET of the recovery page never creates a membership.
 pub(super) async fn finish_entry<F, E>(
@@ -60,6 +83,36 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn invitation_email_return_preserves_signed_authorization_inputs() {
+        let path = "/invite/inv_example?continue=%2Falliances%2F00000000-0000-4000-8000-000000000003%2F00000000-0000-4000-8000-000000000004";
+        assert!(invitation_return(path));
+        for invalid in [
+            "//evil.test/invite/code",
+            "/invite/../other",
+            "/invite/a/b",
+            "/invite/",
+            "/profile",
+        ] {
+            assert!(!invitation_return(invalid));
+        }
+        let original = "https://accounts.example/api/auth/oauth2/authorize?state=state&nonce=nonce&code_challenge=pkce&client_id=orbit&prompt=create";
+        let result = invitation_authorization_url(original.into(), path).unwrap();
+        let parsed = reqwest::Url::parse(&result).unwrap();
+        let query = parsed
+            .query_pairs()
+            .collect::<std::collections::BTreeMap<_, _>>();
+        for (key, value) in [
+            ("state", "state"),
+            ("nonce", "nonce"),
+            ("code_challenge", "pkce"),
+            ("client_id", "orbit"),
+            ("prompt", "create"),
+            ("return_path", path),
+        ] {
+            assert_eq!(query.get(key).map(|v| v.as_ref()), Some(value));
+        }
+    }
 
     #[test]
     fn only_the_official_origin_and_issuer_enable_hosted_entry() {
@@ -132,6 +185,10 @@ mod tests {
     async fn callback_does_not_enroll_for_deep_links_community_servers_or_a_changed_binding() {
         let universe = UniverseId(uuid::Uuid::from_u128(7));
         for (path, configured) in [
+            (
+                "/invite/inv_sample?continue=%2Finvite%2Funiverse%2Ftoken".into(),
+                Some(universe),
+            ),
             ("/u/andromeda/overview".into(), Some(universe)),
             (
                 format!("/join/{}?alliance={}", universe.0, uuid::Uuid::from_u128(9)),

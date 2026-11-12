@@ -2,6 +2,7 @@ mod analytics;
 mod announcements_cli;
 mod audit_cli;
 mod bots_cli;
+mod community_rewards;
 mod config;
 mod engine_executor;
 #[cfg(feature = "test-support")]

@@ -1,0 +1,298 @@
+.page {
+  max-width: 1120px;
+  margin: auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  display: grid;
+  gap: 2rem;
+}
+.page h1,
+.page h2,
+.page h3,
+.page h4 {
+  font-family: var(--font-display, Georgia, serif);
+  color: var(--text, #e7e7eb);
+}
+.page h2 {
+  font-size: 1.4rem;
+  margin: 0 0 0.8rem;
+}
+.page h3 {
+  margin: 0.5rem 0;
+}
+.page p {
+  color: var(--text-muted, #b2c0ce);
+  line-height: 1.55;
+}
+.heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.progress {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  border-block: 1px solid #cbb68d55;
+  background: linear-gradient(110deg, #cbb68d12, transparent);
+  margin-bottom: 2rem;
+}
+.progress > div:first-child {
+  display: grid;
+  gap: 0.3rem;
+}
+.progress strong {
+  font-family: Georgia, serif;
+  font-size: 3rem;
+  color: #e8d2a7;
+}
+.progress small,
+.scope {
+  color: #a4dbef;
+}
+.milestone {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #cbb68d33;
+}
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 1rem;
+}
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #cbb68d44;
+  background: #0d2030;
+}
+.option > div {
+  display: grid;
+  gap: 0.6rem;
+  width: 100%;
+}
+.option h4 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+.option p {
+  margin: 0.2rem 0;
+}
+.dyeSample {
+  display: block;
+  width: 84px;
+  height: 84px;
+  border: 1px solid #fff6;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 5px #0003;
+}
+.emblemSet {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.titleSample {
+  font-family: Georgia, serif;
+  color: #e8d2a7;
+  font-size: 1.5rem;
+  min-height: 80px;
+  display: grid;
+  align-items: center;
+}
+.missingPreview {
+  color: #b2c0ce;
+  font-size: 0.8rem;
+}
+.celebration {
+  padding: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  background: radial-gradient(ellipse at left, #a4dbef25, transparent), #102838;
+  border: 1px solid #a4dbef77;
+  margin: 1.5rem 0;
+}
+.notice {
+  border-left: 3px solid #ddbc7a;
+  padding: 0.75rem 1rem;
+  background: #cbb68d12;
+}
+.membership,
+.inviteLinks > section {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #cbb68d33;
+}
+.timeAwards {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.timeAwards > div {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #cbb68d44;
+}
+.inviteLinks {
+  display: grid;
+  gap: 1rem;
+}
+.copyRow {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.copyRow label {
+  flex: 1;
+  display: grid;
+  gap: 0.5rem;
+  min-width: 180px;
+}
+.copyRow input {
+  width: 100%;
+  min-height: 44px;
+  background: #081b29;
+  color: #f0e4cc;
+  border: 1px solid #cbb68d66;
+  padding: 0.6rem;
+  font: inherit;
+}
+.invitationPreview {
+  padding: 1rem;
+  border: 1px solid #a4dbef66;
+  margin: 1rem 0;
+}
+.referral {
+  padding: 0.7rem 0;
+  border-bottom: 1px solid #cbb68d33;
+}
+.referral ul {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+.referral li span {
+  display: block;
+  color: #b2c0ce;
+}
+.collection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 1rem;
+}
+.collection article {
+  border-bottom: 1px solid #cbb68d33;
+  padding: 1rem;
+}
+.collection h3 {
+  font-size: 1rem;
+}
+@media (max-width: 600px) {
+  .progress {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .celebration {
+    align-items: start;
+    flex-direction: column;
+  }
+  .heading {
+    flex-wrap: wrap;
+  }
+  .option {
+    flex-direction: row;
+    align-items: start;
+  }
+  .option > span {
+    flex-shrink: 0;
+    max-width: 75px;
+  }
+  .option > div {
+    min-width: 0;
+  }
+  .collection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .scope {
+    font-size: 0.8rem;
+  }
+}
+
+.treatmentControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.treatmentControls > div {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+.treatmentControls select {
+  min-height: 44px;
+  max-width: 100%;
+  background: #081b29;
+  color: #e9e1ce;
+  border: 1px solid #cbb68d66;
+  font: inherit;
+  padding: 0.6rem;
+}
+@media (max-width: 600px) {
+  .treatmentControls {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recognition {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #cbb68d55;
+  color: #e8d2a7;
+  font-size: 0.85rem;
+  margin: 0.25rem;
+}
+.recognition > span:first-child {
+  font-size: 1.4rem;
+}
+.recognition strong {
+  display: grid;
+  text-align: center;
+  font-size: 1.3rem;
+}
+.recognition small {
+  font-size: 0.65rem;
+  color: #b2c0ce;
+}
+.honors {
+  padding: 1.5rem clamp(1rem, 3vw, 1.5rem);
+  border-block: 1px solid #cbb68d33;
+}
+.honors article {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.honors time {
+  font-size: 0.8rem;
+  color: #b2c0ce;
+}
+
+.honorEmblem {
+  display: inline-block;
+  background: #cbb68d;
+  width: 52px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.content > section {
+  margin-bottom: 1.5rem;
+}

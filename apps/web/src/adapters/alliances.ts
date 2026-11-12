@@ -18,7 +18,7 @@ export async function allianceQuery(
       { context: { binding, request_id }, query },
       csrf,
       10000,
-      { 'X-Orbit-Alliance-Presentation': '1' },
+      { 'X-Orbit-Alliance-Presentation': '1', 'X-Orbit-Insignia': '5' },
     ),
   )
   if (
@@ -36,15 +36,39 @@ export async function allianceCommand(
   csrf: string,
   command: Omit<S['AllianceCommandRequest'], 'context'>,
 ): Promise<S['AllianceCommandResult']> {
+  const authored =
+    command.action.type === 'SavePresentation'
+      ? {
+          ...command,
+          action: {
+            ...command.action,
+            edits: command.action.edits.map((edit) =>
+              edit.type === 'SetIdentity' &&
+              edit.value.crest.kind === 'composition'
+                ? {
+                    ...edit,
+                    value: {
+                      ...edit.value,
+                      crest: {
+                        kind: 'composition' as const,
+                        recipe: edit.value.crest.recipe,
+                      },
+                    },
+                  }
+                : edit,
+            ),
+          },
+        }
+      : command
   const result = validate<S['AllianceCommandResult']>(
     'AllianceCommandResult',
     await request(
       `/api/v4/universes/${binding.universe}/alliances/commands`,
       'POST',
-      { context: { binding, request_id: commandId(crypto) }, ...command },
+      { context: { binding, request_id: commandId(crypto) }, ...authored },
       csrf,
       10000,
-      { 'X-Orbit-Alliance-Presentation': '1' },
+      { 'X-Orbit-Alliance-Presentation': '1', 'X-Orbit-Insignia': '5' },
     ),
   )
   if (result.command_id !== command.command_id)
@@ -61,7 +85,10 @@ export async function readPublicAlliance(
     {
       signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
       credentials: 'omit',
-      headers: { 'X-Orbit-Alliance-Presentation': '1' },
+      headers: {
+        'X-Orbit-Alliance-Presentation': '1',
+        'X-Orbit-Insignia': '5',
+      },
       cache: 'no-store',
       referrerPolicy: 'no-referrer',
     },
@@ -128,7 +155,7 @@ async function readRecruitment<T>(
   const response = await fetch(path, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
     credentials: 'omit',
-    headers: { 'X-Orbit-Alliance-Presentation': '1' },
+    headers: { 'X-Orbit-Alliance-Presentation': '1', 'X-Orbit-Insignia': '5' },
     cache: 'no-store',
     referrerPolicy: 'no-referrer',
   })

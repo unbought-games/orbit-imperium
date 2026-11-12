@@ -210,7 +210,7 @@ try {
   }
   const earned = await fresh(); assert.equal(earned.research.find(r => r.research === 'LaserTechnology').level, 1)
   assert.equal(earned.bodies[0].inventories.find(i => i.item.id === 'LargeCargo').count, '1')
-  await page.goto(`${active.base}/u/${browserUniverse}/dispatch?body=${body}`)
+  await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/dispatch`)
   await expect(page.getByRole('button', { name: 'All Large Cargo', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'All Large Cargo', exact: true }).click()
   await page.getByLabel('System', { exact: true }).fill(String(target.system))

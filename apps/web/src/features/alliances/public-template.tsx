@@ -47,11 +47,13 @@ export function PublicAllianceTemplate({
   action,
   preview = false,
   signinHref,
+  honors,
 }: {
   data: PublicAlliance
   action: ReactNode
   preview?: boolean
   signinHref?: string
+  honors?: ReactNode
 }) {
   const p = data.presentation,
     identity = p?.identity ?? data.summary.visual_identity ?? defaultIdentity
@@ -247,6 +249,7 @@ export function PublicAllianceTemplate({
               )}
             </section>
             {facts}
+            {!preview && honors}
             <div className={styles.publicEditorial}>
               {about}
               {template === 'citadel' ? (

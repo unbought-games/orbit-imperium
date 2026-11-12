@@ -693,12 +693,37 @@ async fn oidc_enrollment_obeys_live_policy_and_retries_after_admissions_close() 
             }
         );
     }
-    let response = app
-        .clone()
-        .oneshot(Request::get("/api/auth/login").body(Body::empty()).unwrap())
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    for path in ["/api/auth/login", "/api/auth/login?verify=true"] {
+        let response = app
+            .clone()
+            .oneshot(Request::get(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        // No game cookie: both reach normal identity-provider authentication.
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+    for (status, expected) in [
+        (401, StatusCode::UNAUTHORIZED),
+        (503, StatusCode::SERVICE_UNAVAILABLE),
+    ] {
+        *oidc_status.lock().unwrap() = status;
+        let response = app
+            .clone()
+            .oneshot(
+                Request::get("/api/auth/login?verify=true")
+                    .header(header::COOKIE, format!("orbit_session={}", "a".repeat(64)))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            expected,
+            "an existing identity must not downgrade to anonymous authentication"
+        );
+    }
+    *oidc_status.lock().unwrap() = 0;
     for path in [
         "https://evil.example",
         "//evil.example",

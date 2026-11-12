@@ -3,20 +3,19 @@ use super::*;
 pub(super) async fn evidence<S: GameStore + IdentityStore>(
     s: &HttpState<S>,
     p: &EmpireProfile,
-) -> Result<SupporterEvidence, Problem> {
+) -> Result<(SupporterEvidence, Option<AccountCosmeticObservation>), Problem> {
     let Some(profiles) = &s.profiles else {
-        return Ok(SupporterEvidence::default());
+        return Ok((SupporterEvidence::default(), None));
     };
     let identities = s
         .updates
         .player_identities(UniverseId(p.universe), vec![PlayerId(p.player)])
         .await
         .map_err(ServiceError::from)?;
-    Ok(profiles
-        .display(identities)
-        .await
-        .first()
-        .map_or_else(SupporterEvidence::default, |d| d.evidence()))
+    Ok(profiles.display(identities).await.first().map_or_else(
+        || (SupporterEvidence::default(), None),
+        |d| (d.evidence(), d.account_cosmetics.clone()),
+    ))
 }
 
 pub(super) async fn decorate<S: GameStore + IdentityStore>(
@@ -30,11 +29,14 @@ pub(super) async fn decorate<S: GameStore + IdentityStore>(
         .map_or((&fallback, CosmeticPolicy::Unrestricted), |c| {
             (&c.catalog, c.policy)
         });
-    let evidence = if policy == CosmeticPolicy::Supporter {
+    let (evidence, observation) = if policy == CosmeticPolicy::Supporter {
         evidence(s, p).await?
     } else {
-        SupporterEvidence::default()
+        (SupporterEvidence::default(), None)
     };
+    let mut catalog = catalog.clone();
+    catalog.account_observation = observation;
+    let catalog = &catalog;
     let now = unbought_auth::now();
     p.title = effective_title(
         catalog,
