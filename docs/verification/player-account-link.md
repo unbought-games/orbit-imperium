@@ -60,3 +60,12 @@ Moved the scoped changes onto main base
 `de9b8336` without the
 unrelated source branches. ESLint, application/component TypeScript and both
 menu cases pass again; browser preparation 4.670 seconds, execution 2.4 seconds.
+
+## CI repair
+
+PR #400, head `4c6bb3ed`, run `43247333646`, attempt 1: Build/unit job
+`131283560234` and journey job `131283560185` both stopped at the news build
+because the new change note lacked YAML identity/title/date metadata. This was a
+product packaging error, not a browser assertion failure. Added the required
+metadata; the production build and all 10 built-homepage checks pass locally
+(3.8 seconds browser execution). Existing tests and timeouts are unchanged.
