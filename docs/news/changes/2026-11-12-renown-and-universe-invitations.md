@@ -48,6 +48,12 @@ are reusable, so sending one to a second friend doesn't consume it.
 Alliance recruitment remains a separate decision. Applications still need
 approval, and joining a universe doesn't silently add someone to an alliance.
 
+Alliance recruitment also has its own honors. An authorized member's alliance
+invitation can credit both that player and the alliance; a public alliance link
+credits the alliance alone. Sponsored recruits who keep playing unlock collective
+distinctions and, at some milestones, permanent commemorative emblems for
+qualifying members. Personal invitations don't automatically sponsor an alliance.
+
 ## Alliance halls and public recruitment
 
 The overnight update gave alliances a Hall with a crest, artwork, motto, welcome
