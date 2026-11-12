@@ -1742,3 +1742,25 @@ transition and other component callers. All interaction and appearance assertion
 remain. This was a typecheck failure, not an observed browser assertion failure.
 The failed full command took 304.63 seconds; remaining static/build checks and the
 affected component case must pass before qualification.
+
+### Game invitation hosted recovery: first fixture repair
+
+At `b6807216` plus the uncommitted hosted-entry follow-up, focused browser
+qualification passed its first ten cases, then waited indefinitely in the new
+1440px hosted admission-failure case. Task-scoped interruption retained the stack
+at `withFixtureResponseStatus` / `requestfinished` and a screenshot showing the
+correct closed/full recovery UI with enabled Try again. This is incomplete
+validation, not a passing run or an evidenced provider/runner outage.
+
+The fixture returned a bare status-only 403. The pinned Playwright fulfillment
+implementation supplies Content-Length only for a nonempty body; unlike the
+successful 204, a 403 permits a body and this response never reached the shared
+finished-delivery boundary. The real endpoint returns a JSON problem response.
+First explained repair: provide that complete problem body, retaining the 403,
+request-finished boundary, configured-universe assertion and recovery controls.
+The same enrollment fixture in hosted-auth used the same bare 403 and receives
+the common correction. No timeout increase, hidden retry or assertion removal.
+History/ledger inspection found no prior repair of the new scenario. If it fails
+again as a fixture defect, retire it under the existing rule rather than stabilize
+it again. Browser setup was 4.704s; the interrupted run passed10, interrupted1,
+left18 unexecuted, and took approximately2.1min. Source qualification continues.

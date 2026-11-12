@@ -24,6 +24,7 @@ async function fixture(
   page: Page,
   authenticated: boolean,
   unavailable = false,
+  hosted = true,
 ) {
   await installGameFixture(page, { protocol: 4 })
   await page.route('**/api/v1/bootstrap', (route) =>
@@ -51,7 +52,7 @@ async function fixture(
       json: {
         mode: 'oidc',
         client_id: 'fixture-orbit',
-        hosted_universe: binding.universe,
+        hosted_universe: hosted ? binding.universe : null,
         accounts_url: 'https://accounts.example.test',
         universes: [{ universe: binding.universe, name: 'Andromeda' }],
       },
@@ -247,7 +248,7 @@ for (const width of [1440, 390]) {
 test('authenticated entry reaches normal enrollment despite rewards being unavailable', async ({
   page,
 }) => {
-  await fixture(page, true, true)
+  await fixture(page, true, true, false)
   const dispatched = page.waitForRequest(
     (request) => new URL(request.url()).pathname === '/api/v1/rewards/actions',
   )
@@ -262,3 +263,63 @@ test('authenticated entry reaches normal enrollment despite rewards being unavai
   await expect(page.getByRole('button', { name: /accept/i })).toHaveCount(0)
   expect((await dispatched).postDataJSON().action.code).toBe(code)
 })
+
+for (const width of [1440, 390]) {
+  test(`hosted invitation Play enters the configured universe without a chooser at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await fixture(page, true, true)
+    const enrollments: unknown[] = []
+    await page.route('**/api/auth/enroll', async (route) => {
+      enrollments.push(route.request().postDataJSON())
+      await page.unroute('**/api/v1/bootstrap')
+      return route.fulfill({ status: 204 })
+    })
+    await withFixtureResponse(
+      page,
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/bootstrap' &&
+        enrollments.length === 1,
+      () => page.goto(`/invite/${code}`),
+    )
+    await expect(page.locator('main h1')).toContainText('Empire —')
+    await expect(
+      page.getByRole('heading', { name: 'Choose your universe' }),
+    ).toHaveCount(0)
+    expect(enrollments).toEqual([{ universe: binding.universe }])
+    await expect(page.getByRole('button', { name: /accept/i })).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: `test-results/invitation-hosted-play-${width}x1000.png`,
+      fullPage: true,
+    })
+  })
+  test(`hosted invitation admission failure uses existing recovery at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await fixture(page, true)
+    const enrollments: unknown[] = []
+    await page.route('**/api/auth/enroll', (route) => {
+      enrollments.push(route.request().postDataJSON())
+      return route.fulfill({ status: 403, json: { code: 'Forbidden', status: 403, type: 'about:blank' } })
+    })
+    await withFixtureResponseStatus(
+      page,
+      (response) => new URL(response.url()).pathname === '/api/auth/enroll',
+      () => page.goto(`/invite/${code}`),
+      403,
+    )
+    await expect(page.getByRole('alert')).toContainText(
+      'closed, full, or temporarily unavailable',
+    )
+    await expect(
+      page.getByRole('button', { name: 'Try again', exact: true }),
+    ).toBeEnabled()
+    expect(enrollments).toEqual([{ universe: binding.universe }])
+    await diagnosticScreenshot(page, {
+      path: `test-results/invitation-hosted-closed-${width}x1000.png`,
+      fullPage: true,
+    })
+  })
+}

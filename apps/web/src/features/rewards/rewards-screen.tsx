@@ -394,8 +394,8 @@ export function RewardsScreen() {
                   <h2>Your referrals</h2>
                   {owner.referrals.length === 0 ? (
                     <p>
-                      Accepted invitations and their milestones will appear
-                      here.
+                      Friends who join through your links and their milestones
+                      will appear here.
                     </p>
                   ) : (
                     owner.referrals.map((referral) => (

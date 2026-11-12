@@ -8,6 +8,7 @@ import {
 import { oidcLoginPath } from '../../client-model/use-oidc'
 import { rememberInvitation } from '../../client-model/community-invitation'
 import { PublicFrame } from '../public-frame'
+import { HostedJoin } from '../hosted-join'
 import { ButtonLinkAnchor } from '../../ui/button'
 import { Heading, Text } from '../../ui/typography'
 import styles from './invitation-entry.module.css'
@@ -22,6 +23,17 @@ export function InvitationEntryPage({
   const { runtime } = useAuthSession()
   const csrf =
     runtime.status === 'authenticated' ? runtime.session.csrf : undefined
+  if (
+    runtime.status === 'authenticated' &&
+    runtime.game.status === 'no_membership'
+  )
+    return (
+      <HostedJoin
+        hasMembership={false}
+        automatic
+        destination={invitationContinuation(continuation, null)}
+      />
+    )
   return (
     <InvitationLanding
       key={`${code}:${csrf ?? runtime.status}`}

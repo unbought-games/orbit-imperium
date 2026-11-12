@@ -124,3 +124,11 @@ not failed tests or renamed repairs.
 Focused tests, full static/build checks, desktop/mobile captures, new artifacts,
 exact-revision CI and real-service signup/onboarding acceptance remain required.
 Source formatting and generated contracts alone do not establish those outcomes.
+
+Hosted invitation entry now reuses the existing HostedJoin enrollment/recovery
+logic when the server supplies a hosted default. It enrolls only that configured
+universe, preserves the known onward destination, and keeps admission failure
+recovery. Servers without a hosted default retain the chooser. Focused client
+coverage passed39 tests; the focused browser group passed29 after the single
+status-only 403 fixture repair recorded in the repair ledger. Full qualification
+and refreshed artifact/capture evidence are still in progress.

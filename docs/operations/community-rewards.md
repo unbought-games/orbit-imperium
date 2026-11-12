@@ -150,7 +150,10 @@ There is no separate referral acceptance button, dialog or preview-token check.
 
 Personal invitation creation is available at `/invitations` and in Community
 rewards. Alliance sharing retains its native recruitment URL and reward code.
-Known alliance context is carried through normal entry; optional public preview
+When a hosted default is configured, invited accounts without a universe reuse
+the existing automatic enrollment and closed/full recovery; no arbitrary universe
+is chosen. Without a hosted default, the normal chooser remains. Known alliance
+context is carried through normal entry; optional public preview
 IDs may supply a continuation for anonymous canonical links. Normal enrollment
 and alliance admission still apply independently of referral credit.
 
