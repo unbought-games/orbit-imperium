@@ -77,8 +77,15 @@
 .completionDetails p {
   margin: 0;
 }
-.completionDetails .completedJob {
-  margin-bottom: 4px;
+.completionDetails .completionReward {
+  margin-top: 2px;
+}
+.completionDetails .rewardNote {
+  margin-top: 4px;
+  color: color-mix(in srgb, var(--text-muted) 80%, var(--surface-raised));
+  font-size: 0.6875rem;
+  font-style: italic;
+  line-height: 1.4;
 }
 
 .reviewAction {
