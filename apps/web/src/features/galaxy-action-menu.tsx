@@ -1,4 +1,4 @@
-import { Crosshair, Recycle, Rocket, Truck } from 'lucide-react'
+import { Crosshair, Eye, Recycle, Rocket, Truck } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { MissileLaunchPresentation } from './missile-launch-action'
 import { Menu } from '@base-ui/react/menu'
@@ -12,6 +12,7 @@ const icons = {
   Transport: Truck,
   Deploy: Rocket,
   Attack: Crosshair,
+  Espionage: Eye,
   Colonize: Rocket,
   Harvest: Recycle,
 }
@@ -90,7 +91,9 @@ export function GalaxyActionMenu({
                     }}
                   >
                     <Icon size={15} aria-hidden="true" />
-                    {action.mission}
+                    {action.mission === 'Espionage'
+                      ? 'Spy with…'
+                      : action.mission}
                   </Menu.Item>
                 )
               })}

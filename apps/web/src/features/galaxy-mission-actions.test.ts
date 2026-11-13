@@ -58,6 +58,7 @@ it('protected opponents retain peaceful missions and explain blocked attacks', (
   expect(actions).toEqual([
     { mission: 'Transport', reason: undefined },
     { mission: 'Attack', reason: protectionExplanation },
+    { mission: 'Espionage', reason: protectionExplanation },
     { mission: 'Harvest' },
   ])
 })
@@ -80,6 +81,7 @@ it('vacation disables body missions without blocking debris harvest', () => {
   expect(actions.filter((a) => a.reason).map((a) => a.mission)).toEqual([
     'Transport',
     'Attack',
+    'Espionage',
   ])
 })
 it('empty positions only offer colonization and harvest when enabled', () => {
@@ -112,3 +114,42 @@ it('derives mission availability from enabled universe capabilities', () => {
     }),
   ).toEqual({ transport: true, harvest: false, attack: false, deploy: false })
 })
+
+it.each(['Planet', 'Moon'] as const)(
+  'offers a customizable espionage draft for eligible foreign %s targets without requiring Attack',
+  (kind) => {
+    const foreign = {
+      ...position,
+      body: {
+        ...body,
+        id: 'foreign',
+        owner: 'them',
+        kind,
+        espionage_eligible: true,
+        attack_blocker: 'UnavailableContent' as const,
+      },
+    }
+    const actions = galaxyMissionActions({
+      ...options,
+      position: foreign,
+      missions: { ...options.missions, attack: false },
+    })
+    expect(actions).toEqual([
+      { mission: 'Transport', reason: undefined },
+      { mission: 'Espionage', reason: undefined },
+    ])
+    expect(
+      galaxyMissionActions({
+        ...options,
+        position: {
+          ...foreign,
+          body: {
+            ...foreign.body,
+            attack_blocker: null,
+            espionage_eligible: false,
+          },
+        },
+      }),
+    ).toContainEqual({ mission: 'Espionage', reason: 'Espionage unavailable' })
+  },
+)
