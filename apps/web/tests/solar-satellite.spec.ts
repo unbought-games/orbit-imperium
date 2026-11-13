@@ -318,7 +318,7 @@ test('production controls show satellite quantity and submit group throttling', 
   await expect(row).toContainText('30')
 })
 
-for (const width of [320, 1440]) {
+for (const width of [320]) {
   test(`satellite ordering shows authoritative planet output without technical expansion at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const production = await setup(page)

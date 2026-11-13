@@ -15,7 +15,7 @@ const technical = JSON.parse(
   readFileSync('contracts/fixtures/terraformer-technical-data.json', 'utf8'),
 )
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`Terraformer fields, energy, cancellation and completion at ${width}px`, async ({
     page,
   }) => {

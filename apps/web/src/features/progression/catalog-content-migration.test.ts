@@ -454,6 +454,7 @@ it('renders the distinct siege and native hyperspace rapid-fire profiles', () =>
   const expected = {
     Bomber: ['Solar Satellite', 'Light Laser'],
     Destroyer: ['Solar Satellite', 'Light Laser'],
+    LargeCargo: ['Espionage Probe'],
     Battleship: ['Solar Satellite'],
     Battlecruiser: ['Solar Satellite', 'Cruiser', 'Battleship'],
   }
@@ -544,4 +545,53 @@ it('Heavy Fighter acceptance retains the quoted costs and green HUD result', () 
       { kind: 'command', id: 'heavy-order', shownAt: 1000 },
     ]),
   ).toEqual({ tone: 'green', icon: 'shipyard' })
+})
+
+it('derives Battlecruiser unlock levels and exposes the additive hyperspace bonus', () => {
+  const battlecruiser = entryFor(ships[4])
+  const battleship = entryFor(ships[3])
+  const research = (
+    id: 'HyperspaceDrive' | 'HyperspaceTechnology' | 'LaserTechnology',
+  ): S['CatalogEntry3'] => ({
+    key: { kind: 'Research', id },
+    enabled: true,
+    mobile: false,
+    body_kinds: ['Planet'],
+    requirements: [],
+    technical_data: {
+      facts: [],
+      combat: null,
+      storage_capacities: null,
+      bonuses:
+        id === 'HyperspaceDrive'
+          ? [battlecruiser, battleship].map(({ key }) => ({
+              label: 'Base speed',
+              fraction: ['3', '10'],
+              subject: key,
+              condition: null,
+            }))
+          : [],
+    },
+  })
+  for (const [id, level] of [
+    ['HyperspaceDrive', 5],
+    ['HyperspaceTechnology', 5],
+    ['LaserTechnology', 12],
+  ] as const) {
+    const subject = research(id)
+    expect(
+      technicalUnlocks(subject, [battlecruiser, battleship], 'Planet').find(
+        (x) => x.entry.key.id === 'Battlecruiser',
+      )?.level,
+    ).toBe(level)
+  }
+  const html = renderToStaticMarkup(
+    createElement(TechnicalData, {
+      entry: research('HyperspaceDrive'),
+      view: { ...view, catalog: [] },
+      body: planet,
+    }),
+  )
+  expect(html).toContain('Battlecruiser: +30% of base')
+  expect(html).toContain('Battleship: +30% of base')
 })
