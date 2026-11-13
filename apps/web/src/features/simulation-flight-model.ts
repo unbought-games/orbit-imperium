@@ -47,7 +47,7 @@ export function simulationFlightDraft(
   const ships: Record<string, string> = {}
   for (const field of fields) {
     if (field.side !== 'attacker' || field.item?.kind !== 'Ship') continue
-    const count = edits[field.key] ?? field.value ?? ''
+    const count = (edits[field.key] ?? field.value) || '0'
     if (!/^(0|[1-9][0-9]*)$/.test(count))
       return {
         draft: null,

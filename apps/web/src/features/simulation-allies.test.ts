@@ -34,7 +34,7 @@ const inputs: SimulationInputs = {
   },
   defender: { technology: [0, 0, 0], units: [] },
 }
-it('keeps allied technology unknown until supplied and combines result counts only', () => {
+it('keeps allied technology provenance and combines result counts only', () => {
   expect(allyFields(fields, ally)[0].value).toBeNull()
   expect(
     withSimulationAllies({ inputs, error: null }, fields, [ally], {}).inputs,
@@ -55,3 +55,30 @@ it('enforces the total simulation limit across every contingent', () => {
   expect(result.inputs).toBeNull()
   expect(result.error).toContain('2,000')
 })
+
+it.each(['attacker', 'defender'] as const)(
+  'defaults unknown and cleared %s ally technology to zero',
+  (side) => {
+    for (const technology of [undefined, '']) {
+      const edits: Record<string, string> = { 'one:attacker:ship': '3' }
+      if (technology !== undefined) edits['one:attacker:w'] = technology
+      const result = withSimulationAllies(
+        { inputs, error: null },
+        fields,
+        [{ ...ally, side }],
+        edits,
+      )
+      expect(result.error).toBeNull()
+      expect(
+        result.inputs?.[
+          side === 'attacker' ? 'attacking_allies' : 'defending_allies'
+        ],
+      ).toEqual([
+        {
+          technology: [0, 0, 0],
+          units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 3 }],
+        },
+      ])
+    }
+  },
+)

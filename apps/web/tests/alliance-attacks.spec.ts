@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { withBootstrapResponse, withReportResponse, withFixtureResponse } from './fixtures/responses'
 type S = components['schemas']
 const now = 1793486400000
 const target: S['MissionDestination4']={type:'Body',id:id(90),expected_owner:id(91),expected_kind:'Planet'}
@@ -22,18 +22,18 @@ for (const width of [390,1440]) test(`allied simulation preserves separate techn
  await installGameFixture(page,{protocol:4,catalog:units,sampledAt:now,missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'5'}})
  let submitted:S['SimulationInputs']|undefined
  await page.route('**/combat-simulation',async route=>{const r=route.request().postDataJSON();submitted=r.inputs;await route.fulfill({json:{...r.context,profile_hash:'a'.repeat(64),loot_rules_enabled:true,samples:Array.from({length:10},()=>({outcome:'AttackerVictory',rounds:1,attacker:[{item:{kind:'Ship',id:'LightFighter'},count:5}],defender:[],debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity:'250000000',estimated_loot:null}))}})})
- await withBootstrapResponse(page, () => page.goto('/u/andromeda/combat-simulator'))
+ await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/combat-simulator`))
  await page.getByLabel('Attacker Light Fighter',{exact:true}).fill('2')
- await page.getByRole('button',{name:'Assume all unknown values are zero'}).click()
+ await expect(page.getByLabel('Defender Weapons Technology',{exact:true})).toHaveValue('0')
  await page.getByRole('button',{name:'Add attacking fleet',exact:true}).click()
  const ally=page.getByRole('group',{name:'Allied attacking fleet 1',exact:true})
- await expect(ally.getByLabel('Attacker Weapons Technology',{exact:true})).toHaveValue('')
+ await expect(ally.getByLabel('Attacker Weapons Technology',{exact:true})).toHaveValue('0')
  await ally.getByLabel('Attacker Weapons Technology',{exact:true}).fill('9')
  await ally.getByLabel('Attacker Shielding Technology',{exact:true}).fill('8')
  await ally.getByLabel('Attacker Armour Technology',{exact:true}).fill('7')
  await ally.getByLabel('Attacker Light Fighter',{exact:true}).fill('3')
  await expectLayoutAndCapture(page,'simulator-contingents',width)
- await page.getByRole('button',{name:'Run 10 battles'}).click()
+ await withFixtureResponse(page, response => response.url().endsWith('/combat-simulation'), () => page.getByRole('button',{name:'Run 10 battles'}).click())
  await expect(page.getByRole('region',{name:'Simulation results'})).toBeVisible()
  expect(submitted?.attacker.technology).toEqual([0,0,0]);expect(submitted?.attacking_allies?.[0].technology).toEqual([9,8,7])
  await expectLayoutAndCapture(page,'simulator-results',width)

@@ -3,16 +3,16 @@
 **Combat Simulator** is available from Fleet & intelligence navigation for every
 protocol-4 player, including players with no espionage reports. This standalone
 setup uses the same editable form and simulation endpoint. Defender forces and
-technology start unknown; only explicit player assumptions become inputs. No
-target, observation time or resource intel is fabricated. It has no attack draft
+technology default to zero when unknown. Running the simulation replaces cleared
+fields with zero while preserving entered values. No target, observation time or
+resource intel is fabricated. It has no attack draft
 without an observed target.
 
 An explicit **Simulate combat** action opens an editable draft from the player's
 report-visible espionage snapshot. Forces and combat technology retain their
 observation time; no target lookup occurs. Known empty sections mean zero, while
-unknown sections remain blank until the player enters assumptions or explicitly
-assumes zero. Edits are separate from report facts. Own technology defaults come
-from the existing game view; attacking ship counts start at zero. The selected
+unknown sections default to zero and remain labeled as unobserved assumptions.
+Edits are separate from report facts. Own technology defaults come from the existing game view; attacking ship counts start at zero. The selected
 planet's stationed inventory appears beside each attacker ship input as a live
 reference, without restricting hypothetical counts.
 
@@ -66,8 +66,9 @@ than copying or modifying that independently owned simulator.
 
 Coverage includes pure visibility/mapping and input validation tests, Rust engine
 reuse with custom rule statistics, an authenticated HTTP integration test, and
-fixture browser tests covering prefill, explicit unknown assumptions, request
-contents, result invalidation, mobile widths and Escape/focus restoration.
+fixture browser tests covering prefill, automatic zero defaults, cleared fields
+on submission, request contents, result invalidation, mobile widths and
+Escape/focus restoration.
 
 Allied contingents can be added to either side with separately entered technology
 and mobile ships. The 2,000-unit limit applies to all forces combined. Results

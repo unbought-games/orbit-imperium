@@ -10,7 +10,7 @@ import {
   simulationFields,
   simulationInputs,
   unsupportedReportUnits,
-  unknownAssumptions,
+  blankSimulationEdits,
   type Espionage,
 } from './combat-simulation-model'
 import type { components } from '../contracts'
@@ -131,14 +131,10 @@ describe('report combat prefill', () => {
     expect(
       fields.find((f) => f.key === 'defender:Defense:RocketLauncher')?.value,
     ).toBe('0')
-    expect(simulationInputs(fields, attacking).inputs).toBeNull()
-    const assumptions = Object.fromEntries(
-      fields.filter((f) => f.value === null).map((f) => [f.key, '0']),
-    )
-    expect(
-      simulationInputs(fields, { ...attacking, ...assumptions }).inputs
-        ?.defender,
-    ).toEqual({ technology: [0, 0, 0], units: [] })
+    expect(simulationInputs(fields, attacking).inputs?.defender).toEqual({
+      technology: [0, 0, 0],
+      units: [],
+    })
   })
   it('never truncates large reports or silently drops unsupported observed units', () => {
     const large = {
@@ -160,7 +156,7 @@ describe('report combat prefill', () => {
     expect(simulationInputs(fields, attacking).inputs).toBeNull()
     expect(unsupportedReportUnits(large, [])).toHaveLength(1)
   })
-  it.each(['', '-1', '1.5', '1e3', 'Infinity', '2001'])(
+  it.each(['-1', '1.5', '1e3', 'Infinity', '2001'])(
     'rejects invalid player input %s',
     (value) => {
       expect(
@@ -355,7 +351,7 @@ it('keeps large resource averages exact and handles absent samples', () => {
   expect(sampledAmounts([])).toBeNull()
 })
 
-it('starts standalone defenders unknown and only submits explicit assumptions without observed intel', () => {
+it('defaults unobserved standalone defenders to zero and preserves player edits', () => {
   const fields = simulationFields(undefined, catalog, [
     { research: 'WeaponsTechnology', level: 4 },
   ])
@@ -363,26 +359,25 @@ it('starts standalone defenders unknown and only submits explicit assumptions wi
     fields.filter((f) => f.side === 'defender').every((f) => f.value === null),
   ).toBe(true)
   expect(fields.some((f) => f.source === 'Report')).toBe(false)
-  expect(simulationInputs(fields, attacking).inputs).toBeNull()
+  expect(simulationInputs(fields, attacking).inputs?.defender).toEqual({
+    technology: [0, 0, 0],
+    units: [],
+  })
   const edits = {
     ...attacking,
     'defender:WeaponsTechnology': '7',
     'defender:Ship:LightFighter': '2',
   }
-  const assumptions = unknownAssumptions(fields, edits)
-  expect(assumptions).not.toHaveProperty('defender:WeaponsTechnology')
-  expect(simulationInputs(fields, { ...edits, ...assumptions }).inputs).toEqual(
-    {
-      attacker: {
-        technology: [4, 0, 0],
-        units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }],
-      },
-      defender: {
-        technology: [7, 0, 0],
-        units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }],
-      },
+  expect(simulationInputs(fields, edits).inputs).toEqual({
+    attacker: {
+      technology: [4, 0, 0],
+      units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }],
     },
-  )
+    defender: {
+      technology: [7, 0, 0],
+      units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }],
+    },
+  })
 })
 
 it('aggregates new debris across every sample, including zero and losing outcomes', () => {
@@ -415,4 +410,44 @@ it('aggregates new debris across every sample, including zero and losing outcome
     },
   ])
   expect(planningSummary({ ...sampleResponse, samples: [] }).debris).toEqual([])
+})
+
+// Cleared values override observations; submitting must fill only those edits.
+it('converts blank technology and unit edits to zero without changing entered values or report facts', () => {
+  const fields = simulationFields(report, catalog, [
+    { research: 'WeaponsTechnology', level: 8 },
+  ])
+  const edits = {
+    ...attacking,
+    'attacker:WeaponsTechnology': '',
+    'defender:ShieldingTechnology': '',
+    'defender:Ship:LightFighter': '',
+    'defender:Defense:RocketLauncher': '5',
+  }
+  expect(blankSimulationEdits(fields, edits)).toEqual({
+    'attacker:WeaponsTechnology': '0',
+    'defender:ShieldingTechnology': '0',
+    'defender:Ship:LightFighter': '0',
+  })
+  const parsed = simulationInputs(fields, edits)
+  expect(parsed.error).toBeNull()
+  expect(parsed.inputs?.attacker.technology).toEqual([0, 0, 0])
+  expect(parsed.inputs?.attacker.units).toEqual([
+    { item: { kind: 'Ship', id: 'LightFighter' }, count: 10 },
+  ])
+  expect(parsed.inputs?.defender.technology).toEqual([0, 0, 0])
+  expect(parsed.inputs?.defender.units).toEqual([
+    { item: { kind: 'Defense', id: 'RocketLauncher' }, count: 5 },
+  ])
+  expect(
+    fields.find((f) => f.key === 'attacker:WeaponsTechnology')?.value,
+  ).toBe('8')
+})
+
+it('still requires an attacking ship when the only ship field is cleared', () => {
+  expect(
+    simulationInputs(simulationFields(undefined, catalog, []), {
+      'attacker:Ship:LightFighter': '',
+    }).error,
+  ).toBe('Add at least one attacking ship.')
 })

@@ -23,7 +23,7 @@
   margin: 0;
   font-size: 1.4rem;
 }
-.content {
+.dialog .content {
   padding: 16px;
 }
 .content p {

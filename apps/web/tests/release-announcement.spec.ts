@@ -76,6 +76,9 @@ for (const [width, height] of [
     await expect(
       bubble.getByRole('link', { name: 'Read the update' }),
     ).toHaveAttribute('href', '/updates/research-network.html')
+    // Lazy editorial content changes the bubble height before Floating UI's
+    // ResizeObserver repositions it. Visibility/image readiness is not placement.
+    await expect(bubble).toBeInViewport({ ratio: 1 })
     await diagnosticScreenshot(page, {
       path: `${output}/open-${width}x${height}.png`,
     })
