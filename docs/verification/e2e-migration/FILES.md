@@ -189,4 +189,3 @@ Each owner brief contains the placement decision, concrete remaining work and pr
 
 | File | Cases / journeys | Source observations |
 | --- | ---: | --- |
-

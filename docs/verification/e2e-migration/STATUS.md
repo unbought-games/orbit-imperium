@@ -6,7 +6,7 @@ replacement-equivalence validation and final CI cutover remain open.
 
 | Stream | State | Last completed slice | Next slice | Implementation / verification revision |
 | --- | --- | --- | --- | --- |
-| 01 Resources/quotes | Delegated | — | Whole stream authorized; begin with quick-build restrictions and held quotes | Chat `01a1c830-b10b-7d70-a7b1-a96a254133af` |
+| 01 Resources/quotes | Merged | PR #387 | Follow-up evidence in test-migration-resources.md; no new assignment | `d8b750211ef90a896e6b833ea28aa20c385ce20b` |
 | 02 Catalog/progression | Not started | — | Comparison controls/item variants | — |
 | 03 Dispatch/fleets | Not started | — | Submission/outcome feedback | — |
 | 04 Empire/settings | Not started | — | Present/carried wealth and inventory | — |
