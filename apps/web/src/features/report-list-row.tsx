@@ -52,7 +52,7 @@ export function ReportListRow({
   onSelect?: (checked: boolean, shift: boolean) => void
 }) {
   const profiles = usePlayerDisplays()
-  const preview = reportPreview(report.preview, model.binding?.player)
+  const preview = reportPreview(report.preview)
   const outcome =
     (report.preview?.kind === 'Combat' ||
       report.preview?.kind === 'SiteEncounter') &&
@@ -116,7 +116,10 @@ export function ReportListRow({
         </>
       )}
       <div className={styles.reportMain}>
-        <div className={styles.rowHeading}>
+        <div
+          className={styles.rowHeading}
+          data-selection={(!desktopSelection && !!checkbox) || undefined}
+        >
           {!desktopSelection && checkbox}
           <Link
             className={styles.reportLink}
@@ -145,13 +148,15 @@ export function ReportListRow({
                 title="Unread"
               />
             )}
-            <strong
-              className={outcome ? styles[outcome.tone] : styles.reportType}
-              data-kind={report.kind}
-            >
-              {outcome?.title ?? reportKindLabel(report.kind)}
-            </strong>
-            {report.hidden && <span>Archived</span>}
+            <span className={styles.reportActivity}>
+              <strong
+                className={outcome ? styles[outcome.tone] : styles.reportType}
+                data-kind={report.kind}
+              >
+                {outcome?.title ?? reportKindLabel(report.kind)}
+              </strong>
+              {report.hidden && <span>Archived</span>}
+            </span>
             {route && <span className={styles.deliveryRoute}>{route}</span>}
             {identity && (
               <span className={styles.identity} title={identity}>
