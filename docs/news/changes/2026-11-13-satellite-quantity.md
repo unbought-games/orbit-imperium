@@ -1,3 +1,9 @@
+---
+id: satellite-quantity
+title: Solar satellite quantities on mobile
+date: '2026-11-13T14:22:00-05:00'
+---
+
 Solar satellites now show “Qty” beside their count in mobile production settings.
 Buildings retain their level labels, and the satellite output slider still adjusts
 the production percentage.
