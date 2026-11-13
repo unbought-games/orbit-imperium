@@ -1,3 +1,4 @@
+import { shipGroup } from '../ship-order'
 import { resolveCatalogArt } from '../../ui/artwork'
 import type { components } from '../../contracts'
 import type { CatalogArt } from '../../ui/image-catalog'
@@ -142,16 +143,7 @@ export function catalogGroup(key: Key) {
   if (key.kind === 'Missile') return 'Missile warfare'
   if (key.kind === 'Defense') return 'Defensive structures'
   if (key.kind === 'Ship')
-    return [
-      'SmallCargo',
-      'LargeCargo',
-      'Recycler',
-      'EspionageProbe',
-      'ColonyShip',
-      'SolarSatellite',
-    ].includes(key.id)
-      ? 'Civil ships'
-      : 'Combat ships'
+    return shipGroup({ key }) === 'Civil' ? 'Civil ships' : 'Combat ships'
   if (key.kind === 'Research') {
     if (key.id.endsWith('Drive')) return 'Drive research'
     if (

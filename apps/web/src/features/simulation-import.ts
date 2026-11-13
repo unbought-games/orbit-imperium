@@ -68,6 +68,18 @@ export function ownedDefenderImport(
   return {
     error: null,
     values,
+    moonTarget:
+      body.kind === 'Moon'
+        ? ('Moon' as const)
+        : view.bodies.some(
+              (candidate) =>
+                candidate.kind === 'Moon' &&
+                candidate.coordinates.galaxy === body.coordinates.galaxy &&
+                candidate.coordinates.system === body.coordinates.system &&
+                candidate.coordinates.position === body.coordinates.position,
+            )
+          ? ('PlanetWithMoon' as const)
+          : ('PlanetWithoutMoon' as const),
     source: `${body.name ? `${body.kind} · ${bodyName(body)}` : body.kind} ${coordinates(body)} · ${includeShips ? 'with stationed ships' : 'without ships'} · snapshot ${new Date(view.as_of_ms).toLocaleString()}`,
   }
 }

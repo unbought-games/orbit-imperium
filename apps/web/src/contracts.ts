@@ -8724,6 +8724,8 @@ export interface components {
             /** @description Newly generated debris from this battle sample under active universe rules, excluding existing debris and recovery. */
             debris: components["schemas"]["Resources"];
             estimated_loot: components["schemas"]["Resources"] | null;
+            /** @description Chance from newly generated debris under active rules, conditional on a planet without a moon. Absent on older servers. */
+            moon_chance_percent?: number;
         };
         SimulationResponse: {
             binding: components["schemas"]["Binding"];
@@ -8732,6 +8734,12 @@ export interface components {
             profile_hash: string;
             samples: components["schemas"]["SimulationSample"][];
             loot_rules_enabled: boolean;
+            /** @description Whether the active universe enables moon creation. Absent on older servers. */
+            moons_enabled?: boolean;
+            /** @description Empty recycler collection capacity in micro-units, including the harvest cap. Null when unavailable; absent on older servers. */
+            recycler_capacity?: components["schemas"]["Decimal"] | null;
+            /** @description Loot available with unlimited cargo using current raid rules and observed resources. Null when unknown; absent on older servers. */
+            available_loot?: components["schemas"]["Resources"] | null;
         };
         ReportShareOptions: {
             include_identity: boolean;

@@ -143,3 +143,14 @@ fn pooled_capacity_can_exceed_a_single_stock_range_without_overflow_or_extra_loo
         assert!(r.values().iter().map(|v| i128::from(*v)).sum::<i128>() <= i128::from(whole_max));
     }
 }
+
+#[test]
+fn available_loot_has_no_single_fleet_capacity_ceiling() {
+    let stock = Resources::all(i64::MAX);
+    let expected = (i64::MAX / (2 * SCALE)) * SCALE;
+    assert_eq!(
+        available_raid_loot(stock).unwrap(),
+        Resources::all(expected)
+    );
+    assert!(available_raid_loot(Resources::all(-1)).is_err());
+}

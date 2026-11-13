@@ -1,3 +1,4 @@
+import { compareShips } from '../ship-order'
 import { UnitComparison } from './unit-comparison'
 import { ShipComparison } from './ship-comparison'
 import { useState } from 'react'
@@ -50,6 +51,7 @@ export function TechnologyPage(props: ProgressionProps) {
       (kind !== 'Building' ||
         (facilityIds.includes(x.key.id) && visibleFacility(x, body))),
   )
+  if (kind === 'Ship') entries.sort(compareShips)
   const groups = [...new Set(entries.map((x) => catalogGroup(x.key)))].sort(
     (a, b) =>
       [
