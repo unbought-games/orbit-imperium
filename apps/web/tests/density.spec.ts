@@ -58,7 +58,7 @@ for (const viewport of [
   { width: 390, height: 844 },
   { width: 320, height: 740 },
 ]) {
-  test(`fleet tasks lead the first viewport at ${viewport.width}px`, async ({
+  test(`fleet inventory leads the first viewport and traffic stays reachable at ${viewport.width}px`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport)
@@ -78,13 +78,17 @@ for (const viewport of [
       exact: true,
     })
     await firstViewport(page, [
-      recall,
+      page.getByRole('heading', { name: 'Stationed ships', exact: true }),
+      page.getByRole('button', { name: 'Entire empire', exact: true }),
       page.getByRole('link', { name: 'Dispatch Fleet' }),
-      page.getByText('Arrives in', { exact: true }),
+      page.getByRole('button', { name: 'Fleet traffic', exact: true }),
     ])
     await diagnosticScreenshot(page, {
       path: `test-results/density-fleets-${viewport.width}.png`,
     })
+    await page.getByRole('button', { name: 'Fleet traffic', exact: true }).click()
+    await expect(recall).toBeInViewport({ ratio: 1 })
+    await expect(page.getByText('Arrives in', { exact: true })).toBeInViewport()
     await page
       .getByRole('link', { name: /^View .* fleet$/ })
       .click()

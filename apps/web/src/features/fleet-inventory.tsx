@@ -47,7 +47,10 @@ export function FleetInventoryView({
   if (!body) return null
   const ships = fleetInventoryRows(view, body, scope)
   const hasCatalog = view.catalog.some((entry) => entry.key.kind === 'Ship')
-  const empty = !ships.some(({ counts }) => BigInt(counts.stationed) > 0n)
+  const empty = !body.inventories.some(
+    (inventory) =>
+      inventory.item.kind === 'Ship' && BigInt(inventory.count) > 0n,
+  )
   return (
     <section
       aria-label={empire ? 'Empire ships' : 'Stationed ships'}

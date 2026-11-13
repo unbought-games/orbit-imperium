@@ -50,3 +50,35 @@ for (const width of [320, 1280]) {
     )
   })
 }
+
+for (const width of [390, 1280]) {
+  test(`unavailable catalog does not claim confirmed inventory is empty at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await mount('fleet-inventory')
+    await page.getByRole('button', { name: 'Clear catalog' }).click()
+    const panel = page.getByRole('region', {
+      name: 'Stationed ships',
+      exact: true,
+    })
+    await expect(panel).toContainText('Ship details are unavailable.')
+    await expect(panel).not.toContainText('No ships stationed here.')
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleets-unavailable-${width}x900.png`,
+    })
+    await page
+      .getByRole('button', { name: 'Entire empire', exact: true })
+      .click()
+    const empire = page.getByRole('region', {
+      name: 'Empire ships',
+      exact: true,
+    })
+    await expect(empire).toContainText('Ship details are unavailable.')
+    await expect(empire).not.toContainText(
+      'No ships stationed, flying or queued in your empire.',
+    )
+  })
+}

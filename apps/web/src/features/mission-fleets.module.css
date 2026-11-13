@@ -127,3 +127,7 @@
     min-height: 40px;
   }
 }
+
+.trafficTarget {
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
+}

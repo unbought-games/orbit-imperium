@@ -48,7 +48,8 @@ emitted engine warnings, so all validation uses the pinned Node 24 installation.
   empire totals, empty inventory and unavailable catalog at 320/1280.
 - Application and component TypeScript checks passed. ESLint passed. Changed-file Prettier check passed after formatting the test.
 
-No failed behavior assertions, repair attempts, queue removals or test deletions.
+Initial local runs had no failed behavior assertions, repair attempts, queue
+removals or test deletions. Subsequent CI findings are recorded below.
 Visual inspection prompted shorter explanatory copy and a tighter header;
 application captures were refreshed after that change. A final reduced-motion
 run produced settled-control captures; normal-motion journeys passed earlier. Optional screenshots
@@ -59,3 +60,53 @@ port leases; no persistent task server remains.
 The working changes above were tested on the baseline revision. PR CI establishes
 the exact committed revision; its final result is reported in the implementation
 chat. Full-system acceptance and production deployment are outside this scope.
+
+## PR review and CI follow-through
+
+First pushed revision `9624e1f7db1821f571740de589e9ead1de8dbd66`, CI run
+`43492340580` attempt 1:
+
+- Build/unit job `132116610126`: one deterministic assertion in
+  `progression/options.test.ts` expected the old count object without `total`.
+  Updated its exact expected result to include the satellite total; all other
+  values and the legacy unknown-flight assertions remain. This was an omitted
+  test adaptation, not an intermittent runner failure.
+- Feature shard 2 job `132116610463`: density cases at 390/320 expected recall
+  and arrival controls in the initial viewport. Feature shard 6 job
+  `132116610286`: the phone shell case expected an incoming attack heading in
+  the initial viewport. These three assertions encoded the superseded
+  traffic-first layout. Git history and the repair ledger were checked; this is
+  a deliberate requirement change, not a retry/stabilization repair.
+  Updated density coverage verifies inventory/scope/Dispatch and a traffic shortcut
+  in the first viewport, then uses that shortcut to expose recall and arrival data.
+  The incoming case verifies a visible incoming count and one-click access to
+  the attack above the navigation dock. Mission-detail viewport/recall coverage
+  remains unchanged. No cases or assertions of still-required behavior removed.
+- Review `PRRT_kwDOVRgPYs63QEul`: confirmed the missing-catalog empty-state defect.
+  Restored the world empty check to authoritative body inventory and added
+  missing-catalog-with-existing-ships component coverage at 390/1280. The empire
+  empty state already requires an available catalog.
+
+The compact header traffic shortcut targets incoming traffic when detected, otherwise
+all traffic. Both targets retain selected-body URLs and account for the sticky
+shell header. This preserves easy traffic access without moving inventory below
+it again. The final screenshots include the updated shortcut.
+
+The first local check of the new incoming shortcut exposed a product interaction:
+TanStack hash navigation triggered the shell's page-heading focus and moved the
+viewport back above the incoming section. Replaced the fragment navigation with
+a local button that focuses and scrolls to the existing heading. This keeps
+selected-body URL context intact and avoids changing shared shell routing. The
+failing assertion was retained; this was a product defect, not a test repair.
+
+Post-fix local results:
+
+- Model/options unit tests: 47 passed (0.432s).
+- Affected application cases: 6 passed (bundle 4.605s; browser 13.2s).
+- Scope/error components: 4 passed (bundle 3.732s; browser 2.6s), supplementing
+  the 4 existing inventory cases already passed above.
+- Application/component type checks and ESLint passed again. A final typecheck
+  briefly overlapped another package's browser check; it completed without a
+  timeout or resource failure. No other task's processes were stopped.
+
+No merge queue entry, merge or deployment was attempted.
