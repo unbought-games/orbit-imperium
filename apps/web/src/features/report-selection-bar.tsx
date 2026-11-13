@@ -3,6 +3,7 @@ import { Button } from '../ui/button'
 import type { components } from '../contracts'
 import type { useReportCleanup } from './use-report-cleanup'
 import styles from './report-controls.module.css'
+import { useReportArchiveShortcut } from './use-report-archive-shortcut'
 
 export function ReportSelectionBar({
   visible,
@@ -25,6 +26,7 @@ export function ReportSelectionBar({
   onMarkRead?: (ids: string[]) => void
   onCancel: () => void
 }) {
+  const archiveButton = useReportArchiveShortcut(!archived)
   const eligible = visible.filter(
     (report) => onMarkRead || archived || !report.starred,
   )
@@ -76,6 +78,9 @@ export function ReportSelectionBar({
           variant="secondary"
           size="compact"
           aria-label={`${label} (${archivable.length})`}
+          ref={archiveButton}
+          aria-keyshortcuts={archived ? undefined : 'e'}
+          title={archived ? 'Move to inbox' : 'Archive selected (E)'}
           disabled={busy || cleanup.coolingDown || !archivable.length}
           onClick={() => void cleanup.remove(archivable, !archived)}
         >

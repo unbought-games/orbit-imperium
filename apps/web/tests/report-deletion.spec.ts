@@ -206,6 +206,74 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
   }
 }
 
+// Covers route-scoped keyboard wiring and the separate mobile selection control.
+for (const width of [1440, 390]) {
+  test(`E archives selected reports and the open detail at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const fixture = await reportsFixture(page, true, 3, 50)
+    const rows = page.locator('main article')
+    await page.keyboard.press('e')
+    expect(fixture.submitted()).toBe(0)
+    await selectReports(page)
+    await rows.nth(0).getByRole('checkbox').check()
+    await rows.nth(1).getByRole('checkbox').check()
+    await expect(page.getByRole('button', { name: 'Archive selected (2)' })).toHaveAttribute('aria-keyshortcuts', 'e')
+    await page.getByRole('button', { name: 'Filter reports', exact: true }).click()
+    const filter = page.getByRole('dialog', { name: 'Filter reports', exact: true })
+    await filter.getByRole('button', { name: /Dismiss (sheet|popover)/ }).focus()
+    await page.keyboard.press('e')
+    expect(fixture.submitted()).toBe(0)
+    await filter.getByRole('button', { name: /Dismiss (sheet|popover)/ }).click()
+    await expect(filter).toBeHidden()
+    await rows.nth(1).getByRole('checkbox').focus()
+    await diagnosticScreenshot(page, { path: `test-results/archive-shortcut-selected-${width}x900.png` })
+    await page.keyboard.press('e')
+    await expect(rows).toHaveCount(1)
+    await expect(page.getByRole('group', { name: 'Report selection' })).toContainText('0 selected')
+    expect(fixture.headers.map(row => row.hidden)).toEqual([true, true, false])
+    expect(fixture.submitted()).toBe(1)
+
+    await withReportResponse(page, id(72), () => rows.getByRole('link', { name: 'Espionage', exact: true }).click())
+    await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
+    await page.getByRole('button', { name: 'Star report', exact: true }).click()
+    const archive = page.getByRole('button', { name: 'Archive report', exact: true })
+    await expect(archive).toBeDisabled()
+    await page.keyboard.press('e')
+    expect(fixture.submitted()).toBe(1)
+    await page.getByRole('button', { name: 'Unstar report', exact: true }).click()
+    await expect(archive).toBeEnabled()
+    await expect(archive).toHaveAttribute('aria-keyshortcuts', 'e')
+    await diagnosticScreenshot(page, { path: `test-results/archive-shortcut-detail-${width}x900.png` })
+    let release!: () => void
+    fixture.pause(new Promise<void>(resolve => { release = resolve }))
+    try {
+      await page.keyboard.press('e')
+      await expect.poll(fixture.submitted).toBe(2)
+      await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${id(72)}`)
+      await expect(page.getByRole('button', { name: 'Move to inbox', exact: true })).toBeDisabled()
+      await page.keyboard.press('e')
+      expect(fixture.submitted()).toBe(2)
+      await diagnosticScreenshot(page, { path: `test-results/archive-shortcut-pending-${width}x900.png` })
+    } finally { release() }
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByText('No reports to show.', { exact: true })).toBeVisible()
+    await withReportListResponse(page, () => page.getByRole('button', { name: 'Archived', exact: true }).click())
+    await expect(rows).toHaveCount(3)
+    await selectReports(page)
+    await rows.nth(0).getByRole('checkbox').check()
+    await page.keyboard.press('e')
+    expect(fixture.submitted()).toBe(2)
+    await diagnosticScreenshot(page, { path: `test-results/archive-shortcut-archived-${width}x900.png` })
+    await withReportResponse(page, id(70), () => rows.nth(0).getByRole('link', { name: 'Espionage', exact: true }).click())
+    await expect(page.getByRole('button', { name: 'Move to inbox', exact: true })).toBeEnabled()
+    await page.keyboard.press('e')
+    expect(fixture.submitted()).toBe(2)
+    expect(fixture.headers.every(row => row.hidden)).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
 for (const width of [320, 390, 800, 1440]) {
   test.describe(`archive target at ${width}px`, () => {
     test.use({ hasTouch: width < 1440 })
