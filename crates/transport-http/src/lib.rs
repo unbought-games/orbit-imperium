@@ -421,6 +421,10 @@ where
         )
         .route("/api/v4/universes/{id}/reports", post(v4::reports::<S>))
         .route(
+            "/api/v4/universes/{id}/reports/read",
+            post(v4::mark_reports_read::<S>).layer(DefaultBodyLimit::max(512 * 1024)),
+        )
+        .route(
             "/api/v4/universes/{id}/reports/{report}",
             post(v4::report::<S>),
         )

@@ -256,6 +256,17 @@ export function gamePort(
         ),
       )
     },
+    async markReportsRead(context, reports) {
+      return validate(
+        'ReportsReadResult',
+        await request(
+          `${base(context.binding.universe)}/reports/read`,
+          'POST',
+          { context, reports },
+          csrf,
+        ),
+      )
+    },
     async report(context, id) {
       return validate(
         'BoundReport4',

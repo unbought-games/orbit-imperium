@@ -28,6 +28,7 @@ import {
   type QueryContext,
   attemptKey,
   canonical,
+  hasOrderNotice,
   sameBinding,
   terminal,
 } from './commands'
@@ -87,11 +88,14 @@ export class Coordinator {
     this.attempts = new Map(this.attempts).set(key, attempt)
   }
   private removeAttempt(key: string) {
-    const attempts = new Map(this.attempts)
-    const intents = new Map(this.store.getState().intents)
+    const state = this.store.getState()
+    const attempts = new Map(state.attempts)
+    const intents = new Map(state.intents)
+    const hiddenOrderNotices = new Set(state.hiddenOrderNotices)
     attempts.delete(key)
     intents.delete(key)
-    this.store.setState({ attempts, intents })
+    hiddenOrderNotices.delete(key)
+    this.store.setState({ attempts, intents, hiddenOrderNotices })
   }
   get ledger(): AttemptLedger {
     return new Map(
@@ -227,6 +231,14 @@ export class Coordinator {
   dismissMessage() {
     this.message = ''
   }
+  dismissOrderNotices() {
+    const hiddenOrderNotices = new Set(this.store.getState().hiddenOrderNotices)
+    for (const [key, attempt] of this.attempts) {
+      if (hasOrderNotice(attempt)) hiddenOrderNotices.add(key)
+    }
+    this.store.setState({ hiddenOrderNotices, message: '' })
+    void this.pruneAttempts()
+  }
   private current(g: number, b: Binding) {
     return (
       g === this.generation && !!this.binding && sameBinding(b, this.binding)
@@ -291,6 +303,7 @@ export class Coordinator {
       mailbox: null,
       reportHeaders: new Map(),
       attempts: new Map(),
+      hiddenOrderNotices: new Set(),
       intents: new Map(),
     })
   }
@@ -395,7 +408,8 @@ export class Coordinator {
     this.binding = structuredClone(b)
     this.view = next
     this.settings = settings
-    const seen = new Set<string>()
+    const attempts: AttemptLedger = new Map()
+    const intents = new Map<string, SubmittedIntent>()
     for (const raw of restored) {
       try {
         const { submitted_intent, ...record } = validate<Attempt>(
@@ -407,28 +421,31 @@ export class Coordinator {
         const key = attemptKey(a.envelope.binding, a.envelope.command_id)
         if (
           !sameBinding(a.envelope.binding, b) ||
-          seen.has(key) ||
+          attempts.has(key) ||
           !this.validAttempt(a)
         )
           continue
-        seen.add(key)
         if (!terminal(a) && a.receipt?.status !== 'Pending') {
           a.status = 'uncertain'
           a.receipt = null
           a.reconciled = false
         }
-        this.saveAttempt(key, a)
-        if (submitted_intent)
-          this.store.setState({
-            intents: new Map(this.store.getState().intents).set(
-              key,
-              submitted_intent,
-            ),
-          })
+        attempts.set(key, a)
+        if (submitted_intent) intents.set(key, submitted_intent)
       } catch {
         /* Quarantined by omission: never send invalid persisted records. */
       }
     }
+    // Restore command identities for receipt recovery without replaying notices.
+    this.store.setState({
+      attempts,
+      intents,
+      hiddenOrderNotices: new Set(
+        [...attempts]
+          .filter(([, attempt]) => hasOrderNotice(attempt))
+          .map(([key]) => key),
+      ),
+    })
     await this.reconcile()
     if (g === this.generation) {
       this.ready = true
@@ -957,6 +974,44 @@ export class Coordinator {
   refreshReportInbox(more = false) {
     return this.reports.refreshInbox(more)
   }
+  async markReportsRead(reports: string[]) {
+    if (!reports.length) return
+    if (!this.port.markReportsRead || this.protocol !== 4)
+      throw new Error('Report read changes are unavailable')
+    const pending = this.captureRequest()
+    if (!pending) throw new Error('Report context changed')
+    const request = validate<
+      import('../contracts').components['schemas']['ReportsReadRequest']
+    >('ReportsReadRequest', {
+      context: pending.context,
+      reports: [...new Set(reports)],
+    })
+    const result = validate<
+      import('../contracts').components['schemas']['ReportsReadResult']
+    >(
+      'ReportsReadResult',
+      await this.port.markReportsRead(request.context, request.reports),
+    )
+    if (!this.ready || !this.responseMatches(pending, result))
+      throw new Error('Report context changed')
+    const returned = new Set(result.items.map((item) => item.id))
+    if (
+      returned.size !== request.reports.length ||
+      request.reports.some((id) => !returned.has(id)) ||
+      result.items.some((item) => !item.read)
+    )
+      throw new Error('Incomplete report read confirmation')
+    this.store.setState({
+      reportHeaders: mergeReportHeaders(
+        this.store.getState().reportHeaders,
+        result.items,
+        result.viewer_revision,
+      ),
+    })
+    // The database has committed. Refresh counts and filtered list membership;
+    // a failed background refresh must not turn that success into a failed write.
+    void this.refresh(result.viewer_revision).catch(() => {})
+  }
   async reportPage(cursor: string | null = null, includeHidden = false) {
     const binding = this.binding
     const generation = this.generation
@@ -1245,15 +1300,38 @@ export class Coordinator {
     })
     await this.persist(next)
     if (r.status === 'Pending') this.delivery?.pending()
+    if (
+      r.status === 'Rejected' &&
+      this.current(g, b) &&
+      this.store.getState().hiddenOrderNotices.has(key)
+    )
+      await this.pruneAttempts()
     if (r.status === 'Committed') {
-      if (next.reconciled) await this.pruneSuccesses()
+      if (next.reconciled) await this.pruneAttempts()
       this.requestMinimum(r.minimum_viewer_revision)
       if (!this.refreshWork && !this.recoveryWork) await this.refresh()
     }
   }
   /** Explicit player retry; receipt checks alone never authorize another send. */
-  retryOrder(command_id: string) {
-    return this.recover(command_id, true)
+  async retryOrder(command_id: string) {
+    const binding = this.binding,
+      generation = this.generation
+    if (!binding) return
+    const key = attemptKey(binding, command_id)
+    const wasHidden = this.store.getState().hiddenOrderNotices.has(key)
+    await this.recover(command_id, true)
+    if (!wasHidden || !this.current(generation, binding)) return
+    const state = this.store.getState()
+    const attempt = state.attempts.get(key)
+    if (
+      attempt &&
+      hasOrderNotice(attempt) &&
+      state.hiddenOrderNotices.has(key)
+    ) {
+      const hiddenOrderNotices = new Set(state.hiddenOrderNotices)
+      hiddenOrderNotices.delete(key)
+      this.store.setState({ hiddenOrderNotices })
+    }
   }
   async recover(command_id: string, retry = false) {
     if (this.platform.monotonicNowMs() < this.retryAt) return
@@ -1391,9 +1469,9 @@ export class Coordinator {
         }
       }
     }
-    if (this.current(generation, view.binding)) await this.pruneSuccesses()
+    if (this.current(generation, view.binding)) await this.pruneAttempts()
   }
-  private async pruneSuccesses() {
+  private async pruneAttempts() {
     for (const [key, attempt] of supersededReportFailures(this.attempts)) {
       try {
         // A failed status write must still allow removal of its older record.
@@ -1410,10 +1488,29 @@ export class Coordinator {
       if (this.attempts.get(key) === attempt) this.removeAttempt(key)
       this.writes.delete(key)
     }
-    const successes = [...this.attempts].filter(
+    const state = this.store.getState()
+    const hiddenRejections = [...state.attempts].filter(
+      ([key, attempt]) =>
+        attempt.status === 'rejected' && state.hiddenOrderNotices.has(key),
+    )
+    const parents = new Set(
+      [...state.intents]
+        .filter(([key]) => !state.attempts.get(key)?.reconciled)
+        .map(([, intent]) => intent.dependsOn),
+    )
+    const successes = [...state.attempts].filter(
       ([, attempt]) => attempt.status === 'committed' && attempt.reconciled,
     )
-    for (const [key, attempt] of successes.slice(0, -8)) {
+    // Keep recent outcomes for feature feedback, and keep rejected parents
+    // while an unresolved child still needs the result.
+    const history = [
+      ...hiddenRejections
+        .slice(0, -8)
+        .filter(([, attempt]) => !parents.has(attempt.envelope.command_id)),
+      ...successes.slice(0, -8),
+    ]
+    for (const [key, attempt] of history) {
+      if (this.attempts.get(key) !== attempt) continue
       this.removeAttempt(key)
       try {
         await this.writes.get(key)

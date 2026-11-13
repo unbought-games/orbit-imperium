@@ -6202,6 +6202,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v4/universes/{universe}/reports/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Atomically mark the supplied displayed report IDs read for the authenticated recipient. No history traversal. Other preferences remain unchanged. Retries are idempotent. At most 10000 displayed reports per request. */
+        post: operations["markShownReportsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10939,6 +10956,17 @@ export interface components {
             owned_components?: string[];
             supported: boolean;
         };
+        ReportsReadRequest: {
+            context: components["schemas"]["QueryContext"];
+            reports: string[];
+        };
+        ReportsReadResult: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            viewer_revision: string;
+            items: components["schemas"]["ReportHeader4"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -11963,6 +11991,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicAlliance"];
+                };
+            };
+            /** @description Typed service problem */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Access or bot participation denied */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BotDenial"] | components["schemas"]["Problem"];
+                };
+            };
+            /** @description Typed service problem */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            426: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+            /** @description Typed service problem */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem4"];
+                };
+            };
+        };
+    };
+    markShownReportsRead: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-CSRF-Token": string;
+            };
+            path: {
+                universe: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportsReadRequest"];
+            };
+        };
+        responses: {
+            /** @description Committed read state for the displayed report selection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportsReadResult"];
                 };
             };
             /** @description Typed service problem */

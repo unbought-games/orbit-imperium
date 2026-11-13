@@ -1,3 +1,4 @@
+import { OrderRecovery } from './order-recovery'
 import { SettingsBackLink } from '../shell/settings-back-link'
 import { GalaxyProbeSettings } from './galaxy-probe-settings'
 import { VacationSettings } from './vacation'
@@ -20,7 +21,7 @@ import {
 import { SettingsIdentity } from './settings-identity'
 
 export function SettingsScreen() {
-  const { route } = useGameScreen()
+  const { route, model } = useGameScreen()
   const selected = route.item as SettingsSection
   return (
     <DestinationLayout className={styles.screen}>
@@ -31,6 +32,7 @@ export function SettingsScreen() {
       </SettingsPane>
       <SettingsPane section="game" selected={selected}>
         <Text>Fine-tune how you play in this universe.</Text>
+        <OrderRecovery model={model} />
         <GalaxyProbeSettings />
         <VacationSettings />
         <Heading level={2}>Display & accessibility</Heading>

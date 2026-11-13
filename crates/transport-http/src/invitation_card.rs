@@ -101,8 +101,7 @@ impl InvitationCard {
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="{height}" viewBox="0 0 100 {height}"><defs><clipPath id="crest">{outline}</clipPath></defs><g clip-path="url(#crest)"><rect width="100" height="{height}" fill="{background}"/>{layers}</g></svg>"#
         )))
     }
-    pub fn render(&self, assets: &str) -> Result<Vec<u8>, String> {
-        let options = location_card::render_options();
+    fn svg(&self, assets: &str, options: &resvg::usvg::Options<'_>) -> Result<String, String> {
         let root = Path::new(assets);
         let planet = data(
             &std::fs::read(root.join(format!(
@@ -126,23 +125,53 @@ impl InvitationCard {
         let identity_x = if self.emblem.is_some() { 224 } else { 52 };
         let identity_width: f32 = if self.emblem.is_some() { 554. } else { 730. };
         let sender = bounded(&self.sender);
-        let sender_size = location_card::size(&sender, 66., identity_width, 0., 600, &options)?;
-        let empire = bounded(&self.empire);
+        let sender_size = location_card::size(&sender, 66., identity_width, 0., 600, options)?;
+        let empire = bounded(self.empire.trim());
         let empire_size =
-            location_card::size(&empire, 26., identity_width.min(680.), 0., 400, &options)?;
+            location_card::size(&empire, 26., identity_width.min(680.), 0., 400, options)?;
         let universe = format!("Join me in {}", bounded(&self.universe.name));
-        let universe_size = location_card::size(&universe, 31., 720., 0., 600, &options)?;
+        let universe_size = location_card::size(&universe, 31., 720., 0., 600, options)?;
         let sender = escape(&sender);
         let empire = escape(&empire);
-        let universe = escape(&universe);
+        let universe = escape(&bounded(&self.universe.name));
         let title = bounded(&self.title);
         let title_size =
-            location_card::size(&title, 19., identity_width.min(680.), 0., 400, &options)?;
+            location_card::size(&title, 19., identity_width.min(680.), 0., 400, options)?;
         let title = escape(&title);
-        let speed = self.universe.speed;
-        let svg = format!(
-            r##"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><defs><linearGradient id="shade"><stop stop-color="#03111c"/><stop offset=".62" stop-color="#03111c" stop-opacity=".9"/><stop offset="1" stop-color="#03111c" stop-opacity=".08"/></linearGradient></defs><rect width="1200" height="630" fill="#03111c"/><image href="{atmosphere}" width="1200" height="750"/><image href="{planet}" x="620" y="-130" width="840" height="840"/><rect width="1200" height="630" fill="url(#shade)"/><path d="M48 110H1152M48 540H1152" stroke="#cbb68d" stroke-opacity=".55"/><g font-family="IBM Plex Sans" fill="#edf4f7"><text x="52" y="72" font-size="26" letter-spacing="5" fill="#d9c398">ORBIT IMPERIUM</text><text x="52" y="174" font-size="16" letter-spacing="4" fill="#b8d9e8">YOUR PERSONAL INVITATION</text><text x="{identity_x}" y="275" font-size="{sender_size}" font-weight="600">{sender}</text><text x="{identity_x}" y="320" font-size="{title_size}" fill="#d9c398">{title}</text><text x="{identity_x}" y="364" font-size="{empire_size}" fill="#b9ccd8">{empire}</text><text x="52" y="474" font-size="{universe_size}" font-weight="600">{universe}</text><text x="52" y="587" font-size="18" fill="#b8d9e8">{speed}× UNIVERSE · BUILD. EXPLORE. BELONG.</text></g>{emblem}</svg>"##
+        let mut identity = format!(
+            r##"<text id="sender" x="{identity_x}" y="0" font-size="{sender_size}" font-weight="600">{sender}</text><text id="title" x="{identity_x}" y="45" font-size="{title_size}" fill="#d9c398">{title}</text>"##
         );
+        if !empire.is_empty() {
+            identity.push_str(&format!(
+                r##"<text id="empire" x="{identity_x}" y="89" font-size="{empire_size}" fill="#b9ccd8">{empire}</text>"##
+            ));
+        }
+        // Center the visible glyphs, including fitted long names, on the insignia.
+        let identity_tree = resvg::usvg::Tree::from_str(
+            &format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><g font-family="IBM Plex Sans">{identity}</g></svg>"#),
+            options,
+        ).map_err(|e| e.to_string())?;
+        let mut top = f32::INFINITY;
+        let mut bottom = f32::NEG_INFINITY;
+        for id in ["sender", "title", "empire"] {
+            if let Some(resvg::usvg::Node::Text(text)) = identity_tree.node_by_id(id) {
+                let bounds = text.flattened().abs_bounding_box();
+                top = top.min(bounds.top());
+                bottom = bottom.max(bounds.bottom());
+            }
+        }
+        let identity_y = if top.is_finite() {
+            297. - (top + bottom) / 2.
+        } else {
+            297.
+        };
+        Ok(format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><defs><linearGradient id="shade"><stop stop-color="#03111c"/><stop offset=".62" stop-color="#03111c" stop-opacity=".9"/><stop offset="1" stop-color="#03111c" stop-opacity=".08"/></linearGradient></defs><rect width="1200" height="630" fill="#03111c"/><image href="{atmosphere}" width="1200" height="750"/><image href="{planet}" x="620" y="-130" width="840" height="840"/><rect width="1200" height="630" fill="url(#shade)"/><path d="M48 110H1152M48 540H1152" stroke="#cbb68d" stroke-opacity=".55"/><g font-family="IBM Plex Sans" fill="#edf4f7"><text x="52" y="72" font-size="26" letter-spacing="5" fill="#d9c398">ORBIT IMPERIUM</text><text x="52" y="174" font-size="16" letter-spacing="4" fill="#b8d9e8">YOUR PERSONAL INVITATION</text><g transform="translate(0 {identity_y})">{identity}</g><text x="52" y="474" font-size="{universe_size}" font-weight="600">Join me in <tspan fill="#85d6ef">{universe}</tspan></text><text x="52" y="587" font-size="18" fill="#b8d9e8">Games worth playing.</text></g>{emblem}</svg>"##
+        ))
+    }
+    pub fn render(&self, assets: &str) -> Result<Vec<u8>, String> {
+        let options = location_card::render_options();
+        let svg = self.svg(assets, &options)?;
         let tree = resvg::usvg::Tree::from_str(&svg, &options).map_err(|e| e.to_string())?;
         let mut pixels =
             resvg::tiny_skia::Pixmap::new(1200, 630).ok_or("Image allocation failed")?;
@@ -193,6 +222,66 @@ mod tests {
         assert!(html.contains("https://orbit.example/invite/inv_code/preview.png"));
         assert!(!html.contains("orbit-page-metadata:start"));
         assert!(InvitationCard::page_html("<html></html>", &metadata).is_none());
+    }
+    #[test]
+    fn visible_identity_lines_center_on_the_insignia() {
+        let assets = concat!(env!("CARGO_MANIFEST_DIR"), "/../../apps/web/public");
+        let options = location_card::render_options();
+        for (label, sender, empire) in [
+            ("two-lines", "eth".to_owned(), ""),
+            ("three-lines", "eth".to_owned(), "The Long Horizon"),
+            ("blank-empire", "eth".to_owned(), "   "),
+            ("long-name", "Wide Commander ".repeat(8), "The Long Horizon"),
+        ] {
+            let mut c = card();
+            c.sender = sender;
+            c.empire = empire.into();
+            c.universe.name = "Andromeda".into();
+            c.emblem = Some(r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" rx="16" fill="#faffdf"/><path d="M50 22 58 42 80 50 58 58 50 78 42 58 20 50 42 42Z" fill="#15a200"/></svg>"##.into());
+            let svg = c.svg(assets, &options).unwrap();
+            let tree = resvg::usvg::Tree::from_str(&svg, &options).unwrap();
+            let mut top = f32::INFINITY;
+            let mut bottom = f32::NEG_INFINITY;
+            for id in ["sender", "title", "empire"] {
+                if id == "empire" && empire.trim().is_empty() {
+                    assert!(tree.node_by_id(id).is_none(), "{label}: empty third line");
+                    continue;
+                }
+                let Some(resvg::usvg::Node::Text(text)) = tree.node_by_id(id) else {
+                    panic!("{label}: missing {id}");
+                };
+                let bounds = text
+                    .flattened()
+                    .bounding_box()
+                    .transform(text.abs_transform())
+                    .unwrap();
+                top = top.min(bounds.top());
+                bottom = bottom.max(bounds.bottom());
+                assert!(
+                    bounds.right() <= 779.,
+                    "{label}: {id} exceeds available width"
+                );
+            }
+            assert!(
+                ((top + bottom) / 2. - 297.).abs() < 0.1,
+                "{label}: {top}..{bottom}"
+            );
+            assert!(
+                top >= 218. && bottom <= 376.,
+                "{label}: text exceeds insignia height"
+            );
+            assert!(svg.contains(r##"Join me in <tspan fill="#85d6ef">Andromeda</tspan>"##));
+            assert!(svg.contains("Games worth playing."));
+            assert!(!svg.contains("× UNIVERSE") && !svg.contains("BUILD. EXPLORE. BELONG."));
+            if let Ok(dir) = std::env::var("ORBIT_PREVIEW_OUTPUT") {
+                std::fs::create_dir_all(&dir).unwrap();
+                std::fs::write(
+                    Path::new(&dir).join(format!("invite-{label}.png")),
+                    c.render(assets).unwrap(),
+                )
+                .unwrap();
+            }
+        }
     }
     #[test]
     fn long_names_render_as_bounded_png_using_bundled_fonts() {

@@ -139,3 +139,17 @@ build, source/component typechecks, ESLint, full source formatting, contract and
 boundary checks passed. Vite production asset generation took 5.09s and homepage
 SSR generation 0.819s; total build wall timing was not captured. Browser checks use
 fixture HTTP boundaries and do not claim production/server persistence coverage.
+
+## Main integration for PR #408
+
+Integrated main `823a7187` into implementation head `1ae47b58` because GitHub
+reported a real Settings conflict. Preserved main's Orders awaiting confirmation
+control under Game settings, updated its existing desktop/mobile recovery journey
+and change-note destination, and retained the remaining main changes unchanged.
+The integrated fixture run passed all three selected cases (5.240s preparation,
+21.2s runner total), including retrying the same durable order after dismissing
+and reloading its notice at 1280px and 390px. Thirty focused unit/render cases
+passed. Component types, production build, lint, formatting, boundary and contract
+checks passed. Inspected fresh recovery screenshots at 1280×900 and 390×900 and
+showed them in the originating chat before queue enrollment. No new test repair
+attempts or queue removals were needed during this integration.

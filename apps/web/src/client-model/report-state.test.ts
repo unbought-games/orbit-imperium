@@ -18,6 +18,30 @@ const header = {
 }
 const headers = mergeReportHeaders(new Map(), [header], '1')
 
+it('keeps confirmed read state across reordered partial preference snapshots', () => {
+  const newer = mergeReportHeaders(
+    headers,
+    [{ ...header, starred: true, hidden: true }],
+    '3',
+  )
+  const confirmed = mergeReportHeaders(newer, [{ ...header, read: true }], '2')
+  expect(confirmed.get(header.id)).toMatchObject({
+    revision: '3',
+    header: { read: true, starred: true, hidden: true },
+  })
+  // Another snapshot assembled before the read arrived cannot undo it, while
+  // newer archive and star changes still take effect normally.
+  const later = mergeReportHeaders(
+    confirmed,
+    [{ ...header, starred: false, hidden: false }],
+    '4',
+  )
+  expect(later.get(header.id)).toMatchObject({
+    revision: '4',
+    header: { read: true, starred: false, hidden: false },
+  })
+})
+
 it('counts only visible unread inbox members and derives archive, rejection and read changes', () => {
   const state = createGameStore().getState()
   state.reportHeaders = mergeReportHeaders(
