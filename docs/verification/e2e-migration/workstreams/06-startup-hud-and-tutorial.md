@@ -85,3 +85,12 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 06 in `docs/verification/e2e-migration/workstreams/06-startup-hud-and-tutorial.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Known failure evidence from stream 02
+
+Before migration, reconcile main run `43359549586`, job `131669658426`, artifact
+`14007912034`: `foreground refresh confirms an accepted response with accessible
+reduced motion` did not expose its caption after the overview response was
+released. The mechanism was unconfirmed and stream 02 applied no repair. Read
+PR #406's evidence and current source/history; do not count a later green retry
+as resolution or infer that this remains broken after subsequent main changes.
