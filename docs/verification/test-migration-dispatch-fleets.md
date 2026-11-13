@@ -23,14 +23,14 @@ implementation is imported here. No deployment or protection changes.
   additions and newly mounted replacements, with predecessor IDs. Delta IDs
   are `delta-` plus the first 16 SHA-256 hex characters of `file|title_path`.
   Main added four probe-preference cases, two Arrival recruitment cases, and
-  two Enter-review component cases since the frozen audit. The #407 fleet-card
+  two Enter-review component cases since the frozen audit. Integration of #415 adds one desktop Spy-with case and preserves its already-retired mobile case as an explicit delta gap (23 delta rows total). The #407 fleet-card
   Galaxy-link assertions and #412 Enter/IME/repeat-key assertions remain intact.
 
-The resulting required selection is **109 application cases and 110 component
+The resulting required selection is **110 application cases and 110 component
 cases**, across the same 13 application files and five component files. From
-current main's 126 application and 101 component cases, this removes 17
+starting main's 126 application and 101 component cases, this removes 17
 application executions and four duplicate component executions, adding 13
-component cases. No test is skipped, quarantined, made optional or silently
+component cases. Main #415 subsequently adds one retained application case. No test is skipped, quarantined, made optional or silently
 excluded from the runner. The ordinary paths use `/u/<universe>/b/<body>/<page>`;
 no selected-body query is generated. The existing CI union and global cutover
 remain owned by stream 10.
@@ -219,3 +219,25 @@ application routing or backend behavior.
   shared implementation change or independent unassigned reliability fix was
   discovered. Global acceptance/five natural post-cutover lifecycle evidence
   is outside this stream's completion claim.
+
+## Current-main integration before final publication
+
+Main advanced to `f1231cd8745238e0ad1ebe12fd2162095d613ed4` (#415) while
+this work was being published. Its new customizable Galaxy espionage menu
+and test share the owned Galaxy file, so it was integrated to reconcile that
+concrete interaction and inventory change. The merge was clean; no parent
+branch was changed. Integrated executable revision:
+`f70e264c664a26b13bdf2a4c50371dde93bab1f9`.
+
+The new desktop `Spy with opens an editable planet espionage draft at 1280px`
+remains required with its catalog repair history. The already-retired mobile
+moon customization tour remains retired; its exact popup gap is recorded in
+the delta ledger and `galaxy-spy-customization.md`. The unrelated planet-name
+retirements in #415 were preserved, not reimplemented by this stream.
+
+Focused integration validation: 12 mission-action/location-address tests
+passed (0.208s Vitest total); six Galaxy restriction/navigation/customization
+application cases passed (7.1s runner). No production changes beyond incoming
+main and no changes to previously green unrelated cases. Final count is 110
+required application and 110 component cases. PR/merge-group CI verifies the
+integrated revision; prior head checks are not substituted for that validation.
