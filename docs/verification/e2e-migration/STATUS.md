@@ -7,8 +7,8 @@ replacement-equivalence validation and final CI cutover remain open.
 | Stream | State | Last completed slice | Next slice | Implementation / verification revision |
 | --- | --- | --- | --- | --- |
 | 01 Resources/quotes | Merged | PR #387 | Follow-up evidence in test-migration-resources.md; no new assignment | `d8b750211ef90a896e6b833ea28aa20c385ce20b` |
-| 02 Catalog/progression | Delegated | — | Complete whole stream, PR, CI/review and merge | Chat `01a1d2ad-3969-7510-85ea-d05e9a356ab3` |
-| 03 Dispatch/fleets | Not started | — | Submission/outcome feedback | — |
+| 02 Catalog/progression | Merged | PR #406 | Owned migration complete; post-merge failures assigned to 03/06 below | `7b2fa0612740ca40ad579a02e460a912f0e9da03` |
+| 03 Dispatch/fleets | Delegated | — | Whole stream through merge; inspect recorded moon-fleet failure | Chat `01a1d61e-5bb1-79f3-8182-afcea36275c9` |
 | 04 Empire/settings | Not started | — | Present/carried wealth and inventory | — |
 | 05 Shell/navigation | Not started | — | Density/selection layout | — |
 | 06 Startup/HUD/tutorial | Not started | — | Buffered pagination/refresh | — |
@@ -73,3 +73,36 @@ new workstream. The child owns implementation, relevant main-delta reconciliatio
 validation, PR creation, CI/review fixes and merge-queue follow-through. It must
 not stop after the suggested first slice or claim completion at queue enrollment.
 No implementation or passing validation is claimed by this delegation record.
+
+## 2026-11-13: rebase and stream 03 assignment
+
+Fetched main `e9de5904c7132b07b24a89918a8b0415ebea0199` and rebased the audit
+branch cleanly. Confirmed stream 02 merged in PR #406 at
+`7b2fa0612740ca40ad579a02e460a912f0e9da03`. Its current/historical/delta
+ledgers and verification handoff are on main.
+
+Assigned the whole Dispatch, Galaxy, fleets and mission-controls stream to chat
+`01a1d61e-5bb1-79f3-8182-afcea36275c9` (Complete Dispatch Galaxy and fleets test migration),
+with explicit /pr and /finish-pr authorization through confirmed merge. The
+child owns implementation, relevant main-delta reconciliation, validation and
+CI/review/merge-queue follow-through. No implementation success is claimed by
+this assignment. Preserve newer Enter-submit (#412), fleet-card navigation
+(#407), and canonical selected-body path requirements.
+
+PR #406's separate post-merge main run `43359549586` recorded two non-stream-02
+failures; these must not disappear behind the green PR/merge-group results:
+
+- 03: `moon fleet operations 1440 > Galaxy moon actions and quick espionage
+  bind the moon rather than its planet`, job `131669658465`, artifact
+  `14006839869`. Correct moon-bound spy command, missing reopened dialog after
+  conditional click; mechanism unconfirmed, no repair applied by 02. Inspect
+  current code and complete repair history before classifying/acting.
+- 06: `foreground refresh confirms an accepted response with accessible reduced
+  motion`, job `131669658426`, artifact `14007912034`. Missing HUD caption after
+  overview response release; mechanism unconfirmed, no repair applied by 02.
+  Owner 06 must reconcile this evidence with later fixes when launched.
+
+The stream-02 handoff also explicitly retains Cruiser attack and Large Cargo
+transport launch journeys for stream 03. Those exact launch cases are a narrow
+cross-file handoff; their catalog/comparison/manufacturing assertions remain
+owned by stream 02. Frozen CSVs stay unchanged; record the delta during 03.

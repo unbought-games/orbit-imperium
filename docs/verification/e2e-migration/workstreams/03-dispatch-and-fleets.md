@@ -1,6 +1,6 @@
 # 03 — Dispatch, Galaxy, fleets and mission controls
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1d61e-5bb1-79f3-8182-afcea36275c9` for the full stream through confirmed merge; read the [November 13 assignment and failure handoff](../STATUS.md#2026-11-13-rebase-and-stream-03-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -90,3 +90,13 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 03 in `docs/verification/e2e-migration/workstreams/03-dispatch-and-fleets.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## New-main handoffs to reconcile
+
+Read `docs/verification/test-migration-catalog-progression.md`: stream 02
+explicitly left Cruiser attack and Large Cargo transport launch cases for this
+stream. Changes to those exact launch cases are in scope despite their files
+being in the original stream-02 inventory; do not take over their other catalog
+assertions. Also inspect the recorded moon-fleet failure in STATUS.md, preserve
+Dispatch review Enter submission (#412), fleet-card Galaxy navigation (#407),
+and use canonical body paths through routeTarget under current AGENTS.md.
