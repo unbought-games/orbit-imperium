@@ -112,3 +112,18 @@ report-state/read/cleanup unit tests passed in 654ms, and the desktop persistenc
 journey plus archive/restore target cases at 320/390/800/1440 passed (5 cases,
 5,223ms preparation, 17.8s runner total). No further test failure or repair.
 The runner cleaned its temporary fixture build, server, and browser processes.
+
+## Review correction: idle clock snapshots
+
+Validated the review finding that the first render after an idle period could
+read an old clock sample before React subscribed. The source now starts with an
+unset sample, lazily samples the first read, and discards the cached sample when
+the last subscriber leaves. Repeated reads remain stable between updates.
+Controlled `now` instances read their supplied source directly and cannot seed
+an idle shared snapshot.
+
+Two deterministic tests cover initial/remount reads (including backward clock
+correction), stable snapshots, one shared timer, surviving subscribers, and
+last-subscriber cleanup. Timestamp qualification passed 7 unit tests in 188ms
+and both component tests (4,281ms preparation; 2.7s runner total). The UI's final
+desktop/mobile picker captures were refreshed after the correction.
