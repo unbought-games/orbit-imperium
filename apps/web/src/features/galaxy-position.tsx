@@ -113,23 +113,25 @@ export function GalaxyPosition({
       )}
     >
       <div className={styles.positionSummary}>
-        {body ? (
-          <BodyIllustration
-            body={{ ...body, coordinates }}
-            className={styles.planet}
-            sizes="40px"
-          />
-        ) : position.abandoned_until ? (
-          <BodyIllustration
-            body={{ kind: 'AbandonedPlanet' }}
-            className={styles.planet}
-            sizes="40px"
-          />
-        ) : (
-          <span className={styles.emptyOrbit} aria-hidden="true">
-            {coordinates.position}
-          </span>
-        )}
+        <GalaxyFlightSummary flights={flights} now={now} target={target}>
+          {body ? (
+            <BodyIllustration
+              body={{ ...body, coordinates }}
+              className={styles.planet}
+              sizes="40px"
+            />
+          ) : position.abandoned_until ? (
+            <BodyIllustration
+              body={{ kind: 'AbandonedPlanet' }}
+              className={styles.planet}
+              sizes="40px"
+            />
+          ) : (
+            <span className={styles.emptyOrbit} aria-hidden="true">
+              {coordinates.position}
+            </span>
+          )}
+        </GalaxyFlightSummary>
         <div className={styles.planetInfo}>
           <div className={styles.planetTitle}>
             <strong>
@@ -183,7 +185,6 @@ export function GalaxyPosition({
               )}
             </div>
           )}
-          <GalaxyFlightSummary flights={flights} now={now} target={target} />
           {moonEspionage?.error && (
             <ErrorBannerMessage>
               <p role="alert">

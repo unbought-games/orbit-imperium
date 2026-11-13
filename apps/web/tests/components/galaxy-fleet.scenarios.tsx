@@ -164,7 +164,7 @@ export function GalaxyDisclosureScenario() {
     mission: index % 2 ? ('Harvest' as const) : ('Espionage' as const),
     dueAt: fleetFixtureTime + 60_000 + index * 1000,
     phase: 'en route' as const,
-  })).filter((_, index) => revision === 0 || index !== 0)
+  })).filter((_, index) => revision < 2 && (revision === 0 || index !== 0))
 
   return (
     <main style={{ padding: 24 }}>

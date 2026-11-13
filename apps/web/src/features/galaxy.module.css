@@ -327,46 +327,61 @@
   color: #aab8c2;
   line-height: 1.5;
 }
-.flightSingle,
-.flights {
-  margin-top: 3px;
+.flightTrigger {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-self: center;
+}
+.flightMarker {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  width: 44px;
   color: var(--link);
   font-size: 0.75rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
-.flightSingle,
-.flights summary {
+.flightMarker > span:first-child {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
 }
-.flightSingle {
-  flex-wrap: wrap;
+.flightMarker[data-phase='returning'] {
+  color: #a4e8c8;
 }
-.flights summary {
-  cursor: pointer;
-  list-style: none;
-  width: fit-content;
-  padding-block: 3px;
+.flightMarker[data-phase='pending'] {
+  color: var(--accent);
 }
-.flights summary::-webkit-details-marker {
-  display: none;
+.flightArrival {
+  font-size: 0.7rem;
 }
-.flights summary:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 3px;
+.flightDetails {
+  /* Leave room on either side of the marker, even in a short viewport. */
+  max-height: min(24rem, calc(50dvh - 36px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
-.flightExpand {
-  margin-left: 5px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  color: #97abb7;
-}
-.flights ul {
-  margin: 6px 0 2px 18px;
+.flightDetails ul {
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 5px;
+  gap: 10px;
+}
+.flightDetails ul:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.flightDetails li {
+  display: grid;
+  gap: 2px;
+}
+.flightDetails time {
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 .srOnly {
   position: absolute;

@@ -1,72 +1,77 @@
-import { Navigation } from 'lucide-react'
+import { Clock3, Navigation, Undo2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { GalaxyFlight } from '../client-model/galaxy-fleets'
-import { arrivalCountdown } from './mission-presentation'
+import { Popover } from '../ui/popover'
+import { arrivalCountdown, exactTime } from './mission-presentation'
+import { galaxyFlightPresentation } from './galaxy-flight-presentation'
 import styles from './galaxy.module.css'
-
-function nextArrival(flights: GalaxyFlight[]) {
-  return flights.reduce<number | null>(
-    (next, flight) =>
-      flight.dueAt === null
-        ? next
-        : next === null
-          ? flight.dueAt
-          : Math.min(next, flight.dueAt),
-    null,
-  )
-}
-
-function FlightLine({ flight, now }: { flight: GalaxyFlight; now?: number }) {
-  return (
-    <>
-      {flight.mission} {flight.phase}
-      {flight.dueAt !== null && now !== undefined && (
-        <> · {arrivalCountdown(flight.dueAt, now)}</>
-      )}
-    </>
-  )
-}
 
 export function GalaxyFlightSummary({
   flights,
   now,
   target,
+  children,
 }: {
   flights: GalaxyFlight[]
   now?: number
   target: string
+  children?: ReactNode
 }) {
-  if (!flights.length) return null
-  if (flights.length === 1)
-    return (
-      <div
-        role="group"
-        className={styles.flightSingle}
-        aria-label={`Your fleets to ${target}`}
-      >
-        <Navigation size={13} aria-hidden="true" />
-        <FlightLine flight={flights[0]} now={now} />
-      </div>
-    )
-  const next = nextArrival(flights)
+  const summary = galaxyFlightPresentation(flights, now)
+  const Icon =
+    summary.phase === 'returning'
+      ? Undo2
+      : summary.phase === 'pending'
+        ? Clock3
+        : Navigation
   return (
-    <details className={styles.flights} aria-label={`Your fleets to ${target}`}>
-      <summary aria-label={`Show ${flights.length} fleets to ${target}`}>
-        <Navigation size={13} aria-hidden="true" />
-        <span>
-          {flights.length} fleets
-          {next !== null && now !== undefined && (
-            <> · next in {arrivalCountdown(next, now)}</>
-          )}
-        </span>
-        <span className={styles.flightExpand}>Details</span>
-      </summary>
-      <ul>
-        {flights.map((flight) => (
-          <li key={flight.id}>
-            <FlightLine flight={flight} now={now} />
-          </li>
-        ))}
-      </ul>
-    </details>
+    <Popover
+      label={`Your fleets to ${target}`}
+      className={styles.flightTrigger}
+      surfaceClassName={styles.flightDetails}
+      placement="bottom-start"
+      trigger={
+        flights.length ? (
+          <span className={styles.flightMarker} data-phase={summary.phase}>
+            <span>
+              <Icon size={16} aria-hidden="true" />
+              {summary.count}
+            </span>
+            <span className={styles.flightArrival}>{summary.arrival}</span>
+          </span>
+        ) : (
+          (children ?? <Navigation size={16} aria-hidden="true" />)
+        )
+      }
+    >
+      {flights.length ? (
+        <>
+          <p>
+            {flights.length} {flights.length === 1 ? 'fleet' : 'fleets'}
+          </p>
+          <ul tabIndex={0} aria-label="Fleet details">
+            {flights.map((flight) => (
+              <li key={flight.id}>
+                <strong>
+                  {flight.mission} {flight.phase}
+                </strong>
+                {flight.dueAt !== null && (
+                  <>
+                    {now !== undefined && (
+                      <span>{arrivalCountdown(flight.dueAt, now)}</span>
+                    )}
+                    <time dateTime={new Date(flight.dueAt).toISOString()}>
+                      {exactTime(flight.dueAt)}
+                    </time>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p>No fleets heading to this position.</p>
+      )}
+    </Popover>
   )
 }

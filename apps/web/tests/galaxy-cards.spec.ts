@@ -1041,8 +1041,11 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   releaseQuote()
   await expect.poll(() => launches).toBe(1)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toContainText('Espionage departure pending')
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('1…')
+  await target.getByRole('button', { name: /^Your fleets to / }).click()
+  await expect(page.getByRole('dialog', { name: 'Your fleets to [1:371:2]', exact: true })).toContainText('Espionage departure pending')
+  await page.keyboard.press('Escape')
   await expect(slots).toHaveText('1 / 3')
   expect(intents[0]).toEqual({
     origin: body.id,
@@ -1065,8 +1068,11 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   await diagnosticScreenshot(page, { path: 'test-results/live-hud/probe-390x844.png' })
   await expect(slots).toHaveText('1 / 3')
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText(/Espionage en route · \d/)
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText(/^1\d+[ms]$/)
+  await target.getByRole('button', { name: /^Your fleets to / }).click()
+  await expect(page.getByRole('dialog', { name: 'Your fleets to [1:371:2]', exact: true })).toContainText('Espionage en route')
+  await page.keyboard.press('Escape')
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await diagnosticScreenshot(page, {
@@ -1084,11 +1090,15 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   ).toBeFocused()
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollY)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveCount(0)
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('')
   await expect(
-    rows.first().getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText(/Espionage returning · \d/)
+    rows.first().getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText(/^1\d+[ms]$/)
+  await rows.first().getByRole('button', { name: /^Your fleets to / }).click()
+  await expect(page.getByRole('dialog', { name: 'Your fleets to [1:371:1]', exact: true })).toContainText('Espionage returning')
+  await page.keyboard.press('Escape')
+  await target.getByRole('button', { name: /^Actions for/ }).focus()
   missions.fleets = []
   revision++
   await refreshGame(page)
@@ -1098,8 +1108,8 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
     target.getByRole('button', { name: /^Actions for/ }),
   ).toBeFocused()
   await expect(
-    rows.first().getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveCount(0)
+    rows.first().getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('')
   expect(quotes).toBe(1)
   expect(launches).toBe(1)
 })
@@ -1183,8 +1193,11 @@ test('galaxy probe countdown ticks without reloading rows or fetching the system
     .getByRole('listitem')
     .nth(1)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText('Espionage en route · 2m 0s')
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('12m')
+  await target.getByRole('button', { name: /^Your fleets to / }).click()
+  const details = page.getByRole('dialog', { name: 'Your fleets to [1:371:2]', exact: true })
+  await expect(details).toContainText('2m 0s')
   const row = await target.elementHandle()
   let requests = 0
   page.on('request', (request) => {
@@ -1196,8 +1209,9 @@ test('galaxy probe countdown ticks without reloading rows or fetching the system
   })
   await page.clock.fastForward(5000)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText('Espionage en route · 1m 55s')
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('12m')
+  await expect(details).toContainText('1m 55s')
   expect(await row!.evaluate((node) => node.isConnected)).toBe(true)
   await expect(
     target.getByRole('button', { name: /^Actions for/ }),
@@ -1960,7 +1974,7 @@ for (const width of [390, 1280]) {
       await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [id(80)], minimum_viewer_revision: '2' } })
     })
     await withFixtureResponse(page, (response) => response.url().endsWith('/commands'), () => spy(page).click())
-    await expect(rows(page).nth(1)).toContainText('Espionage departure pending')
+    await expect(rows(page).nth(1).getByRole('button', { name: /^Your fleets to / })).toHaveText('1…')
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/galaxy`))
     await diagnosticScreenshot(page, { path: `test-results/probe-galaxy-sent-${width}x844.png` })
   })

@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { FleetPresentationRoutes } from './galaxy-fleet.scenarios'
 import { fleetPresentationFixture } from '../../src/test-support/fleet-presentation'
+import type { GalaxyFlight } from '../../src/client-model/galaxy-fleets'
+import { fleetFixtureTime } from '../../src/test-support/fleet-presentation'
 import { id } from '../../src/test-support/bootstrap'
 import { GalaxyPosition } from '../../src/features/galaxy-position'
 import { GalaxyHarvestPresentation } from '../../src/features/galaxy-harvest-action'
@@ -23,7 +25,27 @@ const fields = [
   { metal: '0', crystal: '400' },
 ]
 
-export function GalaxyPositionScenario() {
+export function GalaxyTrafficScenario() {
+  return <GalaxyPositionScenario traffic />
+}
+
+export function GalaxyPositionScenario({
+  traffic = false,
+}: {
+  traffic?: boolean
+}) {
+  const [flights, setFlights] = useState<GalaxyFlight[]>([])
+  const [now, setNow] = useState(fleetFixtureTime)
+  const addFlight = () =>
+    setFlights((current) => [
+      ...current,
+      {
+        id: `spy-${current.length}`,
+        mission: 'Espionage',
+        phase: 'en route',
+        dueAt: now + 120_000,
+      },
+    ])
   const [fixture] = useState(fleetPresentationFixture)
   const [baseState] = useState(() => createGameStore().getState())
   const [blocked, setBlocked] = useState(false)
@@ -66,6 +88,11 @@ export function GalaxyPositionScenario() {
             id: id(21 + index),
             owner: id(31 + index),
             kind: 'Planet',
+            name: traffic
+              ? index === 0
+                ? 'Andromeda listening post with a very long name'
+                : 'Vega'
+              : undefined,
             activity: { type: 'None' },
             inactivity: 'Active',
             vacation: false,
@@ -87,6 +114,39 @@ export function GalaxyPositionScenario() {
           container contract without mounting the session-owning game shell. */}
       <main style={{ paddingInline: 'var(--shell-inline-gutter)' }}>
         <div className={styles.screen}>
+          {traffic && (
+            <div>
+              <Button
+                onClick={() =>
+                  setFlights((current) =>
+                    current.map((flight) => ({
+                      ...flight,
+                      phase: 'returning',
+                    })),
+                  )
+                }
+              >
+                Return fleets
+              </Button>
+              <Button onClick={() => setFlights([])}>Complete flights</Button>
+              <Button onClick={() => setNow(now + 5000)}>Tick countdown</Button>
+              <Button
+                onClick={() =>
+                  setFlights((current) => [
+                    ...current,
+                    {
+                      id: 'pending',
+                      mission: 'Transport',
+                      phase: 'departure pending',
+                      dueAt: null,
+                    },
+                  ])
+                }
+              >
+                Pending departure
+              </Button>
+            </div>
+          )}
           <Button onClick={() => setBlocked(!blocked)}>
             Toggle blocked harvest
           </Button>
@@ -96,6 +156,16 @@ export function GalaxyPositionScenario() {
                 <li key={item.coordinates.position}>
                   <GalaxyPosition
                     position={item}
+                    flights={
+                      traffic
+                        ? flights.filter((flight) =>
+                            flight.phase === 'returning'
+                              ? item.coordinates.position === 3
+                              : item.coordinates.position === 2,
+                          )
+                        : []
+                    }
+                    now={now}
                     player={view.binding.player}
                     origin={fixture.body.id}
                     playerNames={{
@@ -116,7 +186,7 @@ export function GalaxyPositionScenario() {
                       setEdit(null)
                     }}
                     espionage={{
-                      send: () => {},
+                      send: traffic ? addFlight : () => {},
                       busy: false,
                       reason: null,
                       error: null,

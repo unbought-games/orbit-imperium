@@ -124,6 +124,8 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('./galaxy-fleet.scenarios')).GalaxyHarvestScenario,
   'fleet-inventory': async () =>
     (await import('./galaxy-fleet.scenarios')).FleetInventoryScenario,
+  'galaxy-traffic': async () =>
+    (await import('./galaxy-position.scenarios')).GalaxyTrafficScenario,
   'galaxy-disclosure': async () =>
     (await import('./galaxy-fleet.scenarios')).GalaxyDisclosureScenario,
   popover: async () => (await import('./popover')).PopoverExample,
