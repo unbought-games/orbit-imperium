@@ -134,3 +134,8 @@ manual full catalog, results and flight planning; pixels inspected. Application
 TypeScript, focused ESLint and formatting pass. Browser processes and temporary
 bundles cleaned themselves up. The task-owned local review preview remains at
 127.0.0.1:5198 for owner iteration; no production or other task services changed.
+
+The owner's second browser pass pairs origin / versus / target across the
+desktop header, stacks that pairing on phones, and nests the linked report
+beneath its target using a down-and-right arrow. Refreshed report/setup captures
+follow this layout update.

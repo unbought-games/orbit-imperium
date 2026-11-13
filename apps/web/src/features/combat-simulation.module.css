@@ -268,8 +268,41 @@
 .setupContext .location {
   flex: 1;
 }
-.reportContext {
+.matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
   margin-bottom: 8px;
+}
+.versus {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+.reportContext {
+  grid-column: 3;
+  justify-self: end;
+  min-width: 0;
+}
+.reportLink {
+  margin-left: 18px;
+}
+.reportLink > svg {
+  flex-shrink: 0;
+}
+@media (max-width: 620px) {
+  .matchup {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .versus {
+    margin: 0 0 0 46px;
+  }
+  .reportContext {
+    grid-column: 1;
+    justify-self: stretch;
+  }
 }
 .location {
   display: flex;

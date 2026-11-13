@@ -4,7 +4,7 @@ import {
   combinedSimulationUnits,
 } from './simulation-allies'
 import { useEffect, useRef, useState } from 'react'
-import { Swords, ScanEye, X } from 'lucide-react'
+import { Swords, ScanEye, X, CornerDownRight } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
@@ -197,55 +197,69 @@ function SimulationForm({
   return (
     <div className={styles.content}>
       {activeReport && (
-        <div className={styles.reportContext}>
-          <SimulationLocation
-            body={{
-              id: activeReport.target.body,
-              name: activeReport.target.name ?? undefined,
-              kind: activeReport.target.kind,
-              coordinates: activeReport.target.coordinates,
-            }}
-            owner={activeReport.target.owner}
-            label="Target"
-          />
-          <div className={styles.reportLink}>
-            <ScanEye size={16} aria-hidden="true" />
-            <Link
-              {...routeTarget(universeName, 'reports', body?.id, reportId)}
-              onClick={onClose}
-            >
-              Espionage report ·{' '}
-              <time
-                dateTime={new Date(activeReport.observed_at).toISOString()}
-                title={new Date(activeReport.observed_at).toLocaleString()}
-              >
-                {reportAge(activeReport.observed_at, now)}
-              </time>
-            </Link>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-touch"
-              aria-label="Clear espionage report"
-              title="Keep entered fleets and clear report context"
-              onClick={() => {
-                replaceDefender(
-                  Object.fromEntries(
-                    fields
-                      .filter((field) => field.side === 'defender')
-                      .map((field) => [
-                        field.key,
-                        edits[field.key] ?? field.value ?? '0',
-                      ]),
-                  ),
-                  defenderSource,
-                )
-                setReportAttached(false)
-                setMoonTarget('Unknown')
+        <div className={styles.matchup}>
+          {body && view && (
+            <>
+              <SimulationLocation
+                body={body}
+                owner={view.binding.player}
+                owned
+                label="Origin"
+              />
+              <span className={styles.versus}>versus</span>
+            </>
+          )}
+          <div className={styles.reportContext}>
+            <SimulationLocation
+              body={{
+                id: activeReport.target.body,
+                name: activeReport.target.name ?? undefined,
+                kind: activeReport.target.kind,
+                coordinates: activeReport.target.coordinates,
               }}
-            >
-              <X size={16} aria-hidden="true" />
-            </Button>
+              owner={activeReport.target.owner}
+              label="Target"
+            />
+            <div className={styles.reportLink}>
+              <CornerDownRight size={16} aria-hidden="true" />
+              <ScanEye size={16} aria-hidden="true" />
+              <Link
+                {...routeTarget(universeName, 'reports', body?.id, reportId)}
+                onClick={onClose}
+              >
+                Espionage report ·{' '}
+                <time
+                  dateTime={new Date(activeReport.observed_at).toISOString()}
+                  title={new Date(activeReport.observed_at).toLocaleString()}
+                >
+                  {reportAge(activeReport.observed_at, now)}
+                </time>
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-touch"
+                aria-label="Clear espionage report"
+                title="Keep entered fleets and clear report context"
+                onClick={() => {
+                  replaceDefender(
+                    Object.fromEntries(
+                      fields
+                        .filter((field) => field.side === 'defender')
+                        .map((field) => [
+                          field.key,
+                          edits[field.key] ?? field.value ?? '0',
+                        ]),
+                    ),
+                    defenderSource,
+                  )
+                  setReportAttached(false)
+                  setMoonTarget('Unknown')
+                }}
+              >
+                <X size={16} aria-hidden="true" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -265,7 +279,7 @@ function SimulationForm({
         }}
       >
         <div className={styles.setupContext}>
-          {body && view && (
+          {!activeReport && body && view && (
             <SimulationLocation
               body={body}
               owner={view.binding.player}
