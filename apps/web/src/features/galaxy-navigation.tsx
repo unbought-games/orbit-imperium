@@ -3,6 +3,7 @@ import { useLocation } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Field, NumberInput } from '../ui/form'
+import { useGalaxyNavigationHotkeys } from './use-galaxy-navigation-hotkeys'
 import styles from './galaxy.module.css'
 
 export function parseGalaxyCoordinate(value: string, maximum: number) {
@@ -50,6 +51,22 @@ export function GalaxyNavigation({
     setEdits({})
     setSubmitted(false)
   }
+  const canPrevious =
+    galaxy >= 1 && galaxy <= galaxies && system > 1 && system <= systems
+  const canNext =
+    galaxy >= 1 && galaxy <= galaxies && system >= 1 && system < systems
+  const previous = () => {
+    reset()
+    browse(galaxy, system - 1)
+  }
+  const next = () => {
+    reset()
+    browse(galaxy, system + 1)
+  }
+  useGalaxyNavigationHotkeys(
+    canPrevious ? previous : undefined,
+    canNext ? next : undefined,
+  )
   return (
     <form
       className={styles.toolbar}
@@ -93,14 +110,10 @@ export function GalaxyNavigation({
         variant="secondary"
         size="icon"
         aria-label="Previous system"
-        title="Previous system"
-        disabled={
-          galaxy < 1 || galaxy > galaxies || system <= 1 || system > systems
-        }
-        onClick={() => {
-          reset()
-          browse(galaxy, system - 1)
-        }}
+        title="Previous system (←)"
+        aria-keyshortcuts="ArrowLeft"
+        disabled={!canPrevious}
+        onClick={previous}
       >
         <ChevronLeft size={18} />
       </Button>
@@ -127,14 +140,10 @@ export function GalaxyNavigation({
         variant="secondary"
         size="icon"
         aria-label="Next system"
-        title="Next system"
-        disabled={
-          galaxy < 1 || galaxy > galaxies || system < 1 || system >= systems
-        }
-        onClick={() => {
-          reset()
-          browse(galaxy, system + 1)
-        }}
+        title="Next system (→)"
+        aria-keyshortcuts="ArrowRight"
+        disabled={!canNext}
+        onClick={next}
       >
         <ChevronRight size={18} />
       </Button>

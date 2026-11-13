@@ -1,7 +1,7 @@
 # Defender loot and report identity
 
 Scope: owner-approved feedback #164 and #171. Based on main
-`7d57e0532827fffe2bde0da65f03e8045b460dda`; no deployment or merge authorized.
+`7d57e0532827fffe2bde0da65f03e8045b460dda`; production deployment is outside scope.
 
 ## Findings
 
@@ -84,3 +84,13 @@ inline coordinate navigation and equal font sizes. Application and component
 TypeScript checks, lint, changed-file formatting and whitespace checks passed.
 An initial fixture capability omitted the required `reason: Available`; the
 component typecheck identified it and it was corrected before pushing.
+
+## Main integration
+
+Integrated main `9e0d4284` to resolve the shared component registry conflict,
+keeping both report-readability and galaxy-navigation registrations. The combined
+registry passed four focused component cases (4.216s preparation, 3.6s execution,
+one worker), component TypeScript checking and formatting. Fresh report captures
+were inspected at desktop/mobile sizes. No production report code changed in
+this integration. Dependencies installed locally with `npm ci` in 3s; repository
+runners cleaned up their owned browser/server and temporary bundles.
