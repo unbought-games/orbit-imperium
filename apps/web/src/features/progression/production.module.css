@@ -166,7 +166,7 @@
     width: auto;
   }
   .table td:nth-child(2)::before {
-    content: 'Lv ';
+    content: attr(data-label) ' ';
     color: var(--text-muted);
   }
   .table td:nth-child(3) {

@@ -166,3 +166,13 @@ does not alter the shared HUD. A build-triggered development refresh interrupted
 one optional Hold capture; reselected Hold. Another capture expected a reset
 editor after resizing but correctly retained review; returned through the visible
 Back to edit mission button. These were capture-state mistakes, not test failures.
+
+Integration: main advanced to `356028d3` with simulator PR #429 and related
+owner-reviewed packages. A real conflict in SimulationFlight required integration.
+Kept main's collapsible Plan attack and Review attack action, including its
+`reviewOnOpen: true` handoff. The ReportFilter and simulator contract additions
+merged together. All seven simulator application cases passed (bundle 5.199s,
+execution 17.9s); component types, `make _static`, and production build passed.
+No rebase or merge to main was performed; this is a normal base integration on
+the feature branch. New dependencies were installed in this worktree after
+removing only its dependency symlink; the shared checkout was not modified.

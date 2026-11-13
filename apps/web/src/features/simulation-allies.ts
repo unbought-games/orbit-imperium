@@ -62,6 +62,7 @@ export function withSimulationAllies(
 export function combinedSimulationUnits(
   inputs: SimulationInputs | null,
   side: 'attacker' | 'defender',
+  fields?: SimulationField[],
 ) {
   if (!inputs) return []
   const forces = [
@@ -75,5 +76,16 @@ export function combinedSimulationUnits(
       const key = `${u.item.kind}:${u.item.id}`
       units.set(key, { ...u, count: (units.get(key)?.count ?? 0) + u.count })
     }
-  return [...units.values()]
+  const result = [...units.values()]
+  if (fields) {
+    const order = fields
+      .filter((f) => f.side === side && f.item)
+      .map((f) => `${f.item!.kind}:${f.item!.id}`)
+    result.sort(
+      (a, b) =>
+        order.indexOf(`${a.item.kind}:${a.item.id}`) -
+        order.indexOf(`${b.item.kind}:${b.item.id}`),
+    )
+  }
+  return result
 }

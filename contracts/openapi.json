@@ -19286,6 +19286,12 @@
                 "type": "null"
               }
             ]
+          },
+          "moon_chance_percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20,
+            "description": "Chance from newly generated debris under active rules, conditional on a planet without a moon. Absent on older servers."
           }
         },
         "required": [
@@ -19322,6 +19328,32 @@
           },
           "loot_rules_enabled": {
             "type": "boolean"
+          },
+          "moons_enabled": {
+            "type": "boolean",
+            "description": "Whether the active universe enables moon creation. Absent on older servers."
+          },
+          "recycler_capacity": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Decimal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Empty recycler collection capacity in micro-units, including the harvest cap. Null when unavailable; absent on older servers."
+          },
+          "available_loot": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Resources"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Loot available with unlimited cargo using current raid rules and observed resources. Null when unknown; absent on older servers."
           }
         },
         "required": [

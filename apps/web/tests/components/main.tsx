@@ -60,6 +60,10 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  'report-readability': async () =>
+    (await import('./report-readability.scenario')).ReportReadabilityScenario,
+  'galaxy-navigation': async () =>
+    (await import('./galaxy-navigation.scenario')).GalaxyNavigationScenario,
   'cosmetic-treatments': async () =>
     (await import('./cosmetic-treatments.scenarios'))
       .CosmeticTreatmentsScenario,

@@ -141,3 +141,17 @@ it('restoring report defaults clears only primary defender edits', () => {
     'ally:defender:WeaponsTechnology': '9',
   })
 })
+
+it('imports moon eligibility from owned bodies, including a planet with an existing moon', () => {
+  const moon = { ...view.bodies[0], id: 'moon', kind: 'Moon' as const }
+  expect(ownedDefenderImport(view, body.id, false, false).moonTarget).toBe(
+    'PlanetWithoutMoon',
+  )
+  const current = { ...view, bodies: [...view.bodies, moon] }
+  expect(ownedDefenderImport(current, body.id, false, false).moonTarget).toBe(
+    'PlanetWithMoon',
+  )
+  expect(ownedDefenderImport(current, 'moon', false, false).moonTarget).toBe(
+    'Moon',
+  )
+})

@@ -2095,3 +2095,51 @@ Local verification after retirement: 74 deterministic rename/coordinator tests
 passed (699ms); both remaining rename browser cases passed (4.793s bundle
 preparation, 4.3s runner, no queue wait). The runner cleaned up its preview and
 browsers. `git diff --check` passed. Fresh PR/queue CI remains required.
+
+## November 13, 2026: retire unexplained Large Shield Dome overview startup failure
+
+PR #418 head `693d539253c3de9e20950cc04a1c875893ed02c0`, merge-group
+`402c3e5e1e12e1755c934d7f7b2ae7435155e13e`, run `43495872556` attempt 1,
+features 2/6 job `132128815339`, failed
+`Large Shield Dome shows requirements and artwork and enforces its own limit at 390px`.
+The `catalog-pages.spec.ts` setup exhausted its unchanged five-second
+`main h1` assertion after successful bootstrap delivery, before visiting Defense.
+The retained DOM snapshot includes the expected `Empire — Planet [1:371:12]`
+heading and populated overview; its screenshot also shows the ready overview.
+Artifact: `browser-failures-43495872556-1-features-2`, ID `14072137118`.
+The shard passed 110 other cases; bundle preparation took 8.021s and the browser
+runner 3.7m. There is no evidence of a failed external service or a product defect.
+
+Inspected the test, helper, artifact and history from introduction `1ac74c72`
+through shared readiness/migration edits `6292946b`, `0c235fd6`, `7b2fa061`
+and `27b48438`, plus this ledger's prior overview-startup failures. No
+scenario-specific repair was found; no separate owner ledger was available.
+The evidence does not establish a repairable cause. Following AGENTS.md's
+unexplained-failure rule, removed the case and its exclusive catalog fixture
+without retrying unchanged, changing timeouts, or recreating the browser journey.
+
+Retained coverage:
+- `features/progression/options.test.ts`: both dome types independently account
+  for completed inventory, queued work and bulk quantity in local capacity checks.
+- Engine `progression.rs`: `large_shield_dome_checks_completed_prerequisites_resources_and_bulk_orders`,
+  `shield_domes_have_independent_capacity_and_paid_work_survives_restart_and_disable`,
+  and `shield_dome_collection_validation_rejects_inventory_and_queue_overcapacity`
+  retain the authoritative requirements, costs, orders, restart and capacity rules.
+- The generic manufacturing browser journey and isolated manufacturing form
+  cases retain shared submission and disabled-state wiring.
+
+Explicitly lost: the single combined Large Shield Dome browser check of artwork
+loading, its technology dialog and exact cost presentation, and its particular
+submission/refresh UI wiring. Deterministic rules do not claim to replace these
+visual/browser assertions. No production behavior changed. Prior shared-bootstrap
+call-site audits remain applicable; this failure provides no new established
+shared defect to patch. This PR owns retirement and validation, with no speculative
+shared repair deferred.
+
+Local validation at `693d5392` plus this retirement: 65 options/manufacturing-order
+unit tests passed in 451ms. The retained manufacturing journey and defense
+comparison browser cases passed (5.078s bundle preparation, 3.9s runner).
+`git diff --check` passed; no server or production code changed. Existing runners
+cleaned up browser processes and temporary preview bundles. The first queue
+attempt is failed validation and will be superseded by a new PR-head run before
+re-enrollment; do not count the earlier green PR run as validating this revision.

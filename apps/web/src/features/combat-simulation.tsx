@@ -4,10 +4,13 @@ import {
   combinedSimulationUnits,
 } from './simulation-allies'
 import { useEffect, useRef, useState } from 'react'
-import { Swords } from 'lucide-react'
+import { Swords, ScanEye, X, CornerDownRight } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
+import { Link } from '../ui/link'
+import { routeTarget } from '../shell/route-target'
+import { SimulationLocation } from './simulation-location'
 import { Button } from '../ui/button'
 import { bodyName, coordinates, label } from '../ui/format'
 import { useGameScreen } from '../shell/screen-context'
@@ -24,6 +27,7 @@ import {
   attackerLosses,
   unsupportedReportUnits,
   type Espionage,
+  type MoonTarget,
 } from './combat-simulation-model'
 import { useCombatSimulation } from './use-combat-simulation'
 import { reportAge } from './report-preview'
@@ -33,9 +37,11 @@ const sideNames = { attacker: 'Attacker', defender: 'Defender' }
 export function ReportSimulation({
   model,
   report,
+  reportId,
 }: {
   model: Coordinator
   report: Espionage
+  reportId: string
 }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -56,7 +62,12 @@ export function ReportSimulation({
         <Swords size={18} aria-hidden="true" />
       </Button>
       {open && (
-        <SimulationDialog model={model} report={report} onClose={close} />
+        <SimulationDialog
+          model={model}
+          report={report}
+          reportId={reportId}
+          onClose={close}
+        />
       )}
     </>
   )
@@ -64,10 +75,12 @@ export function ReportSimulation({
 function SimulationDialog({
   model,
   report,
+  reportId,
   onClose,
 }: {
   model: Coordinator
   report: Espionage
+  reportId: string
   onClose: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -89,7 +102,12 @@ function SimulationDialog({
           Close
         </Button>
       </header>
-      <SimulationSession model={model} report={report} onClose={onClose} />
+      <SimulationSession
+        model={model}
+        report={report}
+        reportId={reportId}
+        onClose={onClose}
+      />
     </dialog>,
     document.body,
   )
@@ -103,6 +121,7 @@ export function CombatSimulator() {
 function SimulationSession(props: {
   model: Coordinator
   report?: Espionage
+  reportId?: string
   onClose?: () => void
 }) {
   const view = useStore(props.model.store, (s) => s.view)
@@ -118,18 +137,29 @@ function SimulationSession(props: {
 function SimulationForm({
   model,
   report,
+  reportId,
   onClose,
 }: {
   model: Coordinator
   report?: Espionage
+  reportId?: string
   onClose?: () => void
 }) {
   const view = useStore(model.store, (s) => s.view)
   const now = useStore(model.store, currentServerTime)
-  const { body } = useGameScreen()
+  const { body, universeName } = useGameScreen()
+  const [reportAttached, setReportAttached] = useState(true)
+  const activeReport = reportAttached ? report : undefined
   const stale = useStore(model.store, (s) => s.stale)
   const [includeShips, setIncludeShips] = useState(false)
-  const scope = JSON.stringify([report, view?.research, view?.profile_hash])
+  const [moonTarget, setMoonTarget] = useState<MoonTarget>(
+    report?.target.kind === 'Moon' ? 'Moon' : 'Unknown',
+  )
+  const scope = JSON.stringify([
+    activeReport,
+    view?.research,
+    view?.profile_hash,
+  ])
   const {
     allies,
     addAlly,
@@ -143,7 +173,7 @@ function SimulationForm({
     edit,
     run,
   } = useCombatSimulation(model, scope)
-  const defenderReport = defenderSource ? undefined : report
+  const defenderReport = defenderSource ? undefined : activeReport
   const fields = simulationFields(
     defenderReport,
     view?.catalog ?? [],
@@ -166,16 +196,72 @@ function SimulationForm({
     : []
   return (
     <div className={styles.content}>
-      {!defenderSource && report && (
-        <p>
-          Defender at [{report.target.coordinates.galaxy}:
-          {report.target.coordinates.system}:
-          {report.target.coordinates.position}] · observed{' '}
-          <time dateTime={new Date(report.observed_at).toISOString()}>
-            {new Date(report.observed_at).toLocaleString()}
-          </time>{' '}
-          ({reportAge(report.observed_at, now)}).
-        </p>
+      {activeReport && (
+        <div className={styles.matchup}>
+          {body && view && (
+            <>
+              <SimulationLocation
+                body={body}
+                owner={view.binding.player}
+                owned
+                label="Origin"
+              />
+              <span className={styles.versus}>versus</span>
+            </>
+          )}
+          <div className={styles.reportContext}>
+            <SimulationLocation
+              body={{
+                id: activeReport.target.body,
+                name: activeReport.target.name ?? undefined,
+                kind: activeReport.target.kind,
+                coordinates: activeReport.target.coordinates,
+              }}
+              owner={activeReport.target.owner}
+              label="Target"
+            />
+            <div className={styles.reportLink}>
+              <CornerDownRight size={16} aria-hidden="true" />
+              <ScanEye size={16} aria-hidden="true" />
+              <Link
+                {...routeTarget(universeName, 'reports', body?.id, reportId)}
+                onClick={onClose}
+              >
+                Espionage report ·{' '}
+                <time
+                  dateTime={new Date(activeReport.observed_at).toISOString()}
+                  title={new Date(activeReport.observed_at).toLocaleString()}
+                >
+                  {reportAge(activeReport.observed_at, now)}
+                </time>
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-touch"
+                aria-label="Clear espionage report"
+                title="Keep entered fleets and clear report context"
+                onClick={() => {
+                  replaceDefender(
+                    Object.fromEntries(
+                      fields
+                        .filter((field) => field.side === 'defender')
+                        .map((field) => [
+                          field.key,
+                          edits[field.key] ?? field.value ?? '0',
+                        ]),
+                    ),
+                    defenderSource,
+                  )
+                  setReportAttached(false)
+                  if (!defenderSource) setMoonTarget('Unknown')
+                }}
+              >
+                <X size={16} aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
       <form
         onSubmit={(event) => {
@@ -192,74 +278,84 @@ function SimulationForm({
           if (prepared.inputs && !unsupported.length) void run(prepared.inputs)
         }}
       >
+        <div className={styles.setupContext}>
+          {!activeReport && body && view && (
+            <SimulationLocation
+              body={body}
+              owner={view.binding.player}
+              owned
+              label="Origin"
+            />
+          )}
+          <details className={styles.importDisclosure}>
+            <summary>
+              Use my {body?.kind === 'Moon' ? 'moon' : 'planet'} as defender
+            </summary>
+            <div className={styles.importControls}>
+              <p>
+                Load{' '}
+                {body
+                  ? `${bodyName(body)} ${coordinates(body)}`
+                  : 'your selected world'}{' '}
+                as defender. Replaces this defender’s research, defenses and
+                ships. Attacker and allied fleets stay as entered.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={includeShips}
+                  onChange={(event) => setIncludeShips(event.target.checked)}
+                />{' '}
+                Include stationed ships
+              </label>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!worldImport.values}
+                onClick={() => {
+                  if (worldImport.values) {
+                    replaceDefender(worldImport.values, worldImport.source)
+                    setMoonTarget(worldImport.moonTarget)
+                  }
+                }}
+              >
+                Replace defender from current{' '}
+                {body?.kind === 'Moon' ? 'moon' : 'planet'}
+              </Button>
+              <small>
+                Without stationed ships, all defender ship counts are set to
+                zero.
+              </small>
+              {defenderSource && (
+                <p role="status">
+                  Defender imported from {defenderSource}. Values stay as
+                  entered until you replace them.
+                </p>
+              )}
+              {worldImport.error && <p>{worldImport.error}</p>}
+              {activeReport && defenderSource && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    replaceDefender({}, null)
+                    setMoonTarget(
+                      activeReport?.target.kind === 'Moon' ? 'Moon' : 'Unknown',
+                    )
+                  }}
+                >
+                  Replace defender from report
+                </Button>
+              )}
+            </div>
+          </details>
+        </div>
         <div className={styles.sides}>
           {(['attacker', 'defender'] as const).map((side) => (
             <fieldset key={side} disabled={running}>
               <legend>{sideNames[side]}</legend>
-              {side === 'attacker' && (
-                <p>
-                  {body
-                    ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
-                    : 'Select a planet to see stationed ship availability.'}
-                </p>
-              )}
-              {side === 'defender' && (
-                <div className={styles.importControls}>
-                  <p>
-                    Load{' '}
-                    {body
-                      ? `${bodyName(body)} ${coordinates(body)}`
-                      : 'your selected world'}{' '}
-                    as defender. Replaces this defender’s research, defenses and
-                    ships. Attacker and allied fleets stay as entered.
-                  </p>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={includeShips}
-                      onChange={(event) =>
-                        setIncludeShips(event.target.checked)
-                      }
-                    />{' '}
-                    Include stationed ships
-                  </label>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={!worldImport.values}
-                    onClick={() => {
-                      if (worldImport.values)
-                        replaceDefender(worldImport.values, worldImport.source)
-                    }}
-                  >
-                    Replace defender from current{' '}
-                    {body?.kind === 'Moon' ? 'moon' : 'planet'}
-                  </Button>
-                  <small>
-                    Without stationed ships, all defender ship counts are set to
-                    zero.
-                  </small>
-                  {defenderSource && (
-                    <p role="status">
-                      Defender imported from {defenderSource}. Values stay as
-                      entered until you replace them.
-                      {report &&
-                        ' Report coordinates still apply to attack planning.'}
-                    </p>
-                  )}
-                  {worldImport.error && <p>{worldImport.error}</p>}
-                  {report && defenderSource && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => replaceDefender({}, null)}
-                    >
-                      Replace defender from report
-                    </Button>
-                  )}
-                </div>
-              )}
               <SimulationFields
+                key={`${side}-${defenderReport ? 'report' : 'manual'}`}
                 fields={fields.filter((f) => f.side === side)}
                 edits={edits}
                 edit={edit}
@@ -325,14 +421,16 @@ function SimulationForm({
             It cannot be simulated without dropping observed forces.
           </p>
         )}
-        {prepared.error && <p role="status">{prepared.error}</p>}
-        {error && <p role="alert">{error}</p>}
-        <Button
-          type="submit"
-          disabled={!prepared.inputs || running || !!unsupported.length}
-        >
-          {running ? 'Simulating…' : 'Run 10 battles'}
-        </Button>
+        <div className={styles.runControls}>
+          <Button
+            type="submit"
+            disabled={!prepared.inputs || running || !!unsupported.length}
+          >
+            {running ? 'Simulating…' : 'Run 10 battles'}
+          </Button>
+          {prepared.error && <p role="status">{prepared.error}</p>}
+          {error && <p role="alert">{error}</p>}
+        </div>
       </form>
       {result && (
         <section aria-label="Simulation results" aria-live="polite">
@@ -360,82 +458,58 @@ function SimulationForm({
               </p>
             ))}
           </div>
-          {(['attacker', 'defender'] as const).map((side) => (
-            <div key={side}>
-              <h4>
-                {side === 'attacker'
-                  ? 'Attacker · average losses and survivors'
-                  : 'Defender · average survivors before repairs'}
-              </h4>
-              <dl className={styles.survivors}>
-                {combinedSimulationUnits(prepared.inputs, side).map((unit) => (
-                  <div key={`${unit.item.kind}:${unit.item.id}`}>
-                    <dt>{label(unit.item.id)}</dt>
-                    <dd>
-                      {side === 'attacker' && (
-                        <strong>
-                          {attackerLosses(result, unit).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 1 },
-                          )}{' '}
-                          lost ·{' '}
-                        </strong>
-                      )}
-                      {averageSurvivors(result, side, unit.item).toLocaleString(
-                        undefined,
-                        { maximumFractionDigits: 1 },
-                      )}{' '}
-                      surviving
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ))}
-          <SimulationPlanning result={result} />
+          <SimulationPlanning result={result} moonTarget={moonTarget} />
+          <details className={styles.resultDetails}>
+            <summary>Losses and survivors</summary>
+            {(['attacker', 'defender'] as const).map((side) => (
+              <div key={side}>
+                <h4>
+                  {side === 'attacker'
+                    ? 'Attacker · average losses and survivors'
+                    : 'Defender · average survivors before repairs'}
+                </h4>
+                <dl className={styles.survivors}>
+                  {combinedSimulationUnits(prepared.inputs, side, fields).map(
+                    (unit) => (
+                      <div key={`${unit.item.kind}:${unit.item.id}`}>
+                        <dt>{label(unit.item.id)}</dt>
+                        <dd>
+                          {side === 'attacker' && (
+                            <strong>
+                              {attackerLosses(result, unit).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 1 },
+                              )}{' '}
+                              lost ·{' '}
+                            </strong>
+                          )}
+                          {averageSurvivors(
+                            result,
+                            side,
+                            unit.item,
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 1,
+                          })}{' '}
+                          surviving
+                        </dd>
+                      </div>
+                    ),
+                  )}
+                </dl>
+              </div>
+            ))}
+          </details>
         </section>
       )}
-      <details className={styles.help}>
-        <summary>Simulation assumptions</summary>
-        <p>
-          Ten randomized battles using this universe’s current combat rules.
-          Limit: 2,000 units combined; technology 0–100. Missiles, defense
-          repairs and debris recovery are excluded. Outcomes are samples, not
-          guarantees.
-        </p>
-        <p>
-          Availability is a reference; hypothetical quantities are allowed.
-          Unknown is not zero. Player edits are assumptions.
-        </p>
-        {report && (
-          <p>
-            This is a historical snapshot. Resources, fleets, defenses and
-            research may have changed; the target is never refreshed.
-          </p>
-        )}
-        <p>
-          Loot assumes empty cargo on arrival, before fuel costs. Only victories
-          with surviving cargo capacity can loot. Each battle uses the
-          universe’s loot rules and report-observed resources; no production or
-          spending is forecast. Averages are rounded down to whole resource
-          units.
-        </p>
-        {report && (
-          <p>
-            Prepare attack opens an editable Dispatch draft. Flight estimates
-            use your current research, including for hypothetical ships.
-            Dispatch checks the target, protection, fuel and fleet slots before
-            launch.
-          </p>
-        )}
-      </details>
-      <SimulationFlight
-        model={model}
-        report={report}
-        fields={fields}
-        edits={edits}
-        onClose={onClose}
-      />
+      {activeReport && (
+        <SimulationFlight
+          model={model}
+          report={activeReport}
+          fields={fields}
+          edits={edits}
+          onClose={onClose}
+        />
+      )}
     </div>
   )
 }
