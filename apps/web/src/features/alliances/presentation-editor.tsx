@@ -28,6 +28,7 @@ import {
 import { PublicAllianceTemplate } from './public-template'
 import { PresentationPreview } from './presentation-preview'
 import { usePresentationEditor } from './use-presentation-editor'
+import { ImageUploadField } from './image-upload-field'
 import styles from './presentation.module.css'
 type S = components['schemas']
 type Editor = ReturnType<typeof usePresentationEditor>
@@ -88,22 +89,15 @@ function ImageChoice({
           ))}
         </Select>
       </Field>
-      <Field>
-        Upload an image
-        <input
-          type="file"
-          disabled={editor.catalog?.max_file_bytes === 0}
-          accept="image/png,image/jpeg,image/gif,image/webp"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ''
-            if (file)
-              void editor.upload(file).then((m) => {
-                if (m) onChange(imagePlacement(m.id))
-              })
-          }}
-        />
-      </Field>
+      <ImageUploadField
+        label="Upload an image"
+        maxFileBytes={editor.catalog?.max_file_bytes}
+        onSelect={(file) => {
+          void editor.upload(file).then((m) => {
+            if (m) onChange(imagePlacement(m.id))
+          })
+        }}
+      />
       {value && (
         <>
           <div className={styles.mediaRow}>
@@ -419,22 +413,15 @@ function IdentityFields({ editor }: { editor: Editor }) {
             </Select>
           </Field>
         )}
-        <Field>
-          Upload a crest
-          <input
-            type="file"
-            disabled={editor.catalog?.max_file_bytes === 0}
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              e.target.value = ''
-              if (file)
-                void editor.upload(file).then((m) => {
-                  if (m) set({ crest: { kind: 'upload', media_id: m.id } })
-                })
-            }}
-          />
-        </Field>
+        <ImageUploadField
+          label="Upload a crest"
+          maxFileBytes={editor.catalog?.max_file_bytes}
+          onSelect={(file) => {
+            void editor.upload(file).then((m) => {
+              if (m) set({ crest: { kind: 'upload', media_id: m.id } })
+            })
+          }}
+        />
       </Section>
       <Section
         title="Banner"
@@ -733,24 +720,11 @@ function MediaLibrary({ editor }: { editor: Editor }) {
           · {(usage / 1048576).toFixed(1)} MiB of{' '}
           {(editor.library?.max_total_bytes ?? 209715200) / 1048576} MiB
         </p>
-        <Field>
-          Upload artwork
-          <input
-            type="file"
-            disabled={editor.catalog?.max_file_bytes === 0}
-            accept="image/png,image/jpeg,image/gif,image/webp"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              e.target.value = ''
-              if (file) void editor.upload(file)
-            }}
-          />
-          <small>
-            {editor.catalog?.max_file_bytes === 0
-              ? 'New uploads are disabled on this server. Saved images remain available.'
-              : `PNG, JPEG, GIF, or WebP. Animated GIF and WebP are supported. Up to ${(editor.catalog?.max_file_bytes ?? 20971520) / 1048576} MiB per image.`}
-          </small>
-        </Field>
+        <ImageUploadField
+          label="Upload artwork"
+          maxFileBytes={editor.catalog?.max_file_bytes}
+          onSelect={(file) => void editor.upload(file)}
+        />
       </div>
       <div className={styles.mediaGrid}>
         {media
