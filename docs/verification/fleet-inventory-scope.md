@@ -12,8 +12,8 @@ The inventory now precedes traffic. A single table switches between This world
 (default) and Entire empire. Empire mode adds an existing-ship total and retains
 stationed, flying and queued breakdowns. The selected body remains in the URL;
 scope is local interaction state and survives switching bodies. Shipyard and
-Dispatch actions retain that selected body. All traffic remains visible and is
-explicitly labeled Entire empire, regardless of inventory scope. Mission detail
+Dispatch actions retain that selected body. Traffic defaults to all owned and detected movements under Empire fleet traffic,
+with ownership filters when other players are detected, independent of inventory scope. Mission detail
 pages retain their existing presentation.
 
 Counts derive from one confirmed store snapshot. Empire stationed counts sum
@@ -143,3 +143,56 @@ Eight affected application cases pass on `a2178e19` plus these edits (bundle
 changed-source formatting and diff checks pass. Fresh 390/1280 captures of the
 world and empire views were inspected, plus the 320px header. No failed checks
 or test deletions in this follow-up.
+
+## Owner annotated-page refinement
+
+Implemented the eight browser comments:
+
+- Removed the redundant inventory heading, selected-world subtitle and explanatory
+  footer. The selected world remains in the shell and canonical URL; the inventory
+  region keeps its accessible scope name. Moved Shipyard into the page header,
+  immediately before fleet slots and Dispatch, with responsive wrapping.
+- Added the existing catalog thumbnails to each ship name. The icon/name is one
+  neutral-colored link with a shared focus outline and a quiet hover surface.
+- Renamed the local Flying column to Away: owned ships launched from that body,
+  including outbound, holding and returning missions. It excludes arrivals from
+  other origins. Empire mode retains Flying across all owned origins. Queue
+  tooltips preserve the confirmed/unbuilt/excluded-from-total distinction.
+- Named the combined section Empire fleet traffic. Owned fleet/missile movements
+  and detected incoming fleet/missile movements share a chronological list.
+  All is the default. Detected traffic exposes an incoming-count badge and
+  All/Yours/Others selection. Others means actual visible approaches; no foreign
+  return intelligence is invented. Selected filters persist through refreshes,
+  including loss of the last contact, so controls do not disappear under focus.
+  Empty traffic gets one empty state, with distinct messages for filtered-empty
+  views. Existing mission-detail and pending-launch behavior remains.
+
+Coverage adaptations preserve the requested behavior: old incoming-region
+selectors now target the combined traffic region or incoming articles; the
+old separate empty message is replaced by assertions for one empty collection.
+The component-only Shipyard link assertions move to the application header;
+per-ship destination links remain covered at both boundaries. No test cases were
+retired and no assertions about recall, missiles, cargo visibility, identities or
+canonical navigation were weakened.
+
+Validation on `046e6097` plus these edits:
+
+- 16 deterministic inventory/movement/traffic model tests passed (0.172s).
+- 8 isolated inventory cases passed (bundle 4.329s; browser 5.4s).
+- 16 affected application cases passed (bundle 4.928s; browser 1.1m), including
+  mixed-traffic filtering, keyboard focus after a delivered refresh, empty states,
+  missile launches/details, recall, reconnect and player-name visibility.
+- 7 additional cargo/navigation cases passed (bundle 6.010s; browser 20.3s).
+- TypeScript and ESLint passed; focused formatting and diff checks passed.
+
+Visual inspection found a shared actions class overriding local header layout;
+removed that duplicate class and added a 390/1280 Shipyard/count geometry check.
+Refreshed desktop/mobile screenshots after the layout fix. The in-app browser
+also exercised the real local playground's filter with two transports and a
+rival approach. Those preview-only fleets were added through the world CLI to
+this checkout's isolated database. The preview and signed-in tab remain available.
+
+The final header/scope/filter capture run passed all 7 focused cases (bundle
+4.926s; browser 16.7s). Application and component TypeScript, ESLint, focused
+formatting and diff checks passed again. All task fixture runners cleaned their
+bundles and port leases; only the requested live playground remains running.

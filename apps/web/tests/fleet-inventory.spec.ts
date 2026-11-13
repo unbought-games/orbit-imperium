@@ -10,7 +10,10 @@ import {
 } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse } from './fixtures/responses'
+import {
+  withBootstrapResponse,
+  withFixtureResponse,
+} from './fixtures/responses'
 
 type S = components['schemas']
 function inventoryFixture() {
@@ -127,7 +130,7 @@ function inventoryFixture() {
           ships: [{ ship_type: 'SmallCargo' as const, count: '9' }],
         },
       ],
-      incoming: [],
+      incoming: [] as S['IncomingMission4'][],
       score_value_micro: '0',
       fleet_slots: '8',
     },
@@ -174,6 +177,12 @@ for (const width of [390, 1280]) {
     })
     const dispatchBox = (await dispatch.boundingBox())!
     const slotsBox = (await slots.boundingBox())!
+    const shipyardBox = (await page
+      .locator('main header')
+      .getByRole('link', { name: 'Shipyard', exact: true })
+      .boundingBox())!
+    expect(shipyardBox.x + shipyardBox.width).toBeLessThan(slotsBox.x)
+    expect(Math.abs(shipyardBox.y - slotsBox.y)).toBeLessThan(8)
     expect(slotsBox.x + slotsBox.width).toBeLessThan(dispatchBox.x)
     expect(Math.abs(slotsBox.y - dispatchBox.y)).toBeLessThan(8)
 
@@ -195,7 +204,7 @@ for (const width of [390, 1280]) {
     await expect(panel.getByRole('columnheader')).toHaveText([
       'Ship',
       'Stationed',
-      'Flying',
+      'Away',
       'Queued',
     ])
     await expect(panel.getByRole('row')).toHaveCount(3)
@@ -243,7 +252,7 @@ for (const width of [390, 1280]) {
     await refreshGame(page)
     await expect(cargo.getByRole('cell').first()).toHaveText('42')
     const traffic = page.getByRole('heading', {
-      name: 'Fleet traffic · Entire empire',
+      name: 'Empire fleet traffic',
     })
     expect((await panel.boundingBox())!.y).toBeLessThan(
       (await traffic.boundingBox())!.y,
@@ -296,8 +305,9 @@ for (const width of [390, 1280]) {
         exact: true,
       }),
     ).toBeVisible()
-    await panel
-      .getByRole('link', { name: 'Open Shipyard', exact: true })
+    await page
+      .locator('main header')
+      .getByRole('link', { name: 'Shipyard', exact: true })
       .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/shipyard`)
     await withBootstrapResponse(page, () =>
@@ -307,5 +317,149 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByRole('heading', { name: 'Mission details', exact: true }),
     ).toBeVisible()
+  })
+}
+
+// Covers filter wiring/focus through a delivered snapshot, and wrapping at phone width.
+for (const width of [390, 1280]) {
+  test(`unified fleet traffic filters owned and detected movements at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    let revision = 1
+    const options = {
+      ...inventoryFixture(),
+      viewerRevision: () => String(revision),
+    }
+    options.bodies[0].inventories[0].count = '42'
+    options.missions.incoming = [
+      {
+        sender: id(99),
+        target: body.id,
+        origin: { galaxy: 1, system: 400, position: 9 },
+        mission: 'Attack',
+        arrival_at: Date.now() + 60000,
+        ships: { visibility: 'Unknown' },
+      },
+    ]
+    await installGameFixture(page, options)
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/fleets`),
+    )
+    const traffic = page.getByRole('region', {
+      name: 'Empire fleet traffic',
+      exact: true,
+    })
+    const filters = traffic.getByRole('group', { name: 'Fleet traffic filter' })
+    await expect(traffic.getByRole('article')).toHaveCount(3)
+    await expect(traffic.getByRole('article').first()).toHaveAttribute(
+      'aria-label',
+      'Incoming attack fleet',
+    )
+    await expect(traffic.getByText('1 incoming', { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Incoming fleets', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('heading', { name: 'No active fleets.', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('heading', { name: 'Stationed ships', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByText('Queued ships are not built yet', { exact: false }),
+    ).toHaveCount(0)
+    const cargo = page.getByRole('link', {
+      name: 'Build more Small Cargo in Shipyard',
+      exact: true,
+    })
+    await expect(cargo.locator('img')).toHaveAttribute(
+      'src',
+      '/art/atlas/objects/small-cargo-96.webp',
+    )
+    await expect(cargo.locator('img')).toHaveAttribute('alt', '')
+    await expect(cargo).toHaveCSS('text-decoration-line', 'none')
+    const shipyard = page
+      .locator('main header')
+      .getByRole('link', { name: 'Shipyard', exact: true })
+    await expect(shipyard).toHaveAttribute(
+      'href',
+      `/u/andromeda/b/${body.id}/shipyard`,
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleets-traffic-all-${width}x900.png`,
+      fullPage: true,
+    })
+    await filters.getByRole('button', { name: 'Yours', exact: true }).click()
+    await expect(traffic.getByRole('article')).toHaveCount(2)
+    await expect(
+      traffic.getByRole('article', {
+        name: 'Incoming attack fleet',
+        exact: true,
+      }),
+    ).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleets-traffic-yours-${width}x900.png`,
+      fullPage: true,
+    })
+    const others = filters.getByRole('button', { name: 'Others', exact: true })
+    await others.focus()
+    await others.press('Enter')
+    await expect(others).toBeFocused()
+    await expect(traffic.getByRole('article')).toHaveCount(1)
+    await expect(
+      traffic.getByRole('article', {
+        name: 'Incoming attack fleet',
+        exact: true,
+      }),
+    ).toBeVisible()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleets-traffic-others-${width}x900.png`,
+      fullPage: true,
+    })
+    options.missions.incoming = []
+    revision++
+    await withFixtureResponse(
+      page,
+      (response) => new URL(response.url()).pathname.endsWith('/overview'),
+      () => refreshGame(page),
+    )
+    await expect(
+      traffic.getByRole('heading', {
+        name: 'No other fleets detected.',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(others).toBeFocused()
+    await expect(others).toHaveAttribute('aria-pressed', 'true')
+    await filters.getByRole('button', { name: 'All', exact: true }).click()
+    await expect(traffic.getByRole('article')).toHaveCount(2)
+    await expect(
+      filters.getByRole('button', { name: 'All', exact: true }),
+    ).toBeFocused()
+    options.missions.fleets = []
+    revision++
+    await withFixtureResponse(
+      page,
+      (response) => new URL(response.url()).pathname.endsWith('/overview'),
+      () => refreshGame(page),
+    )
+    await expect(
+      traffic.getByRole('heading', { name: 'No active fleets.', exact: true }),
+    ).toHaveCount(1)
+    await expect(traffic.getByRole('article')).toHaveCount(0)
+    await expect(
+      page.getByText('No visible incoming fleets.', { exact: true }),
+    ).toHaveCount(0)
+    await diagnosticScreenshot(page, {
+      path: `test-results/fleets-traffic-empty-${width}x900.png`,
+      fullPage: true,
+    })
   })
 }

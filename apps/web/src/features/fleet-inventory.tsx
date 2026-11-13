@@ -1,15 +1,14 @@
 import { Fragment, useState } from 'react'
 import { shipGroup } from './ship-order'
-import { CoordinateLink } from './coordinate-link'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { useUniverseName } from '../shell/session-context'
 import { routeTarget } from '../shell/route-target'
-import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
-import { bodyName, label } from '../ui/format'
+import { resolveCatalogArt } from '../ui/artwork'
+import { label } from '../ui/format'
 import { NumberValue } from '../ui/number-value'
-import { Heading, Text } from '../ui/typography'
+import { Text } from '../ui/typography'
 import { SegmentedControl } from '../ui/segmented-control'
 import {
   fleetInventoryRows,
@@ -56,32 +55,6 @@ export function FleetInventoryView({
       aria-label={empire ? 'Empire ships' : 'Stationed ships'}
       className={styles.inventory}
     >
-      <div className={styles.header}>
-        <div>
-          <Heading level={2}>
-            {empire ? 'Empire ships' : 'Stationed ships'}
-          </Heading>
-          <Text>
-            {empire ? (
-              'All planets and moons'
-            ) : (
-              <>
-                {bodyName(body)}{' '}
-                <CoordinateLink
-                  at={body.coordinates}
-                  target={body.kind === 'Moon' ? 'moon' : 'planet'}
-                />
-              </>
-            )}
-          </Text>
-        </div>
-        <ButtonLink
-          variant="secondary"
-          {...routeTarget(universe, 'shipyard', body.id)}
-        >
-          Open Shipyard
-        </ButtonLink>
-      </div>
       <SegmentedControl
         label="Ship inventory scope"
         options={[
@@ -92,8 +65,9 @@ export function FleetInventoryView({
         onChange={setScope}
       />
       <Text>
-        Confirmed counts. Flying{empire ? '' : ' from this world'} includes
-        returning and holding fleets.
+        {empire
+          ? 'Confirmed counts. Flying includes all your outbound, holding and returning ships.'
+          : 'Confirmed counts. Away includes ships launched here that are outbound, holding or returning.'}
       </Text>
       {empty && !empire && (
         <Text>
@@ -117,8 +91,22 @@ export function FleetInventoryView({
                 <th scope="col">Ship</th>
                 {empire && <th scope="col">Total</th>}
                 <th scope="col">Stationed</th>
-                <th scope="col">Flying</th>
-                <th scope="col">Queued</th>
+                <th
+                  scope="col"
+                  title={
+                    empire
+                      ? 'Your ships on active missions across the empire'
+                      : 'Your ships launched from this world, including holding and returning fleets; excludes arrivals from other origins'
+                  }
+                >
+                  {empire ? 'Flying' : 'Away'}
+                </th>
+                <th
+                  scope="col"
+                  title="Confirmed ships still being built; excluded from totals"
+                >
+                  Queued
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -153,7 +141,13 @@ export function FleetInventoryView({
                           title={`Build more ${name} in Shipyard`}
                           className={styles.build}
                         >
-                          {name}
+                          <img
+                            src={resolveCatalogArt(entry.key).thumbnail}
+                            width={32}
+                            height={32}
+                            alt=""
+                          />
+                          <span>{name}</span>
                         </Link>
                       </th>
                       {empire && (
@@ -192,13 +186,6 @@ export function FleetInventoryView({
             </tbody>
           </table>
         </div>
-      )}
-      {hasCatalog && (
-        <Text>
-          Queued ships are not built yet
-          {empire ? ' and are excluded from totals' : ''}. Pending orders appear
-          after confirmation. Select a ship to build more on {bodyName(body)}.
-        </Text>
       )}
       {!hasCatalog && (
         <Text>

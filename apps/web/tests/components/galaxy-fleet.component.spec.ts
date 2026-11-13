@@ -179,7 +179,7 @@ for (const width of [320, 390, 1280]) {
     await expect(panel.getByRole('columnheader')).toHaveText([
       'Ship',
       'Stationed',
-      'Flying',
+      'Away',
       'Queued',
     ])
     await expect(row.getByRole('link')).toHaveAttribute(
@@ -215,11 +215,9 @@ for (const width of [320, 390, 1280]) {
     await page.getByRole('button', { name: 'Switch world' }).click()
     await expect(panel).toContainText('No ships stationed here.')
     await expect(row.getByRole('cell')).toHaveText(['0', '9', '7'])
-    await expect(
-      panel.getByRole('link', { name: 'Open Shipyard', exact: true }),
-    ).toHaveAttribute(
+    await expect(row.getByRole('link')).toHaveAttribute(
       'href',
-      '/u/andromeda/b/00000000-0000-4000-8000-000000000006/shipyard',
+      '/u/andromeda/b/00000000-0000-4000-8000-000000000006/shipyard/small-cargo',
     )
   })
 }
@@ -248,7 +246,7 @@ test('flight summary preserves native disclosure through refreshed countdowns', 
   await expect(disclosure.locator('ul')).toBeHidden()
 })
 
-test('empty inventory retains its useful Shipyard destination without fabricated catalog rows', async ({
+test('empty inventory and unavailable catalog do not fabricate rows', async ({
   page,
   mount,
 }) => {
@@ -260,15 +258,6 @@ test('empty inventory retains its useful Shipyard destination without fabricated
   })
   await expect(panel).toContainText('No ships stationed here.')
   await expect(panel.getByRole('table')).toHaveCount(0)
-  await expect(
-    panel.getByRole('link', { name: 'Open Shipyard', exact: true }),
-  ).toBeVisible()
   await page.getByRole('button', { name: 'Clear catalog' }).click()
   await expect(panel).toContainText('Ship details are unavailable.')
-  await expect(
-    panel.getByRole('link', { name: 'Open Shipyard', exact: true }),
-  ).toHaveAttribute(
-    'href',
-    '/u/andromeda/b/00000000-0000-4000-8000-000000000005/shipyard',
-  )
 })
