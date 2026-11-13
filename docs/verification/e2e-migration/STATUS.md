@@ -7,7 +7,7 @@ replacement-equivalence validation and final CI cutover remain open.
 | Stream | State | Last completed slice | Next slice | Implementation / verification revision |
 | --- | --- | --- | --- | --- |
 | 01 Resources/quotes | Merged | PR #387 | Follow-up evidence in test-migration-resources.md; no new assignment | `d8b750211ef90a896e6b833ea28aa20c385ce20b` |
-| 02 Catalog/progression | Not started | — | Comparison controls/item variants | — |
+| 02 Catalog/progression | Delegated | — | Complete whole stream, PR, CI/review and merge | Chat `01a1d2ad-3969-7510-85ea-d05e9a356ab3` |
 | 03 Dispatch/fleets | Not started | — | Submission/outcome feedback | — |
 | 04 Empire/settings | Not started | — | Present/carried wealth and inventory | — |
 | 05 Shell/navigation | Not started | — | Density/selection layout | — |
@@ -56,3 +56,20 @@ implementation, coverage mapping, validation, CI and review fixes; it must leave
 the PR open for owner inspection without enqueueing or merging. No implementation
 or passing validation is claimed by this delegation record. Other streams remain
 unstarted.
+
+## 2026-11-12: rebase and stream 02 assignment
+
+Fetched main `c39cb5df489e12f557c4acb7e1163846064560db` and rebased the audit
+branch cleanly. Confirmed stream 01 merged in PR #387 on November 11 at
+`d8b750211ef90a896e6b833ea28aa20c385ce20b`; its focused verification and case
+ledgers are on main. Frozen audit CSV contents remain the original snapshot;
+CSV line endings were normalized without changing parsed records.
+
+Assigned the full Catalog, manufacturing and technical details workstream to
+chat `01a1d2ad-3969-7510-85ea-d05e9a356ab3` (Complete catalog and progression
+test migration). The user explicitly requested /pr and /finish-pr through a
+confirmed merge. This assignment supersedes the earlier review hold for this
+new workstream. The child owns implementation, relevant main-delta reconciliation,
+validation, PR creation, CI/review fixes and merge-queue follow-through. It must
+not stop after the suggested first slice or claim completion at queue enrollment.
+No implementation or passing validation is claimed by this delegation record.
