@@ -173,7 +173,9 @@ for (const width of [1280, 390]) {
     await looks.press('ArrowRight')
     await expect(looks).toHaveAccessibleName('Planet look 3 of 7')
     await looks.evaluate((list) => {
-      list.dispatchEvent(new PointerEvent('pointerdown'))
+      // React delegates pointer handlers to the root. A non-bubbling event
+      // never clears the carousel's outstanding keyboard-scroll target.
+      list.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
       list.scrollBy({ left: list.children[0].clientWidth })
     })
     await expect(looks).toHaveAccessibleName('Planet look 4 of 7')

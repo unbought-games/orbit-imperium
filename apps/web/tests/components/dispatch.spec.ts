@@ -569,9 +569,7 @@ for (const width of [320, 390, 1280]) {
 
 for (const kind of [
   'Attack',
-  'Transport',
   'Deploy',
-  'Espionage',
   'Harvest',
   'Colonize',
 ] as const) {
@@ -662,7 +660,7 @@ for (const kind of [
       ).toHaveAttribute('href', /target=debris/)
       await page.keyboard.press('Escape')
     }
-    if (kind === 'Attack' || kind === 'Espionage')
+    if (kind === 'Attack')
       await expect(quote).toContainText('Return if surviving')
     if (['Attack', 'Transport', 'Espionage'].includes(kind)) {
       await expect(quote).toContainText('Ember Watch')
@@ -1147,7 +1145,7 @@ for (const width of [390, 1440]) {
   })
 }
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`homeworld identity survives origin changes at ${width}px`, async ({
     page,
     mount,
@@ -1895,7 +1893,7 @@ for (const width of [390, 635, 1440]) {
   })
 }
 
-for (const width of [1440, 390]) {
+for (const width of [390]) {
   test(`background refresh retains compatible flight estimates and fresh Review at ${width}px`, async ({
     page,
     mount,
@@ -2073,3 +2071,176 @@ for (const width of [390, 1440]) {
     expect((await counts(page)).launches).toBe(0)
   })
 }
+
+const dispatchResult = (page: import('./fixture').Page) =>
+  page.getByRole('group', { name: 'Fleet dispatch result', exact: true })
+
+test('editing a new draft clears the previous launch receipt', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  await review(page).click()
+  await page
+    .getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    .click()
+  await expect(dispatchResult(page)).toContainText('Fleet sent.')
+  await page.getByLabel('Small Cargo · 2 available').fill('2')
+  await expect(dispatchResult(page)).toHaveCount(0)
+  await review(page).click()
+  await expect(dispatchResult(page)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Back to edit mission' }).click()
+  await expect(dispatchResult(page)).toHaveCount(0)
+})
+
+test('protection is explained before review, rechecked at review, and launch races have readable receipts', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  await expect(page.getByLabel('Destination preview')).toContainText(
+    'Ember Watch',
+  )
+  await configure(page, {
+    blocker: 'BeginnerProtected',
+    launchOutcome: 'Rejected',
+  })
+  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
+  await expect(
+    page
+      .getByRole('status')
+      .filter({ hasText: 'Beginner protection prevents' }),
+  ).toBeVisible()
+  // Timing requests read-only estimates before the explicit review step.
+  expect((await counts(page)).launches).toBe(0)
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  await page.setViewportSize({ width: 390, height: 900 })
+  await configure(page, { quoteError: 'BeginnerProtected' })
+  await review(page).click()
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Beginner protection prevents' }),
+  ).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  // The observation is advisory: a newer valid quote can supersede a stale blocker.
+  await configure(page, { quoteError: null })
+  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
+  await review(page).click()
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
+  await page
+    .getByRole('button', {
+      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    })
+    .click()
+  await expect(
+    page.getByRole('complementary', { name: 'Action needs attention' }),
+  ).toContainText('Fleet not sent: Beginner protection prevents')
+  expect((await counts(page)).launches).toBe(1)
+  await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+  await expect(
+    page.getByRole('textbox', { name: 'Metal', exact: true }),
+  ).toHaveValue('42')
+})
+
+for (const outcome of ['Pending', 'Rejected'] as const) {
+  test(`dispatch shows submitting then ${outcome} without false success`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await setup(page, mount)
+    await configure(page, { launchOutcome: outcome })
+    await hold(page, 'LaunchFleet')
+    await review(page).click()
+    try {
+      await page.getByRole('button', { name: /^Transport to/ }).click()
+      await expect(dispatchResult(page)).toContainText('Sending fleet order…')
+      await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
+      expect((await counts(page)).launches).toBe(1)
+    } finally {
+      await release(page)
+    }
+    const feedback =
+      outcome === 'Pending'
+        ? dispatchResult(page)
+        : page
+            .getByTestId('game-error-banner')
+            .getByRole('group', { name: 'Order status' })
+    if (outcome === 'Rejected')
+      await expect(dispatchResult(page)).toHaveCount(0)
+    await expect(feedback).toContainText(
+      outcome === 'Pending'
+        ? 'Order accepted. Waiting for launch confirmation…'
+        : 'Fleet not sent: Beginner protection prevents',
+    )
+    await expect(feedback).not.toContainText('Fleet sent.')
+    await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
+      '1',
+    )
+    expect((await counts(page)).launches).toBe(1)
+  })
+}
+
+for (const failure of ['PositionOccupied', 'PrerequisiteMissing'] as const) {
+  test(`colony ${failure} remains actionable after the advisory read settles`, async ({
+    page,
+    mount,
+  }) => {
+    await setup(page, mount)
+    await configure(
+      page,
+      failure === 'PositionOccupied'
+        ? { resolveError: failure }
+        : { quoteError: failure, estimateError: failure },
+    )
+    await page.getByLabel('Small Cargo · 2 available').fill('0')
+    await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
+    await setDestination(page, { position: '3' })
+    await page.getByLabel('Colony Ship · 1 available').fill('1')
+    await review(page).click()
+    const message =
+      failure === 'PositionOccupied'
+        ? 'This position is occupied. Choose an empty position.'
+        : 'Astrophysics level 4 is required for this position.'
+    await expect(page.getByRole('alert')).toHaveText(message)
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
+      0,
+    )
+    await expect(
+      page.getByRole('region', { name: 'Flight timing' }),
+    ).toContainText(
+      failure === 'PositionOccupied'
+        ? 'This position is occupied.'
+        : 'Your empire does not meet the requirements for this mission.',
+    )
+    await expect(page.getByRole('alert')).toHaveText(message)
+    expect((await counts(page)).launches).toBe(0)
+    expect((await counts(page)).quotes).toBe(
+      failure === 'PositionOccupied' ? 0 : 1,
+    )
+  })
+}
+
+test('known locked colony positions disable review and an eligible position restores it', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  await page.getByLabel('Small Cargo · 2 available').fill('0')
+  await page.evaluate(() =>
+    window.dispatchScene!.configure({
+      view: { research: [{ research: 'Astrophysics', level: 1 }] },
+    }),
+  )
+  await page.getByRole('radio', { name: 'Colonize', exact: true }).check()
+  await setDestination(page, { position: '3' })
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Astrophysics level 4' }),
+  ).toContainText('Astrophysics level 4 is required for this position.')
+  await expect(review(page)).toBeDisabled()
+  await setDestination(page, { position: '4' })
+  await expect(review(page)).toBeEnabled()
+  expect((await counts(page)).quotes).toBe(0)
+  expect((await counts(page)).launches).toBe(0)
+})

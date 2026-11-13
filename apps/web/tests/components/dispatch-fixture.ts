@@ -57,15 +57,33 @@ export async function createDispatchFixture() {
       )
         return fail('non-fleet command')
       launches++
-      return {
-        protocol: 4,
-        binding: envelope.binding,
-        command_id: envelope.command_id,
-        admitted_at: now,
-        executed_at: now,
-        status: 'Committed',
-        result_ids: [id(80)],
-        minimum_viewer_revision: source.viewer_revision,
+      const work = (async () => {
+        await gates.get('LaunchFleet')?.promise
+        return {
+          protocol: 4 as const,
+          binding: envelope.binding,
+          command_id: envelope.command_id,
+          admitted_at: now,
+          executed_at: now,
+          ...(options.launchOutcome === 'Rejected'
+            ? {
+                status: 'Rejected' as const,
+                code: 'BeginnerProtected' as const,
+              }
+            : options.launchOutcome === 'Pending'
+              ? { status: 'Pending' as const, executed_at: null }
+              : {
+                  status: 'Committed' as const,
+                  result_ids: [id(80)],
+                  minimum_viewer_revision: source.viewer_revision,
+                }),
+        }
+      })()
+      pending.add(work)
+      try {
+        return await work
+      } finally {
+        pending.delete(work)
       }
     },
     receipt: async () => fail('receipt polling'),
@@ -110,6 +128,7 @@ export async function createDispatchFixture() {
             })),
           }
         } else if (query.type === 'ResolveDestination') {
+          if (options.resolveError) throw Error(options.resolveError)
           const selection = query.selection
           const owned = source.bodies.find(
             (body) =>
@@ -221,7 +240,7 @@ export async function createDispatchFixture() {
         await model.refresh()
       }
     },
-    hold: (kind: 'Galaxy' | 'FleetEstimate') => {
+    hold: (kind: 'Galaxy' | 'FleetEstimate' | 'FleetQuote' | 'LaunchFleet') => {
       if (gates.has(kind)) throw Error(`Already holding ${kind}`)
       let release!: () => void
       const promise = new Promise<void>((resolve) => {

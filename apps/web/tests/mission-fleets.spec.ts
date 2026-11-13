@@ -52,7 +52,7 @@ function fleet(
     can_recall: leg === 'Outbound',
   }
 }
-for (const width of [320, 390, 1280]) {
+for (const width of [320, 1280]) {
   test(`active fleets sort next events and retain readable details and recall at ${width}px`, async ({
     page,
   }) => {

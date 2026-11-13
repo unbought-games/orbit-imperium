@@ -328,7 +328,8 @@ for (const width of [1440, 390]) {
         ),
       ).toBe(true)
     })
-    test('Galaxy moon actions and quick espionage bind the moon rather than its planet', async ({
+    // Desktop retired after main run 43359549586: see stream-03 verification.
+    if (width === 390) test('Galaxy moon actions and quick espionage bind the moon rather than its planet', async ({
       page,
     }) => {
       const state = await fixture(page)

@@ -522,3 +522,31 @@ it.each([false, true])(
     expect(submitted.mock.calls).toEqual(edited ? [] : [[null]])
   },
 )
+
+it('occupied colony resolution stops before quote and reports an actionable error', async () => {
+  const { requests, ports } = fixture()
+  const held = deferred<Awaited<ReturnType<DispatchReviewPorts['world']>>>()
+  ports.world.mockReturnValueOnce(held.promise)
+  const reviewing = requests.review(
+    {
+      ...input,
+      mission: 'Colonize',
+      ships: { ColonyShip: '1' },
+      types: ['ColonyShip'],
+    },
+    ports,
+  )
+  expect(ports.world).toHaveBeenCalledExactlyOnceWith({
+    type: 'ResolveDestination',
+    selection: { type: 'EmptyPositionAt', coordinates: at },
+  })
+  expect(ports.quote).not.toHaveBeenCalled()
+  held.reject(Error('PositionOccupied'))
+  await reviewing
+  expect(ports.world).toHaveBeenCalledTimes(1)
+  expect(ports.quote).not.toHaveBeenCalled()
+  expect(ports.error).toHaveBeenLastCalledWith(
+    'This position is occupied. Choose an empty position.',
+  )
+  expect(ports.busy).toHaveBeenLastCalledWith(false)
+})
