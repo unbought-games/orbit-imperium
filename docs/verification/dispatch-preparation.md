@@ -176,3 +176,20 @@ execution 17.9s); component types, `make _static`, and production build passed.
 No rebase or merge to main was performed; this is a normal base integration on
 the feature branch. New dependencies were installed in this worktree after
 removing only its dependency symlink; the shared checkout was not modified.
+
+CI run `43516168967`, feature shard 4 (job `132198659687`) found four additional
+old-requirement expectations in the moon suites, two viewport instances each.
+`moon dispatch shows observed attack and espionage protection before review`
+expected the removed early Attack warning. `selects a moon and inspects buildings
+while lunar construction stays unavailable` expected Review enabled with no ships
+selected (both lunar and same-coordinate planet-origin states). Inspected file
+history and repair ledger; these are intentional contract changes, not flakes.
+Updated the same cases, retained known Espionage warnings, added a response-gated
+422 quote rejection for Attack, and asserted disabled Review for both empty
+selections. Audited all browser Review-enabled and protection-text assertions;
+remaining expectations have selected ships or belong to different contexts.
+No retry, deadline change, or deleted coverage.
+
+The four updated moon cases passed locally on the first repair run (bundle
+5.080s; execution 9.6s, one worker). Product source and final screenshots were
+unchanged by this test-contract correction.
