@@ -126,6 +126,7 @@ it.each(['Planet', 'Moon'] as const)(
         owner: 'them',
         kind,
         espionage_eligible: true,
+        attack_blocker: 'UnavailableContent' as const,
       },
     }
     const actions = galaxyMissionActions({
@@ -142,7 +143,11 @@ it.each(['Planet', 'Moon'] as const)(
         ...options,
         position: {
           ...foreign,
-          body: { ...foreign.body, espionage_eligible: false },
+          body: {
+            ...foreign.body,
+            attack_blocker: null,
+            espionage_eligible: false,
+          },
         },
       }),
     ).toContainEqual({ mission: 'Espionage', reason: 'Espionage unavailable' })

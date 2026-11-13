@@ -75,15 +75,14 @@ export function galaxyMissionActions({
     if (body.owner !== player) {
       actions.push({
         mission: 'Espionage',
-        reason:
-          body.attack_blocker === 'BeginnerProtected'
+        reason: body.espionage_eligible
+          ? undefined
+          : body.attack_blocker === 'BeginnerProtected'
             ? protectionExplanation
-            : body.attack_blocker
+            : body.attack_blocker &&
+                body.attack_blocker !== 'UnavailableContent'
               ? dispatchFailure(body.attack_blocker)
-              : (vacation ??
-                (!body.espionage_eligible
-                  ? 'Espionage unavailable'
-                  : undefined)),
+              : (vacation ?? 'Espionage unavailable'),
       })
     }
   }
