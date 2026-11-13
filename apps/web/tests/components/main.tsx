@@ -60,7 +60,8 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
-  timestamp: async () => (await import('./timestamp.scenario')).TimestampScenario,
+  'report-readability': async () =>
+    (await import('./report-readability.scenario')).ReportReadabilityScenario,
   'galaxy-navigation': async () =>
     (await import('./galaxy-navigation.scenario')).GalaxyNavigationScenario,
   'cosmetic-treatments': async () =>
@@ -130,6 +131,7 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'galaxy-disclosure': async () =>
     (await import('./galaxy-fleet.scenarios')).GalaxyDisclosureScenario,
   popover: async () => (await import('./popover')).PopoverExample,
+  timestamp: async () => (await import('./timestamp.scenario')).TimestampScenario,
   'number-form': async () => NumberForm,
   loading: async () => LoadingExample,
   'action-sheet': async () =>

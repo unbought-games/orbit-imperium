@@ -139,16 +139,16 @@ it('omits loot and empty cargo loss from the defeated defender report', () => {
   expect(model.resources).toEqual([])
 })
 
-it('only displays nonzero loot for the victorious attacker', () => {
+it('displays confirmed nonzero loot independently of the viewer side', () => {
   const loot = { metal: '12000000', crystal: '0', deuterium: '0' }
   for (const [outcome, viewer, expected] of [
     ['AttackerVictory', 'attacker', true],
-    ['AttackerVictory', 'defender', false],
+    ['AttackerVictory', 'defender', true],
     ['DefenderVictory', 'attacker', false],
     ['DefenderVictory', 'defender', false],
     ['Draw', 'attacker', false],
     ['MutualDestruction', 'attacker', false],
-    ['AttackerVictory', undefined, false],
+    ['AttackerVictory', undefined, true],
   ] as const) {
     expect(
       combatReportModel({ ...payload, outcome, loot }, viewer).resources.some(

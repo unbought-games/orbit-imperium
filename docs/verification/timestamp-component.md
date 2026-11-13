@@ -88,3 +88,11 @@ navigation scenario and the new timestamp scenario. Refreshed dependencies for
 main's added hotkey library, then reran both timestamp component cases: 2 passed,
 4,421ms bundle preparation and 2.8s runner total (900ms and 1.2s test execution).
 No timestamp implementation or visual state changed during conflict resolution.
+
+The first queue enrollment (21:02:11–21:07:32 UTC) ended with GitHub's
+`merge_conflict` reason after report readability merged. No queue test failed;
+GitHub could not form this PR's integration commit. Integrated main
+`e897ceb3ce14e1ab6eb0fb156ff026d2a79f63d1`, preserved the report scenario, and placed
+the timestamp registration beside the existing popover scenario to avoid the
+registry's frequently edited first entry. Both timestamp interaction cases passed
+again after resolution. The component implementation and screenshots are unchanged.
