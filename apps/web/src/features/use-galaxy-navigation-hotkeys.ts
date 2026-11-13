@@ -6,6 +6,7 @@ function ignoreEventWhen(event: KeyboardEvent) {
   return (
     event.defaultPrevented ||
     event.isComposing ||
+    event.repeat ||
     (event.target instanceof Element &&
       !!event.target.closest(
         'dialog, [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tablist"], [role="tree"], [role="grid"], [role="combobox"]',

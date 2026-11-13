@@ -76,3 +76,30 @@ test('arrow shortcuts leave editing, modifiers, menus and dialog focus alone', a
   await page.keyboard.press('ArrowRight')
   await expect(destination).toHaveText('2:3')
 })
+
+test('holding an arrow browses once until the key is released and pressed again', async ({
+  page,
+  mount,
+}) => {
+  await mount('galaxy-navigation')
+  const destination = page.getByLabel('Destination', { exact: true })
+  await page.getByRole('button', { name: 'Toggle navigation' }).focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect(destination).toHaveText('2:1')
+  await page.keyboard.down('ArrowRight')
+  await expect(destination).toHaveText('2:2')
+  // Playwright marks subsequent downs of a held key as repeat events.
+  await page.keyboard.down('ArrowRight')
+  await page.keyboard.down('ArrowRight')
+  await expect(destination).toHaveText('2:2')
+  await page.keyboard.up('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await expect(destination).toHaveText('2:3')
+  await page.keyboard.down('ArrowLeft')
+  await expect(destination).toHaveText('2:2')
+  await page.keyboard.down('ArrowLeft')
+  await expect(destination).toHaveText('2:2')
+  await page.keyboard.up('ArrowLeft')
+  await page.keyboard.press('ArrowLeft')
+  await expect(destination).toHaveText('2:1')
+})

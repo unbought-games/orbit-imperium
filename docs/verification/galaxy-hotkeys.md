@@ -29,3 +29,27 @@ lint timings were not separately measured. No runner queue, PR or merge delay
 applies. Browser runs were serialized and their servers/temp bundles cleaned
 up by the existing runner. Only fixture-backed frontend behavior was tested;
 no backend, production or deployment changes were made.
+
+## PR follow-through
+
+PR #418, initial head `e943c0643c937b1c3150d1dc5d4c7472c99de288`:
+CI run `43488361389`, attempt 1, failed in the journeys job
+`132102802345` during `make test-homepage-built`. The news builder rejected
+this change's note because its required YAML metadata was missing. Browser
+assertions did not start; this is an authored content/build defect, not a test
+repair. Added the required id, title and date metadata.
+
+Bugbot review thread `PRRT_kwDOVRgPYs63PfWT` identified repeated Galaxy requests
+when an arrow key is held. Native repeat keydown events reached the browse
+callback without a guard. Ignore repeated events and retain deliberate repeated
+presses after key release. A new isolated browser regression covers both arrows.
+The updated component suite passed all 3 cases (preparation 4.874s, runner 2.4s),
+and focused lint/format checks passed. No assertions were removed or weakened.
+
+The initial build/lint/unit job `132102802026` also failed on the same missing
+news metadata. After repair, `make test-homepage-built` passed, including the
+production build and all 10 homepage browser cases (preview preparation 321ms,
+runner 3.6s). The focused Galaxy journey passed again (bundle preparation 4.915s,
+runner 3.0s), and both final viewport captures were refreshed and inspected.
+Build-generated unrelated analytics route drift was discarded. Test servers and
+temporary bundles were cleaned up by their runners.
