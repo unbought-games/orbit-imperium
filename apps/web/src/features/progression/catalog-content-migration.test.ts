@@ -61,7 +61,7 @@ const ships = [
     shield: '2500000',
     cost: ['6000', '4000', '0'],
     paid: ['12000000000', '8000000000', '0'],
-    prose: 'An impulse-powered combat ship',
+    prose: 'A rugged assault craft',
     art: 1200,
     requirements: [
       ['Shipyard', 3],
@@ -83,7 +83,7 @@ const ships = [
     shield: '5000000',
     cost: ['20000', '7000', '2000'],
     paid: ['40000000000', '14000000000', '4000000000'],
-    prose: 'A fast impulse-powered combat ship',
+    prose: 'A fast attack ship',
     art: 1200,
     requirements: [
       ['Shipyard', 5],
@@ -105,7 +105,7 @@ const ships = [
     shield: '2500000',
     cost: ['6000', '6000', '0'],
     paid: ['12000000000', '12000000000', '0'],
-    prose: 'A bulk transport',
+    prose: 'The industrial lifeline',
     art: 1200,
     requirements: [
       ['Shipyard', 4],
@@ -126,7 +126,7 @@ const ships = [
     shield: '20000000',
     cost: ['45000', '15000', '0'],
     paid: ['90000000000', '30000000000', '0'],
-    prose: 'A hyperspace-powered warship',
+    prose: 'The backbone of a battle fleet',
     art: 1200,
     requirements: [
       ['Shipyard', 7],
@@ -147,7 +147,7 @@ const ships = [
     shield: '40000000',
     cost: ['30000', '40000', '15000'],
     paid: ['60000000000', '80000000000', '30000000000'],
-    prose: 'A hyperspace-powered combat ship',
+    prose: 'A dedicated fleet hunter',
     art: 1200,
     requirements: [
       ['Shipyard', 8],
@@ -170,7 +170,7 @@ const ships = [
     shield: '50000000',
     cost: ['50000', '25000', '15000'],
     paid: ['100000000000', '50000000000', '30000000000'],
-    prose: 'An impulse-powered siege ship',
+    prose: 'A siege ship',
     art: 1200,
     requirements: [
       ['Shipyard', 8],
@@ -192,7 +192,7 @@ const ships = [
     shield: '50000000',
     cost: ['60000', '50000', '15000'],
     paid: ['120000000000', '100000000000', '30000000000'],
-    prose: 'A heavy combat ship powered by Hyperspace Drive',
+    prose: 'A heavily armoured warship',
     art: 1200,
     requirements: [
       ['Shipyard', 9],

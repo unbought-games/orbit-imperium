@@ -511,12 +511,12 @@ for (const width of [320, 390, 1440]) {
 }
 
 for (const width of [1440, 390]) {
-  test(`deuterium recycler description at ${width}`, async ({ page }) => {
+  test(`Recycler salvage field notes at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await openDetail(page, 'Recycler')
     await expect(
       page.getByText(
-        'Collects resources from debris fields, including deuterium where available.',
+        'A salvage vessel that turns shattered fleets into the beginnings of new ones. After the weapons fall silent, recyclers work the wreckage—and rivals race to claim what remains.',
       ),
     ).toBeVisible()
     await expect(

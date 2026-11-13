@@ -32,11 +32,11 @@ it('derives Plasma unlocks for its prerequisite research from the bundled gates'
   }
 })
 
-it('presents Plasma artwork and its turret unlock without per-level bonuses', () => {
+it('presents Plasma artwork and describes its siege and defense applications', () => {
   const details = catalogContent(plasma.key)
   expect(details.art.src).toBe('/art/atlas/objects/plasma-technology-640.webp')
-  expect(details.description).toContain('Unlocks Plasma Turrets at level 7')
-  expect(details.description).toContain('production or combat bonuses')
+  expect(details.description).toContain('devastating siege weapons')
+  expect(details.description).toContain('formidable defensive turrets')
   expect(technicalUnlocks(plasma, [plasma], 'Planet')).toEqual([])
 })
 
@@ -66,10 +66,10 @@ it('derives turret gates, unlocks and artwork from the enabled catalog', () => {
   ).toEqual([])
   const details = catalogContent(turret.key)
   expect(details.art.src).toBe('/art/atlas/objects/plasma-turret-1200.webp')
-  expect(details.description).toContain('Shipyard 8 and Plasma Technology 7')
+  expect(details.description).toContain('threaten even heavy warships')
 })
 
-it('derives Bomber unlocks and presents its propulsion upgrade', () => {
+it('derives Bomber unlocks and presents its siege role', () => {
   const definition = JSON.parse(
     readFileSync('rules/content/bomber.json', 'utf8'),
   )
@@ -101,6 +101,6 @@ it('derives Bomber unlocks and presents its propulsion upgrade', () => {
   expect(details.description).not.toMatch(
     /Requires|Shipyard 8|Plasma Technology 5/,
   )
-  expect(details.description).toContain('Hyperspace Drive level 8 upgrade')
-  expect(catalogContent(plasma.key).description).toContain('Bombers at level 5')
+  expect(details.description).toContain('batter planetary defenses')
+  expect(catalogContent(plasma.key).description).toContain('siege weapons')
 })

@@ -35,10 +35,10 @@ it('derives Destroyer unlocks from all three prerequisites and hides disabled co
   }
 })
 
-it('uses the existing Destroyer art and explains native hyperspace propulsion', () => {
+it('uses the existing Destroyer art and describes its heavy combat role', () => {
   const content = catalogContent(destroyer.key)
   expect(content.art.src).toBe('/art/atlas/objects/destroyer-1200.webp')
-  expect(content.description).toContain('powered by Hyperspace Drive')
-  expect(content.description).toContain('shared by resources and mission fuel')
-  expect(content.description).toContain('Battlecruiser')
+  expect(content.description).toContain('heavily armoured warship')
+  expect(content.description).toContain('hammer against stubborn defenses')
+  expect(content.description).toContain('enemy battlecruisers')
 })
