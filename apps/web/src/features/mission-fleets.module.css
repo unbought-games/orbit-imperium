@@ -131,3 +131,13 @@
 .trafficTarget {
   scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
 }
+
+.headerActions {
+  margin-inline-start: auto;
+  justify-content: flex-end;
+}
+.dispatchActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}

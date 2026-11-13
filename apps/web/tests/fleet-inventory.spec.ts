@@ -161,6 +161,22 @@ for (const width of [390, 1280]) {
       page.goto(`/u/andromeda/b/${body.id}/fleets`),
     )
     await expect(page.locator('main h1')).toHaveText('Fleets')
+    await expect(
+      page.getByRole('heading', { name: 'Fleets', level: 2, exact: true }),
+    ).toBeVisible()
+    const dispatch = page.getByRole('link', {
+      name: 'Dispatch Fleet',
+      exact: true,
+    })
+    const slots = page.getByRole('button', {
+      name: 'Fleet slots: 2 used / 8 total',
+      exact: true,
+    })
+    const dispatchBox = (await dispatch.boundingBox())!
+    const slotsBox = (await slots.boundingBox())!
+    expect(slotsBox.x + slotsBox.width).toBeLessThan(dispatchBox.x)
+    expect(Math.abs(slotsBox.y - dispatchBox.y)).toBeLessThan(8)
+
     const panel = page.getByRole('region', {
       name: 'Stationed ships',
       exact: true,

@@ -110,3 +110,14 @@ Post-fix local results:
   timeout or resource failure. No other task's processes were stopped.
 
 No merge queue entry, merge or deployment was attempted.
+
+## Owner header follow-up
+
+Restored the visible `Fleets` title to match the sidebar. Right-aligned the
+header controls with fleet slots immediately before Dispatch Fleet; kept the
+slots and Dispatch together when the header wraps. Mission details use the same
+action order. The existing application journey now asserts the visible title
+and count/button geometry at 390/1280. All six affected application checks
+passed on `cbaefdeb` plus these changes (bundle 4.755s; browser 13.1s), including
+320px density, incoming access and mission detail actions. Fresh desktop/mobile
+page and detail captures were inspected. Lint, formatting and diff checks passed.

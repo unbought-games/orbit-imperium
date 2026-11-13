@@ -53,8 +53,8 @@ export function MissionFleets({
   )
   return (
     <section className={styles.screen}>
-      <TaskHeader title={item ? 'Mission details' : undefined}>
-        <div className={styles.actions}>
+      <TaskHeader title={item ? 'Mission details' : 'Fleets'}>
+        <div className={`${styles.actions} ${fleetStyles.headerActions}`}>
           {item && (
             <Link
               data-touch-control=""
@@ -63,13 +63,6 @@ export function MissionFleets({
               All fleets
             </Link>
           )}
-          <ButtonLink {...routeTarget(universeName, 'dispatch', origin)}>
-            Dispatch Fleet
-          </ButtonLink>
-          <FleetSlots
-            used={occupiedFleetSlots(state)}
-            total={view.missions.fleet_slots}
-          />
           {!item && (
             <Button
               variant="ghost"
@@ -85,6 +78,15 @@ export function MissionFleets({
               {incoming.length > 0 ? ` · ${incoming.length} incoming` : ''}
             </Button>
           )}
+          <div className={fleetStyles.dispatchActions}>
+            <FleetSlots
+              used={occupiedFleetSlots(state)}
+              total={view.missions.fleet_slots}
+            />
+            <ButtonLink {...routeTarget(universeName, 'dispatch', origin)}>
+              Dispatch Fleet
+            </ButtonLink>
+          </div>
         </div>
       </TaskHeader>
       {!item && <FleetInventory model={model} origin={origin} />}
