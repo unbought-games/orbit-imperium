@@ -298,7 +298,6 @@ impl SimulationJob {
                 .artifact
                 .ships
                 .get(&ShipType::Recycler)
-                .filter(|_| world.raiding.is_some())
                 .map(|rule| {
                     (i128::from(rule.capacity) * i128::from(orbit_engine::SCALE))
                         .min(i128::from(RECYCLER_HARVEST_CAPACITY))
@@ -399,6 +398,31 @@ mod tests {
                     .all(|sample| sample.moon_chance_percent == 0)
             );
         }
+    }
+
+    #[test]
+    fn recycler_planning_remains_available_when_plunder_is_disabled() {
+        let mut rules = (*Ruleset::mvp_raids().unwrap()).clone();
+        rules.artifact.world.as_mut().unwrap().raiding = None;
+        let result = SimulationJob {
+            context: context(),
+            rules: crate::test_rules(&rules),
+            inputs: SimulationInputs {
+                observed_resources: Some(Resources::all(1_000_000_000).into()),
+                ..inputs()
+            },
+        }
+        .run([7; 32])
+        .unwrap();
+        assert!(!result.loot_rules_enabled);
+        assert!(result.available_loot.is_none());
+        assert!(
+            result
+                .samples
+                .iter()
+                .all(|sample| sample.estimated_loot.is_none())
+        );
+        assert_eq!(result.recycler_capacity.as_deref(), Some("20000000000"));
     }
 
     #[test]

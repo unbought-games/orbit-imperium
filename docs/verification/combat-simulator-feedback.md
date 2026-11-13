@@ -84,3 +84,13 @@ Browser tooling cleans up its preview process and temporary build directory.
 The commit containing this record is the locally tested source revision;
 format-only test normalization and this evidence text followed the last browser
 run. The originating PR records CI results against the pushed commit SHA.
+
+### Review follow-through
+
+CI passed on `cef3593fb252368635c786da0ce165f52336fe63`. Automated review then
+identified an incorrect dependency between recycler estimates and enabled
+raiding. Engine mission admission/harvest settlement have no such dependency.
+Removed that gate and added `recycler_planning_remains_available_when_plunder_is_disabled`:
+loot remains unavailable but recycler capacity is retained. All 14 simulation
+tests passed (4.27 s build, 2.53 s execution); focused Clippy passed (2.06 s).
+This server-only correction leaves the inspected UI unchanged.
