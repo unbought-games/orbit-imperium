@@ -8,6 +8,7 @@ import { Swords } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
+import { Select } from '../ui/form'
 import { Button } from '../ui/button'
 import { bodyName, coordinates, label } from '../ui/format'
 import { useGameScreen } from '../shell/screen-context'
@@ -24,6 +25,7 @@ import {
   attackerLosses,
   unsupportedReportUnits,
   type Espionage,
+  type MoonTarget,
 } from './combat-simulation-model'
 import { useCombatSimulation } from './use-combat-simulation'
 import { reportAge } from './report-preview'
@@ -129,6 +131,9 @@ function SimulationForm({
   const { body } = useGameScreen()
   const stale = useStore(model.store, (s) => s.stale)
   const [includeShips, setIncludeShips] = useState(false)
+  const [moonTarget, setMoonTarget] = useState<MoonTarget>(
+    report?.target.kind === 'Moon' ? 'Moon' : 'Unknown',
+  )
   const scope = JSON.stringify([report, view?.research, view?.profile_hash])
   const {
     allies,
@@ -192,75 +197,89 @@ function SimulationForm({
           if (prepared.inputs && !unsupported.length) void run(prepared.inputs)
         }}
       >
+        <div className={styles.setupContext}>
+          <p>
+            {body
+              ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
+              : 'Select a planet to see stationed ship availability.'}{' '}
+            Hypothetical fleets are allowed.
+          </p>
+          <details className={styles.importDisclosure}>
+            <summary>Load owned defender</summary>
+            <div className={styles.importControls}>
+              <p>
+                Load{' '}
+                {body
+                  ? `${bodyName(body)} ${coordinates(body)}`
+                  : 'your selected world'}{' '}
+                as defender. Replaces this defender’s research, defenses and
+                ships. Attacker and allied fleets stay as entered.
+              </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={includeShips}
+                  onChange={(event) => setIncludeShips(event.target.checked)}
+                />{' '}
+                Include stationed ships
+              </label>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!worldImport.values}
+                onClick={() => {
+                  if (worldImport.values) {
+                    replaceDefender(worldImport.values, worldImport.source)
+                    setMoonTarget(worldImport.moonTarget)
+                  }
+                }}
+              >
+                Replace defender from current{' '}
+                {body?.kind === 'Moon' ? 'moon' : 'planet'}
+              </Button>
+              <small>
+                Without stationed ships, all defender ship counts are set to
+                zero.
+              </small>
+              {defenderSource && (
+                <p role="status">
+                  Defender imported from {defenderSource}. Values stay as
+                  entered until you replace them.
+                  {report &&
+                    ' Report coordinates still apply to attack planning.'}
+                </p>
+              )}
+              {worldImport.error && <p>{worldImport.error}</p>}
+              {report && defenderSource && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    replaceDefender({}, null)
+                    setMoonTarget(
+                      report?.target.kind === 'Moon' ? 'Moon' : 'Unknown',
+                    )
+                  }}
+                >
+                  Replace defender from report
+                </Button>
+              )}
+            </div>
+          </details>
+        </div>
         <div className={styles.sides}>
           {(['attacker', 'defender'] as const).map((side) => (
             <fieldset key={side} disabled={running}>
               <legend>{sideNames[side]}</legend>
-              {side === 'attacker' && (
-                <p>
-                  {body
-                    ? `Stationed on ${bodyName(body)} ${coordinates(body)}${stale ? ' · last known inventory (reconnecting)' : ''}.`
-                    : 'Select a planet to see stationed ship availability.'}
-                </p>
-              )}
-              {side === 'defender' && (
-                <div className={styles.importControls}>
-                  <p>
-                    Load{' '}
-                    {body
-                      ? `${bodyName(body)} ${coordinates(body)}`
-                      : 'your selected world'}{' '}
-                    as defender. Replaces this defender’s research, defenses and
-                    ships. Attacker and allied fleets stay as entered.
-                  </p>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={includeShips}
-                      onChange={(event) =>
-                        setIncludeShips(event.target.checked)
-                      }
-                    />{' '}
-                    Include stationed ships
-                  </label>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={!worldImport.values}
-                    onClick={() => {
-                      if (worldImport.values)
-                        replaceDefender(worldImport.values, worldImport.source)
-                    }}
-                  >
-                    Replace defender from current{' '}
-                    {body?.kind === 'Moon' ? 'moon' : 'planet'}
-                  </Button>
-                  <small>
-                    Without stationed ships, all defender ship counts are set to
-                    zero.
-                  </small>
-                  {defenderSource && (
-                    <p role="status">
-                      Defender imported from {defenderSource}. Values stay as
-                      entered until you replace them.
-                      {report &&
-                        ' Report coordinates still apply to attack planning.'}
-                    </p>
-                  )}
-                  {worldImport.error && <p>{worldImport.error}</p>}
-                  {report && defenderSource && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => replaceDefender({}, null)}
-                    >
-                      Replace defender from report
-                    </Button>
-                  )}
-                </div>
-              )}
               <SimulationFields
                 fields={fields.filter((f) => f.side === side)}
+                alignShipsWith={
+                  side === 'attacker'
+                    ? fields.filter(
+                        (f) => f.side === 'defender' && f.item?.kind === 'Ship',
+                      )
+                    : undefined
+                }
                 edits={edits}
                 edit={edit}
               />
@@ -319,20 +338,37 @@ function SimulationForm({
             Add defending fleet
           </Button>
         </div>
+        <label className={styles.moonTarget}>
+          Moon creation target
+          <Select
+            value={moonTarget}
+            onChange={(event) =>
+              setMoonTarget(event.target.value as MoonTarget)
+            }
+          >
+            <option value="Unknown">Unknown moon eligibility</option>
+            <option value="PlanetWithoutMoon">Planet without a moon</option>
+            <option value="PlanetWithMoon">Planet with an existing moon</option>
+            <option value="Moon">Moon</option>
+          </Select>
+          <small>Editable assumption; target occupancy is not refreshed.</small>
+        </label>
         {unsupported.length > 0 && (
           <p role="alert">
             This report contains units unsupported by the current combat rules.
             It cannot be simulated without dropping observed forces.
           </p>
         )}
-        {prepared.error && <p role="status">{prepared.error}</p>}
-        {error && <p role="alert">{error}</p>}
-        <Button
-          type="submit"
-          disabled={!prepared.inputs || running || !!unsupported.length}
-        >
-          {running ? 'Simulating…' : 'Run 10 battles'}
-        </Button>
+        <div className={styles.runControls}>
+          {prepared.error && <p role="status">{prepared.error}</p>}
+          {error && <p role="alert">{error}</p>}
+          <Button
+            type="submit"
+            disabled={!prepared.inputs || running || !!unsupported.length}
+          >
+            {running ? 'Simulating…' : 'Run 10 battles'}
+          </Button>
+        </div>
       </form>
       {result && (
         <section aria-label="Simulation results" aria-live="polite">
@@ -360,39 +396,47 @@ function SimulationForm({
               </p>
             ))}
           </div>
-          {(['attacker', 'defender'] as const).map((side) => (
-            <div key={side}>
-              <h4>
-                {side === 'attacker'
-                  ? 'Attacker · average losses and survivors'
-                  : 'Defender · average survivors before repairs'}
-              </h4>
-              <dl className={styles.survivors}>
-                {combinedSimulationUnits(prepared.inputs, side).map((unit) => (
-                  <div key={`${unit.item.kind}:${unit.item.id}`}>
-                    <dt>{label(unit.item.id)}</dt>
-                    <dd>
-                      {side === 'attacker' && (
-                        <strong>
-                          {attackerLosses(result, unit).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 1 },
-                          )}{' '}
-                          lost ·{' '}
-                        </strong>
-                      )}
-                      {averageSurvivors(result, side, unit.item).toLocaleString(
-                        undefined,
-                        { maximumFractionDigits: 1 },
-                      )}{' '}
-                      surviving
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ))}
-          <SimulationPlanning result={result} />
+          <SimulationPlanning result={result} moonTarget={moonTarget} />
+          <details className={styles.resultDetails}>
+            <summary>Losses and survivors</summary>
+            {(['attacker', 'defender'] as const).map((side) => (
+              <div key={side}>
+                <h4>
+                  {side === 'attacker'
+                    ? 'Attacker · average losses and survivors'
+                    : 'Defender · average survivors before repairs'}
+                </h4>
+                <dl className={styles.survivors}>
+                  {combinedSimulationUnits(prepared.inputs, side, fields).map(
+                    (unit) => (
+                      <div key={`${unit.item.kind}:${unit.item.id}`}>
+                        <dt>{label(unit.item.id)}</dt>
+                        <dd>
+                          {side === 'attacker' && (
+                            <strong>
+                              {attackerLosses(result, unit).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 1 },
+                              )}{' '}
+                              lost ·{' '}
+                            </strong>
+                          )}
+                          {averageSurvivors(
+                            result,
+                            side,
+                            unit.item,
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 1,
+                          })}{' '}
+                          surviving
+                        </dd>
+                      </div>
+                    ),
+                  )}
+                </dl>
+              </div>
+            ))}
+          </details>
         </section>
       )}
       <details className={styles.help}>
@@ -405,7 +449,8 @@ function SimulationForm({
         </p>
         <p>
           Availability is a reference; hypothetical quantities are allowed.
-          Unknown is not zero. Player edits are assumptions.
+          Unobserved forces and technology are assumed zero. Unknown resources
+          stay unknown. Player edits are assumptions.
         </p>
         {report && (
           <p>

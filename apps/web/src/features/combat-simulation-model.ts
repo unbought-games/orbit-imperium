@@ -1,3 +1,4 @@
+import { compareShips } from './ship-order'
 import type { components } from '../contracts'
 import { resourceNames } from '../client-model/resources'
 type S = components['schemas']
@@ -25,11 +26,21 @@ export function simulationFields(
   research: { research: string; level: number }[],
   inventories?: S['BodyV3']['inventories'],
 ): SimulationField[] {
-  const units = catalog.filter(
-    (e) =>
-      (e.key.kind === 'Ship' || e.key.kind === 'Defense') &&
-      !!(e.technical_data?.combat ?? e.ship_statistics?.combat),
-  )
+  const units = catalog
+    .filter(
+      (e) =>
+        (e.key.kind === 'Ship' || e.key.kind === 'Defense') &&
+        !!(e.technical_data?.combat ?? e.ship_statistics?.combat),
+    )
+    .sort((a, b) =>
+      a.key.kind === 'Ship' && b.key.kind === 'Ship'
+        ? compareShips(a, b)
+        : a.key.kind === b.key.kind
+          ? 0
+          : a.key.kind === 'Ship'
+            ? -1
+            : 1,
+    )
   return (['attacker', 'defender'] as const).flatMap((side) => [
     ...combatTechnologies.map((id, technology) => ({
       key: `${side}:${id}`,
@@ -227,5 +238,101 @@ export function planningSummary(response: SimulationResponse) {
           ),
         )
       : null,
+  }
+}
+
+export type MoonTarget =
+  | 'Unknown'
+  | 'PlanetWithoutMoon'
+  | 'PlanetWithMoon'
+  | 'Moon'
+
+export function simulationGroupSummary(
+  fields: SimulationField[],
+  edits: Record<string, string>,
+) {
+  let total = 0n
+  let types = 0
+  let unknown = 0
+  let invalid = 0
+  for (const field of fields) {
+    const raw = edits[field.key] ?? field.value
+    if (raw === null) unknown++
+    const value = raw || '0'
+    if (!/^(0|[1-9][0-9]*)$/.test(value) || BigInt(value) > 2000n) invalid++
+    else if (BigInt(value) > 0n) {
+      total += BigInt(value)
+      types++
+    }
+  }
+  return { total, types, unknown, invalid }
+}
+
+export function battleEstimates(
+  response: SimulationResponse,
+  target: MoonTarget,
+) {
+  const samples = response.samples
+  const averageRounds = samples.length
+    ? samples.reduce((sum, s) => sum + s.rounds, 0) / samples.length
+    : null
+  const moonBlocked =
+    response.moons_enabled === false ||
+    target === 'Moon' ||
+    target === 'PlanetWithMoon'
+  const chances = samples.map((s) => s.moon_chance_percent)
+  const moon = moonBlocked
+    ? { average: 0, minimum: 0, maximum: 0 }
+    : response.moons_enabled &&
+        chances.length &&
+        chances.every((n) => n !== undefined)
+      ? {
+          average: chances.reduce((sum, n) => sum + n, 0) / chances.length,
+          minimum: Math.min(...chances),
+          maximum: Math.max(...chances),
+        }
+      : null
+  const capacity = response.recycler_capacity
+    ? BigInt(response.recycler_capacity)
+    : 0n
+  // Harvest settles whole resources. Round each resource down before summing,
+  // then round the ship count up. Estimate the average field, not average ships.
+  const debris = samples.map((s) =>
+    resourceNames.reduce(
+      (sum, r) => sum + BigInt(s.debris[r]) / 1_000_000n,
+      0n,
+    ),
+  )
+  const wholeCapacity = capacity / 1_000_000n
+  const recyclers =
+    wholeCapacity > 0n && debris.length
+      ? {
+          estimate:
+            (debris.reduce((sum, n) => sum + n, 0n) +
+              BigInt(debris.length) * wholeCapacity -
+              1n) /
+            (BigInt(debris.length) * wholeCapacity),
+          maximum:
+            (debris.reduce((a, b) => (a > b ? a : b)) + wholeCapacity - 1n) /
+            wholeCapacity,
+          capacity: wholeCapacity,
+        }
+      : null
+  const victories = samples.filter((s) => s.outcome === 'AttackerVictory')
+  const available = response.available_loot
+  const cargoCovered =
+    available && victories.every((s) => s.estimated_loot)
+      ? victories.filter((s) =>
+          resourceNames.every(
+            (r) => BigInt(s.estimated_loot![r]) >= BigInt(available[r]),
+          ),
+        ).length
+      : null
+  return {
+    averageRounds,
+    moon,
+    recyclers,
+    cargoCovered,
+    victories: victories.length,
   }
 }

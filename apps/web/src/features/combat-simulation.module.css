@@ -1,5 +1,5 @@
 .dialog {
-  width: min(940px, calc(100vw - 24px));
+  width: min(1100px, calc(100vw - 24px));
   max-width: none;
   max-height: calc(100dvh - 24px);
   padding: 0;
@@ -47,10 +47,11 @@
 }
 .field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-columns: minmax(0, 1fr) 84px;
   align-items: center;
   gap: 8px;
-  margin: 12px 0;
+  min-height: 54px;
+  margin: 4px 0;
 }
 .field input {
   width: 100%;
@@ -65,7 +66,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  margin: 20px 0 28px;
+  margin: 12px 0;
 }
 .outcomes p {
   margin: 0;
@@ -74,8 +75,8 @@
   border-radius: 6px;
 }
 .outcomes strong {
-  display: block;
-  font-size: 1.4rem;
+  display: inline;
+  font-size: 1rem;
   color: var(--text);
 }
 .survivors {
@@ -97,22 +98,20 @@
 }
 
 .groupHeading {
-  margin: 20px 0 12px;
+  min-height: 56px;
+  box-sizing: border-box;
+  margin: 12px 0 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
   font-size: 1rem;
   color: var(--champagne-light);
 }
-.fieldControl {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
-}
 .available {
-  padding: 4px 0;
-  min-height: 28px;
+  display: block;
+  padding: 0;
+  min-height: 24px;
   font-size: 0.75rem;
-  text-align: right;
+  text-align: left;
 }
 .help {
   margin-top: 24px;
@@ -161,4 +160,115 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
+}
+
+.setupContext {
+  margin-bottom: 16px;
+}
+.setupContext p {
+  margin: 0 0 8px;
+}
+.importDisclosure summary,
+.resultDetails summary {
+  cursor: pointer;
+  padding-block: 12px;
+  color: var(--champagne-light);
+}
+.importDisclosure .importControls {
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+.fieldGroup summary {
+  cursor: pointer;
+}
+.groupSummary {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: normal;
+  margin-top: 4px;
+}
+.groupSummary strong {
+  color: var(--danger);
+}
+.nonzero input {
+  color: var(--champagne-light);
+  font-weight: 700;
+  border-color: var(--border-accent);
+}
+.moonTarget {
+  display: grid;
+  gap: 8px;
+  max-width: 360px;
+  margin-block: 16px;
+}
+.moonTarget small,
+.planningGrid small {
+  color: var(--text-muted);
+}
+.planningGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-block: 16px;
+}
+.planningGrid h4 {
+  margin: 0 0 12px;
+}
+.planningGrid p {
+  margin: 8px 0;
+}
+.planningGrid strong {
+  color: var(--text);
+}
+.resourceLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.resultDetails {
+  border-top: 1px solid var(--border);
+}
+.battleDuration {
+  margin-block: 12px;
+}
+@media (max-width: 620px) {
+  .planningGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.runControls {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-block: 12px;
+  background: var(--surface-page);
+  border-top: 1px solid var(--border);
+}
+.runControls p {
+  margin: 0;
+}
+
+.stationary {
+  color: var(--text-muted);
+}
+@media (max-width: 620px) {
+  .stationary {
+    display: none;
+  }
+}
+/* Match the shell's bottom-navigation clearance; dialogs occupy the top layer. */
+@media (max-width: 1023px) {
+  .runControls {
+    bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+  .dialog .runControls {
+    bottom: 0;
+  }
 }

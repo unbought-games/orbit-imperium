@@ -3,8 +3,9 @@
 use crate::*;
 use orbit_engine::{
     BattleInput, BattleOrigin, BattleParticipant, BattleSide, CombatRules, ManufacturedItem,
-    RandomStream, Resources, Ruleset, ShipStack, ShipType, destroyed_ship_debris, payload_capacity,
-    raid_loot, resolve_battle,
+    RECYCLER_HARVEST_CAPACITY, RandomStream, Resources, Ruleset, ShipStack, ShipType,
+    available_raid_loot, destroyed_ship_debris, moon_creation_chance, payload_capacity, raid_loot,
+    resolve_battle,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -52,6 +53,8 @@ pub struct SimulationSample {
     pub estimated_loot: Option<ResourceDto>,
     /// Newly generated debris only, using the live settlement loss valuation.
     pub debris: ResourceDto,
+    /// Conditional on a planet without an existing moon.
+    pub moon_chance_percent: u32,
 }
 #[derive(Debug, Serialize)]
 pub struct SimulationResponse {
@@ -60,6 +63,11 @@ pub struct SimulationResponse {
     pub profile_hash: Hash,
     pub samples: Vec<SimulationSample>,
     pub loot_rules_enabled: bool,
+    pub moons_enabled: bool,
+    /// Empty recycler collection capacity, capped by the harvest rule.
+    pub recycler_capacity: Option<String>,
+    /// Maximum raid loot with unlimited cargo, absent when resources/rules are unknown.
+    pub available_loot: Option<ResourceDto>,
 }
 pub struct SimulationJob {
     context: QueryContext,
@@ -261,13 +269,18 @@ impl SimulationJob {
             let attacker = survivors(BattleSide::Attacker);
             let (surviving_cargo_capacity, estimated_loot) =
                 planning_sample(&attacker, result.outcome.clone(), stock, &self.rules)?;
+            let debris = destroyed_ship_debris(&result.destroyed, &world.combat)
+                .map_err(|_| ServiceError::InvariantFailure)?;
             samples.push(SimulationSample {
                 attacker,
                 surviving_cargo_capacity,
                 estimated_loot,
-                debris: destroyed_ship_debris(&result.destroyed, &world.combat)
-                    .map_err(|_| ServiceError::InvariantFailure)?
-                    .into(),
+                moon_chance_percent: if world.moons {
+                    moon_creation_chance(debris).map_err(|_| ServiceError::InvariantFailure)?
+                } else {
+                    0
+                },
+                debris: debris.into(),
                 defender: survivors(BattleSide::Defender),
                 outcome: result.outcome,
                 rounds: result.rounds.len(),
@@ -279,6 +292,29 @@ impl SimulationJob {
             profile_hash: self.rules.hash.clone(),
             samples,
             loot_rules_enabled: world.raiding.is_some(),
+            moons_enabled: world.moons,
+            recycler_capacity: self
+                .rules
+                .artifact
+                .ships
+                .get(&ShipType::Recycler)
+                .filter(|_| world.raiding.is_some())
+                .map(|rule| {
+                    (i128::from(rule.capacity) * i128::from(orbit_engine::SCALE))
+                        .min(i128::from(RECYCLER_HARVEST_CAPACITY))
+                        .to_string()
+                }),
+            available_loot: if world.raiding.is_some() {
+                stock
+                    .map(|stock| {
+                        available_raid_loot(stock)
+                            .map(ResourceDto::from)
+                            .map_err(|_| ServiceError::InvariantFailure)
+                    })
+                    .transpose()?
+            } else {
+                None
+            },
         })
     }
 }
@@ -315,6 +351,88 @@ mod tests {
                 epoch: Epoch(id),
             },
             request_id: id,
+        }
+    }
+
+    #[test]
+    fn planning_metadata_uses_active_moon_and_harvest_rules() {
+        for (moons, capacity, expected_capacity) in [
+            (false, 50_000, "20000000000"),
+            (true, 12_345, "12345000000"),
+            (true, 0, "0"),
+        ] {
+            let mut rules = (*Ruleset::mvp_raids().unwrap()).clone();
+            rules.artifact.world.as_mut().unwrap().moons = moons;
+            rules
+                .artifact
+                .ships
+                .get_mut(&ShipType::Recycler)
+                .unwrap()
+                .capacity = capacity;
+            let result = SimulationJob {
+                context: context(),
+                rules: crate::test_rules(&rules),
+                inputs: SimulationInputs {
+                    observed_resources: Some(
+                        Resources {
+                            metal: 31_999_999,
+                            crystal: 9_999_999,
+                            deuterium: 2_999_999,
+                        }
+                        .into(),
+                    ),
+                    ..inputs()
+                },
+            }
+            .run([7; 32])
+            .unwrap();
+            assert_eq!(result.moons_enabled, moons);
+            assert_eq!(result.recycler_capacity.as_deref(), Some(expected_capacity));
+            assert_eq!(
+                serde_json::to_value(result.available_loot).unwrap(),
+                serde_json::json!({"metal":"15000000", "crystal":"4000000", "deuterium":"1000000"})
+            );
+            assert!(
+                result
+                    .samples
+                    .iter()
+                    .all(|sample| sample.moon_chance_percent == 0)
+            );
+        }
+    }
+
+    #[test]
+    fn moon_chance_uses_generated_sample_debris_and_respects_disabled_rules() {
+        for moons in [false, true] {
+            let mut rules = (*Ruleset::mvp_raids().unwrap()).clone();
+            let world = rules.artifact.world.as_mut().unwrap();
+            world.moons = moons;
+            world.combat.ship_debris_bps = 10000;
+            for unit in &mut world.combat.units {
+                unit.attack_hundredths =
+                    if unit.item == ManufacturedItem::Ship(ShipType::LightFighter) {
+                        1_000_000
+                    } else {
+                        0
+                    };
+            }
+            let mut input = inputs();
+            input.attacker.units[0].count = 1000;
+            input.defender.units = vec![SimulationUnit {
+                item: ManufacturedItem::Ship(ShipType::SmallCargo),
+                count: 1000,
+            }];
+            let result = SimulationJob {
+                context: context(),
+                rules: crate::test_rules(&rules),
+                inputs: input,
+            }
+            .run([7; 32])
+            .unwrap();
+            assert!(result.available_loot.is_none());
+            for sample in result.samples {
+                assert_eq!(sample.moon_chance_percent, if moons { 20 } else { 0 });
+            }
         }
     }
 

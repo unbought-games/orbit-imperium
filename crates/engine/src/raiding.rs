@@ -6,6 +6,10 @@ use std::collections::BTreeSet;
 pub fn raid_loot(stock: Resources, free_capacity: i64) -> Result<Resources, InvariantError> {
     raid_loot_wide(stock, i128::from(free_capacity))
 }
+/// Maximum plunderable stock under the same whole-unit policy, without a cargo limit.
+pub fn available_raid_loot(stock: Resources) -> Result<Resources, InvariantError> {
+    raid_loot_wide(stock, i128::MAX)
+}
 /// Pooled capacity can exceed one fleet's resource range; spendable manifests cannot.
 pub fn raid_loot_for_fleets(
     stock: Resources,

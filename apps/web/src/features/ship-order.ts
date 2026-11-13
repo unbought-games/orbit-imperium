@@ -2,7 +2,7 @@ import type { components } from '../contracts'
 type Entry = components['schemas']['CatalogEntry3']
 
 export const shipGroups = ['Military', 'Civil'] as const
-export function shipGroup(entry: Entry) {
+export function shipGroup(entry: Pick<Entry, 'key'>) {
   return [
     'SmallCargo',
     'LargeCargo',

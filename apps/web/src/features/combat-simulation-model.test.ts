@@ -3,6 +3,8 @@ import observation from '../../../../contracts/fixtures/espionage-expanded.json'
 import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
 import {
   attackerLosses,
+  battleEstimates,
+  simulationGroupSummary,
   averageSurvivors,
   planningSummary,
   sampledAmounts,
@@ -450,4 +452,123 @@ it('still requires an attacking ship when the only ship field is cleared', () =>
       'attacker:Ship:LightFighter': '',
     }).error,
   ).toBe('Add at least one attacking ship.')
+})
+
+it('uses per-sample moon chances and mean rounds, with explicit target eligibility', () => {
+  const response = {
+    ...sampleResponse,
+    moons_enabled: true,
+    samples: sampleResponse.samples.map((s, i) => ({
+      ...s,
+      moon_chance_percent: [0, 20, 10][i],
+    })),
+  }
+  expect(battleEstimates(response, 'Unknown').moon).toEqual({
+    average: 10,
+    minimum: 0,
+    maximum: 20,
+  })
+  expect(
+    battleEstimates(response, 'PlanetWithoutMoon').averageRounds,
+  ).toBeCloseTo(10 / 3)
+  for (const target of ['Moon', 'PlanetWithMoon'] as const)
+    expect(battleEstimates(response, target).moon?.average).toBe(0)
+  expect(
+    battleEstimates({ ...response, moons_enabled: false }, 'PlanetWithoutMoon')
+      .moon?.average,
+  ).toBe(0)
+  expect(battleEstimates(sampleResponse, 'Unknown').moon).toBeNull()
+})
+it('rounds recyclers up from the average harvestable field using supplied capacity and all debris resources', () => {
+  const response = {
+    ...sampleResponse,
+    recycler_capacity: '10000000',
+    samples: sampleResponse.samples.slice(0, 2).map((s, i) => ({
+      ...s,
+      debris: {
+        metal: '9999999',
+        crystal: '0',
+        deuterium: i ? '22000000' : '0',
+      },
+    })),
+  }
+  // Fields contain 9 and 31 whole units: mean 20 needs two ships, max 31 needs four.
+  expect(battleEstimates(response, 'Unknown').recyclers).toEqual({
+    estimate: 2n,
+    maximum: 4n,
+    capacity: 10n,
+  })
+  expect(
+    battleEstimates({ ...response, recycler_capacity: '3000000' }, 'Unknown')
+      .recyclers?.estimate,
+  ).toBe(7n)
+  expect(
+    battleEstimates({ ...response, recycler_capacity: '0' }, 'Unknown')
+      .recyclers,
+  ).toBeNull()
+  expect(
+    battleEstimates({ ...response, samples: [] }, 'Unknown').recyclers,
+  ).toBeNull()
+})
+it('compares cargo coverage for victorious samples against rule-calculated available loot', () => {
+  expect(
+    battleEstimates(
+      {
+        ...sampleResponse,
+        available_loot: { metal: '99000000', crystal: '0', deuterium: '0' },
+      },
+      'Unknown',
+    ),
+  ).toMatchObject({ cargoCovered: 1, victories: 1 })
+  expect(
+    battleEstimates(
+      {
+        ...sampleResponse,
+        available_loot: { metal: '100000000', crystal: '0', deuterium: '0' },
+      },
+      'Unknown',
+    ).cargoCovered,
+  ).toBe(0)
+  expect(battleEstimates(sampleResponse, 'Unknown').cargoCovered).toBeNull()
+})
+it('keeps unknown and invalid force values discoverable in collapsed summaries', () => {
+  const fields = simulationFields(undefined, catalog, []).filter(
+    (f) => f.side === 'defender' && f.item,
+  )
+  expect(simulationGroupSummary(fields, {})).toMatchObject({
+    total: 0n,
+    unknown: fields.length,
+    invalid: 0,
+  })
+  expect(
+    simulationGroupSummary(fields, { [fields[0].key]: '2001' }),
+  ).toMatchObject({ invalid: 1 })
+  expect(
+    simulationGroupSummary(fields, { [fields[0].key]: '23' }),
+  ).toMatchObject({ total: 23n, types: 1 })
+})
+it('shares canonical ship ordering on both sides without mutating the catalog', () => {
+  const ships = ['ColonyShip', 'SmallCargo', 'Cruiser', 'LightFighter'].map(
+    (id, i) => ({
+      ...catalog[0],
+      key: { kind: 'Ship' as const, id: id as 'LightFighter' },
+      ship_statistics: {
+        combat: technicalData.combat,
+        propulsion: null,
+        cost: [String([40000, 4000, 29000, 4000][i]), '0', '0'] as [
+          string,
+          string,
+          string,
+        ],
+      },
+    }),
+  )
+  const before = ships.map((s) => s.key.id)
+  for (const side of ['attacker', 'defender'])
+    expect(
+      simulationFields(undefined, ships, [])
+        .filter((f) => f.side === side && f.item)
+        .map((f) => f.item?.id),
+    ).toEqual(['LightFighter', 'Cruiser', 'SmallCargo', 'ColonyShip'])
+  expect(ships.map((s) => s.key.id)).toEqual(before)
 })
