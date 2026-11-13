@@ -18,6 +18,7 @@ WORKDIR /build
 COPY --from=web /build/Cargo.toml /build/Cargo.lock /build/rust-toolchain.toml ./
 COPY --from=web /build/crates crates
 COPY --from=web /build/rules rules
+COPY --from=web /build/apps/web/src/analytics-routes.json apps/web/src/analytics-routes.json
 COPY --from=web /build/scripts/collect-rust-notices.sh scripts/collect-rust-notices.sh
 # Build and retain a distinct bridge image with --build-arg ORBIT_CARGO_FEATURES=universe-config-bridge.
 ARG ORBIT_CARGO_FEATURES=""
