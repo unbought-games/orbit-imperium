@@ -51,6 +51,10 @@ export interface GamePort {
     query?: import('./report-query').ReportQuery,
   ): Promise<BoundReports>
   report?(context: QueryContext, id: string): Promise<BoundReport>
+  markReportsRead?(
+    context: QueryContext,
+    reports: string[],
+  ): Promise<Schemas['ReportsReadResult']>
 
   progressionOptions?(
     context: QueryContext,

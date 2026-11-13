@@ -52,10 +52,19 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
     viewerRevision: () => String(revision),
   })
   const pageRequests: Array<string | null> = []
+  const readBatches: string[][] = []
   let moreResponse: { gate: Promise<void>; fail: boolean } | undefined
   await page.route('**/api/**/reports**', async (route) => {
     const request = route.request().postDataJSON()
     const context = request.context ?? request
+    if (new URL(route.request().url()).pathname.endsWith('/reports/read')) {
+      const ids: string[] = request.reports
+      readBatches.push(ids)
+      readRequests.push(...ids)
+      for (const report of ids) headers.find(row => row.id === report)!.read = true
+      revision++
+      return route.fulfill({json: { ...context, viewer_revision: String(revision), items: headers.filter(row => ids.includes(row.id)) }})
+    }
     const report = headers.find((r) =>
       new URL(route.request().url()).pathname.endsWith(r.id),
     )
@@ -174,6 +183,7 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
   return {
     headers,
     readRequests,
+    readBatches,
     pageRequests,
     bumpRevision: () => { revision++ },
     holdMore: (gate: Promise<void>, fail = false) => {
@@ -1179,7 +1189,7 @@ for (const width of [1280, 390]) {
     await diagnosticScreenshot(page, {path: `test-results/reports-age-${width}x900.png`})
   })
   for (const surface of ['reports', 'orb']) {
-    test(`mark all read from ${surface} includes unloaded and archived reports at ${width}px`, async ({page}) => {
+    test(`mark shown read from ${surface} leaves unloaded and archived reports unread at ${width}px`, async ({page}) => {
       await page.setViewportSize({width, height: 900})
       await page.emulateMedia({reducedMotion: 'reduce'})
       const fixture = await reportsFixture(page, true, 2, 20)
@@ -1188,6 +1198,9 @@ for (const width of [1280, 390]) {
         ...fixture.headers[0], id: id(70 + index), observed_at: fixture.headers[0].observed_at - index * 1000,
         hidden: index === 77, starred: index === 76, shared: index === 76,
       })
+      // The original second fixture report is much older than the added rows.
+      // Give this selection test one explicit display order before asserting IDs.
+      fixture.headers.forEach((header, index) => { header.observed_at = fixture.headers[0].observed_at - index * 1000 })
       fixture.bumpRevision()
       await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().method() === 'POST' && response.request().postDataJSON().filter?.unread_only === false, () => page.reload())
       await expect(page.locator('main article').first()).toBeVisible()
@@ -1221,15 +1234,71 @@ for (const width of [1280, 390]) {
         await page.getByRole('button', {name: 'More report actions'}).click()
       }
       await diagnosticScreenshot(page, {path: `test-results/reports-${surface}-actions-${width}x900.png`})
-      await page.getByRole(surface === 'orb' ? 'button' : 'menuitem', {name: 'Mark all as read', exact: true}).click()
-      await expect(page.getByText('All reports marked as read.', {exact: true})).toBeVisible()
-      expect(fixture.readRequests).toHaveLength(78)
-      expect(fixture.headers.every(row => row.read)).toBe(true)
+      const shownCount = await page.locator(surface === 'orb' ? '[aria-label="Intelligence list"] button' : 'main article').count()
+      await page.getByRole(surface === 'orb' ? 'button' : 'menuitem', {name: 'Mark shown as read', exact: true}).click()
+      await expect(page.getByText('Shown reports marked as read.', {exact: true})).toBeVisible()
+      expect(fixture.readBatches).toHaveLength(1)
+      expect(fixture.readRequests).toEqual(fixture.headers.slice(0, shownCount).map(row => row.id))
+      expect(fixture.headers.slice(0, shownCount).every(row => row.read)).toBe(true)
+      expect(fixture.headers.slice(shownCount).every(row => !row.read)).toBe(true)
       expect(fixture.headers[76]).toMatchObject({starred: true, shared: true, hidden: false})
       expect(fixture.headers[77].hidden).toBe(true)
-      await expect(page.getByTestId('unread-count')).toHaveCount(0)
-      if (surface === 'orb') await expect(page.locator('[aria-label="Intelligence list"] button')).toHaveCount(0)
+      await expect(page.getByTestId('unread-count')).toHaveText(String(77 - shownCount))
       await diagnosticScreenshot(page, {path: `test-results/reports-${surface}-read-${width}x900.png`})
     })
   }
+}
+
+for (const width of [1280, 390]) {
+  test(`mark shown read respects the active filter and archive folder at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900})
+    await page.emulateMedia({reducedMotion: 'reduce'})
+    const fixture = await reportsFixture(page, true, 5, 50)
+    fixture.headers.forEach((header, index) => {
+      header.read = false
+      header.starred = index === 0 || index === 2
+      header.hidden = index === 2
+    })
+    fixture.bumpRevision()
+    await withReportListResponse(page, () => page.reload())
+    await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().postDataJSON().filter?.starred_only === true, () => filterStatus(page, 'starred'))
+    await expect(page.locator('main article')).toHaveCount(1)
+    const markShown = async () => {
+      await page.getByRole('button', {name: 'More report actions'}).click()
+      await page.getByRole('menuitem', {name: 'Mark shown as read', exact: true}).click()
+    }
+    let fail = true
+    let gate = Promise.resolve()
+    await page.route('**/reports/read', async route => {
+      if (fail) return route.fulfill({status: 503, json: {code: 'Unavailable'}})
+      await gate
+      return route.fallback()
+    })
+    await markShown()
+    await expect(page.getByRole('alert')).toContainText('Could not confirm the read change.')
+    expect(fixture.headers.every(row => !row.read)).toBe(true)
+    await diagnosticScreenshot(page, {path: `test-results/reports-filter-error-${width}x900.png`})
+    fail = false
+    let release!: () => void
+    gate = new Promise(resolve => { release = resolve })
+    try {
+      await markShown()
+      await expect(page.getByText('Marking shown reports as read…', {exact: true})).toBeVisible()
+      await expect(page.getByRole('button', {name: 'More report actions'})).toBeDisabled()
+      expect(fixture.headers.every(row => !row.read)).toBe(true)
+      await diagnosticScreenshot(page, {path: `test-results/reports-filter-pending-${width}x900.png`})
+    } finally { release() }
+    await expect(page.getByText('Shown reports marked as read.', {exact: true})).toBeVisible()
+    expect(fixture.readBatches).toEqual([[id(70)]])
+    expect(fixture.headers.slice(1).every(row => !row.read)).toBe(true)
+    await withFixtureResponse(page, response => response.url().endsWith('/reports') && response.request().postDataJSON().filter?.hidden === true, () => page.getByRole('button', {name: 'Archived', exact: true}).click())
+    await expect(page.locator('main article')).toHaveCount(1)
+    await markShown()
+    await expect.poll(() => fixture.readBatches.length).toBe(2)
+    expect(fixture.readBatches).toEqual([[id(70)], [id(72)]])
+    expect(fixture.headers[2]).toMatchObject({read: true, hidden: true, starred: true})
+    expect(fixture.headers.filter(row => row.read).map(row => row.id)).toEqual([id(70), id(72)])
+    await expect(page.getByText('Shown reports marked as read.', {exact: true})).toBeVisible()
+    await diagnosticScreenshot(page, {path: `test-results/reports-archived-read-${width}x900.png`})
+  })
 }

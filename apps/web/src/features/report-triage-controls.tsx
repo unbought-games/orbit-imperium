@@ -26,7 +26,7 @@ import {
   type ReportListOptions,
 } from './report-list-options'
 import { useReportAgePreference } from './report-age-preference'
-import type { useMarkAllReportsRead } from './use-mark-all-reports-read'
+import type { useMarkShownReportsRead } from './use-mark-shown-reports-read'
 import { MailCheck } from 'lucide-react'
 import { ReportAgeCleanup } from './report-age-cleanup'
 import { ReportArchiveAll } from './report-archive-all'
@@ -64,7 +64,7 @@ export function ReportTriageControls({
   reports: components['schemas']['ReportHeader4'][]
   cleanup: ReturnType<typeof useReportCleanup>
   now: number
-  markAll: ReturnType<typeof useMarkAllReportsRead>
+  markAll: ReturnType<typeof useMarkShownReportsRead>
 }) {
   const filterTrigger = useRef<HTMLButtonElement>(null)
   const moreTrigger = useRef<HTMLButtonElement>(null)
@@ -205,12 +205,12 @@ export function ReportTriageControls({
               >
                 <Menu.Item
                   className={styles.menuItem}
-                  disabled={markAll.busy}
-                  title="All reports, including archived reports, regardless of filters"
-                  onClick={() => void markAll.markAllRead()}
+                  disabled={markAll.disabled}
+                  title="Mark the reports loaded in this filtered list as read"
+                  onClick={() => void markAll.markShownRead()}
                 >
                   <MailCheck size={16} aria-hidden="true" />
-                  Mark all as read
+                  Mark shown as read
                 </Menu.Item>
                 {allowSelectionMode && (
                   <Menu.Item

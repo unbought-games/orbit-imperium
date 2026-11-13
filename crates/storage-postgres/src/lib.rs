@@ -234,6 +234,7 @@ mod phalanx;
 
 mod objectives;
 mod report_pages;
+mod report_reads;
 mod tutorial;
 
 mod mission_sites;

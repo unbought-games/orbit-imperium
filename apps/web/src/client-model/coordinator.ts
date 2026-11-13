@@ -957,6 +957,44 @@ export class Coordinator {
   refreshReportInbox(more = false) {
     return this.reports.refreshInbox(more)
   }
+  async markReportsRead(reports: string[]) {
+    if (!reports.length) return
+    if (!this.port.markReportsRead || this.protocol !== 4)
+      throw new Error('Report read changes are unavailable')
+    const pending = this.captureRequest()
+    if (!pending) throw new Error('Report context changed')
+    const request = validate<
+      import('../contracts').components['schemas']['ReportsReadRequest']
+    >('ReportsReadRequest', {
+      context: pending.context,
+      reports: [...new Set(reports)],
+    })
+    const result = validate<
+      import('../contracts').components['schemas']['ReportsReadResult']
+    >(
+      'ReportsReadResult',
+      await this.port.markReportsRead(request.context, request.reports),
+    )
+    if (!this.ready || !this.responseMatches(pending, result))
+      throw new Error('Report context changed')
+    const returned = new Set(result.items.map((item) => item.id))
+    if (
+      returned.size !== request.reports.length ||
+      request.reports.some((id) => !returned.has(id)) ||
+      result.items.some((item) => !item.read)
+    )
+      throw new Error('Incomplete report read confirmation')
+    this.store.setState({
+      reportHeaders: mergeReportHeaders(
+        this.store.getState().reportHeaders,
+        result.items,
+        result.viewer_revision,
+      ),
+    })
+    // The database has committed. Refresh counts and filtered list membership;
+    // a failed background refresh must not turn that success into a failed write.
+    void this.refresh(result.viewer_revision).catch(() => {})
+  }
   async reportPage(cursor: string | null = null, includeHidden = false) {
     const binding = this.binding
     const generation = this.generation

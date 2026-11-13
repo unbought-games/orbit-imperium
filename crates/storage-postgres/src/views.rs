@@ -365,6 +365,12 @@ impl GameStore for PgStore {
             .await?
             .into_quote())
     }
+    async fn mark_reports_read(
+        &self,
+        q: ReportsReadRequest,
+    ) -> Result<ReportsReadResult, StoreError> {
+        self.read_report_selection(q).await
+    }
     async fn world_reports(
         &self,
         q: ReportsQuery4,

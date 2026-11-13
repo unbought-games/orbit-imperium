@@ -276,6 +276,21 @@ pub(super) async fn report_share<S: GameStore + IdentityStore>(
             .await?,
     ))
 }
+pub(super) async fn mark_reports_read<S: GameStore + IdentityStore>(
+    State(s): State<Arc<HttpState<S>>>,
+    h: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    ApiJson(q): ApiJson<ReportsReadRequest>,
+) -> Result<Response, Problem> {
+    let session = authenticate(&s, &h, true).await?;
+    let u = UniverseId(id);
+    s.game.require_protocol(session.account, u, 4).await?;
+    path_binding(u, q.context.binding)?;
+    Ok(no_store_json(
+        s.game.mark_reports_read(principal(&session, u)?, q).await?,
+    ))
+}
+
 pub(super) async fn shared_report<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     Path(token): Path<uuid::Uuid>,
