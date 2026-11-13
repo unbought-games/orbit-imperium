@@ -153,3 +153,36 @@ passed. Component types, production build, lint, formatting, boundary and contra
 checks passed. Inspected fresh recovery screenshots at 1280×900 and 390×900 and
 showed them in the originating chat before queue enrollment. No new test repair
 attempts or queue removals were needed during this integration.
+
+## PR checks and review repair, head `15f754c3`
+
+CI run `43355456151`, job `131656385040`, failed one of 126 feature-shard cases:
+“failed saves preserve the draft and the library can recover.” The page-wide alert
+locator matched the intentional insignia-save error and an unrelated 404 from the
+new empire identity read. This is a deterministic fixture/selector defect, not an
+infrastructure failure. History and the repair ledger were checked; this is its
+first repair. The shared identity fixture is now installed by both Settings and
+insignia fixtures, and the error assertion is scoped to the insignia region.
+Explicit response boundaries retain failure and reload ordering. All insignia
+callers were audited and the complete insignia file passed with the shared fix.
+The aggregate gate failure was downstream of this browser failure; native checks
+had passed. No tests or assertions were deleted and no timeout/retry was added.
+
+Validated both automated findings: retired `#galaxy-espionage` bookmarks now
+replace-navigate to the real game-settings route and discard that fragment;
+protocols 2/3 omit Empire deletion and reject direct deletion routes. Static
+navigation and deterministic route tests cover protocol gating. The existing
+legacy-routing journey covers migration at both desktop and mobile widths.
+Its first desktop run exposed a real new redirect race: the outgoing index saw
+the cleared fragment before the lazy game route mounted and redirected again to
+Identity. Guarding redirects to the index pathname fixed the product defect;
+the unchanged regression assertion was retained and passed. This did not consume
+a test repair attempt.
+
+34 unit/render checks passed. The first browser run prepared in 4.897s and finished
+in 47.8s (15 passed, one product-regression failure); the affected migration run
+then passed both cases (4.614s preparation, 5.8s runner total). Types, lint,
+formatting and diff checks passed. Inspected old-universe navigation at desktop
+1280×900 and mobile 390×844 plus direct-link rejection; captures are under
+`test-results/settings-preview/compatibility/`. The temporary protocol-3 preview
+server/tab were cleaned up; the original review preview remains available.

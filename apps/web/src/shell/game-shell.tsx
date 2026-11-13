@@ -242,7 +242,11 @@ function GameShellContent() {
       }
       sidebar={
         page === 'settings' || page === 'rewards' ? (
-          <SettingsNavigation universeName={universeName} body={body?.id} />
+          <SettingsNavigation
+            universeName={universeName}
+            body={body?.id}
+            protocol={view.protocol}
+          />
         ) : undefined
       }
       view={view}

@@ -1,3 +1,4 @@
+import type { BoundView } from '../client-model/commands'
 import {
   ArrowLeft,
   ChevronRight,
@@ -13,6 +14,7 @@ import { Link } from '../ui/link'
 import { ContextNavigation, ContextNavigationGroup } from './context-navigation'
 import {
   settingsSections,
+  settingsSectionAvailable,
   type SettingsSection,
 } from './settings-navigation-model'
 import { routeTarget } from './route-target'
@@ -22,13 +24,16 @@ export function SettingsNavigation({
   universeName,
   body,
   appearance = 'sidebar',
+  protocol,
 }: {
   universeName: string
   body?: string
+  protocol: BoundView['protocol']
   appearance?: 'sidebar' | 'page'
 }) {
   const rewardsVisible = useRewardsVisible()
   function destination(section: SettingsSection, Icon: typeof Shield) {
+    if (!settingsSectionAvailable(section, protocol)) return null
     return (
       <Link
         {...routeTarget(universeName, 'settings', body, section)}

@@ -141,6 +141,11 @@ for (const width of [1440, 390]) {
         await link.click()
         await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${slug === "settings" && width >= 1024 ? "settings/identity" : slug}`)
         expect(purchases()).toBe(0)
+        if (slug === 'settings') {
+          await boot(page, () => page.goto('/u/andromeda/settings#galaxy-espionage'))
+          await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/settings/game`)
+          await expect(page.getByRole('textbox', { name: 'Probes per spy mission' })).toHaveValue('1')
+        }
       })
     }
   })

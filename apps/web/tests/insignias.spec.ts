@@ -1,3 +1,4 @@
+import { installEmpireIdentityFixture } from './fixtures/empire-identity'
 import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readdirSync, readFileSync } from 'node:fs'
@@ -13,7 +14,7 @@ import {
 } from './fixtures/game'
 import type { Page } from '@playwright/test'
 import type { components } from '../src/contracts'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withFixtureResponseStatus } from './fixtures/responses'
 
 const fallback = {
   version: 1 as const,
@@ -34,6 +35,7 @@ async function fixture(page: Page, layered = false) {
       fleet_slots: '1',
     },
   })
+  await installEmpireIdentityFixture(page)
   const catalog: Array<{id:string;name:string;supporter:boolean;asset_url:string;bytes:Buffer;group?:'legacy'|'center'|'stripes'|'accents'}> = ['compass', 'wings', 'spire', 'test-star'].map((id, index) => {
     const bytes = readFileSync(
       id === 'test-star' ? 'crates/storage-postgres/tests/fixtures/cosmetics/test-star.svg' : `crates/application/assets/insignias/${id}.svg`,
@@ -283,15 +285,16 @@ test('failed saves preserve the draft and the library can recover', async ({
   await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
   await page.getByRole('button', { name: 'New design' }).click()
   await page.getByLabel('Design name', { exact: true }).fill('Still mine')
+  const panel = page.getByRole('region', { name: 'Empire insignia', exact: true })
   state.fail = true
-  await page.getByRole('button', { name: 'Save & equip' }).click()
-  await expect(page.getByRole('alert')).toContainText('could not confirm')
+  await withFixtureResponseStatus(page, response => response.url().endsWith('/insignias') && response.request().postDataJSON().action.type === 'Save', () => panel.getByRole('button', { name: 'Save & equip' }).click(), 503)
+  await expect(panel.getByRole('alert')).toContainText('could not confirm')
   await expect(page.getByLabel('Design name', { exact: true })).toHaveValue(
     'Still mine',
   )
   state.fail = false
-  await page.getByRole('button', { name: 'Reload library' }).click()
-  await expect(page.getByRole('alert')).toHaveCount(0)
+  await withFixtureResponse(page, response => response.url().endsWith('/insignias') && response.request().postDataJSON().action.type === 'Load', () => panel.getByRole('button', { name: 'Reload library' }).click())
+  await expect(panel.getByRole('alert')).toHaveCount(0)
   await page.getByRole('button', { name: 'Save & equip' }).click()
   await expect(
     page.getByRole('region', { name: 'Empire insignia' }).getByRole('status'),
