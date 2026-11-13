@@ -12,6 +12,7 @@ import { TaskHeader } from '../ui/task-header'
 import { BetaNotice } from '../ui/beta-notice'
 import { usePlayerDisplay } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
+import { OrderRecovery } from './order-recovery'
 export function SettingsScreen() {
   const { view, model, logout, universeName } = useGameScreen()
   const settings = model.settings
@@ -19,6 +20,7 @@ export function SettingsScreen() {
   return (
     <Section className={styles.screen}>
       <TaskHeader title="Settings" />
+      <OrderRecovery model={model} />
       <BetaNotice />
       <GalaxyProbeSettings />
       <VacationSettings />

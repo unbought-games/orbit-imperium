@@ -91,6 +91,8 @@ export const sameBinding = (a: Binding, b: Binding) =>
   bindingKey(a) === bindingKey(b)
 export const terminal = (a: Attempt) =>
   a.status === 'committed' || a.status === 'rejected'
+export const hasOrderNotice = (a: Attempt) =>
+  a.status === 'uncertain' || a.status === 'rejected'
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
   if (value && typeof value === 'object')

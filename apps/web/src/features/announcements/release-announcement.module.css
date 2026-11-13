@@ -1,5 +1,13 @@
 .bubble {
   composes: bubble from '../tutorial/advisor.module.css';
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
+}
+.content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 .label {
   display: flex;
@@ -14,19 +22,17 @@
 }
 .actions {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  padding-top: var(--space-2);
 }
 .read {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.body {
-  max-height: calc(100dvh - 260px);
-  overflow-y: auto;
 }
 .body ul {
   margin: 0 0 var(--space-3);

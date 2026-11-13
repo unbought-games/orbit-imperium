@@ -20,13 +20,15 @@ async function render(
   state: Partial<GameState> = {},
 ) {
   const store = createGameStore()
-  store.setState(state)
-  const model = {
-    store,
-    message,
-    ledger: new Map(
+  store.setState({
+    attempts: new Map(
       attempts.map((attempt) => [attempt.envelope.command_id, attempt]),
     ),
+    message,
+    ...state,
+  })
+  const model = {
+    store: { ...store, getInitialState: store.getState },
   } as Coordinator
   const routeTree = createRootRoute({
     component: () => createElement(ErrorBanner, { model }),
@@ -94,6 +96,22 @@ it('keeps rejection and uncertain delivery actionable without displaying history
   expect(rejected).not.toContain('View action')
   const uncertain = await render([attempt('uncertain', 'unknown')])
   expect(uncertain).toContain('Retry order')
+  expect(uncertain).toContain('aria-label="Dismiss order notices"')
+})
+
+it('shows fresh errors alongside hidden and restored outcomes without replaying them', async () => {
+  const html = await render(
+    [
+      attempt('uncertain', 'hidden'),
+      attempt('rejected', 'restored'),
+      attempt('uncertain', 'new'),
+    ],
+    '',
+    { hiddenOrderNotices: new Set(['hidden', 'restored']) },
+  )
+  expect(html.match(/Retry order/g)).toHaveLength(1)
+  expect(html).not.toContain('Action rejected')
+  expect(html).not.toContain('more order')
 })
 
 it('keeps local validation and persistence failures visible before a command is sent', async () => {

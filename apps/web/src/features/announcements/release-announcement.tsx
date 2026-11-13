@@ -13,6 +13,7 @@ import {
   flip,
   offset,
   shift,
+  size,
   useClick,
   useDismiss,
   useFloating,
@@ -72,8 +73,14 @@ export function ReleaseAnnouncement({
     strategy: 'fixed',
     middleware: [
       offset(16),
-      flip(),
+      flip({ padding: 12 }),
       shift({ padding: 12 }),
+      size({
+        padding: 12,
+        apply({ availableHeight, elements }) {
+          elements.floating.style.maxHeight = `${Math.max(0, Math.floor(availableHeight))}px`
+        },
+      }),
       arrowMiddleware({ element: arrow }),
     ],
     whileElementsMounted: autoUpdate,
@@ -137,14 +144,21 @@ export function ReleaseAnnouncement({
                 stroke="var(--border-accent)"
                 strokeWidth={1}
               />
-              <span className={styles.label}>
-                <Sparkles size={16} aria-hidden="true" /> Now available
-              </span>
-              <h2>{announcement.title}</h2>
-              <div className={styles.body}>
-                <Suspense fallback={null}>
-                  <AnnouncementBody announcement={announcement} />
-                </Suspense>
+              <div
+                className={styles.content}
+                role="region"
+                aria-label="Announcement content"
+                tabIndex={0}
+              >
+                <span className={styles.label}>
+                  <Sparkles size={16} aria-hidden="true" /> Now available
+                </span>
+                <h2>{announcement.title}</h2>
+                <div className={styles.body}>
+                  <Suspense fallback={null}>
+                    <AnnouncementBody announcement={announcement} />
+                  </Suspense>
+                </div>
               </div>
               <div className={styles.actions}>
                 {announcement.href ? (
