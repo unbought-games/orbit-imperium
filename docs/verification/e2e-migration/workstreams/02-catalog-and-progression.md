@@ -1,6 +1,6 @@
 # 02 — Catalog, manufacturing and technical details
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1d2ad-3969-7510-85ea-d05e9a356ab3` for the whole stream through PR and confirmed merge; see [assignment record](../STATUS.md#2026-11-12-rebase-and-stream-02-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
