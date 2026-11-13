@@ -115,3 +115,54 @@ cases (bundle 4.430s; execution 2.8s), app/component typechecks and focused lint
 passed. Refreshed captures include `retained-1440x1000.png` and
 `retained-390x1000.png`; both retain readable historical values beneath the
 explicit refresh-error message. No validation failure occurred during this repair.
+
+## Owner browser review: cargo-first Dispatch
+
+The owner reviewed the full local game and requested ten refinements. These
+supersede the initial observation-age/disclaimer presentation above:
+
+- Move raid planning below the cargo controls; show potential loot and how much
+  the selected fleet can carry, with an all-loot fit result or shortfall.
+- Replace observation prose/age and disclaimer paragraphs with a right-aligned
+  Report link carrying the espionage icon. Keep authorization and target-identity
+  checks; expose the report date in the link title.
+- Remove generic attack-protection prose and the advisory Attack blocker. The
+  legal quote and launch still report actual protection rejection. Espionage's
+  existing known blocker behavior remains unchanged.
+- Use aligned resource columns, canonical ship artwork, plain available counts,
+  a visible field surface for Hold duration, and disable Review with no ships.
+
+Validation on `f794ff77` plus these changes:
+
+- 84/84 Dispatch components passed in 95.5s, bundle preparation 5.365s, one worker.
+  Includes cargo fit/shortfall, report link, aligned icon/value centers at both
+  widths, empty fleet disablement, and keyboard Hold duration selection.
+- 211 client files / 1,897 tests passed in 26.00s with two workers.
+- Three application cases passed in 13.3s (preparation 5.242s): edited report to
+  deployment journey, moon-link/reload intent, and simulator-to-final-review.
+- `make _static` and production build passed. Unrelated generated analytics-route
+  drift was restored again.
+- The first focused unit run had three obsolete copy expectations (loading,
+  empty position and historical ownership). Updated the expected copy once;
+  retained former-colony ownership distinction as "Last known owner: you".
+  All 22 focused model/presentation cases then passed. No flaky retries or lost
+  behavior assertions.
+- Updated existing browser expectations for intentionally removed prose/actions;
+  preserved review-time protection rejection and launch-race receipt coverage.
+
+Full-game visual checks used the real local Rust server and isolated playground
+at port 59452, signed in as `user`. Home's Small Cargo inventory was set to 400
+through the local world CLI to exercise both insufficient and sufficient cargo;
+no fleets were launched. The first CLI invocation used an unsupported hyphenated
+item spelling and was rejected without mutation; the canonical SmallCargo name
+succeeded. Verified the Report link opens the actual espionage report and its
+Attack action returns to Dispatch. Hold selection, empty/partial/sufficient
+cargo and final confirmation were inspected at 1440×1000 and 390×1000.
+
+Final screenshots are under `test-results/dispatch-owner-full-game/`. Browser
+viewport restored; the full local game stays running for owner review. The
+pre-existing floating mobile HUD can overlap underlying controls; this package
+does not alter the shared HUD. A build-triggered development refresh interrupted
+one optional Hold capture; reselected Hold. Another capture expected a reset
+editor after resizing but correctly retained review; returned through the visible
+Back to edit mission button. These were capture-state mistakes, not test failures.

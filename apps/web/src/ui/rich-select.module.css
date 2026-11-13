@@ -79,3 +79,10 @@
   flex: 0 0 18px;
   color: var(--accent);
 }
+
+.trigger[data-appearance='field'] {
+  border-color: var(--border-control);
+  background: var(--surface-input);
+  padding: 10px 14px;
+  width: 100%;
+}

@@ -1,7 +1,10 @@
+import { Eye, Check, PackagePlus } from 'lucide-react'
 import type { Coordinator } from '../client-model/coordinator'
 import { observedLootPlan } from './dispatch-loot-model'
-import { NumberValue, ResourceSummary, DurationValue } from '../ui/number-value'
+import { NumberValue, ResourceSummary } from '../ui/number-value'
 import { Heading, Text } from '../ui/typography'
+import { Link } from '../ui/link'
+import { routeTarget } from '../shell/route-target'
 import styles from './missions.module.css'
 import { useDispatchLoot } from './use-dispatch-loot'
 
@@ -9,89 +12,102 @@ export function DispatchLoot({
   model,
   target,
   revision,
-  now,
   space,
+  hasShips,
+  universeName,
+  origin,
 }: {
   model: Coordinator
   target?: { id: string; owner: string; kind: 'Planet' | 'Moon' }
   revision: string
-  now: number
   space: { remaining: bigint | null } | null
+  hasShips: boolean
+  universeName: string
+  origin: string
 }) {
   const { id, current, observed } = useDispatchLoot(model, target, revision)
-  const plan = observed ? observedLootPlan(observed.resources) : null
+  const plan = observed
+    ? observedLootPlan(observed.resources, space?.remaining)
+    : null
+  const allFits = plan?.carried === plan?.total
   return (
-    <section
-      aria-label="Observed raid resources"
-      className={styles.lootPlanning}
-    >
-      <Heading level={3} className={styles.reviewGroupHeading}>
-        Raid cargo planning
-      </Heading>
+    <section aria-label="Raid cargo planning" className={styles.lootPlanning}>
+      <header className={styles.lootHeader}>
+        <Heading level={3}>Raid cargo planning</Heading>
+        {current?.report && (
+          <Link
+            {...routeTarget(universeName, 'reports', origin, current.report.id)}
+            className={styles.lootReport}
+            title={`Espionage report · ${new Date(current.report.observed_at).toLocaleString()}`}
+          >
+            <Eye size={16} aria-hidden="true" />
+            Report
+          </Link>
+        )}
+      </header>
       {observed && plan ? (
         <>
           {current?.error && (
             <Text className={styles.lootText} role="status">
-              Unable to refresh. Showing the last received observation.
+              Unable to refresh. Showing the last received report.
             </Text>
           )}
-          <Text className={styles.lootText}>
-            <time
-              dateTime={new Date(observed.observedAt).toISOString()}
-              title={new Date(observed.observedAt).toLocaleString()}
-            >
-              Observed{' '}
-              <DurationValue
-                milliseconds={Math.max(0, now - observed.observedAt)}
-              />{' '}
-              ago
-            </time>
-          </Text>
-          <Text className={styles.lootText}>
-            Observed resources: <ResourceSummary value={observed.resources} />
-          </Text>
-          <Text className={styles.lootText}>
-            Potential loot: <ResourceSummary value={plan.loot} />
-          </Text>
-          <Text className={styles.lootText}>
-            Estimated free cargo needed:{' '}
-            <strong>
-              <NumberValue value={plan.required} />
-            </strong>
-            .
-            {space?.remaining !== null && space?.remaining !== undefined && (
+          <div className={styles.lootResources}>
+            <span>Potential loot</span>
+            <ResourceSummary value={plan.loot} layout="grid" />
+          </div>
+          <div
+            className={styles.lootFit}
+            data-fits={hasShips && plan.carried !== null ? allFits : undefined}
+            aria-live="polite"
+          >
+            {plan.total === 0n ? (
+              'No loot in this report.'
+            ) : !hasShips ? (
+              'Select ships to see how much loot they can carry.'
+            ) : !space ? (
+              'Calculating cargo space…'
+            ) : plan.carried === null ? (
+              'Enter valid cargo amounts to see what fits.'
+            ) : (
               <>
-                {' '}
-                Selected fleet: <NumberValue value={space.remaining} /> free
-                {space.remaining < plan.required ? (
-                  <>
-                    {' '}
-                    · <NumberValue
-                      value={plan.required - space.remaining}
-                    />{' '}
-                    more needed
-                  </>
+                {allFits ? (
+                  <Check size={16} aria-hidden="true" />
                 ) : (
-                  ' · enough before losses'
+                  <PackagePlus size={16} aria-hidden="true" />
                 )}
-                .
+                <span>
+                  {allFits ? (
+                    <>
+                      Enough cargo space for all{' '}
+                      <NumberValue value={plan.total} /> loot.
+                    </>
+                  ) : (
+                    <>
+                      Can carry <NumberValue value={plan.carried} /> of{' '}
+                      <NumberValue value={plan.total} /> loot.
+                      <small>
+                        <NumberValue
+                          value={plan.required - (space.remaining ?? 0n)}
+                        />{' '}
+                        more free cargo space needed.
+                      </small>
+                    </>
+                  )}
+                </span>
               </>
             )}
-          </Text>
-          <Text className={styles.lootText}>
-            Historical snapshot; loot is not guaranteed. Assumes victory and
-            surviving cargo space. Resources may have changed.
-          </Text>
+          </div>
         </>
       ) : (
         <Text className={styles.lootText}>
           {!id
-            ? 'Choose a known target to check your observations.'
+            ? 'Choose a target to check its espionage report.'
             : !current
-              ? 'Checking your latest espionage observation…'
+              ? 'Loading espionage report…'
               : current.error
-                ? 'Unable to load your observation. Cargo needs are unknown.'
-                : 'No known resources in your latest espionage observation. Cargo needs are unknown.'}
+                ? 'Unable to load the report. Loot is unknown.'
+                : 'No resource information in the latest espionage report. Loot is unknown.'}
         </Text>
       )}
     </section>

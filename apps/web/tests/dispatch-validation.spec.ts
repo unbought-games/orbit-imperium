@@ -270,7 +270,7 @@ async function prepareHistoricalDraft(page: Page) {
   await expect(mission(page)).toHaveValue('Attack')
   await expect(
     page.getByText('Prepared from an observation at', { exact: false }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   await page.getByLabel('Small Cargo · 2 available').fill('1')
 }
 

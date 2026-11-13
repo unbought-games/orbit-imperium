@@ -562,7 +562,7 @@ for (const width of [320, 390, 1280]) {
       page.getByText('Beginner protection can prevent attacks', {
         exact: false,
       }),
-    ).toBeVisible()
+    ).toHaveCount(0)
     await expect(coordinate).toBeVisible()
   })
 }
@@ -711,19 +711,18 @@ test('review retains honest unknown identities and coordinate actions', async ({
   await expect(destination).toBeFocused()
 })
 
-test('historical review keeps observation context visible without flight details', async ({
+test('report-based review links to the report without historical disclaimers', async ({
   page,
   mount,
 }) => {
   await setup(page, mount, { variant: 'historical' })
   await review(page).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
-  const context = quote.getByText('Prepared from an observation at', {
-    exact: false,
-  })
-  await expect(quote.locator('details')).toHaveCount(0)
-  await expect(context).toBeVisible()
-  await expect(context).toContainText('historical information')
+  await expect(
+    quote.getByRole('link', { name: 'Report', exact: true }),
+  ).toHaveAttribute('href', new RegExp(`/reports/${id(90)}$`))
+  await expect(quote).not.toContainText('Prepared from an observation')
+  await expect(quote).not.toContainText('Historical snapshot')
 })
 
 for (const width of [320, 390, 1280]) {
@@ -976,12 +975,12 @@ test('explicit moon links retain their body intent through coordinate edits and 
       }),
     )
   })
-  await expect(preview).toContainText('Moon not observed')
+  await expect(preview).toContainText('Moon unavailable')
   await input.fill('1')
   await input.press('Space')
   await input.pressSequentially('1 3')
   await expect(input).toHaveValue('1:1:3')
-  await expect(preview).toContainText('Moon not observed')
+  await expect(preview).toContainText('Moon unavailable')
   await expect(review(page)).toBeEnabled()
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
@@ -1090,7 +1089,7 @@ for (const width of [390, 1440]) {
       'Colonize',
     ])
     await page
-      .getByRole('button', { name: 'All Small Cargo', exact: true })
+      .getByRole('button', { name: 'Max Small Cargo', exact: true })
       .click()
     await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('2')
     await expect(
@@ -2059,7 +2058,7 @@ for (const width of [390, 1440]) {
         ),
       )
       .toBe(true)
-    await expect(preview).toContainText('System observation checked.')
+    await expect(preview).toContainText('Debris field selected.')
 
     await configure(page, { debris: false })
     await setDestination(page, { system: '2' })
@@ -2095,7 +2094,7 @@ test('editing a new draft clears the previous launch receipt', async ({
   await expect(dispatchResult(page)).toHaveCount(0)
 })
 
-test('protection is explained before review, rechecked at review, and launch races have readable receipts', async ({
+test('attack protection is checked at review and launch races have readable receipts', async ({
   page,
   mount,
 }) => {
@@ -2112,7 +2111,7 @@ test('protection is explained before review, rechecked at review, and launch rac
     page
       .getByRole('status')
       .filter({ hasText: 'Beginner protection prevents' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
   // Timing requests read-only estimates before the explicit review step.
   expect((await counts(page)).launches).toBe(0)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
@@ -2240,6 +2239,8 @@ test('known locked colony positions disable review and an eligible position rest
   ).toContainText('Astrophysics level 4 is required for this position.')
   await expect(review(page)).toBeDisabled()
   await setDestination(page, { position: '4' })
+  await expect(review(page)).toBeDisabled()
+  await page.getByLabel('Colony Ship · 1 available').fill('1')
   await expect(review(page)).toBeEnabled()
   expect((await counts(page)).quotes).toBe(0)
   expect((await counts(page)).launches).toBe(0)
@@ -2264,8 +2265,8 @@ test('prepared attack opens final review with carried fleet and speed, without l
   })
   await page.getByRole('button', { name: 'Back to edit mission' }).click()
   await expect(
-    page.getByRole('region', { name: 'Observed raid resources' }),
-  ).toContainText('12,000')
+    page.getByRole('region', { name: 'Raid cargo planning' }),
+  ).toContainText('6,000')
   await expect(review(page)).toBeVisible()
   expect((await counts(page)).quotes).toBe(1)
 })
@@ -2310,8 +2311,8 @@ test('raid observations show historical amounts and preserve unknown or unavaila
   mount,
 }) => {
   await setup(page, mount, { variant: 'historical' })
-  const planning = page.getByRole('region', { name: 'Observed raid resources' })
-  await expect(planning).toContainText('12,000')
+  const planning = page.getByRole('region', { name: 'Raid cargo planning' })
+  await expect(planning).toContainText('6,000')
   await expect(
     planning.getByRole('img', { name: 'Metal', exact: true }).first(),
   ).toBeVisible()
@@ -2325,9 +2326,11 @@ test('raid observations show historical amounts and preserve unknown or unavaila
       resourceVisibility,
     )
     await expect(planning).toContainText(
-      resourceVisibility === 'Error' ? 'Unable to load' : 'No known resources',
+      resourceVisibility === 'Error'
+        ? 'Unable to load'
+        : 'No resource information',
     )
-    await expect(planning).not.toContainText('12,000')
+    await expect(planning).not.toContainText('6,000')
     await expect(planning).not.toContainText('Potential loot')
   }
 })
@@ -2337,8 +2340,8 @@ test('failed raid observation refresh retains the snapshot and labels it histori
   mount,
 }) => {
   await setup(page, mount, { variant: 'historical' })
-  const planning = page.getByRole('region', { name: 'Observed raid resources' })
-  await expect(planning).toContainText('12,000')
+  const planning = page.getByRole('region', { name: 'Raid cargo planning' })
+  await expect(planning).toContainText('6,000')
   await page.evaluate(() =>
     window.dispatchScene!.configure({
       options: { resourceVisibility: 'Error' },
@@ -2346,17 +2349,105 @@ test('failed raid observation refresh retains the snapshot and labels it histori
     }),
   )
   await expect(planning).toContainText(
-    'Unable to refresh. Showing the last received observation.',
+    'Unable to refresh. Showing the last received report.',
   )
-  await expect(planning).toContainText('12,000')
-  await expect(planning).toContainText('Observed 1 hour ago')
+  await expect(planning).toContainText('6,000')
+  await expect(
+    planning.getByRole('link', { name: 'Report', exact: true }),
+  ).toHaveAttribute('title', /Espionage report/)
   await page.evaluate(() =>
     window.dispatchScene!.configure({
       options: { resourceVisibility: 'Unknown' },
       view: {},
     }),
   )
-  await expect(planning).toContainText('No known resources')
-  await expect(planning).not.toContainText('12,000')
+  await expect(planning).toContainText('No resource information')
+  await expect(planning).not.toContainText('6,000')
   await expect(planning).not.toContainText('Unable to refresh')
+})
+
+test('raid planning follows cargo space below the cargo controls and links back to its report', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount, { variant: 'historical' })
+  const planning = page.getByRole('region', { name: 'Raid cargo planning' })
+  await expect(planning).toContainText('Can carry 4,999 of 10,000 loot.')
+  await expect(
+    planning.getByRole('link', { name: 'Report', exact: true }),
+  ).toHaveAttribute('href', new RegExp(`/reports/${id(90)}$`))
+  await expect(planning).not.toContainText('Observed')
+  await expect(planning).not.toContainText('Historical')
+  const cargo = page.getByRole('group', { name: 'Cargo', exact: true })
+  expect((await planning.boundingBox())!.y).toBeGreaterThan(
+    (await cargo.boundingBox())!.y,
+  )
+  const ships = page.getByRole('table', { name: 'Ships to dispatch' })
+  await expect(ships.getByRole('button', { name: /^All / })).toHaveCount(0)
+  expect(await ships.locator('tbody th img').count()).toBeGreaterThan(0)
+  await page.getByLabel('Small Cargo · 2 available').fill('0')
+  await expect(review(page)).toBeDisabled()
+  await expect(planning).toContainText('Select ships')
+  await configure(page, {
+    maximumPayload: '15000000000',
+    capacity: '15001000000',
+  })
+  await page.getByLabel('Small Cargo · 2 available').fill('2')
+  await expect(planning).toContainText(
+    'Enough cargo space for all 10,000 loot.',
+  )
+  await expect(review(page)).toBeEnabled()
+  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('5000')
+  await expect(planning).toContainText('more free cargo space needed')
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const aligned = await planning
+      .locator('[data-layout="grid"] > span')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const icon = node.querySelector('svg')!.getBoundingClientRect()
+          const amount = node.querySelector('span')!.getBoundingClientRect()
+          return {
+            icon: icon.y + icon.height / 2,
+            amount: amount.y + amount.height / 2,
+          }
+        }),
+      )
+    for (const { icon, amount } of aligned)
+      expect(Math.abs(icon - amount)).toBeLessThanOrEqual(1)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+  }
+})
+
+test('holding duration has a visible field surface and supports keyboard selection', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  const { view } = await snapshot(page)
+  await page.evaluate(
+    (capabilities) =>
+      window.dispatchScene!.configure({
+        view: {
+          capabilities: [
+            ...capabilities,
+            { capability: 'Hold', enabled: true, reason: 'Available' },
+          ],
+        },
+      }),
+    view.capabilities,
+  )
+  await page.getByRole('radio', { name: 'Hold', exact: true }).check()
+  const duration = page.getByRole('combobox', { name: 'Holding duration' })
+  await expect(duration).toHaveAttribute('data-appearance', 'field')
+  await expect(duration).toHaveCSS('background-color', 'rgb(16, 30, 48)')
+  await duration.press('Enter')
+  await page.getByRole('option', { name: '4 hours', exact: true }).click()
+  await expect(duration).toHaveText('4 hours')
+  await review(page).click()
+  expect((await lastQuote(page)).intent.hold_hours).toBe(4)
 })

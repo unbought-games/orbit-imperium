@@ -104,3 +104,25 @@ it('retains historical evidence after a refresh error only for the same source',
     error: true,
   })
 })
+
+it.each([
+  [0n, 0n],
+  [6n, 4n],
+  [8n, 5n],
+  [9n, 6n],
+  [100n, 6n],
+  [-5n, 0n],
+])('reports loot that fits %s free cargo space', (capacity, carried) => {
+  expect(
+    observedLootPlan(
+      { metal: '12000000', crystal: '0', deuterium: '0' },
+      capacity,
+    ).carried,
+  ).toBe(carried)
+})
+it('keeps capacity unknown until the estimate and cargo edits are valid', () => {
+  expect(
+    observedLootPlan({ metal: '12000000', crystal: '0', deuterium: '0' }, null)
+      .carried,
+  ).toBeNull()
+})

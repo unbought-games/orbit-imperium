@@ -722,10 +722,52 @@
 
 .lootPlanning {
   display: grid;
-  gap: var(--space-2);
-  margin-block: var(--space-3);
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--border);
   font-size: var(--font-size-sm);
 }
 .lootText {
   margin: 0;
+}
+.lootHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.lootHeader h3 {
+  margin: 0;
+  font-size: inherit;
+}
+.lootReport {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+.lootResources {
+  display: grid;
+  gap: var(--space-2);
+}
+.lootResources > span:first-child {
+  color: var(--text-muted);
+}
+.lootFit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.lootFit > svg {
+  flex: none;
+  margin-top: 3px;
+}
+.lootFit[data-fits='true'] {
+  color: #91c9ac;
+}
+.lootFit small {
+  display: block;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-size: inherit;
 }

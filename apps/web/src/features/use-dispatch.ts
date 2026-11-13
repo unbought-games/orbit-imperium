@@ -126,10 +126,10 @@ export function useDispatch({
           ? 'An operation is already in flight. Follow it in Fleets.'
           : ''
     : localTargetProblem || destination.problem
-  const attackWarning = observedMissionWarning(
-    mission,
-    observedTarget ?? undefined,
-  )
+  const attackWarning =
+    mission === 'Attack'
+      ? ''
+      : observedMissionWarning(mission, observedTarget ?? undefined)
   const types = view.catalog.flatMap((entry) =>
     entry.key.kind === 'Ship' &&
     entry.mobile &&
@@ -408,6 +408,7 @@ export function useDispatch({
     busy,
     now,
     types,
+    hasShips: timingShips.length > 0 || invalidShips,
     quoteRef,
     reviewButtonRef,
     command,

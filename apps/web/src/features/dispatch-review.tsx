@@ -37,7 +37,6 @@ export function DispatchReview({
   playerNames,
   coordinates,
   now,
-  observedAt,
   raidPlanning,
   colonyWarning,
   disabled,
@@ -52,7 +51,6 @@ export function DispatchReview({
   playerNames?: S['PublicPlayerNames4']
   coordinates: S['Coordinates']
   now: number
-  observedAt?: number
   raidPlanning?: ReactNode
   colonyWarning?: string | null
   disabled: boolean
@@ -272,13 +270,6 @@ export function DispatchReview({
       )}
       {mission === 'Espionage' && (
         <Text className={styles.reviewNote}>Probes carry fuel only.</Text>
-      )}
-      {observedAt !== undefined && (
-        <Text className={styles.reviewNote}>
-          Prepared from an observation at {exactTime(observedAt)}. This is
-          historical information; review checks the current destination and
-          mission eligibility.
-        </Text>
       )}
       <QuoteAction disabled={disabled} onClick={onSend}>
         {dispatchSendLabel(quote.intent, destination)}

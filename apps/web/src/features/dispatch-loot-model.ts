@@ -2,27 +2,32 @@ import type { components } from '../contracts'
 import { resourceNames } from '../client-model/resources'
 type S = components['schemas']
 
-/** Match the engine's whole-unit, five-pass raid allocation; no combat prediction. */
-export function observedLootPlan(resources: S['Resources']) {
+/** Match the engine's whole-unit, five-pass raid allocation. */
+function allocateRaidLoot(caps: bigint[], capacity: bigint) {
+  const remaining = [...caps]
+  let free = capacity > 0n ? capacity : 0n
+  for (const [i, divisor] of [
+    [0, 3n],
+    [1, 2n],
+    [2, 1n],
+    [0, 2n],
+    [1, 1n],
+  ] as const) {
+    const amount = remaining[i] < free / divisor ? remaining[i] : free / divisor
+    remaining[i] -= amount
+    free -= amount
+  }
+  return caps.map((cap, i) => cap - remaining[i])
+}
+
+export function observedLootPlan(
+  resources: S['Resources'],
+  freeCapacity?: bigint | null,
+) {
   const caps = resourceNames.map((r) => BigInt(resources[r]) / 2000000n)
   const total = caps.reduce((sum, n) => sum + n, 0n)
-  const fits = (capacity: bigint) => {
-    const remaining = [...caps]
-    let free = capacity
-    for (const [i, divisor] of [
-      [0, 3n],
-      [1, 2n],
-      [2, 1n],
-      [0, 2n],
-      [1, 1n],
-    ] as const) {
-      const amount =
-        remaining[i] < free / divisor ? remaining[i] : free / divisor
-      remaining[i] -= amount
-      free -= amount
-    }
-    return remaining.every((n) => n === 0n)
-  }
+  const fits = (capacity: bigint) =>
+    allocateRaidLoot(caps, capacity).every((n, i) => n === caps[i])
   let low = total,
     high = total * 3n
   while (low < high) {
@@ -36,6 +41,10 @@ export function observedLootPlan(resources: S['Resources']) {
     ) as S['Resources'],
     total,
     required: low,
+    carried:
+      freeCapacity === undefined || freeCapacity === null
+        ? null
+        : allocateRaidLoot(caps, freeCapacity).reduce((sum, n) => sum + n, 0n),
   }
 }
 
