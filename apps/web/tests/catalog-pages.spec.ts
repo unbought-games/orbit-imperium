@@ -1340,7 +1340,7 @@ for (const width of [390]) {
     await navigate(page, 'Defense')
     await page.getByRole('link', { name: 'Build Large Shield Dome', exact: true }).click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('Its shield protects itself, not other units.')
+    await expect(pane.locator('figcaption')).toContainText('A massive shield installation built to endure a storm of hostile fire.')
     const art = pane.locator('img').first()
     await expect(art).toHaveAttribute('src', /large-shield-dome/)
     await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
