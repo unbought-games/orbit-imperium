@@ -2088,3 +2088,88 @@ for (const width of [390, 1280]) {
     await expect(page.getByText('Probe count saved.')).toBeVisible()
   })
 }
+
+
+// Regression: customization must navigate with the exact body target and mission,
+// expose editable probe quantities, and never submit the one-click spy command.
+for (const [width, target] of [[1280, 'planet']] as const) {
+  test(`Spy with opens an editable ${target} espionage draft at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    let commands = 0
+    page.on('request', (request) => {
+      if (request.url().endsWith('/commands')) commands++
+    })
+    await setup(
+      page,
+      null,
+      {
+        catalog: [
+          {
+            key: { kind: 'Ship', id: 'EspionageProbe' },
+            body_kinds: ['Planet', 'Moon'],
+            requirements: [],
+            enabled: true,
+            mobile: true,
+          },
+        ],
+        missions: {
+          fleets: [],
+          incoming: [],
+          fleet_slots: '3',
+          score_value_micro: '0',
+        },
+      },
+      {
+        2: { moon: { id: id(70), name: 'Selene', diameter_km: 8500 } },
+      },
+    )
+    await page.route('**/player-preferences', async (route) => {
+      const request = route.request().postDataJSON()
+      await route.fulfill({
+        json: { ...request.context, preferences: { galaxy_probe_count: '3' } },
+      })
+    })
+    await withGalaxyResponse(page, () => page.reload())
+    // The saved quick-spy count exceeds our two probes; customization still works.
+    await expect(spy(page)).toBeDisabled()
+    await actions(page, 2).click()
+    const customize = page.getByRole('menuitem', {
+      name: 'Spy with…',
+      exact: true,
+    })
+    await expect(customize).toBeEnabled()
+    await diagnosticScreenshot(page, {
+      path: `test-results/galaxy-spy-menu-${width}x900.png`,
+    })
+    await customize.focus()
+    await withGalaxyResponse(page, () => customize.press('Enter'))
+    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
+    await expect(page.getByRole('radio', { checked: true })).toHaveValue(
+      'Espionage',
+    )
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveValue(coordinatePattern('system', '371'))
+    await expect(
+      page.getByLabel('Destination coordinates', { exact: true }),
+    ).toHaveValue(coordinatePattern('position', '2'))
+    expect(new URL(page.url()).searchParams.get('target')).toBe(target)
+    const probes = page.getByRole('textbox', {
+      name: 'Espionage Probe · 2 available',
+      exact: true,
+    })
+    await expect(probes).toBeVisible()
+    await probes.fill('2')
+    await expect(probes).toHaveValue('2')
+    expect(commands).toBe(0)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width)
+    await diagnosticScreenshot(page, {
+      path: `test-results/galaxy-spy-dispatch-${width}x900.png`,
+      fullPage: true,
+    })
+  })
+}

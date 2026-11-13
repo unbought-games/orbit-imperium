@@ -48,9 +48,13 @@ describe('location addresses', () => {
     ).toBeNull()
   })
   it('reconstructs a dispatch draft from a refresh without silently selecting a planet for a moon', () => {
-    expect(
-      draftFromSearch({ ...at, target: 'moon', mission: 'Attack' }),
-    ).toEqual({ coordinates: at, targetKind: 'moon', mission: 'Attack' })
+    for (const mission of ['Attack', 'Espionage'] as const) {
+      expect(draftFromSearch({ ...at, target: 'moon', mission })).toEqual({
+        coordinates: at,
+        targetKind: 'moon',
+        mission,
+      })
+    }
     expect(draftFromSearch({})).toBeNull()
   })
 })

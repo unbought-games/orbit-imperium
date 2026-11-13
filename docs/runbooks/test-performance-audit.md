@@ -2055,3 +2055,43 @@ Review of `29573120` identified the 8px shell gutter at 320px. The existing
 shortcut check reproduced 3px of overflow when its animations were held at the
 glow's peak. The inset now accounts for the shell gutter, and the browser check
 asserts zero overflow at that phase on the narrow viewport.
+
+## November 13, 2026: retire two unexplained overview-startup failures
+
+PR #415 head `c2330b6d91785505b5e96def85e9c8586f0f6cc4`, run
+`43476074871`, features shard 4 job `132060393826`, failed these existing
+`planet-names.spec.ts` cases in `shellFixture` before their tested interactions:
+
+- `completed rename stays closed after its command leaves recent history`
+- `ghost controls share default, hover, focus, pressed and disabled styles`
+
+Both exhausted the unchanged five-second `main h1` assertion after bootstrap
+response delivery. Both retained snapshots show the expected ready overview.
+The artifact is `browser-failures-43476074871-1-features-4` (ID `14063162845`).
+This resembles the previously documented shell-startup symptom but does not
+establish an infrastructure incident or a specific repairable scheduling cause.
+Inspected the source, screenshots/snapshots, history through `593e7454`,
+`88d685d3`, `6292946b` and `41d4ec91`, and this ledger, including the November 5
+shared-bootstrap repair. No scenario-specific prior repair was found; the
+separate owner ledger was unavailable. Per the unexplained-failure rule, removed
+both cases without unchanged retries, sleeps, timeout increases or replacement
+browser scenarios. The other two rename browser cases remain.
+
+Retained deterministic coverage: `features/planet-name.test.ts` validates names,
+presence binding and pending/reconciled rename selection;
+`client-model/coordinator.test.ts` covers successful-command history pruning
+without dropping unresolved commands. These do **not** replace the deleted React
+editor-close-after-pruning wiring assertion or the exact CSS hover/focus/pressed/
+disabled/forced-colors matrix; that browser coverage is explicitly lost.
+No production renaming or button behavior changed.
+
+The shared helper's consumers were audited by the November 5 repair above. This
+failure supplies no new proven common cause to patch in that helper. The current
+PR owns these two retirements and verification; no speculative shared repair is
+deferred. The failing shard passed 112 cases and failed two in 4.0 minutes;
+runner allocation/preparation timings were not retained separately. No queue
+removal occurred: this was PR-head CI before enrollment.
+Local verification after retirement: 74 deterministic rename/coordinator tests
+passed (699ms); both remaining rename browser cases passed (4.793s bundle
+preparation, 4.3s runner, no queue wait). The runner cleaned up its preview and
+browsers. `git diff --check` passed. Fresh PR/queue CI remains required.
