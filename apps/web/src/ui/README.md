@@ -154,4 +154,5 @@ its adjacent CSS module.
 | Contextual details and actions | [Popover](popover.tsx), [ActionPopover](action-popover.tsx), [ActionSheet](action-sheet.tsx)                                                                  |
 | Player names and identity      | [PlayerName](../features/player-name.tsx), [SupporterIdentity](../features/supporter-identity.tsx), [EmpireInsignia](../features/empire-insignia.tsx)         |
 | Catalogs and decision pages    | [ImageCatalog](image-catalog.tsx), [CatalogStage](catalog-stage.tsx), [DetailLayout](../features/progression/detail-layout.tsx)                               |
+| Timestamps and time zones      | [Timestamp API and composition](timestamp.md), [component](timestamp.tsx)                                                                                     |
 | Reduced motion                 | [Preference hook](use-reduced-motion.ts)                                                                                                                      |

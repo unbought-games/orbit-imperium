@@ -60,6 +60,7 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  timestamp: async () => (await import('./timestamp.scenario')).TimestampScenario,
   'cosmetic-treatments': async () =>
     (await import('./cosmetic-treatments.scenarios'))
       .CosmeticTreatmentsScenario,
