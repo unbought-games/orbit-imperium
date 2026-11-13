@@ -27,6 +27,7 @@ export function GalaxyFlightSummary({
   return (
     <Popover
       label={`Your fleets to ${target}`}
+      triggerDescription={summary.description}
       className={styles.flightTrigger}
       surfaceClassName={styles.flightDetails}
       placement="bottom-start"

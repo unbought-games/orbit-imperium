@@ -38,6 +38,9 @@ for (const width of [320, 390, 1280]) {
           .boundingBox(),
       })
       const initial = await geometry()
+      await expect(marker).toHaveAccessibleDescription(
+        'No fleets heading to this position.',
+      )
       expect((await marker.boundingBox())!.width).toBe(44)
       expect((await marker.boundingBox())!.height).toBe(44)
       await marker.focus()
@@ -50,6 +53,9 @@ for (const width of [320, 390, 1280]) {
       for (let count = 1; count <= 3; count++) {
         await spy.click()
         await expect(marker).toHaveText(`${count}2m`)
+        await expect(marker).toHaveAccessibleDescription(
+          `${count} ${count === 1 ? 'fleet' : 'fleets'} en route. Next arrival: 2m 0s.`,
+        )
         expect(await geometry()).toEqual(initial)
         await page.clock.runFor(1400)
         await expect(spy).toBeEnabled()
@@ -82,6 +88,9 @@ for (const width of [320, 390, 1280]) {
         .getByRole('button', { name: 'Tick countdown' })
         .evaluate((button: HTMLButtonElement) => button.click())
       await expect(dialog.locator('li').first()).toContainText('1m 55s')
+      await expect(marker).toHaveAccessibleDescription(
+        '3 fleets en route. Next arrival: 1m 55s.',
+      )
       await expect(dialog).toBeVisible()
       await diagnosticScreenshot(page, {
         path: `test-results/galaxy-traffic/details-${width}x844.png`,
@@ -92,6 +101,9 @@ for (const width of [320, 390, 1280]) {
         .getByRole('button', { name: 'Pending departure', exact: true })
         .click()
       await expect(marker).toHaveText('42m')
+      await expect(marker).toHaveAccessibleDescription(
+        '3 fleets en route. 1 fleet departure pending. Next arrival: 1m 55s.',
+      )
       expect(await geometry()).toEqual(initial)
       await marker.click()
       await expect(dialog).toContainText('Transport departure pending')
@@ -100,6 +112,9 @@ for (const width of [320, 390, 1280]) {
       await expect(marker).toHaveText('')
       const home = rows.nth(1).getByRole('button', { name: /^Your fleets/ })
       await expect(home).toHaveText('42m')
+      await expect(home).toHaveAccessibleDescription(
+        '4 fleets returning. Next arrival: 1m 55s.',
+      )
       expect(await geometry()).toEqual(initial)
       await home.click()
       await expect(
@@ -114,6 +129,9 @@ for (const width of [320, 390, 1280]) {
       })
       await page.getByRole('button', { name: 'Complete flights' }).click()
       await expect(home).toHaveText('')
+      await expect(home).toHaveAccessibleDescription(
+        'No fleets heading to this position.',
+      )
       expect(await geometry()).toEqual(initial)
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),

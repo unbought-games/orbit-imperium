@@ -1,4 +1,5 @@
 import type { GalaxyFlight } from '../client-model/galaxy-fleets'
+import { arrivalCountdown } from './mission-presentation'
 
 /** Short enough for the planet-marker column; full times live in the disclosure. */
 export function galaxyFlightPresentation(
@@ -33,7 +34,28 @@ export function galaxyFlightPresentation(
               ? `${Math.ceil(seconds / 3600)}h`
               : `${Math.ceil(seconds / 86400)}d`
   }
+  const phases: GalaxyFlight['phase'][] = [
+    'en route',
+    'returning',
+    'departure pending',
+  ]
+  const description = flights.length
+    ? phases
+        .flatMap((phase) => {
+          const count = flights.filter(
+            (flight) => flight.phase === phase,
+          ).length
+          return count
+            ? [`${count} ${count === 1 ? 'fleet' : 'fleets'} ${phase}.`]
+            : []
+        })
+        .join(' ') +
+      (next !== null && now !== undefined
+        ? ` Next arrival: ${arrivalCountdown(next, now)}.`
+        : '')
+    : 'No fleets heading to this position.'
   return {
+    description,
     phase,
     arrival,
     count: flights.length > 99 ? '99+' : String(flights.length),

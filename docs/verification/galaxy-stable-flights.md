@@ -69,3 +69,18 @@ suites ran with one worker, after competing suites ended. No other task's
 processes were stopped. Local fixture runners clean up their own temporary
 assets/server/browser; the task-owned development preview is stopped at handoff.
 No production database, deployment or merge is part of this work.
+
+## Review follow-up
+
+CI passed for `cdbfee36d4977b71d18b4abb807406cd686e03b4` on its first run
+(workflow `43492825371`, aggregate gate finished 19:38:35 UTC). Bugbot identified
+a valid accessibility defect: Popover's stable accessible name replaced its
+visible count/arrival text. Added an optional shared trigger description using
+`aria-describedby`, with pure summaries for idle, each phase, mixed phases, full
+counts above 99, and next arrival. Existing callers keep their previous names
+and behavior. Screen readers can inspect traffic without opening every row.
+
+The focused presentation tests passed (10 cases, 164ms), and all four affected
+component cases passed again (4.6s runner), now asserting accessible descriptions
+through the entire lifecycle. Captures were refreshed and inspected after this
+change. The latest pushed revision must pass CI independently of the earlier run.
