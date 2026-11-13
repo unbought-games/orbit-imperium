@@ -1,3 +1,4 @@
+import { DispatchLoot } from './dispatch-loot'
 import {
   DispatchCargoControls,
   DispatchFlightControls,
@@ -362,6 +363,15 @@ export function DispatchView({
               </Text>
             )}
           </fieldset>
+          {!quote && mission === 'Attack' && !siteId && (
+            <DispatchLoot
+              model={model}
+              target={target}
+              revision={view.viewer_revision}
+              now={now}
+              space={cargoCapacity}
+            />
+          )}
           <DispatchShips
             key={body.id}
             view={view}
@@ -469,6 +479,25 @@ export function DispatchView({
           }}
           now={now}
           observedAt={draft?.observedAt}
+          raidPlanning={
+            mission === 'Attack' && !siteId ? (
+              <DispatchLoot
+                model={model}
+                target={
+                  quote.intent.destination.type === 'Body'
+                    ? {
+                        id: quote.intent.destination.id,
+                        owner: quote.intent.destination.expected_owner,
+                        kind: quote.intent.destination.expected_kind,
+                      }
+                    : target
+                }
+                revision={view.viewer_revision}
+                now={now}
+                space={cargoCapacity}
+              />
+            ) : undefined
+          }
           colonyWarning={
             colony.reason ??
             (colony.count >= colony.capacity ? colony.warning : undefined)

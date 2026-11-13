@@ -213,6 +213,24 @@ export function useDispatch({
       setCargo(['0', '0', '0'])
     }
   }, [submitted, submittedStatus, requests])
+  const preparedReview = useRef(!!draft?.reviewOnOpen)
+  useEffect(() => {
+    if (!preparedReview.current) return
+    preparedReview.current = false
+    void requests.prepare(
+      async () => {
+        await model.refresh()
+        const state = model.store.getState()
+        if (!state.ready || state.stale || state.connectionInterrupted)
+          throw Error('Fleet availability could not be refreshed')
+      },
+      () => review(),
+      {
+        busy: setBusy,
+        error: setError,
+      },
+    )
+  })
   useEffect(
     () => () => {
       requests.invalidate()
@@ -261,6 +279,7 @@ export function useDispatch({
     }
   }, [quote, quotedGroup])
   const clear = () => {
+    preparedReview.current = false
     requests.invalidate()
     setSubmitted(null)
     setQuote(null)
@@ -343,7 +362,7 @@ export function useDispatch({
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,
-    cargoCapacity: dispatchCargoCapacity(timing?.terms, cargo),
+    cargoCapacity: dispatchCargoCapacity(quote ?? timing?.terms, cargo),
     cargoCapacityMessage: invalidShips
       ? 'Enter valid ship counts to see capacity.'
       : timingShips.length === 0

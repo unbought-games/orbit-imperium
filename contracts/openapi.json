@@ -24246,6 +24246,11 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "target_body": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Filter recipient-visible historical target body before pagination."
+          },
           "hidden": {
             "type": [
               "boolean",

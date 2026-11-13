@@ -567,12 +567,7 @@ for (const width of [320, 390, 1280]) {
   })
 }
 
-for (const kind of [
-  'Attack',
-  'Deploy',
-  'Harvest',
-  'Colonize',
-] as const) {
+for (const kind of ['Attack', 'Deploy', 'Harvest', 'Colonize'] as const) {
   test(`review clearly identifies ${kind}, its route and conditional return`, async ({
     page,
     mount,
@@ -632,10 +627,15 @@ for (const kind of [
     await expect(action).toBeEnabled()
     if (kind === 'Deploy') {
       await expect(quote).toContainText('No scheduled return')
-      await expect(quote.locator('time')).toHaveCount(1)
+      await expect(
+        quote.getByRole('region', { name: 'Flight schedule' }).locator('time'),
+      ).toHaveCount(1)
     } else {
-      await expect(quote.locator('time')).toHaveCount(2)
+      await expect(
+        quote.getByRole('region', { name: 'Flight schedule' }).locator('time'),
+      ).toHaveCount(2)
       const times = await quote
+        .getByRole('region', { name: 'Flight schedule' })
         .locator('time')
         .evaluateAll((elements) =>
           elements.map((e) => Date.parse(e.getAttribute('datetime')!)),
@@ -2243,4 +2243,91 @@ test('known locked colony positions disable review and an eligible position rest
   await expect(review(page)).toBeEnabled()
   expect((await counts(page)).quotes).toBe(0)
   expect((await counts(page)).launches).toBe(0)
+})
+
+test('prepared attack opens final review with carried fleet and speed, without launching', async ({
+  page,
+  mount,
+}) => {
+  await mount('dispatch-prepared')
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  await expect(quote).toBeFocused()
+  expect((await snapshot(page)).launches).toBe(0)
+  const intent = (await lastQuote(page)).intent
+  expect(intent.speed_percent).toBe(80)
+  expect(intent.ships).toEqual([
+    { owner: player, ship_type: 'SmallCargo', count: '1' },
+  ])
+  expect(intent.destination).toMatchObject({
+    id: id(20),
+    expected_owner: id(30),
+  })
+  await page.getByRole('button', { name: 'Back to edit mission' }).click()
+  await expect(
+    page.getByRole('region', { name: 'Observed raid resources' }),
+  ).toContainText('12,000')
+  await expect(review(page)).toBeVisible()
+  expect((await counts(page)).quotes).toBe(1)
+})
+
+test('prepared attack with unavailable fleet slot keeps editable draft and final confirmation closed', async ({
+  page,
+  mount,
+}) => {
+  await mount('dispatch-prepared-blocked')
+  await expect(page.getByRole('alert')).toContainText('fleet slots')
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+  await expect(
+    page.getByRole('slider', { name: 'Speed', exact: true }),
+  ).toHaveValue('80')
+  expect((await snapshot(page)).launches).toBe(0)
+})
+
+test('cargo add all and max stay editable when launch quotes reject occupied slots', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  await configure(page, {
+    quoteError: 'NoFleetSlot',
+    fuel: '100000000',
+    maximumPayload: '5000000000',
+  })
+  await page.getByRole('button', { name: 'Add all', exact: true }).click()
+  await expect(
+    page.getByRole('textbox', { name: 'Metal', exact: true }),
+  ).not.toHaveValue('0')
+  await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await review(page).click()
+  await expect(page.getByRole('alert')).toContainText('fleet slots')
+  expect((await snapshot(page)).launches).toBe(0)
+})
+
+test('raid observations show historical amounts and preserve unknown or unavailable resource states', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount, { variant: 'historical' })
+  const planning = page.getByRole('region', { name: 'Observed raid resources' })
+  await expect(planning).toContainText('12,000')
+  await expect(
+    planning.getByRole('img', { name: 'Metal', exact: true }).first(),
+  ).toBeVisible()
+  for (const resourceVisibility of ['Unknown', 'Missing', 'Error'] as const) {
+    await page.evaluate(
+      (resourceVisibility) =>
+        window.dispatchScene!.configure({
+          options: { resourceVisibility },
+          view: {},
+        }),
+      resourceVisibility,
+    )
+    await expect(planning).toContainText(
+      resourceVisibility === 'Error' ? 'Unable to load' : 'No known resources',
+    )
+    await expect(planning).not.toContainText('12,000')
+    await expect(planning).not.toContainText('Potential loot')
+  }
 })

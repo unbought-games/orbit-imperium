@@ -9909,6 +9909,11 @@ export interface components {
             availability: "available" | "supporter_required" | "earned_required" | "unavailable" | "not_installed";
         };
         ReportFilter4: {
+            /**
+             * Format: uuid
+             * @description Filter recipient-visible historical target body before pagination.
+             */
+            target_body?: string;
             hidden?: boolean | null;
             unread_only?: boolean;
             starred_only?: boolean;

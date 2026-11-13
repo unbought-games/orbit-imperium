@@ -159,7 +159,7 @@ export function SimulationFlight({
             onClick={() => {
               if (draft && !attackProblem) {
                 onClose()
-                prepareDispatch(draft)
+                prepareDispatch({ ...draft, reviewOnOpen: true })
               }
             }}
           >
