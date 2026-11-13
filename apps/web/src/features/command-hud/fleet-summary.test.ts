@@ -161,6 +161,48 @@ describe('empire fleet summary', () => {
     expect(fleetSummaryRows(state)).toHaveLength(1)
     expect(fleetSummaryRows(state)[0].dueAt).toBe(9000)
   })
+  it('uses current names for both endpoints of a confirmed fleet', () => {
+    const state = fixture()
+    const home: S['Destination'] = {
+      id: 'home',
+      kind: 'Planet',
+      name: 'T'.repeat(40),
+      coordinates: { galaxy: 1, system: 1, position: 1 },
+    }
+    const target: S['Destination'] = {
+      id: 'target',
+      kind: 'Planet',
+      name: 'W'.repeat(40),
+      coordinates: { galaxy: 1, system: 2, position: 3 },
+    }
+    state.view.destinations = [home, target]
+    state.view.missions.fleets = [
+      {
+        ...fleet('fleet', 9000),
+        origin: home.coordinates,
+        destination: target.coordinates,
+        intent: {
+          ...intent,
+          origin: home.id,
+          mission: 'Transport',
+          destination: {
+            type: 'Body',
+            id: target.id,
+            expected_owner: 'other',
+            expected_kind: 'Planet',
+          },
+        },
+      },
+    ]
+    expect(fleetSummaryRows(state)).toMatchObject([
+      {
+        home: { name: home.name, coordinates: home.coordinates },
+        target: { name: target.name, coordinates: target.coordinates },
+      },
+    ])
+    target.name = 'Renamed destination'
+    expect(fleetSummaryRows(state)[0].target.name).toBe('Renamed destination')
+  })
   it('uses body names and coordinates for pending body destinations', () => {
     const state = fixture()
     state.view.destinations = [

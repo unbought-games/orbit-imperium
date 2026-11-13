@@ -1909,3 +1909,18 @@ publishing evidence.
 The four affected desktop/mobile cases passed locally after this repair (9.4s
 runner duration, one worker). The temporary fixture bundle/server were cleaned
 by the installed runner. Production code and visual captures are unchanged.
+
+## November 12, 2026: fleet endpoint labels
+
+PR #407 head `15333669`, run `43354543718` attempt 1, feature job
+`131653521032` failed `active fleet routes show current public names and fit a
+phone`. It expected the old text row below the manifest after the same
+coordinates moved to the shared route. The local repair checked titles on the
+card and matched both the visible route and the collapsed flight schematic.
+The strict locator failed and the test was removed under the one-repair rule.
+
+The fleet-summary unit test checks both confirmed endpoint names and coordinates,
+including a renamed destination. Existing fleet movement and mission schematic
+browser tests retain narrow viewport geometry, and coordinate navigation is
+covered on the mission card. The removed test was the only browser case that
+combined two 40-character names with the expanded schematic.
