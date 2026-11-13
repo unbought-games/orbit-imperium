@@ -11,6 +11,26 @@ test('archive shortcut ignores typing and owned keys, then archives once from ch
   await page.keyboard.press('e')
   await expect(page.getByLabel('Submitted commands')).toHaveText('0')
   await page.getByRole('button', { name: 'Select loaded reports (2)' }).click()
+  await page
+    .getByRole('button', { name: 'Read report help', exact: true })
+    .focus()
+  await page.keyboard.press('e')
+  await expect(page.getByLabel('Submitted commands')).toHaveText('0')
+  await page
+    .locator('dialog')
+    .evaluate((dialog: HTMLDialogElement) => dialog.showModal())
+  await page
+    .getByRole('button', { name: 'Read modal help', exact: true })
+    .focus()
+  await page.keyboard.press('e')
+  // Even input dispatched outside a native modal must not activate the page.
+  await page
+    .locator('main')
+    .dispatchEvent('keydown', { key: 'e', bubbles: true })
+  await expect(page.getByLabel('Submitted commands')).toHaveText('0')
+  await page
+    .locator('dialog')
+    .evaluate((dialog: HTMLDialogElement) => dialog.close())
   for (const label of [
     'Report note',
     'Report draft',
@@ -42,6 +62,9 @@ test('archive shortcut ignores typing and owned keys, then archives once from ch
   await expect(
     page.getByRole('list', { name: 'Visible reports' }).getByRole('listitem'),
   ).toHaveText(['one', 'two', 'protected'])
+  await expect(
+    page.getByRole('dialog', { name: 'Nonmodal report help', exact: true }),
+  ).toBeVisible()
   await page.keyboard.press('e')
   await expect(
     page.getByRole('list', { name: 'Visible reports' }).getByRole('listitem'),

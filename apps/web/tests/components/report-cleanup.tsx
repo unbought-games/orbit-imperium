@@ -96,6 +96,12 @@ export function ReportCleanupScenario() {
         <span>Editable note</span>
       </div>
       <input type="checkbox" aria-label="Keyboard focus" />
+      <div role="dialog" aria-label="Nonmodal report help">
+        <Button>Read report help</Button>
+      </div>
+      <dialog aria-label="Modal report help">
+        <Button>Read modal help</Button>
+      </dialog>
       <ReportSelectionBar
         visible={reports.filter((row) => !row.hidden)}
         selected={selected}

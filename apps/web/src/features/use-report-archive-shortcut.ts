@@ -24,17 +24,15 @@ export function useReportArchiveShortcut(enabled: boolean) {
         target instanceof HTMLElement &&
         (target.isContentEditable ||
           target.closest(
-            'input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="textbox"], [role="combobox"]',
+            'input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="textbox"], [role="combobox"], dialog[open], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]',
           ))
       )
         return
-      // Portalled menus and dialogs own keyboard input while open.
+      // Modal surfaces own all input; nonmodal overlays only own their focus.
       if (
-        [
-          ...document.querySelectorAll(
-            'dialog[open], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]',
-          ),
-        ].some((overlay) => overlay.getClientRects().length > 0)
+        [...document.querySelectorAll(':modal, [aria-modal="true"]')].some(
+          (overlay) => overlay.getClientRects().length > 0,
+        )
       )
         return
       event.preventDefault()
