@@ -312,3 +312,46 @@ it.each([2, 3] as const)(
     })
   },
 )
+
+it('validates alliance sections without treating them as fleet or report IDs', () => {
+  const current = { ...view, protocol: 4 } as unknown as BoundView
+  for (const item of [
+    'hall',
+    'members',
+    'applications',
+    'roles',
+    'settings',
+    'audit',
+    'settings/identity',
+    'settings/hall',
+    'settings/public-page',
+    'settings/media',
+    'settings/recruitment',
+    'settings/invitations',
+    'settings/leadership',
+    'settings/membership',
+  ]) {
+    expect(
+      resolveDestination(
+        { universe: 'u', page: 'alliance', body: 'a', item },
+        current,
+      ),
+    ).toMatchObject({ available: true, page: 'alliance', body: 'a', item })
+  }
+  for (const item of [
+    'unknown',
+    'members/identity',
+    'settings/unknown',
+    'settings/identity/extra',
+  ]) {
+    expect(
+      resolveDestination(
+        { universe: 'u', page: 'alliance', body: 'a', item },
+        current,
+      ),
+    ).toMatchObject({
+      available: false,
+      reason: 'This alliance section is not available.',
+    })
+  }
+})

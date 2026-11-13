@@ -211,3 +211,44 @@ it('keeps settings section and selected body in real paths', async () => {
       .href,
   ).toBe('/u/andromeda/b/moon/settings/game')
 })
+
+it('builds and matches every alliance section and settings deep link', async () => {
+  for (const item of [
+    'hall',
+    'members',
+    'applications',
+    'roles',
+    'settings',
+    'audit',
+    'settings/identity',
+    'settings/hall',
+    'settings/public-page',
+    'settings/media',
+    'settings/recruitment',
+    'settings/invitations',
+    'settings/leadership',
+    'settings/membership',
+  ]) {
+    for (const body of ['mars', undefined]) {
+      const href = `/u/andromeda/${body ? `b/${body}/` : ''}alliance/${item}`
+      const router = createAppRouter({
+        history: createMemoryHistory({ initialEntries: [href] }),
+      })
+      expect(
+        router.buildLocation(routeTarget('Andromeda', 'alliance', body, item))
+          .href,
+      ).toBe(href)
+      await router.load()
+      const [section, subsection] = item.split('/')
+      expect(router.state.matches.at(-1)).toMatchObject({
+        status: 'success',
+        staticData: { page: 'alliance' },
+        params: {
+          universe: 'andromeda',
+          item: section,
+          ...(subsection ? { section: subsection } : {}),
+        },
+      })
+    }
+  }
+})

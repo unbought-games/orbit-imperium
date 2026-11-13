@@ -475,7 +475,16 @@ export function AllianceStory() {
                   run={run}
                   busy={busy}
                   section={settingsSection}
-                  onSectionChange={setSettingsSection}
+                  renderSectionLink={(name, active) => (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => setSettingsSection(name)}
+                    >
+                      {name === 'Profile' ? 'Identity' : name}
+                    </button>
+                  )}
                 />
               )}
             </>

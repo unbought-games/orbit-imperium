@@ -1,3 +1,4 @@
+import { isAllianceDestination } from '../features/alliances/navigation'
 import {
   isSettingsSection,
   settingsSectionAvailable,
@@ -128,6 +129,8 @@ export function resolveDestination(
       : null
   if (item && catalogPages.includes(page) && !catalogItem)
     return unavailable('This catalog item is unavailable in this universe.')
+  if (page === 'alliance' && item && !isAllianceDestination(item))
+    return unavailable('This alliance section is not available.')
   if (page === 'settings' && item) {
     if (!isSettingsSection(item))
       return unavailable('This settings section is not available.')
@@ -139,6 +142,7 @@ export function resolveDestination(
   if (
     item &&
     page !== 'settings' &&
+    page !== 'alliance' &&
     !catalogPages.includes(page) &&
     !(view.protocol === 4
       ? page === 'reports'

@@ -56,6 +56,7 @@ function GameShellContent() {
     universe?: string
     body?: string
     item?: string
+    section?: string
     coordinates?: string
   }
   const search = leaf.search as {
@@ -75,7 +76,10 @@ function GameShellContent() {
         (bodyPages.includes(leaf.staticData.page!)
           ? view.bodies[0]?.id
           : undefined),
-      item: params.item,
+      item:
+        leaf.staticData.page === 'alliance' && params.section
+          ? `${params.item}/${params.section}`
+          : params.item,
     },
     view,
     universeName,

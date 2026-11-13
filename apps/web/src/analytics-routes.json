@@ -19,9 +19,13 @@
   "/signup",
   "/u/:universe",
   "/u/:universe/alliance",
+  "/u/:universe/alliance/:item",
+  "/u/:universe/alliance/:item/:section",
   "/u/:universe/alliance/create",
   "/u/:universe/alliance/discover",
   "/u/:universe/b/:body/alliance",
+  "/u/:universe/b/:body/alliance/:item",
+  "/u/:universe/b/:body/alliance/:item/:section",
   "/u/:universe/b/:body/alliance/create",
   "/u/:universe/b/:body/alliance/discover",
   "/u/:universe/b/:body/briefing",
@@ -47,6 +51,7 @@
   "/u/:universe/b/:body/resources/:item",
   "/u/:universe/b/:body/rewards",
   "/u/:universe/b/:body/settings",
+  "/u/:universe/b/:body/settings/:item",
   "/u/:universe/b/:body/shipyard",
   "/u/:universe/b/:body/shipyard/:item",
   "/u/:universe/briefing",
@@ -64,5 +69,6 @@
   "/u/:universe/reports/:item",
   "/u/:universe/research",
   "/u/:universe/rewards",
-  "/u/:universe/settings"
+  "/u/:universe/settings",
+  "/u/:universe/settings/:item"
 ]

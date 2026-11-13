@@ -27,3 +27,11 @@
 .leading {
   justify-self: start;
 }
+@media (max-width: 639px) {
+  .withLeading:not(.centered) {
+    display: flex;
+  }
+  .withLeading:not(.centered) h2 {
+    flex: 1 1 10rem;
+  }
+}
