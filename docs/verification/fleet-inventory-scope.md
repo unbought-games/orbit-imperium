@@ -121,3 +121,12 @@ and count/button geometry at 390/1280. All six affected application checks
 passed on `cbaefdeb` plus these changes (bundle 4.755s; browser 13.1s), including
 320px density, incoming access and mission detail actions. Fresh desktop/mobile
 page and detail captures were inspected. Lint, formatting and diff checks passed.
+
+Header follow-up CI at `8754f3ca` (run `43496705047`, attempt 1,
+job `132134302841`) exposed two obsolete expectations in the tabbed-page density
+case: it explicitly required zero visible Fleets headings at 390/1280. Updated
+that exact expectation to one, preserving all route-focus, navigation and other
+page-title assertions. This is the owner's requested behavior change, not a
+flaky-test repair. History and the repair ledger were checked. Both affected
+cases pass locally (bundle 4.668s; browser 10.5s); no production changes or
+screenshot refresh were needed for this test-only correction.

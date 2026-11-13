@@ -405,7 +405,7 @@ for (const width of [390, 1280]) {
       await expect(page.locator('main h1')).toHaveText(title)
       await expect(page.locator('main h1')).toBeFocused()
       await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
-      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' ? 1 : 0)
+      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' || route === 'fleets' ? 1 : 0)
       if (route === 'fleets') {
         await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
         await expect(page.getByRole('button', { name: /^Fleet slots:/ })).toBeVisible()
