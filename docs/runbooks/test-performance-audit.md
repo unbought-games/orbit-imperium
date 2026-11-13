@@ -1956,3 +1956,8 @@ inward kept document width at 390px across the same animation samples. The
 browser assertion and its test history are intact. Both briefing viewports and
 the responsive Empire overview passed locally (4.55s bundle preparation and
 14.4s browser runner). The temporary diagnostic was removed.
+
+Review of `29573120` identified the 8px shell gutter at 320px. The existing
+shortcut check reproduced 3px of overflow when its animations were held at the
+glow's peak. The inset now accounts for the shell gutter, and the browser check
+asserts zero overflow at that phase on the narrow viewport.

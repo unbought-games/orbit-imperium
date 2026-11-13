@@ -151,7 +151,8 @@
 }
 @media (max-width: 767px) {
   .icon {
-    inset-inline-end: 0;
+    /* Reserve space for the glow at full scale, even in the narrow shell. */
+    inset-inline-end: max(0px, calc(12px - var(--shell-inline-gutter, 0px)));
   }
 }
 @keyframes breathe {
