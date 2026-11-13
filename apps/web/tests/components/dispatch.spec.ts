@@ -17,6 +17,66 @@ import {
 } from './dispatch-driver'
 const binding = { player }
 
+test('Enter reviews the fleet, then sends once from the focused review panel', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  await page.getByLabel('Small Cargo · 2 available').press('Enter')
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  await expect(quote).toBeFocused()
+  expect((await counts(page)).launches).toBe(0)
+
+  // Holding the review key or confirming IME text must not launch the fleet.
+  await quote.dispatchEvent('keydown', { key: 'Enter', repeat: true })
+  await quote.dispatchEvent('keydown', { key: 'Enter', isComposing: true })
+  await page.keyboard.press('Shift+Enter')
+  expect((await counts(page)).launches).toBe(0)
+  await expect(quote).toBeFocused()
+
+  await page.keyboard.press('Enter')
+  await expect(
+    page.getByRole('group', { name: 'Fleet dispatch result' }),
+  ).toContainText('Fleet sent.')
+  await expect(quote).toHaveCount(0)
+  expect((await counts(page)).launches).toBe(1)
+})
+
+test('Enter respects a disabled review action and the send button retains native keyboard activation', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount)
+  await review(page).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  const send = quote.getByRole('button', { name: /^Transport to/ })
+  await expect(quote).toBeFocused()
+  const { view } = await snapshot(page)
+  await page.evaluate(
+    (missions) =>
+      window.dispatchScene!.configure({
+        view: { missions: { ...missions, fleet_slots: '0' } },
+      }),
+    view.missions,
+  )
+  await expect(send).toBeDisabled()
+  await page.keyboard.press('Enter')
+  await expect(quote).toBeVisible()
+  expect((await counts(page)).launches).toBe(0)
+
+  await page.evaluate(
+    (missions) => window.dispatchScene!.configure({ view: { missions } }),
+    view.missions,
+  )
+  await expect(send).toBeEnabled()
+  await send.focus()
+  await page.keyboard.press('Enter')
+  await expect(
+    page.getByRole('group', { name: 'Fleet dispatch result' }),
+  ).toContainText('Fleet sent.')
+  expect((await counts(page)).launches).toBe(1)
+})
+
 // These are actual Dispatch components/hooks with in-memory external ports, not application fixtures.
 test.afterEach(async ({ page }) => {
   const mounted = await page.evaluate(() => !!window.dispatchScene)

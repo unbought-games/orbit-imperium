@@ -92,6 +92,22 @@ export function DispatchReview({
       tabIndex={-1}
       ref={panelRef}
       className={styles.review}
+      onKeyDown={(event) => {
+        if (
+          event.key !== 'Enter' ||
+          event.target !== event.currentTarget ||
+          event.repeat ||
+          event.nativeEvent.isComposing ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey ||
+          disabled
+        )
+          return
+        event.preventDefault()
+        onSend()
+      }}
     >
       <div className={styles.reviewSummary}>
         <Heading level={2} className={styles.reviewHeading}>
