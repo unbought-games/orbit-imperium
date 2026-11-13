@@ -18,7 +18,9 @@ Scope: owner-approved feedback #164 and #171. Based on main
 - The list link used wrapping flex layout for activity, archive status and
   identity, so short identities joined the first line. Explicit activity and
   identity rows now preserve the hierarchy for combat, espionage and delivery.
-  Coordinates and mobile selection also have explicit grid positions.
+  Coordinates flow inline with identity on the second line; only mobile selection
+  uses a separate grid column. Report title, identity, delivery route, coordinates,
+  resource preview and timestamp share a 14px text size.
 - HUD inbox/title descriptions already use separate block elements. HUD detail
   uses the same corrected ReportObservation as full reports. No new enemy or
   current-world information is fetched or inferred.
@@ -30,7 +32,9 @@ Scope: owner-approved feedback #164 and #171. Based on main
 - `report-readability.spec.ts` mounts production ReportListRow and
   ReportObservation with recipient-visible fixtures. It verifies title/identity
   geometry, overflow at 1440×1000 and 390×1000, separate loot/debris/cargo groups,
-  checkbox isolation, archive availability and opening through the native link.
+  matching row text sizes, inline coordinates beside short identities, checkbox
+  and coordinate-link isolation, archive availability and opening through the native
+  report link.
 - Existing shared-combat component tests cover visible and redacted locations.
 - The initial browser fixture had an overly broad identity selector matching the
   unread dot. Its one repair excludes aria-labeled status marks. Subsequent runs
@@ -64,3 +68,19 @@ boundary; the application HUD detail was not established by this probe.
 The probe also had two invocation/setup failures (an unconfigured project name
 and a file outside the routine test allowlist), before running any assertions.
 No tests, fixture files or runner configuration from that probe are shipped.
+
+## Owner readability follow-up
+
+The owner requested inline target coordinates beside player/planet identity and
+uniform report-row text sizes. Identity and coordinates now share ordinary inline
+flow below the title. The report link still spans the row, with the independent
+coordinate control above it; no links are nested. Updated component coverage checks
+font sizes, inline geometry, natural narrow-screen wrapping and independent link
+activation. Fresh 1440×1000 and 390×1000 captures replace the earlier list visuals.
+
+Follow-up validation: the updated component case passed (3.842s preparation,
+2.0s browser execution, one worker), including normal/mobile selection states,
+inline coordinate navigation and equal font sizes. Application and component
+TypeScript checks, lint, changed-file formatting and whitespace checks passed.
+An initial fixture capability omitted the required `reason: Available`; the
+component typecheck identified it and it was corrected before pushing.

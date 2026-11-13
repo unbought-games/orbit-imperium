@@ -41,6 +41,8 @@
   align-items: center;
   column-gap: 8px;
   padding: 4px 0;
+  min-height: 44px;
+  font-size: 0.875rem;
   padding-inline-start: 16px;
   margin: 0;
   border: 0;
@@ -57,7 +59,7 @@
   gap: 3px 8px;
   min-width: 0;
   max-width: 100%;
-  min-height: 44px;
+  min-height: 0;
   color: var(--text-primary);
   text-decoration: none;
 }
@@ -201,8 +203,15 @@
 .rowHeading > .selection {
   grid-row: 1 / span 2;
 }
-.rowHeading > .location {
+.reportIdentity {
   grid-column: -2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reportRow .location,
+.reportRow .rowTime,
+.reportRow .preview {
+  font-size: inherit;
 }
 
 .fact {
@@ -261,7 +270,6 @@
   max-width: 100%;
   overflow-wrap: anywhere;
   color: var(--text-muted);
-  font-size: 0.75rem;
 }
 
 .rowActions {
@@ -274,12 +282,7 @@
   grid-column: 1;
   justify-self: end;
 }
-@media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  .reportLink {
-    /* The stretched link already fills the row; keep wrapped headings compact. */
-    min-height: 24px;
-  }
-}
+
 .selection {
   display: flex;
   align-items: center;

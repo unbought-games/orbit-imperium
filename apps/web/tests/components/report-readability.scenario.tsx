@@ -99,10 +99,14 @@ function ReportsScene() {
     )
     const view = readyFixture(4).snapshot.view
     view.binding = { ...view.binding, player: 'defender' }
+    view.capabilities = [
+      { capability: 'Galaxy', enabled: true, reason: 'Available' },
+    ]
     coordinator.store.setState({ ready: true, view, binding: view.binding })
     return coordinator
   })
-  const [selected, select] = useState(false)
+  const [selected, select] = useState(new Set<string>())
+  const [selecting, setSelecting] = useState(false)
   const [opened, open] = useState(false)
   const mobile = useMobileLayout()
   const commands = useCommands(null)
@@ -119,6 +123,11 @@ function ReportsScene() {
     >
       <main style={{ padding: 16, maxWidth: 1000, margin: '0 auto' }}>
         <h1>Reports</h1>
+        {mobile && (
+          <button onClick={() => setSelecting(!selecting)}>
+            Toggle mobile selection
+          </button>
+        )}
         <section aria-label="Report list">
           {previews.map((preview, index) => (
             <ReportListRow
@@ -138,8 +147,18 @@ function ReportsScene() {
               now={1000000}
               disabled={false}
               desktopSelection={!mobile}
-              selected={selected}
-              onSelect={(value) => select(value)}
+              selected={selected.has(id(70 + index))}
+              onSelect={
+                !mobile || selecting
+                  ? (value) =>
+                      select((current) => {
+                        const next = new Set(current)
+                        if (value) next.add(id(70 + index))
+                        else next.delete(id(70 + index))
+                        return next
+                      })
+                  : undefined
+              }
               onOpen={() => open(true)}
             />
           ))}

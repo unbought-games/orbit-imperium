@@ -157,31 +157,33 @@ export function ReportListRow({
               </strong>
               {report.hidden && <span>Archived</span>}
             </span>
-            {route && <span className={styles.deliveryRoute}>{route}</span>}
-            {identity && (
-              <span className={styles.identity} title={identity}>
-                {identity}
-              </span>
-            )}
           </Link>
-          {preview.coordinates && report.preview?.kind === 'SiteEncounter' && (
-            <span>{preview.location}</span>
+          {(route || identity || preview.coordinates) && (
+            <div className={styles.reportIdentity}>
+              {route && <span className={styles.deliveryRoute}>{route}</span>}
+              {identity && <span className={styles.identity}>{identity}</span>}
+              {identity && preview.coordinates && ' '}
+              {preview.coordinates &&
+                report.preview?.kind === 'SiteEncounter' && (
+                  <span>{preview.location}</span>
+                )}
+              {preview.coordinates &&
+                !route &&
+                report.preview?.kind !== 'SiteEncounter' && (
+                  <CoordinateLink
+                    at={preview.coordinates}
+                    origin={origin}
+                    target={
+                      preview.targetKind ??
+                      (report.kind === 'Harvested' ? 'debris' : 'planet')
+                    }
+                    className={styles.location}
+                  >
+                    {coordinates({ coordinates: preview.coordinates })}
+                  </CoordinateLink>
+                )}
+            </div>
           )}
-          {preview.coordinates &&
-            !route &&
-            report.preview?.kind !== 'SiteEncounter' && (
-              <CoordinateLink
-                at={preview.coordinates}
-                origin={origin}
-                target={
-                  preview.targetKind ??
-                  (report.kind === 'Harvested' ? 'debris' : 'planet')
-                }
-                className={styles.location}
-              >
-                {coordinates({ coordinates: preview.coordinates })}
-              </CoordinateLink>
-            )}
         </div>
         {(sort === 'fleet' || sort === 'defenses') && (
           <span className={styles.preview}>
