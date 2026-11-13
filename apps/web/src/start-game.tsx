@@ -1,3 +1,4 @@
+import { matchPublicRoute } from './public-route-patterns'
 import { startAnalytics } from './adapters/optional-services'
 import { configureInstalledViewport } from './adapters/installed-viewport'
 import { createRoot } from 'react-dom/client'
@@ -44,9 +45,7 @@ export async function startGame() {
     root.render(<DetailPlayground />)
     return
   }
-  const empireProfile = /^\/profiles\/empire\/([0-9a-f-]+)\/?$/i.exec(
-    location.pathname,
-  )
+  const empireProfile = matchPublicRoute('empire', location.pathname)
   if (empireProfile) {
     const { EmpireProfilePage } = await import(
       './features/empire-history/profile-page'
@@ -54,7 +53,7 @@ export async function startGame() {
     root.render(<EmpireProfilePage player={empireProfile[1]} />)
     return
   }
-  const orbitProfile = /^\/profiles\/([0-9a-f-]+)\/?$/i.exec(location.pathname)
+  const orbitProfile = matchPublicRoute('profile', location.pathname)
   if (orbitProfile || location.pathname === '/profile') {
     const { OrbitProfilePage } = await import(
       './features/empire-history/overview-page'
@@ -62,9 +61,7 @@ export async function startGame() {
     root.render(<OrbitProfilePage profile={orbitProfile?.[1]} />)
     return
   }
-  const commemoration = /^\/commemorations\/([0-9a-f-]+)\/?$/i.exec(
-    location.pathname,
-  )
+  const commemoration = matchPublicRoute('commemoration', location.pathname)
   if (commemoration) {
     const { CommemorationPage } = await import(
       './features/empire-history/commemoration-page'
@@ -72,7 +69,7 @@ export async function startGame() {
     root.render(<CommemorationPage publication={commemoration[1]} />)
     return
   }
-  const invitation = /^\/invite\/([^/]+)\/([^/]+)\/?$/i.exec(location.pathname)
+  const invitation = matchPublicRoute('invitation', location.pathname)
   if (invitation) {
     const { PublicAlliancePage } = await import(
       './features/alliances/public-page'
@@ -86,7 +83,10 @@ export async function startGame() {
     void startAnalytics()
     return
   }
-  const directory = /^\/alliances(?:\/([^/]+))?\/?$/i.exec(location.pathname)
+  const directory =
+    location.pathname.replace(/\/$/, '') === '/alliances'
+      ? ['/alliances']
+      : matchPublicRoute('directory', location.pathname)
   if (directory) {
     const { PublicRecruitmentDirectory } = await import(
       './features/alliances/recruitment-directory'
@@ -95,9 +95,7 @@ export async function startGame() {
     void startAnalytics()
     return
   }
-  const publicAlliance = /^\/alliances\/([^/]+)\/([^/]+)\/?$/i.exec(
-    location.pathname,
-  )
+  const publicAlliance = matchPublicRoute('alliance', location.pathname)
   if (publicAlliance) {
     void startAnalytics()
     const { PublicAlliancePage } = await import(

@@ -1,4 +1,5 @@
-//! Optional first-party measurement. All remote calls are bounded and independent of game commands.
+mod attribution;
+// Optional first-party measurement. All remote calls are bounded and independent of game commands.
 use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, State},
@@ -87,6 +88,7 @@ pub struct Integration {
     oidc: Option<unbought_auth::RelyingParty>,
     origin: String,
     permits: Semaphore,
+    routes: Vec<String>,
 }
 impl Integration {
     pub fn from_env(
@@ -134,7 +136,16 @@ impl Integration {
             oidc,
             origin,
             permits: Semaphore::new(4),
+            routes: serde_json::from_str(include_str!(
+                "../../../apps/web/src/analytics-routes.json"
+            ))?,
         })))
+    }
+    pub fn instrument(self: &Arc<Self>, router: Router) -> Router {
+        router.layer(axum::middleware::from_fn_with_state(
+            self.clone(),
+            attribution::middleware,
+        ))
     }
     fn public(&self) -> Value {
         json!({"endpoint":self.config.endpoint.trim_end_matches('/'),"propertyId":self.config.property_id,"publicToken":self.config.public_token,"policyVersion":self.config.policy_version,"environment":self.config.environment,"handoffOrigins":self.config.handoff_origins})

@@ -173,6 +173,7 @@ pub(super) async fn callback<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
     Query(q): Query<Callback>,
+    attribution: Option<Extension<orbit_application::ServerAttribution>>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
 ) -> Result<Response, Problem> {
     let rp = s.oidc.as_ref().ok_or(ServiceError::Forbidden)?;
@@ -194,17 +195,26 @@ pub(super) async fn callback<S: IdentityStore>(
     }
     let session = s
         .updates
-        .complete_oidc_login(
+        .complete_oidc_login_attributed(
             tokens,
             &token_digest(&secret),
             &csrf,
             token(&h).map(token_digest),
+            attribution.as_ref().map(|Extension(value)| value.0.clone()),
         )
         .await
         .map_err(ServiceError::from)?;
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
     let path = hosted_auth::finish_entry(path, hosted_auth::universe(&s), |universe| {
-        oidc_enrollment::enroll(&s, session, universe, source, None, None)
+        oidc_enrollment::enroll(
+            &s,
+            session,
+            universe,
+            source,
+            None,
+            None,
+            attribution.map(|Extension(value)| value.0),
+        )
     })
     .await;
     Ok((
@@ -326,6 +336,7 @@ pub(super) async fn enroll<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
+    attribution: Option<Extension<orbit_application::ServerAttribution>>,
     ApiJson(body): ApiJson<Enrollment>,
 ) -> Result<Response, Problem> {
     // Local accounts can rejoin their configured universe after empire removal.
@@ -369,6 +380,7 @@ pub(super) async fn enroll<S: IdentityStore>(
         source,
         body.recruitment,
         expected_epoch,
+        attribution.map(|Extension(value)| value.0),
     )
     .await
 }

@@ -173,3 +173,85 @@ async fn authoritative_identity_and_enrollment_are_immutable_and_recoverable() {
     assert_eq!(after_enrollment, 200);
     pool.close().await;
 }
+
+#[tokio::test]
+async fn server_auth_and_enrollment_capture_without_browser_bridge() {
+    let url = std::env::var("TEST_DATABASE_URL").unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let store = PgStore::connect(&url).await.unwrap();
+    store.migrate().await.unwrap();
+    let subject = Uuid::new_v4().to_string();
+    let property = Uuid::new_v4();
+    let context = json!({"config":{"propertyId":property,"policyVersion":1,"environment":"test"},"journey":{"visit_id":Uuid::new_v4(),"visitor_id":Uuid::new_v4(),"source":{"page":"https://game.example/invite/:code","route":"https://game.example/invite/:code","referrer":null,"campaign":{"utm_source":"invitation","utm_medium":"referral"}}}});
+    let tokens = unbought_auth::Tokens {
+        client_id: "fixture".into(),
+        identity: unbought_auth::Identity {
+            issuer: "https://accounts.example/api/auth".into(),
+            subject: subject.clone(),
+            username: format!("server_{}", &subject[..8]),
+            email_verified: false,
+            supporter_tier: None,
+            session_id: Uuid::new_v4().to_string(),
+            issued_at: unbought_auth::now(),
+            expires_at: unbought_auth::now() + 300,
+        },
+        access_token: "synthetic".into(),
+        refresh_token: None,
+        nonce: "synthetic".into(),
+        validated_at: unbought_auth::now(),
+    };
+    let session = store
+        .complete_oidc_login_attributed(
+            tokens.clone(),
+            &unbought_auth::digest(&subject),
+            "csrf",
+            None,
+            Some(context.clone()),
+        )
+        .await
+        .unwrap();
+    let authentication: serde_json::Value = sqlx::query_scalar("SELECT payload FROM analytics_delivery WHERE account=$1 AND payload->>'name'='account_authenticated'")
+        .bind(session.account.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(authentication["campaign"]["utm_source"], "invitation");
+    assert_eq!(authentication["subject"]["id"], subject);
+    let universe = Uuid::new_v4().into();
+    let policy = store
+        .ensure_signup_universe(Some(universe), Default::default(), Some(10))
+        .await
+        .unwrap();
+    store
+        .enroll_oidc_attributed(session.account, policy, None, None, Some(context.clone()))
+        .await
+        .unwrap();
+    let payload: serde_json::Value = sqlx::query_scalar("SELECT payload FROM analytics_delivery WHERE account=$1 AND payload->>'category'='enrollment'")
+        .bind(session.account.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(payload["subject"]["id"], subject);
+    assert_eq!(
+        payload["context"]["route"],
+        "https://game.example/invite/:code"
+    );
+    assert_eq!(
+        payload["campaign"],
+        json!({"utm_source":"invitation","utm_medium":"referral"})
+    );
+    store
+        .enroll_oidc_attributed(session.account, policy, None, None, Some(context.clone()))
+        .await
+        .unwrap();
+    let again:Vec<serde_json::Value> = sqlx::query_scalar("SELECT payload FROM analytics_delivery WHERE account=$1 AND payload->>'category'='enrollment'")
+        .bind(session.account.0).fetch_all(&pool).await.unwrap();
+    assert_eq!(again, vec![payload]);
+    let other = store
+        .ensure_signup_universe(Some(Uuid::new_v4().into()), Default::default(), Some(10))
+        .await
+        .unwrap();
+    // No request context means collection was disabled or not configured.
+    store
+        .enroll_oidc_attributed(session.account, other, None, None, None)
+        .await
+        .unwrap();
+    let count:i64=sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1 AND payload->>'category'='enrollment'").bind(session.account.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(count, 1);
+    assert!(!authentication.to_string().contains("synthetic"));
+    pool.close().await;
+}

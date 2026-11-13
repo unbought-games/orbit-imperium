@@ -90,14 +90,15 @@ impl PgStore {
         request: Registration,
         existing: Option<AccountId>,
     ) -> Result<AuthenticatedSession, StoreError> {
-        self.enroll_inner(request, existing, None, None).await
+        self.enroll_inner(request, existing, None, None, None).await
     }
     pub(crate) async fn enroll_machine(
         &self,
         request: Registration,
         sleep: u16,
     ) -> Result<AuthenticatedSession, StoreError> {
-        self.enroll_inner(request, None, Some(sleep), None).await
+        self.enroll_inner(request, None, Some(sleep), None, None)
+            .await
     }
     pub(crate) async fn enroll_inner(
         &self,
@@ -105,6 +106,7 @@ impl PgStore {
         existing: Option<AccountId>,
         machine_sleep: Option<u16>,
         expected_epoch: Option<Epoch>,
+        attribution: Option<serde_json::Value>,
     ) -> Result<AuthenticatedSession, StoreError> {
         let Registration {
             recruitment,
@@ -312,6 +314,17 @@ impl PgStore {
                 return Err(StoreError::UniverseFull);
             }
             insert_member(&mut tx, u, &member, &password_hash, at, &rules).await?;
+            if let Some(context) = &attribution {
+                crate::analytics::capture_enrollment(
+                    &mut tx,
+                    member.account,
+                    u.0,
+                    member.player,
+                    at,
+                    context,
+                )
+                .await?;
+            }
             let account = AccountId(member.account);
             if let Some(sleep) = machine_sleep {
                 crate::bots::enroll(

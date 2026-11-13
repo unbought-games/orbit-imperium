@@ -1,5 +1,6 @@
 use crate::*;
 use orbit_application::*;
+use sha2::Digest;
 use unbought_auth::{Identity, LoginTransaction, Logout, RelyingParty, Tokens};
 
 // Bound both request waiting and admitted work. A durable claim prevents token
@@ -43,6 +44,7 @@ impl PgStore {
         digest: &str,
         csrf: &str,
         previous: Option<String>,
+        attribution: Option<serde_json::Value>,
     ) -> Result<AuthenticatedSession, StoreError> {
         let mut tx = self.begin_tx(self.admission_pool()?).await?;
         let identity = &tokens.identity;
@@ -61,6 +63,10 @@ impl PgStore {
         let account = existing.unwrap_or_else(uuid::Uuid::new_v4);
         sqlx::query("INSERT INTO accounts(id,name,password_hash) VALUES($1,$2,'!oidc') ON CONFLICT(id) DO UPDATE SET name=excluded.name").bind(account).bind(&identity.username).execute(&mut *tx).await.map_err(db_error)?;
         sqlx::query("INSERT INTO oidc_identity(issuer,subject,account) VALUES($1,$2,$3) ON CONFLICT DO NOTHING").bind(&identity.issuer).bind(&identity.subject).bind(account).execute(&mut *tx).await.map_err(db_error)?;
+        if let Some(context) = attribution {
+            let subject = serde_json::json!({"namespace": format!("oidc_{}", hex::encode(sha2::Sha256::digest(identity.issuer.as_bytes()))), "id": identity.subject});
+            crate::analytics::capture_authentication(&mut tx, account, subject, &context).await?;
+        }
         if let Some(old) = previous {
             sqlx::query("WITH revoked AS (DELETE FROM sessions WHERE digest=$1 RETURNING account) SELECT pg_notify('orbit_game_updates','account:'||account::text) FROM revoked")
                 .bind(old)

@@ -160,6 +160,16 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<AuthenticatedSession, StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
     }
+    fn complete_oidc_login_attributed(
+        &self,
+        tokens: unbought_auth::Tokens,
+        digest: &str,
+        csrf: &str,
+        previous: Option<String>,
+        _attribution: Option<serde_json::Value>,
+    ) -> impl std::future::Future<Output = Result<AuthenticatedSession, StoreError>> + Send {
+        self.complete_oidc_login(tokens, digest, csrf, previous)
+    }
     fn revalidate_oidc(
         &self,
         _digest: &str,
@@ -181,6 +191,24 @@ pub trait IdentityStore: Send + Sync {
         _event: unbought_auth::Logout,
     ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
         async { Err(StoreError::Unavailable) }
+    }
+    fn enroll_oidc_attributed(
+        &self,
+        account: AccountId,
+        policy: SignupPolicy,
+        intent: Option<RecruitmentIntent>,
+        epoch: Option<Epoch>,
+        _attribution: Option<serde_json::Value>,
+    ) -> impl std::future::Future<Output = Result<(), StoreError>> + Send {
+        async move {
+            if let Some(epoch) = epoch {
+                self.enroll_oidc_at_epoch(account, policy, intent, epoch)
+                    .await
+            } else {
+                self.enroll_oidc_with_recruitment(account, policy, intent)
+                    .await
+            }
+        }
     }
     fn enroll_oidc_with_recruitment(
         &self,
