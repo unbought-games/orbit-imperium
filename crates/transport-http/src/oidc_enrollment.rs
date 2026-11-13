@@ -8,6 +8,7 @@ pub(super) async fn enroll<S: IdentityStore>(
     source: IpAddr,
     recruitment: Option<RecruitmentIntent>,
     expected_epoch: Option<Epoch>,
+    attribution: Option<serde_json::Value>,
 ) -> Result<Response, Problem> {
     if session.memberships.iter().any(|m| m.universe == universe) {
         if let Some(epoch) = expected_epoch {
@@ -60,16 +61,16 @@ pub(super) async fn enroll<S: IdentityStore>(
     ) {
         return Ok(rate_limited(retry));
     }
-    // Storage rechecks the current admission policy atomically with enrollment.
-    if let Some(epoch) = expected_epoch {
-        s.updates
-            .enroll_oidc_at_epoch(session.account, policy, recruitment, epoch)
-            .await
-    } else {
-        s.updates
-            .enroll_oidc_with_recruitment(session.account, policy, recruitment)
-            .await
-    }
-    .map_err(ServiceError::from)?;
+    // Storage rechecks admission and snapshots analytics in the membership transaction.
+    s.updates
+        .enroll_oidc_attributed(
+            session.account,
+            policy,
+            recruitment,
+            expected_epoch,
+            attribution,
+        )
+        .await
+        .map_err(ServiceError::from)?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }

@@ -1,3 +1,5 @@
+import { commandId } from './command-id'
+import routes from '../analytics-routes.json'
 import {
   init,
   takeHandoff,
@@ -8,48 +10,8 @@ let client: AnalyticsClient | undefined
 let ready: Promise<void> | undefined
 let active: Promise<void> | undefined
 let boundVisit: string | undefined
-let accountsOrigin: string | undefined
-let navigatingToLogin = false
 const boundary = 'orbit.analytics.account-boundary.v1'
-const routes = [
-  '/',
-  '/login',
-  '/signup',
-  '/join/:universe',
-  '/alliances',
-  '/alliances/:universe',
-  '/alliances/:universe/:alliance',
-  '/invite/:universe/:token',
-  '/u/:universe/alliance',
-  '/updates/:article',
-  '/u/:universe',
-  '/u/:universe/overview',
-  '/u/:universe/settings',
-  '/u/:universe/research',
-  '/u/:universe/galaxy',
-  '/u/:universe/dispatch',
-  '/u/:universe/fleets',
-  '/u/:universe/fleets/:item',
-  '/u/:universe/reports',
-  '/u/:universe/reports/:item',
-  '/u/:universe/b/:body/overview',
-  '/u/:universe/b/:body/menu',
-  '/u/:universe/b/:body/rewards',
-  '/u/:universe/b/:body/resources',
-  '/u/:universe/b/:body/facilities',
-  '/u/:universe/b/:body/shipyard',
-  '/u/:universe/b/:body/defense',
-  '/u/:universe/b/:body/resources/:item',
-  '/u/:universe/b/:body/facilities/:item',
-  '/u/:universe/b/:body/research/:item',
-  '/u/:universe/b/:body/shipyard/:item',
-  '/u/:universe/b/:body/defense/:item',
-  '/u/:universe/b/:body/research',
-  '/u/:universe/b/:body/galaxy',
-  '/u/:universe/b/:body/dispatch',
-  '/u/:universe/b/:body/fleets',
-  '/u/:universe/b/:body/fleets/:item',
-]
+
 function disabled() {
   try {
     return localStorage.getItem('orbit.analytics.disabled') === 'true'
@@ -94,16 +56,11 @@ export function startAnalytics() {
       return
     const state = await status()
     if (!state.enabled) return
-    const auth = await fetch('/api/auth/config')
-      .then((r) => r.json())
-      .catch(() => ({}))
-    accountsOrigin = auth.accounts_url
-      ? new URL(auth.accounts_url).origin
-      : undefined
     client = init({
       ...state.config,
       routes,
       profile: 'identified',
+      initialPageView: false,
       respectPreferenceSignals: true,
       choice: {
         enabled: !disabled(),
@@ -124,34 +81,6 @@ export function startAnalytics() {
     await client.ready
     if (handoff) await client.redeemHandoff(handoff).catch(() => {})
     linkJourneys(client, Object.keys(state.config.handoffOrigins))
-    document.addEventListener('click', (event) => {
-      if (
-        event.defaultPrevented ||
-        event.button ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        event.shiftKey
-      )
-        return
-      const link = event
-        .composedPath()
-        .find((el) => el instanceof HTMLAnchorElement) as
-        | HTMLAnchorElement
-        | undefined
-      if (!link || (link.target && link.target !== '_self') || link.download)
-        return
-      const url = new URL(link.href)
-      if (
-        url.origin !== location.origin ||
-        !['/api/auth/login', '/api/auth/entry'].includes(url.pathname)
-      )
-        return
-      event.preventDefault()
-      if (navigatingToLogin) return
-      navigatingToLogin = true
-      void prepareLogin(url).then((target) => location.assign(target))
-    })
     ;(window as Window & { orbitAnalytics?: unknown }).orbitAnalytics = {
       disable: disableAnalytics,
       coverage: () => client?.getCoverage(),
@@ -167,46 +96,6 @@ export function startAnalytics() {
     await bindAnalytics()
   })().catch(() => {})
   return ready
-}
-async function prepareLogin(url: URL): Promise<string> {
-  if (!client || !accountsOrigin) return url.href
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const controller = new AbortController()
-  try {
-    return await Promise.race([
-      (async () => {
-        const handoff = await client!.createHandoff(accountsOrigin!)
-        if (controller.signal.aborted) return url.href
-        const response = await fetch('/api/auth/login-journey', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            handoff,
-            return_to: url.searchParams.get('return_to'),
-            verify: url.searchParams.get('verify') === 'true',
-            entry: url.pathname === '/api/auth/entry',
-            signup: url.searchParams.get('signup') === 'true',
-          }),
-          signal: controller.signal,
-        })
-        if (!response.ok) return url.href
-        const result = await response.json()
-        const target = new URL(result.url)
-        return target.origin === accountsOrigin ? target.href : url.href
-      })(),
-      new Promise<string>((resolve) => {
-        timer = setTimeout(() => {
-          controller.abort()
-          resolve(url.href)
-        }, 1500)
-      }),
-    ])
-  } catch {
-    return url.href
-  } finally {
-    clearTimeout(timer)
-    controller.abort()
-  }
 }
 export function bindAnalytics() {
   if (active) return active
@@ -259,6 +148,8 @@ export function resetAnalytics() {
   }
 }
 export function disableAnalytics(disable: boolean) {
+  document.cookie = `orbit_analytics_epoch=${commandId(crypto)}; Path=/; SameSite=Lax; Max-Age=31536000`
+  document.cookie = `orbit_analytics_disabled=${disable}; Path=/; SameSite=Lax; Max-Age=31536000${location.protocol === 'https:' ? '; Secure' : ''}`
   try {
     localStorage.setItem('orbit.analytics.disabled', String(disable))
   } catch {

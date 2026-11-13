@@ -192,3 +192,35 @@ The new `oidc` database test stays in the existing native PostgreSQL test class.
 The cross-origin two-web/two-worker/Orbit/second-client acceptance lives in the
 accounts repository and runs only when explicitly requested. The existing Orbit
 full-system policy is unchanged.
+
+## Server-side acquisition analytics
+
+When optional analytics is configured, application middleware records HTML page
+requests and preserves the first eligible source in a signed HttpOnly cookie.
+Recognized invitation routes supply `invitation` / `referral` without changing
+share links. Existing explicit campaign labels take precedence; otherwise an
+external referrer is retained and missing evidence stays unknown.
+
+Normal OAuth redirects carry bounded source metadata to the configured Accounts
+origin. They do not depend on a browser analytics script or a browser-issued
+handoff. Accounts snapshots source and signup method with account creation. Orbit
+captures authenticated login and new membership analytics in their respective
+transactions, using verified issuer/subject mappings. Retries and the optional
+browser identity bridge share stable fact keys. GPC, DNT and the application
+collection-disable cookie prevent request capture; sign-out clears the journey.
+
+The browser SDK suppresses initial document views already recorded by the server
+and continues observing SPA navigation. `scripts/analytics-routes.mjs` derives
+patterns from actual file routes, public page dispatch patterns and server routes;
+`npm run routes` and the build regenerate the shared manifest. Named patterns
+appear in `context.route`; `context.page` retains ordinary entity paths and
+unmatched paths. Invite/credential parameters keep their names (`:code`, `:token`)
+instead of their values, including referrers. Queries and fragments are omitted.
+
+Server page requests include repeat visits and link previews; they do not by
+themselves count unique people. Capture failures/saturation are logged, while
+committed auth/enrollment facts are retained in the transactional outbox.
+Migration 0046 permits anonymous page entries in that outbox. Its existing worker
+handles bounded batches, retries and quarantine. Deploy [analytics collector PR #7](https://github.com/unbought-games/analytics/pull/7)
+and the Accounts server-acquisition change before depending on the new fields.
+No release or deployment is performed by this implementation.

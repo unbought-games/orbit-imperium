@@ -180,7 +180,19 @@ impl IdentityStore for PgStore {
         csrf: &str,
         previous: Option<String>,
     ) -> Result<AuthenticatedSession, StoreError> {
-        self.oidc_complete(tokens, digest, csrf, previous).await
+        self.oidc_complete(tokens, digest, csrf, previous, None)
+            .await
+    }
+    async fn complete_oidc_login_attributed(
+        &self,
+        tokens: unbought_auth::Tokens,
+        digest: &str,
+        csrf: &str,
+        previous: Option<String>,
+        attribution: Option<serde_json::Value>,
+    ) -> Result<AuthenticatedSession, StoreError> {
+        self.oidc_complete(tokens, digest, csrf, previous, attribution)
+            .await
     }
     async fn revalidate_oidc(
         &self,
@@ -220,6 +232,17 @@ impl IdentityStore for PgStore {
     ) -> Result<(), StoreError> {
         self.oidc_revoke(issuer, client, event).await
     }
+    async fn enroll_oidc_attributed(
+        &self,
+        account: AccountId,
+        policy: SignupPolicy,
+        recruitment: Option<RecruitmentIntent>,
+        epoch: Option<Epoch>,
+        attribution: Option<serde_json::Value>,
+    ) -> Result<(), StoreError> {
+        self.enroll_oidc_expected(account, policy, recruitment, epoch, attribution)
+            .await
+    }
     async fn enroll_oidc(
         &self,
         account: AccountId,
@@ -234,7 +257,7 @@ impl IdentityStore for PgStore {
         policy: SignupPolicy,
         recruitment: Option<RecruitmentIntent>,
     ) -> Result<(), StoreError> {
-        self.enroll_oidc_expected(account, policy, recruitment, None)
+        self.enroll_oidc_expected(account, policy, recruitment, None, None)
             .await
     }
     async fn game_invitation_destination(
@@ -251,7 +274,7 @@ impl IdentityStore for PgStore {
         recruitment: Option<RecruitmentIntent>,
         epoch: Epoch,
     ) -> Result<(), StoreError> {
-        self.enroll_oidc_expected(account, policy, recruitment, Some(epoch))
+        self.enroll_oidc_expected(account, policy, recruitment, Some(epoch), None)
             .await
     }
 
@@ -347,6 +370,7 @@ impl PgStore {
         policy: SignupPolicy,
         recruitment: Option<RecruitmentIntent>,
         epoch: Option<Epoch>,
+        attribution: Option<serde_json::Value>,
     ) -> Result<(), StoreError> {
         let mut c = self.acquire_pool(self.read_pool()?).await?;
         let name: String = sqlx::query_scalar("SELECT name FROM accounts WHERE id=$1")
@@ -369,6 +393,7 @@ impl PgStore {
             Some(account),
             None,
             epoch,
+            attribution,
         )
         .await?;
         self.revoke_session(&digest).await
