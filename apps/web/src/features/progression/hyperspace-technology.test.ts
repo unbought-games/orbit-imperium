@@ -35,7 +35,7 @@ it('derives the technology unlock from each bundled prerequisite', () => {
   }
 })
 
-it('uses existing artwork and explains the standard unlocks and lack of per-level bonuses', () => {
+it('uses existing artwork and describes the frontier behind advanced propulsion', () => {
   const details = catalogContent(hyperspace.key)
   expect(details.art.src).toBe(
     '/art/atlas/objects/hyperspace-technology-640.webp',
@@ -44,13 +44,9 @@ it('uses existing artwork and explains the standard unlocks and lack of per-leve
     /Research Lab|Energy Technology|Shielding Technology/,
   )
   expect(details.description).toContain(
-    'no per-level cargo, speed, combat or production bonuses',
+    'hidden dimensions beyond familiar space',
   )
-  expect(details.description).toContain('Unlocks Hyperspace Drive at level 3')
-  expect(details.description).toContain('Unlocks Destroyers at level 5')
-  expect(details.description).toContain(
-    'Level 5 is required for Battlecruisers',
-  )
+  expect(details.description).toContain('foundations for advanced propulsion')
   expect(technicalUnlocks(hyperspace, [hyperspace], 'Planet')).toEqual([])
 })
 

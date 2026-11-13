@@ -29,7 +29,7 @@ const examples = [
   {
     id: 'IonCannon',
     art: 'ion-cannon',
-    prose: 'A stationary cannon with strong shields',
+    prose: 'A resilient weapon emplacement',
     rules: 'mvp-v1-slice-10',
     levels: { Shipyard: 4 },
     research: { IonTechnology: 4 },
@@ -39,7 +39,7 @@ const examples = [
   {
     id: 'GaussCannon',
     art: 'gauss-cannon',
-    prose: 'A stationary electromagnetic cannon',
+    prose: 'An electromagnetic cannon',
     rules: 'mvp-v1-slice-12',
     levels: { Shipyard: 6 },
     research: {
@@ -53,7 +53,7 @@ const examples = [
   {
     id: 'HeavyLaser',
     art: 'heavy-laser',
-    prose: 'A stationary heavy laser battery',
+    prose: 'A powerful laser battery',
     rules: 'mvp-v1-heavy-laser',
     levels: { Shipyard: 4 },
     research: { EnergyTechnology: 3, LaserTechnology: 6 },
@@ -63,7 +63,7 @@ const examples = [
   {
     id: 'PlasmaTurret',
     art: 'plasma-turret',
-    prose: 'A stationary plasma turret',
+    prose: 'A towering weapon',
     rules: 'mvp-v1-slice-12',
     levels: { Shipyard: 8 },
     research: { PlasmaTechnology: 7 },
@@ -298,7 +298,7 @@ for (const example of [
     paid: ['16000000000', '32000000000', '4800000000'],
     duration: 11520000,
     formula: 'ResearchClassic',
-    notes: ['20% per level', 'level 5'],
+    notes: ['Powerful propulsion', 'worlds waiting beyond familiar space'],
   },
   {
     id: 'Astrophysics',
@@ -310,8 +310,8 @@ for (const example of [
     duration: 20250000,
     formula: 'ResearchAstrophysics',
     notes: [
-      'Positions 4–12 unlock at level 1',
-      'Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.',
+      'The study of distant worlds',
+      'bringing unfamiliar orbits and new homes within reach.',
     ],
   },
   {
@@ -323,7 +323,7 @@ for (const example of [
     paid: ['200000000', '100000000', '0'],
     duration: 60000,
     formula: 'ResearchClassic',
-    notes: ['Weapon damage is improved by Weapons Technology.'],
+    notes: ['The mastery of light concentrated into a weapon.'],
   },
 ] as const) {
   it(`${example.id} displays its bound next level, prerequisite progress and exact research costs`, async () => {

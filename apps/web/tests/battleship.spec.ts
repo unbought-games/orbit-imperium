@@ -214,7 +214,7 @@ test(
     await page
       .getByRole('link', { name: 'Build Battleship', exact: true })
       .click()
-    await expect(pane).toContainText('A hyperspace-powered warship')
+    await expect(pane).toContainText('The backbone of a battle fleet')
     await expect(pane.locator('img').first()).toHaveAttribute(
       'src',
       /battleship/,

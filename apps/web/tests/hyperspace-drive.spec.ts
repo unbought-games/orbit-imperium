@@ -331,7 +331,9 @@ for (const width of [390]) {
     await capture('research-catalog')
     await tile.click()
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('Bombers switch to a 5,000 base speed')
+    await expect(pane).toContainText(
+      'An engine that reaches beyond ordinary space',
+    )
     await expect(
       pane.getByRole('button', { name: 'Crystal details' }),
     ).toContainText('20,000')
@@ -345,6 +347,9 @@ for (const width of [390]) {
     await expect(submit).toBeEnabled()
     await pane.getByText('Technical data', { exact: true }).click()
     await expect(pane).toContainText('30%')
+    await expect(pane).toContainText(
+      'From Hyperspace Drive level 8; replacement base speed 5000.',
+    )
     await expect(
       pane.getByRole('list', { name: 'Prerequisites' }).first(),
     ).toContainText('Research Lab 7')
@@ -404,7 +409,7 @@ for (const width of [390]) {
     ).toBeEnabled()
     await capture('research-active')
     for (const [slug, expected] of [
-      ['hyperspace-technology', 'Unlocks Hyperspace Drive at level 3'],
+      ['hyperspace-technology', 'hidden dimensions beyond familiar space'],
       ['impulse-drive', 'Replaced when Hyperspace Drive reaches level 8.'],
     ]) {
       await withBootstrapResponse(page, () =>

@@ -10,97 +10,105 @@ export type CatalogContent = {
 }
 const content: Record<string, string> = {
   LunarBase:
-    'Expands the usable space on a moon. Each completed level adds three fields and occupies one. One free field is required to start. Lunar Base cannot be demolished.',
+    'Pressurized habitats and engineering works carve a foothold into a barren moon. From this fragile beginning, an isolated rock can grow into a strategic outpost above the planet below.',
   SensorPhalanx:
-    'Observes fleet movements involving planets within range. Each scan costs 5,000 deuterium from this moon, including empty results. Range is the completed level squared minus one system. Lunar Base level 1 is required.',
+    'A vast lunar sensor array watches the traffic between worlds. By revealing approaching and departing fleets, it turns distant movements into opportunities for a carefully timed strike.',
   JumpGate:
-    'Transfers ships instantly between two owned moons with completed gates. Gate transfers are not available yet.',
+    'A gateway designed to bridge the gulf between distant moons. The promise of moving a fleet across that divide in an instant could transform scattered outposts into a united military presence.',
   MissileSilo:
-    'Stores offensive missiles and automatic interceptors. Each completed level adds silo capacity. The planet’s interceptors will also defend its future moon.',
+    'Beneath reinforced launch doors waits a world’s missile arsenal. The silo anchors both the interceptors guarding your skies and the long-range weapons poised to threaten enemy strongholds.',
   AntiBallisticMissile:
-    'Automatically destroys one incoming Interplanetary Missile at impact. Built in the shared manufacturing queue and stored in the planetary silo.',
+    'A vigilant interceptor launched to meet an incoming missile before it reaches your defenses. Its brief flight can preserve the batteries standing between your world and an enemy fleet.',
   InterplanetaryMissile:
-    'Permanently destroys enemy defenses, bypassing shields. Range grows with Impulse Drive; Weapons Technology increases damage. Launch from the galaxy. Missiles cannot be recalled.',
+    'A long-range strike weapon sent ahead of the fleet to tear into enemy fortifications. Carefully chosen targets can turn a daunting siege into an opening for your warships.',
   AllianceDepot:
-    'Supply deuterium to allied fleets holding at this planet to extend their defense. Each level permits 10,000 deuterium per rolling hour. The fleet owner retains recall control.',
+    'A supply station for the allied fleets standing watch over your world. Its fuel keeps distant friends on station, turning a temporary rally into a sustained defense.',
   Terraformer:
-    'Transforms uninhabitable terrain into room for development. Each completed level adds five planet fields and occupies one. Construction requires one free field and enough gross energy at the start. Terraformer cannot be demolished.',
+    'Immense engineering works reclaim terrain once thought beyond settlement. Where harsh landscapes constrained your ambitions, the terraformer opens new ground for a world that still has room to grow.',
   NaniteFactory:
-    'Nanite assemblers accelerate construction and manufacturing on this planet. Each completed level halves raw build time. Research is unaffected. Factory upgrades and demolition cannot overlap manufacturing.',
+    'Swarms of microscopic assemblers turn intricate designs into finished structures and machines. Buildings rise and ships take shape at extraordinary speed, giving an industrial world the pace of your ambitions.',
   RoboticsFactory:
-    'Robotic workers accelerate construction on this body. They do not speed up ship or defense production.',
+    'Tireless construction machines raise the structures of a growing colony. Their coordinated labour turns bare ground into working infrastructure and brings ambitious building projects within reach.',
   Shipyard:
-    'Builds ships and defensive structures. Higher levels reduce manufacturing time.',
+    'Orbital ambitions take physical form on the shipyard’s assembly lines. Here, raw materials become the vessels that cross the stars and the defensive batteries that guard their home.',
   ResearchLab:
-    'Hosts research projects and unlocks new technologies. Laboratory construction and research cannot overlap.',
+    'An empire’s next great advantage begins as an unanswered question. Within these laboratories, scientists turn unfamiliar principles into the engines, weapons, and instruments that will shape its future.',
   EnergyTechnology:
-    'Improves Fusion Reactor energy output and unlocks more advanced systems.',
+    'The science of harnessing power on an ever greater scale. Advances in energy control push fusion engineering further and open the way to technologies once beyond your reach.',
   IntergalacticResearchNetwork:
-    'Links laboratories across your planets to shorten research time. Each completed level allows one additional eligible lab to contribute. The initiating lab always participates, and every lab must individually meet the technology’s lab requirement. Researching the network itself uses its previous completed level.',
+    'A shared scientific frontier spanning your settled worlds. Linked laboratories bring their expertise to the same problem, turning isolated discoveries into a faster march toward the next breakthrough.',
   ComputerTechnology:
-    'Improves fleet coordination and increases the number of fleet missions you can operate.',
+    'The coordination behind an empire in motion. Powerful computing systems keep far-flung operations in step, giving commanders the reach to direct more fleets across an increasingly busy galaxy.',
   EspionageTechnology:
-    'Improves intelligence gathering and the information available in espionage reports.',
+    'The quiet contest to see more than your rivals reveal. Advanced sensors and intelligence analysis uncover the strength behind distant worlds, helping you distinguish a rich opportunity from a costly mistake.',
   CombustionDrive:
-    'Provides propulsion for early spacecraft. Higher levels improve the speed of ships using this drive.',
+    'Reliable engines that carry an emerging empire beyond its homeworld. Refinements in combustion propulsion bring distant destinations closer for the workhorse vessels on which early expansion depends.',
   ImpulseDrive:
-    'Increases the base speed of ships using impulse propulsion by 20% per level. Small Cargos switch to impulse propulsion at level 5, with higher base speed and fuel consumption.',
+    'Powerful propulsion that gives a growing fleet a sharper sense of urgency. Impulse engines carry raiders toward fleeting opportunities and pioneers toward the worlds waiting beyond familiar space.',
   Astrophysics:
-    'Increases colony capacity: level 1 allows one colony, then each odd level adds another. Positions 4–12 unlock at level 1, 3 and 13 at level 4, 2 and 14 at level 6, and 1 and 15 at level 8. Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.',
+    'The study of distant worlds and the conditions that make settlement possible. Each discovery extends the horizon of your empire, bringing unfamiliar orbits and new homes within reach.',
   ColonyShip:
-    'Establishes a planet at an eligible empty position. Requires Shipyard 4 and Impulse Drive 3. Success consumes one ship and deposits cargo; escorts and extra Colony Ships return. Uses impulse propulsion with 7,500 cargo capacity shared with mission fuel.',
+    'The beginning of a new home among the stars. A colony ship carries your empire beyond familiar skies, establishing a foothold from which new industries, fleets, and ambitions can grow.',
   SmallCargo:
-    'Transports resources between planets and moons. Cargo capacity is shared by resources and mission fuel.',
+    'A compact transport that keeps your empire moving. It supplies distant colonies, brings home the spoils of raids, and turns opportunities beyond your homeworld into progress.',
   LargeCargo:
-    'A bulk transport powered by combustion engines for moving large resource shipments between planets and moons. Cargo capacity is shared by resources and mission fuel.',
+    'The industrial lifeline of an expanding empire. These freighters connect mining worlds with hungry shipyards, carrying the material behind your next great construction project or gathering war fleet.',
   LightFighter:
-    'A small combat ship for attacking and defending planets and moons.',
+    'A small warship whose strength lies in numbers. Massed squadrons fill the battlespace, overwhelm isolated opponents, and draw enemy fire away from the fleet’s heavy hitters.',
   HeavyFighter:
-    'An impulse-powered combat ship with heavier armour and stronger weapons than the Light Fighter. Cargo capacity is shared by resources and mission fuel.',
+    'A rugged assault craft built to push through resistance that would shred lighter fighters. Heavier armour and hard-hitting weapons make it a formidable raider and a menace to exposed transports.',
   Cruiser:
-    'A fast impulse-powered combat ship with rapid fire against Light Fighters, Rocket Launchers and Espionage Probes. Cargo capacity is shared by resources and mission fuel.',
+    'A fast attack ship that tears through fighter screens and lightly defended outposts. Cruisers give a fleet the speed to seize an opening and the firepower to widen it.',
   Battleship:
-    'A hyperspace-powered warship with heavy armour and powerful weapons. Requires Shipyard 7 and Hyperspace Drive 4. Rapid fire against Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel.',
+    'The backbone of a battle fleet, combining heavy armour with punishing firepower. Squadrons of battleships bring the weight needed to challenge enemy warships and turn a raid into a major offensive.',
   Battlecruiser:
-    'A hyperspace-powered combat ship with rapid fire against Small Cargo, Large Cargo, Heavy Fighters, Cruisers, Battleships, Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel.',
+    'A dedicated fleet hunter, built to dismantle enemy warship formations. Battlecruisers excel at striking exposed cruisers and battleships, turning a rival’s moment of carelessness into a field of wreckage.',
   Bomber:
-    'An impulse-powered siege ship with rapid fire against Rocket Launchers, Light Lasers, Heavy Lasers, Ion Cannons, Espionage Probes and Solar Satellites. Cargo capacity is shared by resources and mission fuel. Uses Impulse Drive until the Hyperspace Drive level 8 upgrade in the standard rules; see technical statistics for this universe’s propulsion profiles.',
+    'A siege ship built to batter planetary defenses. Its bombardment tears into entrenched weapon batteries, opening heavily guarded worlds to the fleet advancing behind it.',
   Destroyer:
-    'A heavy combat ship powered by Hyperspace Drive, with rapid fire against Light Lasers, Battlecruisers, Espionage Probes and Solar Satellites. Requires Shipyard 9, Hyperspace Drive 6 and Hyperspace Technology 5 in the standard rules. Cargo capacity is shared by resources and mission fuel.',
+    'A heavily armoured warship built for brutal engagements with powerful opponents. Its devastating weapons make it a formidable answer to enemy battlecruisers and a hammer against stubborn defenses.',
   Recycler:
-    'Collects resources from debris fields, including deuterium where available.',
+    'A salvage vessel that turns shattered fleets into the beginnings of new ones. After the weapons fall silent, recyclers work the wreckage—and rivals race to claim what remains.',
   EspionageProbe:
-    'Gathers intelligence about another planet or moon on an espionage mission.',
+    'A tiny reconnaissance craft sent ahead into uncertain territory. Its intelligence reveals tempting targets and dangerous opposition, giving commanders the knowledge to choose where the next battle begins.',
   RocketLauncher:
-    'A stationary missile battery that defends its planet or moon against attacking fleets.',
+    'A rugged missile battery that gives a young colony its first teeth. Massed launchers fill the approach with fire, making an undefended prize into a world worth thinking twice about.',
   LightLaser:
-    'A stationary laser battery that defends its planet or moon against attacking fleets. Requires Shipyard 2, Energy Technology 1 and Laser Technology 3.',
+    'A compact laser emplacement that brings precise, sustained fire to the defensive line. Deployed across a world’s approaches, these batteries make light raiding forces pay for every attack.',
   HeavyLaser:
-    'A stationary heavy laser battery that defends its planet or moon against attacking fleets. Requires Shipyard 4, Energy Technology 3 and Laser Technology 6.',
+    'A powerful laser battery built to cut down light assault craft. Its concentrated beams give a defensive line the punch to break fighter swarms before they overwhelm the heavier guns.',
   IonCannon:
-    'A stationary cannon with strong shields that defends its planet or moon against attacking fleets. Requires Shipyard 4 and Ion Technology 4.',
+    'A resilient weapon emplacement wrapped in formidable shielding. Ion cannons endure punishing exchanges with lighter attackers, giving a defensive line positions that are difficult to silence.',
   GaussCannon:
-    'A stationary electromagnetic cannon with powerful attacks against enemy fleets. Requires Shipyard 6, Energy Technology 6, Weapons Technology 3 and Shielding Technology 1.',
+    'An electromagnetic cannon that hurls solid projectiles with devastating force. Its heavy strikes threaten substantial warships, bringing the firepower of a serious fortress to your planetary defenses.',
   PlasmaTurret:
-    'A stationary plasma turret with powerful attacks against enemy fleets. Requires Shipyard 8 and Plasma Technology 7. Plasma research unlocks construction; Weapons, Shielding and Armour Technology improve combat stats.',
+    'A towering weapon that throws searing plasma into the heart of an attacking fleet. Its devastating strikes threaten even heavy warships, making a fortified world a dangerous prize.',
   SmallShieldDome:
-    'A stationary dome whose shield protects itself, not other units. Only one small shield dome can be stationed or queued here; a large shield dome can coexist with it.',
+    'A compact defensive bastion enclosed in a powerful energy barrier. Light weapons struggle to breach its shell, forcing raiders to bring more than a handful of lightly armed ships.',
   LargeShieldDome:
-    'A stationary dome with five times the base shield strength of the Small Shield Dome. Its shield protects itself, not other units. Requires Shipyard 6 and Shielding Technology 6. Only one large shield dome can be stationed or queued here; a small shield dome can coexist with it.',
+    'A massive shield installation built to endure a storm of hostile fire. Its immense energy barrier presents attackers with a stubborn bastion that only substantial firepower can hope to break.',
   LaserTechnology:
-    'Unlocks concentrated energy weapons, including Light Lasers at level 3 and Heavy Lasers at level 6. Requires Research Lab 1 and Energy Technology 2. Level 12 is required for Battlecruisers in the standard rules. Weapon damage is improved by Weapons Technology.',
+    'The mastery of light concentrated into a weapon. Precision emitters and focusing systems lay the foundation for laser batteries and the sophisticated armaments of advanced warships.',
   IonTechnology:
-    'Opens the way to Cruisers at level 2 and Ion Cannons at level 4. Level 5 is required for Plasma Technology. Ion research does not improve combat stats or reduce demolition costs.',
+    'The science of charged particles harnessed for war. Ion research opens a new generation of combat engineering, from formidable planetary cannons to the weapons carried into battle by cruisers.',
   PlasmaTechnology:
-    'Requires Research Lab 4, Energy Technology 8, Laser Technology 10 and Ion Technology 5. Unlocks Plasma Turrets at level 7 and Bombers at level 5 with Shipyard 8 in the standard rules. Bombers also require Impulse Drive 6. Provides no per-level production or combat bonuses.',
+    'The art of containing and directing intensely hot, energized matter. Plasma engineering brings devastating siege weapons and formidable defensive turrets from laboratory experiments into the struggle for distant worlds.',
   HyperspaceDrive:
-    'Powers Battleships, which unlock at level 4 with Shipyard 7, Battlecruisers at level 5, and Destroyers, which unlock at level 6 with Shipyard 9 and Hyperspace Technology 5. At level 8, Bombers switch to a 5,000 base speed with a 30% speed bonus per completed Hyperspace Drive level in the standard rules. The bonus adds to base speed and replaces Impulse propulsion. Base fuel consumption remains 1,000 deuterium.',
+    'An engine that reaches beyond ordinary space to carry heavy warships between the stars. Hyperspace propulsion gives a battle fleet the reach to make its presence felt across distant systems.',
   HyperspaceTechnology:
-    'Unlocks Hyperspace Drive at level 3 in the standard rules. Provides no per-level cargo, speed, combat or production bonuses. Unlocks Destroyers at level 5 with Shipyard 9 and Hyperspace Drive 6. Level 5 is required for Battlecruisers, alongside Hyperspace Drive 5, Laser Technology 12 and Shipyard 8.',
+    'Research into the hidden dimensions beyond familiar space. Understanding this strange frontier lays the foundations for advanced propulsion and the engineering behind some of your most formidable warships.',
   ArmourTechnology:
-    'Improves the structural resilience of ships and defensive units.',
-  WeaponsTechnology: 'Improves weapon performance in combat.',
-  ShieldingTechnology: 'Improves the shields of ships and defensive units.',
+    'Stronger materials and resilient structures help ships and defenses endure the violence of battle. Behind every surviving hull lies the engineering that held together when the enemy’s weapons struck home.',
+  WeaponsTechnology:
+    'The pursuit of a harder, more decisive strike. Advances in weapons engineering sharpen the firepower of your fleets and defenses, giving familiar designs new force on the battlefield.',
+  ShieldingTechnology:
+    'Energy barriers stand between hostile fire and the machinery beneath. Better shielding helps ships and defensive positions weather the opening blows and remain in the fight.',
+  SolarSatellite:
+    'Delicate collectors spread across orbit, catching starlight to power the industry below. Their glittering arrays let a growing world reach into space for the energy behind its ambitions.',
+  Dreadnought:
+    'A vast fortress of a warship, built to bring overwhelming force to a siege. Its arrival casts a shadow over even the most heavily defended world.',
+  GravitonTechnology:
+    'An investigation into gravity itself, reaching toward forces that shape stars and bend the paths of worlds. At this frontier, scientists imagine engineering on a scale that dwarfs familiar warships.',
 }
 export function catalogContent(key: Key): CatalogContent {
   const resource =
