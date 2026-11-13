@@ -2,7 +2,6 @@ import { AttackGroups } from './attack-groups'
 import { AllianceDepot } from './alliance-depot'
 import { MissileFlight } from './missile-flight'
 import { incomingMovements, outgoingMovements } from './fleet-movements'
-import { useRef } from 'react'
 import { Radar, Rocket } from 'lucide-react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
@@ -16,7 +15,7 @@ import { useProfileSource } from '../shell/player-profiles-context'
 import { useUniverseName } from '../shell/session-context'
 import { routeTarget } from '../shell/route-target'
 import { EmptyState } from '../ui/empty-state'
-import { Button, ButtonLink } from '../ui/button'
+import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { Heading, Text } from '../ui/typography'
 import { TaskHeader } from '../ui/task-header'
@@ -40,8 +39,6 @@ export function MissionFleets({
   item: string | null
   origin: string
 }) {
-  const trafficHeading = useRef<HTMLHeadingElement>(null)
-  const incomingHeading = useRef<HTMLHeadingElement>(null)
   const universeName = useUniverseName()
   const state = useStore(model.store)
   useProfileSource(item ? null : { type: 'Incoming' }, view.viewer_revision)
@@ -63,21 +60,6 @@ export function MissionFleets({
               All fleets
             </Link>
           )}
-          {!item && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                const target = incoming.length
-                  ? incomingHeading.current
-                  : trafficHeading.current
-                target?.focus({ preventScroll: true })
-                target?.scrollIntoView({ block: 'start' })
-              }}
-            >
-              Fleet traffic
-              {incoming.length > 0 ? ` · ${incoming.length} incoming` : ''}
-            </Button>
-          )}
           <div className={fleetStyles.dispatchActions}>
             <FleetSlots
               used={occupiedFleetSlots(state)}
@@ -90,17 +72,7 @@ export function MissionFleets({
         </div>
       </TaskHeader>
       {!item && <FleetInventory model={model} origin={origin} />}
-      {!item && (
-        <Heading
-          level={2}
-          ref={trafficHeading}
-          tabIndex={-1}
-          id="fleet-traffic"
-          className={fleetStyles.trafficTarget}
-        >
-          Fleet traffic · Entire empire
-        </Heading>
-      )}
+      {!item && <Heading level={2}>Fleet traffic · Entire empire</Heading>}
       {!item && <AttackGroups model={model} view={view} />}
       {!movements.length && !launches.length && (
         <EmptyState
@@ -174,19 +146,8 @@ export function MissionFleets({
             />
           ))}
       {!item && (
-        <section
-          id="incoming-fleets"
-          className={`${styles.incoming} ${fleetStyles.trafficTarget}`}
-          aria-label="Incoming fleets"
-        >
-          <Heading
-            level={2}
-            ref={incomingHeading}
-            tabIndex={-1}
-            className={fleetStyles.trafficTarget}
-          >
-            Incoming fleets
-          </Heading>
+        <section className={styles.incoming} aria-label="Incoming fleets">
+          <Heading level={2}>Incoming fleets</Heading>
           {!incoming.length && (
             <EmptyState
               icon={Radar}

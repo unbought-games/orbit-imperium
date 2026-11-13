@@ -130,3 +130,16 @@ page-title assertions. This is the owner's requested behavior change, not a
 flaky-test repair. History and the repair ledger were checked. Both affected
 cases pass locally (bundle 4.668s; browser 10.5s); no production changes or
 screenshot refresh were needed for this test-only correction.
+
+## Owner shortcut removal
+
+Removed the top Fleet traffic shortcut at the owner's request, including its
+unused focus refs and scroll-target styling. The header now contains the Fleets
+title and the right-aligned fleet count/Dispatch pair. Traffic remains below the
+inventory. Existing tests now exercise ordinary scrolling to traffic instead of
+the removed shortcut, retaining viewport/readability and mission detail checks.
+Eight affected application cases pass on `a2178e19` plus these edits (bundle
+5.110s; browser 25.1s), including title/route focus and 320px layout. Lint,
+changed-source formatting and diff checks pass. Fresh 390/1280 captures of the
+world and empire views were inspected, plus the 320px header. No failed checks
+or test deletions in this follow-up.

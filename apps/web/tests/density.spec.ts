@@ -81,12 +81,11 @@ for (const viewport of [
       page.getByRole('heading', { name: 'Stationed ships', exact: true }),
       page.getByRole('button', { name: 'Entire empire', exact: true }),
       page.getByRole('link', { name: 'Dispatch Fleet' }),
-      page.getByRole('button', { name: 'Fleet traffic', exact: true }),
     ])
     await diagnosticScreenshot(page, {
       path: `test-results/density-fleets-${viewport.width}.png`,
     })
-    await page.getByRole('button', { name: 'Fleet traffic', exact: true }).click()
+    await recall.scrollIntoViewIfNeeded()
     await expect(recall).toBeInViewport({ ratio: 1 })
     await expect(page.getByText('Arrives in', { exact: true })).toBeInViewport()
     await page

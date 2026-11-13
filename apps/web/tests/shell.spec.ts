@@ -2317,7 +2317,7 @@ test('failed report requests do not claim the archive is empty', async ({
   ).toHaveCount(0)
 })
 
-test('incoming attacks stay one click away below inventory on phones', async ({
+test('incoming attacks remain readable when scrolled below inventory on phones', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 667 })
@@ -2343,11 +2343,9 @@ test('incoming attacks stay one click away below inventory on phones', async ({
   await expect(
     page.getByRole('heading', { name: 'No active fleets.' }),
   ).toBeVisible()
-  const traffic = page.getByRole('button', { name: 'Fleet traffic · 1 incoming', exact: true })
-  await expect(traffic).toBeInViewport({ ratio: 1 })
-  await traffic.click()
   const incoming = page.getByRole('region', { name: 'Incoming fleets' })
   const attack = incoming.getByRole('heading', { name: /Incoming attack/ })
+  await incoming.scrollIntoViewIfNeeded()
   await expect(attack).toBeInViewport()
   const dock = await page
     .getByRole('navigation', { name: 'Main navigation' })
