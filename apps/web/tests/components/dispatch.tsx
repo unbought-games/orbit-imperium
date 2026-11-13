@@ -1,3 +1,4 @@
+import { ErrorBanner } from '../../src/ui/error-banner'
 import { ContentColumn } from '../../src/ui/content-column'
 import shellStyles from '../../src/shell/game-shell.module.css'
 import { useEffect, useState } from 'react'
@@ -119,6 +120,7 @@ function DispatchConsumer({
             data-dispatch-ready="true"
             data-origin={body.id}
           >
+            <ErrorBanner model={model} />
             <DispatchView
               model={model}
               view={view}

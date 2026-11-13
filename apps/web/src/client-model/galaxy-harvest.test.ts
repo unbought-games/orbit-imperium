@@ -184,26 +184,48 @@ it('rechecks ships and fleet slots after the asynchronous quote', async () => {
     expect(model.send).not.toHaveBeenCalled()
   }
 })
-it('never launches a quote after closure, context change or a new binding', async () => {
-  for (const change of ['closed', 'binding'] as const) {
-    const model = fixture(),
-      original = model.world.getMockImplementation()!
+it.each(['closed', 'binding', 'inventory', 'slots'] as const)(
+  'a held harvest quote cannot launch after %s changes',
+  async (change) => {
+    const model = fixture()
+    const original = model.world.getMockImplementation()!
     let current = true
+    let resolve!: () => void
+    const gate = new Promise<void>((done) => {
+      resolve = done
+    })
     model.world.mockImplementation(async (query) => {
       const terms = await original(query)
-      if (change === 'closed') current = false
-      else
-        model.store.setState({
-          binding: { ...model.view.binding, epoch: id(99) },
-        })
+      await gate
       return terms
     })
-    expect(
-      await sendGalaxyHarvest(model, id(10), position, '3', () => current),
-    ).toBeUndefined()
+    const sending = sendGalaxyHarvest(
+      model,
+      id(10),
+      position,
+      '3',
+      () => current,
+    )
+    expect(model.world).toHaveBeenCalledTimes(1)
     expect(model.send).not.toHaveBeenCalled()
-  }
-})
+    if (change === 'closed') current = false
+    if (change === 'binding')
+      model.store.setState({
+        binding: { ...model.view.binding, epoch: id(99) },
+      })
+    if (change === 'inventory') model.view.bodies[0].inventories[0].count = '2'
+    if (change === 'slots') model.view.missions.fleet_slots = '0'
+    const result =
+      change === 'inventory' || change === 'slots'
+        ? expect(sending).rejects.toThrow(
+            change === 'inventory' ? 'Not enough recyclers' : 'No fleet slots',
+          )
+        : expect(sending).resolves.toBeUndefined()
+    resolve()
+    await result
+    expect(model.send).not.toHaveBeenCalled()
+  },
+)
 it('server quote failures and unavailable local inventory never send', async () => {
   const model = fixture()
   model.world.mockRejectedValue(Error('InsufficientResources'))

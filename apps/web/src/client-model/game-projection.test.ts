@@ -1409,6 +1409,42 @@ describe('galaxy fleet actions', () => {
     expect(model.send).toHaveBeenCalledExactlyOnceWith(command, terms)
   })
 
+  it('quick espionage preserves a moon target at its parent coordinates', async () => {
+    const store = createGameStore()
+    store.setState(spyState())
+    const moon = { ...at.body!, id: 'moon', kind: 'Moon' as const }
+    const moonIntent = {
+      ...spyIntent,
+      destination: {
+        ...spyIntent.destination,
+        id: 'moon',
+        expected_kind: 'Moon' as const,
+      },
+    }
+    const moonTerms = { ...terms, intent: moonIntent }
+    const model = {
+      store,
+      world: vi.fn(async () => moonTerms),
+      send: vi.fn(async () => 'command'),
+    }
+    await sendGalaxyProbe(model, 'body', moon, () => true)
+    expect(model.world).toHaveBeenCalledExactlyOnceWith({
+      type: 'FleetQuote',
+      intent: moonIntent,
+    })
+    expect(model.send).toHaveBeenCalledExactlyOnceWith(
+      {
+        type: 'World',
+        action: {
+          type: 'LaunchFleet',
+          intent: moonIntent,
+          expected_terms_hash: terms.terms_hash,
+        },
+      },
+      moonTerms,
+    )
+  })
+
   it('quotes and launches the chosen count and blocks insufficient or invalid counts', async () => {
     const store = createGameStore()
     store.setState(spyState())

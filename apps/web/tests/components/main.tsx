@@ -98,6 +98,7 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('./recruitment.story')).RecruitmentStory,
   'public-alliance-directory': async () =>
     (await import('./recruitment.story')).PublicRecruitmentStory,
+  'quick-fleet': async () => (await import('./quick-fleet')).QuickFleetScene,
   dispatch: async () => (await import('./dispatch')).DispatchScene,
   'dispatch-historical': async () =>
     (await import('./dispatch')).DispatchHistoricalScene,

@@ -50,8 +50,10 @@ export const originBody: S['BodyV3'] = {
   ],
 }
 export type DispatchFixtureOptions = {
+  launchOutcome?: 'Committed' | 'Pending' | 'Rejected'
   blocker: S['GameError4'] | null
   estimateError: S['GameError4'] | null
+  resolveError?: S['GameError4']
   quoteError: S['GameError4'] | null
   observationAvailable: boolean
   debris: boolean

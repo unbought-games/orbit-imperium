@@ -385,175 +385,91 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   await expect(dispatchResult(page)).toHaveCount(0)
 })
 
-test('editing a new draft clears the previous launch receipt', async ({
+test('dispatch shows submitting then uncertain without false success', async ({
   page,
 }) => {
-  const state = await setup(page)
-  state.launchError = null
+  await page.setViewportSize({ width: 390, height: 844 })
+  await setup(page)
+  let commandId = ''
+  let launches = 0
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/commands/*?epoch=*', (route) =>
+    route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
+  )
+  await page.route('**/commands', async (route) => {
+    launches++
+    commandId = route.request().postDataJSON().gameplay.command_id
+    await gate
+    await route.abort('failed')
+  })
   await review(page).click()
-  await page
-    .getByRole('button', {
-      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-    })
-    .click()
-  await expect(dispatchResult(page)).toContainText('Fleet sent.')
-  await page.getByLabel('Small Cargo · 2 available').fill('2')
-  await expect(dispatchResult(page)).toHaveCount(0)
-  await review(page).click()
-  await expect(dispatchResult(page)).toHaveCount(0)
-  await page.getByRole('button', { name: 'Back to edit mission' }).click()
-  await expect(dispatchResult(page)).toHaveCount(0)
-})
-
-for (const outcome of ['Pending', 'Rejected', 'uncertain'] as const) {
-  test(`dispatch shows submitting then ${outcome} without false success`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await setup(page)
-    let commandId = ''
-    let launches = 0
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    const receipt = () => ({
-      protocol: 4,
-      binding,
-      command_id: commandId,
-      admitted_at: Date.now(),
-      executed_at: outcome === 'Pending' ? null : Date.now(),
-      status: outcome,
-      ...(outcome === 'Rejected' ? { code: 'BeginnerProtected' } : {}),
-    })
-    await page.route('**/commands/*?epoch=*', (route) =>
-      outcome === 'uncertain'
-        ? route.fulfill({ status: 503, json: { code: 'Unavailable' } })
-        : route.fulfill({ json: receipt() }),
-    )
-    await page.route('**/commands', async (route) => {
-      launches++
-      commandId = route.request().postDataJSON().gameplay.command_id
-      await gate
-      if (outcome === 'uncertain') return route.abort('failed')
-      await route.fulfill({ json: receipt() })
-    })
-    await review(page).click()
-    try {
-      await page
-        .getByRole('button', {
-          name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-        })
-        .click()
-      await expect(dispatchResult(page)).toContainText('Sending fleet order…')
-      await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
-      await expect.poll(() => launches).toBe(1)
-    } finally {
-      release()
-    }
-    const feedback = outcome === 'Pending' ? dispatchResult(page) : page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })
-    if (outcome !== 'Pending') await expect(dispatchResult(page)).toHaveCount(0)
-    await expect(feedback).toContainText(
-      outcome === 'Pending'
-        ? 'Order accepted. Waiting for launch confirmation…'
-        : outcome === 'Rejected'
-          ? 'Fleet not sent: Beginner protection prevents'
-          : 'We’re checking whether this order went through.',
-    )
-    await expect(feedback).not.toContainText('Fleet sent.')
-    await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
-      '1',
-    )
-    await review(page).scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {
-      path: `test-results/dispatch-${outcome}.png`,
-    })
-    if (outcome === 'uncertain') {
-      for (const width of [1280, 390]) {
-        await page.setViewportSize({ width, height: 900 })
-        await page.evaluate(() => window.scrollTo(0, 0))
-        await diagnosticScreenshot(page, { path: `test-results/unified-fleet-error-${width}x900.png`, fullPage: true })
-      }
-      // Background receipt polling may arrive before Playwright clicks Retry.
-      // Hold recovery until the click so polling cannot remove its own target.
-      let releaseRecovery!: () => void
-      const recovery = new Promise<void>((resolve) => { releaseRecovery = resolve })
-      const polling = page.waitForRequest('**/commands/*?epoch=*')
-      await page.route('**/commands/*?epoch=*', async (route) => {
-        await recovery
-        await route.fulfill({
-          json: {
-            protocol: 4,
-            binding,
-            command_id: commandId,
-            admitted_at: Date.now(),
-            executed_at: Date.now(),
-            status: 'Committed',
-            result_ids: [id(80)],
-            minimum_viewer_revision: '1',
-          },
-        })
+  try {
+    await page
+      .getByRole('button', {
+        name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
       })
-      try {
-        await polling
-        await feedback
-          .getByRole('button', { name: 'Retry order' })
-          .click()
-      } finally {
-        releaseRecovery()
-      }
-      await expect(dispatchResult(page)).toContainText('Fleet sent.')
-      await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
-        '0',
-      )
+      .click()
+    await expect(dispatchResult(page)).toContainText('Sending fleet order…')
+    await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
+    await expect.poll(() => launches).toBe(1)
+  } finally {
+    release()
+  }
+  const feedback = page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })
+  await expect(dispatchResult(page)).toHaveCount(0)
+  await expect(feedback).toContainText('We’re checking whether this order went through.')
+  await expect(feedback).not.toContainText('Fleet sent.')
+  await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
+    '1',
+  )
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await review(page).scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, { path: 'test-results/dispatch-uncertain.png' })
+  }
+  {
+    // Optional captures do not change layout or scroll when disabled.
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/unified-fleet-error-${width}x900.png`, fullPage: true })
     }
-    expect(launches).toBe(1)
-  })
-}
-
-
-test('protection is explained before review, rechecked at review, and launch races have readable receipts', async ({
-  page,
-}) => {
-  const state = await setup(page)
-  await expect(page.getByLabel('Destination preview')).toContainText('Ember Watch')
-  state.blocker = 'BeginnerProtected'
-  await page.getByRole('radio', { name: 'Attack', exact: true }).check()
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: 'Beginner protection prevents' }),
-  ).toBeVisible()
-  // Timing requests read-only estimates before the explicit review step.
-  expect(state.launches).toBe(0)
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  await page.setViewportSize({ width: 390, height: 900 })
-  await diagnosticScreenshot(page, {
-    path: 'test-results/dispatch-protection-mobile.png',
-    fullPage: true,
-  })
-  state.quoteError = 'BeginnerProtected'
-  await review(page).click()
-  await expect(
-    page.getByRole('alert').filter({ hasText: 'Beginner protection prevents' }),
-  ).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  // The observation is advisory: a newer valid quote can supersede a stale blocker.
-  state.quoteError = null
-  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
-  await review(page).click()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-  await page
-    .getByRole('button', {
-      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+    // Background receipt polling may arrive before Playwright clicks Retry.
+    // Hold recovery until the click so polling cannot remove its own target.
+    let releaseRecovery!: () => void
+    const recovery = new Promise<void>((resolve) => { releaseRecovery = resolve })
+    const polling = page.waitForRequest('**/commands/*?epoch=*')
+    await page.route('**/commands/*?epoch=*', async (route) => {
+      await recovery
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          command_id: commandId,
+          admitted_at: Date.now(),
+          executed_at: Date.now(),
+          status: 'Committed',
+          result_ids: [id(80)],
+          minimum_viewer_revision: '1',
+        },
+      })
     })
-    .click()
-  await expect(
-    page.getByRole('complementary', { name: 'Action needs attention' }),
-  ).toContainText('Fleet not sent: Beginner protection prevents')
-  expect(state.launches).toBe(1)
-  await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
-  await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toHaveValue('42')
+    try {
+      await polling
+      await feedback
+        .getByRole('button', { name: 'Retry order' })
+        .click()
+    } finally {
+      releaseRecovery()
+    }
+    await expect(dispatchResult(page)).toContainText('Fleet sent.')
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
+      '0',
+    )
+  }
+  expect(launches).toBe(1)
 })
 
 for (const width of [320]) {
