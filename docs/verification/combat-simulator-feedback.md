@@ -139,3 +139,14 @@ The owner's second browser pass pairs origin / versus / target across the
 desktop header, stacks that pairing on phones, and nests the linked report
 beneath its target using a down-and-right arrow. Refreshed report/setup captures
 follow this layout update.
+
+Review of `5e5a4fce` found two concrete edge cases: report detachment reset known
+owned-defender moon eligibility, and owned moon coordinate links defaulted to
+planet links. Detachment now preserves an existing import's eligibility; owned
+coordinates use CoordinateLink with the actual body kind. Existing browser cases
+now verify a known moon-bearing imported planet retains 0% after report clearing,
+and an owned moon link retains `target=moon`. All 7 cases passed (4.929s bundle,
+22.3s runner). A missing closing JSX tag caused one local bundle failure during
+this repair; corrected before the passing run. No assertion failure or flaky
+retry occurred. TypeScript, ESLint and formatting passed; fresh owned-import
+screenshots were inspected. The prior header-only pass was 4.794s / 21.8s.

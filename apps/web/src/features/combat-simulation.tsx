@@ -254,7 +254,7 @@ function SimulationForm({
                     defenderSource,
                   )
                   setReportAttached(false)
-                  setMoonTarget('Unknown')
+                  if (!defenderSource) setMoonTarget('Unknown')
                 }}
               >
                 <X size={16} aria-hidden="true" />

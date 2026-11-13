@@ -2,6 +2,7 @@ import type { components } from '../contracts'
 import { Link } from '../ui/link'
 import { routeTarget } from '../shell/route-target'
 import { useGameScreen } from '../shell/screen-context'
+import { CoordinateLink } from './coordinate-link'
 import { BodyIdentity } from './body-identity'
 import { BodyIllustration } from './body-illustration'
 import { PlayerName } from './player-name'
@@ -49,12 +50,20 @@ export function SimulationLocation({
               {' · '}
             </>
           )}
-          <BodyIdentity
-            name={owned ? undefined : body.name}
-            kind={owned ? undefined : body.kind}
-            at={body.coordinates}
-            label={label.toLowerCase()}
-          />
+          {owned ? (
+            <CoordinateLink
+              at={body.coordinates}
+              target={body.kind === 'Moon' ? 'moon' : 'planet'}
+              label={label.toLowerCase()}
+            />
+          ) : (
+            <BodyIdentity
+              name={body.name}
+              kind={body.kind}
+              at={body.coordinates}
+              label={label.toLowerCase()}
+            />
+          )}
         </div>
       </div>
     </div>
