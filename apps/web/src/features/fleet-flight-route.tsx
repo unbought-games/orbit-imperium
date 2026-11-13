@@ -1,5 +1,7 @@
 import { ArrowRight, Recycle, Rocket, Orbit } from 'lucide-react'
 import { BodyIllustration } from './body-illustration'
+import { CoordinateLink } from './coordinate-link'
+import { exactTime } from './mission-presentation'
 import {
   fleetFlight,
   type FleetEndpoint,
@@ -25,12 +27,47 @@ function FleetWorld({
   )
 }
 
+function FleetRouteEndpoint({
+  endpoint,
+  label,
+  origin,
+}: {
+  endpoint: FleetEndpoint
+  label: 'origin' | 'destination'
+  origin?: string
+}) {
+  return (
+    <span className={styles.endpoint}>
+      <strong title={endpoint.name}>{endpoint.name}</strong>
+      {endpoint.coordinates ? (
+        <CoordinateLink
+          at={endpoint.coordinates}
+          label={label}
+          origin={origin}
+          target={
+            endpoint.kind === 'Moon'
+              ? 'moon'
+              : endpoint.kind === 'Debris'
+                ? 'debris'
+                : 'planet'
+          }
+          className={styles.address}
+        />
+      ) : (
+        <span className={styles.address}>{endpoint.address}</span>
+      )}
+    </span>
+  )
+}
+
 export function FleetFlightRoute({
   row,
   now,
+  origin,
 }: {
   row: FleetSummaryRow
   now: number
+  origin?: string
 }) {
   const flight = fleetFlight(row, now)
   return (
@@ -42,11 +79,17 @@ export function FleetFlightRoute({
         label={`${row.leg === 'Incoming' ? 'Incoming direction (position unknown)' : row.leg}: ${row.home.name} ${row.home.address} ${row.leg === 'Returning' || row.leg === 'Incoming' ? '←' : '→'} ${row.target.name} ${row.target.address}`}
       />
       <div className={styles.fleetEndpoints}>
-        <span>
-          <strong title={row.home.name}>{row.home.name}</strong>
-          <span>{row.home.address}</span>
-        </span>
-        <p className={styles.fleetCountdown} role="timer" aria-live="off">
+        <FleetRouteEndpoint
+          endpoint={row.home}
+          label={row.leg === 'Incoming' ? 'destination' : 'origin'}
+          origin={origin}
+        />
+        <p
+          className={styles.fleetCountdown}
+          role="timer"
+          aria-live="off"
+          title={row.dueAt === null ? undefined : exactTime(row.dueAt)}
+        >
           {flight.label && (
             <>
               <span>{flight.label}</span>{' '}
@@ -54,10 +97,11 @@ export function FleetFlightRoute({
           )}
           <strong>{flight.time}</strong>
         </p>
-        <span>
-          <strong title={row.target.name}>{row.target.name}</strong>
-          <span>{row.target.address}</span>
-        </span>
+        <FleetRouteEndpoint
+          endpoint={row.target}
+          label={row.leg === 'Incoming' ? 'origin' : 'destination'}
+          origin={origin}
+        />
       </div>
     </>
   )

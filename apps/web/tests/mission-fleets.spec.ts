@@ -108,6 +108,9 @@ for (const width of [320, 390, 1280]) {
       name: 'Attack fleet',
       exact: true,
     })
+    await expect(
+      attack.getByRole('link', { name: 'View destination [1:15:7] in galaxy' }),
+    ).toBeVisible()
     const manifestToggle = attack.getByRole('button', {
       name: 'Attack ship composition: 13 ships',
       exact: true,
@@ -160,9 +163,6 @@ for (const width of [320, 390, 1280]) {
       'datetime',
       new Date(now + 1810000).toISOString(),
     )
-    await expect(
-      attack.getByRole('link', { name: 'View destination [1:15:7] in galaxy' }),
-    ).toBeVisible()
     await attack.evaluate((el) =>
       window.scrollBy(0, el.getBoundingClientRect().top - 80),
     )
@@ -362,14 +362,15 @@ for (const screen of ['fleets', 'overview'] as const) {
       await expect
         .poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor))
         .toBe(idle.background)
-      await toggle.click()
-      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      await expect(page).toHaveURL(path)
-      const coordinate = row
-        .locator('[data-coordinate]')
-        .filter({ hasText: '[1:15:7]' })
-        .first()
+      const coordinate = row.getByRole('link', {
+        name: 'View destination [1:15:7] in galaxy',
+        exact: true,
+      })
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
       await coordinate.click({ button: 'right' })
+      await diagnosticScreenshot(page, {
+        path: `test-results/${screen}-coordinate-menu-${width}x900.png`,
+      })
       await page
         .getByRole('menuitem', { name: 'Copy coordinates', exact: true })
         .click()
@@ -380,6 +381,9 @@ for (const screen of ['fleets', 'overview'] as const) {
         .getByRole('menuitem', { name: 'Copy location link', exact: true })
         .click()
       await expect(page.getByRole('menu')).toHaveCount(0)
+      await expect(page).toHaveURL(path)
+      await toggle.click()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
       await expect(page).toHaveURL(path)
       await row
         .getByRole('button', { name: 'Review recall', exact: true })

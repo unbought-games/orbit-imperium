@@ -17,6 +17,8 @@ type S = components['schemas']
 export type FleetEndpoint = {
   name: string
   address: string
+  /** Coordinates that can be browsed in Galaxy. Private sites only show their anchor. */
+  coordinates?: S['Coordinates']
   art?: BodyArtIdentity
   kind: 'Planet' | 'Moon' | 'Debris' | 'EmptyPosition' | 'Site' | 'Unknown'
 }
@@ -58,6 +60,7 @@ function endpoint(
     address: location
       ? coordinates({ coordinates: location })
       : 'Coordinates unavailable',
+    coordinates: location,
     kind: bodyKind,
     art:
       location && (bodyKind === 'Planet' || bodyKind === 'Moon')
@@ -218,13 +221,16 @@ export function incomingFleetSummary(
   fleet: S['IncomingMission4'],
 ): FleetSummaryRow {
   const origin = endpoint(view, fleet.origin_body, fleet.origin, 'Unknown')
+  const destination = endpoint(view, fleet.target, undefined, 'Unknown')
   return {
     key: incomingKey(fleet),
     origin: fleet.target,
     mission: fleet.mission,
     leg: 'Incoming',
     ships: fleet.ships.visibility === 'Exact' ? fleet.ships.ships : [],
-    home: endpoint(view, fleet.target, undefined, 'Planet'),
+    home: destination.coordinates
+      ? destination
+      : { ...destination, name: 'Unrevealed location' },
     target:
       origin.kind === 'Unknown'
         ? { ...origin, name: 'Unknown origin' }

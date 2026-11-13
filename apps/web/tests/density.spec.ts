@@ -514,12 +514,11 @@ for (const width of [320, 390, 1440]) {
     await expect(outbound).toContainText('12m 34s')
     await expect(returning).toContainText('Home in')
     await expect(returning).toContainText('1h 1m 1s')
-    await expect(returning).toContainText('←')
+    await expect(returning.getByRole('img', { name: /^Returning: .* ← / })).toBeVisible()
     await expect(attack).toContainText('From Commander Vega')
     for (const card of [attack, spy, transport, deploy, attacks.last()]) {
       await card.getByRole('button', { name: /^Incoming .* ship composition:/ }).click()
     }
-    await expect(attack).toContainText('[1:24:6]→Home [1:371:12]')
     await expect(
       attack.getByRole('link', {
         name: 'View origin [1:24:6] in galaxy',
@@ -532,7 +531,7 @@ for (const width of [320, 390, 1440]) {
         exact: true,
       }),
     ).toBeVisible()
-    await expect(attacks.last()).toContainText('[1:24:6]→Unrevealed location')
+    await expect(attacks.last()).toContainText('Unrevealed location')
     await expect(
       attacks.last().getByRole('link', { name: /View destination/ }),
     ).toHaveCount(0)

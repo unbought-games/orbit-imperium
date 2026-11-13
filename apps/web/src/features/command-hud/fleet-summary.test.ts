@@ -365,6 +365,7 @@ it('never infers enemy origin identity or planet/moon art from a shared coordina
     expect(enemyAttackRows(state)[0].row.target).toEqual({
       name: 'Unknown origin',
       address: '[1:2:3]',
+      coordinates: origin,
       kind: 'Unknown',
     })
   }
@@ -395,6 +396,7 @@ it.each(['Planet', 'Moon'] as const)(
     expect(enemyAttackRows(state)[0].row.target).toEqual({
       name: `Enemy ${kind}`,
       address: '[1:2:3]',
+      coordinates: origin,
       kind,
       art: { id: `enemy-${kind}`, kind, coordinates: origin },
     })

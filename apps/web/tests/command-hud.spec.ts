@@ -1001,7 +1001,8 @@ test('fleet accordion shows empire-wide flight paths, live timing, massive manif
   await diagnosticScreenshot(page,{path:`${output}/fleets-manifest-320x740.png`})
   await manifest.click()
   await expect(ships).toBeHidden()
-  await list.getByRole('link',{name:'Attack fleet details'}).click()
+  await expect(list.getByRole('link',{name:'Attack fleet details'})).toBeVisible()
+  await list.getByRole('img', { name: /^Outbound:/ }).click()
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/fleets/${id(912)}$`))
   await expect(panel).not.toBeVisible()
   f.missions.fleets.length=0

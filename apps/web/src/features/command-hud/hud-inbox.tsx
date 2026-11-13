@@ -40,7 +40,7 @@ export function HudInbox({
   const inbox = useHudInbox(model, hud.state, visible, scrollRoot)
   return (
     <div hidden={!visible}>
-      <HudEnemyAttacks state={hud.state} onSelect={onSelect} />
+      <HudEnemyAttacks state={hud.state} body={body} onSelect={onSelect} />
       <HudFleets
         state={hud.state}
         universe={universe}

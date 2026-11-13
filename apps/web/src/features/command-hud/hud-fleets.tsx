@@ -91,6 +91,7 @@ export function HudFleets({
                   row={row}
                   now={now}
                   universe={universe}
+                  body={body}
                   close={close}
                 />
               </li>
