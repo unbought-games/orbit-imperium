@@ -205,7 +205,10 @@ pub(super) async fn middleware(
         }
         return response;
     }
-    let auth = path.starts_with("/api/auth/");
+    let auth = matches!(
+        path.as_str(),
+        "/api/auth/login" | "/api/auth/entry" | "/api/auth/callback" | "/api/auth/enroll"
+    );
     if (!document && !auth)
         || super::blocked(&headers)
         || headers.get(header::COOKIE).is_some_and(|v| {
@@ -225,10 +228,30 @@ pub(super) async fn middleware(
         return next.run(request).await;
     };
     let now = Utc::now().timestamp_millis();
-    let current = source(&url, &headers, &s.routes, &s.config.handoff_origins);
+    let mut current = source(&url, &headers, &s.routes, &s.config.handoff_origins);
     let mut old = read(&headers, &s.token, now);
-    if old.as_ref().is_some_and(|j| j.bound.is_some()) && current.campaign.is_some() {
+    // A fresh authentication must not reuse another authenticated person's
+    // acquisition on a shared browser. A new anonymous landing remains eligible.
+    if matches!(
+        path.as_str(),
+        "/api/auth/login" | "/api/auth/entry" | "/api/auth/callback"
+    ) && old.as_ref().is_some_and(|j| j.bound.is_some())
+    {
         old = None;
+        if let Some(referrer) = headers
+            .get(header::REFERER)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| reqwest::Url::parse(v).ok())
+            && referrer.origin() == url.origin()
+            && !referrer.path().starts_with("/api/")
+        {
+            current = source(
+                &referrer,
+                &Default::default(),
+                &s.routes,
+                &s.config.handoff_origins,
+            );
+        }
     }
     let retained = old.as_ref().filter(|j| {
         DateTime::parse_from_rfc3339(&j.source.at)
@@ -253,13 +276,15 @@ pub(super) async fn middleware(
         .extensions_mut()
         .insert(orbit_application::ServerAttribution(context));
     let mut response = next.run(request).await;
-    if path.ends_with("/logout") {
-        response.headers_mut().append(
-            header::SET_COOKIE,
-            format!("{COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0")
-                .parse()
-                .unwrap(),
-        );
+    let rendered_document = document
+        && response.status().is_success()
+        && response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .is_some_and(|v| v.to_str().unwrap_or_default().starts_with("text/html"));
+    if !rendered_document
+        && !(auth && (response.status().is_success() || response.status().is_redirection()))
+    {
         return response;
     }
     if path == "/api/auth/callback" && response.status().is_redirection() {
@@ -310,13 +335,7 @@ pub(super) async fn middleware(
             response.headers_mut().insert(header::LOCATION, value);
         }
     }
-    if document
-        && response.status().is_success()
-        && response
-            .headers()
-            .get(header::CONTENT_TYPE)
-            .is_some_and(|v| v.to_str().unwrap_or_default().starts_with("text/html"))
-    {
+    if rendered_document {
         let id = uuid::Uuid::new_v4();
         let payload = json!({"event_id": id,"property_id":s.config.property_id,"name":"page_view","schema_version":1,"producer":"server","category":"navigation","occurred_at":Utc::now().to_rfc3339(),"clock":"server","visit_id":journey.visit_id,"visitor_id":journey.visitor_id,"context":{"environment":s.config.environment,"page":current.page,"route":current.route,"referrer":current.referrer},"campaign":current.campaign,"collection":{"profile":"identified","policy_version":s.config.policy_version,"consent":true,"sample_rate":1,"dropped_events":0},"properties":{}});
         match s.permits.try_acquire() {

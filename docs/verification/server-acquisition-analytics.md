@@ -41,3 +41,8 @@ The HTTPS cookie-deletion finding was reproduced as a non-failure in Chromium
 response without a Secure attribute (one cookie before, zero after). No workaround
 was added for that claim. SDK URL edge-case fixes are included in the refreshed
 source archive and checksum-pinned tarball.
+
+The explicit direct-entry probe also checks that readiness/JSON responses do not
+seed a browser acquisition cookie. Middleware now issues that cookie only for
+rendered documents and successful auth operations. Auth starts detach a prior
+bound account's source, while fresh anonymous landing evidence remains eligible.
