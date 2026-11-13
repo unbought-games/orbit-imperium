@@ -94,12 +94,19 @@ rerun unnecessarily after removal-only changes.
 | PostgreSQL progression and real HTTP | 4 passed | 3.155s database preparation; 58.78s compile; 9.138s progression + 10.013s HTTP runner |
 | Application/component TypeScript, ESLint, source formatting and diff whitespace | Passed | Typecheck/static elapsed not separately recorded |
 | CI workflow and selection policy | 12 passed | 1.002s runner |
+| Production frontend build and homepage prerender | Passed | 18.366s elapsed |
+| PostgreSQL rules activation, 11 selected | 11 passed | 7.70s compile; 549.993s serial runner |
+| Desktop and mobile preview prerequisite navigation and Back | 2 passed | 13.769s bundle; 3.3s runner |
 
-The selected PostgreSQL rules-update run (Nextest
-`699c5fb2-e200-413b-a160-f2786d034060`) uses the existing serial disposable
-runner. Its independent results and cleanup, plus exact PR/merge-group
-attempts and timings, belong to the PR validation record. Local runner
-allocation wait was not separately instrumented. These figures do not
+The PostgreSQL rules-update run (Nextest
+`699c5fb2-e200-413b-a160-f2786d034060`) covered ship activation for
+Battlecruiser, Battleship, Bomber and Destroyer; paid defense work across
+activation/restart for Ion Cannon, Gauss Cannon and Heavy Laser; both
+Hyperspace research activations; and the Nanite Factory and Terraformer
+lifecycles in both runtimes. All passed; four emitted slow-test diagnostics.
+The 29 unrelated cases were outside the local focused filter. PR and
+merge-group attempts and timings belong to the PR validation record.
+Local runner allocation wait was not separately instrumented. These figures do not
 establish a future flake rate. No explicit full-system acceptance or
 deployment was performed.
 
@@ -132,8 +139,8 @@ The component and application runners closed their browsers and released
 their preview servers/bundles. PostgreSQL uses task-owned
 `orbit-catalog-validation`, an ephemeral port and an unused /28 Compose
 network because the host's default pool is allocated. Individual
-test databases are removed by the existing runner, with project removal
-verified in PR follow-through. No other checkout, database or network
+test databases are removed by the existing runner, and project cleanup
+removed its container, volume and network. No other checkout, database or network
 was removed. Screenshots stay in the implementation chat.
 
 Commands (from the repository root):
