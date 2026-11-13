@@ -67,6 +67,33 @@ diagnostic logging was removed. Fixture servers and bundles were cleaned up.
 The tutorial advisor's other bubble geometry check uses synchronous fixed text,
 not the lazy editorial size change exposed here; its assertions remain intact.
 
+## November 12, 2026: atomic identity baseline measurements (PR402)
+
+CI run `43354152036` attempt 1, head `8515315e`, job `131652189752`
+(features 5/6), failed `player attachments align together and long identities
+stay within narrow rows`: name and Bot baselines differed by 10px after resizing
+to mobile. Artifact `14004754838` shows them aligned in the failure capture.
+The test sampled the two viewport-relative coordinates in separate browser
+evaluations and did not wait for fonts. A resize/font/scroll update between
+evaluations invalidates the comparison even when both labels share a baseline.
+This is a test measurement defect, not evidence of a production alignment change.
+
+The scenario originated in #296; #353 changed center comparisons to baselines,
+and subsequent changes updated profile response gates and identity rendering.
+The repository ledger/history contains no earlier repair of this measurement
+race. Its one repair waits for document fonts and measures all related probes
+synchronously in one browser turn. The helper audit found two other sequential
+comparisons (ranking attachments and the component dossier); both use the same
+atomic helper now. The component scene already waits for fonts. All baseline
+tolerances, rank/identity overflow, keyboard/focus, and responsive assertions
+remain; no scenario was removed or renamed and no timeout/retry was added.
+PR402 owns the shared helper audit and verification; no independent work remains.
+
+The repaired ranking case passed across its three viewport transitions (5.20s
+preparation, 2.6s runner time). All three identity component cases passed (3.85s
+preparation, 3.1s runner time), and component TypeScript checks passed. Runners
+cleaned their temporary bundles and servers; the game UI code is unchanged.
+
 ## November 10, 2026: PR #384 queue startup failures
 
 Queue run `42837687421` tested integration `946cd964c7256c1d0b9b079ee6e037dc4baac28d`

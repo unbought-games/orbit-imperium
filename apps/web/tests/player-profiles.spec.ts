@@ -1,4 +1,4 @@
-import { inlineBaseline } from './fixtures/identity-typography'
+import { inlineBaselines } from './fixtures/identity-typography'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { readFileSync } from 'node:fs'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -91,13 +91,13 @@ test('player attachments align together and long identities stay within narrow r
   const table = page.getByRole('table', { name: 'Universe total-score rankings' })
   const trigger = table.getByRole('link', { name: 'Aurelia profile details' })
   await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()
+  await page.evaluate(() => document.fonts.ready)
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     const simple = table.getByRole('link', { name: 'steveish profile details' })
-    const name = await simple.getByText('steveish', { exact: true }).evaluate(inlineBaseline)
-    const bot = await simple.getByLabel('Bot', { exact: true }).evaluate(inlineBaseline)
-    expect(name).not.toBeNull()
-    expect(bot).not.toBeNull()
+    const baselines = await simple.getByText('steveish', { exact: true }).or(simple.getByLabel('Bot', { exact: true })).evaluateAll(inlineBaselines)
+    expect(baselines).toHaveLength(2)
+    const [name, bot] = baselines
     // Differently sized labels share a text baseline, including in narrow rows.
     expect(Math.abs(name - bot)).toBeLessThan(0.15)
     await expect(simple.getByLabel('Bot', { exact: true })).toHaveCSS('font-size', '12px')
@@ -125,8 +125,8 @@ test('player attachments align together and long identities stay within narrow r
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (width === 1440) {
-      const baselines = []
-      for (const part of await trigger.locator(':scope > span > *').all()) baselines.push(await part.evaluate(inlineBaseline))
+      const baselines = await trigger.locator(':scope > span > *').evaluateAll(inlineBaselines)
+      expect(baselines.length).toBeGreaterThan(1)
       expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(0.15)
     }
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && width < 1440) await table.scrollIntoViewIfNeeded()

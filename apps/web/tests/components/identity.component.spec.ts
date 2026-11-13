@@ -1,7 +1,7 @@
 import { test, expect } from './fixture'
 import {
   capCenterOffset,
-  inlineBaseline,
+  inlineBaselines,
   textLineMetrics,
 } from '../fixtures/identity-typography'
 import { focusPlayerDetails } from '../fixtures/profile-navigation'
@@ -79,9 +79,10 @@ for (const width of [1440, 390, 320]) {
         exact: true,
       })
       .locator('..')
-    const baselines = []
-    for (const part of await affiliation.locator(':scope > *').all())
-      baselines.push(await part.evaluate(inlineBaseline))
+    const baselines = await affiliation
+      .locator(':scope > *')
+      .evaluateAll(inlineBaselines)
+    expect(baselines.length).toBeGreaterThan(1)
     expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(0.15)
     await diagnosticScreenshot(dossier, {
       path: `test-results/identity-type-dossier-${width}x1000.png`,

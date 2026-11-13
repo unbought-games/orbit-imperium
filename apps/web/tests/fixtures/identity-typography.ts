@@ -22,15 +22,21 @@ export function textLineMetrics(element: Element) {
     tops: [...new Set(tops)].sort((a, b) => a - b),
   }
 }
-/** A zero-size inline box's bottom sits precisely on the text baseline. */
-export function inlineBaseline(element: Element) {
-  const probe = document.createElement('span')
-  probe.style.cssText =
-    'display:inline-block;width:0;height:0;padding:0;margin:0;border:0;vertical-align:baseline'
-  element.prepend(probe)
-  const baseline = probe.getBoundingClientRect().bottom
-  probe.remove()
-  return baseline
+/** Measure related baselines in one browser turn so font/layout/scroll updates
+ * cannot move the row between samples. Zero-size inline boxes sit on baselines. */
+export function inlineBaselines(elements: Element[]) {
+  const probes = elements.map((element) => {
+    const probe = document.createElement('span')
+    probe.style.cssText =
+      'display:inline-block;width:0;height:0;padding:0;margin:0;border:0;vertical-align:baseline'
+    element.prepend(probe)
+    return probe
+  })
+  try {
+    return probes.map((probe) => probe.getBoundingClientRect().bottom)
+  } finally {
+    probes.forEach((probe) => probe.remove())
+  }
 }
 /** Vertical distance between an inline mark's center and the center of capital letters. */
 export function capCenterOffset(mark: Element) {
