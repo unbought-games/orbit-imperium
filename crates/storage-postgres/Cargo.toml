@@ -34,6 +34,10 @@ test-support = []
 migration-upgrade-test = ["test-support"]
 
 [[test]]
+name = "report_reads"
+required-features = ["test-support"]
+
+[[test]]
 name = "identity"
 required-features = ["test-support"]
 

@@ -21,6 +21,8 @@ mod simulation;
 pub use simulation::*;
 mod report_sharing;
 pub use report_sharing::*;
+mod report_reads;
+pub use report_reads::*;
 mod location;
 pub use location::*;
 mod catalog_view;

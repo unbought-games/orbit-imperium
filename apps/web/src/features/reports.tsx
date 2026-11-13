@@ -8,7 +8,7 @@ import { ReportAttackButton } from './report-attack-button'
 import { useReportCleanup } from './use-report-cleanup'
 import { useState } from 'react'
 import { useMobileLayout } from '../ui/use-mobile-layout'
-import { useMarkAllReportsRead } from './use-mark-all-reports-read'
+import { useMarkShownReportsRead } from './use-mark-shown-reports-read'
 import { useReportSelection } from './use-report-selection'
 import { ReportStarButton } from './report-star-button'
 import {
@@ -66,7 +66,6 @@ export function Reports({
   const [selecting, setSelecting] = useState(false)
   const [panel, setPanel] = useState<ReportPanel>(null)
   const [options, setOptions] = useState(defaultReportOptions)
-  const markAll = useMarkAllReportsRead(model)
   const selection = useReportSelection(model)
   const { selected, select: setSelected } = selection
   const cleanup = useReportCleanup(model, () => setSelected(new Set()))
@@ -119,6 +118,10 @@ export function Reports({
   )
   const folderCount =
     page?.items.filter((r) => r.hidden === archived).length ?? 0
+  const markAll = useMarkShownReportsRead(
+    model,
+    visible.map((report) => report.id),
+  )
   // Selection operates on loaded rows and stays usable during background reads.
   const complete = !!page
   const busy =

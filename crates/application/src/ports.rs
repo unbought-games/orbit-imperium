@@ -471,6 +471,12 @@ pub trait GameStore: Send + Sync {
     {
         async { Err(StoreError::Unavailable) }
     }
+    fn mark_reports_read(
+        &self,
+        _q: ReportsReadRequest,
+    ) -> impl std::future::Future<Output = Result<ReportsReadResult, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
     fn world_reports(
         &self,
         _q: ReportsQuery4,

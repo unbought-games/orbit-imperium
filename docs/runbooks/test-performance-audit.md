@@ -1910,6 +1910,28 @@ The four affected desktop/mobile cases passed locally after this repair (9.4s
 runner duration, one worker). The temporary fixture bundle/server were cleaned
 by the installed runner. Production code and visual captures are unchanged.
 
+### Invitation card alignment: initial assertion repair (2026-11-12)
+
+The new `invitation_card::tests::visible_identity_lines_center_on_the_insignia`
+assertion initially compared flattened glyph coordinates before their parent text
+transform with the canvas center (`two-lines: -48.84..45.228`). This was a test
+coordinate-space defect, not a renderer failure. Inspection of usvg's text bounds
+API established that flattened glyph bounds need `text.abs_transform()` to reach
+canvas coordinates. The first repair applies that transform before checking the
+fixed insignia center and available bounds. No prior repair appears in the card's
+history or this ledger. Deterministic renderer coverage retains absent, blank,
+three-line, and fitted long-name cases; no browser test was added.
+
+Verification: base revision `8f98e7a7747f32ac57fe060b5a26c6aec3f520a1` plus
+uncommitted invitation renderer/test changes. `make test-http`: initial build
+37.54s, execution 28.115s (84 passed, one new assertion failed); repaired build
+4.34s, execution 25.991s (85 passed). Local runner queue wait was not separately
+measured. `cargo fmt --all --check` and scoped Clippy with `-D warnings` passed
+(Clippy 15.13s). Production-rendered PNGs were inspected in a local browser at
+1280×800 and 390×844, covering two and three identity lines; the fitted long-name
+PNG was inspected separately. No deployment or external unfurl cache check was
+performed. The temporary preview server and browser were stopped after capture.
+
 ## November 12, 2026: fleet endpoint labels
 
 PR #407 head `15333669`, run `43354543718` attempt 1, feature job

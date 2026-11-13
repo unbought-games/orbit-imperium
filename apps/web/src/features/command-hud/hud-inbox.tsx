@@ -13,7 +13,7 @@ import {
   type HudTarget,
 } from './model'
 import type { CommandHudState } from './use-command-hud'
-import { useMarkAllReportsRead } from '../use-mark-all-reports-read'
+import { useMarkShownReportsRead } from '../use-mark-shown-reports-read'
 import { useHudInbox } from './use-hud-inbox'
 import styles from './hud.module.css'
 import inboxStyles from './hud-inbox.module.css'
@@ -35,9 +35,14 @@ export function HudInbox({
   onSelect: (target: HudTarget) => void
   close: () => void
 }) {
-  const markAll = useMarkAllReportsRead(model)
   const visible = hud.selection === 'inbox'
   const inbox = useHudInbox(model, hud.state, visible, scrollRoot)
+  const markAll = useMarkShownReportsRead(
+    model,
+    inbox.targets
+      .filter((target) => target.kind === 'report')
+      .map((target) => target.id),
+  )
   return (
     <div hidden={!visible}>
       <HudEnemyAttacks state={hud.state} body={body} onSelect={onSelect} />
@@ -78,11 +83,11 @@ export function HudInbox({
             variant="ghost"
             size="icon-touch"
             aria-label={
-              markAll.busy ? 'Marking reports as read' : 'Mark all as read'
+              markAll.busy ? 'Marking reports as read' : 'Mark shown as read'
             }
-            disabled={markAll.busy}
-            title="Mark all reports as read, including archived reports"
-            onClick={() => void markAll.markAllRead()}
+            disabled={markAll.disabled}
+            title="Mark the reports shown in this list as read"
+            onClick={() => void markAll.markShownRead()}
           >
             <MailCheck size={16} aria-hidden="true" />
           </Button>
