@@ -300,6 +300,7 @@ export function Reports({
                 compact
                 disabled={false}
                 onCommitted={reportReturn.onCommitted}
+                archiveShortcut
               />
             </div>
           </div>

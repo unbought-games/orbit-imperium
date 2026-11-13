@@ -5,6 +5,7 @@ import { Button } from '../ui/button'
 import { useStore } from 'zustand'
 import { projectedReportHeader } from '../client-model/report-state'
 import { useReportVisibility } from './use-report-visibility'
+import { useReportArchiveShortcut } from './use-report-archive-shortcut'
 
 export function ReportVisibilityButton({
   model,
@@ -13,6 +14,7 @@ export function ReportVisibilityButton({
   disabled,
   compact = false,
   onCommitted,
+  archiveShortcut = false,
 }: {
   model: Coordinator
   report: string
@@ -20,7 +22,9 @@ export function ReportVisibilityButton({
   disabled: boolean
   compact?: boolean
   onCommitted?: (hidden: boolean) => void
+  archiveShortcut?: boolean
 }) {
+  const archiveButton = useReportArchiveShortcut(archiveShortcut && !hidden)
   const visibility = useReportVisibility(model, report, onCommitted)
   const starred = useStore(
     model.store,
@@ -35,13 +39,15 @@ export function ReportVisibilityButton({
         variant={compact ? 'ghost' : 'secondary'}
         size={compact ? 'icon-touch' : undefined}
         aria-label={hidden ? 'Move to inbox' : 'Archive report'}
+        ref={archiveButton}
+        aria-keyshortcuts={archiveShortcut && !hidden ? 'e' : undefined}
         disabled={disabled || visibility.disabled || (!hidden && !!starred)}
         title={
           starred && !hidden
             ? 'Unstar this report before archiving it'
             : hidden
               ? 'Move to inbox'
-              : 'Move to Archived; you can move it back to Inbox'
+              : `Move to Archived${archiveShortcut ? ' (E)' : ''}; you can move it back to Inbox`
         }
         onClick={() => {
           void visibility.change(!hidden)

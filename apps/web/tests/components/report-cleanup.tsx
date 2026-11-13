@@ -81,6 +81,21 @@ export function ReportCleanupScenario() {
   )
   return (
     <main>
+      <input aria-label="Report note" />
+      <textarea aria-label="Report draft" />
+      <select aria-label="Report kind" defaultValue="all">
+        <option value="all">All</option>
+        <option value="espionage">Espionage</option>
+      </select>
+      <div
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-label="Rich note"
+      >
+        <span>Editable note</span>
+      </div>
+      <input type="checkbox" aria-label="Keyboard focus" />
       <ReportSelectionBar
         visible={reports.filter((row) => !row.hidden)}
         selected={selected}
