@@ -532,9 +532,15 @@ it('compares cargo coverage for victorious samples against rule-calculated avail
   expect(battleEstimates(sampleResponse, 'Unknown').cargoCovered).toBeNull()
 })
 it('keeps unknown and invalid force values discoverable in collapsed summaries', () => {
-  const fields = simulationFields(undefined, catalog, []).filter(
-    (f) => f.side === 'defender' && f.item,
-  )
+  const fields = simulationFields(
+    {
+      ...report,
+      fleet: { visibility: 'Unknown' },
+      defenses: { visibility: 'Unknown' },
+    },
+    catalog,
+    [],
+  ).filter((f) => f.side === 'defender' && f.item)
   expect(simulationGroupSummary(fields, {})).toMatchObject({
     total: 0n,
     unknown: fields.length,
@@ -571,4 +577,31 @@ it('shares canonical ship ordering on both sides without mutating the catalog', 
         .map((f) => f.item?.id),
     ).toEqual(['LightFighter', 'Cruiser', 'SmallCargo', 'ColonyShip'])
   expect(ships.map((s) => s.key.id)).toEqual(before)
+})
+
+it('keeps manual drafts free of report provenance and allows unobserved defense types', () => {
+  const ion = { kind: 'Defense', id: 'IonCannon' } as const
+  const rules = [...catalog, { ...catalog[1], key: ion }]
+  const fields = simulationFields(
+    { ...report, defenses: { visibility: 'Known', value: [] } },
+    rules,
+    [],
+  )
+  expect(
+    fields.find((field) => field.key === 'defender:Defense:IonCannon')?.value,
+  ).toBe('0')
+  expect(
+    simulationInputs(fields, {
+      ...attacking,
+      'defender:Defense:IonCannon': '5',
+    }).inputs?.defender.units,
+  ).toContainEqual({ item: ion, count: 5 })
+  expect(
+    simulationGroupSummary(
+      simulationFields(undefined, rules, []).filter(
+        (field) => field.side === 'defender' && field.item,
+      ),
+      {},
+    ).unknown,
+  ).toBe(0)
 })

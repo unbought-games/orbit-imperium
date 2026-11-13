@@ -98,10 +98,9 @@
 }
 
 .groupHeading {
-  min-height: 56px;
   box-sizing: border-box;
-  margin: 12px 0 8px;
-  padding-bottom: 8px;
+  margin: 8px 0 4px;
+  padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
   font-size: 1rem;
   color: var(--champagne-light);
@@ -113,9 +112,7 @@
   font-size: 0.75rem;
   text-align: left;
 }
-.help {
-  margin-top: 24px;
-}
+
 .outcomes .win,
 .outcomes .win strong {
   color: #91c9ac;
@@ -182,11 +179,11 @@
   cursor: pointer;
 }
 .groupSummary {
-  display: block;
+  display: inline;
   color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: normal;
-  margin-top: 4px;
+  margin-left: 8px;
 }
 .groupSummary strong {
   color: var(--danger);
@@ -196,13 +193,7 @@
   font-weight: 700;
   border-color: var(--border-accent);
 }
-.moonTarget {
-  display: grid;
-  gap: 8px;
-  max-width: 360px;
-  margin-block: 16px;
-}
-.moonTarget small,
+
 .planningGrid small {
   color: var(--text-muted);
 }
@@ -245,8 +236,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   padding-block: 12px;
   background: var(--surface-page);
   border-top: 1px solid var(--border);
@@ -255,14 +247,6 @@
   margin: 0;
 }
 
-.stationary {
-  color: var(--text-muted);
-}
-@media (max-width: 620px) {
-  .stationary {
-    display: none;
-  }
-}
 /* Match the shell's bottom-navigation clearance; dialogs occupy the top layer. */
 @media (max-width: 1023px) {
   .runControls {
@@ -270,5 +254,95 @@
   }
   .dialog .runControls {
     bottom: 0;
+  }
+}
+
+.setupContext {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.setupContext .location {
+  flex: 1;
+}
+.reportContext {
+  margin-bottom: 8px;
+}
+.location {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.locationArt {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+.location small {
+  display: block;
+  color: var(--text-muted);
+}
+.reportLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+}
+.importDisclosure {
+  position: relative;
+  margin-left: auto;
+}
+.importDisclosure > summary {
+  padding: 8px 12px;
+  border: 1px solid var(--border-accent);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+.importDisclosure .importControls {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 3;
+  width: 320px;
+  max-width: calc(100vw - 72px);
+  box-sizing: border-box;
+  background: var(--surface-page);
+  box-shadow: 0 8px 24px #0009;
+}
+.shipSubtype {
+  margin: 12px 0 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.attackPlanning {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.attackPlanning > summary {
+  cursor: pointer;
+  padding-block: 12px;
+  color: var(--champagne-light);
+}
+.flightLocations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 620px) {
+  .flightLocations {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .setupContext .location {
+    flex-basis: 100%;
   }
 }

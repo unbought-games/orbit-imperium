@@ -22,7 +22,7 @@ moon-balance changes. Base: `7d57e0532827fffe2bde0da65f03e8045b460dda`.
   sample's generated metal/crystal debris, then averaged. The UI shows zero for
   disabled moon rules, moon targets, or planets with existing moons. Report moon
   targets and owned-world imports seed eligibility; external planet occupancy is
-  explicitly unknown unless the user supplies an assumption. No live private
+  explicitly unknown for external planets. No live private
   target lookup or resource refresh is introduced.
 - Recycler counts use the active recycler cargo capacity capped by the same
   constant used at harvest settlement. Whole harvestable resources are summed,
@@ -94,3 +94,43 @@ Removed that gate and added `recycler_planning_remains_available_when_plunder_is
 loot remains unavailable but recycler capacity is retained. All 14 simulation
 tests passed (4.27 s build, 2.53 s execution); focused Clippy passed (2.06 s).
 This server-only correction leaves the inspected UI unchanged.
+
+### Owner browser review follow-up (2026-11-13)
+
+Applied all 22 annotations: compact shared body/player/coordinate identities,
+linked report age and explicit detach, right-aligned owned-defender pop-down,
+tighter headings, military/civil sections on both sides, no attacking satellite
+placeholder, clearer changed-from-report labels, no moon selector or assumptions
+section, and a stable left-aligned Run button with validation underneath.
+Detaching preserves authored fleets, discards report resources/provenance, opens
+manual defender groups, clears results, and removes attack planning.
+
+Attack planning is report-only and collapsed under Plan attack. It composes the
+same DispatchFlightControls as Dispatch, uses shared location identity elements,
+and labels the handoff Review attack. Its draft carries reviewOnOpen for the
+separate Dispatch PR #430; that PR owns automatic review and launch validation.
+Genuine estimate errors remain visible; the owner's false unavailable-target
+message was caused by the local preview's missing world endpoint, which is fixed.
+Likewise, the missing advanced defenses were incomplete preview catalog metadata;
+the full fixture now includes them. Model coverage verifies that defenses absent
+from a report remain editable and enter the submitted fleet.
+
+The obsolete manual-flight browser case was removed because the owner explicitly
+removed manual flight planning. Its coordinate parsing/model coverage remains,
+and report flight races/eligibility/revision changes remain in the existing
+report handoff case. Standalone cases now assert no attack-planning section.
+The satellite alignment assertion was replaced with absence of attacker
+satellites, military/civil headings on both sides, and advanced-defense visibility.
+No test failures or retries occurred. Typecheck caught nullable report names and
+legacy view metadata access during implementation; both were corrected.
+
+Validation on the follow-up source (commit containing this record): 53 focused
+client tests passed in 0.219s. All 7 relevant browser scenarios passed on both
+runs: initial 5.127s bundle / 21.5s runner, final 4.597s bundle / 22.2s runner.
+The final run follows a visual mobile-origin wrapping fix and adds stable Run/error
+geometry and report-detachment checks. Desktop 1440×1000 and mobile 390×1000
+screenshots cover setup, expanded defender, import pop-down, detached report,
+manual full catalog, results and flight planning; pixels inspected. Application
+TypeScript, focused ESLint and formatting pass. Browser processes and temporary
+bundles cleaned themselves up. The task-owned local review preview remains at
+127.0.0.1:5198 for owner iteration; no production or other task services changed.

@@ -257,7 +257,7 @@ export function simulationGroupSummary(
   let invalid = 0
   for (const field of fields) {
     const raw = edits[field.key] ?? field.value
-    if (raw === null) unknown++
+    if (raw === null && field.source === 'Report') unknown++
     const value = raw || '0'
     if (!/^(0|[1-9][0-9]*)$/.test(value) || BigInt(value) > 2000n) invalid++
     else if (BigInt(value) > 0n) {

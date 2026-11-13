@@ -179,8 +179,8 @@ export function SimulationPlanning({
         )}
         <p>
           Chance is calculated for each battle’s newly generated debris, then
-          averaged. Outcomes are samples, not guarantees. Moon eligibility is an
-          editable assumption, not a live target check.
+          averaged. Outcomes are samples, not guarantees. A new moon requires a
+          planet without an existing moon.
         </p>
       </details>
     </>

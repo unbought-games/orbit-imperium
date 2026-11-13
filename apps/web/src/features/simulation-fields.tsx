@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
+import { shipGroup, shipGroups } from './ship-order'
 import { label } from '../ui/format'
 import { formatWholeNumber } from '../ui/whole-number'
 import {
@@ -11,7 +12,6 @@ import styles from './combat-simulation.module.css'
 
 type Props = {
   fields: SimulationField[]
-  alignShipsWith?: SimulationField[]
   edits: Record<string, string>
   edit: (values: Record<string, string>) => void
 }
@@ -33,46 +33,37 @@ export function SimulationFields(props: Props) {
   )
 }
 
-function FieldGroup({
-  fields,
-  edits,
-  edit,
-  group,
-  alignShipsWith,
-}: Props & { group: string }) {
+function FieldGroup({ fields, edits, edit, group }: Props & { group: string }) {
   const defender = fields[0].side === 'defender'
   const collapsible = defender && group !== 'Technologies'
   const [expanded, setExpanded] = useState(
     !fields.every((f) => f.source === 'Report' && f.value !== null),
   )
   const summary = simulationGroupSummary(fields, edits)
-  const rows = group === 'Ships' && alignShipsWith ? alignShipsWith : fields
-  const contents = rows.map((reference) => {
-    const field = fields.find(
-      (candidate) =>
-        candidate.item?.id === reference.item?.id &&
-        candidate.technology === reference.technology,
-    )
-    return field ? (
-      <SimulationFieldInput
-        key={field.key}
-        field={field}
-        edits={edits}
-        edit={edit}
-      />
-    ) : (
-      <div
-        key={reference.key}
-        className={`${styles.field} ${styles.stationary}`}
-      >
-        <span>
-          {label(reference.label)}
-          <small>Stationary · defender only</small>
-        </span>
-        <span aria-hidden="true">—</span>
-      </div>
-    )
-  })
+  const groups =
+    group === 'Ships'
+      ? shipGroups.map((name) => ({
+          name,
+          fields: fields.filter(
+            (field) => field.item && shipGroup({ key: field.item }) === name,
+          ),
+        }))
+      : [{ name: '', fields }]
+  const contents = groups
+    .filter((group) => group.fields.length)
+    .map((group) => (
+      <Fragment key={group.name}>
+        {group.name && <h4 className={styles.shipSubtype}>{group.name}</h4>}
+        {group.fields.map((field) => (
+          <SimulationFieldInput
+            key={field.key}
+            field={field}
+            edits={edits}
+            edit={edit}
+          />
+        ))}
+      </Fragment>
+    ))
   return (
     <section
       aria-label={`${defender ? 'Defender' : 'Attacker'} ${group.toLowerCase()}`}
@@ -120,14 +111,22 @@ function SimulationFieldInput({
   const invalid =
     !/^(0|[1-9][0-9]*)$/.test(value || '0') ||
     Number(value) > (field.item ? 2000 : 100)
+  const changed =
+    edits[field.key] !== undefined && value !== (field.value ?? '0')
   const source =
-    edits[field.key] !== undefined
-      ? field.source === 'Imported plan'
-        ? 'Editable imported plan'
-        : `Player assumption${field.value !== null ? ` · ${field.source.toLowerCase()}: ${field.value}` : ' · not observed'}`
-      : field.value === null
-        ? 'Assumed zero · not observed'
-        : field.source
+    field.source === 'Report'
+      ? changed
+        ? `Differs from report${field.value !== null ? ` · was ${field.value}` : ''}`
+        : field.value === null
+          ? 'Not observed'
+          : 'Report'
+      : field.source === 'Imported plan'
+        ? 'Imported'
+        : field.source === 'Your research'
+          ? changed
+            ? 'Changed'
+            : 'Your research'
+          : ''
   return (
     <div
       className={`${styles.field} ${value && value !== '0' ? styles.nonzero : ''}`}
@@ -149,7 +148,7 @@ function SimulationFieldInput({
             {formatWholeNumber(field.available)} available
           </Button>
         ) : (
-          <small>{source}</small>
+          source && <small>{source}</small>
         )}
       </div>
       <NumberInput
