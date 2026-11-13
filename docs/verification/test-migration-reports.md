@@ -118,7 +118,7 @@ listed otherwise. A retained case keeps its existing assertions.
 | detail archive rate limit stays in detail and allows a fresh gesture (1440/390) | Retain. Cooldown cannot navigate; fresh gesture must navigate after acceptance. |
 | leaving detail during archive does not pull the player back after acceptance | Retain. Late receipt must not override a newer report navigation. |
 | archive age survives navigation and reopening without submitting (1280/390) | Retain. UI edit persistence through actual dialog dismissal/reopening and reload. Storage parsing permutations remain report-age-preference tests. |
-| mark all read from reports / orb includes unloaded and archived reports (1280/390) | Retain. Distinct menu and HUD controls, action placement/size, shared badge update and navigation. Full-history batching remains `mark-all-reports-read.test.ts`; not re-creating retired range-selection journeys. |
+| mark shown read from reports / orb leaves unloaded and archived reports unread (1280/390) | Retain menu/HUD wiring, action placement/size, displayed selection and shared badge updates. The November 12 scope change replaces obsolete full-history traversal tests with `report-reads.test.ts` (client confirmation, errors and stale responses) and PostgreSQL `report_reads` (real HTTP, ownership, atomic persistence, large requests, retries and concurrent preferences). |
 
 ## Repair history and validation
 

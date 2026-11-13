@@ -24,8 +24,18 @@ export function mergeReportHeaders(
   const next = new Map(current)
   for (const header of headers) {
     const previous = next.get(header.id)
-    if (!previous || BigInt(revision) >= BigInt(previous.revision))
-      next.set(header.id, { header, revision })
+    const source =
+      !previous || BigInt(revision) >= BigInt(previous.revision)
+        ? { header, revision }
+        : previous
+    // Reading is irreversible within a binding. A newer star/archive receipt
+    // may still carry the cached unread flag; it cannot cancel a confirmed read.
+    next.set(
+      header.id,
+      !source.header.read && (header.read || previous?.header.read)
+        ? { ...source, header: { ...source.header, read: true } }
+        : source,
+    )
   }
   return next
 }

@@ -8464,6 +8464,169 @@
           }
         }
       }
+    },
+    "/api/v4/universes/{universe}/reports/read": {
+      "post": {
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed read state for the displayed report selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportsReadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access or bot participation denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BotDenial"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Problem"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportsReadRequest"
+              }
+            }
+          }
+        },
+        "operationId": "markShownReportsRead",
+        "x-bot-category": "social-or-status",
+        "security": [
+          {
+            "MachineBearer": []
+          },
+          {
+            "BrowserSession": []
+          }
+        ],
+        "description": "Atomically mark the supplied displayed report IDs read for the authenticated recipient. No history traversal. Other preferences remain unchanged. Retries are idempotent. At most 10000 displayed reports per request."
+      }
     }
   },
   "components": {
@@ -29193,6 +29356,57 @@
           "payload",
           "owned",
           "supported"
+        ],
+        "additionalProperties": false
+      },
+      "ReportsReadRequest": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "reports": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10000,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "context",
+          "reports"
+        ],
+        "additionalProperties": false
+      },
+      "ReportsReadResult": {
+        "type": "object",
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "viewer_revision": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportHeader4"
+            }
+          }
+        },
+        "required": [
+          "binding",
+          "request_id",
+          "viewer_revision",
+          "items"
         ],
         "additionalProperties": false
       }
