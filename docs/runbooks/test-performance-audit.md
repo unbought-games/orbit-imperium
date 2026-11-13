@@ -1909,3 +1909,35 @@ publishing evidence.
 The four affected desktop/mobile cases passed locally after this repair (9.4s
 runner duration, one worker). The temporary fixture bundle/server were cleaned
 by the installed runner. Production code and visual captures are unchanged.
+
+## November 12, 2026: simulator zero-default interaction update (PR402)
+
+At head `0ee77705`, run `43347386938` attempt 1 left browser job
+`131630140206` (features 1/6) running after every other selected job completed.
+The two widths of `allied simulation preserves separate technologies` still
+clicked the removed “Assume all unknown values are zero” button, then expected
+blank allied technology. This stale interaction cannot complete against the
+new requested behavior; it is a test expectation defect, not a product regression.
+The first run's available logs also omit completion of these two scenarios.
+The current run was deliberately cancelled after identifying this action; no
+unchanged retry was used.
+
+History and this ledger were inspected: #378 added response-aware navigation,
+and #385 migrated other alliance scenarios; neither records a previous repair
+for this obsolete simulator action. This is its one explained test repair:
+assert zero defaults, then retain the existing nonzero allied technology edits,
+submitted primary/allied technology assertions, results, layout, and result
+invalidation checks. Use the canonical body path and gate submission on its
+response. The existing pure `simulation-allies.test.ts` tests also retain
+separate technologies, zero defaults for both sides, and combined unit limits.
+
+The repository-wide audit found this obsolete action only in alliance-attacks;
+combat-simulation already checks the button's absence and automatic zero filling.
+PR402 owns the repair and latest-revision CI follow-through. No assertions were
+removed, scenarios renamed, timeouts added, or new follow-up work deferred.
+
+After cancellation, the retained job log confirms 124 of 126 tests completed;
+the two missing completions are the allied simulator cases. The repaired
+desktop/mobile cases passed locally (7.03s bundle preparation, 3.8s runner time,
+one worker), with the fixture server and temporary bundle cleaned by the runner.
+The game implementation and its inspected visual captures are unchanged.
