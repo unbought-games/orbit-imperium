@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { createProgressionScene } from '../../../tests/components/progression.scenarios'
+import { createProgressionScene } from '../../../tests/components/progression-runtime'
 import { id } from '../../test-support/bootstrap'
 it.each([
   '',

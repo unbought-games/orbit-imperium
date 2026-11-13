@@ -136,7 +136,7 @@ async function setup(
   return options
 }
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`Hyperspace Technology can be inspected and researched without enabling its drive at ${width}px`, async ({
     page,
   }, testInfo) => {

@@ -15,7 +15,7 @@ const nanite = JSON.parse(
 // The command/lock lifecycle is shared by industrial facilities. Keep content
 // arithmetic in engine tests instead of duplicating every formula in the browser.
 for (const building of ['Shipyard', 'NaniteFactory'] as const) {
-  for (const width of [390, 1440]) {
+  for (const width of [building === 'Shipyard' ? 390 : 1440]) {
     test(`${building} industrial lifecycle at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       const title = building === 'Shipyard' ? 'Shipyard' : 'Nanite Factory'

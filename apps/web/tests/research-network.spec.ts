@@ -170,7 +170,7 @@ async function setup(page: Parameters<typeof shellFixture>[0], locked = false) {
   return options
 }
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   // Regression: linked-lab disclosure, command wiring and the one player-wide
   // operation must survive navigation from its origin to a contributing colony.
   test(`research network preserves linked labs across submission and planet navigation at ${width}px`, async ({

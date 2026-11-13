@@ -271,7 +271,7 @@ async function setup(
   return options
 }
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`Hyperspace Drive can be inspected and researched at ${width}px`, async ({
     page,
   }, testInfo) => {

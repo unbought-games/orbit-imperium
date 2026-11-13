@@ -1,6 +1,7 @@
 import { createElement, Fragment } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync } from 'node:fs'
+import sharp from 'sharp'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -9,12 +10,15 @@ import {
 } from '@tanstack/react-router'
 import { expect, it, vi } from 'vitest'
 import type { components } from '../../contracts'
+import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { Coordinator } from '../../client-model/coordinator'
 import { createGameStore } from '../../client-model/game-store'
 import { TechnologyDetails } from './technology-details'
 import { TechnologyTree } from './technology-tree'
 import { progressionFixture } from './progression-test-fixture'
 import { manufacturingPreview } from './manufacturing-preview'
+import { catalogContent } from './catalog-content'
+import { progressionCommand } from './options'
 import { createManufacturingOrder } from './manufacturing-order'
 
 vi.mock('../../shell/session-context', () => ({
@@ -24,6 +28,8 @@ type S = components['schemas']
 const examples = [
   {
     id: 'IonCannon',
+    art: 'ion-cannon',
+    prose: 'A stationary cannon with strong shields',
     rules: 'mvp-v1-slice-10',
     levels: { Shipyard: 4 },
     research: { IonTechnology: 4 },
@@ -32,6 +38,8 @@ const examples = [
   },
   {
     id: 'GaussCannon',
+    art: 'gauss-cannon',
+    prose: 'A stationary electromagnetic cannon',
     rules: 'mvp-v1-slice-12',
     levels: { Shipyard: 6 },
     research: {
@@ -44,6 +52,8 @@ const examples = [
   },
   {
     id: 'HeavyLaser',
+    art: 'heavy-laser',
+    prose: 'A stationary heavy laser battery',
     rules: 'mvp-v1-heavy-laser',
     levels: { Shipyard: 4 },
     research: { EnergyTechnology: 3, LaserTechnology: 6 },
@@ -52,6 +62,8 @@ const examples = [
   },
   {
     id: 'PlasmaTurret',
+    art: 'plasma-turret',
+    prose: 'A stationary plasma turret',
     rules: 'mvp-v1-slice-12',
     levels: { Shipyard: 8 },
     research: { PlasmaTechnology: 7 },
@@ -70,6 +82,22 @@ for (const example of examples) {
       ),
     ) as { catalog: S['CatalogEntry3'][] }
   ).catalog
+  it(`${example.id} publishes its field notes and decodable responsive artwork`, async () => {
+    const { art, description } = catalogContent({
+      kind: 'Defense',
+      id: example.id,
+    })
+    expect(description).toContain(example.prose)
+    for (const width of [96, 320, 640, 1200]) {
+      const url = `/art/atlas/objects/${example.art}-${width}.webp`
+      expect(art.srcSet).toContain(`${url} ${width}w`)
+      const decoded = await sharp(`apps/web/public${url}`)
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+      expect(decoded.info.width).toBe(width)
+      expect(decoded.info.height).toBe(width)
+    }
+  })
   for (const gate of [
     'ready',
     'disabled',
@@ -221,6 +249,31 @@ for (const example of examples) {
         crystal: example.total[1],
         deuterium: example.total[2],
       })
+      if (gate === 'ready') {
+        expect(entry.requirements).toHaveLength(
+          Object.keys(example.levels).length +
+            Object.keys(example.research).length,
+        )
+        for (const level of [
+          example.levels.Shipyard,
+          ...Object.values(example.research),
+        ])
+          expect(html).toContain(`${level} / ${level} · Met`)
+        expect(html).toContain('Technology tree')
+        expect(
+          progressionCommand({
+            ...source,
+            request: preview.request,
+            terms: preview.terms,
+          }),
+        ).toEqual({
+          type: 'StartManufacture',
+          body: body.id,
+          item,
+          quantity: '3',
+          expected_terms_hash: 'b'.repeat(64),
+        })
+      }
       if (gate !== 'ready') {
         await createManufacturingOrder(model).build(
           preview,
@@ -233,4 +286,170 @@ for (const example of examples) {
       }
     })
   }
+}
+
+for (const example of [
+  {
+    id: 'ImpulseDrive',
+    definition: 'impulse-drive',
+    source: 3,
+    lab: 2,
+    gates: { EnergyTechnology: 1 },
+    paid: ['16000000000', '32000000000', '4800000000'],
+    duration: 11520000,
+    formula: 'ResearchClassic',
+    notes: ['20% per level', 'level 5'],
+  },
+  {
+    id: 'Astrophysics',
+    definition: 'astrophysics',
+    source: 4,
+    lab: 3,
+    gates: { EspionageTechnology: 4, ImpulseDrive: 3 },
+    paid: ['37500000000', '75000000000', '37500000000'],
+    duration: 20250000,
+    formula: 'ResearchAstrophysics',
+    notes: [
+      'Positions 4–12 unlock at level 1',
+      'Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.',
+    ],
+  },
+  {
+    id: 'LaserTechnology',
+    definition: 'light-laser',
+    source: 0,
+    lab: 1,
+    gates: { EnergyTechnology: 2 },
+    paid: ['200000000', '100000000', '0'],
+    duration: 60000,
+    formula: 'ResearchClassic',
+    notes: ['Weapon damage is improved by Weapons Technology.'],
+  },
+] as const) {
+  it(`${example.id} displays its bound next level, prerequisite progress and exact research costs`, async () => {
+    const { view, source } = progressionFixture()
+    const body = view.bodies[0]
+    const content = JSON.parse(
+      readFileSync(`rules/content/${example.definition}.json`, 'utf8'),
+    )
+    const entry: S['CatalogEntry3'] = {
+      key: { kind: 'Research', id: example.id },
+      enabled: true,
+      mobile: false,
+      body_kinds: ['Planet'],
+      requirements: content.requirements ?? content.research.requirements,
+    }
+    const gates = Object.entries(example.gates) as [S['ResearchId3'], number][]
+    expect(entry.requirements).toEqual([
+      { type: 'BodyBuilding', building: 'ResearchLab', level: example.lab },
+      ...gates.map(([research, level]) => ({
+        type: 'PlayerResearch',
+        research,
+        level,
+      })),
+    ])
+    body.levels.ResearchLab = example.lab
+    body.amounts = {
+      metal: '100000000000',
+      crystal: '100000000000',
+      deuterium: '100000000000',
+    }
+    view.research = [
+      { research: example.id, level: example.source },
+      ...gates.map(([research, level]) => ({ research, level })),
+    ]
+    view.catalog = [entry]
+    const request = {
+      type: 'Research',
+      host: body.id,
+      research: example.id,
+    } as const
+    const [metal, crystal, deuterium] = example.paid
+    const proposal: BoundProgressionOptions = {
+      ...source,
+      request,
+      terms: {
+        ...request,
+        profile_hash: view.profile_hash,
+        source_level: example.source,
+        target_level: example.source + 1,
+        paid: { metal, crystal, deuterium },
+        duration_ms: example.duration,
+        formula: example.formula,
+        labs: [{ body: body.id, level: example.lab }],
+        effective_lab: String(example.lab),
+        required_energy: '0',
+      },
+    }
+    const store = createGameStore()
+    store.setState({ view, binding: view.binding, ready: true })
+    const routeTree = createRootRoute({
+      component: () =>
+        createElement(
+          Fragment,
+          null,
+          createElement(TechnologyDetails, {
+            coordinator: { store, ready: true } as unknown as Coordinator,
+            view,
+            body,
+            page: 'research',
+            selection: {
+              selectedId: example.id,
+              close: vi.fn(),
+              back: {
+                href: '/research',
+                'aria-label': 'Back to Research',
+                onClick: vi.fn(),
+              },
+              link: () => ({
+                href: '/research',
+                'data-catalog-item': example.id,
+                onClick: vi.fn(),
+              }),
+            },
+            entry,
+            count: example.source,
+            proposal,
+            loading: false,
+            error: '',
+            quantity: '1',
+            onQuantity: vi.fn(),
+            onInspect: vi.fn(),
+            onTechnology: vi.fn(),
+          }),
+          createElement(TechnologyTree, {
+            entry,
+            view,
+            body,
+            onNavigate: vi.fn(),
+          }),
+        ),
+    })
+    const router = createRouter({ routeTree, history: createMemoryHistory() })
+    await router.load()
+    const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
+    expect(html).toContain(`Next · level ${example.source + 1}`)
+    for (const amount of example.paid) {
+      if (amount === '0') continue
+      expect(html).toContain(
+        `>${(BigInt(amount) / 1000000n).toLocaleString('en-US')}<`,
+      )
+    }
+    for (const level of [example.lab, ...gates.map(([, level]) => level)])
+      expect(html).toContain(`${level} / ${level} · Met`)
+    for (const note of example.notes) expect(html).toContain(note)
+    const art = catalogContent(entry.key).art
+    expect(html).toContain(art.src)
+    const bitmap = await sharp(`apps/web/public${art.src}`)
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    expect(bitmap.info.width).toBe(640)
+    expect(bitmap.info.height).toBe(640)
+    expect(progressionCommand(proposal)).toEqual({
+      type: 'StartResearch',
+      host: body.id,
+      research: example.id,
+      expected_terms_hash: 'b'.repeat(64),
+    })
+  })
 }

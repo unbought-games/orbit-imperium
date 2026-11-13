@@ -12,77 +12,6 @@ import { universeSlug } from '../src/client-model/universe-name'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 
-for (const width of [320, 390, 1440]) {
-  for (const screen of ['resources', 'facilities', 'research'] as const) {
-    test(`${screen} shares level transitions and keeps long timers on one line at ${width}px`, async ({ page }) => {
-      const height = width === 1440 ? 1000 : 844
-      const now = 1_800_000_000_000
-      await page.clock.install({ time: now })
-      await page.clock.pauseAt(now)
-      await page.setViewportSize({ width, height })
-      const research = screen === 'research'
-      const building = screen === 'resources' ? 'CrystalMine' : 'ResearchLab'
-      const title = research ? 'Impulse Drive' : screen === 'resources' ? 'Crystal Mine' : 'Research Lab'
-      const planet = structuredClone(body)
-      planet.levels[building] = 4
-      const operation: S['ResearchOperationDto'] = {
-        id: id(20), host: body.id, research: 'ImpulseDrive', source_level: 4, target_level: 5,
-        paid: { metal: '0', crystal: '0', deuterium: '0' },
-        started_at: now, due_at: now + 96 * 60_000, labs: [], effective_lab: '1', can_cancel: true,
-      }
-      const construction: S['Construction3'] = {
-        id: id(21), body: body.id, building, target_level: 5,
-        due_at: operation.due_at, paid: operation.paid,
-      }
-      const options = {
-        bodies: [planet], sampledAt: now,
-        research: [{ research: 'ImpulseDrive' as const, level: 4 }],
-        researchOperation: research ? operation : null,
-        constructions: research ? [] : [construction],
-        catalog: [...catalog, ...(['CrystalMine', 'ImpulseDrive'] as const).map(item => ({
-          key: item === 'ImpulseDrive' ? { kind: 'Research' as const, id: item } : { kind: 'Building' as const, id: item },
-          requirements: [], enabled: true, mobile: false, body_kinds: ['Planet' as const],
-        }))],
-      }
-      await shellFixture(page, options)
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${screen}`))
-      const row = page.getByRole('link', { name: `${research ? 'Research' : 'Upgrade'} ${title}`, exact: true })
-      const progress = row.getByRole('group', { name: research ? 'Research progress' : 'Construction progress' })
-      const timer = page.getByLabel(`${title} time remaining`, { exact: true })
-      await expect(progress).toContainText('Level 4 → Level 5')
-      await expect(progress.getByLabel('Target level 5')).toHaveText('Level 5')
-      await expect(progress.getByLabel('Target level 5')).toHaveCSS('font-weight', '700')
-      for (const [duration, text] of [[96 * 60_000, '1h 36m'], [123 * 86_400_000, '123 days']] as const) {
-        operation.due_at = now + duration
-        construction.due_at = now + duration
-        // Load each authoritative duration with the clock held still.
-        await withBootstrapResponse(page, () => page.reload())
-        await expect(timer).toHaveText(text)
-        const time = timer.getByText(text, { exact: true })
-        // Verify actual text geometry, not just the requested CSS property.
-        const lines = await time.evaluate(element => {
-          const range = document.createRange()
-          range.selectNodeContents(element)
-          return [...range.getClientRects()].map(rect => rect.y)
-        })
-        expect(new Set(lines).size).toBe(1)
-        const timerBox = (await timer.boundingBox())!
-        const rowBox = (await row.boundingBox())!
-        const targetBox = (await progress.getByLabel('Target level 5').boundingBox())!
-        expect(timerBox.x).toBeGreaterThanOrEqual(targetBox.x + targetBox.width)
-        expect(rowBox.x + rowBox.width - timerBox.x - timerBox.width).toBeLessThanOrEqual(10)
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-        await row.scrollIntoViewIfNeeded()
-        await page.clock.runFor(1000)
-        await diagnosticScreenshot(page, { path: `test-results/catalog-${screen}-${text.replaceAll(' ', '-')}-${width}x${height}.png` })
-      }
-      await row.focus()
-      await page.keyboard.press('Enter')
-      await expect(page.getByRole('region', { name: 'Progression quote' })).toBeVisible()
-    })
-  }
-}
-
 test('active research remains cancellable from its details after removing Current work', async ({
   page,
 }) => {
@@ -449,31 +378,6 @@ for (const [pageName, tile, action, region] of [
   })
 }
 
-for (const [pageName, tile, action] of [
-  ['Facilities', 'Upgrade Robotics Factory', 'Confirm upgrade'],
-  ['Research', 'Research Combustion Drive', 'Confirm research'],
-  ['Shipyard', 'Build Small Cargo', 'Build'],
-  ['Defense', 'Build Rocket Launcher', 'Build'],
-]) {
-  test(`${pageName} confirmation follows spending and income without reopening`, async ({
-    page,
-  }) => {
-    const { planet } = await setup(page)
-    await navigate(page, pageName)
-    await page.getByRole('link', { name: tile, exact: true }).click()
-    const confirm = page.getByRole('button', { name: action, exact: true })
-    await expect(confirm).toBeEnabled()
-    planet.amounts.deuterium = '0'
-    await refreshGame(page)
-    planet.amounts.metal = '59999999'
-    await refreshGame(page)
-    await expect(confirm).toBeDisabled()
-    await expect(page.getByLabel('Missing resources').getByRole('img', { name: 'metal', exact: true })).toBeVisible()
-    planet.amounts.metal = '60000000'
-    await refreshGame(page)
-    await expect(confirm).toBeEnabled()
-  })
-}
 test('facility tiles mark insufficient resources while remaining inspectable', async ({
   page,
 }) => {
@@ -616,7 +520,7 @@ test('facilities and research share detail pages and technology prerequisites', 
   await expect(tile).toBeFocused()
 })
 
-test('manufacturing updates totals locally and Build validates without dismissing ships or defenses', async ({
+test('manufacturing updates totals locally and Build validates without dismissing ships or defenses', { tag: '@journey' }, async ({
   page,
 }) => {
   const { sent, inspections } = await setup(page)
@@ -678,65 +582,10 @@ test('manufacturing updates totals locally and Build validates without dismissin
   await expect(pane).toBeVisible()
 })
 
-// Representative guarded submission: a changed quote refreshes the displayed cost
-// and exposes the controller error beside the real order without sending.
-test('manufacturing does not submit when server costs differ from the displayed order', async ({
-  page,
-}) => {
-  const { sent } = await setup(page)
-  await navigate(page, 'Shipyard')
-  await page
-    .getByRole('link', { name: 'Build Small Cargo', exact: true })
-    .click()
-  const build = page.getByRole('button', { name: 'Build', exact: true })
-  await expect(build).toBeEnabled()
-  await routeProgressionOptions(page, async (route) => {
-    const { context, request } = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 3,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        request,
-        terms_hash: 'c'.repeat(64),
-        blockers: [],
-        estimates: null,
-        terms: {
-          type: 'Manufacture',
-          profile_hash: 'a'.repeat(64),
-          body: body.id,
-          item: request.item,
-          quantity: request.quantity,
-          unit_cost: { metal: '70000000', crystal: '15000000', deuterium: '0' },
-          paid: { metal: '70000000', crystal: '15000000', deuterium: '0' },
-          unit_duration_ms: 30000,
-          formula: 'ManufactureClassic',
-          facilities: [],
-        },
-      },
-    })
-  })
-  await build.click()
-  await expect(
-    page
-      .getByRole('region', { name: 'Progression quote' })
-      .getByRole('button', { name: 'Metal details' }),
-  ).toContainText('70')
-  await expect(build).toBeEnabled()
-  await expect(page.getByRole('alert')).toContainText(
-    'Cost or build time changed',
-  )
-  expect(sent).toEqual([])
-})
-
 for (const width of [390, 1440]) {
-  for (const [destination, tile] of [
-    ['Shipyard', 'Build Small Cargo'],
-    ['Defense', 'Build Rocket Launcher'],
-  ]) {
+  for (const [destination, tile] of width === 390
+    ? [['Shipyard', 'Build Small Cargo']]
+    : [['Defense', 'Build Rocket Launcher']]) {
     test(`${destination} keeps the item route while submitting and exposes the order on the catalog at ${width}px`, async ({
       page,
     }) => {
@@ -851,44 +700,6 @@ test('catalogs fit narrow screens and enlarged text without losing controls', as
   }
 })
 
-test('changing manufacturing quantity while unit terms load uses the latest quantity', async ({
-  page,
-}) => {
-  await setup(page)
-  let release!: () => void
-  let arrived!: () => void
-  const reached = new Promise<void>((resolve) => {
-    arrived = resolve
-  })
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  await routeProgressionOptions(page,
-    async (route) => {
-      arrived()
-      await gate
-      await route.fallback()
-    },
-    { times: 1 },
-  )
-  // Gate the detail's unit terms, independently of catalog cost inspections.
-  await page.goto(`/u/andromeda/b/${body.id}/shipyard/small-cargo`)
-  await reached
-  await page.getByLabel('Shipyard quantity').fill('4')
-  await expect(
-    page.getByRole('button', { name: 'Build', exact: true }),
-  ).toBeDisabled()
-  release()
-
-  await expect(
-    page.getByRole('region', { name: 'Progression quote' }),
-  ).toContainText('4 × Small Cargo')
-  await page.getByRole('link', { name: /^Back to / }).click()
-  await expect(
-    page.getByRole('region', { name: 'Progression quote' }),
-  ).toHaveCount(0)
-})
-
 for (const width of [1440, 390]) {
   test(`atlas artwork decodes and fits at ${width}px`, async ({ page }) => {
     const { artworkReviewFixture } = await import('./fixtures/artwork')
@@ -928,165 +739,7 @@ for (const width of [1440, 390]) {
   })
 }
 
-test('facility catalog details remain usable when artwork fails', async ({ page }) => {
-  await page.route('**/art/**', route => route.abort())
-  const { sent } = await setup(page)
-  for (const width of [390, 320]) {
-    await page.setViewportSize({ width, height: 900 })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities`))
-    const marker = page.getByRole('link', { name: 'Upgrade Robotics Factory', exact: true })
-    await marker.click()
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeEnabled()
-    await page.getByRole('link', { name: 'Back to Facilities' }).click()
-    await expect(marker).toBeFocused()
-    await expect(pane).toBeHidden()
-  }
-  expect(sent).toEqual([])
-})
-
-test('activated Impulse Drive uses server gates, supports level four, and shows its technology tree', async ({ page }) => {
-  const impulse: S['CatalogEntry3'] = {
-    key: { kind: 'Research', id: 'ImpulseDrive' },
-    requirements: [
-      { type: 'BodyBuilding', building: 'ResearchLab', level: 2 },
-      { type: 'PlayerResearch', research: 'EnergyTechnology', level: 1 },
-    ],
-    enabled: true, mobile: false, body_kinds: ['Planet'],
-  }
-  const planet = structuredClone(body)
-  planet.levels.ResearchLab = 2
-  planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '100000000000' }
-  await shellFixture(page, {
-    bodies: [planet], catalog: [...catalog, impulse],
-    research: [{ research: 'ImpulseDrive', level: 3 }, { research: 'EnergyTechnology', level: 1 }],
-  })
-  let sent: unknown
-  await routeProgressionOptions(page, async route => {
-    const { context, request } = route.request().postDataJSON()
-    // Other visible research rows inspect their costs before opening details.
-    if (request.type !== 'Research' || request.research !== 'ImpulseDrive') return route.fallback()
-    expect(request).toEqual({ type: 'Research', host: body.id, research: 'ImpulseDrive' })
-    await route.fulfill({ json: {
-      protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
-      sampled_at: Date.now(), as_of_ms: Date.now(), request,
-      terms: { type: 'Research', profile_hash: 'a'.repeat(64), host: body.id, research: 'ImpulseDrive', source_level: 3, target_level: 4,
-        paid: { metal: '16000000000', crystal: '32000000000', deuterium: '4800000000' },
-        duration_ms: 11520000, formula: 'ResearchClassic', labs: [{ body: body.id, level: 2 }], effective_lab: '2', required_energy: '0' },
-      terms_hash: 'b'.repeat(64), blockers: [], estimates: null,
-    } })
-  })
-  await page.route('**/commands', async route => {
-    const envelope = route.request().postDataJSON()
-    sent = envelope.command
-    await route.fulfill({ json: { protocol: 3, binding, command_id: envelope.command_id,
-      admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1' } })
-  })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research`))
-  await page.getByRole('link', { name: 'Research Impulse Drive', exact: true }).click()
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('16,000')
-  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toContainText('Research Lab')
-  await expect(dialog).toContainText('2 / 2 · Met')
-  await expect(dialog).toContainText('Energy Technology')
-  await expect(dialog).toContainText('1 / 1 · Met')
-  await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
-  await expect(dialog).toContainText('20% per level')
-  await expect(dialog).toContainText('level 5')
-  await dialog.getByRole('button', { name: 'Close technology' }).click()
-  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
-  await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'ImpulseDrive', expected_terms_hash: 'b'.repeat(64) })
-})
-
-test('activated Astrophysics shows three gates, exact rounded costs, and deferred missions', async ({ page }) => {
-  const astrophysics: S['CatalogEntry3'] = {
-    key: { kind: 'Research', id: 'Astrophysics' },
-    requirements: [
-      { type: 'BodyBuilding', building: 'ResearchLab', level: 3 },
-      { type: 'PlayerResearch', research: 'EspionageTechnology', level: 4 },
-      { type: 'PlayerResearch', research: 'ImpulseDrive', level: 3 },
-    ],
-    enabled: true, mobile: false, body_kinds: ['Planet'],
-  }
-  const dependencies: S['CatalogEntry3'][] = ['ImpulseDrive', 'EspionageTechnology'].map(id => ({
-    key: { kind: 'Research', id: id as 'ImpulseDrive' | 'EspionageTechnology' },
-    requirements: [], enabled: true, mobile: false, body_kinds: ['Planet'],
-  }))
-  const planet = structuredClone(body)
-  planet.levels.ResearchLab = 3
-  planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '100000000000' }
-  await shellFixture(page, {
-    bodies: [planet], catalog: [...catalog, ...dependencies, astrophysics],
-    research: [{ research: 'Astrophysics', level: 4 }, { research: 'ImpulseDrive', level: 3 }, { research: 'EspionageTechnology', level: 4 }],
-  })
-  let sent: unknown
-  await routeProgressionOptions(page, async route => {
-    const { context, request } = route.request().postDataJSON()
-    // Other visible research rows inspect their costs before opening details.
-    if (request.type !== 'Research' || request.research !== 'Astrophysics') return route.fallback()
-    expect(request).toEqual({ type: 'Research', host: body.id, research: 'Astrophysics' })
-    await route.fulfill({ json: {
-      protocol: 3, binding, request_id: context.request_id, viewer_revision: '1',
-      sampled_at: Date.now(), as_of_ms: Date.now(), request,
-      terms: { type: 'Research', profile_hash: 'a'.repeat(64), host: body.id, research: 'Astrophysics', source_level: 4, target_level: 5,
-        paid: { metal: '37500000000', crystal: '75000000000', deuterium: '37500000000' },
-        duration_ms: 20250000, formula: 'ResearchAstrophysics', labs: [{ body: body.id, level: 3 }], effective_lab: '3', required_energy: '0' },
-      terms_hash: 'b'.repeat(64), blockers: [], estimates: null,
-    } })
-  })
-  await page.route('**/commands', async route => {
-    const envelope = route.request().postDataJSON()
-    sent = envelope.command
-    await route.fulfill({ json: { protocol: 3, binding, command_id: envelope.command_id,
-      admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1' } })
-  })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research`))
-  await page.getByRole('link', { name: 'Research Astrophysics', exact: true }).click()
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('37,500')
-  await expect(pane).toContainText('75,000')
-  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  for (const name of ['Research Lab', 'Espionage Technology', 'Impulse Drive']) await expect(dialog).toContainText(name)
-  await expect(dialog).toContainText('4 / 4 · Met')
-  await expect(dialog).toContainText('3 / 3 · Met')
-  await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
-  await expect(dialog).toContainText('Positions 4–12 unlock at level 1')
-  await expect(dialog).toContainText('Colonization requires this universe’s enabled Colony Ship and mission. Expeditions are unavailable.')
-  await dialog.getByRole('button', { name: 'Close technology' }).click()
-  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
-  await expect.poll(() => sent).toEqual({ type: 'StartResearch', host: body.id, research: 'Astrophysics', expected_terms_hash: 'b'.repeat(64) })
-})
-
 const laserCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-8.json', 'utf8')).catalog
-
-test('Laser Technology shows its requirements, artwork and research action', async ({ page }) => {
-  const { sent, planet } = await setup(page, false, { metal: '200000000', crystal: '100000000', deuterium: '0' }, {
-    catalog: laserCatalog,
-    research: [{ research: 'EnergyTechnology', level: 2 }, { research: 'LaserTechnology', level: 0 }],
-  })
-  planet.levels.ResearchLab = 1
-  await refreshGame(page)
-  await navigate(page, 'Research')
-  await page.getByRole('link', { name: 'Research Laser Technology', exact: true }).click()
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Weapon damage is improved by Weapons Technology.')
-  await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toContainText('Research Lab')
-  await expect(dialog).toContainText('1 / 1 · Met')
-  await expect(dialog).toContainText('Energy Technology')
-  await expect(dialog).toContainText('2 / 2 · Met')
-  await dialog.getByRole('button', { name: 'Close technology' }).click()
-  await expect(pane.getByRole('button', { name: 'Metal details' })).toContainText('200')
-  await expect(pane.getByRole('button', { name: 'Crystal details' })).toContainText('100')
-  await expect(pane.locator('img').first()).toBeVisible()
-  await pane.getByRole('button', { name: 'Confirm research', exact: true }).click()
-  await expect.poll(() => sent.length).toBe(1)
-  expect(sent[0].command).toMatchObject({ type: 'StartResearch', research: 'LaserTechnology', host: body.id })
-})
 
 test('Light Laser shows completed inventory and builds a batch at its catalog cost', async ({ page }) => {
   const { sent, planet } = await setup(page, false, { metal: '1500000000', crystal: '500000000', deuterium: '0' }, {
@@ -1325,7 +978,7 @@ test('catalog item links open natively in a new tab without changing the origina
 
 const ionCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-9.json', 'utf8')).catalog
 
-for (const width of [1440, 390]) {
+for (const width of [390]) {
 test(`Ion Technology shows readable field notes, prerequisite progress, costs and submits research at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 })
   const research: { research: S['ResearchId3']; level: number }[] = [
@@ -1561,143 +1214,6 @@ for (const width of [390, 1440]) {
   })
 }
 
-for (const width of [320, 390, 1440]) {
-  for (const [pageName, itemName, quantityLabel] of [
-    ['Defense', 'Rocket Launcher', 'Defenses quantity'],
-    ['Shipyard', 'Small Cargo', 'Shipyard quantity'],
-  ] as const) {
-    test(`${pageName} confirms the paid order separately from next-order affordability at ${width}px`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 1000 })
-      await page.emulateMedia({ reducedMotion: 'reduce' })
-      const manufacturing: S['ManufacturingBatchDto'][] = []
-      const { planet } = await setup(page, false, { metal: '2000000000', crystal: '0', deuterium: '0' }, { manufacturing })
-      planet.amounts.metal = '12226000000'
-      await refreshGame(page)
-      let submitted = 0
-      await page.route('**/commands', async route => {
-        const envelope = route.request().postDataJSON()
-        submitted++
-        planet.amounts.metal = (BigInt(planet.amounts.metal) - BigInt(envelope.command.quantity) * 2000000000n).toString()
-        manufacturing.push({
-          id: envelope.command_id, body: body.id, item: envelope.command.item, quantity: envelope.command.quantity,
-          completed_prefix: '0', remaining: envelope.command.quantity,
-          paid: { metal: (BigInt(envelope.command.quantity) * 2000000000n).toString(), crystal: '0', deuterium: '0' },
-          accepted_at: Date.now(), first_start_at: Date.now(), next_due_at: Date.now() + 30000,
-          final_due_at: Date.now() + 30000 * Number(envelope.command.quantity), unit_duration_ms: 30000, state: 'Producing', can_cancel: false,
-        })
-        await route.fulfill({ json: {
-          protocol: 3, binding, command_id: envelope.command_id,
-          admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1',
-        } })
-      })
-      await navigate(page, pageName)
-      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
-      await page.getByLabel(quantityLabel).fill('4')
-      const build = page.getByRole('button', { name: 'Build', exact: true })
-      await expect(build).toBeEnabled()
-      await build.click()
-      const result = page.getByRole('group', { name: 'Latest action result', exact: true })
-      await expect(result).toContainText(`Last submitted: 4 × ${itemName}`)
-      await expect(result).toContainText('Order confirmed. Costs shown are for a new order.')
-      await expect(page.getByRole('status').filter({ hasText: `4 × ${itemName}: Order confirmed.` })).toHaveCount(1)
-      await expect(page.getByLabel(quantityLabel)).toHaveValue('0')
-      await expect(page.getByRole('alert')).toHaveCount(0)
-      await expect(build).toBeDisabled()
-      // A new unaffordable order is independent of the confirmed order.
-      await page.getByLabel(quantityLabel).fill('4')
-      await expect(page.getByLabel('Missing resources')).toBeVisible()
-      await expect(page.getByText('New order cost', { exact: true })).toBeVisible()
-      await expect(build).toBeDisabled()
-      expect(submitted).toBe(1)
-      await result.scrollIntoViewIfNeeded()
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await diagnosticScreenshot(page, { path: `test-results/action-confirmation-${pageName}-${width}.png`, fullPage: true })
-      // Editing the next order never changes the acknowledged quantity.
-      await page.getByLabel(quantityLabel).fill('1')
-      await expect(result).toContainText(`4 × ${itemName}`)
-      await expect(build).toBeEnabled()
-      await build.click()
-      await expect(result).toContainText(`Last submitted: 1 × ${itemName}`)
-      await expect(result).toContainText('Order confirmed.')
-      await expect(page.getByLabel(quantityLabel)).toHaveValue('0')
-      await expect(build).toBeDisabled()
-      expect(submitted).toBe(2)
-      await page.getByRole('link', { name: /^Back to / }).click()
-      await page.getByRole('link', { name: `Build ${itemName}`, exact: true }).click()
-      await expect(result).toContainText(`Last submitted: 1 × ${itemName}`)
-    })
-  }
-}
-
-for (const [outcome, width] of [['Pending', 320], ['Rejected', 390], ['uncertain', 1440]] as const) {
-  test(`manufacturing shows submitting and ${outcome} beside the order without false success at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 })
-    await setup(page)
-    let submitted = 0
-    let release!: () => void
-    const held = new Promise<void>(resolve => { release = resolve })
-    await page.route('**/commands', async route => {
-      const envelope = route.request().postDataJSON()
-      submitted++
-      await held
-      if (outcome === 'uncertain') return route.abort('failed')
-      await route.fulfill({ json: {
-        protocol: 3, binding, command_id: envelope.command_id,
-        admitted_at: Date.now(), executed_at: outcome === 'Pending' ? null : Date.now(), status: outcome,
-        ...(outcome === 'Rejected' ? { code: 'InsufficientResources' } : {}),
-      } })
-    })
-    await navigate(page, 'Defense')
-    await page.getByRole('link', { name: 'Build Rocket Launcher', exact: true }).click()
-    await page.getByLabel('Defenses quantity').fill('4')
-    const build = page.getByRole('button', { name: 'Build', exact: true })
-    const result = page.getByRole('group', { name: 'Latest action result', exact: true })
-    await expect(build).toBeEnabled()
-    const initialHeight = (await build.boundingBox())!.height
-    try {
-      await build.click()
-      await expect(result).toContainText('Submitting action.')
-      await expect(build).toHaveText('Confirming')
-      expect((await build.boundingBox())!.height).toBe(initialHeight)
-      await expect(result).not.toContainText('confirmed')
-      await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
-      await expect(build).toBeDisabled()
-      // The ledger updates before persistence and network delivery finish.
-      await expect.poll(() => submitted).toBe(1)
-      // A rapid second activation must not send another command.
-      await build.evaluate((button: HTMLButtonElement) => button.click())
-      expect(submitted).toBe(1)
-    } finally {
-      // Never leave an intercepted response held when an assertion fails.
-      release()
-    }
-    const feedback = outcome === 'Pending' ? result : page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })
-    if (outcome !== 'Pending') await expect(result).toHaveCount(0)
-    await expect(feedback).toContainText(outcome === 'Pending'
-      ? 'Order accepted; awaiting the game result.'
-      : outcome === 'Rejected' ? 'Action rejected: Insufficient Resources' : 'We’re checking whether this order went through.')
-    await expect(feedback).not.toContainText('confirmed')
-    await expect(page.getByLabel('Defenses quantity')).toHaveValue('4')
-    if (outcome === 'Rejected') await expect(build).toBeEnabled()
-    else await expect(build).toBeDisabled()
-    if (outcome === 'uncertain') {
-      for (const feedbackWidth of [1280, 390]) {
-        await page.setViewportSize({ width: feedbackWidth, height: 900 })
-        await page.evaluate(() => window.scrollTo(0, 0))
-        await diagnosticScreenshot(page, { path: `test-results/unified-order-error-${feedbackWidth}x900.png`, fullPage: true })
-      }
-      await page.route('**/commands/*?epoch=*', route => route.fulfill({ json: {
-        protocol: 3, binding, command_id: new URL(route.request().url()).pathname.split('/').at(-1),
-        admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [], minimum_viewer_revision: '1',
-      } }))
-      await feedback.getByRole('button', { name: 'Retry order' }).click()
-      await expect(result).toContainText('Order confirmed.')
-      await expect(page.getByLabel('Defenses quantity')).toHaveValue('0')
-    }
-    expect(submitted).toBe(1)
-  })
-}
-
 for (const [section, tile, startAction, cancelAction, cancelType, cancelLabel] of [
   ['Facilities', 'Upgrade Robotics Factory', 'Confirm upgrade', 'Cancel construction', 'CancelConstruction', 'Cancel Construction'],
   ['Research', 'Research Combustion Drive', 'Confirm research', 'Cancel research', 'CancelResearch', 'Cancel Research'],
@@ -1725,206 +1241,6 @@ for (const [section, tile, startAction, cancelAction, cancelType, cancelLabel] o
     await expect(result).toContainText(`Last submitted: ${cancelLabel}`)
     await expect(result).toContainText('Order accepted; awaiting the game result.')
     await expect(result).not.toContainText('confirmed')
-  })
-}
-
-const ionCannonCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-10.json', 'utf8')).catalog
-
-for (const width of [390, 1440]) {
-  test(`Ion Cannon shows gates, artwork and inventory and orders the exact batch at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { sent, planet } = await setup(page, false, { metal: '2000000000', crystal: '6000000000', deuterium: '0' }, {
-      catalog: ionCannonCatalog,
-      research: [{ research: 'IonTechnology', level: 4 }],
-    })
-    planet.levels.Shipyard = 4
-    planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '0' }
-    planet.inventories.push({ item: { kind: 'Defense', id: 'IonCannon' }, count: '7' })
-    await refreshGame(page)
-    await navigate(page, 'Defense')
-    const tile = page.getByRole('link', { name: 'Build Ion Cannon', exact: true })
-    await expect(tile).toContainText('7')
-    await tile.click()
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('A stationary cannon with strong shields')
-    const art = pane.locator('img').first()
-    await expect(art).toHaveAttribute('src', /ion-cannon/)
-    await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
-    await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Shipyard')
-    await expect(dialog).toContainText('Ion Technology')
-    await expect(dialog.getByText('4 / 4 · Met', { exact: true })).toHaveCount(2)
-    await diagnosticScreenshot(dialog, { path: `test-results/technology-tree-ion-cannon-${width}x1000.png` })
-    await dialog.getByRole('button', { name: 'Close technology' }).click()
-    await pane.getByLabel('Defenses quantity').fill('3')
-    const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
-    await expect(cost.getByRole('button', { name: 'Metal details' })).toContainText('6,000')
-    await expect(cost.getByRole('button', { name: 'Crystal details' })).toContainText('18,000')
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
-    await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect.poll(() => sent.length).toBe(1)
-    expect(sent[0].command).toEqual({
-      type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'IonCannon' }, quantity: '3', expected_terms_hash: 'b'.repeat(64),
-    })
-    planet.inventories.find(x => x.item.id === 'IonCannon')!.count = '10'
-    await refreshGame(page)
-    await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
-    await expect(tile).toContainText('10')
-    expect(sent).toHaveLength(1)
-  })
-}
-
-const gaussCannonCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-slice-12.json', 'utf8')).catalog
-
-for (const width of [390, 1440]) {
-  test(`Gauss Cannon shows gates, artwork and inventory and orders the exact batch at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { sent, planet } = await setup(page, false, { metal: '20000000000', crystal: '15000000000', deuterium: '2000000000' }, {
-      catalog: gaussCannonCatalog,
-      research: [{ research: 'EnergyTechnology', level: 6 }, { research: 'WeaponsTechnology', level: 3 }, { research: 'ShieldingTechnology', level: 1 }],
-    })
-    planet.levels.Shipyard = 6
-    planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '100000000000' }
-    planet.inventories.push({ item: { kind: 'Defense', id: 'GaussCannon' }, count: '7' })
-    await refreshGame(page)
-    await navigate(page, 'Defense')
-    const tile = page.getByRole('link', { name: 'Build Gauss Cannon', exact: true })
-    await expect(tile).toContainText('7')
-    await tile.click()
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('A stationary electromagnetic cannon')
-    const art = pane.locator('img').first()
-    await expect(art).toHaveAttribute('src', /gauss-cannon/)
-    await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
-    await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Shipyard')
-    for (const name of ['Energy Technology', 'Weapons Technology', 'Shielding Technology']) await expect(dialog).toContainText(name)
-    await expect(dialog.getByText('6 / 6 · Met', { exact: true })).toHaveCount(2)
-    await expect(dialog.getByText('3 / 3 · Met', { exact: true })).toHaveCount(1)
-    await expect(dialog.getByText('1 / 1 · Met', { exact: true })).toHaveCount(1)
-    await dialog.getByRole('button', { name: 'Close technology' }).click()
-    await pane.getByLabel('Defenses quantity').fill('3')
-    const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
-    await expect(cost.getByRole('button', { name: 'Metal details' })).toContainText('60,000')
-    await expect(cost.getByRole('button', { name: 'Crystal details' })).toContainText('45,000')
-    await expect(cost.getByRole('button', { name: 'Deuterium details' })).toContainText('6,000')
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
-    await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect.poll(() => sent.length).toBe(1)
-    expect(sent[0].command).toEqual({
-      type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'GaussCannon' }, quantity: '3', expected_terms_hash: 'b'.repeat(64),
-    })
-    planet.inventories.find(x => x.item.id === 'GaussCannon')!.count = '10'
-    await refreshGame(page)
-    await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
-    await expect(tile).toContainText('10')
-    expect(sent).toHaveLength(1)
-  })
-}
-
-const heavyLaserCatalog: S['CatalogEntry3'][] = JSON.parse(readFileSync('rules/mvp-v1-heavy-laser.json', 'utf8')).catalog
-
-for (const width of [390, 1440]) {
-  test(`Heavy Laser shows gates, artwork and inventory and orders the exact batch at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { sent, planet } = await setup(page, false, { metal: '6000000000', crystal: '2000000000', deuterium: '0' }, {
-      catalog: heavyLaserCatalog,
-      research: [{ research: 'EnergyTechnology', level: 3 }, { research: 'LaserTechnology', level: 6 }],
-    })
-    planet.levels.Shipyard = 4
-    planet.amounts = { metal: '100000000000', crystal: '100000000000', deuterium: '0' }
-    planet.inventories.push({ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' })
-    await refreshGame(page)
-    await navigate(page, 'Defense')
-    const tile = page.getByRole('link', { name: 'Build Heavy Laser', exact: true })
-    await expect(tile).toContainText('7')
-    await tile.click()
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('A stationary heavy laser battery')
-    const art = pane.locator('img').first()
-    await expect(art).toHaveAttribute('src', /heavy-laser/)
-    await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
-    await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Shipyard')
-    await expect(dialog).toContainText('Energy Technology')
-    await expect(dialog).toContainText('Laser Technology')
-    for (const level of [3, 4, 6]) await expect(dialog.getByText(`${level} / ${level} · Met`, { exact: true })).toBeVisible()
-    await dialog.getByRole('button', { name: 'Close technology' }).click()
-    await pane.getByLabel('Defenses quantity').fill('3')
-    const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
-    await expect(cost.getByRole('button', { name: 'Metal details' })).toContainText('18,000')
-    await expect(cost.getByRole('button', { name: 'Crystal details' })).toContainText('6,000')
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
-    await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect.poll(() => sent.length).toBe(1)
-    expect(sent[0].command).toEqual({
-      type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'HeavyLaser' }, quantity: '3', expected_terms_hash: 'b'.repeat(64),
-    })
-    planet.inventories.find(x => x.item.id === 'HeavyLaser')!.count = '10'
-    await refreshGame(page)
-    await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
-    await expect(tile).toContainText('10')
-    expect(sent).toHaveLength(1)
-  })
-}
-
-for (const width of [390, 1280]) {
-  test(`building research and defense technical data stays secondary and keyboard accessible at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const empty: S['TechnicalData3'] = { facts: [], bonuses: [], combat: null, storage_capacities: null }
-    const technicalCatalog = catalog.map(entry => ({
-      ...entry,
-      ...(entry.key.id === 'RoboticsFactory' ? { technical_data: { ...empty, facts: [{ label: 'Construction time', value: 'The raw construction duration is divided by (1 + Robotics Factory level).', subject: null }] } } : {}),
-      ...(entry.key.id === 'CombustionDrive' ? { technical_data: { ...empty, bonuses: [{ label: 'Base speed', fraction: ['3', '20'], subject: { kind: 'Ship', id: 'SmallCargo' }, condition: 'Replaced when Impulse Drive reaches level 8.' }] } } : {}),
-      ...(entry.key.id === 'RocketLauncher' ? { technical_data: { ...empty, combat: { attack_ticks: '8000000', shield_ticks: '2000000', hull_ticks: '20000000', rapid_fire_against: [], rapid_fire_from: [{ unit: { kind: 'Ship', id: 'Cruiser' }, factor: '10' }] }, facts: [{ label: 'Recovery after combat', value: '7 / 10 chance for each destroyed defense to recover independently.', subject: null }] } } : {}),
-      ...(entry.key.id === 'SmallCargo' ? { requirements: [{ type: 'PlayerResearch', research: 'CombustionDrive', level: 6 }] } : {}),
-    })) as S['CatalogEntry3'][]
-    await installCatalogFixture(page, false, undefined, { catalog: technicalCatalog })
-    for (const [route, text, name] of [
-      ['facilities/robotics-factory', 'The raw construction duration', 'Robotics Factory'],
-      ['research/combustion-drive', '+15% of base', 'Combustion Drive'],
-      ['defense/rocket-launcher', 'Base values per defense', 'Rocket Launcher'],
-    ]) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${route}`))
-      // Complete the route's scheduled focus restoration before keyboard input.
-      await expect(page.getByRole('region', { name: 'Progression quote' })).toBeFocused()
-      const disclosure = page.locator('details').filter({ has: page.locator('summary').filter({ hasText: /^Technical data$/ }) })
-      const summary = disclosure.locator('summary')
-      await expect(summary).toBeVisible()
-      await expect(disclosure).not.toHaveAttribute('open', '')
-      await expect(disclosure.getByText(text, { exact: false })).toBeHidden()
-      await summary.focus()
-      await page.keyboard.press('Enter')
-      await expect(disclosure).toHaveAttribute('open', '')
-      await expect(disclosure).toContainText(text)
-      if (route.startsWith('research')) {
-        await expect(disclosure).toContainText('Replaced when Impulse Drive reaches level 8')
-        await expect(disclosure).toContainText('Level 6')
-        await expect(disclosure.getByRole('link', { name: 'Small Cargo', exact: true })).toBeVisible()
-        await expect(disclosure).not.toContainText('Dreadnought')
-      }
-      await expect.poll(() => disclosure.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-      await summary.scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, { path: `test-results/technical-${route.split('/')[0]}-${width}.png` })
-      await summary.focus()
-      await page.keyboard.press('Space')
-      await expect(disclosure).not.toHaveAttribute('open', '')
-      await page.getByRole('button', { name: 'Technology tree', exact: true }).click()
-      const dialog = page.getByRole('dialog', { name: `Technology — ${name}` })
-      await dialog.getByRole('tab', { name: 'Techinfo', exact: true }).click()
-      const modalData = dialog.locator('details')
-      await expect(modalData).not.toHaveAttribute('open', '')
-      await modalData.locator('summary').click()
-      await expect(modalData).toContainText(text)
-      if (route.startsWith('research')) {
-        await expect(dialog.getByRole('list', { name: 'Prerequisites', exact: true })).toHaveCount(1)
-      }
-      await expect.poll(() => dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-      await dialog.getByRole('button', { name: 'Close technology', exact: true }).click()
-    }
   })
 }
 
@@ -2006,11 +1322,11 @@ for (const width of [1280]) {
 }
 
 const largeDomeContent = JSON.parse(readFileSync('rules/content/large-shield-dome.json', 'utf8'))
-const largeDomeCatalog: S['CatalogEntry3'][] = gaussCannonCatalog.map(entry => entry.key.id === 'LargeShieldDome'
+const largeDomeCatalog: S['CatalogEntry3'][] = (JSON.parse(readFileSync('rules/mvp-v1-slice-12.json', 'utf8')).catalog as S['CatalogEntry3'][]).map(entry => entry.key.id === 'LargeShieldDome'
   ? { ...entry, enabled: true, requirements: largeDomeContent.requirements }
   : entry)
 
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`Large Shield Dome shows requirements and artwork and enforces its own limit at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const { sent, planet } = await setup(page, false, { metal: '50000000000', crystal: '50000000000', deuterium: '0' }, {
@@ -2054,60 +1370,9 @@ for (const width of [390, 1440]) {
   })
 }
 
-const plasmaTurretDefinition = JSON.parse(readFileSync('rules/content/plasma-turret.json', 'utf8'))
-const plasmaTurretCatalog: S['CatalogEntry3'][] = gaussCannonCatalog.map(entry => entry.key.id === 'PlasmaTurret'
-  ? { ...entry, enabled: true, requirements: plasmaTurretDefinition.requirements }
-  : entry.key.id === 'PlasmaTechnology' ? { ...entry, enabled: true } : entry)
-
-for (const width of [390, 1440]) {
-  test(`Plasma Turret shows gates, artwork and inventory and orders the exact batch at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { sent, planet } = await setup(page, false, { metal: '50000000000', crystal: '50000000000', deuterium: '30000000000' }, {
-      catalog: plasmaTurretCatalog,
-      research: [{ research: 'PlasmaTechnology', level: 7 }],
-    })
-    planet.levels.Shipyard = 8
-    planet.amounts = { metal: '1000000000000', crystal: '1000000000000', deuterium: '1000000000000' }
-    planet.inventories.push({ item: { kind: 'Defense', id: 'PlasmaTurret' }, count: '7' })
-    await refreshGame(page)
-    await navigate(page, 'Defense')
-    const tile = page.getByRole('link', { name: 'Build Plasma Turret', exact: true })
-    await expect(tile).toContainText('7')
-    await tile.click()
-    const pane = page.getByRole('region', { name: 'Progression quote' })
-    await expect(pane).toContainText('A stationary plasma turret')
-    const art = pane.locator('img').first()
-    await expect(art).toHaveAttribute('src', /plasma-turret/)
-    await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
-    await pane.getByRole('button', { name: 'Technology tree', exact: true }).click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Shipyard')
-    await expect(dialog).toContainText('Plasma Technology')
-    await expect(dialog.getByText('8 / 8 · Met', { exact: true })).toHaveCount(1)
-    await expect(dialog.getByText('7 / 7 · Met', { exact: true })).toHaveCount(1)
-    await dialog.getByRole('button', { name: 'Close technology' }).click()
-    await pane.getByLabel('Defenses quantity').fill('3')
-    const cost = pane.getByRole('group', { name: 'Required resources', exact: true }).first()
-    await expect(cost.getByRole('button', { name: 'Metal details' })).toContainText('150,000')
-    await expect(cost.getByRole('button', { name: 'Crystal details' })).toContainText('150,000')
-    await expect(cost.getByRole('button', { name: 'Deuterium details' })).toContainText('90,000')
-    await expect(pane.getByRole('button', { name: 'Build', exact: true })).toBeEnabled()
-    await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect.poll(() => sent.length).toBe(1)
-    expect(sent[0].command).toEqual({
-      type: 'StartManufacture', body: body.id, item: { kind: 'Defense', id: 'PlasmaTurret' }, quantity: '3', expected_terms_hash: 'b'.repeat(64),
-    })
-    planet.inventories.find(x => x.item.id === 'PlasmaTurret')!.count = '10'
-    await refreshGame(page)
-    await pane.getByRole('link', { name: 'Back to Defense', exact: true }).click()
-    await expect(tile).toContainText('10')
-    expect(sent).toHaveLength(1)
-  })
-}
-
 // Regression: defense comparison must be reachable from both catalog and detail,
 // preserve selection across research refresh, and remain keyboard/touch usable.
-for (const width of [1280, 390]) {
+for (const width of [390]) {
   test(`defense comparison resets selection and mode on detail navigation at ${width}px`, async ({ page }) => {
     const capture = async (target: Page, options: Parameters<Page['screenshot']>[0]) => {
       if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return

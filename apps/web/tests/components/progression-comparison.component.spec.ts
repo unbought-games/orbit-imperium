@@ -5,10 +5,16 @@ async function openComparison(
   page: Page,
   kind: 'Ship' | 'Defense',
   width: number,
+  profile = '',
 ) {
   await page.setViewportSize({ width, height: 950 })
   await page.goto(
-    '/?' + new URLSearchParams({ scenario: 'progression-comparison', kind }),
+    '/?' +
+      new URLSearchParams({
+        scenario: 'progression-comparison',
+        kind,
+        profile,
+      }),
   )
   await expect(page.locator('html')).toHaveAttribute(
     'data-component-ready',
@@ -141,5 +147,41 @@ for (const width of [1280, 390]) {
     await expect(
       page.getByText('Select defenses to compare.', { exact: true }),
     ).toBeVisible()
+  })
+}
+
+for (const [profile, name, speed, cargo, width] of [
+  ['Battlecruiser', 'Battlecruiser', '25,000', '750', 390],
+  ['Bomber', 'Bomber', '17,000', '500', 1440],
+  ['Destroyer', 'Destroyer', '14,000', '2,000', 390],
+  ['Battleship', 'Battleship', '22,000', '1,500', 1440],
+] as const) {
+  test(`comparison selects the ${name} and fits its effective profile at ${width}px`, async ({
+    page,
+  }) => {
+    const region = await openComparison(page, 'Ship', width, profile)
+    for (const name of ['Light Fighter', 'Heavy Fighter'])
+      await page.getByRole('checkbox', { name, exact: true }).uncheck()
+    const choice = page.getByRole('checkbox', { name, exact: true })
+    await choice.focus()
+    await page.keyboard.press('Space')
+    await expect(choice).toBeChecked()
+    await expect(
+      region.getByRole('columnheader', { name, exact: true }),
+    ).toBeVisible()
+    await expect(
+      region.getByRole('row', { name: `Effective speed ${speed}` }),
+    ).toBeVisible()
+    await expect(
+      region.getByRole('row', { name: `Cargo capacity ${cargo}` }),
+    ).toBeVisible()
+    await expect(
+      region.getByRole('cell', { name: 'Hyperspace Drive', exact: true }),
+    ).toBeVisible()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
   })
 }

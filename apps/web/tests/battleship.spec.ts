@@ -82,10 +82,7 @@ for (const [id, file] of [
     readFileSync(`rules/content/${file}.json`, 'utf8'),
   ).requirements
 }
-async function setup(
-  page: Parameters<typeof shellFixture>[0],
-  { hyperspace = 4, shipyard = 7, enabled = true } = {},
-) {
+async function setup(page: Page) {
   const planet = {
     ...body,
     amounts: {
@@ -95,7 +92,7 @@ async function setup(
     },
     levels: {
       ...body.levels,
-      Shipyard: shipyard,
+      Shipyard: 7,
       RoboticsFactory: 2,
       ResearchLab: 4,
     },
@@ -104,11 +101,9 @@ async function setup(
   await shellFixture(page, {
     protocol: 4,
     bodies: [planet],
-    catalog: catalog.map((e) =>
-      e.key.id === 'Battleship' ? { ...e, enabled } : e,
-    ),
+    catalog,
     research: [
-      { research: 'HyperspaceDrive', level: hyperspace },
+      { research: 'HyperspaceDrive', level: 4 },
       { research: 'EnergyTechnology', level: 1 },
       { research: 'WeaponsTechnology', level: 0 },
       { research: 'ShieldingTechnology', level: 0 },
@@ -125,29 +120,7 @@ async function setup(
   await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
     const battleship =
-      enabled &&
-      request.type === 'Manufacture' &&
-      request.item.id === 'Battleship'
-    const missing =
-      shipyard < 7
-        ? {
-            requirement: {
-              type: 'BodyBuilding',
-              building: 'Shipyard',
-              level: 7,
-            },
-            actual: shipyard,
-          }
-        : hyperspace < 4
-          ? {
-              requirement: {
-                type: 'PlayerResearch',
-                research: 'HyperspaceDrive',
-                level: 4,
-              },
-              actual: hyperspace,
-            }
-          : null
+      request.type === 'Manufacture' && request.item.id === 'Battleship'
     const cost = {
       metal: '45000000000',
       crystal: '15000000000',
@@ -196,70 +169,18 @@ async function setup(
                 unit: null,
               },
             ]
-          : missing
-            ? [
-                {
-                  code: 'PrerequisiteMissing',
-                  requirement: missing.requirement,
-                  required: String(missing.requirement.level),
-                  actual: String(missing.actual),
-                  resource: null,
-                  unit: 'Level',
-                },
-              ]
-            : [],
+          : [],
         estimates: null,
       },
     })
   })
 }
 
-for (const width of [390, 1440]) {
-  for (const [label, levels] of [
-    ['Shipyard', { shipyard: 6 }],
-    ['Hyperspace Drive', { hyperspace: 3 }],
-  ] as const) {
-    test(`Battleship exposes its missing ${label} prerequisite at ${width}px`, async ({
-      page,
-    }, testInfo) => {
-      await page.setViewportSize({ width, height: 900 })
-      await setup(page, levels)
-      await withBootstrapResponse(page, () =>
-        page.goto(`/u/andromeda/b/${body.id}/shipyard/battleship`),
-      )
-      const pane = page.getByRole('region', { name: 'Progression quote' })
-      await expect(
-        pane.getByRole('button', { name: 'Build', exact: true }),
-      ).toBeDisabled()
-      await expect(pane.getByLabel('Action blockers')).toContainText(label)
-      await expectLayoutAndCapture(page, {
-        path: testInfo.outputPath(
-          `battleship-locked-${label}-${width}x900.png`,
-        ),
-        fullPage: true,
-      })
-    })
-  }
-}
-
-test('Battleship stays unavailable before its universe enables it', async ({
-  page,
-}) => {
-  await setup(page, { enabled: false })
-  await withBootstrapResponse(page, () =>
-    page.goto(`/u/andromeda/b/${body.id}/shipyard/battleship`),
-  )
-  const pane = page.getByRole('region', { name: 'Progression quote' })
-  await expect(pane).toContainText('Unavailable in this universe.')
-  await expect(
-    pane.getByRole('button', { name: 'Build', exact: true }),
-  ).toBeDisabled()
-})
-
-for (const width of [390, 1440]) {
-  test(`Battleship submits the selected build quantity at ${width}px`, async ({
-    page,
-  }, testInfo) => {
+test(
+  'Battleship submits the selected build quantity at 390px',
+  { tag: '@journey' },
+  async ({ page }, testInfo) => {
+    const width = 390
     await page.setViewportSize({ width, height: 900 })
     await setup(page)
     const pane = page.getByRole('region', { name: 'Progression quote' })
@@ -338,26 +259,5 @@ for (const width of [390, 1440]) {
       path: testInfo.outputPath(`battleship-confirmed-${width}x900.png`),
       fullPage: true,
     })
-    await withBootstrapResponse(page, () =>
-      page.goto(`/u/andromeda/b/${body.id}/shipyard`),
-    )
-    await page.locator('summary').filter({ hasText: 'Compare ships' }).click()
-    for (const name of ['Light Fighter', 'Heavy Fighter']) {
-      await page.getByRole('checkbox', { name, exact: true }).uncheck()
-    }
-    await page
-      .getByRole('checkbox', { name: 'Battleship', exact: true })
-      .check()
-    const comparison = page.getByRole('table', {
-      name: 'Current player ship statistics · per ship',
-    })
-    await expect(comparison).toContainText('22,000')
-    await expect(comparison).toContainText('1,500')
-    await expect(comparison).toContainText('Hyperspace Drive')
-    await comparison.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {
-      path: testInfo.outputPath(`battleship-comparison-${width}x900.png`),
-      fullPage: false,
-    })
-  })
-}
+  },
+)

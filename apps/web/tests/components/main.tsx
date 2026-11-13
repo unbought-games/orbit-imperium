@@ -74,7 +74,8 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'progression-detail': async () =>
     (await import('./progression.scenarios')).ProgressionDetailScenario,
   'progression-comparison': async () =>
-    (await import('./progression.scenarios')).ProgressionComparisonScenario,
+    (await import('./progression-comparison.scenario'))
+      .ProgressionComparisonScenario,
   'shell-account-link': async () =>
     (await import('./shell.story')).ShellAccountLink,
   'shell-default': async () => (await import('./shell.story')).ShellDefault,

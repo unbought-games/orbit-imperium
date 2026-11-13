@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
-import {
-  createMemoryHistory,
-  RouterContextProvider,
-} from '@tanstack/react-router'
-import { createAppRouter } from '../router'
+import { RouterContextProvider } from '@tanstack/react-router'
+import { createCatalogPreviewRouter } from './catalog-preview-router'
 import { SessionContext } from '../shell/session-context'
 import { catalogPage, catalogSlug } from '../shell/catalog-routes'
 import { ErrorBanner } from '../ui/error-banner'
@@ -34,11 +31,7 @@ function ItemPreview({ runtime }: { runtime: Preview }) {
   const [action, setAction] = useState<'Upgrade' | 'Demolition'>('Upgrade')
   const [quantity, setQuantity] = useState('1')
   const [technology, setTechnology] = useState(false)
-  const [router] = useState(() =>
-    createAppRouter({
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    }),
-  )
+  const [router] = useState(() => createCatalogPreviewRouter())
   useEffect(() => {
     const timer = setInterval(() => {
       model.tick()

@@ -7,6 +7,7 @@ async function openDetail(
   item: string,
   mode = '',
   protocol: 3 | 4 = 4,
+  options: Record<string, string> = {},
 ) {
   await page.goto(
     '/?' +
@@ -15,6 +16,7 @@ async function openDetail(
         item,
         mode,
         protocol: String(protocol),
+        ...options,
       }),
   )
   await expect(page.locator('html')).toHaveAttribute(
@@ -529,5 +531,271 @@ for (const width of [1440, 390]) {
       path: `test-results/deuterium-recycler-${width}x1000.png`,
       fullPage: true,
     })
+  })
+}
+
+for (const [item, width] of [
+  ['Bomber', 390],
+  ['Destroyer', 1440],
+] as const) {
+  test(`${item} disclosure distinguishes an upgrade from native hyperspace propulsion`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(
+      '/?' +
+        new URLSearchParams({
+          scenario: 'progression-detail',
+          item,
+          mode: 'profile',
+        }),
+    )
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    await expect(pane).toBeFocused()
+    const summary = pane
+      .locator('summary')
+      .filter({ hasText: /^Technical data$/ })
+    await summary.focus()
+    await page.keyboard.press('Enter')
+    const stats = pane.getByRole('region', {
+      name: 'Ship technical statistics',
+    })
+    await expect(stats).toBeVisible()
+    await expect(stats).toContainText('Hyperspace Drive')
+    await expect(stats).toContainText('5,000')
+    if (item === 'Bomber')
+      await expect(stats).toContainText('At Hyperspace Drive level 8')
+    else await expect(stats).not.toContainText('At Hyperspace Drive level')
+    await page.keyboard.press('Space')
+    await expect(stats).toBeHidden()
+  })
+}
+
+for (const width of [390, 1280]) {
+  test(`technical disclosures and modal tabs work with the keyboard at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    for (const [item, text, name] of [
+      ['RoboticsFactory', 'The raw construction duration', 'Robotics Factory'],
+      ['CombustionDrive', '+15% of base', 'Combustion Drive'],
+      ['RocketLauncher', 'Base values per defense', 'Rocket Launcher'],
+    ]) {
+      await openDetail(page, item, 'technical')
+      const pane = page.getByRole('region', { name: 'Progression quote' })
+      await expect(pane).toBeFocused()
+      const disclosure = pane.locator('details').filter({
+        has: page.locator('summary').filter({ hasText: /^Technical data$/ }),
+      })
+      const summary = disclosure.locator('summary')
+      await expect(summary).toBeVisible()
+      await expect(disclosure).not.toHaveAttribute('open', '')
+      await expect(disclosure.getByText(text, { exact: false })).toBeHidden()
+      await summary.focus()
+      await page.keyboard.press('Enter')
+      await expect(disclosure).toHaveAttribute('open', '')
+      await expect(disclosure).toContainText(text)
+      if (item === 'CombustionDrive') {
+        await expect(disclosure).toContainText(
+          'Replaced when Impulse Drive reaches level 8',
+        )
+        await expect(disclosure).toContainText('Level 6')
+        await expect(
+          disclosure.getByRole('link', { name: 'Small Cargo', exact: true }),
+        ).toBeVisible()
+        await expect(disclosure).not.toContainText('Dreadnought')
+      }
+      expect(
+        await disclosure.evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true)
+      await page.keyboard.press('Space')
+      await expect(disclosure).not.toHaveAttribute('open', '')
+      const opener = pane.getByRole('button', {
+        name: 'Technology tree',
+        exact: true,
+      })
+      await opener.focus()
+      await page.keyboard.press('Enter')
+      const dialog = page.getByRole('dialog', { name: `Technology — ${name}` })
+      await dialog.getByRole('tab', { name: 'Techtree', exact: true }).focus()
+      await page.keyboard.press('ArrowRight')
+      const applications = dialog.getByRole('tab', {
+        name: 'Applications',
+        exact: true,
+      })
+      await expect(applications).toBeFocused()
+      await expect(applications).toHaveAttribute('aria-selected', 'true')
+      await page.keyboard.press('End')
+      await expect(
+        dialog.getByRole('tab', { name: 'Techinfo', exact: true }),
+      ).toBeFocused()
+      const modalData = dialog.locator('details')
+      await expect(modalData).not.toHaveAttribute('open', '')
+      await modalData.locator('summary').click()
+      await expect(modalData).toContainText(text)
+      if (item === 'CombustionDrive')
+        await expect(
+          dialog.getByRole('list', { name: 'Prerequisites', exact: true }),
+        ).toHaveCount(1)
+      expect(
+        await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth),
+      ).toBe(true)
+      await page.keyboard.press('Escape')
+      await expect(dialog).not.toBeVisible()
+      await expect(opener).toBeFocused()
+    }
+  })
+}
+
+for (const [item, title, kind] of [
+  ['CrystalMine', 'Crystal Mine', 'Construction'],
+  ['ResearchLab', 'Research Lab', 'Construction'],
+  ['ImpulseDrive', 'Impulse Drive', 'Research'],
+] as const) {
+  test(`${title} keeps a long catalog countdown on one line`, async ({
+    page,
+  }) => {
+    for (const [duration, text] of [
+      [5760000, '1h 36m'],
+      [10627200000, '123 days'],
+    ] as const) {
+      await page.goto(
+        '/?' +
+          new URLSearchParams({
+            scenario: 'progression-detail',
+            item,
+            mode: 'progress',
+            list: 'yes',
+            duration: String(duration),
+          }),
+      )
+      const row = page.getByRole('link', {
+        name: `${kind === 'Research' ? 'Research' : 'Upgrade'} ${title}`,
+        exact: true,
+      })
+      const progress = row.getByRole('group', { name: `${kind} progress` })
+      const timer = page.getByLabel(`${title} time remaining`, { exact: true })
+      const target = progress.getByLabel('Target level 5')
+      await expect(progress).toContainText('Level 4 → Level 5')
+      await expect(target).toHaveText('Level 5')
+      await expect(target).toHaveCSS('font-weight', '700')
+      await expect(timer).toHaveText(text)
+      for (const width of [320, 390, 1440]) {
+        await page.setViewportSize({ width, height: 844 })
+        const lines = await timer
+          .getByText(text, { exact: true })
+          .evaluate((element) => {
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            return [...range.getClientRects()].map((rect) => rect.y)
+          })
+        expect(new Set(lines).size).toBe(1)
+        const timerBox = (await timer.boundingBox())!
+        // Building timers live in the separate quick-build control in the row.
+        const rowBox = (await row.boundingBox())!
+        const targetBox = (await target.boundingBox())!
+        expect(timerBox.x).toBeGreaterThanOrEqual(targetBox.x + targetBox.width)
+        expect(
+          rowBox.x + rowBox.width - timerBox.x - timerBox.width,
+        ).toBeLessThanOrEqual(10)
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true)
+      }
+      await row.press('Enter')
+      await expect(
+        page.getByRole('region', { name: 'Progression quote' }),
+      ).toBeFocused()
+    }
+  })
+}
+
+for (const [gate, label, width] of [
+  ['Shipyard', 'Shipyard', 390],
+  ['HyperspaceDrive', 'Hyperspace Drive', 1440],
+  ['disabled', 'Unavailable in this universe.', 390],
+] as const) {
+  test(`Battleship inspection keeps Build disabled for ${gate}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await openDetail(page, 'Battleship', 'battleship', 4, { gate })
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    await expect(
+      pane.getByRole('button', { name: 'Build', exact: true }),
+    ).toBeDisabled()
+    const copy = gate === 'disabled' ? pane : pane.getByLabel('Action blockers')
+    await expect(copy).toContainText(label)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+  })
+}
+
+test('catalog art failure preserves confirmation and returns focus to the opener', async ({
+  page,
+}) => {
+  await page.route('**/art/**', (route) => route.abort())
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(
+      '/?' +
+        new URLSearchParams({
+          scenario: 'progression-detail',
+          item: 'RoboticsFactory',
+          list: 'yes',
+        }),
+    )
+    const marker = page.getByRole('link', {
+      name: 'Upgrade Robotics Factory',
+      exact: true,
+    })
+    await marker.click()
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    await expect(
+      pane.getByRole('button', { name: 'Confirm upgrade', exact: true }),
+    ).toBeEnabled()
+    await pane.getByRole('link', { name: 'Back to Facilities' }).click()
+    await expect(marker).toBeFocused()
+    await expect(pane).toBeHidden()
+    expect(await page.evaluate(() => window.progressionScene.sent)).toEqual([])
+  }
+})
+
+for (const [item, action] of [
+  ['RoboticsFactory', 'Confirm upgrade'],
+  ['CombustionDrive', 'Confirm research'],
+  ['SmallCargo', 'Build'],
+  ['RocketLauncher', 'Build'],
+] as const) {
+  test(`${item} confirmation uses live balances without reopening the detail`, async ({
+    page,
+  }) => {
+    await openDetail(page, item)
+    const pane = page.getByRole('region', { name: 'Progression quote' })
+    const confirm = pane.getByRole('button', { name: action, exact: true })
+    await expect(confirm).toBeEnabled()
+    await page.evaluate(async () => {
+      const scene = window.progressionScene
+      scene.view.bodies[0].amounts.metal = '59999999'
+      await scene.refresh()
+    })
+    await expect(confirm).toBeDisabled()
+    await expect(
+      pane
+        .getByLabel('Missing resources')
+        .getByRole('img', { name: 'metal', exact: true }),
+    ).toBeVisible()
+    await page.evaluate(async () => {
+      const scene = window.progressionScene
+      scene.view.bodies[0].amounts.metal = '60000000'
+      await scene.refresh()
+    })
+    await expect(confirm).toBeEnabled()
+    await expect(pane.getByLabel('Missing resources')).toHaveCount(0)
   })
 }
