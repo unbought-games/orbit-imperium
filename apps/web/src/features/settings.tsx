@@ -1,3 +1,5 @@
+import { OrderRecovery } from './order-recovery'
+import { SettingsBackLink } from '../shell/settings-back-link'
 import { GalaxyProbeSettings } from './galaxy-probe-settings'
 import { VacationSettings } from './vacation'
 import { EmpireDeletion } from './empire-deletion'
@@ -8,39 +10,97 @@ import { Heading, Text } from '../ui/typography'
 import { Button } from '../ui/button'
 import { DiscordLink } from '../ui/discord-link'
 import styles from './settings.module.css'
-import { TaskHeader } from '../ui/task-header'
-import { BetaNotice } from '../ui/beta-notice'
+import { DestinationLayout, DestinationHeading } from '../ui/destination-layout'
 import { usePlayerDisplay } from '../shell/player-profiles-context'
 import { PlayerName } from './player-name'
-import { OrderRecovery } from './order-recovery'
+import type { ReactNode } from 'react'
+import {
+  settingsSections,
+  type SettingsSection,
+} from '../shell/settings-navigation-model'
+import { SettingsIdentity } from './settings-identity'
+
 export function SettingsScreen() {
-  const { view, model, logout, universeName } = useGameScreen()
-  const settings = model.settings
-  const identity = usePlayerDisplay(view.binding.player)
+  const { route, model } = useGameScreen()
+  const selected = route.item as SettingsSection
   return (
-    <Section className={styles.screen}>
-      <TaskHeader title="Settings" />
-      <OrderRecovery model={model} />
-      <BetaNotice />
-      <GalaxyProbeSettings />
-      <VacationSettings />
-      <Section aria-label="Community">
-        <Heading level={2}>Community</Heading>
+    <DestinationLayout className={styles.screen}>
+      <SettingsBackLink />
+      <SettingsPane section="identity" selected={selected}>
+        <SettingsIdentity />
+        <InsigniaEditor appearance="plain" />
+      </SettingsPane>
+      <SettingsPane section="game" selected={selected}>
+        <Text>Fine-tune how you play in this universe.</Text>
+        <OrderRecovery model={model} />
+        <GalaxyProbeSettings />
+        <VacationSettings />
+        <Heading level={2}>Display & accessibility</Heading>
         <Text>
-          Meet other players and keep up with Orbit Imperium on Discord.
+          Display follows your device’s text size. UI changes appear without
+          animation.
         </Text>
-        <DiscordLink />
-      </Section>
-      <InsigniaEditor />
-      <Section aria-label="Help and conduct reports">
-        <Heading level={2}>Help & conduct reports</Heading>
-        <Text>
-          Email{' '}
-          <a href="mailto:support@unbought.games">support@unbought.games</a> for
-          help or to report a conduct concern. Support is best effort: we aim to
-          respond within 24 hours, but response times are not guaranteed.
-        </Text>
-      </Section>
+      </SettingsPane>
+      <SettingsPane section="support" selected={selected}>
+        <Section aria-label="Community">
+          <Heading level={2}>Community</Heading>
+          <Text>
+            Meet other players and keep up with Orbit Imperium on Discord.
+          </Text>
+          <DiscordLink />
+        </Section>
+        <Section aria-label="Help and conduct reports">
+          <Heading level={2}>Help & conduct reports</Heading>
+          <Text>
+            Email{' '}
+            <a
+              className={styles.supportLink}
+              href="mailto:support@unbought.games"
+            >
+              support@unbought.games
+            </a>{' '}
+            for help or to report a conduct concern. Support is best effort: we
+            aim to respond within 24 hours, but response times are not
+            guaranteed.
+          </Text>
+        </Section>
+        <UniverseSettings />
+      </SettingsPane>
+      <SettingsPane section="session" selected={selected}>
+        <SessionSettings />
+      </SettingsPane>
+      <SettingsPane section="deletion" selected={selected}>
+        <EmpireDeletion heading={null} />
+      </SettingsPane>
+    </DestinationLayout>
+  )
+}
+
+function SettingsPane({
+  section,
+  selected,
+  children,
+}: {
+  section: SettingsSection
+  selected: SettingsSection
+  children: ReactNode
+}) {
+  if (section !== selected) return null
+  return (
+    <div id={section} className={styles.pane}>
+      <DestinationHeading>
+        {section === 'deletion' ? 'Delete empire' : settingsSections[section]}
+      </DestinationHeading>
+      {children}
+    </div>
+  )
+}
+
+function UniverseSettings() {
+  const { view, model } = useGameScreen()
+  const settings = model.settings
+  return (
+    <>
       <Heading level={2}>Universe settings</Heading>
       {settings ? (
         <Text aria-label="Universe settings">
@@ -51,6 +111,35 @@ export function SettingsScreen() {
       ) : (
         <Text>Universe settings unavailable. Reconnect to try again.</Text>
       )}
+      {view.capabilities.some(
+        (c) => c.capability === 'Attack' && c.enabled,
+      ) && (
+        <Section aria-label="Player attack rules">
+          <Heading level={2}>Attack conduct rule</Heading>
+          <Text>
+            At most six qualifying attack contacts per attacker and stable
+            target body in a rolling 24 hours against active targets. Wins and
+            draws count, including probe-only attacks. Total defeat, espionage,
+            recalled fleets and missing-target failures do not. A target is
+            active when their last foreground presence was less than seven days
+            before contact.
+          </Text>
+          <Text>
+            The window excludes a contact exactly 24 hours old. The seventh
+            contact still resolves normally and retains private evidence. There
+            is no automatic sanction or alliance-war exception.
+          </Text>
+        </Section>
+      )}
+    </>
+  )
+}
+
+function SessionSettings() {
+  const { view, universeName, logout } = useGameScreen()
+  const identity = usePlayerDisplay(view.binding.player)
+  return (
+    <>
       <dl className={styles.identity}>
         {identity && (
           <div>
@@ -76,32 +165,6 @@ export function SettingsScreen() {
           <dd>{universeName}</dd>
         </div>
       </dl>
-      {view.capabilities.some(
-        (c) => c.capability === 'Attack' && c.enabled,
-      ) && (
-        <Section aria-label="Player attack rules">
-          <Heading level={2}>Attack conduct rule</Heading>
-          <Text>
-            At most six qualifying attack contacts per attacker and stable
-            target body in a rolling 24 hours against active targets. Wins and
-            draws count, including probe-only attacks. Total defeat, espionage,
-            recalled fleets and missing-target failures do not. A target is
-            active when their last foreground presence was less than seven days
-            before contact.
-          </Text>
-          <Text>
-            The window excludes a contact exactly 24 hours old. The seventh
-            contact still resolves normally and retains private evidence. There
-            is no automatic sanction or alliance-war exception.
-          </Text>
-        </Section>
-      )}
-      <EmpireDeletion />
-      <Heading level={2}>Display & accessibility</Heading>
-      <Text>
-        Display follows your device’s text size. UI changes appear without
-        animation.
-      </Text>
       <section className={styles.session} aria-label="Session actions">
         <Heading level={2}>Current session</Heading>
         <Text>Sign out of this account on this device.</Text>
@@ -109,6 +172,6 @@ export function SettingsScreen() {
           Sign out
         </Button>
       </section>
-    </Section>
+    </>
   )
 }

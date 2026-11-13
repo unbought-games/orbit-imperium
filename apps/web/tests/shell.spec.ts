@@ -55,14 +55,14 @@ test('supporter claims color the shared account identity after sign-in and clear
     )
     await expect(identity.locator('svg')).toHaveClass(/lucide-star/)
   }
-  await navigate(page, 'Settings')
+  await withFixtureResponse(page, (response) => response.url().endsWith('/player-profiles'), () => page.goto(`/u/andromeda/b/${body.id}/settings/session`))
   await expect(
-    page.getByText('Supporter · Thank you for supporting unbought games.'),
+    page.getByText('Supporter · Thank you for supporting Unbought Games.'),
   ).toBeVisible()
   tier = undefined
   await page.clock.fastForward(60_000)
   await expect(
-    page.getByText('Supporter · Thank you for supporting unbought games.'),
+    page.getByText('Supporter · Thank you for supporting Unbought Games.'),
   ).toHaveCount(0)
   await expect(
     page.locator('main').getByText(username, { exact: true }),
@@ -1367,10 +1367,12 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
     path: 'test-results/fleets-unavailable-phone.png',
     fullPage: true,
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/support`))
   await expect(
     page.getByRole('heading', { name: 'Universe settings', exact: true }),
   ).toBeVisible()
+  await page.getByRole('link', { name: 'Back to Settings', exact: true }).click()
+  await page.getByRole('main').getByRole('navigation', { name: 'Settings navigation' }).getByRole('link', { name: 'Account & session', exact: true }).click()
   await expect(
     page
       .getByRole('region', { name: 'Session actions' })

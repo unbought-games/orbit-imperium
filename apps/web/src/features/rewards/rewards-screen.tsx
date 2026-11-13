@@ -1,3 +1,8 @@
+import { SettingsBackLink } from '../../shell/settings-back-link'
+import {
+  DestinationLayout,
+  DestinationHeading,
+} from '../../ui/destination-layout'
 import { useContext, useEffect, useState, useRef } from 'react'
 import { useStore } from 'zustand'
 import { ArrowUpRight } from 'lucide-react'
@@ -9,7 +14,7 @@ import { pendingChoices } from '../../client-model/community-rewards'
 import { Button, ButtonLink, ButtonLinkAnchor } from '../../ui/button'
 import { ConfirmationButton } from '../../ui/confirmation-button'
 import { LoadingRegion } from '../../ui/loading-region'
-import { Heading, Text } from '../../ui/typography'
+import { Text } from '../../ui/typography'
 import {
   RewardPreview,
   rewardScope,
@@ -21,7 +26,7 @@ import styles from './rewards.module.css'
 export function RewardsScreen() {
   const { owner, controller, visible, loading, busy, error, pending } =
     useCommunityRewards()
-  const { universeName, view } = useGameScreen()
+  const { universeName, view, body } = useGameScreen()
   const insignias = useContext(InsigniaContext)
   if (!insignias) throw Error('Rewards previews require the cosmetic catalog')
   const library = useStore(insignias.store, (s) => s.snapshot)
@@ -47,10 +52,11 @@ export function RewardsScreen() {
     (i) => i.reward_id === celebration,
   )?.reward
   return (
-    <div className={styles.page}>
+    <DestinationLayout className={styles.page}>
       <header className={styles.heading}>
+        <SettingsBackLink />
         <div>
-          <Heading level={1}>Community rewards</Heading>
+          <DestinationHeading>Community rewards</DestinationHeading>
           <Text>
             Your Renown spans Unbought Games. Explore how it works, your full
             progress, and your reward history in Unbought Accounts.
@@ -136,7 +142,14 @@ export function RewardsScreen() {
                           Choose your empire title
                         </ButtonLinkAnchor>
                       ) : (
-                        <ButtonLink {...routeTarget(universeName, 'settings')}>
+                        <ButtonLink
+                          {...routeTarget(
+                            universeName,
+                            'settings',
+                            body?.id,
+                            'identity',
+                          )}
+                        >
                           Customize your insignia
                         </ButtonLink>
                       )}{' '}
@@ -456,6 +469,6 @@ export function RewardsScreen() {
           )}
         </div>
       </LoadingRegion>
-    </div>
+    </DestinationLayout>
   )
 }

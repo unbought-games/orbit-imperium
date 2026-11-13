@@ -193,3 +193,21 @@ it('retains alliance welcome and invitation intent on canonical and legacy route
     expect(router.state.matches.at(-1)?.status).toBe('success')
   }
 })
+
+it('keeps settings section and selected body in real paths', async () => {
+  const router = createAppRouter({
+    history: createMemoryHistory({
+      initialEntries: ['/u/andromeda/b/mars/settings/support'],
+    }),
+  })
+  await router.load()
+  expect(router.state.matches.at(-1)).toMatchObject({
+    status: 'success',
+    staticData: { page: 'settings' },
+    params: { body: 'mars', item: 'support' },
+  })
+  expect(
+    router.buildLocation(routeTarget('Andromeda', 'settings', 'moon', 'game'))
+      .href,
+  ).toBe('/u/andromeda/b/moon/settings/game')
+})

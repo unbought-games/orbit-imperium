@@ -1,7 +1,8 @@
+import { routeTarget } from '../shell/route-target'
 import { useEffect, useRef, useState } from 'react'
 import type { components } from '../contracts'
 import { useGameScreen } from '../shell/screen-context'
-import { routeTarget } from '../shell/route-target'
+
 import { Button } from '../ui/button'
 import { Link } from '../ui/link'
 import { Section } from '../ui/section'
@@ -205,7 +206,7 @@ export function VacationNotice({
     <Section aria-label="Vacation active" className={styles.notice}>
       <Text>
         Vacation mode · Base income only. Already-launched attacks still arrive.{' '}
-        <Link {...routeTarget(universeName, 'settings', body)}>
+        <Link {...routeTarget(universeName, 'settings', body, 'game')}>
           Manage vacation in Settings
         </Link>
       </Text>

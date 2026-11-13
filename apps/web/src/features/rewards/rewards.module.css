@@ -1,42 +1,39 @@
 .page {
-  max-width: 1120px;
-  margin: auto;
-  padding: clamp(1rem, 3vw, 2rem);
+  margin: 0;
   display: grid;
-  gap: 2rem;
+  gap: 1.5rem;
 }
-.page h1,
-.page h2,
-.page h3,
-.page h4 {
-  font-family: var(--font-display, Georgia, serif);
-  color: var(--text, #e7e7eb);
+:where(.page) h1,
+:where(.page) h2,
+:where(.page) h3,
+:where(.page) h4 {
+  font-family: var(--font-editorial);
+  color: var(--champagne-light);
 }
-.page h2 {
-  font-size: 1.4rem;
-  margin: 0 0 0.8rem;
+:where(.page) h2 {
+  font: 500 var(--font-size-lg) / 1.3 var(--font-editorial);
+  margin: 0 0 var(--space-2);
 }
 .page h3 {
-  margin: 0.5rem 0;
+  font: 500 var(--font-size-base) / 1.3 var(--font-editorial);
+  margin: var(--space-2) 0;
 }
 .page p {
   color: var(--text-muted, #b2c0ce);
-  line-height: 1.55;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  margin: 0 0 var(--space-3);
 }
 .heading {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
+  display: block;
 }
 .progress {
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 2rem;
-  padding: 1.5rem;
-  border-block: 1px solid #cbb68d55;
-  background: linear-gradient(110deg, #cbb68d12, transparent);
-  margin-bottom: 2rem;
+  padding: 1rem 0;
+  border-block: 1px solid var(--border);
+  margin-bottom: 1rem;
 }
 .progress > div:first-child {
   display: grid;
@@ -65,9 +62,8 @@
   flex-direction: column;
   align-items: start;
   gap: 1rem;
-  padding: 1.25rem;
-  border: 1px solid #cbb68d44;
-  background: #0d2030;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
 }
 .option > div {
   display: grid;
@@ -75,7 +71,7 @@
   width: 100%;
 }
 .option h4 {
-  font-size: 1.2rem;
+  font: 500 var(--font-size-base) / 1.3 var(--font-editorial);
   margin: 0;
 }
 .option p {
@@ -111,8 +107,7 @@
   display: flex;
   gap: 1.5rem;
   align-items: center;
-  background: radial-gradient(ellipse at left, #a4dbef25, transparent), #102838;
-  border: 1px solid #a4dbef77;
+  border-block: 1px solid var(--border);
   margin: 1.5rem 0;
 }
 .notice {
@@ -133,8 +128,8 @@
 .timeAwards > div {
   display: grid;
   gap: 0.5rem;
-  padding: 1rem;
-  border: 1px solid #cbb68d44;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
 }
 .inviteLinks {
   display: grid;
@@ -162,8 +157,8 @@
   font: inherit;
 }
 .invitationPreview {
-  padding: 1rem;
-  border: 1px solid #a4dbef66;
+  padding: 1rem 0;
+  border-block: 1px solid var(--border);
   margin: 1rem 0;
 }
 .referral {

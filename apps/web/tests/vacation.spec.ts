@@ -66,7 +66,7 @@ for (const width of [390]) {
       revision++
       await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
     })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/game`))
     const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
     await expect(section.getByRole('button', { name: 'Enter vacation mode', exact: true })).toBeEnabled()
     await capture(page, section, { path: `test-results/vacation-ready-${width}x900.png` })
@@ -98,7 +98,7 @@ for (const width of [390]) {
     await page.setViewportSize({ width, height: 1200 })
     await capture(page, page.getByRole('region', { name: 'Production controls' }), { path: `test-results/vacation-production-${width}x1200.png` })
     await page.setViewportSize({ width, height: 900 })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/game`))
     now += minimum
     revision++
     await withBootstrapResponse(page, () => page.reload())
@@ -132,7 +132,7 @@ for (const width of [390]) {
       revision++
       await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
     })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/game`))
     const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
     await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
     await section.getByRole('button', { name: 'Confirm vacation mode' }).click()

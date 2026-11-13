@@ -1,6 +1,6 @@
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
-import { binding, shellFixture } from './fixtures/game'
+import { binding, body, shellFixture } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse } from './fixtures/responses'
 
@@ -46,7 +46,7 @@ for (const width of [390]) {
         },
       })
     })
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/deletion`))
     const section = page.getByRole('region', {
       name: 'Delete empire',
       exact: true,
@@ -149,7 +149,7 @@ for (const width of [390]) {
         },
       }),
     )
-    await withBootstrapResponse(page, () => page.goto('/u/andromeda/settings'))
+    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/deletion`))
     const section = page.getByRole('region', {
       name: 'Delete empire',
       exact: true,

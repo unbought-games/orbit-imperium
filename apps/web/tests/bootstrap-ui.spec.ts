@@ -984,7 +984,7 @@ for (const width of [1440, 390]) {
 
     test('Discord matches the homepage and supports keyboard or touch navigation', async ({ page }) => {
       await shellFixture(page)
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings`))
+      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/support`))
       const community = page.getByRole('region', { name: 'Community', exact: true })
       const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
       await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
@@ -1043,18 +1043,18 @@ test('open beta notice appears before public enrollment with approved policy lin
   }
 })
 
-test('signed-in settings retain the beta notice and best-effort support target', async ({ page }) => {
+test('signed-in settings omit the beta notice and retain the best-effort support target', async ({ page }) => {
   await shellFixture(page)
   await page.setViewportSize({ width: 390, height: 844 })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings`))
-  await expect(page.getByRole('region', { name: 'Open Beta' })).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/support`))
+  await expect(page.getByRole('region', { name: 'Open Beta' })).toHaveCount(0)
   const help = page.getByRole('region', { name: 'Help and conduct reports' })
   await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
   await expect(help.getByRole('link', { name: 'support@unbought.games' })).toHaveAttribute('href', 'mailto:support@unbought.games')
   await expect(page.getByRole('navigation', { name: 'Policies and support' })).toHaveCount(0)
   await expect(page.getByRole('contentinfo')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await diagnosticScreenshot(page, { path: 'test-results/open-beta-settings-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, { path: 'test-results/settings-support-mobile.png', fullPage: true })
 })
 
 test('universe names stay out of the header while every game link uses the current name', async ({ page }) => {
@@ -1069,7 +1069,7 @@ test('universe names stay out of the header while every game link uses the curre
       .map(a => new URL(a.href).pathname).filter(path => path.startsWith('/u/'))
       .every(path => path.startsWith('/u/andromeda/')))).toBe(true)
   }
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings`))
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/session`))
   await expect(page.locator('dt').filter({ hasText: /^Universe$/ }).locator('..')).toContainText('Andromeda')
 
   // Rename at the authority, then refresh the old link: no alias or redirect.

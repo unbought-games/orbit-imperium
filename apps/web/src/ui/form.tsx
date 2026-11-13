@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react'
 import { useRef, type ComponentPropsWithRef } from 'react'
 import { classes } from './classes'
 import styles from './form.module.css'
@@ -85,7 +86,28 @@ export function Select({
   className,
   ...props
 }: ComponentPropsWithRef<'select'>) {
-  return <select className={classes(styles.control, className)} {...props} />
+  // Listboxes keep native presentation; the single-value control gets a
+  // decorative arrow while retaining its native keyboard and mobile picker.
+  const dropdown =
+    !props.multiple && (props.size === undefined || props.size <= 1)
+  const control = (
+    <select
+      className={classes(styles.control, dropdown && styles.select, className)}
+      {...props}
+    />
+  )
+  return dropdown ? (
+    <span className={styles.selectWrap}>
+      {control}
+      <ChevronDown
+        className={styles.selectChevron}
+        size={16}
+        aria-hidden="true"
+      />
+    </span>
+  ) : (
+    control
+  )
 }
 export function FormGrid({
   className,

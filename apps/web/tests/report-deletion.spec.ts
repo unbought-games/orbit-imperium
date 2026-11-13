@@ -902,7 +902,7 @@ for (const width of [1280, 390]) {
       await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: info.outputPath(`order-notice-cleared-${width}x900.png`) })
     await withBootstrapResponse(page, () =>
-      page.goto(`/u/andromeda/b/${body.id}/settings`),
+      page.goto(`/u/andromeda/b/${body.id}/settings/game`),
     )
     const recovery = page.getByRole('region', { name: 'Orders awaiting confirmation' })
     const retryArchive = recovery.getByRole('button', { name: 'Retry order for Archive report' })

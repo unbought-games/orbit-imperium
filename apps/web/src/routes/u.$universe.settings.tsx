@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { SettingsScreen } from '../features/game-screens'
+import { SettingsIndexScreen } from '../features/settings-index'
 
 export const Route = createFileRoute('/u/$universe/settings')({
   staticData: { page: 'settings' },
-  component: SettingsScreen,
+  component: SettingsIndexScreen,
 })

@@ -1,3 +1,4 @@
+import { SettingsNavigation } from './settings-navigation'
 import { useOidcConfig } from '../client-model/use-oidc'
 import { GameShellFrame } from './game-shell-frame'
 import { ArrivalScene } from '../features/arrival/arrival-scene'
@@ -238,6 +239,15 @@ function GameShellContent() {
         accountConfig.status === 'ready'
           ? accountConfig.config.account_url
           : undefined
+      }
+      sidebar={
+        page === 'settings' || page === 'rewards' ? (
+          <SettingsNavigation
+            universeName={universeName}
+            body={body?.id}
+            protocol={view.protocol}
+          />
+        ) : undefined
       }
       view={view}
       body={body}

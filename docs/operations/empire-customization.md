@@ -1,7 +1,7 @@
 # Empire insignia operations
 
 The design and access contract is recorded in [ADR 001](../architecture/adr-001-empire-customization.md).
-The editor is in **Menu → Settings → Empire insignia**. The equipped insignia
+The editor is in **Menu → Settings → Empire identity**. The equipped insignia
 appears beside the owner's name in Galaxy. No gameplay advantage is granted.
 
 ## Single-host self-hosting
@@ -230,8 +230,8 @@ and grants remain unchanged by fallback projection.
 
 ## Empire names, taglines and titles
 
-Owners edit their active empire from **My Orbit profile → Explore this empire →
-Edit identity**. Empire names (60 Unicode characters) and taglines (160) are plain
+Owners edit their active empire from **Settings → Empire identity**, alongside
+their insignia. The profile’s **Edit identity** action also remains available. Empire names (60 Unicode characters) and taglines (160) are plain
 text and free for everyone. Empty fields use the normal game defaults. Names are
 not unique account identifiers. The username stays visible. Titles are selected
 independently for each empire; permanent unlocks belong to the local account.

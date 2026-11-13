@@ -89,7 +89,7 @@ for (const width of [1440, 390]) {
         page,
       }) => {
         const purchases = await fixture(page)
-        const destinationSlug = slug === 'alliance' ? 'alliance/discover' : slug
+        const destinationSlug = slug === 'alliance' ? 'alliance/discover' : slug === 'settings' && width >= 1024 ? 'settings/identity' : slug
         const destinationTitle = slug === 'alliance' ? 'Discover alliances' : title
         // TanStack serializes the validated welcome string as JSON, while the legacy input is numeric.
         const canonicalQuery = query.replace('welcome=1', 'welcome=%221%22')
@@ -139,8 +139,13 @@ for (const width of [1440, 390]) {
           `/u/andromeda/b/${id(6)}/${slug}`,
         )
         await link.click()
-        await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${slug}`)
+        await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${slug === "settings" && width >= 1024 ? "settings/identity" : slug}`)
         expect(purchases()).toBe(0)
+        if (slug === 'settings') {
+          await boot(page, () => page.goto('/u/andromeda/settings#galaxy-espionage'))
+          await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/settings/game`)
+          await expect(page.getByRole('textbox', { name: 'Probes per spy mission' })).toHaveValue('1')
+        }
       })
     }
   })
@@ -153,7 +158,7 @@ test('account pages remain usable without planets and reject a foreign planet in
   for (const [slug, title] of pages) {
     await boot(page, () => page.goto(`/u/andromeda/${slug}#details`))
     await expect(page.locator('main h1')).toHaveText(title)
-    await expect(page).toHaveURL(`/u/andromeda/${slug}#details`)
+    await expect(page).toHaveURL(`/u/andromeda/${slug === 'settings' ? 'settings/identity' : slug}#details`)
   }
   await boot(page, () => page.goto(`/u/andromeda/messages?body=${id(99)}`))
   await expect(
