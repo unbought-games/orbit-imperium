@@ -1946,3 +1946,13 @@ including a renamed destination. Existing fleet movement and mission schematic
 browser tests retain narrow viewport geometry, and coordinate navigation is
 covered on the mission card. The removed test was the only browser case that
 combined two 40-character names with the expanded schematic.
+
+PR #407 merge-group `db7c2064`, run `43358001317` attempt 1, feature job
+`131665630098` failed the 390px Empire briefing shortcut case on horizontal
+overflow. The fixture has zero fleets. Scrubbing the existing briefing shortcut
+animations in Chromium measured up to 393px of document width in a 390px
+viewport. Hiding the icon reduced it to 390px. Moving the mobile shortcut 10px
+inward kept document width at 390px across the same animation samples. The
+browser assertion and its test history are intact. Both briefing viewports and
+the responsive Empire overview passed locally (4.55s bundle preparation and
+14.4s browser runner). The temporary diagnostic was removed.

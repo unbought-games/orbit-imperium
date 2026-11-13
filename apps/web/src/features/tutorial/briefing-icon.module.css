@@ -149,6 +149,11 @@
   filter: drop-shadow(0 0 4px var(--champagne-light))
     drop-shadow(0 0 9px var(--ice));
 }
+@media (max-width: 767px) {
+  .icon {
+    inset-inline-end: 0;
+  }
+}
 @keyframes breathe {
   0%,
   100% {
