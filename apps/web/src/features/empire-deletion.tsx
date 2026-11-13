@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react'
+import { routeTarget } from '../shell/route-target'
 import styles from './empire-deletion.module.css'
 import type { components } from '../contracts'
 import { Link } from '../ui/link'
-import { routeTarget } from '../shell/route-target'
+
 import { useGameScreen } from '../shell/screen-context'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
@@ -9,7 +11,7 @@ import { Button } from '../ui/button'
 import { ConfirmationButton } from '../ui/confirmation-button'
 import { useEmpireDeletion } from './use-empire-deletion'
 
-export function EmpireDeletion() {
+export function EmpireDeletion({ heading }: { heading?: ReactNode }) {
   const { view, model, universeName } = useGameScreen()
   const action = useEmpireDeletion(model)
   return (
@@ -17,6 +19,7 @@ export function EmpireDeletion() {
       view={view}
       universeName={universeName}
       action={action}
+      heading={heading}
     />
   )
 }
@@ -25,16 +28,18 @@ export function EmpireDeletionView({
   view,
   universeName,
   action,
+  heading = <Heading level={2}>Delete empire</Heading>,
 }: {
   view: components['schemas']['GameView']
   universeName: string
   action: ReturnType<typeof useEmpireDeletion>
+  heading?: ReactNode
 }) {
   if (view.protocol !== 4) return null
   const deletion = view.empire_deletion
   return (
     <Section aria-label="Delete empire">
-      <Heading level={2}>Delete empire</Heading>
+      {heading}
       <Text>
         Delete your empire in {universeName}. Your Unbought Games account and
         empires in other universes are unaffected.
@@ -143,7 +148,7 @@ export function EmpireDeletionNotice({
       <Text role="status">
         Your empire in {universeName} is scheduled for removal on{' '}
         {new Date(deletion.due_at).toLocaleString()}.{' '}
-        <Link {...routeTarget(universeName, 'settings', body)}>
+        <Link {...routeTarget(universeName, 'settings', body, 'deletion')}>
           Review deletion in Settings
         </Link>
       </Text>

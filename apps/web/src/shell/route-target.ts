@@ -184,6 +184,18 @@ export function routeTarget(
           })
         : linkOptions({ to: '/u/$universe/menu', params, search: {} })
     case 'settings':
+      if (item)
+        return body
+          ? linkOptions({
+              to: '/u/$universe/b/$body/settings/$item',
+              params: { universe, body, item },
+              search: {},
+            })
+          : linkOptions({
+              to: '/u/$universe/settings/$item',
+              params: { universe, item },
+              search: {},
+            })
       return body
         ? linkOptions({
             to: '/u/$universe/b/$body/settings',

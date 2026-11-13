@@ -1,0 +1,12 @@
+.layout {
+  max-width: 54rem;
+  padding-block-start: var(--space-6);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.title {
+  margin: 0 0 var(--space-4);
+  color: var(--champagne-light);
+  font: 400 var(--font-size-xl) / 1.2 var(--font-editorial);
+}

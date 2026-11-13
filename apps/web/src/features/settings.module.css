@@ -1,14 +1,13 @@
 .screen {
-  max-width: 64rem;
   overflow-wrap: anywhere;
 }
 .identity {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
-  border-block: 1px solid #cbb68d40;
-  padding-block: 1.5rem;
-  margin-block: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-5);
+  margin-block: var(--space-4) var(--space-5);
 }
 .identity dt {
   color: var(--text-muted);
@@ -19,9 +18,7 @@
   margin: 0;
 }
 .session {
-  border-top: 1px solid #cbb68d40;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
+  margin-top: var(--space-5);
 }
 @media (max-width: 599px) {
   .identity {
@@ -41,4 +38,29 @@
 
 .probeSettings {
   scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
+}
+
+.pane {
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
+}
+
+.supportLink {
+  color: var(--link);
+}
+
+.pane {
+  margin-bottom: var(--space-6);
+  line-height: 1.5;
+}
+.pane > section > h2,
+.pane > h2:not(:first-child) {
+  font: 500 1.25rem/1.3 var(--font-editorial);
+  color: var(--champagne-light);
+  margin-bottom: var(--space-2);
+}
+.pane > p,
+.pane > section > p {
+  max-width: 46rem;
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-3);
 }

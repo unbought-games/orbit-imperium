@@ -83,3 +83,25 @@
   width: 16px;
   height: 16px;
 }
+
+.selectWrap {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  width: 100%;
+}
+.select.control {
+  appearance: none;
+  padding-inline-end: 44px;
+}
+.selectChevron {
+  position: absolute;
+  inset-inline-end: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+}
+.select:disabled + .selectChevron {
+  opacity: 0.5;
+}

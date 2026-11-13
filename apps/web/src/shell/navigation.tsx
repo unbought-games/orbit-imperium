@@ -55,6 +55,7 @@ export function Navigation({
   onLogout,
   accountUrl,
   children,
+  sidebar,
 }: {
   hasUnreadReports: boolean
   view: BoundView
@@ -65,6 +66,7 @@ export function Navigation({
   onVisit?: (page: Page) => void
   onLogout: () => void
   accountUrl?: string | null
+  sidebar?: ReactNode
   children: (navigation: ReactNode) => ReactNode
 }) {
   const universeName = useUniverseName()
@@ -225,61 +227,66 @@ export function Navigation({
   )
   return (
     <>
-      <aside className={styles.sidebar} aria-label="Game navigation">
+      <aside
+        className={styles.sidebar}
+        aria-label={sidebar ? 'Section sidebar' : 'Game navigation'}
+      >
         <div className={styles.sidebarIdentity}>
           <Brand
             className={styles.sidebarBrand}
             {...routeTarget(universeName, 'overview', body)}
           />
         </div>
-        <nav
-          className={styles.sidebarDestinations}
-          aria-label="Main navigation"
-          data-touch-control=""
-        >
-          {destination('overview', 'Empire', Orbit, true)}
-          {sidebarDestination('briefing')}
-          {destination('resources', 'Develop', Blocks, true)}
+        {sidebar ?? (
           <nav
-            className={styles.sidebarDevelop}
-            aria-label="Develop navigation"
+            className={styles.sidebarDestinations}
+            aria-label="Main navigation"
+            data-touch-control=""
           >
-            {buildPages.map(sidebarDestination)}
-          </nav>
-          {destination('galaxy', 'Galaxy', Telescope, true)}
-          {destination('fleets', 'Fleets', Radar, true)}
-          {sidebarDestination('reports')}
-          {sidebarDestination('combat-simulator')}
-          {(!visiblePages ||
-            ['alliance', 'messages', 'high-scores'].some((p) =>
-              visiblePages.has(p as Page),
-            )) && <h2 className={styles.sidebarLabel}>Community</h2>}
-          {sidebarDestination('alliance')}
-          {sidebarDestination('messages')}
-          {sidebarDestination('high-scores')}
-          {morePages.length > 0 && (
-            <Disclosure
-              className={styles.more}
-              summary="More"
-              open={morePages.includes(page) || undefined}
+            {destination('overview', 'Empire', Orbit, true)}
+            {sidebarDestination('briefing')}
+            {destination('resources', 'Develop', Blocks, true)}
+            <nav
+              className={styles.sidebarDevelop}
+              aria-label="Develop navigation"
             >
-              <nav
-                aria-label="More navigation"
-                className={styles.moreDestinations}
+              {buildPages.map(sidebarDestination)}
+            </nav>
+            {destination('galaxy', 'Galaxy', Telescope, true)}
+            {destination('fleets', 'Fleets', Radar, true)}
+            {sidebarDestination('reports')}
+            {sidebarDestination('combat-simulator')}
+            {(!visiblePages ||
+              ['alliance', 'messages', 'high-scores'].some((p) =>
+                visiblePages.has(p as Page),
+              )) && <h2 className={styles.sidebarLabel}>Community</h2>}
+            {sidebarDestination('alliance')}
+            {sidebarDestination('messages')}
+            {sidebarDestination('high-scores')}
+            {morePages.length > 0 && (
+              <Disclosure
+                className={styles.more}
+                summary="More"
+                open={morePages.includes(page) || undefined}
               >
-                {morePages.map((p) =>
-                  destination(
-                    p,
-                    pageTitles[p],
-                    pageIcons[p] ?? ArrowUpRight,
-                    false,
-                    true,
-                  ),
-                )}
-              </nav>
-            </Disclosure>
-          )}
-        </nav>
+                <nav
+                  aria-label="More navigation"
+                  className={styles.moreDestinations}
+                >
+                  {morePages.map((p) =>
+                    destination(
+                      p,
+                      pageTitles[p],
+                      pageIcons[p] ?? ArrowUpRight,
+                      false,
+                      true,
+                    ),
+                  )}
+                </nav>
+              </Disclosure>
+            )}
+          </nav>
+        )}
         <div className={styles.sidebarAccount}>
           <AccountMenu.Root open={accountOpen} onOpenChange={setAccountOpen}>
             <AccountMenu.Trigger

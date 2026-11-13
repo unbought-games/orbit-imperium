@@ -1,3 +1,4 @@
+import { Select } from '../ui/form'
 import { CosmeticColor, CosmeticTreatments } from './rewards/cosmetic-controls'
 import { InsigniaComposer } from './insignia-composer'
 import {
@@ -12,14 +13,21 @@ import { EmpireInsignia } from './empire-insignia'
 import { useInsigniaEditor } from './use-insignia-editor'
 import styles from './insignia.module.css'
 
-export function InsigniaEditor() {
+export function InsigniaEditor({
+  appearance = 'panel',
+}: {
+  appearance?: 'panel' | 'plain'
+}) {
   const editor = useInsigniaEditor()
   const { snapshot, design } = editor
   const symbol = snapshot?.catalog.find((s) => s.id === design?.recipe.symbol)
   const previewSymbol =
     symbol ?? snapshot?.catalog.find((s) => s.id === defaultInsignia.symbol)
   return (
-    <Section aria-label="Empire insignia" className={styles.panel}>
+    <Section
+      aria-label="Empire insignia"
+      className={`${styles.panel} ${appearance === 'plain' ? styles.plain : ''}`}
+    >
       <div className={styles.heading}>
         <div>
           <Heading level={2}>Empire insignia</Heading>
@@ -60,7 +68,7 @@ export function InsigniaEditor() {
           <div className={styles.library}>
             <label>
               Saved designs
-              <select
+              <Select
                 value={design?.revision ? design.id : ''}
                 disabled={editor.busy}
                 onChange={(e) => editor.select(e.target.value)}
@@ -74,7 +82,7 @@ export function InsigniaEditor() {
                     {d.id === snapshot.library.equipped ? ' · Equipped' : ''}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <Button
               variant="secondary"

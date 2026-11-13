@@ -1,3 +1,4 @@
+import { isSettingsSection } from './settings-navigation-model'
 import { catalogPages, resolveCatalogItem } from './catalog-routes'
 import { universeSlug } from '../client-model/universe-name'
 import type { BoundView } from '../client-model/commands'
@@ -124,8 +125,11 @@ export function resolveDestination(
       : null
   if (item && catalogPages.includes(page) && !catalogItem)
     return unavailable('This catalog item is unavailable in this universe.')
+  if (page === 'settings' && item && !isSettingsSection(item))
+    return unavailable('This settings section is not available.')
   if (
     item &&
+    page !== 'settings' &&
     !catalogPages.includes(page) &&
     !(view.protocol === 4
       ? page === 'reports'

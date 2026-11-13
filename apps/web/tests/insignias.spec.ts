@@ -140,7 +140,7 @@ for (const width of [1440, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     const { state, appearance } = await fixture(page)
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     await expect(
       panel.getByRole('button', { name: 'New design' }),
@@ -280,7 +280,7 @@ test('failed saves preserve the draft and the library can recover', async ({
   page,
 }) => {
   const { state } = await fixture(page)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
+  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
   await page.getByRole('button', { name: 'New design' }).click()
   await page.getByLabel('Design name', { exact: true }).fill('Still mine')
   state.fail = true
@@ -305,7 +305,7 @@ for (const width of [1440, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 })
     const { state } = await fixture(page)
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     for (const name of ['First standard', 'Second standard']) {
       await panel.getByRole('button', { name: 'New design' }).click()
@@ -506,7 +506,7 @@ for (const width of [1440, 390]) {
     const { state } = await fixture(page)
     state.installed = false
     state.permanent = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     await panel.getByRole('button', { name: 'New design' }).click()
     await expect(panel.getByRole('button', { name: 'Test star', exact: true })).toHaveCount(0)
@@ -540,7 +540,7 @@ for(const width of [1440,390]){
  test(`layered composer saves colors and slots at ${width}px`,async({page})=>{
   await page.setViewportSize({width,height:1000})
   const {state}=await fixture(page,true)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
+  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
   const panel=page.getByRole('region',{name:'Empire insignia'})
   await panel.getByRole('button',{name:'New design'}).click()
   await expect(panel.getByRole('button',{name:'test-center',exact:true})).toBeDisabled()
@@ -576,7 +576,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     const { state } = await fixture(page, true)
     state.supporter = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto('/u/andromeda/settings'))
+    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
     const panel = page.getByRole('region', { name: 'Empire insignia' })
     await panel.getByRole('button', { name: 'New design' }).click()
     const accent = panel.getByLabel('Accent color', { exact: true })

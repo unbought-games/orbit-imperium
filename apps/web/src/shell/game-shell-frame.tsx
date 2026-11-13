@@ -27,6 +27,7 @@ export function GameShellFrame({
   accountUrl,
   children,
   footer,
+  sidebar,
 }: {
   view: BoundView
   body?: BoundView['bodies'][number]
@@ -41,6 +42,7 @@ export function GameShellFrame({
   accountUrl?: string | null
   children: ReactNode
   footer?: ReactNode
+  sidebar?: ReactNode
 }) {
   const pinned = usePinnedHeader()
   const incomingHostile = hasIncomingHostileFleet(view)
@@ -68,6 +70,7 @@ export function GameShellFrame({
             </span>
           </header>
           <Navigation
+            sidebar={sidebar}
             hasUnreadReports={unreadReports}
             activity={activity}
             blockers={blockers}

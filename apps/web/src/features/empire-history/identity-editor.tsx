@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type {
   EmpireProfile,
   ProfileAction,
@@ -19,11 +19,19 @@ export function IdentityEditor({
   busy,
   save,
   cancel,
+  title: heading = 'Edit empire identity',
+  autoFocus = true,
+  related,
+  appearance = 'panel',
 }: {
   profile: EmpireProfile
   busy: boolean
   save: (profile: EmpireProfile, action: ProfileAction) => Promise<boolean>
-  cancel: () => void
+  cancel?: () => void
+  title?: string | null
+  autoFocus?: boolean
+  related?: ReactNode
+  appearance?: 'panel' | 'plain'
 }) {
   const [draft, setDraft] = useState(() => ({
     ...(profile.identity ?? defaultIdentity),
@@ -40,7 +48,7 @@ export function IdentityEditor({
   const error = identityError(draft)
   return (
     <section
-      className={styles.identityEditor}
+      className={`${styles.identityEditor} ${appearance === 'plain' ? styles.identityPlain : ''}`}
       aria-label="Edit empire identity"
     >
       <Form
@@ -53,10 +61,10 @@ export function IdentityEditor({
               { type: 'Identity', identity: draft },
             ))
           )
-            cancel()
+            cancel?.()
         }}
       >
-        <h2>Edit empire identity</h2>
+        {heading && <h2>{heading}</h2>}
         <p className={styles.hint}>
           Make this empire yours. Titles unlock for your account; each empire
           chooses its own.
@@ -64,7 +72,7 @@ export function IdentityEditor({
         <Field>
           Empire name
           <Input
-            autoFocus
+            autoFocus={autoFocus}
             value={draft.name}
             placeholder="Your empire’s name"
             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
@@ -146,17 +154,25 @@ export function IdentityEditor({
           <Button type="submit" disabled={busy || !!error}>
             {busy ? 'Saving…' : 'Save identity'}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={cancel}
-            disabled={busy}
-          >
-            Cancel
-          </Button>
-          <a href={`/u/${universeSlug(profile.universe_name)}/settings`}>
-            Edit insignia in Settings
-          </a>
+          {cancel && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={cancel}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+          )}
+          {related !== undefined ? (
+            related
+          ) : (
+            <a
+              href={`/u/${universeSlug(profile.universe_name)}/settings/identity`}
+            >
+              Edit insignia in Settings
+            </a>
+          )}
         </div>
       </Form>
       <aside className={styles.identityPreview} aria-label="Identity preview">

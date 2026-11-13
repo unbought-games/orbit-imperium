@@ -273,3 +273,26 @@ it('keeps account pages available without planets and rejects explicit inaccessi
       ).toBe(false)
   }
 })
+
+it('accepts installed settings sections and rejects unknown sections or foreign bodies', () => {
+  for (const item of ['identity', 'game', 'support', 'session', 'deletion']) {
+    expect(
+      resolveDestination(
+        { universe: 'u', page: 'settings', body: 'a', item },
+        view,
+      ),
+    ).toMatchObject({ available: true, item, body: 'a' })
+  }
+  expect(
+    resolveDestination(
+      { universe: 'u', page: 'settings', body: 'a', item: 'unknown' },
+      view,
+    ).available,
+  ).toBe(false)
+  expect(
+    resolveDestination(
+      { universe: 'u', page: 'settings', body: 'foreign', item: 'identity' },
+      view,
+    ).available,
+  ).toBe(false)
+})
