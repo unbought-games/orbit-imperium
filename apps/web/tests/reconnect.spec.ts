@@ -18,7 +18,7 @@ test('lost POST acknowledgement survives refresh with one durable identity',asyn
  await page.route('**/commands/*?epoch=*',route=>route.fulfill({status:503,contentType:'application/problem+json',body:JSON.stringify({type:'about:blank',status:503,code:'Unavailable'})}))
  await page.getByRole('button',{name:'Upgrade Crystal Mine',exact:true}).click();await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(attention).toContainText('We’re checking whether this order went through.')
  await expect.poll(async()=>(await saved()).filter(a=>a.status==='uncertain').length).toBe(1)
- await page.reload();await expect(construction).toContainText('Construction in progress');await expect(attention.getByRole('button',{name:'Retry order',exact:true})).toBeVisible()
+ await page.reload();await expect(construction).toContainText('Construction in progress');await expect(attention).toHaveCount(0)
  const restored=await saved();expect(restored).toHaveLength(1);expect(restored[0].envelope).toEqual(originalEnvelope);expect(restored[0].envelope.command_id).toBe(ids[0]);expect(restored[0].status).toBe('uncertain')
  await page.unroute('**/commands/*?epoch=*')
  await expect.poll(async()=>(await saved()).filter(a=>a.envelope.command_id===ids[0]&&a.status==='committed'&&a.reconciled).length).toBe(1)

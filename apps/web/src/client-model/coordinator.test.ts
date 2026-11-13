@@ -14,6 +14,7 @@ import type {
   GamePort,
   AttemptStorage,
 } from './commands'
+import { attemptKey } from './commands'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${n.toString().padStart(12, '0')}`
 const binding: Binding = {
@@ -517,6 +518,37 @@ it('reload checks both accepted attempts without retrying until the player reque
   for (const attempt of c.ledger.values())
     await c.retryOrder(attempt.envelope.command_id)
   expect(sent).toHaveLength(4)
+})
+it('dismisses an uncertain order during retry and restores its identity silently', async () => {
+  const { c, port, saved, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw { status: 503 }
+  }
+  const commandId = (await c.send({
+    type: 'CancelConstruction',
+    operation: id(40),
+  }))!
+  const key = attemptKey(binding, commandId)
+  let finishReceipt!: (error: unknown) => void
+  port.receipt = () =>
+    new Promise((_, reject) => {
+      finishReceipt = reject
+    })
+  const retry = c.retryOrder(commandId)
+  c.dismissOrderNotices()
+  finishReceipt({ status: 503 })
+  await retry
+  expect(c.store.getState().hiddenOrderNotices.has(key)).toBe(true)
+  expect(saved.get(commandId)?.status).toBe('uncertain')
+  await c.connect(binding.account, binding.universe)
+  expect(c.store.getState().hiddenOrderNotices.has(key)).toBe(true)
+  expect(c.ledger.get(key)?.envelope).toEqual(saved.get(commandId)?.envelope)
+  expect(sent).toEqual([commandId])
+  await c.send({ type: 'CancelConstruction', operation: id(41) })
+  expect(c.store.getState().hiddenOrderNotices).toEqual(new Set([key]))
+  expect(sent).toHaveLength(2)
 })
 it('a B receipt cannot resolve A and a view cannot infer commitment', async () => {
   const { c, receipts, port } = setup()

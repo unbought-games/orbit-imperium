@@ -33,6 +33,7 @@ export type GameState = {
   mailbox: SocialMailbox | null
   reportHeaders: ReportHeaders
   attempts: AttemptLedger
+  hiddenOrderNotices: ReadonlySet<string>
   intents: Map<string, SubmittedIntent>
   receivedAt: number
   now: number
@@ -63,6 +64,7 @@ export function createGameStore() {
     mailbox: null,
     reportHeaders: new Map(),
     attempts: new Map(),
+    hiddenOrderNotices: new Set(),
     intents: new Map(),
     receivedAt: 0,
     now: 0,
