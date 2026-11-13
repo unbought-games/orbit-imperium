@@ -79,7 +79,7 @@ it('sends only the displayed selection in one HTTP mutation, including lists ove
   }
 })
 
-it('waits for commit and preserves newer headers when a response is delayed', async () => {
+it('applies a delayed read confirmation without replacing newer partial preference receipts', async () => {
   const { model, port, header } = await setup()
   let finish!: (result: Result) => void
   let context!: Result['binding']
@@ -100,7 +100,9 @@ it('waits for commit and preserves newer headers when a response is delayed', as
   model.store.setState({
     reportHeaders: mergeReportHeaders(
       model.store.getState().reportHeaders,
-      [{ ...header(10), read: true, starred: true, hidden: true }],
+      // A preference receipt spreads the cached, still-unread header before
+      // applying its star/archive fields at a newer revision.
+      [{ ...header(10), read: false, starred: true, hidden: true }],
       '3',
     ),
   })

@@ -96,3 +96,19 @@ container, network, volume and temporary override are removed after validation.
 The temporary dependency symlink is removed; screenshots remain for chat review.
 This record covers local implementation validation. PR checks and merge-queue
 validation are tracked on the pull request; deployment is separate.
+
+## PR review repair
+
+Review of `c9068b52` identified a real response-ordering defect: a newer
+archive/star receipt could carry the cached unread flag, causing the older
+database read confirmation to be discarded by the full-header revision check.
+The coordinator regression was strengthened to reproduce that exact schedule
+and failed against the original implementation. Shared header reconciliation
+now retains confirmed read state monotonically within the binding while still
+choosing archive/star/share fields by revision. A pure regression also checks a
+later partial preference snapshot cannot restore unread state.
+
+The affected coordinator, report state/engine, and sharing tests passed: 126 tests
+in 1.02 s. TypeScript and ESLint passed. Current desktop/mobile screenshots were
+refreshed after the repair; the six Reports/HUD cases are revalidated before push.
+All six passed in 18.8 s after 5.587 s bundle preparation.
