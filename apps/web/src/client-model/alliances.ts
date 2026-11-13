@@ -121,14 +121,12 @@ export class AlliancesController {
     return this.load(
       { type: 'Detail', alliance: previous.summary.id, post_before: cursor },
       previous,
-      '',
       true,
     )
   }
   private async load(
     query: S['AllianceQuery'],
     previous?: AllianceDetail | null,
-    successNotice = '',
     append = false,
     preserveBoard = false,
   ): Promise<boolean> {
@@ -221,7 +219,7 @@ export class AlliancesController {
         loading: false,
         notice: recoveredCursor
           ? 'The noticeboard changed. Showing the newest notices.'
-          : successNotice,
+          : '',
       })
       return true
     } catch (error) {
@@ -286,7 +284,6 @@ export class AlliancesController {
       await this.load(
         { type: 'Mine' },
         previousView?.alliance,
-        'Alliance updated.',
         false,
         preserveBoard,
       )
@@ -312,13 +309,7 @@ export class AlliancesController {
       }
       if (status === 409 && pending.action.type === 'SavePresentation') {
         this.store.setState({ busy: false, pending: null })
-        await this.load(
-          { type: 'Mine' },
-          previousView?.alliance,
-          '',
-          false,
-          true,
-        )
+        await this.load({ type: 'Mine' }, previousView?.alliance, false, true)
         this.store.setState({ error: message })
         return false
       }

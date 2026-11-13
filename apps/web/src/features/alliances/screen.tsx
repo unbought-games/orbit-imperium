@@ -288,7 +288,6 @@ function AllianceWorkspace({
                 </Button>
               </div>
             )}
-            {state.notice && <p role="status">{state.notice}</p>}
             {creating ? (
               state.view &&
               (detail ? (
@@ -362,6 +361,7 @@ function AllianceWorkspace({
                       {active === 'Hall' && (
                         <AllianceHall
                           detail={detail}
+                          notice={state.notice}
                           player={player}
                           run={run}
                           busy={busy}

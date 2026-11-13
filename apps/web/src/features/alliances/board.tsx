@@ -111,15 +111,18 @@ export function Board({
   run,
   busy,
   load,
+  notice,
 }: {
   detail: AllianceDetail
   player: string
   run: Run
   busy: boolean
   load: (cursor: string) => void
+  notice?: string
 }) {
   return (
     <section className={styles.board} aria-label="Alliance noticeboard">
+      {notice && <p role="status">{notice}</p>}
       {can(detail, 'PublishPosts') && (
         <NoticeEditor alliance={detail.summary.id} run={run} busy={busy} />
       )}

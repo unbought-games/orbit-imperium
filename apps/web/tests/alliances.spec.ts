@@ -372,7 +372,7 @@ test('expired noticeboard cursors recover to fresh notices', { tag: '@journey' }
   await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
   await page.getByRole('button', { name:'Load older notices', exact:true }).click()
   await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
-  await expect(page.getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Alliance noticeboard' }).getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
   expect(queries.filter(q=>q.type==='Detail' && q.post_before)).toHaveLength(1)
   expect(queries.at(-1)).toEqual({type:'Detail',alliance,post_before:null})
 })
