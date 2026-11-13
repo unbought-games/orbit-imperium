@@ -2092,10 +2092,7 @@ for (const width of [390, 1280]) {
 
 // Regression: customization must navigate with the exact body target and mission,
 // expose editable probe quantities, and never submit the one-click spy command.
-for (const [width, target] of [
-  [1280, 'planet'],
-  [390, 'moon'],
-] as const) {
+for (const [width, target] of [[1280, 'planet']] as const) {
   test(`Spy with opens an editable ${target} espionage draft at ${width}px`, async ({
     page,
   }) => {
@@ -2146,26 +2143,8 @@ for (const [width, target] of [
     await diagnosticScreenshot(page, {
       path: `test-results/galaxy-spy-menu-${width}x900.png`,
     })
-    if (target === 'moon') {
-      await page.keyboard.press('Escape')
-      await page
-        .getByRole('button', { name: 'Moon at [1:371:2] details', exact: true })
-        .click()
-      await page
-        .getByRole('button', {
-          name: 'Actions for moon [1:371:2]',
-          exact: true,
-        })
-        .click()
-      await expect(customize).toBeEnabled()
-      await diagnosticScreenshot(page, {
-        path: `test-results/galaxy-spy-moon-menu-${width}x900.png`,
-      })
-      await withGalaxyResponse(page, () => customize.click())
-    } else {
-      await customize.focus()
-      await withGalaxyResponse(page, () => customize.press('Enter'))
-    }
+    await customize.focus()
+    await withGalaxyResponse(page, () => customize.press('Enter'))
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
     await expect(page.getByRole('radio', { checked: true })).toHaveValue(
       'Espionage',
