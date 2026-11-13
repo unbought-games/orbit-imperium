@@ -17,7 +17,7 @@ import { SimulationFlight } from './simulation-flight'
 import { SimulationPlanning } from './combat-simulation-planning'
 import {
   simulationFields,
-  unknownAssumptions,
+  blankSimulationEdits,
   simulationInputs,
   simulationSummary,
   averageSurvivors,
@@ -155,7 +155,6 @@ function SimulationForm({
       : field,
   )
   const worldImport = ownedDefenderImport(view, body?.id, includeShips, stale)
-  const assumptions = unknownAssumptions(fields, edits)
   const prepared = withSimulationAllies(
     simulationInputs(fields, edits, defenderReport?.resources),
     fields,
@@ -167,26 +166,29 @@ function SimulationForm({
     : []
   return (
     <div className={styles.content}>
-      {!defenderSource &&
-        (report ? (
-          <p>
-            Defender at [{report.target.coordinates.galaxy}:
-            {report.target.coordinates.system}:
-            {report.target.coordinates.position}] · observed{' '}
-            <time dateTime={new Date(report.observed_at).toISOString()}>
-              {new Date(report.observed_at).toLocaleString()}
-            </time>{' '}
-            ({reportAge(report.observed_at, now)}).
-          </p>
-        ) : (
-          <p>
-            No report imported. Enter defender assumptions or explicitly assume
-            zero.
-          </p>
-        ))}
+      {!defenderSource && report && (
+        <p>
+          Defender at [{report.target.coordinates.galaxy}:
+          {report.target.coordinates.system}:
+          {report.target.coordinates.position}] · observed{' '}
+          <time dateTime={new Date(report.observed_at).toISOString()}>
+            {new Date(report.observed_at).toLocaleString()}
+          </time>{' '}
+          ({reportAge(report.observed_at, now)}).
+        </p>
+      )}
       <form
         onSubmit={(event) => {
           event.preventDefault()
+          edit(
+            blankSimulationEdits(
+              [
+                ...fields,
+                ...allies.flatMap((ally) => allyFields(fields, ally)),
+              ],
+              edits,
+            ),
+          )
           if (prepared.inputs && !unsupported.length) void run(prepared.inputs)
         }}
       >
@@ -256,15 +258,6 @@ function SimulationForm({
                     </Button>
                   )}
                 </div>
-              )}
-              {side === 'defender' && Object.keys(assumptions).length > 0 && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => edit(assumptions)}
-                >
-                  Assume all unknown values are zero
-                </Button>
               )}
               <SimulationFields
                 fields={fields.filter((f) => f.side === side)}

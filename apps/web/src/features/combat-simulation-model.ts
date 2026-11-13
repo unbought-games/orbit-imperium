@@ -116,13 +116,7 @@ export function simulationInputs(
   }
   let total = 0
   for (const field of fields) {
-    const value = edits[field.key] ?? field.value
-    if (value === null || value === '')
-      return {
-        inputs: null,
-        error:
-          'Fill in unknown values or explicitly assume zero before simulating.',
-      }
+    const value = (edits[field.key] ?? field.value) || '0'
     if (!/^(0|[1-9][0-9]*)$/.test(value))
       return { inputs: null, error: 'Use nonnegative whole numbers.' }
     const n = Number(value)
@@ -175,19 +169,12 @@ export function averageSurvivors(
   )
 }
 
-export function unknownAssumptions(
+export function blankSimulationEdits(
   fields: SimulationField[],
   edits: Record<string, string>,
 ) {
   return Object.fromEntries(
-    fields
-      .filter(
-        (f) =>
-          f.side === 'defender' &&
-          f.value === null &&
-          edits[f.key] === undefined,
-      )
-      .map((f) => [f.key, '0']),
+    fields.filter((f) => edits[f.key] === '').map((f) => [f.key, '0']),
   )
 }
 

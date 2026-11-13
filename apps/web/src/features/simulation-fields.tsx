@@ -39,7 +39,7 @@ export function SimulationFields({
                         ? 'Editable imported plan'
                         : `Player assumption${field.value !== null ? ` · ${field.source.toLowerCase()}: ${field.value}` : ' · not observed'}`
                       : field.value === null
-                        ? 'Unknown · not observed'
+                        ? 'Assumed zero · not observed'
                         : field.source}
                   </small>
                 </label>
@@ -60,8 +60,8 @@ export function SimulationFields({
                   <NumberInput
                     id={`simulation-${field.key}`}
                     aria-label={`${field.side === 'attacker' ? 'Attacker' : 'Defender'} ${label(field.label)}`}
-                    value={edits[field.key] ?? field.value ?? ''}
-                    placeholder="Unknown"
+                    value={edits[field.key] ?? field.value ?? '0'}
+                    placeholder="0"
                     onChange={(event) =>
                       edit({ [field.key]: event.target.value })
                     }
