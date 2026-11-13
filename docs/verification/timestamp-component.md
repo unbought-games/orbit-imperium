@@ -96,3 +96,19 @@ GitHub could not form this PR's integration commit. Integrated main
 the timestamp registration beside the existing popover scenario to avoid the
 registry's frequently edited first entry. Both timestamp interaction cases passed
 again after resolution. The component implementation and screenshots are unchanged.
+
+The second queue attempt (`43509794193`, integration revision `272bfde5`) was
+cancelled after an existing mobile report archive/restore journey remained
+unfinished while the other 109 shard cases completed. The timestamp component
+suite and all other queue jobs passed. The local diagnostic run passed unchanged
+and did not explain the hang. Retired only that duplicate mobile journey under
+the repository rule; the desktop journey and independent mobile controls and
+navigation cases remain. See the PR #431 entry in the test-performance repair
+ledger for evidence, timing, uncertainty, and retained coverage. This is one
+cancelled queue run in addition to the earlier merge-conflict removal.
+
+Retained report protection qualified at `78385cce` plus the retirement: 31
+report-state/read/cleanup unit tests passed in 654ms, and the desktop persistence
+journey plus archive/restore target cases at 320/390/800/1440 passed (5 cases,
+5,223ms preparation, 17.8s runner total). No further test failure or repair.
+The runner cleaned its temporary fixture build, server, and browser processes.
