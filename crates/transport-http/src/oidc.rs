@@ -205,6 +205,7 @@ pub(super) async fn callback<S: IdentityStore>(
         .await
         .map_err(ServiceError::from)?;
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
+    let analytics_account = session.account;
     let path = hosted_auth::finish_entry(path, hosted_auth::universe(&s), |universe| {
         oidc_enrollment::enroll(
             &s,
@@ -217,7 +218,7 @@ pub(super) async fn callback<S: IdentityStore>(
         )
     })
     .await;
-    Ok((
+    let mut response = (
         [
             (
                 header::SET_COOKIE,
@@ -227,7 +228,13 @@ pub(super) async fn callback<S: IdentityStore>(
         ],
         Redirect::to(&path),
     )
-        .into_response())
+        .into_response();
+    response
+        .extensions_mut()
+        .insert(orbit_application::ServerAnalyticsIdentity(
+            analytics_account,
+        ));
+    Ok(response)
 }
 pub(super) async fn identity<S: IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -373,7 +380,8 @@ pub(super) async fn enroll<S: IdentityStore>(
         None
     };
     let source = login_source(peer.map(|Extension(ConnectInfo(address))| address));
-    oidc_enrollment::enroll(
+    let analytics_account = session.account;
+    let mut response = oidc_enrollment::enroll(
         &s,
         session,
         UniverseId(body.universe),
@@ -382,7 +390,13 @@ pub(super) async fn enroll<S: IdentityStore>(
         expected_epoch,
         attribution.map(|Extension(value)| value.0),
     )
-    .await
+    .await?;
+    response
+        .extensions_mut()
+        .insert(orbit_application::ServerAnalyticsIdentity(
+            analytics_account,
+        ));
+    Ok(response)
 }
 
 #[derive(Deserialize)]

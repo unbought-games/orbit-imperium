@@ -46,3 +46,11 @@ The explicit direct-entry probe also checks that readiness/JSON responses do not
 seed a browser acquisition cookie. Middleware now issues that cookie only for
 rendered documents and successful auth operations. Auth starts detach a prior
 bound account's source, while fresh anonymous landing evidence remains eligible.
+
+Returning-account campaign regression: the real-service probe now opens a fresh
+tagged landing while authenticated, visits the intermediate login page, and starts
+OAuth without Referer. The fresh source survives. An internal verified-identity
+response extension binds tracking state after auth/enrollment; a one-document
+return marker avoids treating the auth redirect itself as a new campaign. The same
+probe confirms a new untagged auth flow drops prior bound attribution and GPC clears
+the signed journey. Both direct and invitation probes passed after this change.

@@ -179,3 +179,7 @@ impl<S: IdentityStore> SessionService<S> {
 /// Supplied only by the configured server middleware, never deserialized from a browser request.
 #[derive(Clone)]
 pub struct ServerAttribution(pub serde_json::Value);
+
+/// Verified by the auth/enrollment handler; consumed only by server middleware.
+#[derive(Clone)]
+pub struct ServerAnalyticsIdentity(pub AccountId);

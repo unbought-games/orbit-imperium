@@ -34,6 +34,8 @@ pub(super) struct Journey {
     bound: Option<uuid::Uuid>,
     #[serde(default)]
     epoch: String,
+    #[serde(default)]
+    returned_page: Option<String>,
 }
 fn label(value: &str) -> bool {
     !value.is_empty()
@@ -209,15 +211,31 @@ pub(super) async fn middleware(
         path.as_str(),
         "/api/auth/login" | "/api/auth/entry" | "/api/auth/callback" | "/api/auth/enroll"
     );
-    if (!document && !auth)
-        || super::blocked(&headers)
+    let disabled = super::blocked(&headers)
         || headers.get(header::COOKIE).is_some_and(|v| {
             v.to_str()
                 .unwrap_or_default()
                 .split(';')
                 .any(|p| p.trim() == "orbit_analytics_disabled=true")
-        })
-    {
+        });
+    if disabled {
+        let mut response = next.run(request).await;
+        if headers.get(header::COOKIE).is_some_and(|v| {
+            v.to_str()
+                .unwrap_or_default()
+                .split(';')
+                .any(|p| p.trim().starts_with("orbit_attribution="))
+        }) {
+            response.headers_mut().append(
+                header::SET_COOKIE,
+                format!("{COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0")
+                    .parse()
+                    .unwrap(),
+            );
+        }
+        return response;
+    }
+    if !document && !auth {
         return next.run(request).await;
     }
     let Ok(url) = reqwest::Url::parse(&format!(
@@ -230,6 +248,16 @@ pub(super) async fn middleware(
     let now = Utc::now().timestamp_millis();
     let mut current = source(&url, &headers, &s.routes, &s.config.handoff_origins);
     let mut old = read(&headers, &s.token, now);
+    let page_key = hex::encode(Sha256::digest(url.path().as_bytes()));
+    let auth_return = old.as_ref().and_then(|j| j.returned_page.as_ref()) == Some(&page_key);
+    if document
+        && current.campaign.is_some()
+        && old.as_ref().is_some_and(|j| j.bound.is_some())
+        && !auth_return
+    {
+        old = None;
+    }
+
     // A fresh authentication must not reuse another authenticated person's
     // acquisition on a shared browser. A new anonymous landing remains eligible.
     if matches!(
@@ -270,6 +298,7 @@ pub(super) async fn middleware(
         source: retained.map_or(current.clone(), |j| j.source.clone()),
         bound: old.as_ref().and_then(|j| j.bound),
         epoch: preference_epoch(&headers),
+        returned_page: old.as_ref().and_then(|j| j.returned_page.clone()),
     };
     let context = json!({"config": s.public(), "journey": journey});
     request
@@ -287,25 +316,23 @@ pub(super) async fn middleware(
     {
         return response;
     }
-    if path == "/api/auth/callback" && response.status().is_redirection() {
-        let digest = response
-            .headers()
-            .get_all(header::SET_COOKIE)
-            .iter()
-            .filter_map(|v| v.to_str().ok())
-            .find_map(|v| {
-                v.strip_prefix("orbit_session=").map(|v| {
-                    hex::encode(Sha256::digest(
-                        v.split(';').next().unwrap_or_default().as_bytes(),
-                    ))
-                })
-            });
-        if let Some(digest) = digest {
-            use orbit_application::IdentityStore;
-            if let Ok(Some(session)) = s.store.lookup_session(&digest).await {
-                journey.bound = Some(session.account.0);
-            }
+    if let Some(identity) = response
+        .extensions()
+        .get::<orbit_application::ServerAnalyticsIdentity>()
+    {
+        journey.bound = Some(identity.0.0);
+        if path == "/api/auth/callback" {
+            journey.returned_page = response
+                .headers()
+                .get(header::LOCATION)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| url.join(v).ok())
+                .filter(|v| v.origin() == url.origin())
+                .map(|v| hex::encode(Sha256::digest(v.path().as_bytes())));
         }
+    }
+    if rendered_document {
+        journey.returned_page = None;
     }
     // The normal auth redirect carries only source metadata, not identities or
     // invite credentials. Accounts validates the registered redirect origin.
@@ -446,6 +473,7 @@ mod tests {
             ),
             bound: None,
             epoch: String::new(),
+            returned_page: None,
         };
         let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&journey).unwrap());
         let mut mac = Hmac::<Sha256>::new_from_slice(b"synthetic-signing-key").unwrap();
