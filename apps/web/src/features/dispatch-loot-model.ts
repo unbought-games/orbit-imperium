@@ -52,3 +52,28 @@ export function matchingResourceObservation(
     ? { observedAt: report!.observed_at, resources: preview.resources.value }
     : null
 }
+
+export type DispatchLootRead = {
+  model: object
+  binding: string | null
+  id: string
+  report?: S['ReportHeader4'] | null
+  error?: boolean
+}
+
+/** A failed refresh cannot erase historical evidence or borrow another source's. */
+export function failedDispatchLootRead(
+  previous: DispatchLootRead | null,
+  source: Pick<DispatchLootRead, 'model' | 'binding' | 'id'>,
+): DispatchLootRead {
+  return {
+    ...source,
+    report:
+      previous?.model === source.model &&
+      previous.binding === source.binding &&
+      previous.id === source.id
+        ? previous.report
+        : undefined,
+    error: true,
+  }
+}

@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
 import {
+  failedDispatchLootRead,
   matchingResourceObservation,
   observedLootPlan,
 } from './dispatch-loot-model'
@@ -79,4 +80,27 @@ it('keeps large report amounts exact', () => {
       deuterium: '0',
     }).total,
   ).toBe(4503599627370496n)
+})
+
+it('retains historical evidence after a refresh error only for the same source', () => {
+  const source = { model: {}, binding: 'account-one', id: 'body' }
+  const previous = { ...source, report }
+  expect(failedDispatchLootRead(previous, source)).toEqual({
+    ...source,
+    report,
+    error: true,
+  })
+  for (const changed of [
+    { model: {} },
+    { binding: 'account-two' },
+    { id: 'other' },
+  ])
+    expect(
+      failedDispatchLootRead(previous, { ...source, ...changed }).report,
+    ).toBeUndefined()
+  expect(failedDispatchLootRead(null, source)).toEqual({
+    ...source,
+    report: undefined,
+    error: true,
+  })
 })

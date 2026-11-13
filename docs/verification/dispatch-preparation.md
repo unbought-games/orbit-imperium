@@ -99,3 +99,19 @@ behavior-test failure was involved in that optional capture attempt.
 Screenshots stay local and are displayed in the originating implementation chat,
 not hosted or attached to the PR. CI/review follow-through continues on the pushed
 revision; no merge or deployment is authorized.
+
+## PR review follow-through
+
+PR #430 revision `e360b79daf9122c96f6e292b539c28f6030ffecc` passed all
+14 required CI jobs/gates. Bugbot identified a real advisory-state defect:
+a failed refresh replaced an already loaded observation with an error-only read.
+The repair preserves evidence only for the same Coordinator, account binding
+and target, with an explicit failed-refresh label. A successful Unknown response
+still clears known amounts. Pure tests cover source isolation; an interactive
+case covers retained amounts, age, failure label and successful Unknown recovery.
+
+Repair validation: 7/7 loot-model cases, both affected observation component
+cases (bundle 4.430s; execution 2.8s), app/component typechecks and focused lint
+passed. Refreshed captures include `retained-1440x1000.png` and
+`retained-390x1000.png`; both retain readable historical values beneath the
+explicit refresh-error message. No validation failure occurred during this repair.

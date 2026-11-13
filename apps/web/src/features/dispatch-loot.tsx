@@ -30,6 +30,11 @@ export function DispatchLoot({
       </Heading>
       {observed && plan ? (
         <>
+          {current?.error && (
+            <Text className={styles.lootText} role="status">
+              Unable to refresh. Showing the last received observation.
+            </Text>
+          )}
           <Text className={styles.lootText}>
             <time
               dateTime={new Date(observed.observedAt).toISOString()}

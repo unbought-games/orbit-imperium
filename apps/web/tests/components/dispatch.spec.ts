@@ -2331,3 +2331,32 @@ test('raid observations show historical amounts and preserve unknown or unavaila
     await expect(planning).not.toContainText('Potential loot')
   }
 })
+
+test('failed raid observation refresh retains the snapshot and labels it historical until a successful unknown response', async ({
+  page,
+  mount,
+}) => {
+  await setup(page, mount, { variant: 'historical' })
+  const planning = page.getByRole('region', { name: 'Observed raid resources' })
+  await expect(planning).toContainText('12,000')
+  await page.evaluate(() =>
+    window.dispatchScene!.configure({
+      options: { resourceVisibility: 'Error' },
+      view: {},
+    }),
+  )
+  await expect(planning).toContainText(
+    'Unable to refresh. Showing the last received observation.',
+  )
+  await expect(planning).toContainText('12,000')
+  await expect(planning).toContainText('Observed 1 hour ago')
+  await page.evaluate(() =>
+    window.dispatchScene!.configure({
+      options: { resourceVisibility: 'Unknown' },
+      view: {},
+    }),
+  )
+  await expect(planning).toContainText('No known resources')
+  await expect(planning).not.toContainText('12,000')
+  await expect(planning).not.toContainText('Unable to refresh')
+})
