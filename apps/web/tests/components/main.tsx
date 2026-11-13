@@ -61,6 +61,8 @@ function LoadingExample() {
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
   timestamp: async () => (await import('./timestamp.scenario')).TimestampScenario,
+  'galaxy-navigation': async () =>
+    (await import('./galaxy-navigation.scenario')).GalaxyNavigationScenario,
   'cosmetic-treatments': async () =>
     (await import('./cosmetic-treatments.scenarios'))
       .CosmeticTreatmentsScenario,

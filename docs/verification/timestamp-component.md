@@ -79,3 +79,12 @@ boundary. The existing interaction test verifies exactly three display choices
 and the past report's text. Both browser cases passed on their first run after
 this change. No additional failures or test repairs occurred. All affected
 captures were refreshed at both viewport sizes.
+
+## PR integration
+
+Integrated main `9e0d42842c25a6424fe45f50a3d4cb3919caf05c` to resolve an additive
+conflict in the component gallery registry. Preserved both the existing galaxy
+navigation scenario and the new timestamp scenario. Refreshed dependencies for
+main's added hotkey library, then reran both timestamp component cases: 2 passed,
+4,421ms bundle preparation and 2.8s runner total (900ms and 1.2s test execution).
+No timestamp implementation or visual state changed during conflict resolution.
