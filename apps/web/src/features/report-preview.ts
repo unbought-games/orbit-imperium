@@ -31,10 +31,7 @@ const totalUnits = (
       )
 
 /** Derive a list glance only from the report's historical, recipient-visible facts. */
-export function reportPreview(
-  preview: Preview | undefined,
-  viewer?: string,
-): {
+export function reportPreview(preview: Preview | undefined): {
   location: string
   coordinates?: S['Coordinates']
   targetKind?: 'moon'
@@ -130,16 +127,7 @@ export function reportPreview(
     case 'Combat':
       at = preview.target
       identity = bodyIdentityLabel(preview.target_name, preview.target_kind)
-      if (
-        preview.loot &&
-        hasCombatLoot(
-          preview.outcome,
-          preview.participants?.find(
-            (participant) => participant.owner === viewer,
-          )?.side,
-          preview.loot,
-        )
-      )
+      if (preview.loot && hasCombatLoot(preview.outcome, preview.loot))
         facts.push({ resources: preview.loot, label: 'Loot' })
       if (
         preview.debris &&
