@@ -1,7 +1,7 @@
 # Server acquisition verification
 
 Implemented on base c39cb5df with the changes in this commit. The SDK is packaged
-from analytics 32726c3 (0.1.2), with its matching source offer in vendor/.
+from analytics c1ce8a2 (0.1.2), with its matching source offer in vendor/.
 
 - Focused client routing/invitation/optional-service tests: 13 passed (0.514 s).
 - Native route/source/cookie tests: 3 passed. Includes named aggregation, exact
@@ -31,3 +31,13 @@ The published Accounts acceptance script reproduces the HTTP/collector assertion
 against such a fixture. Builds and targeted checks were serialized; complete phase
 and runner-wait timings were not recorded. There are no UI presentation changes.
 No production access or deployment was performed.
+
+CI/review follow-up: switched the collection epoch to the existing HTTP-compatible
+command ID helper, restored case-insensitive public directory matching, and added
+the required news frontmatter. The original tests were retained; targeted checks
+passed. Configured first-party origins no longer create referral campaigns.
+The HTTPS cookie-deletion finding was reproduced as a non-failure in Chromium
+156.0.8078.4: a Secure HttpOnly cookie was removed by a same-origin HTTPS expiry
+response without a Secure attribute (one cookie before, zero after). No workaround
+was added for that claim. SDK URL edge-case fixes are included in the refreshed
+source archive and checksum-pinned tarball.

@@ -1,5 +1,6 @@
 [
   "/",
+  "/alliances",
   "/alliances/:universe",
   "/alliances/:universe/:alliance",
   "/alliances/:universe/:alliance/image",

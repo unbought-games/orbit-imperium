@@ -84,9 +84,8 @@ export async function startGame() {
     return
   }
   const directory =
-    location.pathname.replace(/\/$/, '') === '/alliances'
-      ? ['/alliances']
-      : matchPublicRoute('directory', location.pathname)
+    matchPublicRoute('directoryRoot', location.pathname) ??
+    matchPublicRoute('directory', location.pathname)
   if (directory) {
     const { PublicRecruitmentDirectory } = await import(
       './features/alliances/recruitment-directory'

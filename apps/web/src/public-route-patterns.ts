@@ -4,6 +4,7 @@ export const publicRoutes = {
   profile: '/profiles/:profile',
   commemoration: '/commemorations/:publication',
   invitation: '/invite/:universe/:token',
+  directoryRoot: '/alliances',
   directory: '/alliances/:universe',
   alliance: '/alliances/:universe/:alliance',
 } as const

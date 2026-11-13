@@ -1,3 +1,4 @@
+import { commandId } from './command-id'
 import routes from '../analytics-routes.json'
 import {
   init,
@@ -147,7 +148,7 @@ export function resetAnalytics() {
   }
 }
 export function disableAnalytics(disable: boolean) {
-  document.cookie = `orbit_analytics_epoch=${crypto.randomUUID()}; Path=/; SameSite=Lax; Max-Age=31536000`
+  document.cookie = `orbit_analytics_epoch=${commandId(crypto)}; Path=/; SameSite=Lax; Max-Age=31536000`
   document.cookie = `orbit_analytics_disabled=${disable}; Path=/; SameSite=Lax; Max-Age=31536000${location.protocol === 'https:' ? '; Secure' : ''}`
   try {
     localStorage.setItem('orbit.analytics.disabled', String(disable))

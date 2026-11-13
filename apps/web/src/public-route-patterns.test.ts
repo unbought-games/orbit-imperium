@@ -12,6 +12,9 @@ it('keeps public dispatch constraints and exposes its canonical analytics patter
   expect(
     matchPublicRoute('alliance', '/alliances/world/alliance')?.slice(1),
   ).toEqual(['world', 'alliance'])
+  expect(matchPublicRoute('directoryRoot', '/ALLIANCES/')?.[0]).toBe(
+    '/ALLIANCES/',
+  )
   expect(routes).toContain('/invite/:code')
   expect(routes).toContain('/invite/:universe/:token')
   expect(routes).toContain('/alliances/:universe/:alliance')

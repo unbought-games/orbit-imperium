@@ -79,7 +79,12 @@ pub(super) fn page_context(url: &reqwest::Url, routes: &[String]) -> (String, St
         format!("{origin}{route}"),
     )
 }
-fn source(url: &reqwest::Url, headers: &axum::http::HeaderMap, routes: &[String]) -> Source {
+fn source(
+    url: &reqwest::Url,
+    headers: &axum::http::HeaderMap,
+    routes: &[String],
+    internal_origins: &std::collections::BTreeMap<String, uuid::Uuid>,
+) -> Source {
     let mut campaign = serde_json::Map::new();
     for key in [
         "utm_source",
@@ -115,6 +120,7 @@ fn source(url: &reqwest::Url, headers: &axum::http::HeaderMap, routes: &[String]
         } else if let Some(referrer) = &referrer
             && let Ok(r) = reqwest::Url::parse(referrer)
             && r.origin() != url.origin()
+            && !internal_origins.contains_key(&r.origin().ascii_serialization())
         {
             campaign.insert("utm_source".into(), json!(r.host_str().unwrap_or_default()));
             campaign.insert("utm_medium".into(), json!("referral"));
@@ -219,7 +225,7 @@ pub(super) async fn middleware(
         return next.run(request).await;
     };
     let now = Utc::now().timestamp_millis();
-    let current = source(&url, &headers, &s.routes);
+    let current = source(&url, &headers, &s.routes, &s.config.handoff_origins);
     let mut old = read(&headers, &s.token, now);
     if old.as_ref().is_some_and(|j| j.bound.is_some()) && current.campaign.is_some() {
         old = None;
@@ -290,6 +296,9 @@ pub(super) async fn middleware(
                     .origin()
                     .ascii_serialization()
         })
+        && s.config
+            .handoff_origins
+            .contains_key(&target.origin().ascii_serialization())
         && target.path().ends_with("/oauth2/authorize")
     {
         let mut target = target;
@@ -381,6 +390,7 @@ mod tests {
             &reqwest::Url::parse("https://game.example/invite/inv_fixture").unwrap(),
             &Default::default(),
             &routes,
+            &Default::default(),
         );
         assert_eq!(
             value.campaign,
@@ -398,6 +408,7 @@ mod tests {
             .unwrap(),
             &Default::default(),
             &routes,
+            &Default::default(),
         );
         assert_eq!(tagged.campaign, Some(json!({"utm_source":"newsletter"})));
     }
@@ -412,6 +423,7 @@ mod tests {
                 &reqwest::Url::parse("https://game.example/").unwrap(),
                 &Default::default(),
                 &[],
+                &Default::default(),
             ),
             bound: None,
             epoch: String::new(),
