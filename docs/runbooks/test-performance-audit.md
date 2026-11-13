@@ -1941,3 +1941,38 @@ the two missing completions are the allied simulator cases. The repaired
 desktop/mobile cases passed locally (7.03s bundle preparation, 3.8s runner time,
 one worker), with the fixture server and temporary bundle cleaned by the runner.
 The game implementation and its inspected visual captures are unchanged.
+
+## November 12, 2026: announcement geometry readiness (PR402)
+
+CI run `43349817156` attempt 1 at `d85d1156`, job `131637964572`
+(features 5/6), failed the desktop width of
+`curated announcement opens from the orb once per account`. The instantaneous
+bounding-box assertion read bottom 1250 in a 900px viewport. Failure artifact
+`14003148402` shows the long content at the earlier short bubble's lower
+position. Main's #401 added the long lazy content and height middleware. The test
+awaited content/image visibility, but neither waits for Floating UI's subsequent
+ResizeObserver positioning. A local diagnostic confirmed the settled desktop
+box is y=12, height=722; the unchanged pass alone does not repair the race.
+
+This is a test-readiness defect. History and this ledger contain no prior repair
+for this geometry scenario; #401 introduced these assertions. Merge current main
+to reproduce the CI integration, then use the scenario's one repair: assert full
+viewport containment before taking screenshots or reading geometry. Keep all four
+edge assertions, scroll containment, final-paragraph visibility, dismissal, focus,
+and account persistence checks. The same readiness gate covers both widths;
+there is no timeout increase, sleep, test retry, or assertion deletion. A lasting
+clipping defect still fails the full-containment assertion.
+
+The audit covers both viewport instances and the file's other announcement cases:
+this is its only floating bounding-box read; other cases await their own semantic
+visibility/focus states. PR402 owns validation and CI follow-through. No product
+code changed for this repair.
+
+Validation on integrated revision `633086bb` plus the readiness repair: all
+19 simulator/alliance/announcement browser cases passed (6.54s preparation,
+40.9s runner time). Both announcement viewport cases also passed with screenshot
+capture explicitly disabled (5.32s preparation, 5.5s runner time), confirming
+that diagnostic capture does not establish placement readiness. Temporary
+diagnostic logging was removed. Fixture servers and bundles were cleaned up.
+The tutorial advisor's other bubble geometry check uses synchronous fixed text,
+not the lazy editorial size change exposed here; its assertions remain intact.
