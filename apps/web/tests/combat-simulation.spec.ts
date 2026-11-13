@@ -382,6 +382,7 @@ test('estimates manual hypothetical flights at 390px', async ({ page }) => {
   const coordinates = plan.getByLabel('Destination coordinates', { exact: true })
   const ship = page.getByLabel('Attacker Light Fighter', { exact: true })
   await ship.fill('15')
+  await page.getByLabel('Attacker Bomber', { exact: true }).fill('')
   await expect(timing).toContainText('Enter destination coordinates')
   await coordinates.fill('1:1:16')
   await expect(coordinates).toHaveAttribute('aria-invalid', 'true')

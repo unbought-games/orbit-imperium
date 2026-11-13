@@ -86,7 +86,7 @@ it.each(['4', '99999999999999999999999999999999'])(
     )
   },
 )
-it.each(['', '-1', '1.2', '1e2'])('rejects invalid count %s', (count) => {
+it.each(['-1', '1.2', '1e2'])('rejects invalid count %s', (count) => {
   expect(
     simulationFlightDraft(
       report,
@@ -181,4 +181,47 @@ it('distinguishes incomplete and invalid manual coordinates using universe bound
     coordinates: { galaxy: 3, system: 499, position: 15 },
     problem: '',
   })
+})
+
+it.each([false, true])(
+  'treats an unused attacking ship as zero for flight planning (cleared=%s)',
+  (cleared) => {
+    const withBomber: SimulationField[] = [
+      ...fields,
+      {
+        key: 'attacker:Ship:Bomber',
+        side: 'attacker',
+        label: 'Bomber',
+        item: { kind: 'Ship', id: 'Bomber' },
+        value: cleared ? '5' : null,
+        source: 'Plan',
+      },
+    ]
+    const edits: Record<string, string> = { 'attacker:Ship:LightFighter': '3' }
+    if (cleared) edits['attacker:Ship:Bomber'] = ''
+    const { draft, problem } = simulationFlightDraft(
+      report,
+      withBomber,
+      edits,
+      body,
+      100,
+    )
+    expect(problem).toBe('')
+    expect(draft?.ships).toEqual({ LightFighter: '3' })
+    expect(simulationAttackProblem(draft!, body)).toBe('')
+  },
+)
+
+it('requires a nonzero attacking ship after the only ship count is cleared', () => {
+  const result = simulationFlightDraft(
+    report,
+    fields,
+    { 'attacker:Ship:LightFighter': '' },
+    body,
+    100,
+  )
+  expect(result.draft).toBeNull()
+  expect(result.problem).toBe(
+    'Select attacking ships to estimate flight and prepare an attack.',
+  )
 })
