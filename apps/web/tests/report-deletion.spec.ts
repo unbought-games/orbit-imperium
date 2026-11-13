@@ -1,5 +1,12 @@
 import { triageReports } from '../src/features/report-triage'
-import { withFixtureResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
+import {
+  withBootstrapResponse,
+  withFixtureResponse,
+  withFixtureResponseStatus,
+  withReportListResponse,
+  withReportResponse,
+} from './fixtures/responses'
+import type { Response } from '@playwright/test'
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
@@ -351,6 +358,9 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   ).toBeVisible()
   expect(fixture.headers[0].hidden).toBe(false)
   expect(fixture.submitted()).toBe(2)
+  await withReportListResponse(page, () => page.reload())
+  await expect(row).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Action needs attention' })).toHaveCount(0)
 })
 
 for (const activation of ['click', 'Enter'] as const) {
@@ -492,6 +502,8 @@ test('independent deletes are optimistic and each failure rolls back only its re
   }
   await expect(rows.first()).not.toContainText('Action rejected')
   await expect(rows.last()).not.toContainText('Action rejected')
+  await banner.getByRole('button', { name: 'Dismiss order notices' }).click()
+  await expect(banner.getByRole('group', { name: 'Order status' })).toHaveCount(0)
 })
 
 test('a successful HTTP response confirms deletion before the game view refreshes', async ({
@@ -825,7 +837,7 @@ for (const width of [1280, 390]) {
 }
 
 for (const width of [1280, 390]) {
-  test(`a lost delete response is checked but retried only by the player at ${width}px`, async ({ page }) => {
+  test(`closing or reloading clears the notice while preserving order recovery at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
@@ -838,38 +850,60 @@ for (const width of [1280, 390]) {
     })
     fixture.setMode('uncertain')
     await page.getByRole('article').first().getByRole('button', { name: 'Archive report', exact: true }).click()
-    const retry = page.getByRole('button', { name: 'Retry order', exact: true })
+    const notice = page.getByRole('complementary', { name: 'Action needs attention' })
+    const retry = notice.getByRole('button', { name: 'Retry order', exact: true })
+    const dismiss = notice.getByRole('button', { name: 'Dismiss order notices', exact: true })
+    const receipt = (response: Response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname.endsWith(`/commands/${ids[0]}`)
     await expect(retry).toBeVisible()
-    await page.reload()
-    await expect(retry).toBeVisible()
-    await expect(page.getByTestId('order-announcement')).toBeEmpty()
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+      await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: info.outputPath(`order-notice-${width}x900.png`) })
+    const originalAnnouncement = (await page.getByTestId('order-announcement').elementHandle())!
+    await page.getByTestId('command-orb').click()
+    const hud = page.getByRole('dialog', { name: 'Command uplink' })
+    await expect(hud.getByRole('button', { name: 'Retry order' })).toBeVisible()
+    await expect(page.getByTestId('game-error-banner')).toHaveCount(1)
+    expect(await originalAnnouncement.evaluate(el => !!el.closest('dialog'))).toBe(true)
+    await diagnosticScreenshot(page, { path: info.outputPath(`hud-order-notice-${width}x900.png`) })
     if (width < 768) {
-      const originalAnnouncement = (await page.getByTestId('order-announcement').elementHandle())!
-      await page.getByTestId('command-orb').click()
-      await expect(page.getByRole('dialog').getByRole('button', { name: 'Retry order' })).toBeVisible()
-      await expect(page.getByTestId('game-error-banner')).toHaveCount(1)
-      expect(await originalAnnouncement.evaluate(el => !!el.closest('dialog'))).toBe(true)
-      await expect(page.getByTestId('order-announcement')).toBeEmpty()
-      await diagnosticScreenshot(page, { path: 'test-results/unified-hud-order-error-390x900.png' })
-      await page.getByRole('button', { name: 'Close command HUD' }).click()
-      await page.clock.runFor(1000)
-      expect(await originalAnnouncement.evaluate(el => !!el.closest('main'))).toBe(true)
+      await dismiss.click()
+      await expect(hud.getByRole('heading', { name: 'Command uplink' })).toBeFocused()
+      await expect(notice).toHaveCount(0)
+      await diagnosticScreenshot(page, { path: info.outputPath('hud-order-dismissed-390x900.png') })
     }
-    await page.clock.runFor(60000)
-    expect(ids).toHaveLength(1)
+    await page.getByRole('button', { name: 'Close command HUD' }).click()
+    await page.clock.runFor(1000)
+    expect(await originalAnnouncement.evaluate(el => !!el.closest('main'))).toBe(true)
+    if (width >= 768) {
+      await dismiss.focus()
+      await dismiss.press('Enter')
+      await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeFocused()
+    }
+    await expect(notice).toHaveCount(0)
+    await withReportListResponse(page, () => page.reload())
     await expect(page.getByRole('article')).toHaveCount(2)
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/unified-delete-unknown-${width}x900.png`, fullPage: true })
+    await withFixtureResponseStatus(page, receipt, () => page.clock.runFor(60000), 404)
+    await expect(notice).toHaveCount(0)
+    await expect(page.getByTestId('order-announcement')).toBeEmpty()
+    expect(ids).toHaveLength(1)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+      await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: info.outputPath(`order-notice-cleared-${width}x900.png`) })
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/settings`),
+    )
+    const recovery = page.getByRole('region', { name: 'Orders awaiting confirmation' })
+    const retryArchive = recovery.getByRole('button', { name: 'Retry order for Archive report' })
+    await expect(retryArchive).toBeVisible()
+    await diagnosticScreenshot(page, { path: info.outputPath(`order-recovery-${width}x900.png`) })
     fixture.setMode('success')
-    if (width < 768) {
-      await page.getByTestId('command-orb').click()
-      await expect(page.getByRole('dialog').getByRole('button', { name: 'Retry order' })).toBeVisible()
-    }
-    await retry.click()
+    await retryArchive.click()
     await expect.poll(() => fixture.headers[0].hidden).toBe(true)
     expect(ids).toEqual([ids[0], ids[0]])
-    await expect(retry).toHaveCount(0)
-    if (width < 768) await page.getByRole('button', { name: 'Close command HUD' }).click()
+    await expect(notice).toHaveCount(0)
+    await expect(recovery).toHaveCount(0)
   })
 }
 
