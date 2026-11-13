@@ -27,7 +27,13 @@ export const protectionExplanation =
   'Beginner protection blocks attacks and espionage between you and this player because of the difference in empire strength.'
 
 type MissionAction = {
-  mission: 'Transport' | 'Deploy' | 'Attack' | 'Colonize' | 'Harvest'
+  mission:
+    | 'Transport'
+    | 'Deploy'
+    | 'Attack'
+    | 'Espionage'
+    | 'Colonize'
+    | 'Harvest'
   reason?: string
 }
 
@@ -64,6 +70,20 @@ export function galaxyMissionActions({
             : body.attack_blocker
               ? dispatchFailure(body.attack_blocker)
               : vacation,
+      })
+    }
+    if (body.owner !== player) {
+      actions.push({
+        mission: 'Espionage',
+        reason:
+          body.attack_blocker === 'BeginnerProtected'
+            ? protectionExplanation
+            : body.attack_blocker
+              ? dispatchFailure(body.attack_blocker)
+              : (vacation ??
+                (!body.espionage_eligible
+                  ? 'Espionage unavailable'
+                  : undefined)),
       })
     }
   }
