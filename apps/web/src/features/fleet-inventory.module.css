@@ -1,7 +1,7 @@
 .inventory {
-  margin-block: 1rem 2rem;
+  margin-block: 0 1rem;
   padding-block: 1rem;
-  border-block: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   overflow-wrap: anywhere;
 }
 .header {
@@ -10,6 +10,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 .inventory p {
   color: var(--text-muted);
@@ -131,4 +132,16 @@
   .shipDisclosure {
     padding-inline: 0.2rem;
   }
+}
+
+.total {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.header h2 {
+  margin: 0;
+}
+.header p {
+  margin-block: 0.5rem 0;
 }

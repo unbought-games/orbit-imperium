@@ -69,6 +69,8 @@ export function MissionFleets({
           />
         </div>
       </TaskHeader>
+      {!item && <FleetInventory model={model} origin={origin} />}
+      {!item && <Heading level={2}>Fleet traffic · Entire empire</Heading>}
       {!item && <AttackGroups model={model} view={view} />}
       {!movements.length && !launches.length && (
         <EmptyState
@@ -174,7 +176,6 @@ export function MissionFleets({
           </div>
         </section>
       )}
-      {!item && <FleetInventory model={model} origin={origin} />}
     </section>
   )
 }
