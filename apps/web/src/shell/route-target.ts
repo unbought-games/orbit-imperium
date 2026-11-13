@@ -151,7 +151,33 @@ export function routeTarget(
             params,
             search: {},
           })
-    case 'alliance':
+    case 'alliance': {
+      if (item) {
+        const [section, subsection] = item.split('/')
+        if (subsection)
+          return body
+            ? linkOptions({
+                to: '/u/$universe/b/$body/alliance/$item/$section',
+                params: { universe, body, item: section, section: subsection },
+                search: {},
+              })
+            : linkOptions({
+                to: '/u/$universe/alliance/$item/$section',
+                params: { universe, item: section, section: subsection },
+                search: {},
+              })
+        return body
+          ? linkOptions({
+              to: '/u/$universe/b/$body/alliance/$item',
+              params: { universe, body, item },
+              search: {},
+            })
+          : linkOptions({
+              to: '/u/$universe/alliance/$item',
+              params: { universe, item },
+              search: {},
+            })
+      }
       return body
         ? linkOptions({
             to: '/u/$universe/b/$body/alliance',
@@ -159,6 +185,7 @@ export function routeTarget(
             search: {},
           })
         : linkOptions({ to: '/u/$universe/alliance', params, search: {} })
+    }
     case 'high-scores':
       return body
         ? linkOptions({

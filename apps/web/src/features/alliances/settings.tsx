@@ -8,22 +8,15 @@ import { RecruitmentSettings, InvitationSettings } from './recruitment-settings'
 import { MembershipSettings } from './membership-settings'
 import styles from './settings.module.css'
 
-export type SettingsDestination =
-  | 'Profile'
-  | 'Hall'
-  | 'Public page'
-  | 'Media'
-  | 'Recruitment'
-  | 'Invitations'
-  | 'Leadership'
-  | 'Membership'
+import type { SettingsDestination } from './navigation'
+export type { SettingsDestination } from './navigation'
 export function Settings({
   detail,
   player,
   run,
   busy,
   section,
-  onSectionChange,
+  renderSectionLink,
   rewardLinks,
 }: {
   detail: AllianceDetail
@@ -31,7 +24,10 @@ export function Settings({
   run: Run
   busy: boolean
   section: SettingsDestination
-  onSectionChange: (section: SettingsDestination) => void
+  renderSectionLink: (
+    section: SettingsDestination,
+    active: boolean,
+  ) => ReactNode
   rewardLinks?: ReactNode
 }) {
   const sections: SettingsDestination[] = [
@@ -52,16 +48,7 @@ export function Settings({
   return (
     <section className={styles.layout} aria-label="Alliance settings">
       <nav className={styles.navigation} aria-label="Settings sections">
-        {sections.map((name) => (
-          <button
-            key={name}
-            type="button"
-            aria-current={active === name ? 'page' : undefined}
-            onClick={() => onSectionChange(name)}
-          >
-            {name === 'Profile' ? 'Identity' : name}
-          </button>
-        ))}
+        {sections.map((name) => renderSectionLink(name, active === name))}
       </nav>
       <div className={styles.content}>
         {active === 'Profile' && (

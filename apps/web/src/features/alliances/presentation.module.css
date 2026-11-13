@@ -358,7 +358,10 @@
   overflow-x: auto;
   margin-bottom: 28px;
 }
-.editorTabs button {
+.editorTabs :is(button, a) {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
@@ -369,11 +372,11 @@
   padding: 8px 0;
   cursor: pointer;
 }
-.editorTabs button[aria-current] {
+.editorTabs :is(button, a)[aria-current] {
   color: var(--champagne);
   border-bottom-color: var(--champagne);
 }
-.editorTabs button:focus-visible {
+.editorTabs :is(button, a):focus-visible {
   outline: var(--focus-ring);
   outline-offset: -3px;
 }
@@ -709,7 +712,7 @@
   .editorTabs {
     gap: 22px;
   }
-  .editorTabs button {
+  .editorTabs :is(button, a) {
     font-size: var(--font-size-sm);
   }
   .previewBar {

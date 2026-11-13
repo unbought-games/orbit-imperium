@@ -1,7 +1,12 @@
 import { InvitationLinks } from '../rewards/invitations'
 import presentationStyles from './presentation.module.css'
 import { PresentationPreview } from './presentation-preview'
-import type { SettingsDestination } from './settings'
+import {
+  allianceDestination,
+  allianceDestinations,
+  allianceSettingsDestinations,
+  sameAllianceWorkspace,
+} from './navigation'
 import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
 import { ContentColumn } from '../../ui/content-column'
@@ -23,7 +28,12 @@ import {
 import { AllianceDrafts, AllianceDraftContext } from './drafts'
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
-import { useNavigate, useSearch, useBlocker } from '@tanstack/react-router'
+import {
+  Link,
+  useNavigate,
+  useSearch,
+  useBlocker,
+} from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
 import { AlliancesController } from '../../client-model/alliances'
 import type { Coordinator } from '../../client-model/coordinator'
@@ -93,7 +103,7 @@ function AllianceWorkspace({
   welcome: boolean
   invitation?: string
 }) {
-  const { universeName, body, view } = useGameScreen()
+  const { universeName, body, view, route } = useGameScreen()
   const navigate = useNavigate()
   const allianceTarget = routeTarget(universeName, 'alliance', body?.id)
   const discoveryTarget = routeTarget(
@@ -111,7 +121,8 @@ function AllianceWorkspace({
         value.revision !== undefined,
     )
   const blocker = useBlocker({
-    shouldBlockFn: hasEdits,
+    shouldBlockFn: ({ current, next }) =>
+      hasEdits() && !sameAllianceWorkspace(current.pathname, next.pathname),
     enableBeforeUnload: hasEdits,
     withResolver: true,
   })
@@ -126,17 +137,11 @@ function AllianceWorkspace({
   )
   const state = useStore(controller.store)
   const refreshProfiles = useRefreshPlayerProfiles()
-  const [tab, setTab] = useState('Hall')
-  const [settingsSection, setSettingsSection] =
-    useState<SettingsDestination>('Profile')
-  const [selected, setSelected] = useState<string | undefined>(initialAlliance)
+  const selected = initialAlliance
   useEffect(() => {
     void controller.refresh()
     return () => controller.clear()
   }, [controller])
-  useEffect(() => {
-    setSelected(initialAlliance)
-  }, [initialAlliance])
   const detail = state.view?.alliance
   const publicAlliance = usePublicAlliance(
     universe,
@@ -149,8 +154,7 @@ function AllianceWorkspace({
     if (action.type === 'Join') trackRecruitment('joined')
     if (action.type === 'Apply') trackRecruitment('applied')
     if (identityActions.has(action.type)) refreshProfiles()
-    setSelected(undefined)
-    if (creating || discovering) void navigate(allianceTarget)
+    if (creating || discovering || selected) void navigate(allianceTarget)
   }
   const run: Run = async (action, expectedRevision) => {
     const ok = await controller.run(action, expectedRevision)
@@ -162,7 +166,10 @@ function AllianceWorkspace({
     if (pending && (await controller.retry())) complete(pending.action)
   }
   const tabs = allianceSections(detail ?? null)
-  const active = tabs.includes(tab) ? tab : 'Hall'
+  const { active, settingsSection } = allianceDestination(
+    route.item,
+    detail ?? null,
+  )
   const visiblePlayers =
     !detail || discovering || (selected && selected !== detail.summary.id)
       ? []
@@ -301,12 +308,9 @@ function AllianceWorkspace({
               ))
             ) : selected && selected !== detail?.summary.id ? (
               <>
-                <Button
-                  variant="secondary"
-                  onClick={() => setSelected(undefined)}
-                >
+                <ButtonLink variant="secondary" {...discoveryTarget}>
                   Back to alliances
-                </Button>
+                </ButtonLink>
                 <LoadingRegion
                   contentClassName={styles.stack}
                   loading={!publicAlliance.data && !publicAlliance.error}
@@ -349,14 +353,21 @@ function AllianceWorkspace({
                         aria-label="Alliance sections"
                       >
                         {tabs.map((name) => (
-                          <button
-                            type="button"
+                          <Link
                             key={name}
-                            onClick={() => setTab(name)}
+                            {...routeTarget(
+                              universeName,
+                              'alliance',
+                              body?.id,
+                              allianceDestinations[
+                                name as keyof typeof allianceDestinations
+                              ],
+                            )}
+                            activeOptions={{ exact: true }}
                             aria-current={active === name ? 'page' : undefined}
                           >
                             {name}
-                          </button>
+                          </Link>
                         ))}
                       </nav>
                       {active === 'Hall' && (
@@ -400,7 +411,21 @@ function AllianceWorkspace({
                             />
                           }
                           section={settingsSection}
-                          onSectionChange={setSettingsSection}
+                          renderSectionLink={(name, current) => (
+                            <Link
+                              key={name}
+                              {...routeTarget(
+                                universeName,
+                                'alliance',
+                                body?.id,
+                                `settings/${allianceSettingsDestinations[name]}`,
+                              )}
+                              activeOptions={{ exact: true }}
+                              aria-current={current ? 'page' : undefined}
+                            >
+                              {name === 'Profile' ? 'Identity' : name}
+                            </Link>
+                          )}
                           detail={detail}
                           player={player}
                           run={run}
@@ -418,7 +443,11 @@ function AllianceWorkspace({
                           onSelect={(id) => {
                             if (id === detail?.summary.id)
                               void navigate(allianceTarget)
-                            else setSelected(id)
+                            else
+                              void navigate({
+                                ...discoveryTarget,
+                                search: { alliance: id },
+                              })
                           }}
                         />
                       ) : (

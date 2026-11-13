@@ -12,7 +12,10 @@
   border-bottom: 1px solid var(--border);
   padding-bottom: var(--space-2);
 }
-.navigation button {
+.navigation :is(button, a) {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
   padding: var(--space-2) var(--space-3);
   border: 0;
@@ -24,16 +27,16 @@
   text-align: left;
   cursor: pointer;
 }
-.navigation button:hover {
+.navigation :is(button, a):hover {
   color: var(--text);
   background: var(--surface-input);
 }
-.navigation button[aria-current] {
+.navigation :is(button, a)[aria-current] {
   border-color: var(--champagne);
   color: var(--champagne-light);
   background: color-mix(in srgb, var(--champagne) 7%, transparent);
 }
-.navigation button:focus-visible {
+.navigation :is(button, a):focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
@@ -114,7 +117,7 @@
   gap: var(--space-3);
 }
 @media (max-width: 639px) {
-  .navigation button {
+  .navigation :is(button, a) {
     padding-inline: var(--space-2);
   }
   .identity {

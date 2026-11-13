@@ -3,7 +3,7 @@ import { withFixtureResponse } from './fixtures/responses'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, refreshGame, binding, id } from './fixtures/game'
+import { installGameFixture, refreshGame, binding, id, body } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { permissionLabels } from '../src/client-model/alliances'
 type S = components['schemas']
@@ -73,7 +73,14 @@ test('discovery applications preserve rejected drafts, withdraw and create an al
   await expect(page.getByRole('button', { name: 'Refresh alliance', exact: true })).toHaveCount(0)
   await page.getByRole('searchbox', { name: 'Search alliances', exact: true }).fill('STAR')
   await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.getByRole('button', { name: 'Search alliances', exact: true }).click())
-  await page.getByRole('button', { name: 'View STAR', exact: true }).click()
+  await withFixtureResponse(page, response => response.url().endsWith(`/alliances/${alliance}`), () => page.getByRole('button', { name: 'View STAR', exact: true }).click())
+  await expect(page).toHaveURL(new RegExp(`/alliance/discover\\?alliance=${alliance}$`))
+  await withAllianceProfile(page, () => page.reload())
+  // Mobile header wiring: Back and Create must not crush the destination title.
+  await page.setViewportSize({ width: 390, height: 844 })
+  const discoveryHeading = page.getByRole('heading', { name: 'Discover alliances', exact: true, level: 2 })
+  expect((await discoveryHeading.boundingBox())!.height).toBeLessThan(60)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByLabel('Application message').fill('I explore distant stars.')
   f.rejectNext()
   await page.getByRole('button', { name: 'Send application' }).click()
@@ -121,7 +128,7 @@ test('open and closed recruitment and existing membership drive the available co
 test('lost membership clears private board, roster and administration after an access-denied reload', async ({ page }) => {
   const f = await fixture(page, own())
   await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
-  await page.getByRole('button', { name: 'Members', exact: true }).click()
+  await page.getByRole('link', { name: 'Members', exact: true }).click()
   const roster = page.getByRole('region', { name: 'Alliance roster' })
   await expect(roster.getByRole('link', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
   f.denyReads()
@@ -130,7 +137,7 @@ test('lost membership clears private board, roster and administration after an a
   expect((await denied).status()).toBe(403)
   await expect(page.getByRole('alert')).toContainText('Forbidden')
   await expect(page.getByRole('region', { name: 'Alliance roster' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Roles', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Roles', exact: true })).toHaveCount(0)
   await expect(page.getByText('Nova', { exact: true })).toHaveCount(0)
 })
 
@@ -175,7 +182,7 @@ test('departed notice authors use authorized current profile tags while roster m
     await diagnosticScreenshot(page, {path: `test-results/profile-alliance-board-${width}x1000.png`})
   }
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Members', exact: true }).click()
+  await page.getByRole('link', { name: 'Members', exact: true }).click()
   const roster = page.getByRole('region', { name: 'Alliance roster' })
   await expect(roster.getByRole('link', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
   await expect(roster.getByText('[AWAY]', {exact: true})).toHaveCount(0)
@@ -404,15 +411,19 @@ test('alliance presentation previews unsaved edits and publishes them through th
     () =>
       page
         .getByRole('navigation', { name: 'Alliance sections' })
-        .getByRole('button', { name: 'Settings', exact: true })
+        .getByRole('link', { name: 'Settings', exact: true })
         .click(),
   )
   await page
     .getByRole('textbox', { name: 'Motto', exact: true })
     .fill('Good company. Uncharted space.')
+  await page.getByRole('link', { name: 'Discover alliances', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Leave without saving?' })).toBeVisible()
+  await page.getByRole('button', { name: 'Keep editing', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Motto', exact: true })).toHaveValue('Good company. Uncharted space.')
   await page
     .getByRole('navigation', { name: 'Settings sections' })
-    .getByRole('button', { name: 'Public page', exact: true })
+    .getByRole('link', { name: 'Public page', exact: true })
     .click()
   await page
     .getByRole('textbox', { name: 'Hero introduction', exact: true })
@@ -455,4 +466,34 @@ test('alliance presentation previews unsaved edits and publishes them through th
   await expect(
     page.getByText('Build something worth coming home to.', { exact: true }),
   ).toBeVisible()
+})
+
+// Route history/reload and the persistent workspace require the actual application router.
+test('alliance deep links restore settings and history preserves authored drafts', { tag: '@journey' }, async ({ page }) => {
+  await fixture(page, own())
+  const root = `/u/andromeda/b/${body.id}/alliance`
+  const membership = (response: import('@playwright/test').Response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine'
+  await withFixtureResponse(page, membership, () => page.goto(`${root}/settings/recruitment`))
+  const settings = page.getByRole('navigation', { name: 'Settings sections' })
+  const sections = page.getByRole('navigation', { name: 'Alliance sections' })
+  await expect(settings.getByRole('link', { name: 'Recruitment', exact: true })).toHaveAttribute('aria-current', 'page')
+  await withFixtureResponse(page, membership, () => page.reload())
+  await expect(settings.getByRole('link', { name: 'Recruitment', exact: true })).toHaveAttribute('aria-current', 'page')
+  await settings.getByRole('link', { name: 'Identity', exact: true }).click()
+  await page.getByLabel('Alliance name', { exact: true }).fill('Unfinished constellation')
+  await sections.getByRole('link', { name: 'Members', exact: true }).click()
+  await expect(page).toHaveURL(`${root}/members`)
+  await expect(page.getByRole('region', { name: 'Alliance roster' })).toBeVisible()
+  await page.goBack()
+  await expect(page).toHaveURL(`${root}/settings/identity`)
+  await expect(page.getByLabel('Alliance name', { exact: true })).toHaveValue('Unfinished constellation')
+  await page.goForward()
+  await expect(page.getByRole('region', { name: 'Alliance roster' })).toBeVisible()
+  await withFixtureResponse(page, membership, () => page.goto(`${root}/audit`))
+  await expect(sections.getByRole('link', { name: 'Audit', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByText('Created alliance', { exact: true })).toBeVisible()
+  // Planetless entry points must preserve the subsection when adding the owned body.
+  await withFixtureResponse(page, membership, () => page.goto('/u/andromeda/alliance/settings/invitations'))
+  await expect(page).toHaveURL(`${root}/settings/invitations`)
+  await expect(settings.getByRole('link', { name: 'Invitations', exact: true })).toHaveAttribute('aria-current', 'page')
 })
