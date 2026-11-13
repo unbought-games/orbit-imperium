@@ -196,3 +196,20 @@ The final header/scope/filter capture run passed all 7 focused cases (bundle
 4.926s; browser 16.7s). Application and component TypeScript, ESLint, focused
 formatting and diff checks passed again. All task fixture runners cleaned their
 bundles and port leases; only the requested live playground remains running.
+
+CI run `43512452938` attempt 1 at `7b092738` caught a real responsive-layout
+regression in feature shard 3/job `132185982158`: Linux's wider system-font
+metrics wrapped Shipyard above the fleet count at 390px. The downloaded failure
+screenshot confirms the geometry assertion (Shipyard right edge 372 versus
+fleet-slot left edge 113.59). Retained that assertion and switched both header
+links to the shared small button variant, which keeps 44px targets while giving
+the action row room across font metrics. Also gave icon/name links an 8rem
+minimum so extreme exact counts scroll inside the table region rather than
+crushing ship names into individual letters. This is a product repair, not a
+flaky-test repair or timeout adjustment. Automated review reported no new issue.
+
+Post-repair verification: 7 header/filter/application cases passed (bundle
+5.650s; browser 18.3s), plus 5 exact-count/overflow component cases (bundle
+4.340s; browser 3.8s). Lint, formatting and diff checks passed. Desktop/mobile
+world, empire and traffic-filter captures were refreshed and inspected. No test
+was deleted, relaxed or retried unchanged.

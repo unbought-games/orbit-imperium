@@ -42,6 +42,7 @@
 }
 .build {
   display: inline-flex;
+  min-width: 8rem;
   align-items: center;
   min-height: 44px;
   gap: 0.5rem;

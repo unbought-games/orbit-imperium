@@ -46,6 +46,7 @@ export function MissionFleets({
           {!item && (
             <ButtonLink
               variant="secondary"
+              size="small"
               {...routeTarget(universeName, 'shipyard', origin)}
             >
               Shipyard
@@ -56,7 +57,10 @@ export function MissionFleets({
               used={occupiedFleetSlots(state)}
               total={view.missions.fleet_slots}
             />
-            <ButtonLink {...routeTarget(universeName, 'dispatch', origin)}>
+            <ButtonLink
+              size="small"
+              {...routeTarget(universeName, 'dispatch', origin)}
+            >
               Dispatch Fleet
             </ButtonLink>
           </div>
