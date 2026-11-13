@@ -1,5 +1,12 @@
 import { universeSlug } from '../client-model/universe-name'
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useSetAtom } from 'jotai'
 import { ContextMenu } from '@base-ui/react/context-menu'
 import { Menu } from '@base-ui/react/menu'
@@ -38,6 +45,11 @@ export function CoordinateLink({
   }
 }) {
   const trigger = useRef<HTMLAnchorElement>(null)
+  const dialog = useRef<HTMLDialogElement>(null)
+  // Content portaled outside a native modal dialog is inert while it is open.
+  const attachTrigger = useCallback((element: HTMLElement | null) => {
+    dialog.current = element?.closest('dialog') ?? null
+  }, [])
   const handingOff = useRef(false)
   const contextPopup = useRef<HTMLDivElement>(null)
   // A callback is an explicit focus target in Base UI. Preserve its normal
@@ -169,6 +181,7 @@ export function CoordinateLink({
       }}
     >
       <ContextMenu.Trigger
+        ref={attachTrigger}
         render={<span />}
         data-coordinate=""
         className={`${styles.coordinate} ${className ?? ''}`}
@@ -199,7 +212,7 @@ export function CoordinateLink({
           {feedback}
         </span>
       </ContextMenu.Trigger>
-      <ContextMenu.Portal>
+      <ContextMenu.Portal container={dialog}>
         <ContextMenu.Positioner className={styles.positioner}>
           <ContextMenu.Popup
             ref={contextPopup}

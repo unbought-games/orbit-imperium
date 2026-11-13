@@ -72,13 +72,15 @@
   font-size: var(--fleet-label-size, 10px);
   line-height: 1.45;
 }
-.fleetEndpoints > span {
+.endpoint {
   min-width: 0;
 }
-.fleetEndpoints > span:last-child {
+.endpoint:last-child {
   text-align: right;
+  --coordinate-feedback-start: auto;
+  --coordinate-feedback-end: 0;
 }
-.fleetEndpoints > span > strong {
+.endpoint > strong {
   display: block;
   overflow: hidden;
   white-space: nowrap;
@@ -86,10 +88,19 @@
   color: #c8d8df;
   font-weight: 500;
 }
-.fleetEndpoints > span > span {
-  display: block;
+.address {
   color: #7895a7;
   font: var(--fleet-coordinate-size, 9px) / 1.6 var(--font-mono, monospace);
+}
+a.address {
+  min-height: 24px;
+  color: var(--link);
+}
+a.address:hover {
+  color: var(--link-hover);
+}
+.endpoint:last-child a.address {
+  justify-content: flex-end;
 }
 .fleetEndpoints .fleetCountdown {
   margin: 0;

@@ -50,7 +50,8 @@
 .feedback {
   position: absolute;
   top: 100%;
-  left: 0;
+  inset-inline-start: var(--coordinate-feedback-start, 0);
+  inset-inline-end: var(--coordinate-feedback-end, auto);
   z-index: 30;
   width: max-content;
   max-width: 240px;

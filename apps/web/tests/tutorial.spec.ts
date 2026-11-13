@@ -196,11 +196,29 @@ for (const width of [1440, 390]) {
     await expect(page).toHaveURL(briefing)
     await withFixtureResponse(page, tutorial, () => page.goto(overview))
     await expect(icon).toHaveAttribute('data-attention', 'false')
+    if (width === 390) await page.setViewportSize({ width: 320, height: 900 })
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true)
+      await icon.evaluate((element) => {
+        // Check the glow at its largest instead of relying on the render phase.
+        const animations = element.getAnimations({ subtree: true })
+        const glow = animations.find(
+          (animation): animation is CSSAnimation =>
+            animation instanceof CSSAnimation &&
+            animation.animationName.includes('breathe'),
+        )!
+        const peak = Number(glow.effect!.getTiming().duration) / 2
+        for (const animation of animations) {
+          animation.pause()
+          animation.currentTime = peak
+        }
+        return document.documentElement.scrollWidth - innerWidth
+      }),
+    ).toBe(0)
+    if (width === 390) {
+      await diagnosticScreenshot(page, {
+        path: 'test-results/briefing-glow-320x900.png',
+      })
+    }
     expect(state.commands).toHaveLength(0)
   })
 }

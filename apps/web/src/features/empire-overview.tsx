@@ -362,7 +362,7 @@ function FleetBoard({
     <section className={styles.fleetBoard} aria-label="Fleet movements">
       <div className={styles.panelHeading}>
         <div>
-          <p className={styles.eyebrow}>Traffic control</p>
+          <p className={styles.eyebrow}>The Bridge</p>
           <h3>Fleet movements</h3>
         </div>
         <span className={styles.counter}>

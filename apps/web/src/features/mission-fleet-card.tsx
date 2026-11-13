@@ -17,7 +17,6 @@ import rowLinkStyles from '../ui/row-link.module.css'
 import { Heading, Text } from '../ui/typography'
 import { NumberValue, ResourceQuantity } from '../ui/number-value'
 import { formatWholeNumber } from '../ui/whole-number'
-import { CoordinateLink } from './coordinate-link'
 import { ShipComposition } from './ship-composition'
 import { FleetCargo } from './fleet-cargo'
 import { FleetFlightRoute } from './fleet-flight-route'
@@ -27,11 +26,7 @@ import {
   ownFleetTone,
 } from './command-hud/fleet-summary'
 import { MissionTrajectory } from './mission-trajectory'
-import {
-  exactTime,
-  recallEstimate,
-  missionLocation,
-} from './mission-presentation'
+import { exactTime, recallEstimate } from './mission-presentation'
 import styles from './missions.module.css'
 import fleetStyles from './mission-fleets.module.css'
 type S = components['schemas']
@@ -249,8 +244,8 @@ export function MissionFleetCardPresentation({
           <ChevronDown size={12} aria-hidden="true" />
         </Button>
       </header>
-      <div className={fleetStyles.flight} title={exactTime(fleet.due_at)}>
-        <FleetFlightRoute row={row} now={now} />
+      <div className={fleetStyles.flight}>
+        <FleetFlightRoute row={row} now={now} origin={origin} />
       </div>
       <FleetCargo cargo={fleet.cargo} />
       <div id={shipsId} hidden={!showShips} className={fleetStyles.manifest}>
@@ -266,57 +261,7 @@ export function MissionFleetCardPresentation({
             {exactTime(fleet.due_at)}
           </time>
         </p>
-        <div className={fleetStyles.coordinateActions}>
-          <CoordinateLink
-            at={fleet.origin}
-            target={
-              view.bodies.find((b) => b.id === fleet.intent.origin)?.kind ===
-              'Moon'
-                ? 'moon'
-                : 'planet'
-            }
-            label="origin"
-          >
-            {missionLocation(view, fleet.intent.origin, fleet.origin)}
-          </CoordinateLink>{' '}
-          <span
-            className={fleetStyles.direction}
-            role="img"
-            aria-label={
-              fleet.leg === 'Returning'
-                ? 'Returning to origin'
-                : 'Travelling to destination'
-            }
-          >
-            {fleet.leg === 'Returning' ? '←' : '→'}
-          </span>{' '}
-          {fleet.intent.destination.type === 'Site' ? (
-            <span>
-              {row.target.name} {row.target.address} · personal site
-            </span>
-          ) : (
-            <CoordinateLink
-              at={fleet.destination}
-              target={
-                fleet.intent.destination.type === 'Body' &&
-                fleet.intent.destination.expected_kind === 'Moon'
-                  ? 'moon'
-                  : fleet.intent.destination.type === 'Debris'
-                    ? 'debris'
-                    : 'planet'
-              }
-              label="destination"
-            >
-              {missionLocation(
-                view,
-                fleet.intent.destination.type === 'Body'
-                  ? fleet.intent.destination.id
-                  : undefined,
-                fleet.destination,
-              )}
-            </CoordinateLink>
-          )}
-        </div>
+        {row.target.kind === 'Site' && <p>Personal site</p>}
       </div>
       <div className={fleetStyles.actions}>{actions}</div>
       {detail && (

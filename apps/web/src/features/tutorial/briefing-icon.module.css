@@ -149,6 +149,12 @@
   filter: drop-shadow(0 0 4px var(--champagne-light))
     drop-shadow(0 0 9px var(--ice));
 }
+@media (max-width: 767px) {
+  .icon {
+    /* Reserve space for the glow at full scale, even in the narrow shell. */
+    inset-inline-end: max(0px, calc(12px - var(--shell-inline-gutter, 0px)));
+  }
+}
 @keyframes breathe {
   0%,
   100% {

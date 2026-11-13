@@ -189,14 +189,48 @@ test('returning mission keeps origin and destination labels unambiguous', async 
   await setup(page, 'Returning')
   await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
   const mission = page.getByRole('article', { name: 'Attack fleet' })
-  await expect(mission).toContainText('←')
-  await mission
-    .getByRole('link', {
-      name: 'View destination [1:5:12] in galaxy',
-      exact: true,
-    })
-    .click()
+  await expect(
+    mission.getByRole('img', { name: /^Returning: .* ← / }),
+  ).toBeVisible()
+  await withGalaxyResponse(page, () =>
+    mission.getByRole('link', { name: 'View destination [1:5:12] in galaxy' }).click(),
+  )
   await assertLocation(page, 5, 12)
+})
+
+test('fleet card coordinates open Galaxy from the overview and the modal HUD', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await setup(page)
+  const overview = path('overview')
+  await withBootstrapResponse(page, () => page.goto(overview))
+  const card = page.getByRole('region', { name: 'Fleet movements' })
+    .getByRole('listitem', { name: 'Attack fleet' })
+  const destination = { name: 'View destination [1:5:12] in galaxy', exact: true }
+  await withGalaxyResponse(page, () => card.getByRole('link', destination).click())
+  await assertLocation(page, 5, 12)
+  await page.goBack()
+  await expect(page).toHaveURL(overview)
+  await expect(card).toBeVisible()
+
+  await page.getByTestId('command-orb').click()
+  const hud = page.getByRole('dialog', { name: 'Command uplink' })
+  await hud.getByRole('button', { name: /^Fleets/ }).click()
+  const link = hud.getByRole('link', destination)
+  await link.click({ button: 'right' })
+  const viewInGalaxy = hud.getByRole('menuitem', { name: 'View in Galaxy' })
+  await expect(viewInGalaxy).toBeVisible()
+  await expect(page).toHaveURL(overview)
+  await diagnosticScreenshot(page, { path: 'test-results/hud-coordinate-menu-1280x900.png' })
+  await page.keyboard.press('Escape')
+  await expect(viewInGalaxy).toBeHidden()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await link.click({ button: 'right' })
+  await expect(viewInGalaxy).toBeVisible()
+  await diagnosticScreenshot(page, { path: 'test-results/hud-coordinate-menu-390x844.png' })
+  await withGalaxyResponse(page, () => viewInGalaxy.click())
+  await assertLocation(page, 5, 12)
+  await expect(hud).toBeHidden()
 })
 
 test('context-free direct links preserve coordinates and invalid locations are safe', async ({

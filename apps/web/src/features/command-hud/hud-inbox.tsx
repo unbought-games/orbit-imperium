@@ -45,7 +45,7 @@ export function HudInbox({
   )
   return (
     <div hidden={!visible}>
-      <HudEnemyAttacks state={hud.state} onSelect={onSelect} />
+      <HudEnemyAttacks state={hud.state} body={body} onSelect={onSelect} />
       <HudFleets
         state={hud.state}
         universe={universe}

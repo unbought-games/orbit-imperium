@@ -185,6 +185,7 @@ function OpenHudPanel({
                   fleet={fleet}
                   view={view}
                   now={currentServerTime(hud.state)}
+                  origin={body}
                 />
               ) : (
                 <p>

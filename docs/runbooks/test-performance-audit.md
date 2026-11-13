@@ -2025,3 +2025,33 @@ measured. `cargo fmt --all --check` and scoped Clippy with `-D warnings` passed
 1280×800 and 390×844, covering two and three identity lines; the fitted long-name
 PNG was inspected separately. No deployment or external unfurl cache check was
 performed. The temporary preview server and browser were stopped after capture.
+
+## November 12, 2026: fleet endpoint labels
+
+PR #407 head `15333669`, run `43354543718` attempt 1, feature job
+`131653521032` failed `active fleet routes show current public names and fit a
+phone`. It expected the old text row below the manifest after the same
+coordinates moved to the shared route. The local repair checked titles on the
+card and matched both the visible route and the collapsed flight schematic.
+The strict locator failed and the test was removed under the one-repair rule.
+
+The fleet-summary unit test checks both confirmed endpoint names and coordinates,
+including a renamed destination. Existing fleet movement and mission schematic
+browser tests retain narrow viewport geometry, and coordinate navigation is
+covered on the mission card. The removed test was the only browser case that
+combined two 40-character names with the expanded schematic.
+
+PR #407 merge-group `db7c2064`, run `43358001317` attempt 1, feature job
+`131665630098` failed the 390px Empire briefing shortcut case on horizontal
+overflow. The fixture has zero fleets. Scrubbing the existing briefing shortcut
+animations in Chromium measured up to 393px of document width in a 390px
+viewport. Hiding the icon reduced it to 390px. Moving the mobile shortcut 10px
+inward kept document width at 390px across the same animation samples. The
+browser assertion and its test history are intact. Both briefing viewports and
+the responsive Empire overview passed locally (4.55s bundle preparation and
+14.4s browser runner). The temporary diagnostic was removed.
+
+Review of `29573120` identified the 8px shell gutter at 320px. The existing
+shortcut check reproduced 3px of overflow when its animations were held at the
+glow's peak. The inset now accounts for the shell gutter, and the browser check
+asserts zero overflow at that phase on the narrow viewport.

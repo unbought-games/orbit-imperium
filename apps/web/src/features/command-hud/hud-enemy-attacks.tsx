@@ -16,10 +16,12 @@ type Entry = ReturnType<typeof enemyAttackRows>[number]
 function EnemyAttackRow({
   entry,
   state,
+  body,
   onSelect,
 }: {
   entry: Entry
   state: GameState
+  body?: string
   onSelect: (target: HudTarget) => void
 }) {
   const [showShips, setShowShips] = useState(false)
@@ -82,16 +84,18 @@ function EnemyAttackRow({
       <div id={shipsId} hidden={!showShips} className={styles.fleetManifest}>
         <ShipComposition ships={row.ships} />
       </div>
-      <HudFleetRoute row={row} now={currentServerTime(state)} />
+      <HudFleetRoute row={row} now={currentServerTime(state)} origin={body} />
     </article>
   )
 }
 
 export function HudEnemyAttacks({
   state,
+  body,
   onSelect,
 }: {
   state: GameState
+  body?: string
   onSelect: (target: HudTarget) => void
 }) {
   const [expansion, setExpansion] = useState<boolean | null>(null)
@@ -130,7 +134,12 @@ export function HudEnemyAttacks({
         <ul className={styles.fleetList} aria-label="Enemy attacks">
           {attacks.map((entry) => (
             <li key={entry.row.key}>
-              <EnemyAttackRow entry={entry} state={state} onSelect={onSelect} />
+              <EnemyAttackRow
+                entry={entry}
+                state={state}
+                body={body}
+                onSelect={onSelect}
+              />
             </li>
           ))}
         </ul>
