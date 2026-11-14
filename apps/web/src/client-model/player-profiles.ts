@@ -4,6 +4,7 @@ import type {
   PlayerProfiles,
   ProfileSource,
 } from '../adapters/player-profiles'
+import type { PlayerProfileCache } from '../adapters/player-profile-cache'
 
 type State = { players: Record<string, PlayerDisplay>; now: number }
 type Watch = {
@@ -12,24 +13,24 @@ type Watch = {
   timer?: ReturnType<typeof setTimeout>
   request?: AbortController
 }
-export const currentPlayer = (state: State, player: string) => {
-  const value = state.players[player]
-  return value && value.expires_at * 1000 > state.now ? value : undefined
-}
+export const currentPlayer = (state: State, player: string) =>
+  state.players[player]
 
-/** Shared source snapshots, with display derived at the snapshot's expiry. */
+/** Last confirmed display stays visible until replaced; expiry schedules refresh only. */
 export class PlayerProfilesController {
   readonly store = createStore<State>(() => ({ players: {}, now: Date.now() }))
   private watches = new Map<string, Watch>()
   private active = false
   private generation = 0
-  private expiry?: ReturnType<typeof setTimeout>
   constructor(
     private readonly api: (
       source: ProfileSource,
       signal: AbortSignal,
     ) => Promise<PlayerProfiles>,
-  ) {}
+    private readonly cache?: PlayerProfileCache,
+  ) {
+    if (cache) this.store.setState({ players: cache.load() })
+  }
 
   watch(source: ProfileSource) {
     const key = JSON.stringify(source)
@@ -51,8 +52,7 @@ export class PlayerProfilesController {
   /** Refresh after a committed social change; fence all older in-flight snapshots. */
   refreshAll = () => {
     this.generation++
-    clearTimeout(this.expiry)
-    this.store.setState({ players: {}, now: Date.now() })
+    this.store.setState({ now: Date.now() })
     for (const [key, entry] of this.watches) {
       clearTimeout(entry.timer)
       entry.timer = undefined
@@ -78,7 +78,6 @@ export class PlayerProfilesController {
     return () => {
       this.active = false
       this.generation++
-      clearTimeout(this.expiry)
       for (const entry of this.watches.values()) {
         clearTimeout(entry.timer)
         entry.timer = undefined
@@ -89,20 +88,6 @@ export class PlayerProfilesController {
       window.removeEventListener('pageshow', resume)
       this.store.setState({ players: {}, now: Date.now() })
     }
-  }
-  private scheduleExpiry() {
-    clearTimeout(this.expiry)
-    const deadlines = Object.values(this.store.getState().players)
-      .map((p) => p.expires_at * 1000)
-      .filter((at) => at > Date.now())
-    if (deadlines.length)
-      this.expiry = setTimeout(
-        () => {
-          this.store.setState({ now: Date.now() })
-          this.scheduleExpiry()
-        },
-        Math.min(Math.min(...deadlines) - Date.now(), 2_147_483_647),
-      )
   }
   private async refresh(key: string, entry: Watch) {
     if (!this.active || entry.request) return
@@ -123,9 +108,6 @@ export class PlayerProfilesController {
       const now = Date.now()
       this.store.setState((state) => {
         const players = { ...state.players }
-        // Bound the cache to current snapshots, keeping no old-account or expired data.
-        for (const [id, old] of Object.entries(players))
-          if (old.expires_at * 1000 <= now && !old.identity) delete players[id]
         for (const next of result.players) {
           const old = players[next.player]
           if (
@@ -136,17 +118,9 @@ export class PlayerProfilesController {
           )
             players[next.player] = next
         }
-        // Retained authored text is bounded separately from expiring decoration.
-        const stale = Object.entries(players).filter(
-          ([, p]) => p.expires_at * 1000 <= now,
-        )
-        for (const [id] of stale.slice(
-          0,
-          Math.max(0, Object.keys(players).length - 1024),
-        ))
-          delete players[id]
         return { players, now }
       })
+      this.cache?.save(this.store.getState().players)
       delay = Math.max(
         1000,
         Math.min(
@@ -154,9 +128,8 @@ export class PlayerProfilesController {
           ...result.players.map((p) => p.expires_at * 1000 - now),
         ),
       )
-      this.scheduleExpiry()
     } catch {
-      // Names remain usable without Accounts; existing badges live only until expiry.
+      // Keep the last confirmed display through slow requests and outages.
     } finally {
       if (
         this.active &&

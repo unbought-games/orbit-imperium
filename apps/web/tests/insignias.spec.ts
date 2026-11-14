@@ -11,10 +11,11 @@ import {
   binding,
   body,
   playerProfilesFixture,
+  id,
 } from './fixtures/game'
 import type { Page } from '@playwright/test'
 import type { components } from '../src/contracts'
-import { withFixtureResponse, withFixtureResponseStatus } from './fixtures/responses'
+import { withFixtureResponse, withFixtureResponseStatus, trackFixtureResponses } from './fixtures/responses'
 
 const fallback = {
   version: 1 as const,
@@ -22,6 +23,85 @@ const fallback = {
   foreground: '#cbb68d',
   background: '#152b40',
 }
+
+// Browser ownership: the shared consumer stays mounted during refresh, and a
+// new document paints persisted identities before the profile API responds.
+test('Galaxy emblems remain visible during refresh and reload from the persistent cache', async ({ page }) => {
+  const { state, appearance } = await fixture(page)
+  state.designs = [{ id: id(80), name: 'Cached emblem', revision: 1, recipe: fallback }]
+  state.equipped = id(80)
+  let held = false
+  let removed = false
+  const releases: (() => void)[] = []
+  const settled = trackFixtureResponses(page, request => request.url().endsWith('/player-profiles'))
+  await page.route('**/player-profiles', async route => {
+    if (held) await new Promise<void>(resolve => releases.push(resolve))
+    const { context } = route.request().postDataJSON()
+    const now = Math.floor(Date.now() / 1000)
+    await route.fulfill({ json: {
+      ...context,
+      players: [
+        { player: binding.player, username: 'Aurelia' },
+        { player: id(31), username: 'Cassian' },
+      ].map(player => ({ ...player, observed_at: now, expires_at: now + 60, ...(!removed ? { insignia: appearance() } : {}) })),
+    } })
+  })
+  await routeWorld(page, route => {
+    const q = route.request().postDataJSON()
+    return route.fulfill({ json: {
+      protocol: 4, binding, request_id: q.context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(),
+      data: { galaxy: 1, system: 371, observed_at: Date.now(), positions: Array.from({ length: 15 }, (_, i) => ({
+        coordinates: { galaxy: 1, system: 371, position: i + 1 },
+        body: i === 0 || i === 1 ? {
+          id: i === 0 ? body.id : id(32), kind: 'Planet', owner: i === 0 ? binding.player : id(31), name: i === 0 ? 'Home' : 'Neighbor',
+          activity: { type: 'None' }, inactivity: 'Active', vacation: false, espionage_eligible: true,
+        } : null, debris: null,
+      })) },
+    } })
+  })
+  const galaxyProfiles = (response: import('@playwright/test').Response) => response.url().endsWith('/player-profiles') && response.request().postDataJSON().source.type === 'Galaxy'
+  await withFixtureResponse(page, galaxyProfiles, () => withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`)))
+  const galaxy = page.getByRole('region', { name: 'Galaxy browser' })
+  const emblems = galaxy.locator('span[style*="--insignia-foreground"]')
+  await expect(emblems).toHaveCount(2)
+  await settled()
+
+  const capture = async (state: string) => {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 })
+      await expect(emblems).toHaveCount(2)
+      await expect(emblems.first()).toBeVisible()
+      await expect(emblems.last()).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await diagnosticScreenshot(page, { path: `test-results/emblem-galaxy-${state}-${width}x1000.png` })
+    }
+  }
+  held = true
+  await Promise.all([
+    page.waitForRequest(request => request.url().endsWith('/player-profiles') && request.postDataJSON().source.type === 'Galaxy'),
+    page.evaluate(() => window.dispatchEvent(new Event('pageshow'))),
+  ])
+  await capture('refresh-pending')
+  await withFixtureResponse(page, galaxyProfiles, async () => {
+    held = false
+    releases.splice(0).forEach(release => release())
+  })
+  await settled()
+
+  held = true
+  await Promise.all([
+    page.waitForRequest(request => request.url().endsWith('/player-profiles') && request.postDataJSON().source.type === 'Galaxy'),
+    withGalaxyResponse(page, () => page.reload()),
+  ])
+  await capture('reload-cached')
+  removed = true
+  await withFixtureResponse(page, galaxyProfiles, async () => {
+    held = false
+    releases.splice(0).forEach(release => release())
+  })
+  await settled()
+  await expect(emblems).toHaveCount(0)
+})
 test.use({ hasTouch: true })
 
 type Design = components['schemas']['InsigniaDesign']

@@ -235,7 +235,10 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         StatusCode::OK,
         "all authenticated viewers can see installed artwork without supporter status"
     );
-    assert_eq!(viewer.headers()["cache-control"], "private, no-store");
+    assert_eq!(
+        viewer.headers()["cache-control"],
+        "private, max-age=31536000, immutable"
+    );
     let orphan = b"<svg/>";
     let orphan_hash = hex::encode(sha2::Sha256::digest(orphan));
     customization

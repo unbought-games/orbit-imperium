@@ -65,8 +65,12 @@ restores display without changing player data. No database migration is needed.
 ## Delivery and client compatibility
 
 Bundled artwork remains publicly cacheable. External artwork requires a valid
-Orbit session/machine identity and uses `private, no-store`; it does not require
+Orbit session/machine identity and uses `private, max-age=31536000, immutable`; it does not require
 supporter eligibility to view, because players must see each other's empires.
+The content hash in each URL identifies immutable bytes. Once fetched, artwork
+can remain in that browser's private cache across reloads; authentication and
+installed-catalog checks still apply to network requests. Previously downloaded
+artwork is not revoked from a browser cache when a session or catalog changes.
 The server only serves installed IDs, including retained hash revisions for an
 installed item during rolling updates. Unlisted leftover S3 keys return 404.
 Public shared-report anonymization remains unchanged. Browser delivery cannot

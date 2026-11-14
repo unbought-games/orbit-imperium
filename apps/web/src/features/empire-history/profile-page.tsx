@@ -32,21 +32,10 @@ export function EmpireProfilePage({ player }: { player: string }) {
     `/api/v4/empire-profiles/${player}?${query}`,
   )
   const title = useIdentityTitle(profile?.title)
-  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     document.title = `${profile?.identity?.name || profile?.username || 'Empire profile'} · Orbit Imperium`
-    const expires = profile?.display?.expires_at
-    if (!expires) return
-    const timer = setTimeout(
-      () => setNow(Date.now()),
-      Math.max(0, expires * 1000 - Date.now()),
-    )
-    return () => clearTimeout(timer)
   }, [profile])
-  const display =
-    profile?.display && profile.display.expires_at * 1000 > now
-      ? profile.display
-      : null
+  const display = profile?.display
   const member = session?.memberships.some(
     (m) => m.universe === profile?.universe,
   )

@@ -100,9 +100,17 @@ composition. Grant rows survive membership expiry and deleting a saved design.
 
 Do not write supporter flags into this table. Subscription status remains an
 expiring observation from Accounts. On expiry/unavailable verification the
-selected design remains saved while the displayed appearance falls back. New
+selected design remains saved while the server returns a fallback appearance. New
 restricted saves/equips require fresh evidence or a permanent grant. Renewing
-membership restores the selected design on the next profile refresh.
+membership restores the selected design on the next profile refresh. Clients
+keep the last confirmed public display while refreshing or offline, replacing it
+only after a successful profile observation. Cached display is never evidence
+for saving or equipping restricted content.
+
+Public player display snapshots persist in browser local storage, scoped to the
+account, universe, epoch and player binding. Reloads can show known emblems before
+the profile request finishes. Storage denial or quota exhaustion leaves the
+session cache working but may prevent persistence across reloads.
 
 Deleting a design clears its equipment references across universes. Editing a
 design updates every empire using that design. Repeated stale saves return 409;
@@ -176,7 +184,10 @@ ignore the manifest. Installations sharing several API hosts must share a store
 and deploy the same catalog key. Keep previous manifests and originals for rollback.
 
 External artwork is delivered only to authenticated game clients, without a
-supporter requirement for viewing. It is not publicly cacheable. Objects for
+supporter requirement for viewing. Hash-addressed artwork is privately cacheable
+for one year, including across reloads; it is not publicly cacheable. Browser
+caches may retain previously fetched bytes after logout or catalog removal.
+Objects for
 uninstalled IDs are not served even if they remain in the bucket. During rolling
 updates, keep installed IDs needed by both versions; old immutable revisions of
 installed symbols remain readable. For new catalog IDs, refresh old browser apps.

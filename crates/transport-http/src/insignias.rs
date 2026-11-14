@@ -463,7 +463,7 @@ pub(super) async fn media<S: IdentityStore>(
                     if bundled {
                         "public, max-age=31536000, immutable"
                     } else {
-                        "private, no-store"
+                        "private, max-age=31536000, immutable"
                     },
                 ),
                 (
