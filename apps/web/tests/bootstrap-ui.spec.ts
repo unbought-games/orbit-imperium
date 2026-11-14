@@ -328,7 +328,8 @@ test('public pages have distinct URLs that survive refresh and history navigatio
   await page.getByRole('link', { name: /^Orbit Imperium$/i }).click()
   await expect(page).toHaveURL(/\/$/)
   await page
-    .getByRole('link', { name: 'Join the current universe', exact: true })
+    .getByRole('navigation', { name: 'Get started' })
+    .getByRole('link', { name: 'Play free', exact: true })
     .click()
   await expect(page).toHaveURL(/\/signup$/)
   await page.getByRole('link', { name: 'Back to sign in', exact: true }).click()
@@ -356,7 +357,7 @@ test('disabled signup and protected game routes lead to login', async ({
     page.getByRole('link', { name: 'Sign in', exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'Join the current universe' }),
+    page.getByRole('link', { name: 'Play free', exact: true }),
   ).toHaveCount(0)
   for (const path of ['/signup', '/u/u/b/earth/overview']) {
     await page.goto(path)
@@ -931,7 +932,7 @@ for (const mode of ['local', 'oidc']) {
   })
 }
 
-test('homepage centers policies and highlights news, GitHub, and Discord', async ({ page }) => {
+test('homepage aligns responsive policies and consistent community destinations', async ({ page }) => {
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
     version: 1, signup_enabled: true, result: { status: 'anonymous' },
   } }))
@@ -944,22 +945,32 @@ test('homepage centers policies and highlights news, GitHub, and Discord', async
     const policies = page.getByRole('navigation', { name: 'Policies and support' })
     await expect.poll(async () => {
       const bounds = await policies.boundingBox()
-      return bounds ? Math.abs(bounds.x + bounds.width / 2 - width / 2) : Infinity
+      if (!bounds) return Infinity
+      if (width < 768) return Math.abs(bounds.x + bounds.width / 2 - width / 2)
+      const footer = (await page.locator('footer').boundingBox())!
+      return Math.abs(bounds.x + bounds.width - footer.x - footer.width)
     }).toBeLessThan(1)
     await expect(policies.getByRole('link', { name: 'Support', exact: true }))
       .toHaveAttribute('href', 'mailto:support@unbought.games')
     const community = page.getByRole('navigation', { name: 'News and community' })
-    const news = community.getByRole('link', { name: 'What’s New', exact: true })
-    const repository = community.getByRole('link', { name: 'View on GitHub', exact: true })
-    const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
+    const news = community.getByRole('link', { name: /^What’s new / })
+    const repository = community.getByRole('link', { name: /^View on GitHub / })
+    const discord = community.getByRole('link', { name: /^Join Discord / })
     await expect(news).toHaveAttribute('href', '/updates/index.html')
     await expect(repository).toHaveAttribute('href', 'https://github.com/unbought-games/orbit-imperium')
-    await expect(repository.locator('svg')).toBeVisible()
+    await expect(repository.locator('svg').first()).toBeVisible()
     await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
     await expect(discord).toBeVisible()
     await expect(discord.locator('img')).toBeVisible()
     await expect(discord.locator('img')).toHaveAttribute('src', '/brand/discord-symbol-white.svg')
-    await expect(discord).toHaveCSS('background-color', 'rgb(88, 101, 242)')
+    const rows = await community.getByRole('link').all()
+    expect(rows).toHaveLength(4)
+    const firstRow = (await rows[0].boundingBox())!
+    for (const row of rows) {
+      const bounds = (await row.boundingBox())!
+      expect(Math.abs(bounds.x - firstRow.x)).toBeLessThan(1)
+      expect(Math.abs(bounds.width - firstRow.width)).toBeLessThan(1)
+    }
     const heroActionsBounds = (await page.getByRole('navigation', { name: 'Get started' }).boundingBox())!
     const newsBounds = (await news.boundingBox())!
     const repositoryBounds = (await repository.boundingBox())!
@@ -1015,20 +1026,25 @@ for (const width of [1440, 390]) {
   })
 }
 
-test('open beta notice appears before public enrollment with approved policy links', async ({ page }) => {
+test('public pages disclose beta status and preserve approved policy links', async ({ page }) => {
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
     version: 1, signup_enabled: true, result: { status: 'anonymous' },
   } }))
   await page.setViewportSize({ width: 390, height: 844 })
   for (const path of ['/', '/login', '/signup']) {
     await page.goto(path)
-    const notice = page.getByRole('region', { name: 'Open Beta' })
-    await expect(notice).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
+    const notice = path === '/'
+      ? page.getByText('Currently in open beta. We’re continuing to improve the game.', { exact: true })
+      : page.getByRole('region', { name: 'Open Beta' })
+    await expect(notice).toHaveCount(1)
+    await expect(notice).toBeVisible()
     await expect(notice).not.toContainText('reset')
     if (path === '/') {
-      const actions = page.getByRole('navigation', { name: 'Get started' })
+      await expect(page.getByRole('region', { name: 'Open Beta' })).toHaveCount(0)
       const noticeBounds = (await notice.boundingBox())!
-      expect(noticeBounds.y + noticeBounds.height).toBeLessThanOrEqual((await actions.boundingBox())!.y)
+      expect(noticeBounds.y + noticeBounds.height).toBeLessThanOrEqual((await page.locator('footer').boundingBox())!.y)
+    } else {
+      await expect(notice).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
     }
     const policies = page.getByRole('navigation', { name: 'Policies and support' })
     for (const [name, destination] of [['Terms', 'terms'], ['Privacy', 'privacy'], ['Conduct', 'conduct']])

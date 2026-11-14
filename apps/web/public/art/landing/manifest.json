@@ -1,43 +1,40 @@
 {
-  "captured": "2026-10-25",
-  "revision": "b4b4d4242577c8ef592d20a5905113f90673b7e3",
-  "provenance": "Real Orbit UI rendered with fictional demonstration data. No live player data.",
+  "captured": "2026-11-14",
+  "revision": "6eafeb0c8397eb49ea4b2e1a0b75ed198b801784",
+  "provenance": "Unmodified current Orbit game UI captured with CUA from a local built-game server using fictional demonstration state. No production player data, image retouching or upscaling.",
+  "scenario": "scenario-2026-11-14.mjs",
   "captures": [
     {
       "file": "empire-desktop-960.webp",
       "width": 960,
-      "height": 855,
-      "bytes": 40172
+      "height": 600,
+      "bytes": 37384,
+      "source": "source/2026-11-14/empire-desktop.jpg",
+      "source_sha256": "9eec984c7ba1b31305a8c928e50a916c4cec4c456f5b28b1812d05a9a1d33e43"
     },
     {
-      "file": "empire-desktop-1920.webp",
-      "width": 1920,
-      "height": 1710,
-      "bytes": 109870
+      "file": "empire-desktop-1440.webp",
+      "width": 1440,
+      "height": 900,
+      "bytes": 70814,
+      "source": "source/2026-11-14/empire-desktop.jpg",
+      "source_sha256": "9eec984c7ba1b31305a8c928e50a916c4cec4c456f5b28b1812d05a9a1d33e43"
     },
     {
       "file": "empire-mobile-390.webp",
       "width": 390,
       "height": 844,
-      "bytes": 30414
-    },
-    {
-      "file": "empire-mobile-780.webp",
-      "width": 780,
-      "height": 1688,
-      "bytes": 72322
+      "bytes": 39840,
+      "source": "source/2026-11-14/empire-mobile.jpg",
+      "source_sha256": "da9bb61f4538ff95ac4241c62f299478174922a7ec010255a5e2a6cd5ce61f10"
     },
     {
       "file": "research-mobile-390.webp",
       "width": 390,
       "height": 844,
-      "bytes": 29130
-    },
-    {
-      "file": "research-mobile-780.webp",
-      "width": 780,
-      "height": 1688,
-      "bytes": 70960
+      "bytes": 40870,
+      "source": "source/2026-11-14/research-mobile.jpg",
+      "source_sha256": "bb59c171bca014a2bc0cd86824d477b91a5b79f78d5c68f3b6fd925730019203"
     }
   ]
 }

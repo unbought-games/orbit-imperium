@@ -1,4 +1,4 @@
-Orbit Imperium landing screenshots — October 25, 2026
+Orbit Imperium landing screenshots — November 14, 2026
 
 Credit: Orbit Imperium contributors / Unbought Games, LLC.
 Source: https://github.com/unbought-games/orbit-imperium
@@ -6,8 +6,10 @@ Ordinary game artwork: CC BY-SA 4.0.
 https://creativecommons.org/licenses/by-sa/4.0/
 Game names and logos retain the repository's separate branding terms.
 
-These are actual game UI captures using fictional demonstration data, not live
-player activity. Desktop is a full-page capture at 1680 CSS pixels wide; mobile
-captures are 390 × 844 CSS pixels. Sources captured at 2× pixel density, then
-resized and encoded as responsive WebP images. No UI or gameplay was painted in.
-The source revision and output dimensions are recorded in manifest.json.
+These are actual current game UI captures using fictional demonstration data,
+not live player activity. CUA captured the desktop viewport at 1440 × 900 pixels
+and mobile viewports at 390 × 844 pixels, without image retouching or upscaling.
+The real built application uses the repository's local demonstration fixture.
+Desktop exports are 960/1440 pixels wide; mobile exports preserve their native
+390-pixel width. Superseded October masters are retained in the brand archive.
+Source revision, dimensions and hashes are recorded in manifest.json.

@@ -125,8 +125,9 @@ for (const width of [390, 1440]) {
         fullPage: true,
       })
       await page
+        .getByRole('navigation', { name: 'Get started' })
         .getByRole('link', {
-          name: returning ? 'Sign in' : 'Join the current universe',
+          name: returning ? 'Sign in' : 'Play free',
           exact: true,
         })
         .click()

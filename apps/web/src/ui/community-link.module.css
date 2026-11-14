@@ -1,0 +1,68 @@
+.link:any-link {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 20px;
+  align-items: center;
+  column-gap: 18px;
+  min-height: 96px;
+  padding: 22px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ice);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.link:first-child {
+  border-top: 1px solid var(--border);
+}
+.icon {
+  display: grid;
+  place-items: center;
+}
+.icon > :is(svg, img) {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+.copy strong,
+.copy > span {
+  display: block;
+}
+.link .copy strong {
+  color: var(--text);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.copy > span {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+.link:any-link:hover,
+.link:any-link:focus-visible {
+  background: #a4dbef0a;
+  color: var(--ice-light);
+}
+.link:hover .copy strong {
+  color: var(--ice-light);
+}
+.link:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .link {
+    transition:
+      background-color 220ms ease,
+      color 220ms ease,
+      border-color 220ms ease;
+  }
+  .copy strong {
+    transition: color 220ms ease;
+  }
+  .arrow {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link:is(:hover, :focus-visible) .arrow {
+    transform: translate(3px, -3px);
+  }
+}

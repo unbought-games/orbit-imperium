@@ -2232,3 +2232,92 @@ PostgreSQL rules/construction tests preserve activation, persistence and both
 runtimes. The removed unique coverage is the all-prerequisites real-database
 Terraformer journey and its final projection assertion. Other dual-runtime rules
 fixtures passed the failed CI run; no independent follow-up is left unowned.
+
+
+## November 14, 2026 — built homepage diagnostic capture and smooth scroll
+
+`homepage-built.spec.ts`, first local repair of diagnostic captures after enabling
+landing-page motion. No prior smooth-scroll repair found in its three commits or
+this ledger. The API trace stopped at `locator.screenshot` scrolling the tall
+universe section, after all content/focus checks passed. Native smooth scrolling
+prevented capture positioning from settling; one capture timed out at Playwright's
+screenshot limit, and the remaining run plus a diagnostic trace were interrupted.
+This is a screenshot preparation defect, separate from the production global
+`animation: none !important` defect caught and fixed by the new motion assertions.
+
+Correction: each optional diagnostic screenshot supplies a screenshot-scoped
+`html { scroll-behavior: auto !important; }` stylesheet. It is restored by the
+screenshot API; actual anchor interaction and normal/reduced-motion checks remain
+unmodified. No sleeps, retries or deadline increases. CMO revision-3 record owns
+rerun results and captures. If this repair fails, remove this optional screenshot
+path and preserve functional/motion assertions; do not add another workaround.
+
+Disposition: the one screenshot-scoped-style repair also failed at the same
+`locator.screenshot` positioning step. Removed all seven optional diagnostic
+capture calls from the built-homepage suite, without renaming/replacing test
+scenarios. Functional, image-readiness, overflow, navigation, hydration and
+normal/reduced-motion assertions remain. Final visual evidence is captured in
+the visible CUA browser, independently of the functional runner. The interrupted
+API trace is retained in the private CMO review3-scroll-diagnostic.log; failed
+capture evidence is linked in the CMO revision-3 review record. No second repair,
+retries, sleeps or timeout increases.
+
+Final classification/update: without diagnostic capture, no-JS image positioning
+also failed. The broader cause was global smooth-scroll CSS, not only screenshot
+preparation. Removed that global scroll rule and confined smooth movement to the
+universe link's user activation (native immediate fallback without JavaScript).
+All 10 functional cases then passed in 7.2s. Owner subsequently required hover-only
+arrow movement; updated that requirement and two affected cases passed in 4.7s.
+Optional diagnostic capture code remains removed; CUA provides current visual QA.
+
+
+## November 14, 2026: Homepage motion scoping preserves game overrides
+
+PR #435 head `fe035bbe`, CI run `43628101245` attempt 1, exposed a product
+regression in the landing-page exception to the global immediate-state rule.
+`:root:not(:has([data-public-landing])) *` increased selector specificity and
+beat existing class-level `!important` animation/transition opt-outs. The
+component quick-build and tutorial-disclosure checks, empire wealth motion,
+command HUD motion and briefing icon cases correctly detected disabled motion.
+Review thread `4575162195` independently identified the same mechanism.
+
+The production fix wraps the root condition in `:where(...)`, preserving the
+old reset specificity for elements and pseudo-elements while excluding the
+landing page. Existing game overrides and reduced-motion rules regain their
+precedence. No test was removed, changed, retried unchanged or given a longer
+wait; this is not a flaky-test repair. Focused component/application motion and
+built-homepage verification run before pushing, with exact results retained in
+the PR verification record. Original failed CI evidence remains available.
+
+
+## November 14, 2026: Homepage CTA test callers updated
+
+The reviewed rename from “Join the current universe” / “Join the open beta” to
+“Play free” left old accessible-name selectors in local/hosted account-entry
+tests. Run `43628101245` retained 110/111 completed feature-shard-1 cases and
+109/111 shard-4 cases before supersession; the missing cases were the public
+history journey and two hosted registration journeys. Run `43629245990` showed
+the same outstanding jobs. Inspection establishes stale CTA locators, not a
+service outage or timing race. No earlier repair for this rename exists in the
+file history/ledger (the old label originated in #278/#300).
+
+Updated those callers and audited `home.spec.ts` and explicit `signup.spec.ts`.
+Scope the hero CTA to the Get started navigation and the final CTA to its named
+section, since both now say Play free. Preserve every URL, history, enrollment,
+registration-policy and auth assertion. This is selector maintenance for an
+intentional UI requirement change; no retries, timeout changes or deletion.
+The explicit full-system signup suite receives only the selector change and is
+not claimed as executed by fixture-browser validation.
+
+
+Run `43630486499`, head `5d247daa`, additionally caught two obsolete design
+contracts in `bootstrap-ui.spec.ts`: “homepage centers policies and highlights
+news, GitHub, and Discord” required centered desktop policies and a purple
+Discord button; “open beta notice appears before public enrollment with approved
+policy links” required the removed hero beta panel. Their original additions
+were #53 and #145; no prior repair for this requirement change was found.
+Update these existing cases to the owner's reviewed layout: centered mobile
+policies/right desktop policies, four aligned community rows, and one small
+homepage beta note above the footer. Auth-page beta notice and policy-link
+assertions remain. Names now describe the changed requirement; this does not
+reset repair history. Validate all bootstrap/home/hosted-auth cases together.
