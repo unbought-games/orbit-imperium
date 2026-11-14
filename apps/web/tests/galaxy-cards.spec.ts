@@ -116,7 +116,7 @@ const rows = (page: Page) =>
 const actions = (page: Page, position: number) =>
   rows(page)
     .nth(position - 1)
-    .getByRole('button', { name: /^Actions for / })
+    .getByRole('button', { name: /^Actions for \[/ })
 const spy = (page: Page, position = 2) =>
   rows(page)
     .nth(position - 1)
@@ -262,7 +262,7 @@ test('protection is a green player status with an accessible explanation and blo
   await expect(page.getByRole('tooltip')).toBeHidden()
   await expect(spy(page, 3)).toBeDisabled()
   await expect(spy(page, 3)).toHaveAttribute('title', /Beginner protection/)
-  await actions(page, 3).click()
+  await actions(page, 3).press('Enter')
   await expect(
     page.getByRole('menuitem', { name: 'Attack', exact: true }),
   ).toBeDisabled()
@@ -330,7 +330,7 @@ test('vacation and inactivity coexist; tooltips support hover, keyboard, tap and
   await page.mouse.move(0, 0)
   await vacation.click()
   await expect(page.getByRole('tooltip')).toContainText('Attacks and espionage')
-  await rows(page).first().getByText('Your planet', { exact: true }).click()
+  await page.getByRole('textbox', { name: 'Galaxy', exact: true }).click()
   await expect(page.getByRole('tooltip')).toBeHidden()
   await card
     .getByRole('button', { name: 'Activity within the last 15 minutes' })
@@ -340,7 +340,7 @@ test('vacation and inactivity coexist; tooltips support hover, keyboard, tap and
   )
   await page.keyboard.press('Escape')
   await expect(spy(page)).toBeDisabled()
-  await actions(page, 2).click()
+  await actions(page, 2).press('Enter')
   await expect(
     page.getByRole('menuitem', { name: 'Attack', exact: true }),
   ).toBeDisabled()
@@ -387,11 +387,11 @@ test('every row keeps its Actions control and your selected planet can harvest i
     },
   )
   await expect(rows(page)).toHaveCount(15)
-  await expect(page.getByRole('button', { name: /^Actions for / })).toHaveCount(
+  await expect(page.getByRole('button', { name: /^Actions for \[/ })).toHaveCount(
     15,
   )
   await expect(actions(page, 1)).toBeDisabled()
-  await actions(page, 3).click()
+  await actions(page, 3).press('Enter')
   await expect(page.getByRole('menuitem')).toHaveText([
     'Transport',
     'Deploy',
@@ -399,7 +399,7 @@ test('every row keeps its Actions control and your selected planet can harvest i
   ])
   await page.keyboard.press('Escape')
   await selectBody(page, colony.id)
-  await actions(page, 3).click()
+  await actions(page, 3).press('Enter')
   await expect(page.getByRole('menuitem')).toHaveText(['Harvest'])
   await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
   await page.getByRole('dialog', { name: 'Harvest mission', exact: true }).getByRole('button', { name: 'Customize', exact: true }).click()
@@ -438,7 +438,7 @@ test('system navigation, unavailable worlds and retry preserve eligibility and e
         .innerText(),
     ).toBe('1,500')
   }
-  await actions(page, 4).click()
+  await actions(page, 4).press('Enter')
   await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
   await page.getByRole('dialog', { name: 'Harvest mission', exact: true }).getByRole('button', { name: 'Customize', exact: true }).click()
   await expect(
@@ -462,7 +462,7 @@ test('system navigation, unavailable worlds and retry preserve eligibility and e
 for (const mission of ['Transport', 'Attack']) {
   test(`planet Actions opens the ${mission} draft`, async ({ page }) => {
     await setup(page)
-    await actions(page, 2).click()
+    await actions(page, 2).press('Enter')
     await page.getByRole('menuitem', { name: mission, exact: true }).click()
     await expect(
       page.getByRole('radio', { checked: true }),
@@ -497,13 +497,16 @@ test('one coordinate link supports copy, navigation and keyboard focus restorati
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
     .toBe('[1:371:2]')
   await expect(coordinate).toBeFocused()
+  const heights = await rows(page).evaluateAll(elements => elements.map(el => el.getBoundingClientRect().height))
   await coordinate.click()
-  await expect(page.locator('li[aria-current="location"]')).toContainText(
-    'Selected location [1:371:2]',
-  )
+  await expect(page.locator('li[aria-current="location"]')).toHaveAttribute('id', 'position-2')
+  await expect(page.getByText('Selected location', { exact: false })).toHaveCount(0)
+  expect(await rows(page).evaluateAll(elements => elements.map(el => el.getBoundingClientRect().height))).toEqual(heights)
   const trigger = actions(page, 2)
   await trigger.focus()
   await page.keyboard.press('Enter')
+  await expect(page.getByRole('menuitem', { name: 'Spy', exact: true })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
   await expect(
     page.getByRole('menuitem', { name: 'Transport', exact: true }),
   ).toBeFocused()
@@ -588,9 +591,7 @@ test('shared columns align all debris and controls; mobile rows reach both edges
         .getByRole('button', { name: /^Spy on/ })
         .getByText('Spy', { exact: true }),
     ).toBeVisible({ visible: width >= 600 })
-    await expect(
-      actions(page, 2).getByText('Actions', { exact: true }),
-    ).toBeVisible({ visible: width >= 600 })
+    await expect(actions(page, 2)).toHaveAttribute('aria-haspopup', 'menu')
     await page.evaluate(() => window.scrollTo(0, 400))
     await expect
       .poll(async () => {
@@ -621,7 +622,7 @@ test('empty positions offer Colonize only when supported, and preserve the coord
   await expect(colonize).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(actions(page, 5)).toBeFocused()
-  await actions(page, 5).click()
+  await actions(page, 5).press('Enter')
   await colonize.click()
   await expect(
     page.getByRole('radio', { checked: true }),
@@ -733,9 +734,9 @@ test('supporter preview compares identities without a session or game requests',
       .locator('svg'),
   ).toHaveClass(/lucide-star/)
   await galaxy
-    .getByRole('button', { name: /^Actions for/ })
+    .getByRole('button', { name: /^Actions for \[/ })
     .first()
-    .click()
+    .press('Enter')
   await page.getByRole('menuitem', { name: 'Transport', exact: true }).click()
   await expect(page.getByRole('status')).toContainText(
     'No mission has been sent',
@@ -868,7 +869,7 @@ for (const width of [320, 390, 1280]) {
         Math.min(...boxes.map((box) => box.y)),
     ).toBeLessThanOrEqual(1)
     const slots = controls[5]
-    await expect(slots).toHaveText('0 / 1')
+    await expect(slots).toHaveText('Fleet slots0 / 1')
     expect(boxes[5].x).toBeGreaterThanOrEqual(boxes[4].x + boxes[4].width)
     expect(toolbarBox.x + toolbarBox.width - boxes[5].x - boxes[5].width).toBeLessThanOrEqual(12)
     await slots.click()
@@ -918,7 +919,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   }
   await setup(page, null, { missions, viewerRevision: () => String(revision) })
   const slots = page.getByRole('button', { name: /^Fleet slots: \d+ used \/ 3 total$/ })
-  await expect(slots).toHaveText('0 / 3')
+  await expect(slots).toHaveText('Fleet slots0 / 3')
   let quotes = 0,
     launches = 0
   let releaseQuote!: () => void, releaseLaunch!: () => void
@@ -1013,7 +1014,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
       page.getByText('Loading system…', { exact: true }),
     ).toHaveCount(0)
     await expect(
-      target.getByRole('button', { name: /^Actions for/ }),
+      target.getByRole('button', { name: /^Actions for \[/ }),
     ).toBeVisible()
     for (const row of originalRows)
       expect(await row.evaluate((node) => node.isConnected)).toBe(true)
@@ -1025,7 +1026,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
     pendingRefreshes[count - 1]()
     await response
     await expect(
-      target.getByRole('button', { name: /^Actions for/ }),
+      target.getByRole('button', { name: /^Actions for \[/ }),
     ).toBeVisible()
   }
   const spy = target.getByRole('button', {
@@ -1041,9 +1042,12 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   releaseQuote()
   await expect.poll(() => launches).toBe(1)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toContainText('Espionage departure pending')
-  await expect(slots).toHaveText('1 / 3')
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('1–…')
+  await target.getByRole('button', { name: /^Your fleets to / }).click()
+  await expect(page.getByRole('dialog', { name: 'Your fleets to [1:371:2]', exact: true })).toContainText('Espionage departure pending')
+  await page.keyboard.press('Escape')
+  await expect(slots).toHaveText('Fleet slots1 / 3')
   expect(intents[0]).toEqual({
     origin: body.id,
     destination: {
@@ -1063,42 +1067,49 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   await expect(probeToast.locator('time')).toHaveAttribute('datetime', new Date(missions.fleets[0].due_at).toISOString())
   await expect(probeToast).toContainText('2 fleet slots available')
   await diagnosticScreenshot(page, { path: 'test-results/live-hud/probe-390x844.png' })
-  await expect(slots).toHaveText('1 / 3')
+  await expect(slots).toHaveText('Fleet slots1 / 3')
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText(/Espionage en route · \d/)
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText(/^1–\d+[ms]$/)
+  await target.getByRole('button', { name: /^Your fleets to / }).click()
+  await expect(page.getByRole('dialog', { name: 'Your fleets to [1:371:2]', exact: true })).toContainText('Espionage en route')
+  await page.keyboard.press('Escape')
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await diagnosticScreenshot(page, {
     path: 'test-results/galaxy-espionage-outbound.png',
   })
-  await target.getByRole('button', { name: /^Actions for/ }).focus()
+  await target.getByRole('button', { name: /^Actions for \[/ }).focus()
   const scrollY = await page.evaluate(() => window.scrollY)
   missions.fleets[0].leg = 'Returning'
   revision++
   await refreshGame(page)
   await finishRefresh(2)
-  await expect(slots).toHaveText('1 / 3')
+  await expect(slots).toHaveText('Fleet slots1 / 3')
   await expect(
-    target.getByRole('button', { name: /^Actions for/ }),
+    target.getByRole('button', { name: /^Actions for \[/ }),
   ).toBeFocused()
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollY)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
+    target.getByRole('button', { name: /^Your fleets to / }),
   ).toHaveCount(0)
   await expect(
-    rows.first().getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText(/Espionage returning · \d/)
+    rows.first().getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText(/^–1\d+[ms]$/)
+  await rows.first().getByRole('button', { name: /^Your fleets to / }).click()
+  await expect(page.getByRole('dialog', { name: 'Your fleets to [1:371:1]', exact: true })).toContainText('Espionage returning')
+  await page.keyboard.press('Escape')
+  await target.getByRole('button', { name: /^Actions for \[/ }).focus()
   missions.fleets = []
   revision++
   await refreshGame(page)
   await finishRefresh(3)
-  await expect(slots).toHaveText('0 / 3')
+  await expect(slots).toHaveText('Fleet slots0 / 3')
   await expect(
-    target.getByRole('button', { name: /^Actions for/ }),
+    target.getByRole('button', { name: /^Actions for \[/ }),
   ).toBeFocused()
   await expect(
-    rows.first().getByRole('group', { name: /^Your fleets to / }),
+    rows.first().getByRole('button', { name: /^Your fleets to / }),
   ).toHaveCount(0)
   expect(quotes).toBe(1)
   expect(launches).toBe(1)
@@ -1183,8 +1194,11 @@ test('galaxy probe countdown ticks without reloading rows or fetching the system
     .getByRole('listitem')
     .nth(1)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText('Espionage en route · 2m 0s')
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('1–2m')
+  await target.getByRole('button', { name: /^Your fleets to / }).click()
+  const details = page.getByRole('dialog', { name: 'Your fleets to [1:371:2]', exact: true })
+  await expect(details).toContainText('2m 0s')
   const row = await target.elementHandle()
   let requests = 0
   page.on('request', (request) => {
@@ -1196,11 +1210,12 @@ test('galaxy probe countdown ticks without reloading rows or fetching the system
   })
   await page.clock.fastForward(5000)
   await expect(
-    target.getByRole('group', { name: /^Your fleets to / }),
-  ).toHaveText('Espionage en route · 1m 55s')
+    target.getByRole('button', { name: /^Your fleets to / }),
+  ).toHaveText('1–2m')
+  await expect(details).toContainText('1m 55s')
   expect(await row!.evaluate((node) => node.isConnected)).toBe(true)
   await expect(
-    target.getByRole('button', { name: /^Actions for/ }),
+    target.getByRole('button', { name: /^Actions for \[/ }),
   ).toBeVisible()
   await expect(page.getByText('Loading system…', { exact: true })).toHaveCount(
     0,
@@ -1510,7 +1525,7 @@ test.describe('touch status tooltips', () => {
     const card = rows(page).nth(1)
     await card.getByRole('button', { name: 'Vacation mode', exact: true }).tap()
     await expect(page.getByRole('tooltip')).toContainText('Vacation mode')
-    await rows(page).first().getByText('Your planet', { exact: true }).tap()
+    await page.getByRole('textbox', { name: 'Galaxy', exact: true }).tap()
     await expect(page.getByRole('tooltip')).toBeHidden()
     await card
       .getByRole('button', { name: 'Inactive for 7 days or more', exact: true })
@@ -1518,7 +1533,7 @@ test.describe('touch status tooltips', () => {
     await expect(page.getByRole('tooltip')).toContainText(
       'Visiting fleets can still cause activity',
     )
-    await rows(page).first().getByText('Your planet', { exact: true }).tap()
+    await page.getByRole('textbox', { name: 'Galaxy', exact: true }).tap()
     await expect(page.getByRole('tooltip')).toBeHidden()
   })
 })
@@ -1537,7 +1552,7 @@ async function setupHarvest(page: Page, count = '5', slots = '3') {
   }, { 2: { debris: { field_identity: id(42), metal: '40000', crystal: '1' } } })
 }
 async function openHarvest(page: Page) {
-  await actions(page, 2).click()
+  await actions(page, 2).press('Enter')
   await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
   await expect(sheet).toBeVisible()
@@ -1781,11 +1796,12 @@ for (const width of [320, 390, 768, 1440]) {
 test('debris quick harvest follows capability eligibility and supports own and empty positions', async ({ page }) => {
   await setup(page, null, { extraCapabilities: [] })
   await expect(rows(page).nth(1)).toContainText('1,500')
-  await expect(page.getByRole('button', { name: /^Quick harvest debris/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^Actions for debris at/ })).toHaveCount(0)
   await setup(page, null, {}, { 1: { debris } })
   for (const position of [1, 4]) {
-    const trigger = rows(page).nth(position - 1).getByRole('button', { name: /^Quick harvest debris/ })
+    const trigger = rows(page).nth(position - 1).getByRole('button', { name: /^Actions for debris at/ })
     await trigger.click()
+    await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Harvest mission', exact: true })
     await expect(dialog).toContainText(`Debris at [1:371:${position}]`)
     await page.keyboard.press('Escape')
@@ -1960,7 +1976,7 @@ for (const width of [390, 1280]) {
       await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [id(80)], minimum_viewer_revision: '2' } })
     })
     await withFixtureResponse(page, (response) => response.url().endsWith('/commands'), () => spy(page).click())
-    await expect(rows(page).nth(1)).toContainText('Espionage departure pending')
+    await expect(rows(page).nth(1).getByRole('button', { name: /^Your fleets to / })).toHaveText('1–…')
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/galaxy`))
     await diagnosticScreenshot(page, { path: `test-results/probe-galaxy-sent-${width}x844.png` })
   })
@@ -2049,7 +2065,7 @@ for (const [width, target] of [[1280, 'planet']] as const) {
     await withGalaxyResponse(page, () => page.reload())
     // The saved quick-spy count exceeds our two probes; customization still works.
     await expect(spy(page)).toBeDisabled()
-    await actions(page, 2).click()
+    await actions(page, 2).press('Enter')
     const customize = page.getByRole('menuitem', {
       name: 'Spy with…',
       exact: true,

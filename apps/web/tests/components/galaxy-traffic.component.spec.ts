@@ -1,0 +1,174 @@
+import { test, expect } from './fixture'
+import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
+
+for (const width of [320, 390, 1280]) {
+  test.describe(`Galaxy traffic at ${width}px`, () => {
+    test.use({ hasTouch: width < 600 })
+    test('repeated spying and flight transitions keep rows and actions stationary', async ({
+      page,
+      mount,
+    }) => {
+      await page.setViewportSize({ width, height: 844 })
+      await page.clock.install({ time: 100000 })
+      await page.clock.pauseAt(100000)
+      await mount('galaxy-traffic')
+      const rows = page.getByRole('article')
+      const target = rows.first()
+      const marker = target.getByRole('button', {
+        name: 'Your fleets to [1:371:2] details',
+        exact: true,
+      })
+      const spy = target.getByRole('button', {
+        name: /^(Spy on|Probe requested for)/,
+        includeHidden: true,
+      })
+      const dialog = page.getByRole('dialog', {
+        name: 'Your fleets to [1:371:2]',
+        exact: true,
+      })
+      const geometry = async () => ({
+        rows: await rows.evaluateAll((elements) =>
+          elements.map((el) => {
+            const { x, y, width, height } = el.getBoundingClientRect()
+            return { x, y, width, height }
+          }),
+        ),
+        spy: width < 360 ? null : await spy.boundingBox(),
+        actions: await target
+          .getByRole('button', { name: /^Actions for \[/ })
+          .boundingBox(),
+      })
+      const initial = await geometry()
+      expect(new Set(initial.rows.map((row) => row.height)).size).toBe(1)
+      await expect(page.getByText('Clear', { exact: true })).toHaveCount(0)
+      const planet = target.locator('img').first()
+      const moon = target.getByRole('button', {
+        name: 'Actions for moon [1:371:2]',
+        exact: true,
+      })
+      const debris = target.getByRole('button', {
+        name: /^Actions for debris at/,
+      })
+      expect((await planet.boundingBox())!.x).toBeLessThan(
+        (await moon.boundingBox())!.x,
+      )
+      expect((await moon.boundingBox())!.x).toBeLessThan(
+        (await debris.boundingBox())!.x,
+      )
+      await expect(
+        target.getByText('Andromeda listening post with a very long name', {
+          exact: true,
+        }),
+      ).toHaveCSS('text-overflow', 'ellipsis')
+      await expect(marker).toHaveCount(0)
+      await diagnosticScreenshot(page, {
+        path: `test-results/galaxy-traffic/empty-${width}x844.png`,
+      })
+      for (let count = 1; count <= 3; count++) {
+        if (width < 360) {
+          await expect(spy).toBeHidden()
+          await target
+            .getByRole('button', { name: /^Actions for \[/ })
+            .press('Enter')
+          await expect(
+            page.getByRole('menuitem', { name: 'Spy with…', exact: true }),
+          ).toBeVisible()
+          await page.getByRole('menuitem', { name: 'Spy', exact: true }).click()
+        } else await spy.click()
+        await expect(marker).toHaveText(`${count}–2m`)
+        await expect(marker).toHaveAccessibleDescription(
+          `${count} ${count === 1 ? 'fleet' : 'fleets'} en route. Next arrival: 2m 0s.`,
+        )
+        expect(await geometry()).toEqual(initial)
+        await page.clock.runFor(1400)
+        await expect(spy).toBeEnabled()
+        if (count === 1)
+          await diagnosticScreenshot(page, {
+            path: `test-results/galaxy-traffic/one-${width}x844.png`,
+          })
+      }
+      expect((await debris.boundingBox())!.x).toBeLessThan(
+        (await marker.boundingBox())!.x,
+      )
+      expect((await marker.boundingBox())!.width).toBe(width < 600 ? 54 : 72)
+      expect((await marker.boundingBox())!.height).toBe(44)
+      await debris.focus()
+      await page.keyboard.press('Tab')
+      await expect(marker).toBeFocused()
+      await expect(dialog).toBeVisible()
+      await page.keyboard.press('Escape')
+      await marker.press('Enter')
+      await expect(dialog).toBeVisible()
+      await page.keyboard.press('Escape')
+      if (width < 600) await marker.tap()
+      else {
+        await marker.hover()
+        await page.clock.runFor(150)
+      }
+      await expect(dialog).toBeVisible()
+      await expect(dialog.locator('li')).toHaveCount(3)
+      await expect(dialog.locator('li').first()).toContainText(
+        'Espionage en route',
+      )
+      await expect(dialog.locator('time').first()).toHaveAttribute(
+        'datetime',
+        /T.*Z$/,
+      )
+      expect(await geometry()).toEqual(initial)
+      const bounds = (await dialog.boundingBox())!
+      expect(bounds.x).toBeGreaterThanOrEqual(12)
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 12)
+      expect(bounds.y).toBeGreaterThanOrEqual(0)
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(844)
+      await page
+        .getByRole('button', { name: 'Tick countdown' })
+        .evaluate((button: HTMLButtonElement) => button.click())
+      await expect(dialog.locator('li').first()).toContainText('1m 55s')
+      await expect(marker).toHaveAccessibleDescription(
+        '3 fleets en route. Next arrival: 1m 55s.',
+      )
+      await expect(dialog).toBeVisible()
+      await diagnosticScreenshot(page, {
+        path: `test-results/galaxy-traffic/details-${width}x844.png`,
+      })
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+      await page
+        .getByRole('button', { name: 'Pending departure', exact: true })
+        .click()
+      await expect(marker).toHaveText('4–2m')
+      await expect(marker).toHaveAccessibleDescription(
+        '3 fleets en route. 1 fleet departure pending. Next arrival: 1m 55s.',
+      )
+      expect(await geometry()).toEqual(initial)
+      await marker.click()
+      await expect(dialog).toContainText('Transport departure pending')
+      await page.keyboard.press('Escape')
+      await page.getByRole('button', { name: 'Return fleets' }).click()
+      await expect(marker).toHaveCount(0)
+      const home = rows.nth(1).getByRole('button', { name: /^Your fleets/ })
+      await expect(home).toHaveText('–42m')
+      await expect(home).toHaveAccessibleDescription(
+        '4 fleets returning. Next arrival: 1m 55s.',
+      )
+      expect(await geometry()).toEqual(initial)
+      await home.click()
+      await expect(
+        page.getByRole('dialog', {
+          name: 'Your fleets to [1:371:3]',
+          exact: true,
+        }),
+      ).toContainText('Espionage returning')
+      await page.keyboard.press('Escape')
+      await diagnosticScreenshot(page, {
+        path: `test-results/galaxy-traffic/returning-${width}x844.png`,
+      })
+      await page.getByRole('button', { name: 'Complete flights' }).click()
+      await expect(home).toHaveCount(0)
+      expect(await geometry()).toEqual(initial)
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width)
+    })
+  })
+}

@@ -10,11 +10,13 @@ export function InfoTooltip({
   description,
   children,
   className,
+  inline = false,
 }: {
   label: string
   description?: ReactNode
   children: ReactNode
   className?: string
+  inline?: boolean
 }) {
   const [mode, setMode] = useState<InfoTooltipMode>(null)
   const open = mode !== null
@@ -30,7 +32,7 @@ export function InfoTooltip({
       <Tooltip.Trigger
         id={id}
         type="button"
-        className={classes(styles.trigger, className)}
+        className={classes(styles.trigger, inline && styles.inline, className)}
         aria-label={label}
         aria-describedby={open ? `${id}-description` : undefined}
         delay={200}

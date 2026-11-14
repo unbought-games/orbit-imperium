@@ -20,7 +20,9 @@ export function PlayerProfile({
   historical,
   children,
   triggerRef,
+  truncate = false,
 }: {
+  truncate?: boolean
   player: string
   name: string
   profile?: PlayerDisplay
@@ -46,7 +48,9 @@ export function PlayerProfile({
         ) : undefined
       }
       triggerRef={triggerRef}
-      className={styles.trigger}
+      className={[styles.trigger, truncate && styles.truncate]
+        .filter(Boolean)
+        .join(' ')}
       surfaceClassName={styles.profile}
       showTitle={false}
     >

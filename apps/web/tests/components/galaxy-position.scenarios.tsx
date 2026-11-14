@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { FleetPresentationRoutes } from './galaxy-fleet.scenarios'
 import { fleetPresentationFixture } from '../../src/test-support/fleet-presentation'
+import type { GalaxyFlight } from '../../src/client-model/galaxy-fleets'
+import { fleetFixtureTime } from '../../src/test-support/fleet-presentation'
 import { id } from '../../src/test-support/bootstrap'
+import { PlayerName } from '../../src/features/player-name'
 import { GalaxyPosition } from '../../src/features/galaxy-position'
 import { GalaxyHarvestPresentation } from '../../src/features/galaxy-harvest-action'
 import {
@@ -23,7 +26,29 @@ const fields = [
   { metal: '0', crystal: '400' },
 ]
 
-export function GalaxyPositionScenario() {
+export function GalaxyTrafficScenario() {
+  return <GalaxyPositionScenario traffic />
+}
+
+export function GalaxyPositionScenario({
+  traffic = false,
+}: {
+  traffic?: boolean
+}) {
+  const [draft, setDraft] = useState('')
+  const [unavailable, setUnavailable] = useState(false)
+  const [flights, setFlights] = useState<GalaxyFlight[]>([])
+  const [now, setNow] = useState(fleetFixtureTime)
+  const addFlight = () =>
+    setFlights((current) => [
+      ...current,
+      {
+        id: `spy-${current.length}`,
+        mission: 'Espionage',
+        phase: 'en route',
+        dueAt: now + 120_000,
+      },
+    ])
   const [fixture] = useState(fleetPresentationFixture)
   const [baseState] = useState(() => createGameStore().getState())
   const [blocked, setBlocked] = useState(false)
@@ -66,13 +91,29 @@ export function GalaxyPositionScenario() {
             id: id(21 + index),
             owner: id(31 + index),
             kind: 'Planet',
-            activity: { type: 'None' },
-            inactivity: 'Active',
-            vacation: false,
-            espionage_eligible: true,
+            name:
+              traffic && !unavailable
+                ? index === 0
+                  ? 'Andromeda listening post with a very long name'
+                  : 'Vega'
+                : undefined,
+            activity: { type: traffic ? 'Recent' : 'None' },
+            inactivity: traffic ? 'Inactive28' : 'Active',
+            vacation: unavailable,
+            attack_blocker: unavailable ? 'TargetVacation' : undefined,
+            espionage_eligible: !unavailable,
           }
         : null,
     debris: { ...debris, field_identity: id(42 + index) },
+    moon:
+      traffic && index === 0
+        ? {
+            id: id(70),
+            name: 'Selene',
+            diameter_km: 8500,
+            activity: { type: 'Recent' },
+          }
+        : undefined,
   }))
   const position =
     positions.find((item) => item.coordinates.position === selected) ??
@@ -87,6 +128,42 @@ export function GalaxyPositionScenario() {
           container contract without mounting the session-owning game shell. */}
       <main style={{ paddingInline: 'var(--shell-inline-gutter)' }}>
         <div className={styles.screen}>
+          {traffic && (
+            <div>
+              <Button onClick={() => setUnavailable(true)}>
+                Block missions
+              </Button>
+              <Button
+                onClick={() =>
+                  setFlights((current) =>
+                    current.map((flight) => ({
+                      ...flight,
+                      phase: 'returning',
+                    })),
+                  )
+                }
+              >
+                Return fleets
+              </Button>
+              <Button onClick={() => setFlights([])}>Complete flights</Button>
+              <Button onClick={() => setNow(now + 5000)}>Tick countdown</Button>
+              <Button
+                onClick={() =>
+                  setFlights((current) => [
+                    ...current,
+                    {
+                      id: 'pending',
+                      mission: 'Transport',
+                      phase: 'departure pending',
+                      dueAt: null,
+                    },
+                  ])
+                }
+              >
+                Pending departure
+              </Button>
+            </div>
+          )}
           <Button onClick={() => setBlocked(!blocked)}>
             Toggle blocked harvest
           </Button>
@@ -96,8 +173,31 @@ export function GalaxyPositionScenario() {
                 <li key={item.coordinates.position}>
                   <GalaxyPosition
                     position={item}
+                    flights={
+                      traffic
+                        ? flights.filter((flight) =>
+                            flight.phase === 'returning'
+                              ? item.coordinates.position === 3
+                              : item.coordinates.position === 2,
+                          )
+                        : []
+                    }
+                    now={now}
                     player={view.binding.player}
                     origin={fixture.body.id}
+                    playerIdentity={
+                      traffic && item.body ? (
+                        <PlayerName
+                          player={item.body.owner}
+                          fallback={
+                            item.coordinates.position === 2
+                              ? 'commander_andromeda_1234567890'
+                              : 'Vega'
+                          }
+                          truncate
+                        />
+                      ) : undefined
+                    }
                     playerNames={{
                       [id(31)]: 'CommanderAndromedaTheUnreasonablyLongName',
                       [id(32)]: 'Vega',
@@ -106,17 +206,18 @@ export function GalaxyPositionScenario() {
                       transport: true,
                       attack: true,
                       deploy: true,
-                      harvest: true,
+                      harvest: !unavailable,
                     }}
                     colony={colonizationStatus(view, item.coordinates.position)}
-                    onDraft={(at, mission, element) => {
+                    onDraft={(at, mission, element, kind = 'planet') => {
+                      setDraft(`${at.position} ${mission} ${kind}`)
                       if (mission !== 'Harvest') return
                       opener.current = element ?? null
                       setSelected(at.position)
                       setEdit(null)
                     }}
                     espionage={{
-                      send: () => {},
+                      send: traffic ? addFlight : () => {},
                       busy: false,
                       reason: null,
                       error: null,
@@ -126,6 +227,7 @@ export function GalaxyPositionScenario() {
               ))}
             </ul>
           </section>
+          {traffic && <output aria-label="Requested mission">{draft}</output>}
           <GalaxyHarvestPresentation
             harvest={{
               ...availability,

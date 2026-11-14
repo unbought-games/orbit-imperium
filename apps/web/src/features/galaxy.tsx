@@ -211,7 +211,6 @@ export function Galaxy({
         fleetSlots={
           espionage.state.view?.protocol === 4 && (
             <FleetSlots
-              compact
               className={styles.slots}
               used={occupiedFleetSlots(espionage.state)}
               total={espionage.state.view.missions.fleet_slots}
@@ -287,12 +286,6 @@ export function Galaxy({
                   }
                   key={`${data.galaxy}:${data.system}:${position.coordinates.position}`}
                 >
-                  {position.coordinates.position === search.position &&
-                    !search.site && (
-                      <p className={styles.locationLabel}>
-                        Selected location [{galaxy}:{system}:{search.position}]
-                      </p>
-                    )}
                   <GalaxyPosition
                     position={position}
                     scanAction={
@@ -304,6 +297,7 @@ export function Galaxy({
                         (c) => c.capability === 'ScanPlanet' && c.enabled,
                       ) ? (
                         <PhalanxAction
+                          compact
                           key={`${origin}:${position.body.id}`}
                           model={model}
                           origin={origin}
@@ -335,6 +329,7 @@ export function Galaxy({
                     playerIdentity={
                       position.body ? (
                         <PlayerName
+                          truncate
                           showInsignia
                           player={position.body.owner}
                           names={data.player_names}

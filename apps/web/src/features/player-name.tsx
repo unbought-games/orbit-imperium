@@ -23,7 +23,9 @@ export function PlayerName({
   showInsignia = true,
   interactive = true,
   triggerRef,
+  truncate = false,
 }: {
+  truncate?: boolean
   player: string
   fallback?: string
   names?: PlayerNames
@@ -81,6 +83,7 @@ export function PlayerName({
   return interactive ? (
     <PlayerProfile
       triggerRef={triggerRef}
+      truncate={truncate}
       player={player}
       name={name}
       profile={profile}

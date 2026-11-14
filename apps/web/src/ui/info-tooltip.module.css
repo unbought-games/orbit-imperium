@@ -19,6 +19,21 @@
 .trigger[data-popup-open] {
   background: #ffffff12;
 }
+.inline {
+  position: relative;
+  min-height: 0;
+  height: 1lh;
+  padding-block: 0;
+}
+/* Inline explanations keep their hit area without enlarging the text line. */
+.inline::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: max(100%, 24px);
+  transform: translateY(-50%);
+}
 .trigger:focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;

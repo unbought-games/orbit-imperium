@@ -2096,6 +2096,36 @@ passed (699ms); both remaining rename browser cases passed (4.793s bundle
 preparation, 4.3s runner, no queue wait). The runner cleaned up its preview and
 browsers. `git diff --check` passed. Fresh PR/queue CI remains required.
 
+
+## November 13, 2026: Galaxy truncation retires previously repaired moon tour
+
+PR427 head `c2bb746cc095eec7bdeaba05eab70fce01f199f4`, CI run `43547568226`,
+job `132302491680` failed both 1440/390 variants of `shows planet and moon
+together and opens the creation notice and combat outcome`. In its inner 320px
+viewport, the test compared the moon control at x140 with the un-clipped inline
+text span ending at x145.828. Artifact `14095335744` shows the rendered player
+name correctly ellipsized before the moon: this is a geometry assertion defect,
+not a visible overlap or infrastructure failure.
+
+The November 12 canonical-report-URL entry above records this scenario's one
+previous repair in PR394. Per the one-repair rule, delete both expanded cases;
+do not repair the locator in that broad application tour or recreate the tour.
+Retained coverage: the existing object-actions component cases measure the visible
+profile link against the moon control at 320/1280px and preserve 44px targets,
+object menus, diameter and target kind. Traffic component cases retain ordering,
+no overflow and stable geometry. Deterministic `report-observation.test.ts` covers
+creation-notice diameter/coordinates/content without exposing body IDs;
+`moon-creation-summary.test.ts` retains combat success/failure and lunar preview
+semantics. Engine moon tests retain atomic creation, both bodies at one location
+and report delivery. Remaining `moons.spec.ts` cases retain moon selection,
+canonical facilities navigation and eligibility; coordinate-links and moon-fleets
+retain report/coordinate routing. The retired notice-to-facilities click is not
+recreated as another browser tour.
+
+Validation: 31 deterministic cases passed (1.18s total), 5 component cases passed
+(5.023s preparation / 7.3s runner), and both remaining moon application cases
+passed (5.530s / 7.7s). Formatting, focused lint and component typecheck passed.
+No production changes or screenshot refresh required for this test disposition.
 ## November 13, 2026: retire unexplained Large Shield Dome overview startup failure
 
 PR #418 head `693d539253c3de9e20950cc04a1c875893ed02c0`, merge-group

@@ -222,28 +222,55 @@ for (const width of [320, 390, 1280]) {
   })
 }
 
-test('flight summary preserves native disclosure through refreshed countdowns', async ({
+test('flight details stay open through refreshed countdowns and dismiss with Escape', async ({
   page,
   mount,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 400 })
   await mount('galaxy-disclosure')
-  const disclosure = page.getByLabel('Your fleets to [1:371:2]', {
+  const trigger = page.getByRole('button', {
+    name: 'Your fleets to [1:371:2] details',
     exact: true,
   })
-  const trigger = disclosure.locator('summary')
-  await expect(trigger).toHaveAccessibleName('Show 6 fleets to [1:371:2]')
-  await expect(disclosure.locator('ul')).toBeHidden()
+  const disclosure = page.getByRole('dialog', {
+    name: 'Your fleets to [1:371:2]',
+    exact: true,
+  })
+  await expect(disclosure).toBeHidden()
   await trigger.focus()
-  await trigger.press('Enter')
+  await expect(disclosure).toBeVisible()
   await expect(disclosure.locator('li')).toHaveCount(6)
-  await expect(disclosure.locator('ul')).toBeVisible()
-  await page.getByRole('button', { name: 'Refresh snapshot' }).click()
-  await expect(disclosure.locator('ul')).toBeVisible()
+  const bounds = (await disclosure.boundingBox())!
+  expect(bounds.y).toBeGreaterThanOrEqual(12)
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(388)
+  await trigger.press('Tab')
+  await expect(
+    disclosure.getByRole('list', { name: 'Fleet details' }),
+  ).toBeFocused()
+  await page.keyboard.press('End')
+  await expect
+    .poll(() => disclosure.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0)
+  await page.keyboard.press('Shift+Tab')
+  await expect(trigger).toBeFocused()
+  // Snapshot delivery must not require focus to leave the open details.
+  await page
+    .getByRole('button', { name: 'Refresh snapshot' })
+    .evaluate((button: HTMLButtonElement) => button.click())
+  await expect(disclosure).toBeVisible()
   await expect(disclosure.locator('li')).toHaveCount(5)
-  await expect(trigger).toHaveAccessibleName('Show 5 fleets to [1:371:2]')
-  await expect(trigger).toContainText('1m 0s')
-  await trigger.click()
-  await expect(disclosure.locator('ul')).toBeHidden()
+  await expect(disclosure.locator('li').first()).toContainText('1m 0s')
+  await expect(trigger).toContainText('5')
+  await page.keyboard.press('Escape')
+  await expect(disclosure).toBeHidden()
+  await expect(trigger).toBeFocused()
+  await trigger.press('Enter')
+  await expect(disclosure).toBeVisible()
+  await page
+    .getByRole('button', { name: 'Refresh snapshot' })
+    .evaluate((button: HTMLButtonElement) => button.click())
+  await expect(disclosure).toHaveCount(0)
+  await expect(trigger).toHaveCount(0)
 })
 
 test('empty inventory and unavailable catalog do not fabricate rows', async ({

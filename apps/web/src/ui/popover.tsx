@@ -1,5 +1,6 @@
 import {
   cloneElement,
+  useId,
   type ComponentPropsWithRef,
   type ReactElement,
   type Ref,
@@ -39,17 +40,23 @@ export function Popover({
   showTitle = true,
   placement = 'bottom',
   triggerRef,
+  triggerDescription,
 }: {
   label: string
   trigger: ReactNode
   children: ReactNode
   className?: string
+  triggerDescription?: string
   triggerRef?: Ref<HTMLElement>
   surfaceClassName?: string
   showTitle?: boolean
   placement?: Placement
   link?: ReactElement<ComponentPropsWithRef<'a'>>
 }) {
+  const descriptionId = useId()
+  const descriptionProps = triggerDescription
+    ? { 'aria-describedby': descriptionId }
+    : {}
   const [open, setOpen] = useState(false)
   const { refs, floatingStyles, context } = useFloating({
     open,
@@ -88,6 +95,7 @@ export function Popover({
           ref: referenceRef,
           className,
           ...getReferenceProps({
+            ...descriptionProps,
             'aria-label': link.props['aria-label'] ?? label,
             onKeyUp: (event) => {
               if (event.key === 'Tab') setOpen(true)
@@ -102,6 +110,7 @@ export function Popover({
           ref={referenceRef}
           className={className}
           {...getReferenceProps({
+            ...descriptionProps,
             'aria-label': `${label} details`,
             // A hover popup dismissed with Escape may not have focused its
             // trigger. Explicit keyboard re-entry must still reopen it, even
@@ -113,6 +122,11 @@ export function Popover({
         >
           {trigger}
         </Button>
+      )}
+      {triggerDescription && (
+        <span id={descriptionId} hidden>
+          {triggerDescription}
+        </span>
       )}
       {open && (
         <FloatingPortal

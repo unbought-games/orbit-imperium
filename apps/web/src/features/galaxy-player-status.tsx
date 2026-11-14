@@ -19,6 +19,7 @@ export function GalaxyPlayerStatuses({
     <span className={styles.statusIcons}>
       {body.inactivity !== 'Active' && (
         <InfoTooltip
+          inline
           label={
             body.inactivity === 'Inactive28'
               ? 'Inactive for 28 days or more'
@@ -40,6 +41,7 @@ export function GalaxyPlayerStatuses({
       )}
       {body.vacation && (
         <InfoTooltip
+          inline
           label="Vacation mode"
           description="This player is away. Attacks and espionage against them are unavailable."
           className={styles.vacation}
@@ -49,6 +51,7 @@ export function GalaxyPlayerStatuses({
       )}
       {protectedTarget && (
         <InfoTooltip
+          inline
           label="Beginner protection"
           description={protectionExplanation}
           className={styles.protectionBadge}
@@ -65,6 +68,7 @@ export function GalaxyActivity({ activity }: { activity: Body['activity'] }) {
   const recent = activity.type === 'Recent'
   return (
     <InfoTooltip
+      inline
       label={
         recent
           ? 'Activity within the last 15 minutes'
