@@ -55,7 +55,7 @@ it('shares a source request, refreshes changed tiers and clears removed support'
   ).toBeUndefined()
   expect(currentPlayer(c.store.getState(), 'other')?.username).toBe('Commander')
 })
-it('expires at the exact deadline even during an outage', async () => {
+it('keeps the last confirmed display through expiry and an outage', async () => {
   const response = result(2)
   response.players[0].expires_at = 115
   const c = start(
@@ -64,7 +64,7 @@ it('expires at the exact deadline even during an outage', async () => {
   await vi.advanceTimersByTimeAsync(14_999)
   expect(currentPlayer(c.store.getState(), 'other')?.supporter_tier).toBe(2)
   await vi.advanceTimersByTimeAsync(1)
-  expect(currentPlayer(c.store.getState(), 'other')).toBeUndefined()
+  expect(currentPlayer(c.store.getState(), 'other')?.supporter_tier).toBe(2)
 })
 it('does not overwrite a fresh public profile with an older or fallback observation', async () => {
   const c = start(async () => result(3))
@@ -171,7 +171,7 @@ it('refreshes affiliation after social changes and fences older in-flight respon
   cleanup.push(c.watch({ type: 'Rankings', players: ['other'] }))
   c.refreshAll()
   expect(signals[1].aborted).toBe(true)
-  expect(currentPlayer(c.store.getState(), 'other')).toBeUndefined()
+  expect(currentPlayer(c.store.getState(), 'other')?.alliance?.tag).toBe('OLD')
   await vi.advanceTimersByTimeAsync(0)
   expect(currentPlayer(c.store.getState(), 'other')?.username).toBe('Commander')
   expect(currentPlayer(c.store.getState(), 'other')?.alliance).toBeUndefined()
@@ -180,7 +180,7 @@ it('refreshes affiliation after social changes and fences older in-flight respon
   expect(currentPlayer(c.store.getState(), 'other')?.alliance).toBeUndefined()
 })
 
-it('retains authored identity through an outage while expiring supporter decoration', async () => {
+it('retains the last authored identity and decoration through an outage', async () => {
   const response = result(2)
   response.players[0].identity = {
     name: 'Roman Empire',
@@ -198,7 +198,9 @@ it('retains authored identity through an outage while expiring supporter decorat
     vi.fn().mockResolvedValueOnce(response).mockRejectedValue(Error('offline')),
   )
   await vi.advanceTimersByTimeAsync(15_000)
-  expect(currentPlayer(c.store.getState(), 'other')).toBeUndefined()
+  expect(currentPlayer(c.store.getState(), 'other')?.identity?.name).toBe(
+    'Roman Empire',
+  )
   expect(c.store.getState().players.other.identity?.name).toBe('Roman Empire')
 })
 
@@ -227,4 +229,76 @@ it('accepts fresh local identity after expired membership evidence even when Acc
   expect(
     currentPlayer(c.store.getState(), 'other')?.supporter_tier,
   ).toBeUndefined()
+})
+
+it.each([
+  { type: 'SelfAccount' },
+  { type: 'Galaxy', galaxy: 1, system: 1 },
+] satisfies ProfileSource[])(
+  '$type keeps the emblem during a held refresh and accepts removal',
+  async (source) => {
+    const first = result()
+    first.players[0].insignia = {
+      recipe: {
+        version: 1,
+        symbol: 'compass',
+        foreground: '#cbb68d',
+        background: '#152b40',
+      },
+      asset_url: '/compass.svg',
+    }
+    let finish!: (value: PlayerProfiles) => void
+    const api = vi
+      .fn()
+      .mockResolvedValueOnce(first)
+      .mockImplementationOnce(
+        () =>
+          new Promise<PlayerProfiles>((resolve) => {
+            finish = resolve
+          }),
+      )
+    const c = new PlayerProfilesController(api)
+    cleanup.push(c.start(), c.watch(source))
+    await vi.advanceTimersByTimeAsync(0)
+    const displayed: boolean[] = []
+    cleanup.push(
+      c.store.subscribe((state) =>
+        displayed.push(!!currentPlayer(state, 'other')?.insignia),
+      ),
+    )
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(api).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(currentPlayer(c.store.getState(), 'other')?.insignia).toEqual(
+      first.players[0].insignia,
+    )
+    expect(displayed).not.toContain(false)
+    finish(result(undefined, 161))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(currentPlayer(c.store.getState(), 'other')?.insignia).toBeUndefined()
+    expect(currentPlayer(c.store.getState(), 'other')?.username).toBe(
+      'Commander',
+    )
+  },
+)
+
+it('restores a cached display immediately and refreshes it without blanking', async () => {
+  const saved = result(2).players[0]
+  vi.setSystemTime(200_000)
+  const cache = { load: () => ({ other: saved }), save: vi.fn() }
+  let finish!: (value: PlayerProfiles) => void
+  const c = new PlayerProfilesController(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+    cache,
+  )
+  expect(currentPlayer(c.store.getState(), 'other')).toEqual(saved)
+  cleanup.push(c.start(), c.watch({ type: 'SelfAccount' }))
+  expect(currentPlayer(c.store.getState(), 'other')).toEqual(saved)
+  finish(result(3, 200))
+  await vi.advanceTimersByTimeAsync(0)
+  expect(currentPlayer(c.store.getState(), 'other')?.supporter_tier).toBe(3)
+  expect(cache.save).toHaveBeenCalledWith(c.store.getState().players)
 })

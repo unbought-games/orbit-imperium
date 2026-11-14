@@ -18,6 +18,7 @@ import {
   type ProfileSource,
 } from '../adapters/player-profiles'
 import { useGameSession } from './session-context'
+import { playerProfileCache } from '../adapters/player-profile-cache'
 
 export const PlayerProfilesContext =
   createContext<PlayerProfilesController | null>(null)
@@ -30,7 +31,11 @@ export function PlayerProfilesProvider({
 }) {
   const { view } = useGameSession()
   const [controller] = useState(
-    () => new PlayerProfilesController(playerProfilesApi(view.binding, csrf)),
+    () =>
+      new PlayerProfilesController(
+        playerProfilesApi(view.binding, csrf),
+        playerProfileCache(view.binding),
+      ),
   )
   useEffect(() => {
     const stop = controller.start()

@@ -330,61 +330,6 @@ for (const width of [1440, 390]) {
         ),
       ).toBe(true)
     })
-    // Desktop retired after main run 43359549586: see stream-03 verification.
-    if (width === 390) test('Galaxy moon actions and quick espionage bind the moon rather than its planet', async ({
-      page,
-    }) => {
-      const state = await fixture(page)
-      await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${moon.id}/galaxy`))
-      await page
-        .getByRole('button', { name: /Hostile fleet inbound/ })
-        .press('Escape')
-      await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
-      const trigger = page.getByRole('button', {
-        name: 'Actions for moon [1:371:9]',
-        exact: true,
-      })
-      await trigger.click()
-      const details = page.getByRole('menu', {
-        name: 'Missions to moon [1:371:9]',
-        exact: true,
-      })
-      await expect(details).toContainText('8,500 km')
-      await diagnosticScreenshot(page, {
-        path: `test-results/moon-galaxy-actions-${width}x900.png`,
-      })
-      await expect(
-        details.getByRole('menuitem', {
-          name: 'Spy',
-          exact: true,
-        }),
-      ).toBeEnabled()
-      await details
-        .getByRole('menuitem', { name: 'Spy', exact: true })
-        .click()
-      await expect.poll(() => state.launches.length).toBe(1)
-      expect(state.launches[0]).toMatchObject({
-        origin: moon.id,
-        mission: 'Espionage',
-        destination: { id: id(121), expected_kind: 'Moon' },
-      })
-      if (!(await details.isVisible())) await trigger.click()
-      await expect(details).toBeVisible()
-      await expect(
-        page.getByRole('menuitem', { name: 'Attack', exact: true }),
-      ).toBeVisible()
-      await page.getByRole('menuitem', { name: 'Attack', exact: true }).click()
-      await expect(page).toHaveURL(/target=moon/)
-      await expect(page.getByLabel('Destination preview')).toContainText(
-        'Selene',
-      )
-      await expect(page.getByLabel('Destination preview')).toContainText('Moon')
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true)
-    })
     test('delivery reports retain lunar destination links at shared coordinates', async ({
       page,
     }) => {

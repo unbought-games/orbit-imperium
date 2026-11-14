@@ -241,3 +241,38 @@ application cases passed (7.1s runner). No production changes beyond incoming
 main and no changes to previously green unrelated cases. Final count is 110
 required application and 110 component cases. PR/merge-group CI verifies the
 integrated revision; prior head checks are not substituted for that validation.
+
+## November 14: remaining mobile moon reopening tour retired
+
+PR #436 merge-group revision `e72beab0671b556154b76b8152edc56c7a99b3a7`,
+run `43633228092`, attempt 1, feature job `132564339491`, artifact
+`14128963290` failed the remaining 390px case "Galaxy moon actions and quick
+espionage bind the moon rather than its planet". The exact case passed on PR
+head `1f0aa8f11fd7e54e2c78a6347856bdd55158712e`. The failure follows the
+successful quick-spy intent assertion and conditional `isVisible`/click at the
+same reopening step recorded for the retired desktop variant above. The DOM
+and screenshot show the moon trigger focused, no menu, and a Probe away HUD
+receipt. They do not establish the precise dismissal or reopening order.
+
+Inspected the original implementation (`34c36a1e`), response-aware fixture
+change (`6292946b`), desktop retirement (`7d57e053`), and object-menu migration
+(`c96adf45`), plus GalaxyMoon/GalaxyActionMenu and the earlier retirement record.
+There is no evidence of infrastructure failure or a demonstrated product
+regression. Under the unexplained-failure rule, retire the remaining mobile
+variant without another speculative timing patch, timeout increase or unchanged
+retry. No production behavior changes for this disposition.
+
+Retained: `galaxy-body.test.ts` public Moon identity, `location-address.test.ts`
+Moon draft addressing, `galaxy-mission-actions.test.ts` Moon/Planet eligibility,
+and existing `galaxy-object-actions.component.spec.ts` at 320/1280px for actual
+menus, diameter, independent profiles, focus and target kind. Remaining
+moon-fleets cases retain quick-espionage errors, Moon launch/review, delivery
+report links and inventory routing. Lost: the exact mobile quick Spy → conditional
+reopen → Attack application tour; it is not recreated in another browser case.
+
+Validation: all 14 focused deterministic tests passed in 0.243s; both existing
+object-menu components passed (4.397s preparation, 1.3s/1.1s execution, 3.3s
+runner). The failed queue attempt was manually removed for this repair after
+12m08s between its recorded issue-timeline queue events (19:38:39–19:50:47 UTC).
+The failing feature shard had 110 passes and one failure in
+3.6 minutes. No other queue failure or test retry is folded into these results.
