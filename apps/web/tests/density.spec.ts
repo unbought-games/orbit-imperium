@@ -58,7 +58,7 @@ for (const viewport of [
   { width: 390, height: 844 },
   { width: 320, height: 740 },
 ]) {
-  test(`fleet tasks lead the first viewport at ${viewport.width}px`, async ({
+  test(`fleet inventory leads the first viewport and traffic stays reachable at ${viewport.width}px`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport)
@@ -78,13 +78,16 @@ for (const viewport of [
       exact: true,
     })
     await firstViewport(page, [
-      recall,
+      page.getByRole('heading', { name: 'Fleets', level: 2, exact: true }),
+      page.getByRole('button', { name: 'Empire', exact: true }),
       page.getByRole('link', { name: 'Dispatch Fleet' }),
-      page.getByText('Arrives in', { exact: true }),
     ])
     await diagnosticScreenshot(page, {
       path: `test-results/density-fleets-${viewport.width}.png`,
     })
+    await recall.scrollIntoViewIfNeeded()
+    await expect(recall).toBeInViewport({ ratio: 1 })
+    await expect(page.getByText('Arrives in', { exact: true })).toBeInViewport()
     await page
       .getByRole('link', { name: /^View .* fleet$/ })
       .click()
@@ -401,7 +404,7 @@ for (const width of [390, 1280]) {
       await expect(page.locator('main h1')).toHaveText(title)
       await expect(page.locator('main h1')).toBeFocused()
       await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
-      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' ? 1 : 0)
+      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' || route === 'fleets' ? 1 : 0)
       if (route === 'fleets') {
         await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
         await expect(page.getByRole('button', { name: /^Fleet slots:/ })).toBeVisible()

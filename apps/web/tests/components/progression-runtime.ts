@@ -1,3 +1,4 @@
+import { simulationCatalog } from '../fixtures/simulation-catalog'
 import { readyFixture, id } from '../../src/test-support/bootstrap'
 import { productionFixture } from '../../src/test-support/production'
 import {
@@ -305,6 +306,7 @@ export async function createProgressionScene(params: URLSearchParams) {
     if (mode === 'stats') cargo.ship_statistics = shipStatistics
     else delete cargo.ship_statistics
   }
+  if (mode === 'ship-order') view.catalog = structuredClone(simulationCatalog)
   let sequence = 100
   const metadata = (context: QueryContext) => ({
     protocol,

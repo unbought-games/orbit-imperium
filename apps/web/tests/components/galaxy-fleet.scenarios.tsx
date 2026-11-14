@@ -7,7 +7,10 @@ import {
 import { GalaxyHarvestPresentation } from '../../src/features/galaxy-harvest-action'
 import { GalaxyActionMenu } from '../../src/features/galaxy-action-menu'
 import { GalaxyFlightSummary } from '../../src/features/galaxy-flight-summary'
-import { FleetInventoryView } from '../../src/features/fleet-inventory'
+import {
+  FleetInventoryView,
+  FleetScopeControl,
+} from '../../src/features/fleet-inventory'
 import {
   fleetPresentationFixture,
   fleetFixtureTime,
@@ -19,6 +22,8 @@ import {
 } from '../../src/client-model/galaxy-harvest'
 import type { GalaxyFlight } from '../../src/client-model/galaxy-fleets'
 import { Button } from '../../src/ui/button'
+import { TaskHeader } from '../../src/ui/task-header'
+import type { FleetInventoryScope } from '../../src/features/fleet-inventory-model'
 
 export function FleetPresentationRoutes({ children }: { children: ReactNode }) {
   const [router] = useState(() =>
@@ -116,6 +121,7 @@ export function GalaxyHarvestScenario() {
 }
 
 export function FleetInventoryScenario() {
+  const [scope, setScope] = useState<FleetInventoryScope>('world')
   const [fixture] = useState(fleetPresentationFixture)
   const [origin, setOrigin] = useState(fixture.body.id)
   const [groups, setGroups] = useState(false)
@@ -151,7 +157,18 @@ export function FleetInventoryScenario() {
         <Button onClick={() => setCatalogAvailable(false)}>
           Clear catalog
         </Button>
-        <FleetInventoryView view={view} origin={origin} universe="Andromeda" />
+        <TaskHeader
+          title="Fleets"
+          titleControls={
+            <FleetScopeControl scope={scope} onChange={setScope} />
+          }
+        />
+        <FleetInventoryView
+          view={view}
+          origin={origin}
+          universe="Andromeda"
+          scope={scope}
+        />
       </main>
     </FleetPresentationRoutes>
   )

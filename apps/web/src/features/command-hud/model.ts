@@ -232,7 +232,7 @@ export function noticeContent(
       target.id,
     )
     if (!header || header.hidden) return null
-    const preview = reportPreview(header.preview, state.binding?.player)
+    const preview = reportPreview(header.preview)
     return {
       title:
         header.kind === 'SiteEncounter'

@@ -776,7 +776,7 @@ for (const width of [320, 390, 1280]) {
     const cards = page.getByRole('article').filter({ has: page.getByRole('group', { name: 'Carried resources' }) })
     await expect(cards).toHaveCount(5)
     for (let index = 0; index < cases.length; index++) await verifyCargo(cards.nth(index), index)
-    await expect(page.getByRole('region', { name: 'Incoming fleets' }).getByRole('group', { name: 'Carried resources' })).toHaveCount(0)
+    await expect(page.getByRole('article', { name: /^Incoming .* fleet$/ }).getByRole('group', { name: 'Carried resources' })).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await diagnosticScreenshot(cards.nth(2), { path: `test-results/cargo-returning-attack-${width}.png` })
     await cards.nth(2).getByRole('link', { name: /^View .* fleet$/ }).click()

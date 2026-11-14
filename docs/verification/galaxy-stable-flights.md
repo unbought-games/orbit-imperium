@@ -369,3 +369,20 @@ Validation: 31 deterministic cases passed (1.18s total), 5 component cases passe
 (5.023s preparation / 7.3s runner), and both remaining moon application cases
 passed (5.530s / 7.7s). Formatting, focused lint and component typecheck passed.
 No production changes or screenshot refresh required for this test disposition.
+
+
+## Main integration for mergeability
+
+Merged main `3b97e6ff` into task head `575c7165` because GitHub reported a merge
+conflict. The only textual conflict was concurrent append-only repair records;
+both records were preserved. Auto-merged the existing Galaxy, fleet and routing
+coverage with main's inventory/dispatch changes and Galaxy hotkeys. Installed
+main's locked dependencies, including react-hotkeys-hook.
+
+Combined revision validation: 55 unit tests passed (1.15s total), 25 isolated
+components including Galaxy hotkeys passed (3.965s preparation / 21.6s runner),
+and all 78 Galaxy, moon and coordinate application cases passed (5.120s / 2.6m).
+`make _static` and application TypeScript passed. No failed integration checks.
+Fresh actual-game desktop/mobile captures are in `test-results/galaxy-merge-final/`
+(1280×900 and 390×844). The preview recovered after reloading the installed
+hotkeys dependency; it remains signed in with its temporary viewport reset.

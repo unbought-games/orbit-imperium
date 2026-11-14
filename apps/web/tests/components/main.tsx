@@ -60,6 +60,10 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  'report-readability': async () =>
+    (await import('./report-readability.scenario')).ReportReadabilityScenario,
+  'galaxy-navigation': async () =>
+    (await import('./galaxy-navigation.scenario')).GalaxyNavigationScenario,
   'cosmetic-treatments': async () =>
     (await import('./cosmetic-treatments.scenarios'))
       .CosmeticTreatmentsScenario,
@@ -99,6 +103,10 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'public-alliance-directory': async () =>
     (await import('./recruitment.story')).PublicRecruitmentStory,
   'quick-fleet': async () => (await import('./quick-fleet')).QuickFleetScene,
+  'dispatch-prepared': async () =>
+    (await import('./dispatch')).DispatchPreparedScene,
+  'dispatch-prepared-blocked': async () =>
+    (await import('./dispatch')).DispatchPreparedBlockedScene,
   dispatch: async () => (await import('./dispatch')).DispatchScene,
   'dispatch-historical': async () =>
     (await import('./dispatch')).DispatchHistoricalScene,
@@ -129,6 +137,7 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'galaxy-disclosure': async () =>
     (await import('./galaxy-fleet.scenarios')).GalaxyDisclosureScenario,
   popover: async () => (await import('./popover')).PopoverExample,
+  timestamp: async () => (await import('./timestamp.scenario')).TimestampScenario,
   'number-form': async () => NumberForm,
   loading: async () => LoadingExample,
   'action-sheet': async () =>

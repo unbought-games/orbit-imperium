@@ -76,15 +76,10 @@ export function combatOutcome(outcome: unknown, side?: string) {
   }
 }
 
-/** Only a victorious attacking viewer receives loot; zero balances add no useful summary. */
-export function hasCombatLoot(
-  outcome: unknown,
-  side: string | undefined,
-  loot: unknown,
-) {
+/** Loot is a recipient-visible battle fact, including resources stolen from defenders. */
+export function hasCombatLoot(outcome: unknown, loot: unknown) {
   return (
     outcome === 'AttackerVictory' &&
-    side === 'Attacker' &&
     Object.values(record(loot)).some(
       (value) => (combatInteger(value) ?? 0n) > 0n,
     )
@@ -203,12 +198,7 @@ export function combatReportModel(
     .filter(
       ({ key }) =>
         key in payload &&
-        (key !== 'loot' ||
-          hasCombatLoot(
-            payload.outcome,
-            shared || ownSides.has('Attacker') ? 'Attacker' : side,
-            payload.loot,
-          )) &&
+        (key !== 'loot' || hasCombatLoot(payload.outcome, payload.loot)) &&
         (key !== 'own_cargo_loss' ||
           Object.values(record(payload[key])).some(
             (v) => combatInteger(v) !== 0n,

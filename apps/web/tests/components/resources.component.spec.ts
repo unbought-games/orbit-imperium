@@ -12,6 +12,84 @@ async function open(page: Page, params: Record<string, string> = {}) {
   )
 }
 
+// Mobile generated labels must distinguish ship quantities from building levels.
+test('satellite quantity labels preserve the output slider across mobile and desktop', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 1200 })
+  await open(page, { page: 'production' })
+  await page.evaluate(async () => {
+    const scene = window.resourceScene
+    scene.view.bodies[0].inventories.push({
+      item: { kind: 'Ship', id: 'SolarSatellite' },
+      count: '8',
+    })
+    const production = scene.view.progression.production[0]
+    production.editable.push('solar_satellite')
+    production.solar_satellite = {
+      energy_supply: '216000000',
+      unit_energy: '27000000',
+    }
+    await scene.refresh()
+  })
+  const satellite = page.getByRole('row', { name: /Solar Satellite/ })
+  const quantity = satellite.getByRole('cell').first()
+  const level = page
+    .getByRole('row', { name: /Solar Plant/ })
+    .getByRole('cell')
+    .first()
+  const slider = satellite.getByRole('slider')
+  await expect(quantity).toHaveText('8')
+  expect(
+    await quantity.evaluate((el) => getComputedStyle(el, '::before').content),
+  ).toBe('"Qty "')
+  expect(
+    await level.evaluate((el) => getComputedStyle(el, '::before').content),
+  ).toBe('"Lv "')
+  await expect(slider).toHaveCount(1)
+  await expect(slider).toHaveValue('100')
+  await diagnosticScreenshot(page, {
+    path: 'test-results/satellite-production-mobile-390x1200.png',
+  })
+  await slider.press('ArrowLeft')
+  await expect(slider).toHaveValue('90')
+  await expect(slider).toHaveAttribute('aria-valuetext', '90%')
+  await expect(page.getByRole('status')).toHaveText(
+    'All changes saved automatically.',
+  )
+  await expect(quantity).toHaveText('8')
+  expect(
+    await page.evaluate(() => window.resourceScene.sent.map((e) => e.command)),
+  ).toMatchObject([
+    { type: 'SetProduction', settings: { solar_satellite: 90 } },
+  ])
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/satellite-production-mobile-output-90-390x1200.png',
+  })
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await expect(
+    page.getByRole('columnheader', { name: 'Level / quantity' }),
+  ).toBeVisible()
+  expect(
+    await quantity.evaluate((el) => getComputedStyle(el, '::before').content),
+  ).toBe('none')
+  await expect(quantity).toHaveText('8')
+  await expect(slider).toHaveValue('90')
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await diagnosticScreenshot(page, {
+    path: 'test-results/satellite-production-desktop-1440x1000.png',
+  })
+})
+
 // Native pointer/keyboard geometry belongs here; HTTP, history and storage
 // restoration remain in resources.spec.ts.
 test('production sliders support mouse, keyboard bounds and final saves', async ({

@@ -82,3 +82,26 @@ it.each(['attacker', 'defender'] as const)(
     }
   },
 )
+
+it('keeps combined allied survivors in canonical field order even when a primary fleet omits a type', () => {
+  const cargo = { item: { kind: 'Ship', id: 'SmallCargo' } as const, count: 2 }
+  const mixed = {
+    ...inputs,
+    attacker: { ...inputs.attacker, units: [cargo] },
+    attacking_allies: [inputs.attacker],
+  }
+  const ordered = [
+    ...fields,
+    {
+      ...fields[1],
+      key: 'attacker:cargo',
+      label: 'SmallCargo',
+      item: cargo.item,
+    },
+  ]
+  expect(
+    combinedSimulationUnits(mixed, 'attacker', ordered).map(
+      (unit) => unit.item.id,
+    ),
+  ).toEqual(['LightFighter', 'SmallCargo'])
+})

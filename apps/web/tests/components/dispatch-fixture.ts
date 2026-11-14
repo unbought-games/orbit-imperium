@@ -49,6 +49,54 @@ export async function createDispatchFixture() {
       ...context,
     }),
     view: async (context) => ({ ...structuredClone(source), ...context }),
+    reports: async (context, _cursor, _hidden, query) => {
+      if (options.resourceVisibility === 'Error') throw Error('Unavailable')
+      return {
+        protocol: 4,
+        ...context,
+        viewer_revision: source.viewer_revision,
+        sampled_at: now,
+        as_of_ms: now,
+        data: {
+          items:
+            query?.filter.target_body === id(20) &&
+            options.resourceVisibility !== 'Missing'
+              ? [
+                  {
+                    id: id(90),
+                    kind: 'Espionage',
+                    observed_at: now - 3600000,
+                    read: false,
+                    hidden: false,
+                    preview: {
+                      kind: 'Espionage',
+                      target: {
+                        body: id(20),
+                        owner: id(30),
+                        kind: 'Planet',
+                        coordinates: { galaxy: 1, system: 1, position: 1 },
+                      },
+                      resources:
+                        options.resourceVisibility === 'Unknown'
+                          ? { visibility: 'Unknown' }
+                          : {
+                              visibility: 'Known',
+                              value: {
+                                metal: '12000000000',
+                                crystal: '6000000000',
+                                deuterium: '2000000000',
+                              },
+                            },
+                    },
+                  },
+                ]
+              : [],
+          next_cursor: null,
+          has_more: false,
+          as_of_ms: now,
+        },
+      }
+    },
     quote: async () => fail('progression quote'),
     submit: async (envelope) => {
       if (

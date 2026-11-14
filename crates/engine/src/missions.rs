@@ -1211,7 +1211,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                     .iter()
                                     .find(|x| x.ship_type == ShipType::Recycler)
                                     .map_or(0, |x| x.count)
-                                    .checked_mul(20000 * SCALE)
+                                    .checked_mul(RECYCLER_HARVEST_CAPACITY)
                                     .ok_or(GameError::NumericRange)?;
                                 let free = (cap - sum(f.cargo)?).max(0).min(recycler) / SCALE;
                                 let [m, k, d] = harvest_allocation(
@@ -1436,6 +1436,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
     });
     Ok(c)
 }
+/// Maximum debris collection per recycler, in resource micro-units.
+pub const RECYCLER_HARVEST_CAPACITY: i64 = 20_000 * SCALE;
+
 pub fn payload_capacity(ships: &[ShipStack], r: &Ruleset) -> Result<i64, GameError> {
     ships.iter().try_fold(0i64, |sum, x| {
         let rule = r

@@ -1,22 +1,29 @@
 import { Fragment } from 'react'
+import { CircleHelp } from 'lucide-react'
+import { InfoTooltip } from '../ui/info-tooltip'
 import { shipGroup } from './ship-order'
-import { CoordinateLink } from './coordinate-link'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
 import { useUniverseName } from '../shell/session-context'
 import { routeTarget } from '../shell/route-target'
-import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
-import { bodyName, label } from '../ui/format'
+import { resolveCatalogArt } from '../ui/artwork'
+import { label } from '../ui/format'
 import { NumberValue } from '../ui/number-value'
-import { Heading, Text } from '../ui/typography'
-import { fleetInventoryRows } from './fleet-inventory-model'
+import { Text } from '../ui/typography'
+import { SegmentedControl } from '../ui/segmented-control'
+import {
+  fleetInventoryRows,
+  type FleetInventoryScope,
+} from './fleet-inventory-model'
 import styles from './fleet-inventory.module.css'
 
 export function FleetInventory({
   model,
   origin,
+  scope,
 }: {
+  scope: FleetInventoryScope
   model: Coordinator
   origin: string
 }) {
@@ -24,7 +31,14 @@ export function FleetInventory({
   // Inventory and queues must come from the same confirmed snapshot, not launch overlays.
   const view = useStore(model.store, (state) => state.view)
   if (!view || view.protocol === 2) return null
-  return <FleetInventoryView view={view} origin={origin} universe={universe} />
+  return (
+    <FleetInventoryView
+      view={view}
+      origin={origin}
+      universe={universe}
+      scope={scope}
+    />
+  )
 }
 
 /** Confirmed snapshot presentation, independent of session and transport lifetime. */
@@ -32,49 +46,35 @@ export function FleetInventoryView({
   view,
   origin,
   universe,
+  scope,
 }: {
+  scope: FleetInventoryScope
   view: Parameters<typeof fleetInventoryRows>[0]
   origin: string
   universe: string
 }) {
+  const empire = scope === 'empire'
   const body = view.bodies.find((candidate) => candidate.id === origin)
   if (!body) return null
-  const ships = fleetInventoryRows(view, body)
+  const ships = fleetInventoryRows(view, body, scope)
   const hasCatalog = view.catalog.some((entry) => entry.key.kind === 'Ship')
   const empty = !body.inventories.some(
     (inventory) =>
       inventory.item.kind === 'Ship' && BigInt(inventory.count) > 0n,
   )
   return (
-    <section aria-label="Stationed ships" className={styles.inventory}>
-      <div className={styles.header}>
-        <div>
-          <Heading level={2}>Stationed ships</Heading>
-          <Text>
-            {bodyName(body)}{' '}
-            <CoordinateLink
-              at={body.coordinates}
-              target={body.kind === 'Moon' ? 'moon' : 'planet'}
-            />
-          </Text>
-        </div>
-        <ButtonLink
-          variant="secondary"
-          {...routeTarget(universe, 'shipyard', body.id)}
-        >
-          Open Shipyard
-        </ButtonLink>
-      </div>
-      <Text>
-        Confirmed counts. Flying ships departed from this world, including
-        returning fleets. Queued ships are still being built. Pending orders
-        appear after confirmation.
-      </Text>
-      {empty && (
+    <section
+      aria-label={empire ? 'Empire ships' : 'Stationed ships'}
+      className={styles.inventory}
+    >
+      {empty && !empire && (
         <Text>
           No ships stationed here. Build your first ships in the Shipyard or
           wait for a fleet to return.
         </Text>
+      )}
+      {empire && ships.length === 0 && hasCatalog && (
+        <Text>No ships stationed, flying or queued in your empire.</Text>
       )}
       {ships.length > 0 && (
         <div
@@ -87,9 +87,29 @@ export function FleetInventoryView({
             <thead>
               <tr>
                 <th scope="col">Ship</th>
+                {empire && <th scope="col">Total</th>}
                 <th scope="col">Stationed</th>
-                <th scope="col">Flying</th>
-                <th scope="col">Queued</th>
+                <th scope="col">
+                  <span className={styles.columnLabel}>
+                    {empire ? 'Flying' : 'Away'}
+                    <InfoTooltip
+                      label={empire ? 'Flying ships' : 'Away ships'}
+                      description={
+                        empire
+                          ? 'Your ships on outbound, holding, or returning missions across the empire.'
+                          : 'Your ships launched here that are outbound, holding, or returning. Arrivals from other origins are not included.'
+                      }
+                    >
+                      <CircleHelp size={16} aria-hidden="true" />
+                    </InfoTooltip>
+                  </span>
+                </th>
+                <th
+                  scope="col"
+                  title="Confirmed ships still being built; excluded from totals"
+                >
+                  Queued
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -101,7 +121,11 @@ export function FleetInventoryView({
                       shipGroup(ships[index - 1].entry) !==
                         shipGroup(entry)) && (
                       <tr className={styles.group}>
-                        <th scope="rowgroup" role="rowheader" colSpan={4}>
+                        <th
+                          scope="rowgroup"
+                          role="rowheader"
+                          colSpan={empire ? 5 : 4}
+                        >
                           {shipGroup(entry)}
                         </th>
                       </tr>
@@ -120,9 +144,24 @@ export function FleetInventoryView({
                           title={`Build more ${name} in Shipyard`}
                           className={styles.build}
                         >
-                          {name}
+                          <img
+                            src={resolveCatalogArt(entry.key).thumbnail}
+                            width={32}
+                            height={32}
+                            alt=""
+                          />
+                          <span>{name}</span>
                         </Link>
                       </th>
+                      {empire && (
+                        <td className={styles.total}>
+                          {counts.total === null ? (
+                            'Unknown'
+                          ) : (
+                            <NumberValue value={counts.total} />
+                          )}
+                        </td>
+                      )}
                       <td>
                         <NumberValue value={counts.stationed} />
                       </td>
@@ -151,12 +190,6 @@ export function FleetInventoryView({
           </table>
         </div>
       )}
-      {hasCatalog && (
-        <Text>
-          Ship types with no stationed, flying or queued ships are hidden.
-          Select a ship to open it in the Shipyard.
-        </Text>
-      )}
       {!hasCatalog && (
         <Text>
           Ship details are unavailable. Open the Shipyard to check this world's
@@ -164,5 +197,25 @@ export function FleetInventoryView({
         </Text>
       )}
     </section>
+  )
+}
+
+export function FleetScopeControl({
+  scope,
+  onChange,
+}: {
+  scope: FleetInventoryScope
+  onChange: (scope: FleetInventoryScope) => void
+}) {
+  return (
+    <SegmentedControl
+      label="Ship inventory scope"
+      options={[
+        { value: 'world', label: 'Planet' },
+        { value: 'empire', label: 'Empire' },
+      ]}
+      value={scope}
+      onChange={onChange}
+    />
   )
 }

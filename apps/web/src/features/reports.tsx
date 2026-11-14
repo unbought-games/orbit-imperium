@@ -286,6 +286,7 @@ export function Reports({
                   key={detail.header.id}
                   model={model}
                   report={detail.payload}
+                  reportId={detail.header.id}
                 />
               )}
               {['Combat', 'ContactLost', 'Espionage'].includes(

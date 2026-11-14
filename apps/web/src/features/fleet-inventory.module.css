@@ -1,15 +1,8 @@
 .inventory {
-  margin-block: 1rem 2rem;
-  padding-block: 1rem;
-  border-block: 1px solid var(--border);
+  margin-block: 0 1rem;
+  padding-block: 0 1rem;
+  border-bottom: 1px solid var(--border);
   overflow-wrap: anywhere;
-}
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 .inventory p {
   color: var(--text-muted);
@@ -49,8 +42,22 @@
 }
 .build {
   display: inline-flex;
+  min-width: 8rem;
   align-items: center;
   min-height: 44px;
+  gap: 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 4px;
+  padding-inline: 0.25rem;
+}
+.build:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.build img {
+  flex: 0 0 32px;
+  object-fit: contain;
 }
 .srOnly {
   position: absolute;
@@ -131,4 +138,26 @@
   .shipDisclosure {
     padding-inline: 0.2rem;
   }
+}
+
+.total {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.columnLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.shipLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.shipIcon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
 }

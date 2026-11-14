@@ -50,6 +50,7 @@ export const originBody: S['BodyV3'] = {
   ],
 }
 export type DispatchFixtureOptions = {
+  resourceVisibility?: 'Known' | 'Unknown' | 'Missing' | 'Error'
   launchOutcome?: 'Committed' | 'Pending' | 'Rejected'
   blocker: S['GameError4'] | null
   estimateError: S['GameError4'] | null

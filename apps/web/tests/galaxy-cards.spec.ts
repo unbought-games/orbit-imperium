@@ -647,7 +647,7 @@ test('incoming fleets and report details use the supplied public name without an
     .getByRole('link', { name: 'Fleets', exact: true })
     .click()
   await expect(
-    page.getByRole('region', { name: 'Incoming fleets' }),
+    page.getByRole('region', { name: 'Empire fleet traffic' }),
   ).toContainText('From Commander Vega')
   const reportId = id(62)
   let names: Record<string, string> | undefined = playerNames
@@ -1771,7 +1771,7 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(fleets).toHaveAttribute('aria-current', 'page')
     await expect(page.getByRole('heading', { name: 'Transport Outbound' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Transport Returning' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Incoming fleets' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Empire fleet traffic' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
     await capture('fleets')
     await page.getByRole('link', { name: 'Dispatch Fleet', exact: true }).click()
@@ -2104,3 +2104,41 @@ for (const [width, target] of [[1280, 'planet']] as const) {
     })
   })
 }
+
+// This journey protects hotkey-to-router wiring and real system response delivery.
+test(
+  'Galaxy arrow shortcuts navigate the URL and stop after leaving Galaxy',
+  { tag: '@journey' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 844 })
+    await setup(page)
+    const system = page.getByRole('textbox', { name: 'Solar system' })
+    const next = page.getByRole('button', { name: 'Next system', exact: true })
+    await expect(rows(page)).toHaveCount(15)
+    await next.focus()
+    await withGalaxyResponse(page, () => page.keyboard.press('ArrowRight'))
+    await expect(page).toHaveURL(/galaxy=1&system=372$/)
+    await expect(system).toHaveValue('372')
+    await expect(rows(page).first()).toContainText('[1:372:1]')
+    await diagnosticScreenshot(page, {
+      path: 'test-results/galaxy-hotkeys-desktop-1280x844.png',
+    })
+    await withGalaxyResponse(page, () => page.keyboard.press('ArrowLeft'))
+    await expect(page).toHaveURL(/galaxy=1&system=371$/)
+    await expect(rows(page).first()).toContainText('[1:371:1]')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await withGalaxyResponse(page, () => next.click())
+    await expect(system).toHaveValue('372')
+    await expect(rows(page).first()).toContainText('[1:372:1]')
+    await diagnosticScreenshot(page, {
+      path: 'test-results/galaxy-hotkeys-mobile-390x844.png',
+    })
+    await page.getByRole('link', { name: 'Empire', exact: true }).click()
+    await expect(
+      page.getByRole('region', { name: 'Galaxy browser' }),
+    ).toHaveCount(0)
+    const empireUrl = page.url()
+    await page.keyboard.press('ArrowRight')
+    await expect(page).toHaveURL(empireUrl)
+  },
+)

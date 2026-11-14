@@ -42,3 +42,20 @@ it('uses distinct cursor owners for each filter and sort, independent of propert
     reportQueryKey({ filter: { sort: 'newest', hidden: false }, kind: null }),
   ).toBe(key)
 })
+
+it('separates target-specific observation queries and their page size', () => {
+  const query = {
+    kind: 'Espionage',
+    filter: { target_body: 'one', sort: 'newest' as const },
+    limit: 1,
+  }
+  expect(reportQueryKey(query)).not.toBe(
+    reportQueryKey({ ...query, limit: 50 }),
+  )
+  expect(reportQueryKey(query)).not.toBe(
+    reportQueryKey({
+      ...query,
+      filter: { ...query.filter, target_body: 'two' },
+    }),
+  )
+})

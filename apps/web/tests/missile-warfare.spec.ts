@@ -550,7 +550,7 @@ for (const width of [1440, 390])
     await expect(page).toHaveURL(missileDetails!)
     await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
     await expect(
-      page.getByRole('region', { name: 'Incoming fleets' }),
+      page.getByRole('region', { name: 'Empire fleet traffic' }),
     ).toContainText('Incoming missile attack')
     await expect(
       page.getByRole('region', { name: 'Missile flights' }),
@@ -597,7 +597,7 @@ for (const width of [1440, 390])
       page.getByText('Fleet unavailable.', { exact: true }),
     ).toHaveCount(0)
     await expect(
-      page.getByRole('region', { name: 'Incoming fleets' }),
+      page.getByRole('region', { name: 'Empire fleet traffic' }),
     ).toHaveCount(0)
     await capture('missile-mission-details')
     await withReportListResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/reports`))

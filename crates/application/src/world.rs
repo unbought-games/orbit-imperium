@@ -270,6 +270,8 @@ pub struct ReportsQuery4 {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct ReportFilter4 {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_body: Option<BodyId>,
     pub hidden: Option<bool>,
     pub unread_only: bool,
     pub starred_only: bool,

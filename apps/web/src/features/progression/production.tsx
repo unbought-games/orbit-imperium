@@ -105,7 +105,7 @@ export function Production({
               .map(([key, building]) => (
                 <tr key={key}>
                   <th scope="row">{label(building)}</th>
-                  <td>
+                  <td data-label={building === 'SolarSatellite' ? 'Qty' : 'Lv'}>
                     {building === 'SolarSatellite' ? (
                       <NumberValue
                         value={

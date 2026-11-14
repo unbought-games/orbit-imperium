@@ -31,7 +31,7 @@ fn metric(sort: ReportSort4) -> String {
             let count = "CASE WHEN jsonb_typeof(unit->'count')='string' AND unit->>'count' ~ '^[0-9]+$' THEN (unit->>'count')::numeric END";
             let total = format!("COALESCE(sum(({count}) * (c.value->>'cost')::numeric),0)");
             format!(
-                "CASE WHEN ({payload})->>'kind'='Espionage' AND ({payload})->'{section}'->>'visibility'='Known' AND jsonb_typeof(({payload})->'{section}'->'value')='array' AND jsonb_typeof($10::jsonb)='array' THEN (SELECT CASE WHEN COALESCE(bool_and(c.value IS NOT NULL AND (({count}) BETWEEN 0 AND 9223372036854775807) IS TRUE),true) AND {total} <= 170141183460469231731687303715884105727 THEN {total} END FROM jsonb_array_elements(({payload})->'{section}'->'value') unit LEFT JOIN jsonb_array_elements($10::jsonb) c(value) ON c.value->'item'=unit->'item') END"
+                "CASE WHEN ({payload})->>'kind'='Espionage' AND ({payload})->'{section}'->>'visibility'='Known' AND jsonb_typeof(({payload})->'{section}'->'value')='array' AND jsonb_typeof($11::jsonb)='array' THEN (SELECT CASE WHEN COALESCE(bool_and(c.value IS NOT NULL AND (({count}) BETWEEN 0 AND 9223372036854775807) IS TRUE),true) AND {total} <= 170141183460469231731687303715884105727 THEN {total} END FROM jsonb_array_elements(({payload})->'{section}'->'value') unit LEFT JOIN jsonb_array_elements($11::jsonb) c(value) ON c.value->'item'=unit->'item') END"
             )
         }
     }
@@ -101,7 +101,7 @@ impl PgStore {
             ReportSort4::Oldest => ("at_ms ASC,id DESC", "(at_ms>$6 OR (at_ms=$6 AND id<$7))"),
             _ => (
                 "value DESC NULLS LAST,at_ms DESC,id DESC",
-                "(value < $9::text::numeric OR (value IS NULL AND $9::text::numeric IS NOT NULL) OR (value IS NOT DISTINCT FROM $9::text::numeric AND (at_ms,id)<($6,$7)))",
+                "(value < $10::text::numeric OR (value IS NULL AND $10::text::numeric IS NOT NULL) OR (value IS NOT DISTINCT FROM $10::text::numeric AND (at_ms,id)<($6,$7)))",
             ),
         };
         // Materialize only recipient keys first. Sorting must not scan every other
@@ -113,6 +113,7 @@ impl PgStore {
             SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,{} AS value
             FROM recipients p JOIN mission_reports r ON r.id=p.report
             WHERE r.universe=$1 AND ($4::text IS NULL OR r.kind=$4)
+            AND ($9::uuid IS NULL OR r.data->'payloads'->(p.recipient::text)->'target'->>'body'=$9::uuid::text)
         ), page AS MATERIALIZED (
             SELECT * FROM candidates WHERE ($6::bigint IS NULL OR {continuation})
             ORDER BY {order} LIMIT $8
@@ -134,7 +135,8 @@ impl PgStore {
             .bind(hidden)
             .bind(last_at)
             .bind(last_id)
-            .bind(i64::from(q.limit) + 1);
+            .bind(i64::from(q.limit) + 1)
+            .bind(q.filter.target_body.map(|id| id.0));
         if !matches!(q.filter.sort, ReportSort4::Newest | ReportSort4::Oldest) {
             query = query.bind(&last_value);
         }

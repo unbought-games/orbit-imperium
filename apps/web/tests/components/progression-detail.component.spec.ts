@@ -799,3 +799,21 @@ for (const [item, action] of [
     await expect(pane.getByLabel('Missing resources')).toHaveCount(0)
   })
 }
+
+
+// Catalog order must follow the same military/civil cost order as fleet setup.
+test('shipyard renders canonical ship ordering at desktop and mobile sizes', async ({ page }) => {
+  await page.goto('/?scenario=progression-detail&item=SmallCargo&list=yes&mode=ship-order')
+  await expect(page.locator('html')).toHaveAttribute('data-component-ready', 'progression-detail')
+  const ships = page.getByRole('link', { name: /^Build / })
+  await expect(ships.first()).toHaveAttribute('aria-label', 'Build Light Fighter')
+  const names = await ships.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))
+  expect(names.slice(0, 4)).toEqual(['Build Light Fighter', 'Build Heavy Fighter', 'Build Cruiser', 'Build Battleship'])
+  expect(names.indexOf('Build Small Cargo')).toBeGreaterThan(names.indexOf('Build Dreadnought'))
+  expect(names.indexOf('Build Recycler')).toBeGreaterThan(names.indexOf('Build Large Cargo'))
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await captureCatalog(page, `test-results/simulator-shipyard-${width}x1000.png`)
+  }
+})

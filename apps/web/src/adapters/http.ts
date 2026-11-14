@@ -249,7 +249,7 @@ export function gamePort(
             cursor,
             kind: query?.kind ?? null,
             filter: query?.filter,
-            limit: 50,
+            limit: query?.limit ?? 50,
             include_hidden: includeHidden || query?.filter.hidden === true,
           },
           csrf,

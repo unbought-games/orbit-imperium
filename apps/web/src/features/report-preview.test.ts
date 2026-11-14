@@ -438,3 +438,45 @@ it('uses the viewer participant for report titles and preserves historical uncer
     ),
   ).toMatchObject({ title: 'Contact Lost', tone: 'neutral' })
 })
+
+it('shows actual stolen resources to defenders, attackers and historical viewers separately from debris', () => {
+  const loot = {
+    metal: '37827000000',
+    crystal: '21881000000',
+    deuterium: '2465000000',
+  }
+  const debris = {
+    metal: '29000000000',
+    crystal: '51000000000',
+    deuterium: '7000000000',
+  }
+  const preview: components['schemas']['ReportPreview4'] = {
+    kind: 'Combat',
+    outcome: 'AttackerVictory',
+    loot,
+    debris,
+    participants: [
+      { owner: 'attacker', side: 'Attacker' },
+      { owner: 'defender', side: 'Defender' },
+    ],
+  }
+  expect(reportPreview(preview).facts).toEqual([
+    { resources: loot, label: 'Loot' },
+    { resources: debris, label: 'Debris', debris: true },
+  ])
+  for (const outcome of [
+    'DefenderVictory',
+    'Draw',
+    'MutualDestruction',
+  ] as const) {
+    expect(reportPreview({ ...preview, outcome }).facts).toEqual([
+      { resources: debris, label: 'Debris', debris: true },
+    ])
+  }
+  expect(
+    reportPreview({ kind: 'Combat', outcome: 'AttackerVictory' }).facts,
+  ).toEqual([])
+  expect(
+    reportPreview({ kind: 'ContactLost', own_cargo_loss: loot }).facts,
+  ).not.toContainEqual({ resources: loot, label: 'Loot' })
+})
