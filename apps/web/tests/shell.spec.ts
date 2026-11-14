@@ -1167,7 +1167,7 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
     .click()
   await expect(page.locator('main h1')).toHaveText('Fleets')
   await expect(
-    page.getByRole('heading', { name: 'Incoming fleets' }),
+    page.getByRole('heading', { name: 'Empire fleet traffic' }),
   ).toBeVisible()
 })
 
@@ -1232,7 +1232,7 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     'datetime',
     new Date(fleet.due_at).toISOString(),
   )
-  await expect(page.getByText('No visible incoming fleets.')).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Fleet traffic filter' })).toHaveCount(0)
   await mission.getByRole('link', { name: /^View .* fleet$/ }).click()
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   // History updates before the lazy detail route commits. Wait for its screen
@@ -2317,7 +2317,7 @@ test('failed report requests do not claim the archive is empty', async ({
   ).toHaveCount(0)
 })
 
-test('incoming attacks stay in the phone viewport when there are no outgoing fleets', async ({
+test('incoming attacks remain readable when scrolled below inventory on phones', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 667 })
@@ -2341,10 +2341,11 @@ test('incoming attacks stay in the phone viewport when there are no outgoing fle
   })
   await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
   await expect(
-    page.getByRole('heading', { name: 'No active fleets.' }),
+    page.getByRole('heading', { name: 'Empire fleet traffic', exact: true }),
   ).toBeVisible()
-  const incoming = page.getByRole('region', { name: 'Incoming fleets' })
+  const incoming = page.getByRole('region', { name: 'Empire fleet traffic' })
   const attack = incoming.getByRole('heading', { name: /Incoming attack/ })
+  await attack.scrollIntoViewIfNeeded()
   await expect(attack).toBeInViewport()
   const dock = await page
     .getByRole('navigation', { name: 'Main navigation' })

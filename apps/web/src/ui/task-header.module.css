@@ -35,3 +35,13 @@
     flex: 1 1 10rem;
   }
 }
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.centered .titleGroup {
+  grid-column: 2;
+  justify-content: center;
+}

@@ -127,3 +127,51 @@
     min-height: 40px;
   }
 }
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-inline-start: auto;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.dispatchActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.trafficHeader,
+.trafficTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.trafficHeader {
+  justify-content: space-between;
+  margin-block: 1rem;
+}
+.trafficTitle h2 {
+  margin: 0;
+}
+.detected {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 639px) {
+  .shipyardLink {
+    display: none;
+  }
+}
+@media (max-width: 479px) {
+  .dispatchSuffix {
+    display: none;
+  }
+}

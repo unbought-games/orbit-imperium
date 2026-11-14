@@ -646,7 +646,7 @@ test('incoming fleets and report details use the supplied public name without an
     .getByRole('link', { name: 'Fleets', exact: true })
     .click()
   await expect(
-    page.getByRole('region', { name: 'Incoming fleets' }),
+    page.getByRole('region', { name: 'Empire fleet traffic' }),
   ).toContainText('From Commander Vega')
   const reportId = id(62)
   let names: Record<string, string> | undefined = playerNames
@@ -1756,7 +1756,7 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(fleets).toHaveAttribute('aria-current', 'page')
     await expect(page.getByRole('heading', { name: 'Transport Outbound' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Transport Returning' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Incoming fleets' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Empire fleet traffic' })).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
     await capture('fleets')
     await page.getByRole('link', { name: 'Dispatch Fleet', exact: true }).click()

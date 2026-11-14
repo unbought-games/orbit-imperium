@@ -662,6 +662,7 @@ it('hides only known empty inventory rows, preserving unknown legacy flight coun
       stationed: '9007199254740993',
       flying: null,
       ordered: '0',
+      total: '9007199254740993',
     },
   ])
 })
