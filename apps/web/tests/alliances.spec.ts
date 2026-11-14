@@ -12,8 +12,8 @@ const summary: S['AllianceSummary'] = { id: alliance, universe: binding.universe
 const baseRole: S['AllianceRole'] = { id: id(830), name: 'Member', is_default: true, permissions: ['ViewMembers', 'PublishPosts'], grantable_permissions: [] }
 const permissions = Object.keys(permissionLabels) as S['AlliancePermission'][]
 function own(): S['AllianceDetail'] { return { summary: { ...summary }, public_text: '**Together** among the stars.', revision: 1, leader: binding.player, permissions: [...permissions], grantable_permissions: [...permissions], roles: [{ ...baseRole }], members: [{ player: binding.player, username: 'Commander', joined_at: 1700000000000, roles: [baseRole.id], activity: 'Recent' }, { player: member, username: 'Nova', joined_at: 1700000000000, roles: [baseRole.id], activity: 'Away' }], applications: [{ id: applicant, alliance, alliance_tag: 'STAR', player: id(840), username: 'New Pilot', text: 'Ready to explore.', created_at: 1700000000000 }], posts: [{ id: id(850), author: member, author_name: 'Nova', title: 'Welcome aboard', body: 'Our **first** chapter.', created_at: 1700000000000, updated_at: 1700000000000, pinned: false }], next_post_before: null, audit: [{ id: id(860), actor: binding.player, actor_name: 'Commander', action: 'Created alliance', at: 1700000000000, target: null }] } }
-async function fixture(page: Page, initial: S['AllianceDetail'] | null) {
-  await installGameFixture(page, { protocol: 4 })
+async function fixture(page: Page, initial: S['AllianceDetail'] | null, missions?: S['MissionView4']) {
+  await installGameFixture(page, { protocol: 4, missions })
   let detail = initial
   let applications: S['AllianceApplication'][] = []
   const commands: S['AllianceCommandRequest'][] = []
@@ -496,4 +496,35 @@ test('alliance deep links restore settings and history preserves authored drafts
   await withFixtureResponse(page, membership, () => page.goto('/u/andromeda/alliance/settings/invitations'))
   await expect(page).toHaveURL(`${root}/settings/invitations`)
   await expect(settings.getByRole('link', { name: 'Invitations', exact: true })).toHaveAttribute('aria-current', 'page')
+})
+
+// Route wiring: the image header must survive navigation away from the Hall.
+test('alliance image header remains visible across every section', async ({ page }) => {
+  await fixture(page, own(), { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' })
+  await page.route('**/player-profiles', async route => {
+    const { context } = route.request().postDataJSON()
+    await route.fulfill({ json: { ...context, players: [{ player: binding.player, username: 'Pilot', observed_at: 1700000000, expires_at: 4102444800, title: { id: 'admiral', label: 'Admiral', address: 'Admiral', expires_at: null } }] } })
+  })
+  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () =>
+    withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), () => page.goto(`/u/andromeda/b/${body.id}/alliance`)),
+  )
+  await expect(page.getByRole('heading', { name: 'Welcome home, Admiral.' })).toBeVisible()
+  const header = page.locator('header').filter({ has: page.getByRole('heading', { name: summary.name, exact: true }) })
+  const artwork = header.locator('img').first()
+  const sections = page.getByRole('navigation', { name: 'Alliance sections', exact: true })
+  for (const name of ['Hall', 'Members', 'Applications', 'Roles', 'Settings', 'Audit']) {
+    await sections.getByRole('link', { name, exact: true }).click()
+    await expect(sections.getByRole('link', { name, exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(artwork).toHaveAttribute('src', '/art/orbital-capital/orbital-capital-1672.webp')
+    await expect(artwork).toBeVisible()
+    await expect(artwork).toHaveJSProperty('complete', true)
+    expect(await artwork.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+        await page.setViewportSize(viewport)
+        await header.scrollIntoViewIfNeeded()
+        await diagnosticScreenshot(page, { path: `test-results/alliance-ui-review/${name.toLowerCase()}-${viewport.width}x${viewport.height}.png`, fullPage: true })
+      }
+    }
+  }
 })

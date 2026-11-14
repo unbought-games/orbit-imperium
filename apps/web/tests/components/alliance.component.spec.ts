@@ -774,3 +774,57 @@ for (const width of [1440, 390]) {
     await expect(table).toHaveCount(0)
   })
 }
+
+for (const width of [1440, 390]) {
+  test(`notice help stays below the divider, top aligned beside publish and save at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await mount('alliance-panels')
+    await expect(
+      page.getByRole('heading', { name: 'Welcome home, Admiral.' }),
+    ).toBeVisible()
+    async function checkFooter(name: string, submit: string) {
+      const form = page.getByRole('form', { name, exact: true })
+      const hint = form.getByText('Basic Markdown supported', { exact: true })
+      const button = form.getByRole('button', { name: submit, exact: true })
+      const helpBox = await hint.boundingBox()
+      const buttonBox = await button.boundingBox()
+      expect(helpBox).not.toBeNull()
+      expect(buttonBox).not.toBeNull()
+      expect(Math.abs(helpBox!.y - buttonBox!.y)).toBeLessThan(1)
+      expect(helpBox!.x + helpBox!.width).toBeLessThanOrEqual(buttonBox!.x)
+      const footer = await hint.evaluate((node) => {
+        const parent = node.parentElement!
+        return {
+          top: parent.getBoundingClientRect().top,
+          border: parseFloat(getComputedStyle(parent).borderTopWidth),
+        }
+      })
+      expect(footer.border).toBeGreaterThan(0)
+      expect(helpBox!.y).toBeGreaterThan(footer.top + footer.border)
+      await expect(
+        form.getByLabel('Notice body', { exact: true }),
+      ).toHaveAccessibleDescription('Basic Markdown supported')
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await diagnosticScreenshot(form, {
+        path: `test-results/alliance-ui-review/${submit === 'Publish notice' ? 'compose' : 'edit'}-${width}.png`,
+      })
+    }
+    await checkFooter('Write a notice', 'Publish notice')
+    const notice = page.getByRole('article', {
+      name: 'Welcome aboard',
+      exact: true,
+    })
+    await notice.getByRole('button', { name: 'Notice actions' }).click()
+    await page
+      .getByRole('menuitem', { name: 'Edit notice', exact: true })
+      .click()
+    await checkFooter('Edit notice', 'Save notice')
+  })
+}

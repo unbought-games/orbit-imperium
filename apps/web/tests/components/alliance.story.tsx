@@ -8,7 +8,7 @@ import {
   type AllianceDetail,
   type AllianceRequest,
 } from '../../src/client-model/alliances'
-import { Board } from '../../src/features/alliances/board'
+import { AllianceHall } from '../../src/features/alliances/hall'
 import { Roles } from '../../src/features/alliances/roles'
 import {
   Roster,
@@ -224,6 +224,22 @@ function setup() {
   })
   const profiles = new PlayerProfilesController(async () => {
     throw Error('Profiles must be prepared')
+  })
+  profiles.store.setState({
+    players: {
+      [self]: {
+        player: self,
+        username: 'Commander',
+        observed_at: 1700000000,
+        expires_at: 4102444800,
+        title: {
+          id: 'admiral',
+          label: 'Admiral',
+          address: 'Admiral',
+          expires_at: null,
+        },
+      },
+    },
   })
   return {
     controller,
@@ -448,7 +464,7 @@ export function AllianceStory() {
           {detail && (
             <>
               {tab === 'Hall' && (
-                <Board
+                <AllianceHall
                   detail={detail}
                   player={self}
                   run={run}

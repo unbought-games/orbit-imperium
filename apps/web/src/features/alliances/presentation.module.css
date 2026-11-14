@@ -72,12 +72,6 @@
   margin: 12px 0 0;
   overflow-wrap: anywhere;
 }
-.compactIdentity {
-  padding-block: 4px 12px;
-}
-.compactIdentity h2 {
-  font-size: 1.75rem;
-}
 .hallLayout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 240px;
@@ -592,9 +586,6 @@
   }
   .hallAside .hallFacts {
     margin-top: 18px;
-  }
-  .compactIdentity h2 {
-    font-size: 1.5rem;
   }
   .medium {
     width: 48px;
