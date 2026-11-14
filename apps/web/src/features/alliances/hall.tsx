@@ -1,4 +1,6 @@
 import { useRewardsVisible } from '../../shell/community-rewards-context'
+import { usePlayerIdentity } from '../../shell/player-profiles-context'
+import { useIdentityTitle } from '../../client-model/use-identity-title'
 import { AllianceHonors } from '../rewards/recognition'
 import type { ComponentProps } from 'react'
 import { ButtonLinkAnchor } from '../../ui/button'
@@ -7,6 +9,8 @@ import { Markdown } from './shared'
 import styles from './presentation.module.css'
 export function AllianceHall(props: ComponentProps<typeof Board>) {
   const rewardsVisible = useRewardsVisible()
+  const identity = usePlayerIdentity(props.player)
+  const title = useIdentityTitle(identity?.title)
   const { detail } = props,
     hall = detail.presentation?.hall,
     summary = detail.summary
@@ -14,7 +18,7 @@ export function AllianceHall(props: ComponentProps<typeof Board>) {
     <div className={styles.hallLayout}>
       <div>
         <section className={styles.hallWelcome}>
-          <h3>Welcome home, Commander.</h3>
+          <h3>Welcome home, {title.address}.</h3>
           {hall?.welcome_markdown ? (
             <Markdown text={hall.welcome_markdown} />
           ) : (

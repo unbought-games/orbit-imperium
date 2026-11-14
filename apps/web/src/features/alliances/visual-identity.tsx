@@ -115,17 +115,15 @@ export function AllianceCrestMark({
 }
 export function AllianceIdentityHeader({
   summary,
-  hall = false,
   background,
 }: {
   summary: components['schemas']['AllianceSummary']
-  hall?: boolean
   background?: Placement | null
 }) {
   const identity = summary.visual_identity ?? defaultIdentity
   return (
     <header
-      className={hall ? styles.hallHero : styles.compactIdentity}
+      className={styles.hallHero}
       style={
         {
           '--alliance-accent': identity.primary,
@@ -133,24 +131,20 @@ export function AllianceIdentityHeader({
         } as CSSProperties
       }
     >
-      {hall && (
-        <AllianceArtwork
-          universe={summary.universe}
-          placement={background ?? identity.banner}
-        />
-      )}
+      <AllianceArtwork
+        universe={summary.universe}
+        placement={background ?? identity.banner}
+      />
       <div className={styles.identityContent}>
         <AllianceCrestMark
           universe={summary.universe}
           identity={identity}
-          animated={hall}
+          animated
         />
         <div>
           <span className={styles.eyebrow}>[{summary.tag}]</span>
           <h2>{summary.name}</h2>
-          {hall && identity.motto && (
-            <p className={styles.motto}>{identity.motto}</p>
-          )}
+          {identity.motto && <p className={styles.motto}>{identity.motto}</p>}
         </div>
       </div>
     </header>

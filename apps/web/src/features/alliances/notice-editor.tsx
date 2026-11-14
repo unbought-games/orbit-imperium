@@ -75,15 +75,15 @@ export function NoticeEditor({
           maxLength={8000}
           rows={4}
         />
-        <span id={hint} className={styles.hint}>
-          Basic Markdown supported
-        </span>
         {error && (
           <p className={styles.error} role="alert">
             {error}
           </p>
         )}
         <div className={styles.composerFooter}>
+          <span id={hint} className={styles.hint}>
+            Basic Markdown supported
+          </span>
           <div className={styles.editorActions}>
             {onClose && (
               <Button

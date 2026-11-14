@@ -344,7 +344,6 @@ function AllianceWorkspace({
                     <>
                       <AllianceIdentityHeader
                         summary={detail.summary}
-                        hall={active === 'Hall'}
                         background={detail.presentation?.hall.background}
                       />
                       <nav
