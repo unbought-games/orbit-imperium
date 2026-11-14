@@ -229,3 +229,26 @@ formatting, component TypeScript and diff checks passed. Captured and inspected
 fresh 390/1280 page views and both open tooltips. Screenshot-only tooltip
 preparation is gated by ORBIT_TEST_SCREENSHOTS; behavior coverage is independent
 of screenshots. No failed checks, test deletions or production data changes.
+
+## Owner compact-header follow-up
+
+Moved Planet/Empire next to the visible Fleets title using a named title-controls
+slot on TaskHeader. Inventory scope is now one local selection in MissionFleets,
+passed to the controlled inventory view; counts remain derived from the same
+confirmed snapshot. Body switching preserves the selected scope. Existing
+TaskHeader callers without title controls retain their previous structure.
+
+The header Shipyard link is hidden below 640px. Dispatch Fleet becomes Dispatch
+below 480px while retaining its full accessible name. The title and scope switch
+stay together; action controls can wrap as a group on minimal widths. Mobile
+Shipyard navigation remains covered through per-ship links; desktop retains the
+header shortcut. Old mobile header-link assertions were replaced with intentional
+visibility/label checks, not removed to mask a defect.
+
+Validation on `b91a0152` plus these changes: 10 application cases passed (bundle
+5.444s; browser 33.8s), including the owner's 511px viewport, 390/1280 scope/body
+transitions and title/control geometry, and 320px density. Ten component cases
+passed (bundle 4.524s; browser 7.6s), including exact totals, scope focus, empty
+states and hover/touch help. Application/component TypeScript, lint, formatting
+and diff checks passed. Fresh desktop, 511px, 390px and 320px captures were
+inspected. No failed checks or test deletions in this follow-up.

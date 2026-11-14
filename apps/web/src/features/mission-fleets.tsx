@@ -1,5 +1,6 @@
 import { AttackGroups } from './attack-groups'
 import { AllianceDepot } from './alliance-depot'
+import { useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -11,7 +12,8 @@ import { ButtonLink } from '../ui/button'
 import { Link } from '../ui/link'
 import { TaskHeader } from '../ui/task-header'
 import { FleetSlots } from './fleet-slots'
-import { FleetInventory } from './fleet-inventory'
+import { FleetInventory, FleetScopeControl } from './fleet-inventory'
+import type { FleetInventoryScope } from './fleet-inventory-model'
 import { FleetTraffic } from './fleet-traffic'
 import styles from './missions.module.css'
 import fleetStyles from './mission-fleets.module.css'
@@ -28,12 +30,24 @@ export function MissionFleets({
   item: string | null
   origin: string
 }) {
+  const [inventoryScope, setInventoryScope] =
+    useState<FleetInventoryScope>('world')
   const universeName = useUniverseName()
   const state = useStore(model.store)
   useProfileSource(item ? null : { type: 'Incoming' }, view.viewer_revision)
   return (
     <section className={styles.screen}>
-      <TaskHeader title={item ? 'Mission details' : 'Fleets'}>
+      <TaskHeader
+        title={item ? 'Mission details' : 'Fleets'}
+        titleControls={
+          !item ? (
+            <FleetScopeControl
+              scope={inventoryScope}
+              onChange={setInventoryScope}
+            />
+          ) : undefined
+        }
+      >
         <div className={fleetStyles.headerActions}>
           {item && (
             <Link
@@ -47,6 +61,7 @@ export function MissionFleets({
             <ButtonLink
               variant="secondary"
               size="small"
+              className={fleetStyles.shipyardLink}
               {...routeTarget(universeName, 'shipyard', origin)}
             >
               Shipyard
@@ -59,14 +74,20 @@ export function MissionFleets({
             />
             <ButtonLink
               size="small"
+              aria-label="Dispatch Fleet"
               {...routeTarget(universeName, 'dispatch', origin)}
             >
-              Dispatch Fleet
+              <span>
+                Dispatch
+                <span className={fleetStyles.dispatchSuffix}> Fleet</span>
+              </span>
             </ButtonLink>
           </div>
         </div>
       </TaskHeader>
-      {!item && <FleetInventory model={model} origin={origin} />}
+      {!item && (
+        <FleetInventory model={model} origin={origin} scope={inventoryScope} />
+      )}
       {!item && <AttackGroups model={model} view={view} />}
       <FleetTraffic model={model} view={view} item={item} origin={origin} />
       {!item &&

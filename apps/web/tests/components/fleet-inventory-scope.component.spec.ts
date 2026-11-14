@@ -97,7 +97,7 @@ for (const width of [390, 1280]) {
         exact: true,
       })
       await expect(
-        panel.getByRole('button', { name: 'Planet', exact: true }),
+        page.getByRole('button', { name: 'Planet', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
       await expect(panel).not.toContainText('Confirmed counts.')
       const help = panel.getByRole('button', {
@@ -126,7 +126,7 @@ for (const width of [390, 1280]) {
         await help.press('Escape')
         await expect(tooltip).toBeHidden()
       }
-      await panel.getByRole('button', { name: 'Empire', exact: true }).click()
+      await page.getByRole('button', { name: 'Empire', exact: true }).click()
       await page
         .getByRole('button', { name: 'Flying ships', exact: true })
         .click()

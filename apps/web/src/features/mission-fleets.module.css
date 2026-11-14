@@ -165,12 +165,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 359px) {
-  .headerActions {
-    display: contents;
+@media (max-width: 639px) {
+  .shipyardLink {
+    display: none;
   }
-  .headerActions > a,
-  .dispatchActions {
-    margin-inline-start: auto;
+}
+@media (max-width: 479px) {
+  .dispatchSuffix {
+    display: none;
   }
 }

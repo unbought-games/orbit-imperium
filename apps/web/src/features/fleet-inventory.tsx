@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment } from 'react'
 import { CircleHelp } from 'lucide-react'
 import { InfoTooltip } from '../ui/info-tooltip'
 import { shipGroup } from './ship-order'
@@ -21,7 +21,9 @@ import styles from './fleet-inventory.module.css'
 export function FleetInventory({
   model,
   origin,
+  scope,
 }: {
+  scope: FleetInventoryScope
   model: Coordinator
   origin: string
 }) {
@@ -29,7 +31,14 @@ export function FleetInventory({
   // Inventory and queues must come from the same confirmed snapshot, not launch overlays.
   const view = useStore(model.store, (state) => state.view)
   if (!view || view.protocol === 2) return null
-  return <FleetInventoryView view={view} origin={origin} universe={universe} />
+  return (
+    <FleetInventoryView
+      view={view}
+      origin={origin}
+      universe={universe}
+      scope={scope}
+    />
+  )
 }
 
 /** Confirmed snapshot presentation, independent of session and transport lifetime. */
@@ -37,12 +46,13 @@ export function FleetInventoryView({
   view,
   origin,
   universe,
+  scope,
 }: {
+  scope: FleetInventoryScope
   view: Parameters<typeof fleetInventoryRows>[0]
   origin: string
   universe: string
 }) {
-  const [scope, setScope] = useState<FleetInventoryScope>('world')
   const empire = scope === 'empire'
   const body = view.bodies.find((candidate) => candidate.id === origin)
   if (!body) return null
@@ -57,15 +67,6 @@ export function FleetInventoryView({
       aria-label={empire ? 'Empire ships' : 'Stationed ships'}
       className={styles.inventory}
     >
-      <SegmentedControl
-        label="Ship inventory scope"
-        options={[
-          { value: 'world', label: 'Planet' },
-          { value: 'empire', label: 'Empire' },
-        ]}
-        value={scope}
-        onChange={setScope}
-      />
       {empty && !empire && (
         <Text>
           No ships stationed here. Build your first ships in the Shipyard or
@@ -196,5 +197,25 @@ export function FleetInventoryView({
         </Text>
       )}
     </section>
+  )
+}
+
+export function FleetScopeControl({
+  scope,
+  onChange,
+}: {
+  scope: FleetInventoryScope
+  onChange: (scope: FleetInventoryScope) => void
+}) {
+  return (
+    <SegmentedControl
+      label="Ship inventory scope"
+      options={[
+        { value: 'world', label: 'Planet' },
+        { value: 'empire', label: 'Empire' },
+      ]}
+      value={scope}
+      onChange={onChange}
+    />
   )
 }

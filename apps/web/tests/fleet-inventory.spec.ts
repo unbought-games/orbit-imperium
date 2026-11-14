@@ -158,7 +158,7 @@ function inventoryFixture() {
   }
 }
 
-for (const width of [390, 1280]) {
+for (const width of [390, 511, 1280]) {
   test(`stationed inventory separates exact counts and Shipyard links at ${width}px`, async ({
     page,
   }) => {
@@ -187,12 +187,34 @@ for (const width of [390, 1280]) {
     })
     const dispatchBox = (await dispatch.boundingBox())!
     const slotsBox = (await slots.boundingBox())!
-    const shipyardBox = (await page
+    const shipyard = page
       .locator('main header')
-      .getByRole('link', { name: 'Shipyard', exact: true })
+      .getByRole('link', { name: 'Shipyard', exact: true, includeHidden: true })
+    if (width < 640) {
+      await expect(shipyard).toBeHidden()
+    } else {
+      const shipyardBox = (await shipyard.boundingBox())!
+      expect(shipyardBox.x + shipyardBox.width).toBeLessThan(slotsBox.x)
+      expect(Math.abs(shipyardBox.y - slotsBox.y)).toBeLessThan(8)
+    }
+    const headerScope = page
+      .locator('main header')
+      .getByRole('group', { name: 'Ship inventory scope' })
+    await expect(headerScope).toBeVisible()
+    const titleBox = (await page
+      .getByRole('heading', { name: 'Fleets', level: 2, exact: true })
       .boundingBox())!
-    expect(shipyardBox.x + shipyardBox.width).toBeLessThan(slotsBox.x)
-    expect(Math.abs(shipyardBox.y - slotsBox.y)).toBeLessThan(8)
+    const scopeBox = (await headerScope.boundingBox())!
+    expect(scopeBox.x).toBeGreaterThan(titleBox.x + titleBox.width)
+    expect(
+      Math.abs(
+        scopeBox.y + scopeBox.height / 2 - titleBox.y - titleBox.height / 2,
+      ),
+    ).toBeLessThan(2)
+    await expect(dispatch).toHaveText(
+      width < 480 ? 'Dispatch' : 'Dispatch Fleet',
+      { useInnerText: true },
+    )
     expect(slotsBox.x + slotsBox.width).toBeLessThan(dispatchBox.x)
     expect(Math.abs(slotsBox.y - dispatchBox.y)).toBeLessThan(8)
 
@@ -276,7 +298,7 @@ for (const width of [390, 1280]) {
       'Away ships',
       `test-results/fleets-away-tooltip-${width}x900.png`,
     )
-    await panel.getByRole('button', { name: 'Empire', exact: true }).click()
+    await page.getByRole('button', { name: 'Empire', exact: true }).click()
     const empire = page.getByRole('region', {
       name: 'Empire ships',
       exact: true,
@@ -302,7 +324,7 @@ for (const width of [390, 1280]) {
     await selectBody(page, id(6))
     await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets`)
     await expect(empire.getByRole('cell')).toHaveText(['56', '42', '14', '12'])
-    await empire.getByRole('button', { name: 'Planet', exact: true }).click()
+    await page.getByRole('button', { name: 'Planet', exact: true }).click()
     await expect(cargo.getByRole('cell')).toHaveText(['0', '9', '7'])
     await diagnosticScreenshot(page, {
       fullPage: true,
@@ -321,11 +343,15 @@ for (const width of [390, 1280]) {
         exact: true,
       }),
     ).toBeVisible()
-    await page
-      .locator('main header')
-      .getByRole('link', { name: 'Shipyard', exact: true })
-      .click()
-    await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/shipyard`)
+    if (width >= 640) {
+      await shipyard.click()
+      await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/shipyard`)
+    } else {
+      await cargo.getByRole('link').click()
+      await expect(page).toHaveURL(
+        `/u/andromeda/b/${id(6)}/shipyard/small-cargo`,
+      )
+    }
     await withBootstrapResponse(page, () =>
       page.goto(`/u/andromeda/b/${body.id}/fleets/${id(30)}`),
     )
@@ -398,7 +424,7 @@ for (const width of [390, 1280]) {
     await expect(cargo).toHaveCSS('text-decoration-line', 'none')
     const shipyard = page
       .locator('main header')
-      .getByRole('link', { name: 'Shipyard', exact: true })
+      .getByRole('link', { name: 'Shipyard', exact: true, includeHidden: true })
     await expect(shipyard).toHaveAttribute(
       'href',
       `/u/andromeda/b/${body.id}/shipyard`,
