@@ -38,13 +38,15 @@ async fn setup(scoped: bool) -> Fixture {
     store.migrate().await.unwrap();
     store.set_test_time(AT).await.unwrap();
     let u = UniverseId(Uuid::new_v4());
-    let scenario: WorldScenario = serde_json::from_value(json!({"version":1,"edits":[
+    let mut scenario: WorldScenario = serde_json::from_value(json!({"version":1,"edits":[
         {"op":"add-player","user":"jumper","password":"password","planet":"1:1:8"},
-        {"op":"set","user":"jumper","research":{"astrophysics":1}},
+        {"op":"set","user":"jumper","research":{"astrophysics":1,"hyperspacetechnology":7}},
         {"op":"set","user":"jumper","planet":"1:1:8","ships":{"SmallCargo":20}},
         {"op":"add-planet","user":"jumper","planet":"1:2:8"}
     ]}))
     .unwrap();
+    scenario.rules =
+        Some(standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 100).unwrap());
     store
         .apply_world_scenario(u, &scenario, ScenarioMode::Create, Uuid::new_v4())
         .await
@@ -172,19 +174,25 @@ async fn quote(f: &Fixture, intent: JumpIntent) -> JumpQuote {
     serde_json::from_value(result.facts.data).unwrap()
 }
 fn action(f: &Fixture, q: JumpQuote) -> ForegroundAction {
+    foreground(
+        f,
+        q.intent.source,
+        Command::World {
+            action: WorldAction::JumpShips {
+                intent: q.intent,
+                expected_terms_hash: q.terms_hash,
+            },
+        },
+    )
+}
+fn foreground(f: &Fixture, source: BodyId, command: Command) -> ForegroundAction {
     let id = CommandId(Uuid::new_v4());
-    let source = q.intent.source;
     ForegroundAction {
         gameplay: CommandEnvelopeV4 {
             protocol: 4,
             binding: f.b,
             command_id: id,
-            command: CommandDto3::Progression(Command::World {
-                action: WorldAction::JumpShips {
-                    intent: q.intent,
-                    expected_terms_hash: q.terms_hash,
-                },
-            }),
+            command: CommandDto3::Progression(command),
         },
         presence: CommandEnvelopeV4 {
             protocol: 4,
@@ -554,4 +562,108 @@ async fn parent_abandonment_removes_only_that_moons_gate_commitment() {
         .await
         .unwrap();
     assert_eq!(bodies, vec![f.moons[0].0]);
+}
+
+#[tokio::test]
+async fn paid_gate_construction_completes_and_the_new_gate_can_jump_after_restart() {
+    let mut f = setup(true).await;
+    let source = f.moons[0];
+    // Begin with a completed Lunar Base and no gate, retaining valid asset lineage.
+    sqlx::query("UPDATE building_levels SET level=CASE WHEN building='LunarBase' THEN 1 ELSE 0 END WHERE body=$1").bind(source.0).execute(&f.pool).await.unwrap();
+    sqlx::query("UPDATE asset_lots SET data=jsonb_set(jsonb_set(data,'{item,id}','\"LunarBase\"'),'{unit_value_micro}',to_jsonb($3::bigint)) WHERE universe=$1 AND data->'location'->>'Body'=$2 AND data->'item'->>'id'='JumpGate'")
+        .bind(f.u.0).bind(source.to_string()).bind(80000*SCALE).execute(&f.pool).await.unwrap();
+    sqlx::query("UPDATE bodies SET amounts=$2 WHERE id=$1")
+        .bind(source.0)
+        .bind(sqlx::types::Json(Resources::all(10_000_000 * SCALE)))
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let (snapshot, _) = f.store.bound_world(f.b).await.unwrap().facts;
+    let request = QuoteRequest::Upgrade {
+        body: source,
+        building: Building::JumpGate,
+    };
+    let construction = inspect_progression(
+        &snapshot.state,
+        Actor::Player(f.b.player),
+        &request,
+        AT,
+        &snapshot.rules,
+    )
+    .unwrap();
+    assert!(
+        construction.blockers.is_empty(),
+        "{:?}",
+        construction.blockers
+    );
+    let command = foreground(
+        &f,
+        source,
+        Command::StartUpgrade {
+            body: source,
+            building: Building::JumpGate,
+            expected_terms_hash: construction.terms_hash.unwrap(),
+        },
+    );
+    let game = GameService::new(f.store.clone());
+    game.world_submit(principal(f.b), command.clone())
+        .await
+        .unwrap();
+    drain(&f, true).await;
+    assert!(matches!(
+        receipt(&f, &command).await.status,
+        ReceiptStatus::Committed { .. }
+    ));
+    let (snapshot, _) = f.store.bound_world(f.b).await.unwrap().facts;
+    let work = snapshot
+        .state
+        .constructions
+        .values()
+        .find(|c| c.body == source && c.status == ConstructionStatus::Active)
+        .unwrap();
+    assert_eq!(
+        work.paid,
+        Resources::from_values([2_000_000, 4_000_000, 2_000_000].map(|x| x * SCALE))
+    );
+    assert_eq!(
+        snapshot.state.bodies[&source].levels[&Building::JumpGate],
+        0
+    );
+    assert_eq!(reserved_fields(&snapshot.state, source).unwrap(), 1);
+    assert_eq!(
+        quote_jump(
+            &snapshot.state,
+            f.b.player,
+            &intent(&f, false),
+            AT,
+            &snapshot.rules
+        ),
+        Err(GameError::PrerequisiteMissing)
+    );
+    f.store.set_test_time(work.due_at).await.unwrap();
+    f.store = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    drain(&f, true).await;
+    let (snapshot, _) = f.store.bound_world(f.b).await.unwrap().facts;
+    assert_eq!(
+        snapshot.state.bodies[&source].levels[&Building::JumpGate],
+        1
+    );
+    assert_eq!(reserved_fields(&snapshot.state, source).unwrap(), 0);
+    assert_eq!(
+        snapshot.state.bodies[&source].checkpoint.amounts,
+        Resources::from_values([8_000_000, 6_000_000, 8_000_000].map(|x| x * SCALE))
+    );
+    let jump = action(&f, quote(&f, intent(&f, false)).await);
+    GameService::new(f.store.clone())
+        .world_submit(principal(f.b), jump.clone())
+        .await
+        .unwrap();
+    drain(&f, true).await;
+    assert!(matches!(
+        receipt(&f, &jump).await.status,
+        ReceiptStatus::Committed { .. }
+    ));
+    assert_eq!(counts(&f).await, vec![13, 7]);
 }

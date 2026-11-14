@@ -28,7 +28,11 @@ for (const width of [1440, 390]) {
           name: 'Luna',
           kind: 'Moon',
           moon: { parent: body.id, created_at: now },
-          levels: { ...body.levels, LunarBase: 1, JumpGate: 0 },
+          levels: {
+            ...Object.fromEntries(Object.keys(body.levels).map((k) => [k, 0])),
+            LunarBase: 1,
+            JumpGate: 0,
+          },
           fields: 4,
           fields_used: 1,
           fields_reserved: 0,
@@ -78,6 +82,7 @@ for (const width of [1440, 390]) {
           sampledAt: () => now,
           viewerRevision: () => String(revision),
           extraCapabilities: ['JumpShips'],
+          research: [{ research: 'HyperspaceTechnology', level: 7 }],
           missions: {
             fleets: [],
             incoming: [],
@@ -116,7 +121,7 @@ for (const width of [1440, 390]) {
                   crystal: String(4000000000000 * 2 ** level),
                   deuterium: String(2000000000000 * 2 ** level),
                 },
-                duration_ms: 86310000,
+                duration_ms: 8640000000 * 2 ** level - 90000,
                 formula: 'BuildingRedesign2011',
                 facilities: [{ building: 'RoboticsFactory', level: 0 }],
                 required_energy: '0',
@@ -196,14 +201,15 @@ for (const width of [1440, 390]) {
         const panel = page.getByRole('region', { name: 'Jump Gate transfer' })
         const capture = async (state: string) => {
           if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
-          if (width === 390)
+          if (width === 390 && state !== 'construction')
             await panel.evaluate((el) =>
               window.scrollTo(
                 0,
                 window.scrollY + el.getBoundingClientRect().top - 160,
               ),
             )
-          if (width !== 390) await page.evaluate(() => window.scrollTo(0, 0))
+          if (width !== 390 || state === 'construction')
+            await page.evaluate(() => window.scrollTo(0, 0))
           await diagnosticScreenshot(page, {
             path: `test-results/jump-gate-${state}-${width}x900.png`,
             fullPage: width !== 390,
