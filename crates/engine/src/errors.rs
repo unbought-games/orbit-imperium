@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum GameError {
+    #[error("GateCooling")]
+    GateCooling,
     #[error("ReauthenticationRequired")]
     ReauthenticationRequired,
     #[error("AllianceLeader")]

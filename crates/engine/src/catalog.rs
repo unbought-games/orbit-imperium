@@ -77,7 +77,9 @@ pub(crate) fn validate_catalog(a: &RulesArtifact) -> Result<(), RulesError> {
         let body_kinds_allowed = if entry.enabled
             && matches!(
                 entry.key,
-                CatalogKey::Building(Building::LunarBase | Building::SensorPhalanx)
+                CatalogKey::Building(
+                    Building::LunarBase | Building::SensorPhalanx | Building::JumpGate
+                )
             ) {
             entry.body_kinds == BTreeSet::from([BodyKind::Moon])
         } else {

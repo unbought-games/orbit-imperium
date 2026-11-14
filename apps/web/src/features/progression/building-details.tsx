@@ -1,3 +1,4 @@
+import { JumpGate } from '../jump-gate'
 import { PhalanxFacility } from '../phalanx-facility'
 import { AllianceDepot } from '../alliance-depot'
 import { SiloSummary } from '../missile-inventory'
@@ -359,6 +360,9 @@ export function BuildingDetails({
         <AllianceDepot model={model} view={view} body={body} showEmpty />
       )}
       {building.id === 'SensorPhalanx' && <PhalanxFacility body={body} />}
+      {building.id === 'JumpGate' && view.protocol === 4 && (
+        <JumpGate key={body.id} model={model} body={body.id} />
+      )}
       {building.id === 'MissileSilo' && <SiloSummary body={body} />}
       {entry && (
         <TechnicalData

@@ -12581,6 +12581,9 @@
           },
           "moon": {
             "$ref": "#/components/schemas/Moon4"
+          },
+          "jump_gate": {
+            "$ref": "#/components/schemas/JumpGateStatus4"
           }
         },
         "required": [
@@ -14074,6 +14077,27 @@
               "type"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "JumpShips"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/JumpIntent4"
+              },
+              "expected_terms_hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "type",
+              "intent",
+              "expected_terms_hash"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -14226,7 +14250,8 @@
           "DeletionDue",
           "ReauthenticationRequired",
           "VacationBlocked",
-          "VacationMinimum"
+          "VacationMinimum",
+          "GateCooling"
         ]
       },
       "BoundReceipt4": {
@@ -15064,7 +15089,8 @@
                   "Missiles",
                   "Hold",
                   "AllianceAttacks",
-                  "ScanPlanet"
+                  "ScanPlanet",
+                  "JumpShips"
                 ]
               },
               "enabled": {
@@ -15103,7 +15129,8 @@
                   "Missiles",
                   "Hold",
                   "AllianceAttacks",
-                  "ScanPlanet"
+                  "ScanPlanet",
+                  "JumpShips"
                 ]
               },
               "enabled": {
@@ -15494,6 +15521,22 @@
               "type"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "JumpQuote"
+              },
+              "intent": {
+                "$ref": "#/components/schemas/JumpIntent4"
+              }
+            },
+            "required": [
+              "type",
+              "intent"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -15757,6 +15800,9 @@
               },
               {
                 "$ref": "#/components/schemas/TutorialView4"
+              },
+              {
+                "$ref": "#/components/schemas/JumpQuote4"
               }
             ]
           },
@@ -17563,6 +17609,9 @@
               },
               {
                 "$ref": "#/components/schemas/DepotSupplyQuote4"
+              },
+              {
+                "$ref": "#/components/schemas/JumpQuote4"
               }
             ]
           },
@@ -29444,6 +29493,80 @@
           "request_id",
           "viewer_revision",
           "items"
+        ],
+        "additionalProperties": false
+      },
+      "JumpIntent4": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "destination": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ships": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/ManifestStack4"
+            }
+          }
+        },
+        "required": [
+          "source",
+          "destination",
+          "ships"
+        ],
+        "additionalProperties": false
+      },
+      "JumpQuote4": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/JumpIntent4"
+          },
+          "cooldown_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "profile_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "terms_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "intent",
+          "cooldown_ms",
+          "profile_hash",
+          "terms_hash"
+        ],
+        "additionalProperties": false
+      },
+      "JumpGateStatus4": {
+        "type": "object",
+        "properties": {
+          "ready_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "cooldown_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "ready_at",
+          "cooldown_ms"
         ],
         "additionalProperties": false
       }

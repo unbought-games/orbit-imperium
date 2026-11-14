@@ -1,0 +1,7 @@
+{
+  "building": { "base": [2000000, 4000000, 2000000], "growth": [2, 1] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "LunarBase", "level": 1 },
+    { "type": "PlayerResearch", "research": "HyperspaceTechnology", "level": 7 }
+  ]
+}

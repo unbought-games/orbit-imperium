@@ -123,14 +123,27 @@ pub(super) fn patches() -> Vec<Patch> {
             "enabled":false,"mobile":false,"requirements":[]
         })),
     );
-    out.push(Patch::entry(
-        "/catalog",
-        "key",
-        json!({
-            "key":{"kind":"Building","id":"JumpGate"}, "body_kinds":["Moon"],
-            "enabled":false, "mobile":false,"requirements":[]
-        }),
+    let gate = read(include_bytes!("../../../../rules/content/jump-gate.json"));
+    out.push(Patch::field("/world/jump_gates", json!("jump-gates-v1")));
+    out.push(Patch::field(
+        "/buildings/JumpGate",
+        gate["building"].clone(),
     ));
+    out.push(
+        Patch::entry(
+            "/catalog",
+            "key",
+            json!({
+                "key":{"kind":"Building","id":"JumpGate"}, "body_kinds":["Moon"],
+                "enabled":true,"mobile":false,"requirements":gate["requirements"]
+            }),
+        )
+        .with_previous(json!({
+            "key":{"kind":"Building","id":"JumpGate"}, "body_kinds":["Moon"],
+            "enabled":false,"mobile":false,"requirements":[]
+        })),
+    );
+
     // Earlier released content is included so the original signup baseline can upgrade too.
     let impulse = read(include_bytes!(
         "../../../../rules/content/impulse-drive.json"

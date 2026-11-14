@@ -159,6 +159,8 @@ pub struct BoundProgressionOptions {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BodyV3 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump_gate: Option<JumpGateStatus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub moon: Option<MoonDto>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diameter_km: Option<u32>,
@@ -431,6 +433,7 @@ pub(crate) fn progression_projection(
         let energy = &economy.energy;
         let rate = economy.gross;
         bodies.push(BodyV3 {
+            jump_gate: None,
             moon: None,
             diameter_km: facts
                 .homeworld

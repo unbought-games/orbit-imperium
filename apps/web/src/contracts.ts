@@ -7152,6 +7152,7 @@ export interface components {
             name?: string;
             silo?: components["schemas"]["SiloCapacity4"];
             moon?: components["schemas"]["Moon4"];
+            jump_gate?: components["schemas"]["JumpGateStatus4"];
         };
         BoundView3: {
             viewer_revision: components["schemas"]["Decimal"];
@@ -7504,6 +7505,11 @@ export interface components {
         } | {
             /** @constant */
             type: "ReviewProductionSettings";
+        } | {
+            /** @constant */
+            type: "JumpShips";
+            intent: components["schemas"]["JumpIntent4"];
+            expected_terms_hash: string;
         };
         Command4: components["schemas"]["Command3"] | {
             /** @constant */
@@ -7532,7 +7538,7 @@ export interface components {
             gameplay: components["schemas"]["CommandEnvelopeV4"];
         };
         /** @enum {unknown} */
-        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired" | "VacationBlocked" | "VacationMinimum";
+        GameError4: "NumericRange" | "UnavailableContent" | "NotOwned" | "NotFound" | "InsufficientResources" | "ActiveConstruction" | "NoFreeField" | "QuoteChanged" | "OperationNotActive" | "InvalidInput" | "InsufficientShips" | "NoFleetSlot" | "CargoCapacity" | "NotOutbound" | "SettingsChanged" | "PrerequisiteMissing" | "ResearchActive" | "LabLocked" | "YardLocked" | "CapacityReserved" | "QueueCapacity" | "EnergyRequired" | "BodyKindNotAllowed" | "NotDemolishable" | "ModeRestricted" | "NoHarvestTarget" | "PolicyUnavailable" | "ActorVacation" | "ActorDraining" | "TargetVacation" | "BeginnerProtected" | "PresenceUnavailable" | "PositionOccupied" | "InsufficientMissiles" | "OutOfRange" | "SiloBusy" | "AbandonmentBlocked" | "HoldingUnavailable" | "DepotBudgetExceeded" | "ExtensionTooSmall" | "AttackGroupClosed" | "AttackGroupFull" | "AttackGroupTooLate" | "AllianceLeader" | "DeletionDue" | "ReauthenticationRequired" | "VacationBlocked" | "VacationMinimum" | "GateCooling";
         BoundReceipt4: {
             /** Format: uuid */
             command_id: string;
@@ -7737,14 +7743,14 @@ export interface components {
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet" | "JumpShips";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet" | "JumpShips";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -7840,6 +7846,10 @@ export interface components {
         } | {
             /** @constant */
             type: "Tutorial";
+        } | {
+            /** @constant */
+            type: "JumpQuote";
+            intent: components["schemas"]["JumpIntent4"];
         };
         WorldQuery4: {
             /** @constant */
@@ -7901,7 +7911,7 @@ export interface components {
             viewer_revision: components["schemas"]["Decimal"];
             sampled_at: number;
             as_of_ms: number;
-            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"] | components["schemas"]["DepotSupplyQuote4"] | components["schemas"]["MissionSiteView4"][] | components["schemas"]["TutorialView4"];
+            data: components["schemas"]["GalaxySystem4"] | components["schemas"]["MissionDestination4"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["FleetEstimate4"] | components["schemas"]["AbandonmentQuote4"] | components["schemas"]["DepotSupplyQuote4"] | components["schemas"]["MissionSiteView4"][] | components["schemas"]["TutorialView4"] | components["schemas"]["JumpQuote4"];
             progress?: components["schemas"]["SnapshotProgress"];
         };
         ReportHeader4: {
@@ -8310,7 +8320,7 @@ export interface components {
             event: components["schemas"]["StreamEvent"];
         };
         SubmittedIntent: {
-            quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["DepotSupplyQuote4"];
+            quote?: components["schemas"]["Quote"] | components["schemas"]["GameQuote"] | components["schemas"]["GameProgressionOptions"] | components["schemas"]["FleetTerms4"] | components["schemas"]["MissileTerms4"] | components["schemas"]["DepotSupplyQuote4"] | components["schemas"]["JumpQuote4"];
             submittedAt: number;
             baseRevision: components["schemas"]["Decimal"];
             /** Format: uuid */
@@ -10979,6 +10989,23 @@ export interface components {
             request_id: string;
             viewer_revision: string;
             items: components["schemas"]["ReportHeader4"][];
+        };
+        JumpIntent4: {
+            /** Format: uuid */
+            source: string;
+            /** Format: uuid */
+            destination: string;
+            ships: components["schemas"]["ManifestStack4"][];
+        };
+        JumpQuote4: {
+            intent: components["schemas"]["JumpIntent4"];
+            cooldown_ms: number;
+            profile_hash: string;
+            terms_hash: string;
+        };
+        JumpGateStatus4: {
+            ready_at: number;
+            cooldown_ms: number;
         };
     };
     responses: never;

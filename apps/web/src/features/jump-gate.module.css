@@ -1,0 +1,35 @@
+.section {
+  display: grid;
+  gap: var(--space-3);
+}
+.section h3,
+.section p {
+  margin: 0;
+}
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ships {
+  display: grid;
+  gap: var(--space-2);
+}
+.ship {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(5rem, 8rem);
+  align-items: center;
+  gap: var(--space-3);
+}
+.ship small {
+  display: block;
+  color: var(--text-muted);
+  font-weight: normal;
+}
+.review {
+  border-block: 1px solid var(--border);
+  padding-block: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+}

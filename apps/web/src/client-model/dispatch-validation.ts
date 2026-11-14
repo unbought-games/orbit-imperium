@@ -107,6 +107,8 @@ export function destinationError(
 }
 
 const messages: Partial<Record<S['GameError4'], string>> = {
+  GateCooling:
+    'One of these Jump Gates is cooling down. Wait until both are ready.',
   AttackGroupClosed: 'This attack group is closed to new fleets.',
   AttackGroupFull: 'This group has reached its player or fleet limit.',
   AttackGroupTooLate:

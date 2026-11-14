@@ -138,6 +138,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         }
     }
     s.world = Some(WorldFacts {
+        covered_gate_bodies: Default::default(),
         machine_players: Default::default(),
         site_fleets_enabled: false,
         covered_sites: Default::default(),
@@ -3527,3 +3528,6 @@ fn bulk_report_reads_are_atomic_recipient_scoped_and_idempotent() {
 
 #[path = "missions/site_execution.rs"]
 mod site_execution;
+
+#[path = "missions/jump_gates.rs"]
+mod jump_gates;

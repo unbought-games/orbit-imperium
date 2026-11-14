@@ -127,6 +127,7 @@ export async function installGameFixture(
     constructions?: components['schemas']['Construction3'][]
     bodies?: components['schemas']['BodyV3'][]
     extraCapabilities?: Array<
+      | 'JumpShips'
       | 'AllianceAttacks'
       | 'Hold'
       | 'Missiles'

@@ -193,7 +193,11 @@ pub(crate) async fn readiness(
 /// deactivation boundary. Read active and queued rules in one statement so a
 /// concurrent publication cannot fall between two eligibility reads. Admission
 /// already holds the runtime shared lock used by barrier registration.
-pub(crate) async fn admit(tx: &mut Tx<'_>, u: UniverseId) -> Result<(), StoreError> {
+pub(crate) async fn admit(
+    tx: &mut Tx<'_>,
+    u: UniverseId,
+    enabled: fn(&Ruleset) -> bool,
+) -> Result<(), StoreError> {
     let row = sqlx::query("SELECT r.profile,b.rules AS pending FROM universes u JOIN rulesets r ON r.hash=u.profile_hash LEFT JOIN runtime_barriers b ON b.universe=u.id AND NOT b.done WHERE u.id=$1")
         .bind(u.0).fetch_one(&mut **tx).await.map_err(db_error)?;
     let current: Ruleset = decode_supported(row.try_get("profile").map_err(db_error)?)?;
@@ -202,7 +206,7 @@ pub(crate) async fn admit(tx: &mut Tx<'_>, u: UniverseId) -> Result<(), StoreErr
         .map_err(db_error)?
         .map(decode_supported)
         .transpose()?;
-    if !phalanx_enabled(&current) || pending.as_ref().is_some_and(|r| !phalanx_enabled(r)) {
+    if !enabled(&current) || pending.as_ref().is_some_and(|r| !enabled(r)) {
         return Err(StoreError::GameRejected(GameError::UnavailableContent));
     }
     Ok(())

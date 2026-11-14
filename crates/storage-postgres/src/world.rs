@@ -597,6 +597,17 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     } else {
         None
     };
+    let gate_uses: Vec<GateUse> = sqlx::query_scalar::<_, serde_json::Value>(
+        "SELECT data FROM jump_gate_uses WHERE universe=$1 AND body=ANY($2) ORDER BY body",
+    )
+    .bind(u.0)
+    .bind(&body_ids)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .into_iter()
+    .map(decode)
+    .collect::<Result<_, _>>()?;
     let depot_supplies: Vec<DepotSupply> = sqlx::query_scalar::<_, serde_json::Value>("SELECT s.data FROM depot_supplies s JOIN bodies b ON b.id=s.source_planet AND b.universe=s.universe WHERE s.universe=$1 AND s.source_planet=ANY($2) AND s.at_ms>b.checkpoint_at-3600000 ORDER BY s.at_ms,s.id")
         .bind(u.0).bind(&body_ids).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
     let alliance_leaders: Vec<uuid::Uuid> = sqlx::query_scalar(
@@ -625,6 +636,11 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     .await
     .map_err(db_error)?;
     s.world = Some(WorldFacts {
+        covered_gate_bodies: if jump_gates_enabled(rules) || !gate_uses.is_empty() {
+            body_ids.iter().copied().map(BodyId).collect()
+        } else {
+            Default::default()
+        },
         machine_players: machine_players.into_iter().map(PlayerId).collect(),
         site_fleets_enabled: sqlx::query_scalar(
             "SELECT site_fleets_enabled FROM universe_runtime WHERE universe=$1",
@@ -643,6 +659,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            gate_uses: gate_uses.into_iter().map(|g| (g.body, g)).collect(),
             mission_sites,
             objective_runs,
             tutorial_preferences: crate::tutorial::load(tx, u, epoch, &owners).await?,
@@ -754,6 +771,12 @@ pub(crate) async fn save(
     let u = i.universe;
     crate::objectives::save(tx, i, old, &c.records).await?;
     crate::tutorial::save(tx, i, old, &c.records).await?;
+    for (id, gate) in &c.records.gate_uses {
+        if old.gate_uses.get(id) != Some(gate) {
+            sqlx::query("INSERT INTO jump_gate_uses(universe,body,data) VALUES($1,$2,$3) ON CONFLICT(body) DO UPDATE SET data=excluded.data")
+                .bind(u.0).bind(id.0).bind(sqlx::types::Json(gate)).execute(&mut **tx).await.map_err(db_error)?;
+        }
+    }
     for (id, supply) in &c.records.depot_supplies {
         if let Some(previous) = old.depot_supplies.get(id) {
             if previous != supply {
@@ -1049,7 +1072,15 @@ impl PgStore {
                 action: WorldAction::ScanPlanet { .. }
             }
         ) {
-            crate::phalanx::admit(&mut tx, b.universe).await?;
+            crate::phalanx::admit(&mut tx, b.universe, phalanx_enabled).await?;
+        }
+        if matches!(
+            &g,
+            Command::World {
+                action: WorldAction::JumpShips { .. }
+            }
+        ) {
+            crate::phalanx::admit(&mut tx, b.universe, jump_gates_enabled).await?;
         }
         if machine {
             let body = crate::bots::participation_body(&mut tx, b, &g).await?;

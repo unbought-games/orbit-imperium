@@ -204,6 +204,7 @@ pub struct WorldQuery {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldQueryKind {
+    JumpQuote { intent: JumpIntent },
     Tutorial,
     MissionSites,
     ResolveMissionSite { selection: SiteSelection },
@@ -491,6 +492,10 @@ impl<S: GameStore> GameService<S> {
             ),
             WorldQueryKind::AbandonmentQuote { body } => serde_json::to_value(
                 quote_abandonment(&facts.state, p.player, body, facts.at, &facts.rules)
+                    .map_err(ServiceError::GameRejected)?,
+            ),
+            WorldQueryKind::JumpQuote { intent } => serde_json::to_value(
+                quote_jump(&facts.state, p.player, &intent, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
             WorldQueryKind::DepotSupplyQuote { intent } => serde_json::to_value(

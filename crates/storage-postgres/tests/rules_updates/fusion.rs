@@ -20,7 +20,8 @@ async fn fusion_activates_builds_consumes_fuel_and_restarts_in_both_runtimes() {
                 Building::MissileSilo,
                 Building::AllianceDepot,
                 Building::LunarBase,
-                Building::SensorPhalanx
+                Building::SensorPhalanx,
+                Building::JumpGate
             ]
         );
         service.apply(&plan.document).await.unwrap();

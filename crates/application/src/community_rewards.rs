@@ -24,6 +24,7 @@ pub fn qualifying_command(input: &Input) -> bool {
                         | WorldAction::LaunchMissiles { .. }
                         | WorldAction::SupplyHoldingFleet { .. }
                         | WorldAction::ScanPlanet { .. }
+                        | WorldAction::JumpShips { .. }
                         | WorldAction::CreateAttackGroup { .. }
                 }
         )

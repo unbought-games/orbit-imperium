@@ -21,6 +21,7 @@ fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     s.coverage.production_bodies.insert(b);
     s.collection_revisions.insert(format!("production:{b}"), 0);
     s.world = Some(WorldFacts {
+        covered_gate_bodies: Default::default(),
         machine_players: Default::default(),
         site_fleets_enabled: false,
         covered_sites: Default::default(),
