@@ -393,6 +393,7 @@ impl PgStore {
                     | WorldQueryKind::ResolveMissionSite { .. }
                     | WorldQueryKind::FleetQuote { .. }
                     | WorldQueryKind::FleetEstimate { .. }
+                    | WorldQueryKind::JumpQuote { .. }
                     | WorldQueryKind::DepotSupplyQuote { .. }
                     | WorldQueryKind::MissileQuote { .. }
                     | WorldQueryKind::AbandonmentQuote { .. }
@@ -474,6 +475,7 @@ impl PgStore {
             | WorldQueryKind::ResolveMissionSite { .. }
             | WorldQueryKind::FleetQuote { .. }
             | WorldQueryKind::FleetEstimate { .. }
+            | WorldQueryKind::JumpQuote { .. }
             | WorldQueryKind::DepotSupplyQuote { .. }
             | WorldQueryKind::MissileQuote { .. }
             | WorldQueryKind::AbandonmentQuote { .. } => {
@@ -556,6 +558,7 @@ pub(crate) async fn participation_body(
     match c {
         Command::SetProduction{body,..}|Command::StartUpgrade{body,..}|Command::StartDemolition{body,..}|Command::StartManufacture{body,..}=>Ok(Some(*body)),
         Command::StartResearch{host,..}=>Ok(Some(*host)),
+        Command::World{action:WorldAction::JumpShips{intent,..}}=>Ok(Some(intent.source)),
         Command::World{action:WorldAction::ScanPlanet{source_moon,..}}=>Ok(Some(*source_moon)),
         Command::World{action:WorldAction::SupplyHoldingFleet{intent,..}}=>Ok(Some(intent.source_planet)),
         Command::World{action:WorldAction::LaunchMissiles{intent,..}}=>Ok(Some(intent.origin)),
@@ -592,6 +595,7 @@ pub(crate) async fn unmetered_world_query(
         WorldQueryKind::Tutorial
         | WorldQueryKind::MissionSites
         | WorldQueryKind::ResolveMissionSite { .. }
+        | WorldQueryKind::JumpQuote { .. }
         | WorldQueryKind::DepotSupplyQuote { .. }
         | WorldQueryKind::AbandonmentQuote { .. } => Ok(()),
         WorldQueryKind::MissileQuote { intent } => {

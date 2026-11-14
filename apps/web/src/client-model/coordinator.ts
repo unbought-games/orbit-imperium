@@ -902,7 +902,7 @@ export class Coordinator {
           captured.type === 'FleetQuote' ||
           captured.type === 'FleetEstimate'
         ) {
-          if (!('intent' in result.data) || !('ships' in result.data.intent))
+          if (!('intent' in result.data) || !('mission' in result.data.intent))
             return null
           const normalize = (
             intent: import('../contracts').components['schemas']['FleetIntent4'],
@@ -926,6 +926,13 @@ export class Coordinator {
         if (
           captured.type === 'MissileQuote' &&
           (!('interceptor_body' in result.data) ||
+            canonical(captured.intent) !== canonical(result.data.intent) ||
+            result.data.profile_hash !== this.view?.profile_hash)
+        )
+          return null
+        if (
+          captured.type === 'JumpQuote' &&
+          (!('cooldown_ms' in result.data) ||
             canonical(captured.intent) !== canonical(result.data.intent) ||
             result.data.profile_hash !== this.view?.profile_hash)
         )

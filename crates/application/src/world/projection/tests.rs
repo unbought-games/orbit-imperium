@@ -311,6 +311,7 @@ fn snapshot() -> ViewerSnapshot {
     coverage.research_slot_players.insert(research.owner);
     let state = GameState {
         world: Some(WorldFacts {
+            covered_gate_bodies: Default::default(),
             machine_players: Default::default(),
             site_fleets_enabled: false,
             covered_sites: Default::default(),

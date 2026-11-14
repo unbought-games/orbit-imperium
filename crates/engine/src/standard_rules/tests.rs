@@ -96,7 +96,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
                 .iter()
                 .find(|entry| entry.key == CatalogKey::Building(id))
                 .unwrap();
-            assert_eq!(entry.enabled, id != Building::JumpGate);
+            assert!(entry.enabled);
             assert_eq!(entry.body_kinds, [BodyKind::Moon].into());
         }
         assert!(
@@ -147,7 +147,8 @@ fn unrelated_custom_settings_are_retained_and_owned_customizations_are_conflicts
             Building::MissileSilo,
             Building::AllianceDepot,
             Building::LunarBase,
-            Building::SensorPhalanx
+            Building::SensorPhalanx,
+            Building::JumpGate
         ]
     );
     assert_eq!(
@@ -904,11 +905,20 @@ fn depot_bundle_is_planet_only_idempotent_and_preserves_custom_content() {
 }
 
 #[test]
-fn lunar_base_upgrades_the_released_placeholder_without_unlocking_future_lunar_buildings() {
+fn lunar_base_upgrades_the_released_placeholders_with_supported_lunar_buildings() {
     let current = standard_signup_rules(UniverseProfile::signup(1, 100).unwrap(), 1).unwrap();
     let mut artifact = current.artifact.clone();
     artifact.buildings.remove(&Building::LunarBase);
     artifact.buildings.remove(&Building::SensorPhalanx);
+    artifact.buildings.remove(&Building::JumpGate);
+    artifact.world.as_mut().unwrap().jump_gates = None;
+    let gate = artifact
+        .catalog
+        .iter_mut()
+        .find(|e| e.key == CatalogKey::Building(Building::JumpGate))
+        .unwrap();
+    gate.enabled = false;
+    gate.requirements.clear();
     let phalanx = artifact
         .catalog
         .iter_mut()
@@ -927,7 +937,11 @@ fn lunar_base_upgrades_the_released_placeholder_without_unlocking_future_lunar_b
     assert_eq!(next, current);
     assert_eq!(
         validate_rules_update(&old, &next).unwrap().add_buildings,
-        vec![Building::LunarBase, Building::SensorPhalanx]
+        vec![
+            Building::LunarBase,
+            Building::SensorPhalanx,
+            Building::JumpGate
+        ]
     );
     assert_eq!(
         next.artifact.buildings[&Building::LunarBase],
@@ -947,6 +961,7 @@ fn lunar_base_upgrades_the_released_placeholder_without_unlocking_future_lunar_b
             CatalogKey::Building(
                 Building::LunarBase
                     | Building::SensorPhalanx
+                    | Building::JumpGate
                     | Building::RoboticsFactory
                     | Building::Shipyard
             ) | CatalogKey::Ship(_)
@@ -977,7 +992,9 @@ fn lunar_industry_upgrade_recognizes_released_planet_catalog_and_preserves_custo
     for entry in &mut prior.catalog {
         if !matches!(
             entry.key,
-            CatalogKey::Building(Building::LunarBase | Building::SensorPhalanx)
+            CatalogKey::Building(
+                Building::LunarBase | Building::SensorPhalanx | Building::JumpGate
+            )
         ) && entry.enabled
         {
             entry.body_kinds = [BodyKind::Planet].into();
@@ -998,6 +1015,7 @@ fn lunar_industry_upgrade_recognizes_released_planet_catalog_and_preserves_custo
             CatalogKey::Building(
                 Building::LunarBase
                     | Building::SensorPhalanx
+                    | Building::JumpGate
                     | Building::RoboticsFactory
                     | Building::Shipyard
             ) | CatalogKey::Ship(_)

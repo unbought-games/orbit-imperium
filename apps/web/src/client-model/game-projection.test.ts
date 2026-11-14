@@ -1804,3 +1804,55 @@ it('requires the current group revision and joining window on a submitted fleet 
   view.attack_groups[0].arrival_at = 1000
   expect(canSubmitQuote(s, command, q)).toBe(false)
 })
+
+it('pending jumps reserve only source ships, lock both gates and leave fuel and fleet slots unchanged', () => {
+  const s = state()
+  const view = s.view as S['BoundView4']
+  s.ready = true
+  const source = view.bodies[0]
+  source.kind = 'Moon'
+  source.levels.JumpGate = 1
+  source.jump_gate = { ready_at: 0, cooldown_ms: 3600000 }
+  const destination = {
+    ...structuredClone(source),
+    id: 'destination',
+    inventories: [],
+  }
+  view.bodies.push(destination)
+  const quote: S['JumpQuote4'] = {
+    intent: {
+      source: source.id,
+      destination: destination.id,
+      ships: [{ owner: 'p', ship_type: 'SmallCargo', count: '7' }],
+    },
+    cooldown_ms: 3600000,
+    profile_hash: 'profile',
+    terms_hash: 'jump',
+  }
+  const command: Command = {
+    type: 'World',
+    action: {
+      type: 'JumpShips',
+      intent: quote.intent,
+      expected_terms_hash: 'jump',
+    },
+  }
+  expect(canSubmitQuote(s, command, quote)).toBe(true)
+  const before = structuredClone(source.amounts),
+    slots = occupiedFleetSlots(s)
+  const attempt = intent(s, command, quote)
+  attempt.status = 'uncertain'
+  const projected = projectGameView(s)!
+  expect(projected.bodies[0].inventories[0].count).toBe('3')
+  expect(projected.bodies[1].inventories).toEqual([])
+  expect(projected.bodies[0].amounts).toEqual(before)
+  expect(occupiedFleetSlots(s)).toBe(slots)
+  expect(canSubmitQuote(s, command, quote)).toBe(false)
+  attempt.status = 'rejected'
+  expect(projectGameView(s)!.bodies[0].inventories[0].count).toBe('10')
+  expect(canSubmitQuote(s, command, quote)).toBe(true)
+  destination.jump_gate!.ready_at = 2000
+  expect(canSubmitQuote(s, command, quote)).toBe(false)
+  s.now += 1000
+  expect(canSubmitQuote(s, command, quote)).toBe(true)
+})

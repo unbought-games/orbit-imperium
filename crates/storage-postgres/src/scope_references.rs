@@ -113,6 +113,11 @@ pub(crate) async fn load(
     let mut field = None;
     match input {
         Input::Command(Command::World {
+            action: WorldAction::JumpShips { intent, .. },
+        }) => {
+            bodies.extend([intent.source.0, intent.destination.0]);
+        }
+        Input::Command(Command::World {
             action:
                 WorldAction::ScanPlanet {
                     source_moon,

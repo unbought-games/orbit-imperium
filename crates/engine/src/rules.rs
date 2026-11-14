@@ -176,6 +176,7 @@ impl Ruleset {
                             | Building::Terraformer
                             | Building::LunarBase
                             | Building::SensorPhalanx
+                            | Building::JumpGate
                     ) || artifact.progression.is_none())
             })
         {

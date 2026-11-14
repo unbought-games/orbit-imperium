@@ -154,3 +154,10 @@ assert.equal(siteReports.detail.data.header.preview.fleet,siteReports.detail.dat
 assert.equal(siteReports.detail.data.header.preview.site,siteReports.detail.data.payload.site);
 assert.equal('battle' in siteReports.detail.data.header.preview,false);
 console.log('Authenticated SiteEncounter inbox/detail fixtures preserve typed private identity and compact observations.');
+const jumpAction = ajv.compile({components:schema.components,$ref:'#/components/schemas/WorldAction4'});
+const jump = {type:'JumpShips',intent:{source:id,destination:id,ships:[{owner:id,ship_type:'SmallCargo',count:'7'}]},expected_terms_hash:'a'.repeat(64)};
+assert.ok(jumpAction(jump));
+assert.equal(jumpAction({...jump,intent:{...jump.intent,cargo:{metal:'1',crystal:'0',deuterium:'0'}}}),false);
+const capability4=ajv.compile({components:schema.components,$ref:'#/components/schemas/CapabilityState4'});
+assert.ok(capability4({capability:'JumpShips',enabled:true,reason:'Available'}));
+console.log('Jump Gate commands exclude cargo and publish a recognized capability.');

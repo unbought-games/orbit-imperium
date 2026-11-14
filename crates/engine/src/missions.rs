@@ -437,7 +437,7 @@ fn quote_inner(
     q.group_revision = crate::attack_groups::validate_join(s, owner, intent, at, q.duration_ms, r)?;
     Ok(q.seal())
 }
-fn inventory(
+pub(crate) fn inventory(
     c: &mut ChangeSet,
     s: &GameState,
     b: BodyId,
@@ -701,6 +701,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 return Err(GameError::PresenceUnavailable.into());
             }
             let expected_body = match command {
+                Command::World {
+                    action: WorldAction::JumpShips { intent, .. },
+                } => Some(intent.source),
                 Command::SetProduction { body, .. }
                 | Command::StartUpgrade { body, .. }
                 | Command::StartDemolition { body, .. }
@@ -780,6 +783,15 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         return Err(invariant("event actor"));
     }
     match &i.payload {
+        Input::Command(Command::World {
+            action:
+                WorldAction::JumpShips {
+                    intent,
+                    expected_terms_hash,
+                },
+        }) => {
+            crate::jump_gates::jump(s, i, r, intent, expected_terms_hash, &mut c, &mut w)?;
+        }
         Input::Command(Command::World {
             action: WorldAction::ReviewProductionSettings,
         }) => {

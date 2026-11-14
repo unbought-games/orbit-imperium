@@ -59,6 +59,12 @@ pub fn command_scopes(
     scopes.extend(refs.attack_groups.iter().cloned());
     match command {
         Command::World {
+            action: WorldAction::JumpShips { intent, .. },
+        } => {
+            location(intent.source, refs, &mut scopes);
+            location(intent.destination, refs, &mut scopes);
+        }
+        Command::World {
             action:
                 WorldAction::ScanPlanet {
                     source_moon,

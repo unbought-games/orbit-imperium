@@ -23,6 +23,7 @@ export type SubmittedQuote =
   | S['FleetTerms4']
   | S['MissileTerms4']
   | S['DepotSupplyQuote4']
+  | S['JumpQuote4']
 // These are submission inputs and server facts, never a second resource balance.
 export type SubmittedIntent = S['SubmittedIntent']
 
@@ -78,6 +79,8 @@ export function activeAttempt(attempt: Attempt, view: BoundView | null) {
 }
 
 export function commandBody(command: Command, view: BoundView | null) {
+  if (command.type === 'World' && command.action.type === 'JumpShips')
+    return command.action.intent.source
   if (command.type === 'World' && command.action.type === 'ScanPlanet')
     return command.action.source_moon
   if (command.type === 'World' && command.action.type === 'SupplyHoldingFleet')
@@ -316,6 +319,53 @@ export function canSubmitIntent(
     )
       return false
   }
+  if (command.type === 'World' && command.action.type === 'JumpShips') {
+    const jump = command.action.intent
+    if (
+      view.protocol !== 4 ||
+      jump.source === jump.destination ||
+      !jump.ships.length
+    )
+      return false
+    for (const id of [jump.source, jump.destination]) {
+      const moon = view.bodies.find((b) => b.id === id)
+      if (
+        !moon ||
+        moon.kind !== 'Moon' ||
+        !moon.levels.JumpGate ||
+        !moon.jump_gate ||
+        currentServerTime(state) < moon.jump_gate.ready_at
+      )
+        return false
+    }
+    if (
+      submittedIntents(state).some(({ attempt }) => {
+        const c = attempt.envelope.command
+        return (
+          c.type === 'World' &&
+          c.action.type === 'JumpShips' &&
+          [c.action.intent.source, c.action.intent.destination].some(
+            (id) => id === jump.source || id === jump.destination,
+          )
+        )
+      })
+    )
+      return false
+    const source = view.bodies.find((b) => b.id === jump.source)!
+    if (
+      jump.ships.some(
+        (ship) =>
+          ship.owner !== view.binding.player ||
+          BigInt(ship.count) <= 0n ||
+          BigInt(
+            source.inventories.find(
+              (e) => e.item.kind === 'Ship' && e.item.id === ship.ship_type,
+            )?.count ?? '0',
+          ) < BigInt(ship.count),
+      )
+    )
+      return false
+  }
   if (cost && !cost.refund) {
     const body = view.bodies.find((body) => body.id === cost.body)
     if (!body || !canAfford(cost.delta, body.amounts)) return false
@@ -418,7 +468,8 @@ export function matchesQuote(
       command.type === 'World' &&
       (command.action.type === 'LaunchFleet' ||
         command.action.type === 'LaunchMissiles' ||
-        command.action.type === 'SupplyHoldingFleet') &&
+        command.action.type === 'SupplyHoldingFleet' ||
+        command.action.type === 'JumpShips') &&
       command.action.expected_terms_hash === quote.terms_hash &&
       quote.profile_hash === view.profile_hash &&
       canonical(command.action.intent) === canonical(quote.intent)
@@ -858,8 +909,17 @@ export function projectGameView(state: GameState): BoundView | null {
           : command.type === 'LaunchTransport'
             ? command
             : null
-      if (!fleet || fleet.origin !== body.id) continue
-      for (const ship of fleet.ships) {
+      const jump =
+        command.type === 'World' && command.action.type === 'JumpShips'
+          ? command.action.intent
+          : null
+      const ships =
+        jump?.source === body.id
+          ? jump.ships
+          : fleet?.origin === body.id
+            ? fleet.ships
+            : []
+      for (const ship of ships) {
         if (ship.owner !== view.binding.player) continue
         const inventory = body.inventories.find(
           (entry) =>

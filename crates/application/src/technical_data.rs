@@ -175,6 +175,10 @@ fn building_data(data: &mut TechnicalData, building: Building, rules: &Ruleset) 
         }
     }
     match building {
+        Building::JumpGate if jump_gates_enabled(rules) => {
+            data.fact("Jump transfer", "Instantly transfer stationed mobile ships between two of your moons with completed gates. Resources stay behind; no fuel or fleet slot is used.");
+            if let Ok(cooldown) = jump_cooldown(rules) { data.fact("Cooldown", format!("Both gates cool for {} seconds after each transfer. Higher gate levels do not reduce this cooldown.", cooldown as f64 / 1000.0)); }
+        },
         Building::LunarBase if rules.progression() => {
             data.fact("Moon field capacity", "1 + 3 × completed Lunar Base level, with no diameter cap. Each building level, including the base itself, occupies one field.");
             data.fact("Construction", "An upgrade needs and reserves one free field. Additional capacity becomes available only on completion. Use resources delivered to the moon; moons have no passive resource production.");

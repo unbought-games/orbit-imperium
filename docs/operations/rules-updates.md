@@ -58,6 +58,8 @@ planets receive level zero at activation.
 [Alliance Depot](alliance-depot.md) adds allied holding and host-funded resupply.
 Existing planets receive Depot level zero; migration 0028 must be installed on
 every runtime before enabling the holding rules.
+[Jump Gates](jump-gates.md) add lunar construction and instant ship transfers with
+durable cooldowns at both moons. Migration 0047 is additive and needs no backfill.
 Fresh `setup` and `universe create` use these same standard definitions immediately;
 repeating setup or restarting does not upgrade existing rules.
 

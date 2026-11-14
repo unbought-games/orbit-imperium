@@ -22,6 +22,7 @@ const uiFiles = [
   'recruitment.spec.ts',
   'client-update.spec.ts',
   'sensor-phalanx.spec.ts',
+  'jump-gates.spec.ts',
   'moon-fleets.spec.ts',
   'moons.spec.ts',
   'vacation.spec.ts',

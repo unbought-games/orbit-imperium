@@ -13,6 +13,12 @@ pub(super) fn world_projection(
         .ok_or(ServiceError::InvariantFailure)?;
     let world = world_facts(state).map_err(|_| ServiceError::InvariantFailure)?;
     for body in &mut progression.bodies {
+        if body.kind == BodyKind::Moon && jump_gates_enabled(&snapshot.rules) {
+            body.jump_gate = Some(
+                jump_gate_status(state, body.id, &snapshot.rules)
+                    .map_err(|_| ServiceError::InvariantFailure)?,
+            );
+        }
         if let Some(genesis) = world.records.moons.get(&body.id) {
             body.diameter_km = Some(genesis.diameter_km);
             body.moon = Some(crate::progression::MoonDto {
@@ -313,6 +319,13 @@ fn world_capabilities(
     if missile_rules(rules).is_some() {
         capabilities.push(CapabilityState {
             capability: "Missiles".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
+    if jump_gates_enabled(rules) {
+        capabilities.push(CapabilityState {
+            capability: "JumpShips".into(),
             enabled: true,
             reason: "Available".into(),
         });

@@ -15,7 +15,7 @@ const content: Record<string, string> = {
   SensorPhalanx:
     'A vast lunar sensor array watches the traffic between worlds. By revealing approaching and departing fleets, it turns distant movements into opportunities for a carefully timed strike.',
   JumpGate:
-    'A gateway designed to bridge the gulf between distant moons. The promise of moving a fleet across that divide in an instant could transform scattered outposts into a united military presence.',
+    'A gateway designed to bridge the gulf between distant moons. It moves stationed ships instantly between your gates, turning scattered outposts into a united military presence.',
   MissileSilo:
     'Beneath reinforced launch doors waits a world’s missile arsenal. The silo anchors both the interceptors guarding your skies and the long-range weapons poised to threaten enemy strongholds.',
   AntiBallisticMissile:

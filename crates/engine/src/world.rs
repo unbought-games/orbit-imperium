@@ -183,6 +183,10 @@ impl MissionFleet {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum WorldAction {
+    JumpShips {
+        intent: JumpIntent,
+        expected_terms_hash: Hash,
+    },
     SetTutorialPresentation {
         beginner: bool,
     },
@@ -299,6 +303,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub gate_uses: BTreeMap<BodyId, GateUse>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub tutorial_preferences: BTreeMap<PlayerId, TutorialPreference>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub mission_sites: BTreeMap<SiteId, MissionSite>,
@@ -327,6 +333,8 @@ pub struct WorldRecords {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldFacts {
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub covered_gate_bodies: BTreeSet<BodyId>,
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub machine_players: BTreeSet<PlayerId>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -368,6 +376,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump_gates: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phalanx: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_groups: Option<String>,
@@ -394,6 +404,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .jump_gates
+            .as_deref()
+            .is_some_and(|p| p != JUMP_GATE_PROFILE)
+        {
+            return Err(RulesError::Unsupported);
+        }
         if self
             .phalanx
             .as_deref()
