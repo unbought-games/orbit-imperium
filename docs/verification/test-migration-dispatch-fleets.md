@@ -273,5 +273,6 @@ reopen → Attack application tour; it is not recreated in another browser case.
 Validation: all 14 focused deterministic tests passed in 0.243s; both existing
 object-menu components passed (4.397s preparation, 1.3s/1.1s execution, 3.3s
 runner). The failed queue attempt was manually removed for this repair after
-11m43s in queue. The failing feature shard had 110 passes and one failure in
+12m08s between its recorded issue-timeline queue events (19:38:39–19:50:47 UTC).
+The failing feature shard had 110 passes and one failure in
 3.6 minutes. No other queue failure or test retry is folded into these results.
