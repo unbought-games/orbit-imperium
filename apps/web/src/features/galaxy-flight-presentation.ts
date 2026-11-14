@@ -1,7 +1,7 @@
 import type { GalaxyFlight } from '../client-model/galaxy-fleets'
 import { arrivalCountdown } from './mission-presentation'
 
-/** Short enough for the planet-marker column; full times live in the disclosure. */
+/** Compact traffic chip; full counts and exact times remain in the disclosure. */
 export function galaxyFlightPresentation(
   flights: GalaxyFlight[],
   now?: number,
@@ -54,7 +54,13 @@ export function galaxyFlightPresentation(
         ? ` Next arrival: ${arrivalCountdown(next, now)}.`
         : '')
     : 'No fleets heading to this position.'
+  const outbound = flights.filter(
+    (flight) => flight.phase !== 'returning',
+  ).length
+  const returning = flights.length - outbound
   return {
+    outbound: outbound > 99 ? '99+' : String(outbound),
+    returning: returning > 99 ? '99+' : String(returning),
     description,
     phase,
     arrival,

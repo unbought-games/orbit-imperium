@@ -2,6 +2,22 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { GalaxyDebris, debrisFieldSize } from './galaxy-debris'
+import { GalaxyActionMenu } from './galaxy-action-menu'
+
+it('keeps moon information accessible when no missions are available', () => {
+  const markup = renderToStaticMarkup(
+    createElement(GalaxyActionMenu, {
+      target: 'moon [1:371:2]',
+      coordinates: { galaxy: 1, system: 371, position: 2 },
+      actions: [],
+      details: 'Diameter: 8,774 km',
+      missileIdentity: 'moon',
+      onDraft: () => {},
+    }),
+  )
+  expect(markup).toContain('Actions for moon [1:371:2]')
+  expect(markup).not.toContain('disabled=""')
+})
 
 it.each([
   ['900', '1500', '900', '1,500'],
@@ -14,6 +30,7 @@ it.each([
       createElement(GalaxyDebris, {
         debris: { field_identity: 'field', metal, crystal },
         target: '[1:371:2]',
+        coordinates: { galaxy: 1, system: 371, position: 2 },
       }),
     )
     for (const full of [m, c]) expect(markup).toContain(`title="${full}"`)
@@ -50,6 +67,7 @@ it('renders and sizes deuterium-only fields with the canonical accessible mark',
         deuterium: '1000000',
       },
       target: '[1:371:2]',
+      coordinates: { galaxy: 1, system: 371, position: 2 },
       onHarvest: () => {},
     }),
   )
@@ -71,6 +89,7 @@ for (const deuterium of [undefined, '0']) {
             deuterium,
           },
           target: '[1:371:2]',
+          coordinates: { galaxy: 1, system: 371, position: 2 },
           onHarvest,
         }),
       )

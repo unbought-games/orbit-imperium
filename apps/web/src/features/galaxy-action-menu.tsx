@@ -1,5 +1,11 @@
 import { Crosshair, Eye, Recycle, Rocket, Truck } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type ReactElement,
+} from 'react'
 import type { MissileLaunchPresentation } from './missile-launch-action'
 import { Menu } from '@base-ui/react/menu'
 import { GalaxyActionsTrigger } from './galaxy-actions-trigger'
@@ -24,7 +30,20 @@ export function GalaxyActionMenu({
   missileAction,
   missileIdentity,
   onDraft,
+  quickSpy,
+  triggerElement,
+  triggerLabel,
+  details,
 }: {
+  triggerElement?: ReactElement
+  triggerLabel?: string
+  details?: ReactNode
+  quickSpy?: {
+    send: () => void
+    disabled?: boolean
+    reason?: string | null
+    count?: string
+  }
   target: string
   coordinates: components['schemas']['Coordinates']
   actions: ReturnType<typeof galaxyMissionActions>
@@ -47,7 +66,11 @@ export function GalaxyActionMenu({
   }, [availableMissileIdentity])
   const trigger = useRef<HTMLButtonElement>(null)
   const handingOff = useRef(false)
-  const enabled = !!missileAction || actions.some((action) => !action.reason)
+  const enabled =
+    !!details ||
+    !!(quickSpy && !quickSpy.disabled) ||
+    !!missileAction ||
+    actions.some((action) => !action.reason)
   return (
     <>
       <Menu.Root
@@ -57,8 +80,8 @@ export function GalaxyActionMenu({
       >
         <Menu.Trigger
           ref={trigger}
-          render={<GalaxyActionsTrigger target={target} />}
-          aria-label={`Actions for ${target}`}
+          render={triggerElement ?? <GalaxyActionsTrigger target={target} />}
+          aria-label={triggerLabel ?? `Actions for ${target}`}
           disabled={!enabled}
           title={
             enabled
@@ -69,7 +92,7 @@ export function GalaxyActionMenu({
         <Menu.Portal>
           <Menu.Positioner
             sideOffset={4}
-            align="end"
+            align={triggerElement ? 'start' : 'end'}
             className={styles.menuPositioner}
           >
             <Menu.Popup
@@ -77,6 +100,21 @@ export function GalaxyActionMenu({
               className={styles.actionMenu}
               aria-label={`Missions to ${target}`}
             >
+              {details && <div className={styles.menuNote}>{details}</div>}
+              {quickSpy && (
+                <Menu.Item
+                  className={styles.menuItem}
+                  disabled={quickSpy.disabled}
+                  title={quickSpy.reason ?? undefined}
+                  onClick={quickSpy.send}
+                >
+                  <Eye size={16} aria-hidden="true" />
+                  Spy
+                  {quickSpy.count && quickSpy.count !== '1'
+                    ? ` (${quickSpy.count} probes)`
+                    : ''}
+                </Menu.Item>
+              )}
               {actions.map((action) => {
                 const Icon = icons[action.mission]
                 return (

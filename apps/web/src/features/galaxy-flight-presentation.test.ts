@@ -26,6 +26,8 @@ it('uses the earliest confirmed arrival without inventing a pending departure ti
     arrival: '…',
     count: '1',
     phase: 'pending',
+    outbound: '1',
+    returning: '0',
     description: '1 fleet departure pending.',
   })
   expect(
@@ -37,6 +39,8 @@ it('uses the earliest confirmed arrival without inventing a pending departure ti
     arrival: '30s',
     count: '3',
     phase: 'en route',
+    outbound: '3',
+    returning: '0',
     description:
       '2 fleets en route. 1 fleet departure pending. Next arrival: 30s.',
   })
@@ -68,4 +72,17 @@ it('describes idle, returning and unabridged fleet counts without opening detail
       1000,
     ).description,
   ).toBe('100 fleets en route. Next arrival: Awaiting confirmation.')
+})
+
+it('counts outbound and returning fleets independently in the same chip', () => {
+  expect(
+    galaxyFlightPresentation(
+      [
+        flight(121000),
+        flight(31000, 'returning'),
+        flight(null, 'departure pending'),
+      ],
+      1000,
+    ),
+  ).toMatchObject({ outbound: '2', returning: '1', arrival: '30s' })
 })

@@ -339,12 +339,12 @@ for (const width of [1440, 390]) {
         .press('Escape')
       await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
       const trigger = page.getByRole('button', {
-        name: 'Moon at [1:371:9] details',
+        name: 'Actions for moon [1:371:9]',
         exact: true,
       })
       await trigger.click()
-      const details = page.getByRole('dialog', {
-        name: 'Moon at [1:371:9]',
+      const details = page.getByRole('menu', {
+        name: 'Missions to moon [1:371:9]',
         exact: true,
       })
       await expect(details).toContainText('8,500 km')
@@ -352,13 +352,13 @@ for (const width of [1440, 390]) {
         path: `test-results/moon-galaxy-actions-${width}x900.png`,
       })
       await expect(
-        details.getByRole('button', {
-          name: 'Spy on Moon [1:371:9]',
+        details.getByRole('menuitem', {
+          name: 'Spy',
           exact: true,
         }),
       ).toBeEnabled()
       await details
-        .getByRole('button', { name: 'Spy on Moon [1:371:9]', exact: true })
+        .getByRole('menuitem', { name: 'Spy', exact: true })
         .click()
       await expect.poll(() => state.launches.length).toBe(1)
       expect(state.launches[0]).toMatchObject({
@@ -368,12 +368,6 @@ for (const width of [1440, 390]) {
       })
       if (!(await details.isVisible())) await trigger.click()
       await expect(details).toBeVisible()
-      await details
-        .getByRole('button', {
-          name: 'Actions for moon [1:371:9]',
-          exact: true,
-        })
-        .click()
       await expect(
         page.getByRole('menuitem', { name: 'Attack', exact: true }),
       ).toBeVisible()
@@ -476,10 +470,10 @@ for (const width of [1440, 390]) {
         .press('Escape')
       await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
       await page
-        .getByRole('button', { name: 'Moon at [1:371:9] details', exact: true })
+        .getByRole('button', { name: 'Actions for moon [1:371:9]', exact: true })
         .click()
       await page
-        .getByRole('button', { name: 'Spy on Moon [1:371:9]', exact: true })
+        .getByRole('menuitem', { name: 'Spy', exact: true })
         .click()
       await expect(page.getByRole('alert')).toContainText('Espionage at moon')
       await expect(page.getByRole('alert')).toContainText('resources')

@@ -3,6 +3,7 @@ import { formatWholeNumber } from '../ui/whole-number'
 import { formatCompactResource } from '../ui/compact-resource'
 import { ResourceValue } from '../ui/resource-value'
 import { Button } from '../ui/button'
+import { GalaxyActionMenu } from './galaxy-action-menu'
 import type { components } from '../contracts'
 import styles from './galaxy.module.css'
 
@@ -37,10 +38,12 @@ export function GalaxyDebris({
   debris,
   target,
   onHarvest,
+  coordinates,
 }: {
   debris: NonNullable<Debris>
   target: string
-  onHarvest?: (opener: HTMLButtonElement) => void
+  coordinates: components['schemas']['Coordinates']
+  onHarvest?: (opener: HTMLElement) => void
 }) {
   const size = debrisFieldSize(debris.metal, debris.crystal, debris.deuterium)
   const resources = debrisResourceKinds(debris.deuterium)
@@ -66,17 +69,26 @@ export function GalaxyDebris({
     </>
   )
   return onHarvest ? (
-    <Button
-      type="button"
-      variant="ghost"
-      className={`${styles.debris} ${styles.debrisTrigger}`}
-      aria-label={`Quick harvest debris at ${target}: ${resources.map((resource) => `${resource[0].toUpperCase() + resource.slice(1)} ${formatWholeNumber(debris[resource] ?? '0')}`).join(', ')}`}
-      aria-haspopup="dialog"
-      title={`Quick harvest · ${size} debris field`}
-      onClick={(event) => onHarvest(event.currentTarget)}
-    >
-      {contents}
-    </Button>
+    <GalaxyActionMenu
+      target={`debris at ${target}`}
+      coordinates={coordinates}
+      actions={[{ mission: 'Harvest' }]}
+      missileIdentity={debris.field_identity}
+      triggerLabel={`Actions for debris at ${target}: ${resources.map((resource) => `${resource[0].toUpperCase() + resource.slice(1)} ${formatWholeNumber(debris[resource] ?? '0')}`).join(', ')}`}
+      triggerElement={
+        <Button
+          type="button"
+          variant="ghost"
+          className={`${styles.debris} ${styles.debrisTrigger}`}
+          title={`${size} debris field`}
+        >
+          {contents}
+        </Button>
+      }
+      onDraft={(_at, _mission, opener) => {
+        if (opener) onHarvest(opener)
+      }}
+    />
   ) : (
     <div
       className={styles.debris}

@@ -13,10 +13,10 @@ for (const width of [1440, 390]) {
     await mount('galaxy-position')
     const mixed = rows(page)
       .nth(0)
-      .getByRole('button', { name: /^Quick harvest debris/ })
+      .getByRole('button', { name: /^Actions for debris at/ })
     const only = rows(page)
       .nth(2)
-      .getByRole('button', { name: /^Quick harvest debris/ })
+      .getByRole('button', { name: /^Actions for debris at/ })
     await expect(mixed).toHaveAccessibleName(/Deuterium 60,000/)
     await expect(only).toHaveAccessibleName(
       /Metal 0, Crystal 0, Deuterium 40,001/,
@@ -29,6 +29,7 @@ for (const width of [1440, 390]) {
       [only, '3'],
     ] as const) {
       await trigger.click()
+      await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
       const form = page.getByRole('dialog', {
         name: 'Harvest mission',
         exact: true,
@@ -79,7 +80,7 @@ for (const width of [1440, 390]) {
     for (const index of [3, 4]) {
       const trigger = rows(page)
         .nth(index)
-        .getByRole('button', { name: /^Quick harvest debris/ })
+        .getByRole('button', { name: /^Actions for debris at/ })
       await expect(trigger).not.toHaveAccessibleName(/Deuterium/)
       await expect(
         trigger.getByRole('img', { name: 'Deuterium', exact: true }),
@@ -93,8 +94,9 @@ for (const width of [1440, 390]) {
     }
     await rows(page)
       .nth(3)
-      .getByRole('button', { name: /^Quick harvest debris/ })
+      .getByRole('button', { name: /^Actions for debris at/ })
       .click()
+    await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
     const form = page.getByRole('dialog', {
       name: 'Harvest mission',
       exact: true,
@@ -132,12 +134,12 @@ for (const width of [390, 1280]) {
     const originalUrl = page.url()
     const trigger = rows(page)
       .first()
-      .getByRole('button', { name: /^Quick harvest debris/ })
+      .getByRole('button', { name: /^Actions for debris at/ })
     const dialog = page.getByRole('dialog', {
       name: 'Harvest mission',
       exact: true,
     })
-    await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
     const buttonBox = (await trigger.boundingBox())!
     const amountsBox = (await trigger.locator(':scope > span').boundingBox())!
     expect(buttonBox.x + buttonBox.width).toBeCloseTo(
@@ -148,6 +150,7 @@ for (const width of [390, 1280]) {
     await trigger.focus()
     await expect(trigger).toBeFocused()
     await trigger.locator('img').click()
+    await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText('Debris at [1:371:2]')
     await expect(
@@ -163,11 +166,15 @@ for (const width of [390, 1280]) {
       .getByText(width === 390 ? '300K' : '300,000', { exact: true })
       .filter({ visible: true })
       .click()
+    await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
     await expect(dialog).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(trigger).toBeFocused()
     for (const key of ['Enter', 'Space']) {
       await trigger.press(key)
+      await page
+        .getByRole('menuitem', { name: 'Harvest', exact: true })
+        .press('Enter')
       await expect(dialog).toBeVisible()
       await page.keyboard.press('Escape')
       await expect(dialog).not.toBeVisible()
@@ -189,8 +196,9 @@ for (const width of [390, 1280]) {
     await page.getByRole('button', { name: 'Toggle blocked harvest' }).click()
     await rows(page)
       .first()
-      .getByRole('button', { name: /^Quick harvest debris/ })
+      .getByRole('button', { name: /^Actions for debris at/ })
       .click()
+    await page.getByRole('menuitem', { name: 'Harvest', exact: true }).click()
     const dialog = page.getByRole('dialog', {
       name: 'Harvest mission',
       exact: true,

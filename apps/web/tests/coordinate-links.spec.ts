@@ -98,9 +98,7 @@ async function assertLocation(page: Page, system: number, position: number) {
   ).toHaveAttribute('data-value', body.id)
   const selected = page.locator('li[aria-current="location"]')
   await expect(selected).toHaveAttribute('id', `position-${position}`)
-  await expect(selected).toContainText(
-    `Selected location [1:${system}:${position}]`,
-  )
+  await expect(selected.getByRole('link', { name: `View [1:${system}:${position}] in galaxy`, exact: true })).toBeVisible()
   await expect(selected).toBeInViewport()
   await expect(selected).toBeFocused()
   await expect(selected).toContainText('Empty position')
@@ -120,6 +118,8 @@ for (const width of [1280, 390, 320]) {
     await expect(control).toBeFocused()
     await expect(selected).toHaveCSS('outline-style', 'solid')
     await expect(selected).toHaveCSS('outline-width', '2px')
+    expect((await selected.boundingBox())!.height).toBe((await page.locator('#position-11').boundingBox())!.height)
+    await expect(page.getByText('Selected location', { exact: false })).toHaveCount(0)
     if (width < 768) await expect(control).toHaveCSS('outline-style', 'none')
   })
 

@@ -92,7 +92,7 @@ for (const width of [1440, 390]) {
       await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
       const positions = page.getByRole('region', {name: 'Galaxy positions'})
       await expect(positions).toContainText('Nova Roma')
-      const moonControl = positions.getByRole('button', {name: 'Moon at [1:371:12] details', exact: true})
+      const moonControl = positions.getByRole('button', {name: 'Actions for moon [1:371:12]', exact: true})
       await expect(moonControl).toBeVisible()
       const row = positions.getByRole('listitem').nth(11)
       for (const viewport of [320, 600, 768, width]) {
@@ -109,16 +109,10 @@ for (const width of [1440, 390]) {
       }
       await expect(positions).not.toContainText('8,366 km')
       await diagnosticScreenshot(page, {path: `test-results/moon-galaxy-row-${width}x900.png`})
-      const details = page.getByRole('dialog', {name: 'Moon at [1:371:12]', exact: true})
-      if (width >= 600) {
-        await moonControl.hover()
-        await expect(details).toContainText('Diameter: 8,366 km')
-        await page.keyboard.press('Escape')
-        await expect(details).toBeHidden()
-      }
+      const details = page.getByRole('menu', {name: 'Missions to moon [1:371:12]', exact: true})
       await moonControl.click()
       await expect(details).toContainText('Diameter: 8,366 km')
-      await expect(details.getByRole('button', {name: 'Actions for moon [1:371:12]', exact: true})).toBeEnabled()
+      await expect(details.getByRole('menuitem', {name: 'Transport', exact: true})).toBeEnabled()
       await diagnosticScreenshot(page, {path: `test-results/moon-galaxy-details-${width}x900.png`})
       await page.keyboard.press('Escape')
       await expect(details).toBeHidden()

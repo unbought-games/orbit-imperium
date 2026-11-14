@@ -4,6 +4,7 @@ import { fleetPresentationFixture } from '../../src/test-support/fleet-presentat
 import type { GalaxyFlight } from '../../src/client-model/galaxy-fleets'
 import { fleetFixtureTime } from '../../src/test-support/fleet-presentation'
 import { id } from '../../src/test-support/bootstrap'
+import { PlayerName } from '../../src/features/player-name'
 import { GalaxyPosition } from '../../src/features/galaxy-position'
 import { GalaxyHarvestPresentation } from '../../src/features/galaxy-harvest-action'
 import {
@@ -34,6 +35,7 @@ export function GalaxyPositionScenario({
 }: {
   traffic?: boolean
 }) {
+  const [draft, setDraft] = useState('')
   const [flights, setFlights] = useState<GalaxyFlight[]>([])
   const [now, setNow] = useState(fleetFixtureTime)
   const addFlight = () =>
@@ -93,13 +95,17 @@ export function GalaxyPositionScenario({
                 ? 'Andromeda listening post with a very long name'
                 : 'Vega'
               : undefined,
-            activity: { type: 'None' },
-            inactivity: 'Active',
+            activity: { type: traffic ? 'Recent' : 'None' },
+            inactivity: traffic ? 'Inactive28' : 'Active',
             vacation: false,
             espionage_eligible: true,
           }
         : null,
     debris: { ...debris, field_identity: id(42 + index) },
+    moon:
+      traffic && index === 0
+        ? { id: id(70), name: 'Selene', diameter_km: 8500 }
+        : undefined,
   }))
   const position =
     positions.find((item) => item.coordinates.position === selected) ??
@@ -168,6 +174,19 @@ export function GalaxyPositionScenario({
                     now={now}
                     player={view.binding.player}
                     origin={fixture.body.id}
+                    playerIdentity={
+                      traffic && item.body ? (
+                        <PlayerName
+                          player={item.body.owner}
+                          fallback={
+                            item.coordinates.position === 2
+                              ? 'commander_andromeda_1234567890'
+                              : 'Vega'
+                          }
+                          truncate
+                        />
+                      ) : undefined
+                    }
                     playerNames={{
                       [id(31)]: 'CommanderAndromedaTheUnreasonablyLongName',
                       [id(32)]: 'Vega',
@@ -179,7 +198,8 @@ export function GalaxyPositionScenario({
                       harvest: true,
                     }}
                     colony={colonizationStatus(view, item.coordinates.position)}
-                    onDraft={(at, mission, element) => {
+                    onDraft={(at, mission, element, kind = 'planet') => {
+                      setDraft(`${at.position} ${mission} ${kind}`)
                       if (mission !== 'Harvest') return
                       opener.current = element ?? null
                       setSelected(at.position)
@@ -196,6 +216,7 @@ export function GalaxyPositionScenario({
               ))}
             </ul>
           </section>
+          {traffic && <output aria-label="Requested mission">{draft}</output>}
           <GalaxyHarvestPresentation
             harvest={{
               ...availability,

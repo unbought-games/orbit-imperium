@@ -263,17 +263,16 @@ test('flight details stay open through refreshed countdowns and dismiss with Esc
   await expect(disclosure.locator('li')).toHaveCount(5)
   await expect(disclosure.locator('li').first()).toContainText('1m 0s')
   await expect(trigger).toContainText('5')
-  await page
-    .getByRole('button', { name: 'Refresh snapshot' })
-    .evaluate((button: HTMLButtonElement) => button.click())
-  await expect(disclosure).toContainText('No fleets heading to this position.')
-  await expect(disclosure.locator('li')).toHaveCount(0)
-  await expect(trigger).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(disclosure).toBeHidden()
   await expect(trigger).toBeFocused()
   await trigger.press('Enter')
   await expect(disclosure).toBeVisible()
+  await page
+    .getByRole('button', { name: 'Refresh snapshot' })
+    .evaluate((button: HTMLButtonElement) => button.click())
+  await expect(disclosure).toHaveCount(0)
+  await expect(trigger).toHaveCount(0)
 })
 
 test('empty inventory retains its useful Shipyard destination without fabricated catalog rows', async ({

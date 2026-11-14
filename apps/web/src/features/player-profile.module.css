@@ -115,3 +115,10 @@
 .actions a:hover {
   background: #a4dbef20;
 }
+
+.trigger.truncate {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

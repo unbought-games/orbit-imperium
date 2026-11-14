@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Radar } from 'lucide-react'
 import { usePhalanxScan } from './use-phalanx-scan'
 import type { Coordinator } from '../client-model/coordinator'
 import type { components } from '../contracts'
@@ -14,7 +15,9 @@ export function PhalanxAction({
   origin,
   position,
   universe,
+  compact = false,
 }: {
+  compact?: boolean
   model: Coordinator
   origin: string
   position: components['schemas']['GalaxyPosition4']
@@ -35,8 +38,15 @@ export function PhalanxAction({
   } = usePhalanxScan(model, origin, position)
   return (
     <>
-      <Button ref={opener} variant="secondary" onClick={() => setOpen(true)}>
-        Scan planet
+      <Button
+        ref={opener}
+        variant={compact ? 'ghost' : 'secondary'}
+        size={compact ? 'icon-touch' : undefined}
+        aria-label="Scan planet"
+        title="Scan planet"
+        onClick={() => setOpen(true)}
+      >
+        {compact ? <Radar size={16} aria-hidden="true" /> : 'Scan planet'}
       </Button>
       <ActionSheet
         initialSnap={90}

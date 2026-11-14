@@ -25,6 +25,7 @@ import { usePlayerDisplay } from '../shell/player-profiles-context'
 import { sameAlliance } from './player-alliance'
 import { Users } from 'lucide-react'
 import { InfoTooltip } from '../ui/info-tooltip'
+import { Button } from '../ui/button'
 
 export function GalaxyPosition({
   position,
@@ -113,7 +114,37 @@ export function GalaxyPosition({
       )}
     >
       <div className={styles.positionSummary}>
-        <GalaxyFlightSummary flights={flights} now={now} target={target}>
+        <div className={styles.planetTarget}>
+          {!readOnly && (
+            <GalaxyActionMenu
+              triggerElement={
+                <Button variant="ghost" className={styles.planetMenuTrigger}>
+                  <span className={styles.srOnly}>Actions for {target}</span>
+                </Button>
+              }
+              missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
+              target={target}
+              coordinates={coordinates}
+              actions={actions}
+              missileAction={missileAction}
+              quickSpy={
+                canTarget && !owned
+                  ? {
+                      send: () =>
+                        espionage
+                          ? espionage.send()
+                          : onDraft(coordinates, 'Espionage'),
+                      disabled:
+                        !!spyReason || espionage?.busy || espionage?.paused,
+                      reason: spyReason,
+                      count: espionage?.count,
+                    }
+                  : undefined
+              }
+              colonyNote={colony.reason ?? colony.warning}
+              onDraft={onDraft}
+            />
+          )}
           {body ? (
             <BodyIllustration
               body={{ ...body, coordinates }}
@@ -131,17 +162,49 @@ export function GalaxyPosition({
               {coordinates.position}
             </span>
           )}
-        </GalaxyFlightSummary>
-        <div className={styles.planetInfo}>
-          <div className={styles.planetTitle}>
-            <strong>
-              {body
-                ? (body.name ?? (owned ? 'Your planet' : body.kind))
-                : position.abandoned_until
-                  ? 'Abandoned planet'
-                  : 'Empty position'}
-            </strong>
-            {body && <GalaxyActivity activity={body.activity} />}
+          <div className={styles.planetInfo}>
+            <div className={styles.planetTitle}>
+              <strong title={body?.name ?? undefined}>
+                {body
+                  ? (body.name ?? (owned ? 'Your planet' : body.kind))
+                  : position.abandoned_until
+                    ? 'Abandoned planet'
+                    : 'Empty position'}
+              </strong>
+              {body && <GalaxyActivity activity={body.activity} />}
+            </div>
+            {body && (
+              <div className={styles.playerStatus}>
+                <span
+                  className={classes(
+                    styles.player,
+                    body.inactivity === 'Inactive7' && styles.inactive,
+                    body.inactivity === 'Inactive28' && styles.longInactive,
+                    body.vacation && styles.vacation,
+                  )}
+                >
+                  <span className={styles.playerName}>
+                    {playerIdentity ??
+                      (owned ? 'You' : playerLabel(body.owner, playerNames))}
+                  </span>
+                  <GalaxyPlayerStatuses
+                    body={body}
+                    protectedTarget={protectedTarget}
+                  />
+                </span>
+                {allied && viewerAlliance && (
+                  <InfoTooltip
+                    inline
+                    label="Your alliance"
+                    description={`This player is a member of ${viewerAlliance.name} [${viewerAlliance.tag}], like you.`}
+                    className={styles.allianceBadge}
+                  >
+                    <Users size={13} aria-hidden="true" />
+                    <span>Your alliance</span>
+                  </InfoTooltip>
+                )}
+              </div>
+            )}
             <CoordinateLink
               at={coordinates}
               target={body?.kind === 'Moon' ? 'moon' : 'planet'}
@@ -154,59 +217,29 @@ export function GalaxyPosition({
               onHarvest={(opener) => onDraft(coordinates, 'Harvest', opener)}
               className={styles.coordinates}
             />
+            {moonEspionage?.error && (
+              <ErrorBannerMessage>
+                <p role="alert">
+                  Espionage at moon{' '}
+                  <CoordinateLink
+                    at={position.coordinates}
+                    origin={origin}
+                    target="moon"
+                  />{' '}
+                  · {moonEspionage.error}
+                </p>
+              </ErrorBannerMessage>
+            )}
+            {espionage?.notice && (
+              <ErrorBannerMessage>
+                <p role="alert">
+                  Espionage at{' '}
+                  <CoordinateLink at={position.coordinates} origin={origin} /> ·{' '}
+                  {espionage.notice}
+                </p>
+              </ErrorBannerMessage>
+            )}
           </div>
-          {body && (
-            <div className={styles.playerStatus}>
-              <span
-                className={classes(
-                  styles.player,
-                  body.inactivity === 'Inactive7' && styles.inactive,
-                  body.inactivity === 'Inactive28' && styles.longInactive,
-                  body.vacation && styles.vacation,
-                )}
-              >
-                {playerIdentity ??
-                  (owned ? 'You' : playerLabel(body.owner, playerNames))}
-                <GalaxyPlayerStatuses
-                  body={body}
-                  protectedTarget={protectedTarget}
-                />
-              </span>
-              {owned && <span className={styles.you}>You</span>}
-              {allied && viewerAlliance && (
-                <InfoTooltip
-                  label="Your alliance"
-                  description={`This player is a member of ${viewerAlliance.name} [${viewerAlliance.tag}], like you.`}
-                  className={styles.allianceBadge}
-                >
-                  <Users size={13} aria-hidden="true" />
-                  <span>Your alliance</span>
-                </InfoTooltip>
-              )}
-            </div>
-          )}
-          {moonEspionage?.error && (
-            <ErrorBannerMessage>
-              <p role="alert">
-                Espionage at moon{' '}
-                <CoordinateLink
-                  at={position.coordinates}
-                  origin={origin}
-                  target="moon"
-                />{' '}
-                · {moonEspionage.error}
-              </p>
-            </ErrorBannerMessage>
-          )}
-          {espionage?.notice && (
-            <ErrorBannerMessage>
-              <p role="alert">
-                Espionage at{' '}
-                <CoordinateLink at={position.coordinates} origin={origin} /> ·{' '}
-                {espionage.notice}
-              </p>
-            </ErrorBannerMessage>
-          )}
         </div>
         {position.moon && (
           <GalaxyMoon
@@ -224,6 +257,7 @@ export function GalaxyPosition({
           <GalaxyDebris
             debris={debris}
             target={target}
+            coordinates={coordinates}
             onHarvest={
               actions.some(
                 (action) => action.mission === 'Harvest' && !action.reason,
@@ -233,6 +267,7 @@ export function GalaxyPosition({
             }
           />
         )}
+        <GalaxyFlightSummary flights={flights} now={now} target={target} />
         {!readOnly && (
           <div className={styles.quickActions}>
             {canTarget && !owned && (
@@ -251,16 +286,9 @@ export function GalaxyPosition({
                 }
               />
             )}
-            {scanAction}
-            <GalaxyActionMenu
-              missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
-              target={target}
-              coordinates={coordinates}
-              actions={actions}
-              missileAction={missileAction}
-              colonyNote={colony.reason ?? colony.warning}
-              onDraft={onDraft}
-            />
+            {scanAction && (
+              <span className={styles.scanAction}>{scanAction}</span>
+            )}
           </div>
         )}
       </div>
