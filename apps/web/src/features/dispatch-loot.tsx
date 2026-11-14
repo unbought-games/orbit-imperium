@@ -79,18 +79,18 @@ export function DispatchLoot({
                 <span>
                   {allFits ? (
                     <>
-                      Enough cargo space for all{' '}
-                      <NumberValue value={plan.total} /> loot.
+                      Capturing all <NumberValue value={plan.total} />
                     </>
                   ) : (
                     <>
-                      Can carry <NumberValue value={plan.carried} /> of{' '}
-                      <NumberValue value={plan.total} /> loot.
+                      Capturing <NumberValue value={plan.carried} /> of{' '}
+                      <NumberValue value={plan.total} />
                       <small>
+                        Needs{' '}
                         <NumberValue
                           value={plan.required - (space.remaining ?? 0n)}
                         />{' '}
-                        more free cargo space needed.
+                        more cargo space
                       </small>
                     </>
                   )}

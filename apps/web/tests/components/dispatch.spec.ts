@@ -2372,7 +2372,7 @@ test('raid planning follows cargo space below the cargo controls and links back 
 }) => {
   await setup(page, mount, { variant: 'historical' })
   const planning = page.getByRole('region', { name: 'Raid cargo planning' })
-  await expect(planning).toContainText('Can carry 4,999 of 10,000 loot.')
+  await expect(planning).toContainText('Capturing 4,999 of 10,000')
   await expect(
     planning.getByRole('link', { name: 'Report', exact: true }),
   ).toHaveAttribute('href', new RegExp(`/reports/${id(90)}$`))
@@ -2393,12 +2393,10 @@ test('raid planning follows cargo space below the cargo controls and links back 
     capacity: '15001000000',
   })
   await page.getByLabel('Small Cargo · 2 available').fill('2')
-  await expect(planning).toContainText(
-    'Enough cargo space for all 10,000 loot.',
-  )
+  await expect(planning).toContainText('Capturing all 10,000')
   await expect(review(page)).toBeEnabled()
   await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('5000')
-  await expect(planning).toContainText('more free cargo space needed')
+  await expect(planning).toContainText('more cargo space')
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     const aligned = await planning

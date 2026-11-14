@@ -193,3 +193,19 @@ No retry, deadline change, or deleted coverage.
 The four updated moon cases passed locally on the first repair run (bundle
 5.080s; execution 9.6s, one worker). Product source and final screenshots were
 unchanged by this test-contract correction.
+
+## Compact cargo summary follow-up
+
+Owner requested tighter spacing and shorter fit text. Reduced section/resource
+row gaps and removed the extra shortfall-line margin. Partial fit now reads
+"Capturing N of total" / "Needs X more cargo space"; full fit reads
+"Capturing all N". Arithmetic and launch checks are unchanged.
+
+On `17f85516` plus this copy/spacing patch, the existing cargo-fit and prepared
+review component cases passed (2/2; bundle 4.491s, execution 2.7s), formatting and
+focused lint passed. Inspected full-game desktop (1032×1313) and mobile
+(390×1000) captures for partial and full capacity in
+`test-results/dispatch-compact-full-game/`. Restored the browser viewport; the
+owner navigated to Fleets during the final capture sequence, so their selected
+page was left intact. No production or browser behavior changes beyond copy and
+spacing; no new tests or reruns of already-green broad suites were needed.
