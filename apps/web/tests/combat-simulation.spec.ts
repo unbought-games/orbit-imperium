@@ -300,7 +300,12 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/simulation-planning-${width}.png`, fullPage: false })
   }
-  await prepare.click()
+  await withFixtureResponse(page, r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'FleetQuote', () => prepare.click())
+  const reviewPanel = page.getByRole('region', { name: 'Fleet quote', exact: true })
+  await expect(reviewPanel).toBeFocused()
+  expect(quotes.at(-1)).toMatchObject({origin: body.id, mission:'Attack', destination, speed_percent:60, ships:[{owner:binding.player, ship_type:'LightFighter',count:'3'}]})
+  expect(launches).toBe(0)
+  await page.getByRole('button', {name:'Back to edit mission'}).click()
   await expect(page.locator('main h1')).toHaveText('Dispatch')
   await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch.*mission=Attack.*target=planet`))
   await expect(page.getByLabel('Light Fighter · 3 available')).toHaveValue('3')

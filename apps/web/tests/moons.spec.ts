@@ -60,7 +60,7 @@ for (const width of [1440, 390]) {
       await expect(page.locator('main h1')).toHaveText('Dispatch')
       await expect(page.getByRole('status').filter({hasText: 'No ships available here.'})).toBeVisible()
       await expect(page.getByRole('button', {name: 'Add all ships', exact: true})).toBeDisabled()
-      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeEnabled()
+      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeDisabled()
       await diagnosticScreenshot(page, {path: `test-results/moon-dispatch-${width}x900.png`, fullPage: true})
       // Extra screenshots are optional visual evidence, not test readiness.
       if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
@@ -73,7 +73,7 @@ for (const width of [1440, 390]) {
       // Same-coordinate moon targeting remains distinct from the planet.
       await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${body.id}/dispatch?galaxy=1&system=371&position=12&target=moon&mission=Transport`))
       await expect(page.getByLabel('Destination preview')).toContainText('Your moon')
-      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeEnabled()
+      await expect(page.getByRole('button', {name: 'Review fleet', exact: true})).toBeDisabled()
       expect(mutations).toEqual([])
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     })

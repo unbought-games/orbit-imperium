@@ -64,25 +64,25 @@ export function DispatchDestinationPreview({
           : lookup === 'unavailable'
             ? 'Destination unavailable'
             : kind === 'moon'
-              ? 'Moon not observed'
+              ? 'Moon unavailable'
               : 'Empty position'
   const detail = !coordinates
     ? 'Enter valid coordinates or choose one of your planets or moons.'
     : target
-      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? (target.kind === 'Moon' ? 'Your moon' : target.homeworld ? 'Your Homeworld' : target.colony ? 'Your colony' : 'Your planet') : 'You (last observed)') : playerLabel(target.owner, playerNames)}`
+      ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? (target.kind === 'Moon' ? 'Your moon' : target.homeworld ? 'Your Homeworld' : target.colony ? 'Your colony' : 'Your planet') : 'Last known owner: you') : playerLabel(target.owner, playerNames)}`
       : kind === 'debris'
         ? lookup === 'loading'
           ? 'Checking for salvage…'
           : lookup === 'unavailable'
             ? 'Salvage unknown. Review will check again.'
-            : 'System observation checked. Review verifies current salvage.'
+            : 'Debris field selected.'
         : lookup === 'loading'
-          ? 'Checking the current system observation.'
+          ? 'Checking destination.'
           : lookup === 'unavailable'
             ? 'System lookup failed. Review will check the destination again.'
             : kind === 'moon'
               ? 'Review verifies whether a moon is available here.'
-              : 'No planet in the current system observation.'
+              : 'No planet at these coordinates.'
   return (
     <LocationSummary
       ref={field}
@@ -161,8 +161,6 @@ export function DispatchDestinationPreview({
         <LocationSummaryDescription aria-live="polite" aria-atomic="true">
           <span className={styles.destinationAnnouncement}>{title}. </span>
           {detail}
-          {target?.source === 'observation' &&
-            ' · Last observed · Review verifies destination.'}
         </LocationSummaryDescription>
         {readOnly && coordinates ? (
           <CoordinateLink at={coordinates} label="group target" />

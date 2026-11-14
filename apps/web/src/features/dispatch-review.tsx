@@ -1,7 +1,7 @@
 import { groupFlightSchedule } from './attack-group-model'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { missionOptions } from './mission-options'
-import type { Ref } from 'react'
+import type { Ref, ReactNode } from 'react'
 import type { components } from '../contracts'
 import { flightDuration, flightSchedule } from '../client-model/dispatch-timing'
 import { bodyName } from '../ui/format'
@@ -37,7 +37,7 @@ export function DispatchReview({
   playerNames,
   coordinates,
   now,
-  observedAt,
+  raidPlanning,
   colonyWarning,
   disabled,
   panelRef,
@@ -51,7 +51,7 @@ export function DispatchReview({
   playerNames?: S['PublicPlayerNames4']
   coordinates: S['Coordinates']
   now: number
-  observedAt?: number
+  raidPlanning?: ReactNode
   colonyWarning?: string | null
   disabled: boolean
   panelRef: Ref<HTMLElement>
@@ -264,18 +264,12 @@ export function DispatchReview({
           </Text>
         </section>
       </div>
+      {raidPlanning}
       {mission === 'Colonize' && colonyWarning && (
         <Text role="status">{colonyWarning}</Text>
       )}
       {mission === 'Espionage' && (
         <Text className={styles.reviewNote}>Probes carry fuel only.</Text>
-      )}
-      {observedAt !== undefined && (
-        <Text className={styles.reviewNote}>
-          Prepared from an observation at {exactTime(observedAt)}. This is
-          historical information; review checks the current destination and
-          mission eligibility.
-        </Text>
       )}
       <QuoteAction disabled={disabled} onClick={onSend}>
         {dispatchSendLabel(quote.intent, destination)}

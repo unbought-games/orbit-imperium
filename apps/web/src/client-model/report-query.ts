@@ -2,6 +2,7 @@ import type { components } from '../contracts'
 import type { ReportListOptions } from '../features/report-list-options'
 
 export type ReportQuery = {
+  limit?: number
   kind: string | null
   filter: components['schemas']['ReportFilter4']
 }
@@ -31,6 +32,8 @@ export function reportQuery(
 export const reportQueryKey = (query: ReportQuery) =>
   JSON.stringify([
     query.kind,
+    query.limit ?? 50,
+    query.filter.target_body ?? null,
     query.filter.hidden ?? null,
     !!query.filter.unread_only,
     !!query.filter.starred_only,

@@ -109,6 +109,7 @@ async fn filtered_pages_are_bounded_ordered_private_and_cursor_scoped() {
                 unread_only: true,
                 starred_only: true,
                 sort,
+                ..Default::default()
             };
             q.kind = Some("Espionage".into());
             q.limit = 7;
@@ -153,6 +154,57 @@ async fn filtered_pages_are_bounded_ordered_private_and_cursor_scoped() {
             }
         }
     }
+    // Target selection is recipient-scoped and happens before LIMIT, including
+    // archived observations. Another recipient's payload must never match.
+    let target = BodyId(Uuid::new_v4());
+    let other = Uuid::new_v4();
+    for (report, recipient, body) in [
+        (2u128, b.player.0, target.0),
+        (4, b.player.0, target.0),
+        (600, other, target.0),
+    ] {
+        sqlx::query("UPDATE mission_reports SET data=jsonb_set(data,ARRAY['payloads',$1],COALESCE(data->'payloads'->$1,'{}'::jsonb)||$2) WHERE id=$3")
+            .bind(recipient.to_string())
+            .bind(json!({"target":{"body":body}}))
+            .bind(Uuid::from_u128(report)).execute(&pool).await.unwrap();
+    }
+    let mut targeted = query.clone();
+    targeted.kind = Some("Espionage".into());
+    targeted.limit = 1;
+    targeted.include_hidden = true;
+    targeted.filter = ReportFilter4 {
+        target_body: Some(target),
+        ..Default::default()
+    };
+    let page = game
+        .reports4(principal, targeted.clone())
+        .await
+        .unwrap()
+        .facts
+        .data;
+    assert_eq!(page.items[0].id.0.as_u128(), 4);
+    assert!(page.items[0].hidden);
+    assert!(page.has_more);
+    targeted.cursor = page.next_cursor.clone();
+    let older = game
+        .reports4(principal, targeted.clone())
+        .await
+        .unwrap()
+        .facts
+        .data;
+    assert_eq!(older.items[0].id.0.as_u128(), 2);
+    targeted.filter.target_body = Some(BodyId(Uuid::new_v4()));
+    assert!(game.reports4(principal, targeted.clone()).await.is_err());
+    targeted.cursor = None;
+    assert!(
+        game.reports4(principal, targeted)
+            .await
+            .unwrap()
+            .facts
+            .data
+            .items
+            .is_empty()
+    );
     // Resource ordering spans known and unknown sections, not just one filtered page.
     let mut q = query.clone();
     q.kind = Some("Espionage".into());

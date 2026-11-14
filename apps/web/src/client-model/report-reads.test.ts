@@ -155,3 +155,42 @@ it('does not send an empty selection', async () => {
   await model.markReportsRead([])
   expect(port.markReportsRead).not.toHaveBeenCalled()
 })
+
+it('requests only the latest recipient-visible target observation, including archives, without marking it read', async () => {
+  const { model, header } = await setup()
+  const fetcher = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (_url, init) => {
+      const request = JSON.parse(String(init?.body))
+      expect(request).toMatchObject({
+        cursor: null,
+        kind: 'Espionage',
+        limit: 1,
+        include_hidden: true,
+        filter: { target_body: id(20), sort: 'newest' },
+      })
+      return new Response(
+        JSON.stringify({
+          protocol: 4,
+          ...request.context,
+          viewer_revision: '1',
+          sampled_at: 1000,
+          as_of_ms: 1000,
+          data: {
+            items: [header(12)],
+            next_cursor: null,
+            has_more: false,
+            as_of_ms: 1000,
+          },
+        }),
+      )
+    })
+  try {
+    expect((await model.latestEspionage(id(20)))?.id).toBe(id(12))
+    expect(fetcher).toHaveBeenCalledOnce()
+    expect(model.store.getState().attempts.size).toBe(0)
+  } finally {
+    fetcher.mockRestore()
+    model.invalidate()
+  }
+})

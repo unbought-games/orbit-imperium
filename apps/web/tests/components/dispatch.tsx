@@ -26,7 +26,12 @@ import { PlayerProfilesController } from '../../src/client-model/player-profiles
 import { createDispatchFixture, type DispatchFixture } from './dispatch-fixture'
 import { originId, player, now, id } from './dispatch-data'
 
-type Variant = 'standard' | 'historical' | 'unknown'
+type Variant =
+  | 'standard'
+  | 'historical'
+  | 'unknown'
+  | 'prepared'
+  | 'prepared-blocked'
 export type DispatchSceneControl = Pick<
   DispatchFixture,
   'snapshot' | 'hold' | 'release' | 'configure'
@@ -147,11 +152,13 @@ function Scene({ variant }: { variant: Variant }) {
       }),
   )
   const [draft] = useState<DispatchDraft | null>(() =>
-    variant === 'historical'
+    ['historical', 'prepared', 'prepared-blocked'].includes(variant)
       ? {
           coordinates: { galaxy: 1, system: 1, position: 1 },
           mission: 'Attack',
-          observedAt: 1000,
+          reviewOnOpen: variant.startsWith('prepared'),
+          speed: variant.startsWith('prepared') ? 80 : undefined,
+          observedAt: variant.startsWith('prepared') ? now - 3600000 : 1000,
           ships: { SmallCargo: '1' },
           target: {
             type: 'Body',
@@ -171,6 +178,8 @@ function Scene({ variant }: { variant: Variant }) {
         next.dispose()
         return
       }
+      if (variant === 'prepared-blocked')
+        await next.configure({ options: { quoteError: 'NoFleetSlot' } })
       if (variant === 'unknown')
         await next.configure({
           options: { profiles: false },
@@ -251,4 +260,11 @@ export function DispatchHistoricalScene() {
 }
 export function DispatchUnknownScene() {
   return <IsolatedDispatch variant="unknown" />
+}
+
+export function DispatchPreparedScene() {
+  return <IsolatedDispatch variant="prepared" />
+}
+export function DispatchPreparedBlockedScene() {
+  return <IsolatedDispatch variant="prepared-blocked" />
 }

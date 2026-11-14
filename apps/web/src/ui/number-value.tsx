@@ -39,7 +39,7 @@ export function ResourceSummary({
   layout = 'inline',
 }: {
   value: components['schemas']['Resources']
-  layout?: 'inline' | 'stacked'
+  layout?: 'inline' | 'stacked' | 'grid'
 }) {
   return (
     <span className={styles.summary} data-layout={layout}>

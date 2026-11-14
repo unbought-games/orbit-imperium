@@ -41,17 +41,13 @@ const render = (props: Partial<Props>) =>
     createElement(DispatchDestinationPreview, { ...defaults, ...props }),
   )
 it.each([
-  [
-    'loading',
-    'Looking up destination',
-    'Checking the current system observation.',
-  ],
+  ['loading', 'Looking up destination', 'Checking destination.'],
   [
     'unavailable',
     'Destination unavailable',
     'System lookup failed. Review will check the destination again.',
   ],
-  ['ready', 'Empty position', 'No planet in the current system observation.'],
+  ['ready', 'Empty position', 'No planet at these coordinates.'],
 ] as const)(
   'distinguishes a %s destination without inventing imagery or identity',
   (lookup, title, detail) => {
@@ -72,8 +68,8 @@ it('marks a retained former colony as historical, rather than current ownership'
   }
   const markup = render({ target, bodies: [] })
   expect(markup).toContain('Haven Colony')
-  expect(markup).toContain('You (last observed)')
-  expect(markup).toContain('Last observed · Review verifies destination.')
+  expect(markup).toContain('Last known owner: you')
+  expect(markup).not.toContain('Last observed')
   expect(markup).not.toContain('Your colony')
   expect(markup).toContain('disabled=""')
   expect(markup).toContain('<img')
@@ -92,7 +88,7 @@ it('retains known observed identity and imagery while its compatible read refres
     },
   })
   expect(markup).toContain('Ember Watch')
-  expect(markup).toContain('Last observed · Review verifies destination.')
+  expect(markup).not.toContain('Last observed')
   expect(markup).toContain('<img')
   expect(markup).not.toContain('Looking up destination')
 })
@@ -124,13 +120,13 @@ it('distinguishes a live homeworld, live moon, and unobserved moon', () => {
       },
     }),
   ).toContain('Your moon')
-  expect(render({ kind: 'moon' })).toContain('Moon not observed')
+  expect(render({ kind: 'moon' })).toContain('Moon unavailable')
 })
 it('uses debris artwork with honest loading and unavailable salvage labels', () => {
   for (const [lookup, message] of [
     ['loading', 'Checking for salvage'],
     ['unavailable', 'Salvage unknown'],
-    ['ready', 'System observation checked'],
+    ['ready', 'Debris field selected'],
   ] as const) {
     const markup = render({ kind: 'debris', lookup })
     expect(markup).toContain('Debris field')

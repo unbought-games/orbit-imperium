@@ -13,6 +13,7 @@ export type RichSelectOption = {
 /** A controlled, single-value select with custom option and trigger content. */
 export function RichSelect({
   label,
+  appearance = 'quiet',
   value,
   options,
   children,
@@ -24,6 +25,7 @@ export function RichSelect({
   popupClassName,
 }: {
   label: string
+  appearance?: 'quiet' | 'field'
   disabled?: boolean
   anchor?: Select.Positioner.Props['anchor']
   title?: string
@@ -46,6 +48,7 @@ export function RichSelect({
       <Select.Trigger
         aria-label={label}
         title={title}
+        data-appearance={appearance}
         data-value={value}
         className={classes(styles.trigger, className)}
       >

@@ -1,3 +1,5 @@
+import { CatalogImage } from '../ui/image-catalog'
+import { resolveCatalogArt } from '../ui/artwork'
 import { useId, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Text } from '../ui/typography'
@@ -96,18 +98,18 @@ export function DispatchShips({
                       const available = availableShips[id]
                       return (
                         <tr key={id}>
-                          <th scope="row">{label(id)}</th>
+                          <th scope="row">
+                            <span className={styles.shipLabel}>
+                              <CatalogImage
+                                art={resolveCatalogArt(entry.key)}
+                                className={styles.shipIcon}
+                                sizes="32px"
+                              />
+                              {label(id)}
+                            </span>
+                          </th>
                           <td>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="small"
-                              aria-label={`All ${label(id)}`}
-                              title={`Send all ${available} available ${label(id)}`}
-                              onClick={() => onChange(id, available)}
-                            >
-                              <NumberValue value={available} />
-                            </Button>
+                            <NumberValue value={available} />
                           </td>
                           <td>
                             <InputWithAction className={styles.shipAmount}>

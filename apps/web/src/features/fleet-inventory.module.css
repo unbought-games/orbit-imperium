@@ -132,3 +132,14 @@
     padding-inline: 0.2rem;
   }
 }
+
+.shipLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.shipIcon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
