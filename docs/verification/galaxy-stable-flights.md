@@ -386,3 +386,17 @@ and all 78 Galaxy, moon and coordinate application cases passed (5.120s / 2.6m).
 Fresh actual-game desktop/mobile captures are in `test-results/galaxy-merge-final/`
 (1280×900 and 390×844). The preview recovered after reloading the installed
 hotkeys dependency; it remains signed in with its temporary viewport reset.
+
+
+## Final moon-menu semantics review
+
+All required CI checks passed for `de1725b1042f112b574b2e65859a5963696fd01b`
+(run `43549432185`). Final review found the activity tooltip was a standalone
+button inside the moon menu, outside menu-item keyboard navigation. Removed that
+extra control so the informational line contains only diameter, matching the
+owner's requested compact header. The component fixture now includes recent moon
+activity and asserts there are no nested button controls in the menu while all
+moon-target actions still work. Both 320/1280 cases passed (5.373s preparation /
+3.7s runner); focused lint, formatting and component typecheck passed. Fresh
+menu captures at 1280×900 and 390×844 are in `test-results/galaxy-merge-final/`.
+The new head still requires its own CI and queue validation before merge.

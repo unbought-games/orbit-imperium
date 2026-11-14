@@ -61,6 +61,7 @@ for (const width of [320, 1280]) {
       exact: true,
     })
     await expect(moonMenu).toContainText('8,500 km')
+    await expect(moonMenu.getByRole('button')).toHaveCount(0)
     await moonMenu
       .getByRole('menuitem', { name: 'Spy with…', exact: true })
       .click()

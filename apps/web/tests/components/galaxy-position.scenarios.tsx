@@ -107,7 +107,12 @@ export function GalaxyPositionScenario({
     debris: { ...debris, field_identity: id(42 + index) },
     moon:
       traffic && index === 0
-        ? { id: id(70), name: 'Selene', diameter_km: 8500 }
+        ? {
+            id: id(70),
+            name: 'Selene',
+            diameter_km: 8500,
+            activity: { type: 'Recent' },
+          }
         : undefined,
   }))
   const position =

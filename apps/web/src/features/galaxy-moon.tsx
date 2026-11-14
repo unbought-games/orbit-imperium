@@ -9,7 +9,6 @@ import {
   protectionExplanation,
 } from './galaxy-mission-actions'
 import { dispatchFailure } from '../client-model/dispatch-validation'
-import { GalaxyActivity } from './galaxy-player-status'
 import { GalaxyActionMenu } from './galaxy-action-menu'
 import type { GalaxyPosition } from './galaxy-position'
 import styles from './galaxy.module.css'
@@ -61,12 +60,7 @@ export function GalaxyMoon({
       sizes="32px"
     />
   )
-  const details = (
-    <>
-      Diameter: {moon.diameter_km.toLocaleString()} km{' '}
-      <GalaxyActivity activity={body.activity} />
-    </>
-  )
+  const details = `Diameter: ${moon.diameter_km.toLocaleString()} km`
   if (readOnly)
     return (
       <Popover
