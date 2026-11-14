@@ -108,6 +108,8 @@ export class PlayerProfilesController {
       const now = Date.now()
       this.store.setState((state) => {
         const players = { ...state.players }
+        // Keep visited players for this client's lifetime, including after their
+        // observation expires. An entry cap would make revisits lose that cache.
         for (const next of result.players) {
           const old = players[next.player]
           if (
