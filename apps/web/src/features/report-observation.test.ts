@@ -19,6 +19,21 @@ const render = (payload: Record<string, unknown>) =>
     ),
   ).replace(/<[^>]+>/g, '')
 
+it('presents a moon creation notice with its recorded diameter and coordinates', () => {
+  const text = render({
+    kind: 'MoonCreated',
+    coordinates: { galaxy: 1, system: 371, position: 12 },
+    diameter_km: 8366,
+    body: 'private-moon-id',
+    parent: 'private-parent-id',
+  })
+  expect(text).toContain('Moon created')
+  expect(text).toContain('[1:371:12]')
+  expect(text).toContain('8,366 km diameter · 1 field')
+  expect(text).toContain('debris remains available to recycle')
+  expect(text).not.toContain('private-')
+})
+
 it('shows both stored missile quantities inside revealed defenses only', () => {
   const text = render({ kind: 'Espionage', defenses: missileDefenses })
   expect(text).toContain(

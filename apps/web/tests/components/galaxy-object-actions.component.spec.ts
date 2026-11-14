@@ -73,6 +73,12 @@ for (const width of [320, 1280]) {
       name: 'commander_andromeda_1234567890 profile details',
       exact: true,
     })
+    // Measure the clipped, interactive name surface, not its overflowing text span.
+    const profileBox = (await profile.boundingBox())!
+    const moonBox = (await moon.boundingBox())!
+    expect(moonBox.x).toBeGreaterThanOrEqual(profileBox.x + profileBox.width)
+    expect(moonBox.width).toBeGreaterThanOrEqual(44)
+    expect(moonBox.height).toBeGreaterThanOrEqual(44)
     await profile.hover()
     await expect(
       page.getByText('EMPIRE DOSSIER', { exact: true }),
