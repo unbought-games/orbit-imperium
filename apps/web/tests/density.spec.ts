@@ -79,7 +79,7 @@ for (const viewport of [
     })
     await firstViewport(page, [
       page.getByRole('heading', { name: 'Fleets', level: 2, exact: true }),
-      page.getByRole('button', { name: 'Entire empire', exact: true }),
+      page.getByRole('button', { name: 'Empire', exact: true }),
       page.getByRole('link', { name: 'Dispatch Fleet' }),
     ])
     await diagnosticScreenshot(page, {

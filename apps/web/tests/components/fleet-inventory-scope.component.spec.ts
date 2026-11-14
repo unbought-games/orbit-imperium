@@ -10,7 +10,7 @@ for (const width of [320, 1280]) {
     await page.setViewportSize({ width, height: 900 })
     await mount('fleet-inventory')
     const toggle = page.getByRole('button', {
-      name: 'Entire empire',
+      name: 'Empire',
       exact: true,
     })
     await toggle.focus()
@@ -69,9 +69,7 @@ for (const width of [390, 1280]) {
     await diagnosticScreenshot(page, {
       path: `test-results/fleets-unavailable-${width}x900.png`,
     })
-    await page
-      .getByRole('button', { name: 'Entire empire', exact: true })
-      .click()
+    await page.getByRole('button', { name: 'Empire', exact: true }).click()
     const empire = page.getByRole('region', {
       name: 'Empire ships',
       exact: true,
@@ -80,5 +78,69 @@ for (const width of [390, 1280]) {
     await expect(empire).not.toContainText(
       'No ships stationed, flying or queued in your empire.',
     )
+  })
+}
+
+for (const width of [390, 1280]) {
+  test.describe(`inventory help at ${width}px`, () => {
+    test.use({ hasTouch: width === 390 })
+    test('explains Away and Flying on hover, focus or touch without a persistent paragraph', async ({
+      page,
+      mount,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await mount('fleet-inventory')
+      await page.getByRole('button', { name: 'Show all groups' }).click()
+      const panel = page.getByRole('region', {
+        name: 'Stationed ships',
+        exact: true,
+      })
+      await expect(
+        panel.getByRole('button', { name: 'Planet', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'true')
+      await expect(panel).not.toContainText('Confirmed counts.')
+      const help = panel.getByRole('button', {
+        name: 'Away ships',
+        exact: true,
+      })
+      const tooltip = page.getByRole('tooltip')
+      if (width === 390) await help.tap()
+      else await help.hover()
+      await expect(tooltip).toContainText(
+        'Your ships launched here that are outbound, holding, or returning.',
+      )
+      await expect(tooltip).toContainText(
+        'Arrivals from other origins are not included.',
+      )
+      await diagnosticScreenshot(page, {
+        path: `test-results/fleets-away-help-${width}x900.png`,
+      })
+      await help.press('Escape')
+      await expect(tooltip).toBeHidden()
+      if (width === 1280) {
+        await page.mouse.move(0, 0)
+        await page.getByRole('button', { name: 'Planet', exact: true }).focus()
+        await help.focus()
+        await expect(tooltip).toBeVisible()
+        await help.press('Escape')
+        await expect(tooltip).toBeHidden()
+      }
+      await panel.getByRole('button', { name: 'Empire', exact: true }).click()
+      await page
+        .getByRole('button', { name: 'Flying ships', exact: true })
+        .click()
+      await expect(tooltip).toContainText(
+        'Your ships on outbound, holding, or returning missions across the empire.',
+      )
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await diagnosticScreenshot(page, {
+        path: `test-results/fleets-flying-help-${width}x900.png`,
+      })
+    })
   })
 }

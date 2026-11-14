@@ -1,4 +1,6 @@
 import { Fragment, useState } from 'react'
+import { CircleHelp } from 'lucide-react'
+import { InfoTooltip } from '../ui/info-tooltip'
 import { shipGroup } from './ship-order'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
@@ -58,17 +60,12 @@ export function FleetInventoryView({
       <SegmentedControl
         label="Ship inventory scope"
         options={[
-          { value: 'world', label: 'This world' },
-          { value: 'empire', label: 'Entire empire' },
+          { value: 'world', label: 'Planet' },
+          { value: 'empire', label: 'Empire' },
         ]}
         value={scope}
         onChange={setScope}
       />
-      <Text>
-        {empire
-          ? 'Confirmed counts. Flying includes all your outbound, holding and returning ships.'
-          : 'Confirmed counts. Away includes ships launched here that are outbound, holding or returning.'}
-      </Text>
       {empty && !empire && (
         <Text>
           No ships stationed here. Build your first ships in the Shipyard or
@@ -91,15 +88,20 @@ export function FleetInventoryView({
                 <th scope="col">Ship</th>
                 {empire && <th scope="col">Total</th>}
                 <th scope="col">Stationed</th>
-                <th
-                  scope="col"
-                  title={
-                    empire
-                      ? 'Your ships on active missions across the empire'
-                      : 'Your ships launched from this world, including holding and returning fleets; excludes arrivals from other origins'
-                  }
-                >
-                  {empire ? 'Flying' : 'Away'}
+                <th scope="col">
+                  <span className={styles.columnLabel}>
+                    {empire ? 'Flying' : 'Away'}
+                    <InfoTooltip
+                      label={empire ? 'Flying ships' : 'Away ships'}
+                      description={
+                        empire
+                          ? 'Your ships on outbound, holding, or returning missions across the empire.'
+                          : 'Your ships launched here that are outbound, holding, or returning. Arrivals from other origins are not included.'
+                      }
+                    >
+                      <CircleHelp size={16} aria-hidden="true" />
+                    </InfoTooltip>
+                  </span>
                 </th>
                 <th
                   scope="col"

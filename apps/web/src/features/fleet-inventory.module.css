@@ -144,3 +144,9 @@
   color: var(--text);
   font-weight: 600;
 }
+
+.columnLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

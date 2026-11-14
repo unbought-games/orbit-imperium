@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures/test'
+import { test, expect, type Page } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {
   installGameFixture,
@@ -14,6 +14,16 @@ import {
   withBootstrapResponse,
   withFixtureResponse,
 } from './fixtures/responses'
+
+async function captureInventoryHelp(page: Page, label: string, path: string) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+  const trigger = page.getByRole('button', { name: label, exact: true })
+  await trigger.click()
+  await expect(page.getByRole('tooltip')).toBeVisible()
+  await diagnosticScreenshot(page, { path, fullPage: true })
+  await trigger.press('Escape')
+  await expect(page.getByRole('tooltip')).toBeHidden()
+}
 
 type S = components['schemas']
 function inventoryFixture() {
@@ -261,9 +271,12 @@ for (const width of [390, 1280]) {
       fullPage: true,
       path: `test-results/fleets-world-${width}x900.png`,
     })
-    await panel
-      .getByRole('button', { name: 'Entire empire', exact: true })
-      .click()
+    await captureInventoryHelp(
+      page,
+      'Away ships',
+      `test-results/fleets-away-tooltip-${width}x900.png`,
+    )
+    await panel.getByRole('button', { name: 'Empire', exact: true }).click()
     const empire = page.getByRole('region', {
       name: 'Empire ships',
       exact: true,
@@ -281,12 +294,15 @@ for (const width of [390, 1280]) {
       fullPage: true,
       path: `test-results/fleets-empire-${width}x900.png`,
     })
+    await captureInventoryHelp(
+      page,
+      'Flying ships',
+      `test-results/fleets-flying-tooltip-${width}x900.png`,
+    )
     await selectBody(page, id(6))
     await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets`)
     await expect(empire.getByRole('cell')).toHaveText(['56', '42', '14', '12'])
-    await empire
-      .getByRole('button', { name: 'This world', exact: true })
-      .click()
+    await empire.getByRole('button', { name: 'Planet', exact: true }).click()
     await expect(cargo.getByRole('cell')).toHaveText(['0', '9', '7'])
     await diagnosticScreenshot(page, {
       fullPage: true,

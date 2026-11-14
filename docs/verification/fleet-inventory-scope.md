@@ -8,8 +8,8 @@ existing table used `unitCounts` for one origin and had no empire scope.
 The baseline application fixture reproduced this: two flights pushed the
 stationed inventory below the first desktop viewport.
 
-The inventory now precedes traffic. A single table switches between This world
-(default) and Entire empire. Empire mode adds an existing-ship total and retains
+The inventory now precedes traffic. A single table switches between Planet
+(default) and Empire. Empire mode adds an existing-ship total and retains
 stationed, flying and queued breakdowns. The selected body remains in the URL;
 scope is local interaction state and survives switching bodies. Shipyard and
 Dispatch actions retain that selected body. Traffic defaults to all owned and detected movements under Empire fleet traffic,
@@ -213,3 +213,19 @@ Post-repair verification: 7 header/filter/application cases passed (bundle
 4.340s; browser 3.8s). Lint, formatting and diff checks passed. Desktop/mobile
 world, empire and traffic-filter captures were refreshed and inspected. No test
 was deleted, relaxed or retried unchanged.
+
+## Owner scope-label and tooltip follow-up
+
+Shortened the scope controls to Planet and Empire. Removed the persistent
+Confirmed counts paragraph in both scopes; Away and Flying now have a 16px
+question-mark trigger using the shared InfoTooltip component. The explanations
+retain the distinction between ships launched here and all empire missions, and
+are available through hover, keyboard focus and touch with Escape dismissal.
+
+On `1729ed0c` plus these changes, 10 component cases passed (bundle 4.297s;
+browser 6.7s), including real touch and desktop hover/focus tooltip tests. Seven
+affected application cases passed (bundle 4.831s; browser 17.2s). Lint, focused
+formatting, component TypeScript and diff checks passed. Captured and inspected
+fresh 390/1280 page views and both open tooltips. Screenshot-only tooltip
+preparation is gated by ORBIT_TEST_SCREENSHOTS; behavior coverage is independent
+of screenshots. No failed checks, test deletions or production data changes.
