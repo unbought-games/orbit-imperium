@@ -126,6 +126,7 @@ export function GalaxyPosition({
               target={target}
               coordinates={coordinates}
               actions={actions}
+              details={body?.name}
               missileAction={missileAction}
               quickSpy={
                 canTarget && !owned

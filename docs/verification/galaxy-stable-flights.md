@@ -313,3 +313,28 @@ Visual review uses the final overview captures in `test-results/galaxy-row-clean
 and the compact moon-menu captures in `test-results/galaxy-moon-compact/`, already
 shown in the originating chat. Required remote CI/review and queue validation
 follow the published revision; local results do not substitute for that gate.
+
+
+## PR review and first CI repair
+
+CI run `43546357494` at `fbd1e0ac28cbb071ba6d0752f5f50b1419f7d91d`
+exposed a product layout defect: Linux font metrics wrapped the System label at
+320px, making the toolbar 91.78px tall. The original 80px bound remains intact;
+toolbar field labels now stay on one line. Artifact inspection confirmed the
+wrapped word; this was not infrastructure or a timeout.
+
+Validated and addressed both review findings: disabled quick Spy still permits
+opening the planet menu, with the eligibility reason visible and the action
+remaining disabled; full planet names appear and wrap in the menu. Component
+coverage checks long-name disclosure and a completely blocked unnamed target at
+320/1280px. A shared caller audit updated missile and colonization tests to use
+keyboard activation of the planet menu rather than the old standalone button's
+center (which can now correctly belong to an independent profile/coordinate).
+Physical image/title activation remains covered by the object-actions component.
+
+Repair validation: 5 components passed (4.252s preparation / 6.1s runner), 6
+Galaxy application cases passed (4.922s / 9.2s), and all 7 missile/colonization
+cases passed (5.022s / 33.5s). Lint, formatting and both TypeScript projects passed.
+Fresh actual-game screenshots in `test-results/galaxy-review-fixes/` show blocked
+mobile actions at 320×844 and named-planet menu at 1280×900. Viewport reset and the
+playground retained. No deployments or protection changes.

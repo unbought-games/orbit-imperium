@@ -36,6 +36,7 @@ export function GalaxyPositionScenario({
   traffic?: boolean
 }) {
   const [draft, setDraft] = useState('')
+  const [unavailable, setUnavailable] = useState(false)
   const [flights, setFlights] = useState<GalaxyFlight[]>([])
   const [now, setNow] = useState(fleetFixtureTime)
   const addFlight = () =>
@@ -90,15 +91,17 @@ export function GalaxyPositionScenario({
             id: id(21 + index),
             owner: id(31 + index),
             kind: 'Planet',
-            name: traffic
-              ? index === 0
-                ? 'Andromeda listening post with a very long name'
-                : 'Vega'
-              : undefined,
+            name:
+              traffic && !unavailable
+                ? index === 0
+                  ? 'Andromeda listening post with a very long name'
+                  : 'Vega'
+                : undefined,
             activity: { type: traffic ? 'Recent' : 'None' },
             inactivity: traffic ? 'Inactive28' : 'Active',
-            vacation: false,
-            espionage_eligible: true,
+            vacation: unavailable,
+            attack_blocker: unavailable ? 'TargetVacation' : undefined,
+            espionage_eligible: !unavailable,
           }
         : null,
     debris: { ...debris, field_identity: id(42 + index) },
@@ -122,6 +125,9 @@ export function GalaxyPositionScenario({
         <div className={styles.screen}>
           {traffic && (
             <div>
+              <Button onClick={() => setUnavailable(true)}>
+                Block missions
+              </Button>
               <Button
                 onClick={() =>
                   setFlights((current) =>
@@ -195,7 +201,7 @@ export function GalaxyPositionScenario({
                       transport: true,
                       attack: true,
                       deploy: true,
-                      harvest: true,
+                      harvest: !unavailable,
                     }}
                     colony={colonizationStatus(view, item.coordinates.position)}
                     onDraft={(at, mission, element, kind = 'planet') => {

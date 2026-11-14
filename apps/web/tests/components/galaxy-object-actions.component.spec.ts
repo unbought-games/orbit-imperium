@@ -28,6 +28,9 @@ for (const width of [320, 1280]) {
     // Physical hit testing proves the planet surface works without nesting links in buttons.
     await clickSurface(page, row.locator('img').first())
     await expect(planetMenu).toBeVisible()
+    await expect(planetMenu).toContainText(
+      'Andromeda listening post with a very long name',
+    )
     await expect(
       planetMenu.getByRole('menuitem', { name: 'Spy', exact: true }),
     ).toBeEnabled()
@@ -81,5 +84,17 @@ for (const width of [320, 1280]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(width)
+    await page
+      .getByRole('button', { name: 'Block missions', exact: true })
+      .click()
+    await planet.press('Enter')
+    await expect(planetMenu).toBeVisible()
+    await expect(
+      planetMenu.getByRole('menuitem', { name: 'Spy', exact: true }),
+    ).toBeDisabled()
+    await expect(
+      planetMenu.getByRole('menuitem', { name: 'Transport', exact: true }),
+    ).toBeDisabled()
+    await expect(planetMenu).toContainText('This player is in vacation mode')
   })
 }

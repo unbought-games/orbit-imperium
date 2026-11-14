@@ -486,7 +486,7 @@ for (const width of [1440, 390])
       path: `test-results/missile-screenshots/galaxy-${width}x900.png`,
       animations: 'disabled',
     })
-    await actions.click()
+    await actions.press('Enter')
     await expect(launchItem).toBeVisible()
     await diagnosticScreenshot(page, {
       path: `test-results/missile-screenshots/galaxy-menu-${width}x900.png`,
@@ -645,7 +645,7 @@ test('missile action columns preserve exact row edges across tablet breakpoints'
         expect(b.right).toBe(width)
       }
     await expect(page.getByRole('button', { name: /^Launch missiles at/ })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true }).click()
+    await page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true }).press('Enter')
     await expect(page.getByRole('menuitem', { name: 'Launch missiles', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
   }
@@ -660,7 +660,7 @@ for (const width of [1440, 390]) {
     const actions = page.getByRole('button', { name: 'Actions for [1:371:3]', exact: true })
     const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
     for (const patch of [{ id: id(90) }, { expected_owner: id(91) }, target]) {
-      await actions.click()
+      await actions.press('Enter')
       await page.getByRole('menuitem', { name: 'Launch missiles', exact: true }).click()
       await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('1')
       await dialog.getByLabel('Missile quantity', { exact: true }).fill('2')

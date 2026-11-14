@@ -23,6 +23,7 @@
 }
 .coordinateField > span {
   line-height: 1.2;
+  white-space: nowrap;
 }
 .toolbar input {
   width: 64px;
@@ -346,6 +347,7 @@
 }
 .menuNote {
   margin: 0;
+  overflow-wrap: anywhere;
   padding: 4px 10px 10px;
   font-size: 0.75rem;
   color: #aab8c2;

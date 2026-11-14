@@ -68,7 +68,7 @@ export function GalaxyActionMenu({
   const handingOff = useRef(false)
   const enabled =
     !!details ||
-    !!(quickSpy && !quickSpy.disabled) ||
+    !!quickSpy ||
     !!missileAction ||
     actions.some((action) => !action.reason)
   return (
@@ -148,11 +148,12 @@ export function GalaxyActionMenu({
                 </Menu.Item>
               )}
               {[
-                ...new Set(
-                  actions.flatMap((action) =>
+                ...new Set([
+                  ...(quickSpy?.reason ? [quickSpy.reason] : []),
+                  ...actions.flatMap((action) =>
                     action.reason ? [action.reason] : [],
                   ),
-                ),
+                ]),
               ].map((reason) => (
                 <p key={reason} className={styles.menuNote}>
                   {reason}
