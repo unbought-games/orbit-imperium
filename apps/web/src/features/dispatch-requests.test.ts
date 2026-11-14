@@ -550,3 +550,73 @@ it('occupied colony resolution stops before quote and reports an actionable erro
   )
   expect(ports.busy).toHaveBeenLastCalledWith(false)
 })
+
+it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
+  'fills %s from an estimate with no fleet slot, while review still rejects',
+  async (fill) => {
+    const { requests, ports } = fixture()
+    ports.world.mockImplementation(async (query) => {
+      if (query.type === 'ResolveDestination') return destination
+      if (query.type === 'FleetQuote') throw Error('NoFleetSlot')
+      if (query.type === 'FleetEstimate') {
+        const quote = terms(query.intent)
+        return {
+          estimate: true,
+          intent: query.intent,
+          profile_hash: quote.profile_hash,
+          capacity: quote.capacity,
+          maximum_payload: quote.maximum_payload,
+          fuel: quote.fuel,
+          duration_ms: quote.duration_ms,
+        }
+      }
+      throw Error('Unexpected request')
+    })
+    await requests.review(input, ports, fill)
+    expect(ports.cargo).toHaveBeenCalledOnce()
+    expect(ports.quote).not.toHaveBeenCalled()
+    expect(
+      ports.cargo.mock.calls[0][0]
+        .map(BigInt)
+        .reduce((sum: bigint, n: bigint) => sum + n, 0n),
+    ).toBeLessThanOrEqual(50n)
+    expect(BigInt(ports.cargo.mock.calls[0][0][2])).toBeLessThanOrEqual(10n)
+    await requests.review(input, ports)
+    expect(ports.quote).not.toHaveBeenCalled()
+    expect(ports.error).toHaveBeenLastCalledWith(
+      expect.stringContaining('fleet slots'),
+    )
+  },
+)
+
+it.each([false, true])(
+  'prepared review waits for fresh availability and cancels after edits: %s',
+  async (edited) => {
+    const { requests, ports } = fixture()
+    const refresh = deferred<void>()
+    const review = vi.fn(async () => {})
+    const preparing = requests.prepare(() => refresh.promise, review, ports)
+    expect(review).not.toHaveBeenCalled()
+    expect(ports.busy).toHaveBeenLastCalledWith(true)
+    if (edited) requests.invalidate()
+    refresh.resolve()
+    await preparing
+    expect(review).toHaveBeenCalledTimes(edited ? 0 : 1)
+  },
+)
+it('failed preparation refresh leaves confirmation closed with an actionable error', async () => {
+  const { requests, ports } = fixture()
+  const review = vi.fn(async () => {})
+  await requests.prepare(
+    async () => {
+      throw Error('Offline')
+    },
+    review,
+    ports,
+  )
+  expect(review).not.toHaveBeenCalled()
+  expect(ports.error).toHaveBeenLastCalledWith(
+    expect.stringContaining('Unable to refresh your fleet'),
+  )
+  expect(ports.busy).toHaveBeenLastCalledWith(false)
+})

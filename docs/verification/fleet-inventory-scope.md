@@ -252,3 +252,23 @@ passed (bundle 4.524s; browser 7.6s), including exact totals, scope focus, empty
 states and hover/touch help. Application/component TypeScript, lint, formatting
 and diff checks passed. Fresh desktop, 511px, 390px and 320px captures were
 inspected. No failed checks or test deletions in this follow-up.
+
+## Merge queue integration
+
+The owner invoked the PR workflow to authorize merging. The first queue entry
+was removed at 2026-11-14 02:23:49 UTC with `merge_conflict` after main advanced.
+Merged main `99b15984072baeeaf09fa9a9d609d6783909392e` into the verified
+`66edfc28e4b9fa832dcb23059ca84882e326c53a` feature head. The only conflict was
+independent additions at the end of fleet-inventory.module.css: retained the
+inventory total/help styles and main's dispatch ship label/icon styles.
+
+Validation on that merge plus the resolution: the first application bundle
+failed in 2.16s because the checkout lacked main's new react-hotkeys-hook
+dependency. No tests ran. Synchronized the lockfile dependencies with npm ci
+(5s), then 10 affected application cases passed (bundle 5.462s, browser 30.8s).
+Five dispatch ship-selection/fill component cases passed (bundle 4.084s, browser
+10.5s), protecting the other side of the style merge. Application TypeScript,
+ESLint, focused formatting and diff checks passed. Desktop/mobile Planet and
+Empire screenshots were refreshed and inspected. Runner-owned bundles and
+servers were cleaned up normally; the separate playable preview remains running.
+No test assertions were changed or tests deleted.

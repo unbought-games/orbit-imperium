@@ -4,7 +4,7 @@ import { test, expect, type Page } from './fixtures/test'
 import { installGameFixture, body, binding, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { withBootstrapResponse, withReportResponse, withFixtureResponseStatus } from './fixtures/responses'
 import { withGalaxyResponse } from './fixtures/galaxy'
 type S = components['schemas']
 const now = 1793667600000
@@ -175,6 +175,8 @@ async function fixture(page: Page, attackBlocker?: S['GameError4']) {
       }
     } else {
       expect(['FleetQuote', 'FleetEstimate']).toContain(q.type)
+      if (q.type === 'FleetQuote' && attackBlocker && ['Attack', 'Espionage'].includes(q.intent.mission))
+        return route.fulfill({status:422,json:{code:'GameRejected',game_code:attackBlocker}})
       data = {
         intent: q.intent,
         profile_hash: 'a'.repeat(64),
@@ -488,7 +490,7 @@ for (const width of [1440, 390]) {
         path: `test-results/moon-spy-error-${width}x900.png`,
       })
     })
-    test('moon dispatch shows observed attack and espionage protection before review', async ({
+    test('moon dispatch checks attack protection at review and retains known espionage protection', async ({
       page,
     }) => {
       const state = await fixture(page, 'BeginnerProtected')
@@ -506,7 +508,13 @@ for (const width of [1440, 390]) {
         page
           .getByRole('status')
           .filter({ hasText: 'Beginner protection prevents this mission' }),
-      ).toBeVisible()
+      ).toHaveCount(0)
+      await page.getByLabel('Small Cargo · 2 available').fill('1')
+      await withFixtureResponseStatus(page,
+        response => response.url().endsWith('/world') && response.request().postDataJSON().type === 'FleetQuote',
+        () => page.getByRole('button', {name:'Review fleet',exact:true}).click(), 422)
+      await expect(page.getByRole('alert')).toContainText('Beginner protection prevents this mission')
+      await expect(page.getByRole('region', {name:'Fleet quote'})).toHaveCount(0)
       await diagnosticScreenshot(page, {
         path: `test-results/moon-dispatch-protection-${width}x900.png`,
         fullPage: true,

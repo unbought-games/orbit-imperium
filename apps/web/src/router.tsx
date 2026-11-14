@@ -18,7 +18,7 @@ declare module '@tanstack/react-router' {
   interface HistoryState {
     dispatchObservation?: Pick<
       DispatchDraft,
-      'observedAt' | 'target' | 'ships' | 'speed'
+      'observedAt' | 'target' | 'reviewOnOpen' | 'ships' | 'speed'
     >
   }
 

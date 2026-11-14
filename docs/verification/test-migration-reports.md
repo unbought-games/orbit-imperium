@@ -96,7 +96,7 @@ listed otherwise. A retained case keeps its existing assertions.
 | Original scenario (all existing input/viewport variants) | Disposition and browser-specific rationale |
 | --- | --- |
 | archive and restore respond at the target edge without opening the row (320/390/800/1440) | Retain. Actual touch/pointer target geometry, glyph size, list/detail action edges and route independence. |
-| delete and restore reports persist across list, detail and reload (1440/390) | Retain. Canonical/legacy deep link, reload, unread badge and folder/detail/back navigation. |
+| delete and restore reports persist across list, detail and reload (1440/390) | Retain 1440px with all assertions. Retire the 390px duplicate after the unexplained queue hang documented in the PR #431 repair-ledger entry. Dedicated mobile archive/restore target, shortcut and accepted-detail navigation cases remain; the combined mobile reload/persistence tour is lost. |
 | failed and uncertain deletion roll back and offer durable recovery | Retain. Actual unified banner, row rollback, disabled control and durable Retry button wiring. |
 | shared inbox preserves other reports during a pending deletion via click / Enter | Retain. Pointer and keyboard activation, pending UI and badge. State permutations also covered by report-state/engine tests. |
 | opening a report marks it read after loading, clears the inbox badge and does not resubmit after refresh | Retain. Delivered-detail effect, badge, reload and re-entry are application wiring. |

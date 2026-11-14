@@ -10,6 +10,7 @@ import { useDispatch } from './use-dispatch'
 import { DispatchView } from './dispatch-view'
 type S = components['schemas']
 export type DispatchDraft = {
+  reviewOnOpen?: boolean
   attackGroup?: string
   ships?: Record<string, string>
   speed?: number

@@ -1040,6 +1040,15 @@ export class Coordinator {
     )
     return this.responseMatches(pending, result) ? result : null
   }
+  async latestEspionage(target: string) {
+    const result = await this.readReportPage(null, true, {
+      kind: 'Espionage',
+      limit: 1,
+      filter: { target_body: target, sort: 'newest' },
+    })
+    if (!result) throw Error('Observation unavailable')
+    return result.data.items[0] ?? null
+  }
   reportDetail(id: string, retry = false) {
     return this.reports.detail(id, retry)
   }

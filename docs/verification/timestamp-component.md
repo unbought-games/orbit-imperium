@@ -1,0 +1,129 @@
+# Timestamp component prototype — 2026-11-13
+
+Scope: standalone shared component and isolated gallery only. No existing game
+screen was migrated. This delivers the component foundation, API documentation,
+and validation; application-wide adoption remains separate work. No deployment
+is included.
+
+Tested base: `7d57e0532827fffe2bde0da65f03e8045b460dda`, with the uncommitted
+`apps/web/src/ui/timestamp*`, `use-timestamp-clock.ts`, and
+`apps/web/tests/components/timestamp*` additions, plus gallery registration in
+`main.tsx` and UI documentation links. API contracts and examples live in
+`apps/web/src/ui/timestamp.md`.
+
+## Validation
+
+- `npm test -- apps/web/src/ui/timestamp-format.test.ts`: 5 passed; 169ms total.
+  Covers absolute input semantics, exact copies, date rollover, DST repeated
+  hours, fractional offsets, countdown expiry and future/past relative wording.
+- `npm run test:components -- timestamp.component.spec.ts --workers=1`:
+  final run 2 passed; bundle preparation 4,170ms, runner total 2.7s,
+  individual tests 781ms and 1.1s. No CI/runner queue was involved.
+- `npx tsc --noEmit -p apps/web` and `npm run test:component-types`: passed.
+- Focused ESLint on the new source files, Prettier on the new component,
+  formatting tests, gallery and API documentation, and `git diff --check`: passed.
+- No production build, full application/browser suite or backend validation was
+  needed for this isolated frontend component. The test command builds the
+  gallery bundle before assertions; this is not a production artifact.
+
+The component tests exercise actual clipboard success in Chromium, denied-copy
+fallback, keyboard activation, Escape/focus restoration, UTC selection, a custom
+Button trigger, shared controlled selection, actual touch activation, narrow
+viewport bounds, one-second updates, expiry and invalid input. No app API is used.
+
+## Failure and repair record
+
+1. First browser run: one passed and one failed. Preparation 4,191ms, runner
+   total 7.8s. The picker changed the view and set `aria-expanded=false`, but the
+   frozen clock prevented Base UI's animation-frame unmount/focus work. Inspected
+   failure DOM, installed Base UI lifecycle code, test history (new test), and
+   the repair ledger. Confirmed that advancing animation frames removed the
+   closed picker. One test repair explicitly advances 32ms for those lifecycle
+   frames; no sleeps, retries, or timeout increases. The next run passed both
+   cases (3,997ms preparation, 2.3s runner total).
+2. Visual verification revealed a product layout defect: after selecting UTC on
+   mobile and copying, the popup could extend above the viewport when the page
+   scrolled. Reproduced with a fixed Date but live animation frames (viewport
+   intersection 0.9488). Fixed the positioner to use fixed positioning, sticky
+   viewport containment and shifting on both axes. Added viewport protection
+   after selection/copy and refreshed all captures. Final browser run passed.
+
+The shared gallery build emits an existing mixed JSON import-attributes warning
+for `contracts/openapi.json`; it did not fail preparation or assertions.
+
+## Visual review and cleanup
+
+Inspected the running component at desktop 1280×960 and touch/mobile 390×844,
+with `en-US` and `America/New_York`. Captures show all default views/styles,
+shared/composed controls, expiry and invalid input, UTC selected/copied, and
+clipboard-error/manual-copy states. Overview mobile capture is full-page.
+Screenshots are retained and displayed in the originating implementation chat,
+not uploaded to the repository or PR.
+
+The browser test runner cleaned its temporary build/server and browser processes.
+Capture browsers were closed. The task-owned Vite preview remains running at
+`http://127.0.0.1:5208/?scenario=timestamp` for the owner's review. No other chat's
+server or validation process was stopped. No expensive validation overlapped
+another active suite/typecheck/build observed on the machine.
+
+## Simplified time choices
+
+Owner feedback removed the separate coarse Relative mode. The type, picker,
+initial default and examples now expose only `countdown`, `local`, and `utc`.
+Countdown shows precise future/elapsed time (`in 2m 11s`, `5m ago`, `now`).
+Game-specific deadline wording belongs to the caller through the existing
+`expired` render value; the fleet preview keeps “Awaiting confirmation”.
+
+Updated unit tests retain future/past/expiry coverage at the precise-duration
+boundary. The existing interaction test verifies exactly three display choices
+and the past report's text. Both browser cases passed on their first run after
+this change. No additional failures or test repairs occurred. All affected
+captures were refreshed at both viewport sizes.
+
+## PR integration
+
+Integrated main `9e0d42842c25a6424fe45f50a3d4cb3919caf05c` to resolve an additive
+conflict in the component gallery registry. Preserved both the existing galaxy
+navigation scenario and the new timestamp scenario. Refreshed dependencies for
+main's added hotkey library, then reran both timestamp component cases: 2 passed,
+4,421ms bundle preparation and 2.8s runner total (900ms and 1.2s test execution).
+No timestamp implementation or visual state changed during conflict resolution.
+
+The first queue enrollment (21:02:11–21:07:32 UTC) ended with GitHub's
+`merge_conflict` reason after report readability merged. No queue test failed;
+GitHub could not form this PR's integration commit. Integrated main
+`e897ceb3ce14e1ab6eb0fb156ff026d2a79f63d1`, preserved the report scenario, and placed
+the timestamp registration beside the existing popover scenario to avoid the
+registry's frequently edited first entry. Both timestamp interaction cases passed
+again after resolution. The component implementation and screenshots are unchanged.
+
+The second queue attempt (`43509794193`, integration revision `272bfde5`) was
+cancelled after an existing mobile report archive/restore journey remained
+unfinished while the other 109 shard cases completed. The timestamp component
+suite and all other queue jobs passed. The local diagnostic run passed unchanged
+and did not explain the hang. Retired only that duplicate mobile journey under
+the repository rule; the desktop journey and independent mobile controls and
+navigation cases remain. See the PR #431 entry in the test-performance repair
+ledger for evidence, timing, uncertainty, and retained coverage. This is one
+cancelled queue run in addition to the earlier merge-conflict removal.
+
+Retained report protection qualified at `78385cce` plus the retirement: 31
+report-state/read/cleanup unit tests passed in 654ms, and the desktop persistence
+journey plus archive/restore target cases at 320/390/800/1440 passed (5 cases,
+5,223ms preparation, 17.8s runner total). No further test failure or repair.
+The runner cleaned its temporary fixture build, server, and browser processes.
+
+## Review correction: idle clock snapshots
+
+Validated the review finding that the first render after an idle period could
+read an old clock sample before React subscribed. The source now starts with an
+unset sample, lazily samples the first read, and discards the cached sample when
+the last subscriber leaves. Repeated reads remain stable between updates.
+Controlled `now` instances read their supplied source directly and cannot seed
+an idle shared snapshot.
+
+Two deterministic tests cover initial/remount reads (including backward clock
+correction), stable snapshots, one shared timer, surviving subscribers, and
+last-subscriber cleanup. Timestamp qualification passed 7 unit tests in 188ms
+and both component tests (4,281ms preparation; 2.7s runner total). The UI's final
+desktop/mobile picker captures were refreshed after the correction.

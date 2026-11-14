@@ -1,3 +1,4 @@
+import { DispatchLoot } from './dispatch-loot'
 import {
   DispatchCargoControls,
   DispatchFlightControls,
@@ -97,6 +98,7 @@ export function DispatchView({
     busy,
     now,
     types,
+    hasShips,
     quoteRef,
     reviewButtonRef,
     command,
@@ -183,20 +185,13 @@ export function DispatchView({
               </LocationSummary>
             </div>
           </TaskHeader>
-          {draft?.observedAt !== undefined && (
-            <Text>
-              Prepared from an observation at{' '}
-              {new Date(draft.observedAt).toLocaleString()}. This is historical
-              information; review requests a fresh destination and legal quote.
-            </Text>
-          )}
         </>
       )}
       <div className={styles.dispatchLayout} hidden={!!quote}>
         <Form
           onSubmit={(e) => {
             e.preventDefault()
-            void review()
+            if (hasShips) void review()
           }}
         >
           <fieldset
@@ -225,6 +220,7 @@ export function DispatchView({
                 Holding duration
                 <RichSelect
                   label="Holding duration"
+                  appearance="field"
                   value={String(holdHours)}
                   onValueChange={(value) => {
                     setHoldHours(
@@ -342,16 +338,6 @@ export function DispatchView({
                 </Button>
               </Text>
             )}
-            {mission === 'Attack' &&
-              !siteId &&
-              !targetProblem &&
-              !attackWarning && (
-                <Text className={styles.destinationNotice}>
-                  Beginner protection can prevent attacks between players of
-                  different strengths. Eligibility is checked again at review
-                  and departure.
-                </Text>
-              )}
             {(targetProblem || attackWarning) && (
               <Text
                 className={styles.destinationNotice}
@@ -382,7 +368,7 @@ export function DispatchView({
             cargo={cargo}
             space={cargoCapacity}
             message={cargoCapacityMessage}
-            disabled={busy || !coordinatesValid || !!targetProblem}
+            disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
             onNormalize={setCargo}
             onChange={(cargo) => {
               setCargo(cargo)
@@ -393,6 +379,17 @@ export function DispatchView({
               else void maxCargo(resource)
             }}
           />
+          {!quote && mission === 'Attack' && !siteId && (
+            <DispatchLoot
+              model={model}
+              target={target}
+              revision={view.viewer_revision}
+              space={cargoCapacity}
+              hasShips={hasShips}
+              universeName={universeName}
+              origin={body.id}
+            />
+          )}
           <DispatchFlightControls
             speed={speed}
             onChange={(speed) => {
@@ -448,7 +445,7 @@ export function DispatchView({
           />
           <Button
             ref={reviewButtonRef}
-            disabled={busy || !coordinatesValid || !!targetProblem}
+            disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
           >
             {busy ? 'Reviewing…' : 'Review fleet'}
           </Button>
@@ -468,7 +465,27 @@ export function DispatchView({
             position: Number(position),
           }}
           now={now}
-          observedAt={draft?.observedAt}
+          raidPlanning={
+            mission === 'Attack' && !siteId ? (
+              <DispatchLoot
+                model={model}
+                target={
+                  quote.intent.destination.type === 'Body'
+                    ? {
+                        id: quote.intent.destination.id,
+                        owner: quote.intent.destination.expected_owner,
+                        kind: quote.intent.destination.expected_kind,
+                      }
+                    : target
+                }
+                revision={view.viewer_revision}
+                space={cargoCapacity}
+                hasShips={hasShips}
+                universeName={universeName}
+                origin={body.id}
+              />
+            ) : undefined
+          }
           colonyWarning={
             colony.reason ??
             (colony.count >= colony.capacity ? colony.warning : undefined)

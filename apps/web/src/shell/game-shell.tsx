@@ -193,6 +193,7 @@ function GameShellContent() {
       search: dispatchSearch(draft),
       state: {
         dispatchObservation: {
+          reviewOnOpen: draft.reviewOnOpen,
           ships: draft.ships,
           speed: draft.speed,
           target: draft.target,

@@ -84,6 +84,26 @@ export class DispatchRequests {
     )
   }
 
+  async prepare(
+    refresh: () => Promise<void>,
+    review: () => Promise<void>,
+    ports: Pick<DispatchReviewPorts, 'busy' | 'error'>,
+  ) {
+    const generation = this.invalidate()
+    ports.busy(true)
+    try {
+      await refresh()
+      if (this.isCurrent(generation)) await review()
+    } catch {
+      if (this.isCurrent(generation))
+        ports.error(
+          'Unable to refresh your fleet. Review it again after reconnecting.',
+        )
+    } finally {
+      if (this.isCurrent(generation)) ports.busy(false)
+    }
+  }
+
   async submit(
     command: Command,
     quote: S['FleetTerms4'],
@@ -205,7 +225,7 @@ export class DispatchRequests {
         speed_percent: speed as S['FleetIntent4']['speed_percent'],
       }
       const terms = await ports
-        .world({ type: 'FleetQuote', intent })
+        .world({ type: fillCargo ? 'FleetEstimate' : 'FleetQuote', intent })
         .catch(async (failure: unknown) => {
           const code = failure instanceof Error ? failure.message : failure
           const resourceEstimate =
@@ -227,7 +247,7 @@ export class DispatchRequests {
           throw Error(resourceProblem || dispatchFailure(failure, intent))
         })
       if (!this.isCurrent(requestGeneration)) return
-      if (!terms || !('maximum_payload' in terms) || !('terms_hash' in terms))
+      if (!terms || !('maximum_payload' in terms))
         throw Error(
           'Unable to confirm this fleet quote. Review it again after reconnecting.',
         )
@@ -250,7 +270,8 @@ export class DispatchRequests {
                 fillCargo,
               ),
         )
-      } else ports.quote(terms)
+      } else if ('terms_hash' in terms) ports.quote(terms)
+      else throw Error('Unable to confirm this fleet quote. Review it again.')
     } catch (e) {
       if (siteId) ports.refreshSite()
       if (this.isCurrent(requestGeneration))

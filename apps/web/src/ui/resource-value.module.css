@@ -26,3 +26,10 @@
   align-items: flex-start;
   gap: var(--space-1);
 }
+
+.summary[data-layout='grid'] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-3);
+}
