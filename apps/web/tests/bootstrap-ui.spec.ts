@@ -328,7 +328,8 @@ test('public pages have distinct URLs that survive refresh and history navigatio
   await page.getByRole('link', { name: /^Orbit Imperium$/i }).click()
   await expect(page).toHaveURL(/\/$/)
   await page
-    .getByRole('link', { name: 'Join the current universe', exact: true })
+    .getByRole('navigation', { name: 'Get started' })
+    .getByRole('link', { name: 'Play free', exact: true })
     .click()
   await expect(page).toHaveURL(/\/signup$/)
   await page.getByRole('link', { name: 'Back to sign in', exact: true }).click()
@@ -356,7 +357,7 @@ test('disabled signup and protected game routes lead to login', async ({
     page.getByRole('link', { name: 'Sign in', exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'Join the current universe' }),
+    page.getByRole('link', { name: 'Play free', exact: true }),
   ).toHaveCount(0)
   for (const path of ['/signup', '/u/u/b/earth/overview']) {
     await page.goto(path)

@@ -118,7 +118,7 @@ for (const signup of [true, false]) {
         } else {
           await expect(register).toBeHidden()
           await expect(
-            page.getByRole('link', { name: 'Join the current universe', exact: true }),
+            page.getByRole('navigation', { name: 'Get started' }).getByRole('link', { name: 'Play free', exact: true }),
           ).toBeVisible()
         }
       } else {
@@ -189,7 +189,7 @@ for (const width of [320, 390, 768, 1440]) {
       ),
     ).toBe(true)
     await expect(
-      page.getByRole('link', { name: 'Join the open beta', exact: true }),
+      page.getByRole('region', { name: 'Start with your first planet.' }).getByRole('link', { name: 'Play free', exact: true }),
     ).toHaveAttribute('href', accountLinks.signup)
     await diagnosticScreenshot(page, {
       path: `test-results/landing-${width}.png`,
@@ -199,7 +199,8 @@ for (const width of [320, 390, 768, 1440]) {
       path: `test-results/landing-mobile-section-${width}.png`,
     })
     await page
-      .getByRole('link', { name: 'Join the open beta', exact: true })
+      .getByRole('region', { name: 'Start with your first planet.' })
+      .getByRole('link', { name: 'Play free', exact: true })
       .click()
     await expect(page).toHaveURL(/\/signup$/)
     await expect(
@@ -270,7 +271,7 @@ for (const signup of [true, false]) {
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/art\/orbital-capital\/orbital-capital-1200.webp$/)
     const graph = await page.locator('script[type="application/ld+json"]').textContent()
     expect(JSON.parse(graph!)['@graph'][1]['@type']).toBe('VideoGame')
-    await expect(page.getByRole('link', { name: 'Join the current universe', exact: true })).toHaveCount(signup ? 1 : 0)
+    await expect(page.getByRole('navigation', { name: 'Get started' }).getByRole('link', { name: 'Play free', exact: true })).toHaveCount(signup ? 1 : 0)
     expect(gameStartup).toBe(false)
     await page.getByRole('link', { name: 'Log in', exact: true }).click()
     await expect(page).toHaveURL(/\/login$/)

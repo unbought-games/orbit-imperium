@@ -2288,3 +2288,23 @@ precedence. No test was removed, changed, retried unchanged or given a longer
 wait; this is not a flaky-test repair. Focused component/application motion and
 built-homepage verification run before pushing, with exact results retained in
 the PR verification record. Original failed CI evidence remains available.
+
+
+## November 14, 2026: Homepage CTA test callers updated
+
+The reviewed rename from “Join the current universe” / “Join the open beta” to
+“Play free” left old accessible-name selectors in local/hosted account-entry
+tests. Run `43628101245` retained 110/111 completed feature-shard-1 cases and
+109/111 shard-4 cases before supersession; the missing cases were the public
+history journey and two hosted registration journeys. Run `43629245990` showed
+the same outstanding jobs. Inspection establishes stale CTA locators, not a
+service outage or timing race. No earlier repair for this rename exists in the
+file history/ledger (the old label originated in #278/#300).
+
+Updated those callers and audited `home.spec.ts` and explicit `signup.spec.ts`.
+Scope the hero CTA to the Get started navigation and the final CTA to its named
+section, since both now say Play free. Preserve every URL, history, enrollment,
+registration-policy and auth assertion. This is selector maintenance for an
+intentional UI requirement change; no retries, timeout changes or deletion.
+The explicit full-system signup suite receives only the selector change and is
+not claimed as executed by fixture-browser validation.
