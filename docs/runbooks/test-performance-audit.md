@@ -2308,3 +2308,16 @@ registration-policy and auth assertion. This is selector maintenance for an
 intentional UI requirement change; no retries, timeout changes or deletion.
 The explicit full-system signup suite receives only the selector change and is
 not claimed as executed by fixture-browser validation.
+
+
+Run `43630486499`, head `5d247daa`, additionally caught two obsolete design
+contracts in `bootstrap-ui.spec.ts`: “homepage centers policies and highlights
+news, GitHub, and Discord” required centered desktop policies and a purple
+Discord button; “open beta notice appears before public enrollment with approved
+policy links” required the removed hero beta panel. Their original additions
+were #53 and #145; no prior repair for this requirement change was found.
+Update these existing cases to the owner's reviewed layout: centered mobile
+policies/right desktop policies, four aligned community rows, and one small
+homepage beta note above the footer. Auth-page beta notice and policy-link
+assertions remain. Names now describe the changed requirement; this does not
+reset repair history. Validate all bootstrap/home/hosted-auth cases together.
