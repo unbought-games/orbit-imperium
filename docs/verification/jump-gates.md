@@ -71,7 +71,9 @@ test runner traps removed each disposable database.
   two strict TypeScript annotations in new tests. Both were corrected. The final
   integrated `make check` completed successfully.
 
-No test was deleted, quarantined or weakened. Full browser authentication and
+The initial implementation deleted no tests. The subsequent CI recurrence below
+required retiring one previously repaired scenario. No assertions in retained
+tests were weakened. Full browser authentication and
 production deployment were not run locally. Normal schema/rules activation,
 restart recovery and real construction/transfer are covered at PostgreSQL rather
 than being inferred from successful HTTP mocks.
@@ -84,3 +86,45 @@ are delivered in the implementation chat, not hosted or attached to the PR.
 Desktop captures include the full document; mobile captures show the viewport,
 with a separate confirmation capture for the longer form. Optional capture
 preparation is inactive unless `ORBIT_TEST_SCREENSHOTS=1`.
+
+## PR CI recurrence and disposition
+
+PR #433 head `d1b96416c3555982e870017794c00ddcc55073fc`, run `43549382517`,
+job `132308106208`, failed on
+`terraformer::terraformer_activation_restart_and_power_loss_preserve_capacity_in_both_runtimes`.
+The Linux test thread aborted with SIGABRT/stack overflow after 1.174s. The rules
+suite had passed 38 cases; one later case was unrun. Native checks, all browser
+jobs, PostgreSQL world/rest, and automated review passed. No queue enrollment
+had occurred.
+
+History shows the same scenario's first stack-overflow repair in `e1c70cdf`
+(PR #356): its two runtime cases were moved into a boxed helper. That repair and
+its subsequent green run are recorded in `docs/verification/briefing-ui.md`.
+This is a recurring test-harness defect, not an assertion exposing a game
+regression or an external-service outage. Per the one-repair rule, the oversized
+Terraformer database scenario and its private helper are removed. It is not
+renamed/recreated, boxed again, retried unchanged or given a larger stack.
+
+Retained protection is in `crates/engine/tests/progression/terraformer.rs`:
+exact costs/energy/numeric bounds, prerequisite and payment revalidation,
+field reservation and completion, cancellation, serialization/restart, disable
+and power-loss commitments, fuel-aware output, and complete satellite inventory.
+Standard upgrade tests retain additive activation, identity, payments,
+serialization/restart, conflict and retry protection on real PostgreSQL. Other
+construction tests retain serial/scoped storage execution. The removed protection
+is the single long real-database journey that builds every prerequisite and
+checks the final Terraformer field projection in both runtimes; it is no longer
+claimed as separately validated by that scenario.
+
+Audited the other dual-runtime rules fixtures against this CI run: Battlecruiser,
+Battleship, Bomber, Destroyer, Fusion Reactor, Hyperspace Technology/Drive, Nanite
+Factory, Plasma Turret and satellite cases passed. No blanket stack changes or
+independent unowned repair work was introduced. The rules job spent 328.864s in
+suite execution, with preparation from 03:03:44–03:05:12 UTC and approximately
+2m25s runner allocation delay from the first PR jobs. The failed attempt remains
+visible; later CI must validate the changed head before queue enrollment.
+
+After retirement, the six retained Terraformer engine cases passed (3.14s
+compilation, 0.067s execution), and Clippy passed for the remaining PostgreSQL
+rules test binary (1.18s). Formatting and diff checks passed. No unchanged CI retry
+was requested; the correction is submitted as a new head for complete CI.

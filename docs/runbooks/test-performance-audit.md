@@ -2178,3 +2178,27 @@ and `report-cleanup.test.ts` retain visibility projection, accepted/rejected and
 stale receipts, preserved read state, and restoration rules. No common fixture
 defect was established, so the shared response helper and independent negative
 and race scenarios are unchanged. Do not recreate this journey under another name.
+
+
+## November 13, 2026: Terraformer database stack-overflow recurrence
+
+PR #433 head `d1b96416c3555982e870017794c00ddcc55073fc`, CI run
+`43549382517`, rules job `132308106208`, aborted
+`terraformer::terraformer_activation_restart_and_power_loss_preserve_capacity_in_both_runtimes`
+with SIGABRT/stack overflow after 1.174s. No assertion failed; 38 earlier rules
+cases passed and one subsequent case was unrun. This is a test-harness recurrence,
+not a provider outage.
+
+The first repair is `e1c70cdf` (PR #356), documented in
+[Briefing verification](../verification/briefing-ui.md): both runtime cases were
+boxed while preserving assertions. Under the one-repair policy the scenario and
+its private helper are now removed. No rename, replacement mega-journey,
+additional boxing, stack increase or unchanged retry is used.
+
+[Jump Gate verification](../verification/jump-gates.md#pr-ci-recurrence-and-disposition)
+records the exact retained/lost coverage and timings. Existing deterministic
+Terraformer tests preserve its mechanics and committed-work permutations; shared
+PostgreSQL rules/construction tests preserve activation, persistence and both
+runtimes. The removed unique coverage is the all-prerequisites real-database
+Terraformer journey and its final projection assertion. Other dual-runtime rules
+fixtures passed the failed CI run; no independent follow-up is left unowned.
