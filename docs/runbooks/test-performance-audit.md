@@ -2269,3 +2269,22 @@ universe link's user activation (native immediate fallback without JavaScript).
 All 10 functional cases then passed in 7.2s. Owner subsequently required hover-only
 arrow movement; updated that requirement and two affected cases passed in 4.7s.
 Optional diagnostic capture code remains removed; CUA provides current visual QA.
+
+
+## November 14, 2026: Homepage motion scoping preserves game overrides
+
+PR #435 head `fe035bbe`, CI run `43628101245` attempt 1, exposed a product
+regression in the landing-page exception to the global immediate-state rule.
+`:root:not(:has([data-public-landing])) *` increased selector specificity and
+beat existing class-level `!important` animation/transition opt-outs. The
+component quick-build and tutorial-disclosure checks, empire wealth motion,
+command HUD motion and briefing icon cases correctly detected disabled motion.
+Review thread `4575162195` independently identified the same mechanism.
+
+The production fix wraps the root condition in `:where(...)`, preserving the
+old reset specificity for elements and pseudo-elements while excluding the
+landing page. Existing game overrides and reduced-motion rules regain their
+precedence. No test was removed, changed, retried unchanged or given a longer
+wait; this is not a flaky-test repair. Focused component/application motion and
+built-homepage verification run before pushing, with exact results retained in
+the PR verification record. Original failed CI evidence remains available.

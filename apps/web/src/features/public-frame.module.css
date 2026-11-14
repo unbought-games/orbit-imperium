@@ -255,6 +255,10 @@
   .landing .footer {
     grid-template-columns: 1fr;
   }
+  .landing .footer > span {
+    justify-self: center;
+    text-align: center;
+  }
 }
 
 .betaNote {
