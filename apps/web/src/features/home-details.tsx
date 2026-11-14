@@ -1,11 +1,20 @@
 import { accountLinks } from './account-links'
 import type { ReactNode } from 'react'
-import { Flag, Infinity as InfinityIcon, Orbit, Trophy } from 'lucide-react'
+import {
+  Atom,
+  Factory,
+  Flag,
+  Infinity as InfinityIcon,
+  Orbit,
+  Radar,
+  Trophy,
+} from 'lucide-react'
 import { ButtonLinkAnchor } from '../ui/button'
 import { DiscordLink } from '../ui/discord-link'
+import { HomeQuestions } from './home-questions'
 import styles from './home-details.module.css'
 
-const repository = 'https://github.com/unbought-games/orbit-imperium'
+import { GitHubLink } from '../ui/github-link'
 
 function Screenshot({
   name,
@@ -19,30 +28,32 @@ function Screenshot({
   mobile?: boolean
 }) {
   const width = mobile ? 390 : 960
+  const fullWidth = mobile ? 390 : 1440
   return (
     <figure className={mobile ? styles.phone : styles.desktop}>
       <a
-        href={`/art/landing/${name}-${width * 2}.webp`}
+        href={`/art/landing/${name}-${fullWidth}.webp`}
         aria-label={`Open ${caption.toLowerCase()} screenshot at full size`}
       >
         <img
           src={`/art/landing/${name}-${width}.webp`}
-          srcSet={`/art/landing/${name}-${width}.webp ${width}w, /art/landing/${name}-${width * 2}.webp ${width * 2}w`}
+          srcSet={
+            mobile
+              ? undefined
+              : `/art/landing/${name}-960.webp 960w, /art/landing/${name}-1440.webp 1440w`
+          }
           sizes={
             mobile
               ? '(max-width: 767px) 300px, (max-width: 1100px) 28vw, 290px'
               : '(max-width: 767px) calc(100vw - 40px), (max-width: 1300px) 92vw, 1200px'
           }
           width={width}
-          height={mobile ? 844 : 855}
+          height={mobile ? 844 : 600}
           loading="lazy"
           decoding="async"
           alt={alt}
         />
       </a>
-      <figcaption>
-        {caption} <span aria-hidden="true">↗</span>
-      </figcaption>
     </figure>
   )
 }
@@ -67,13 +78,9 @@ export function HomeDetails({
           <div>
             <p>
               Build an empire, find your allies, and give it something to fight
-              for. We’re planning Seasonal Universes that build toward a final
-              campaign, with a place in Orbit’s history for the people who take
-              part.
-            </p>
-            <p className={styles.developmentNote}>
-              Final campaigns and permanent account rewards are in development.
-              Here’s where we’re heading.
+              for. Our official servers run <strong>Seasonal Universes</strong>:
+              develop your planets, compete with other empires, and earn a place
+              in Orbit’s history.
             </p>
           </div>
         </div>
@@ -83,11 +90,11 @@ export function HomeDetails({
               <Orbit size={44} strokeWidth={1.4} />
             </div>
             <p className={styles.eyebrow}>Build</p>
-            <h3>About three months</h3>
+            <h3>Build through the season</h3>
             <p>
-              That’s the planned length of a season: time to develop your
-              planets, form alliances, and make your moves. Each new universe
-              brings a fresh start and another chance to compete.
+              Develop your planets, form alliances, and make your moves over the
+              course of the season. Each new universe brings a
+              <strong> fresh start</strong> and another chance to compete.
             </p>
           </article>
           <article>
@@ -110,10 +117,9 @@ export function HomeDetails({
             <p className={styles.eyebrow}>Be remembered</p>
             <h3>A permanent legacy</h3>
             <p>
-              The universe will end. Participants and winners will earn
-              permanent rewards and recognition in their Unbought Games
-              accounts, carrying their achievements with them into whatever
-              comes next.
+              A season ends. Your achievements stay with you. Earn
+              <strong> permanent rewards and recognition</strong> in your
+              Unbought Games account, and carry them into your next universe.
             </p>
           </article>
         </div>
@@ -136,8 +142,9 @@ export function HomeDetails({
           <div>
             <p>
               Opening one now would give a handful of early players a long head
-              start. We want the first Eternal Universe to feel like a gold
-              rush: a new frontier, a busy galaxy, and a community arriving
+              start. We want the first Eternal Universe to feel like the moment
+              a gate opens to an uncharted galaxy: new worlds within reach,
+              fleets setting out, and a community crossing the threshold
               together.
             </p>
             <p>Get the first Eternal Universe launch news on Discord.</p>
@@ -170,44 +177,61 @@ export function HomeDetails({
             every choice uses resources you could spend elsewhere.
           </p>
         </div>
-        <Screenshot
-          name="empire-desktop"
-          alt="Orbit’s desktop Empire overview showing two planets, their resources, construction, research and a transport fleet."
-          caption="Empire overview · Desktop"
-        />
-        <div className={styles.strategy}>
-          <article>
-            <span className={styles.number} aria-hidden="true">
-              01
-            </span>
-            <h3>Develop your economy</h3>
-            <p>
-              Build mines, balance energy, and turn metal, crystal, and
-              deuterium into your next upgrade. Expand to new planets as your
-              empire grows.
-            </p>
-          </article>
-          <article>
-            <span className={styles.number} aria-hidden="true">
-              02
-            </span>
-            <h3>Choose your research</h3>
-            <p>
-              Unlock ships and capabilities. Invest in the technology your plans
-              need, while your planets keep producing.
-            </p>
-          </article>
-          <article>
-            <span className={styles.number} aria-hidden="true">
-              03
-            </span>
-            <h3>Commit your fleets</h3>
-            <p>
-              Scout with probes, move supplies, and raid rival planets. Plan
-              your timing and defenses: the universe keeps running when you’re
-              offline.
-            </p>
-          </article>
+        <div className={styles.gameplayShowcase}>
+          <Screenshot
+            name="empire-desktop"
+            alt="Orbit Imperium’s current desktop interface with its navigation sidebar, Empire wealth, transport fleet and active research."
+            caption="Empire overview · Desktop"
+          />
+          <div className={styles.strategy}>
+            <article>
+              <Factory
+                className={styles.strategyIcon}
+                size={28}
+                strokeWidth={1.4}
+                aria-hidden="true"
+              />
+              <div>
+                <h3>Develop your economy</h3>
+                <p>
+                  Build mines, balance energy, and turn metal, crystal, and
+                  deuterium into your next upgrade. Expand to new planets as
+                  your empire grows.
+                </p>
+              </div>
+            </article>
+            <article>
+              <Atom
+                className={styles.strategyIcon}
+                size={28}
+                strokeWidth={1.4}
+                aria-hidden="true"
+              />
+              <div>
+                <h3>Choose your research</h3>
+                <p>
+                  Unlock ships and capabilities. Invest in the technology your
+                  plans need, while your planets keep producing.
+                </p>
+              </div>
+            </article>
+            <article>
+              <Radar
+                className={styles.strategyIcon}
+                size={28}
+                strokeWidth={1.4}
+                aria-hidden="true"
+              />
+              <div>
+                <h3>Commit your fleets</h3>
+                <p>
+                  Scout with probes, move supplies, and raid rival planets. Plan
+                  your timing and defenses: the universe keeps running when
+                  you’re offline.
+                </p>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -233,13 +257,13 @@ export function HomeDetails({
           <Screenshot
             name="empire-mobile"
             mobile
-            alt="Orbit’s mobile Empire screen with planet resources, construction and fleet activity above the bottom navigation."
+            alt="Orbit Imperium’s mobile Empire screen showing resource totals, a transport fleet and active research above the navigation."
             caption="Empire overview · Mobile"
           />
           <Screenshot
             name="research-mobile"
             mobile
-            alt="Orbit’s mobile Research screen showing technology levels and an active Energy Technology upgrade."
+            alt="Orbit Imperium’s current mobile Research screen with an active Energy Technology upgrade and drive research."
             caption="Research · Mobile"
           />
         </div>
@@ -261,40 +285,31 @@ export function HomeDetails({
             Orbit is open source. Read the code, follow development, contribute,
             or run an independent universe for your own community.
           </p>
-          <a className={styles.githubButton} href={repository}>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="currentColor"
-            >
-              <path d="M12 .75a11.25 11.25 0 0 0-3.558 21.923c.563.104.768-.244.768-.542 0-.267-.01-.974-.015-1.912-3.13.68-3.791-1.508-3.791-1.508-.512-1.3-1.25-1.646-1.25-1.646-1.023-.7.077-.686.077-.686 1.13.08 1.724 1.16 1.724 1.16 1.006 1.724 2.64 1.226 3.282.938.102-.73.394-1.226.716-1.508-2.498-.284-5.124-1.25-5.124-5.565 0-1.23.44-2.232 1.16-3.02-.116-.285-.503-1.43.11-2.98 0 0 .945-.303 3.094 1.153A10.8 10.8 0 0 1 12 6.18c.956.004 1.918.13 2.817.378 2.148-1.456 3.092-1.153 3.092-1.153.615 1.55.228 2.695.112 2.98.722.788 1.158 1.79 1.158 3.02 0 4.327-2.63 5.278-5.136 5.557.404.35.764 1.042.764 2.1 0 1.516-.014 2.738-.014 3.11 0 .3.203.65.774.54A11.25 11.25 0 0 0 12 .75Z" />
-            </svg>
-            View on GitHub
-          </a>
+          <GitHubLink />
         </div>
       </section>
 
+      <HomeQuestions />
+
       <section className={styles.join} aria-labelledby="join-title">
         <div>
-          <p className={styles.eyebrow}>Come play the open beta</p>
+          <p className={styles.eyebrow}>Join the universe</p>
           <h2 id="join-title">Start with your first planet.</h2>
           <p>
-            We’re a small community, and the game is still taking shape. Join a
-            universe, build your economy, and see how far you can take it. If
-            something feels wrong, we’d like to hear about it.
+            Build your economy, send your first fleet, and find your place in
+            the universe. Play free in your browser, on your own or alongside an
+            alliance.
           </p>
           <div className={styles.joinAction}>
             <ButtonLinkAnchor
               href={signupEnabled ? accountLinks.signup : accountLinks.login}
             >
-              {signupEnabled ? 'Join the open beta' : 'Return to your account'}
+              {signupEnabled ? 'Play free' : 'Return to your account'}
               <span aria-hidden="true">→</span>
             </ButtonLinkAnchor>
           </div>
         </div>
-        <div className={styles.community}>{children}</div>
+        <div>{children}</div>
       </section>
     </div>
   )

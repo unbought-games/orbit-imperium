@@ -11,3 +11,16 @@
   min-height: 44px;
   min-width: 44px;
 }
+.quiet a:any-link {
+  text-decoration: none;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.quiet a:any-link:hover {
+  color: var(--ice-light);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .quiet a {
+    transition: color 200ms ease;
+  }
+}

@@ -25,6 +25,7 @@ export function PublicFrame({
   return (
     <main
       id="main"
+      data-public-landing={variant === 'landing' ? '' : undefined}
       tabIndex={-1}
       className={`${styles.frame} ${styles[variant]}`}
     >
@@ -103,15 +104,20 @@ export function PublicFrame({
         </section>
       </div>
       {afterHero}
+      {variant === 'landing' && (
+        <p className={styles.betaNote}>
+          Currently in open beta. We’re continuing to improve the game.
+        </p>
+      )}
       <footer className={styles.footer}>
-        <span>Deep games. Clear decisions. Fair competition.</span>
-        <PolicyLinks />
-        <div className={styles.footerDetails}>
-          <span className={styles.footerNote}>An independent universe</span>
-          {variant !== 'landing' && (
+        <span>Victory isn’t for sale.</span>
+        <PolicyLinks appearance={variant === 'landing' ? 'quiet' : 'default'} />
+        {variant !== 'landing' && (
+          <div className={styles.footerDetails}>
+            <span className={styles.footerNote}>An independent universe</span>
             <a href="/updates/index.html">What’s New</a>
-          )}
-        </div>
+          </div>
+        )}
       </footer>
     </main>
   )

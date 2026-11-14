@@ -92,11 +92,13 @@ html[data-ios-standalone] {
     outline: none !important;
   }
 }
-/* CSS state changes stay immediate. ActionSheet opts into Motion-driven transforms
-   and respects reduced motion in its controller. */
-*,
-*::before,
-*::after {
+/* Game state changes stay immediate. The public landing page opts into its own
+   CSS motion, with reduced-motion rules at each animated component. ActionSheet
+   continues to own its Motion-driven transforms inside the game. */
+:root:not(:has([data-public-landing])),
+:root:not(:has([data-public-landing])) *,
+:root:not(:has([data-public-landing])) *::before,
+:root:not(:has([data-public-landing])) *::after {
   animation: none !important;
   transition: none !important;
   scroll-behavior: auto !important;

@@ -2232,3 +2232,40 @@ PostgreSQL rules/construction tests preserve activation, persistence and both
 runtimes. The removed unique coverage is the all-prerequisites real-database
 Terraformer journey and its final projection assertion. Other dual-runtime rules
 fixtures passed the failed CI run; no independent follow-up is left unowned.
+
+
+## November 14, 2026 — built homepage diagnostic capture and smooth scroll
+
+`homepage-built.spec.ts`, first local repair of diagnostic captures after enabling
+landing-page motion. No prior smooth-scroll repair found in its three commits or
+this ledger. The API trace stopped at `locator.screenshot` scrolling the tall
+universe section, after all content/focus checks passed. Native smooth scrolling
+prevented capture positioning from settling; one capture timed out at Playwright's
+screenshot limit, and the remaining run plus a diagnostic trace were interrupted.
+This is a screenshot preparation defect, separate from the production global
+`animation: none !important` defect caught and fixed by the new motion assertions.
+
+Correction: each optional diagnostic screenshot supplies a screenshot-scoped
+`html { scroll-behavior: auto !important; }` stylesheet. It is restored by the
+screenshot API; actual anchor interaction and normal/reduced-motion checks remain
+unmodified. No sleeps, retries or deadline increases. CMO revision-3 record owns
+rerun results and captures. If this repair fails, remove this optional screenshot
+path and preserve functional/motion assertions; do not add another workaround.
+
+Disposition: the one screenshot-scoped-style repair also failed at the same
+`locator.screenshot` positioning step. Removed all seven optional diagnostic
+capture calls from the built-homepage suite, without renaming/replacing test
+scenarios. Functional, image-readiness, overflow, navigation, hydration and
+normal/reduced-motion assertions remain. Final visual evidence is captured in
+the visible CUA browser, independently of the functional runner. The interrupted
+API trace is retained in the private CMO review3-scroll-diagnostic.log; failed
+capture evidence is linked in the CMO revision-3 review record. No second repair,
+retries, sleeps or timeout increases.
+
+Final classification/update: without diagnostic capture, no-JS image positioning
+also failed. The broader cause was global smooth-scroll CSS, not only screenshot
+preparation. Removed that global scroll rule and confined smooth movement to the
+universe link's user activation (native immediate fallback without JavaScript).
+All 10 functional cases then passed in 7.2s. Owner subsequently required hover-only
+arrow movement; updated that requirement and two affected cases passed in 4.7s.
+Optional diagnostic capture code remains removed; CUA provides current visual QA.

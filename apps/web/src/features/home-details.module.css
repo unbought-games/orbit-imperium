@@ -7,7 +7,7 @@
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
 }
 .headerSignup,
 .headerLogin {
@@ -23,21 +23,64 @@
   font-size: clamp(3rem, 5.6vw, 5.5rem);
   margin-top: 20px;
 }
-.beta {
-  margin-top: 24px;
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 32px;
+}
+.signIn {
+  min-height: 52px;
+  padding-inline: 24px;
 }
 .universeLink {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  margin-top: 16px;
+  gap: 14px;
+  min-height: 52px;
+  margin-top: 28px;
+  color: var(--ice-light);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.015em;
 }
-.beta > section {
-  font-size: var(--font-size-xs);
-  max-width: 50ch;
-  padding-block: 4px;
-  margin-bottom: 0;
+.scrollOrbit {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--ice-shadow);
+  border-radius: 50%;
+  box-shadow:
+    0 0 24px #a4dbef0a,
+    inset 0 0 16px #a4dbef08;
+}
+.universeLink:hover {
+  color: var(--champagne-light);
+}
+.universeLink:hover .scrollOrbit {
+  border-color: var(--champagne);
+}
+.universeLink:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 5px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .scrollOrbit svg {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .universeLink:is(:hover, :focus-visible) .scrollOrbit svg {
+    transform: translateY(4px);
+  }
+  .universeLink,
+  .scrollOrbit {
+    transition:
+      color 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
 }
 .details a {
   color: var(--link);
@@ -63,6 +106,10 @@
   letter-spacing: -0.025em;
   text-wrap: balance;
   margin: 12px 0 24px;
+}
+.details strong {
+  color: var(--ice-light);
+  font-weight: 650;
 }
 .details h3 {
   color: var(--champagne-light);
@@ -124,16 +171,6 @@
   width: 100%;
   height: auto;
 }
-.phone figcaption,
-.desktop figcaption {
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  padding-top: 16px;
-  line-height: 1.6;
-}
-.phone figcaption {
-  text-align: center;
-}
 .sectionIntro {
   margin-bottom: 36px;
 }
@@ -189,18 +226,35 @@
   font-size: var(--font-size-sm);
   margin-bottom: 0;
 }
+.gameplayShowcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 64px);
+}
 .strategy {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 36px;
-  margin-top: 48px;
 }
-.number {
-  color: var(--champagne);
-  font: 1rem var(--font-editorial);
+.strategy article {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 18px;
+  padding-left: 24px;
+  border-left: 1px solid var(--ice-shadow);
+}
+.strategyIcon {
+  color: var(--ice);
+  margin-top: 4px;
+}
+.strategy h3 {
+  margin-top: 0;
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
 }
 .strategy p {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
+  margin-bottom: 0;
+  line-height: 1.7;
 }
 .fairPlay,
 .join {
@@ -213,31 +267,69 @@
   padding-left: 32px;
   border-left: 1px solid var(--border-accent);
 }
-.details .githubButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 10px 18px;
-  border: 1px solid #353535;
-  border-radius: 6px;
-  background: #0a0a0a;
-  color: #fff;
-  font-weight: 600;
-  text-decoration: none;
-  touch-action: manipulation;
-}
-.details .githubButton:hover {
-  background: #202020;
-  border-color: #666;
-  color: #fff;
-}
-.githubButton svg {
-  flex-shrink: 0;
-}
 .joinAction {
   margin: 28px 0 20px;
+}
+.questions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: clamp(32px, 7vw, 100px);
+}
+.questionsIntro h2 {
+  max-width: 12ch;
+}
+.questionsIntro p:last-child {
+  max-width: 30ch;
+}
+.question {
+  border-bottom: 1px solid var(--border);
+}
+.question:first-child {
+  border-top: 1px solid var(--border);
+}
+.question summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 76px;
+  padding-block: 22px;
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+.question summary::-webkit-details-marker {
+  display: none;
+}
+.question summary h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text);
+}
+.question summary svg {
+  flex-shrink: 0;
+  color: var(--champagne);
+}
+.question[open] summary svg {
+  transform: rotate(45deg);
+}
+.question summary:hover h3 {
+  color: var(--champagne-light);
+}
+.question summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 4px;
+}
+.answer {
+  padding: 0 44px 24px 0;
+}
+.answer p {
+  margin: 0;
+  font-size: var(--font-size-base);
 }
 .joinAction a {
   color: var(--text-on-accent);
@@ -248,26 +340,36 @@
 .joinAction a:hover {
   color: var(--text-on-accent);
 }
-.community {
-  border-left: 1px solid var(--border-accent);
-  padding-left: 32px;
+.communityNav {
+  display: grid;
+  gap: 0;
 }
 @media (max-width: 767px) {
-  .desktop figcaption {
-    text-align: center;
-  }
   .heroTitle {
     font-size: clamp(2.6rem, 12vw, 4.2rem);
   }
   .mobile,
+  .gameplayShowcase,
   .universeIntro,
   .campaign,
   .eternal,
   .fairPlay,
+  .questions,
   .join,
   .strategy {
     grid-template-columns: 1fr;
     gap: 28px;
+  }
+  .questionsIntro h2,
+  .questionsIntro p:last-child {
+    max-width: none;
+  }
+  .question summary {
+    gap: 16px;
+    min-height: 72px;
+  }
+  .answer {
+    padding-right: 0;
   }
   .phones {
     max-width: 620px;
@@ -276,19 +378,28 @@
   .phone:nth-child(2) {
     margin-top: 0;
   }
-  .openSource,
-  .community {
+  .openSource {
     padding: 24px 0 0;
     border-left: 0;
     border-top: 1px solid var(--border-accent);
   }
   .strategy {
-    margin-top: 32px;
+    margin-top: 8px;
+    gap: 32px;
+  }
+  .strategy article {
+    padding-left: 18px;
   }
 }
 @media (max-width: 479px) {
   .headerSignup {
     display: none;
+  }
+  .heroActions > a {
+    flex: 1 1 auto;
+  }
+  .heroActions > a:first-child {
+    flex-basis: 100%;
   }
   .headerLogin {
     padding-inline: 16px;

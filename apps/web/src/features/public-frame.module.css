@@ -235,3 +235,32 @@
     display: none;
   }
 }
+
+.landing {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.landing .footer {
+  grid-template-columns: 1fr auto;
+}
+.landing .footer > span {
+  justify-self: start;
+  text-align: left;
+  color: var(--champagne-light);
+  font-family: var(--font-editorial);
+  font-size: 1.15rem;
+  letter-spacing: -0.015em;
+}
+@media (max-width: 767px) {
+  .landing .footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+.betaNote {
+  margin: 0;
+  padding-block: 16px;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
