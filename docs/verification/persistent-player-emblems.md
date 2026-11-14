@@ -111,3 +111,11 @@ PR #436, initial head `07af7df4b30c9e24afdb1ab176640eae9cf2462b`, CI run
   Both existing profile-display component cases passed (preparation 4.326s,
   execution 0.490s and 0.315s, runner total 1.6s). No product rendering changed
   during the CI repair; the inspected desktop/mobile captures remain current.
+
+The repaired PR head `1f0aa8f11fd7e54e2c78a6347856bdd55158712e` passed all PR
+checks and automated review, run `43631692883`. It entered the merge queue at
+19:38:38 UTC. Queue run `43633228092` then failed an existing mobile moon menu
+reopening tour; the complete evidence, retirement rationale, retained coverage
+and validation are appended to `test-migration-dispatch-fleets.md`. This is a
+test-only queue repair; the production implementation and screenshots are
+unchanged. The first queue entry was explicitly removed before pushing repair.
