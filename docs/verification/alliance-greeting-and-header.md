@@ -1,7 +1,7 @@
 # Alliance greeting, header and notice footer
 
-Validated locally on `3b97e6ffec92c372100e41bbdc6da5939f304c78` plus the
-uncommitted changes in this task. No push, CI or deployment was requested.
+Initial local validation used `3b97e6ffec92c372100e41bbdc6da5939f304c78` plus
+the then-uncommitted changes in this task. The subsequent PR is #432.
 
 - The Hall reads the viewer's authoritative profile and existing effective-title
   hook. Static component coverage checks address versus label, retained identity
@@ -43,3 +43,12 @@ Captured and inspected all six application tabs at 1440×1000 and 390×844, plus
 publish/edit forms at 1440×1000 and 390×1000. Screenshots and labeled contact
 sheets are delivered inline in the implementation chat, not hosted or attached
 to a PR. Routine screenshot preparation is gated by `ORBIT_TEST_SCREENSHOTS=1`.
+
+## PR validation
+
+CI run `43549117702`, attempt 1, tested `fbb3fe1b6732b63cc4ee17e49ad0fd304af54424`.
+The journeys job (`132307298568`) failed before browser execution because the
+new build note lacked required YAML frontmatter (`News needs YAML frontmatter`).
+This was an authored-content build defect, not a test or infrastructure failure.
+Added the same ID/title/date metadata used by adjacent change notes and verified
+`npm run news:build` locally. No browser assertion or timeout was changed.
