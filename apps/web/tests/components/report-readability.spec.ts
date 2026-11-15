@@ -25,6 +25,19 @@ test('report identity stays below its activity and defender loot stays distinct'
       )
       const titleBox = (await title.boundingBox())!
       const identityBox = (await identity.boundingBox())!
+      const timeBox = (await row.locator('time').boundingBox())!
+      // Time shares the title line; identities and facts reclaim its column below.
+      expect(Math.abs(timeBox.y - titleBox.y)).toBeLessThan(4)
+      expect(timeBox.x).toBeGreaterThanOrEqual(titleBox.x + titleBox.width)
+      for (const content of [
+        identity.locator('..'),
+        row.locator('span[class*="preview"]').first(),
+      ]) {
+        const box = (await content.boundingBox())!
+        expect(box.x + box.width).toBeGreaterThanOrEqual(
+          timeBox.x + timeBox.width - 1,
+        )
+      }
       expect(identityBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height)
       const titleSize = await title.evaluate(
         (el) => getComputedStyle(el).fontSize,
@@ -69,6 +82,9 @@ test('report identity stays below its activity and defender loot stays distinct'
   await expect(first.getByRole('checkbox')).toBeChecked()
   await expect(list.getByRole('checkbox', { checked: true })).toHaveCount(1)
   await expect(first).not.toHaveAttribute('data-selection', 'true')
+  const selectedTitle = (await first.locator('strong').boundingBox())!
+  const selectedTime = (await first.locator('time').boundingBox())!
+  expect(Math.abs(selectedTime.y - selectedTitle.y)).toBeLessThan(4)
   await diagnosticScreenshot(list, {
     path: 'test-results/report-rows-selected-390x1000.png',
   })

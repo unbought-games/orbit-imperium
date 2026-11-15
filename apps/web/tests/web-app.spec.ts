@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures/test'
 import { body, shellFixture } from './fixtures/game'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 test.use({
   isMobile: true,
@@ -26,6 +27,17 @@ for (const mode of ['ios-installed', 'ios-browser', 'other-browser'] as const) {
       expect(viewport).toBe('width=device-width, initial-scale=1')
     }
     await expect(page.locator('html')).toHaveCSS('touch-action', installed ? 'pan-x pan-y' : 'auto')
+    // Chromium serializes `none` as its equivalent computed value, `100%`.
+    await expect(page.locator('html')).toHaveCSS('-webkit-text-size-adjust', installed ? '100%' : 'auto')
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      for (const width of installed ? [1440, 390] : [390]) {
+        await page.setViewportSize({ width, height: 844 })
+        await diagnosticScreenshot(page, {
+          path: `test-results/text-sizing-${mode}-${width}x844.png`,
+          fullPage: true,
+        })
+      }
+    }
     // Exercise the WebKit gesture fallback without cancelling ordinary touch input.
     for (const type of ['gesturestart', 'gesturechange', 'touchstart', 'touchmove', 'touchend']) {
       const cancelled = await page.locator('main').evaluate((element, type) => {

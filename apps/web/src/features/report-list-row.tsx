@@ -158,6 +158,13 @@ export function ReportListRow({
               {report.hidden && <span>Archived</span>}
             </span>
           </Link>
+          <time
+            className={styles.rowTime}
+            dateTime={new Date(report.observed_at).toISOString()}
+            title={exactTime(report.observed_at)}
+          >
+            {reportAge(report.observed_at, now)}
+          </time>
           {(route || identity || preview.coordinates) && (
             <div className={styles.reportIdentity}>
               {route && <span className={styles.deliveryRoute}>{route}</span>}
@@ -198,13 +205,6 @@ export function ReportListRow({
         <ReportPreviewFacts facts={preview.facts} />
       </div>
 
-      <time
-        className={styles.rowTime}
-        dateTime={new Date(report.observed_at).toISOString()}
-        title={exactTime(report.observed_at)}
-      >
-        {reportAge(report.observed_at, now)}
-      </time>
       <div className={styles.rowActions}>
         <ReportVisibilityButton
           model={model}

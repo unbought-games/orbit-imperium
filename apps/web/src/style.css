@@ -40,6 +40,15 @@ html {
 html[data-ios-standalone] {
   /* Allow native scrolling in both directions, but no pinch or double-tap zoom. */
   touch-action: pan-x pan-y;
+  /* Keep installed-app typography stable when WebKit would inflate text. */
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+@media (display-mode: standalone) {
+  html {
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+  }
 }
 /* Touch controls behave like app controls; reading content stays selectable.
    Input capabilities keep narrow desktop windows unchanged and cover tablets
