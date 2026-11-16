@@ -167,3 +167,33 @@ viewport captures, stepped hover paths, touch, immediate dismissal, player
 profiles, and Galaxy/Harvest interactions (3.951s preparation, 14.8s execution).
 The component typecheck, changed-file formatting, and diff checks passed.
 Refreshed the affected desktop/mobile screenshots after the width repair.
+
+## Report interaction follow-through
+
+The superseded run `43787322768` at `feadefa55` left features job
+`133037939866` incomplete. Its cancelled log recorded three density-report
+assertion failures and 107 passed cases out of 111; the remaining case was
+the explosion-counter interaction. The job was cancelled by the subsequent
+source push, not by a new execution deadline.
+
+The density failures reproduced at all three widths (4.538s bundle preparation).
+After clicking the report timestamp and dismissing it with Escape, the test
+called `hover()` while the mouse was still over the trigger. Base UI correctly
+suppresses hover reopening until the pointer leaves. The first repair of this
+pointer-path assumption explicitly moves outside before re-entering. It retains
+the dismissal and hover assertions. History points to the original interaction
+in #70; no earlier repair for this assumption was found. Audited the other
+Escape-to-hover sequence in Galaxy traffic: its mouse starts on a different
+control, so its existing path already enters the trigger. No shared helper or
+other scenario needed changing.
+
+The explosion-counter case was inspected with Playwright API diagnostics on the
+current width-constrained source. All hover, sequential keyboard, 390/320px touch,
+outside dismissal, and unchanged counter assertions passed (2.3s test, 2.9s
+runner). The cancelled CI log does not identify its outstanding action, so this
+is a current-revision result, not a claim that an unchanged retry repaired a
+known defect. No change to that test was made.
+
+The combined report validation passed all four cases with captures enabled
+(4.451s preparation, 12.1s execution). Assertions, timeouts, and test selection
+remain unchanged; only the real pointer re-entry is established explicitly.

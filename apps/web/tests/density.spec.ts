@@ -201,6 +201,9 @@ for (const viewport of [
     await expect(fullTime.locator('time')).toHaveAttribute('datetime', new Date(header.observed_at).toISOString())
     await page.keyboard.press('Escape')
     await expect(fullTime).toHaveCount(0)
+    // Escape deliberately suppresses hover until the pointer leaves the trigger.
+    // Re-enter it to exercise hover opening, rather than moving in place.
+    await page.mouse.move(0, 0)
     await timestamp.hover()
     await expect(fullTime).toBeVisible()
     await page.keyboard.press('Escape')
