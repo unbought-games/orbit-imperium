@@ -1030,7 +1030,9 @@ impl PgStore {
             RequestAction::of_v3(&pair.gameplay.command),
             machine,
         );
-        let result = self.admit_pair_observed(pair, machine, &mut timing).await;
+        // Keep the SQL state machine off callers' stacks. Embedding it in this
+        // telemetry wrapper amplifies async poll frames in nested game flows.
+        let result = Box::pin(self.admit_pair_observed(pair, machine, &mut timing)).await;
         if let Err(error) = &result {
             timing.error(error);
         }

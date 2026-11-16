@@ -72,3 +72,27 @@ the new change note with `News needs YAML frontmatter`. This was a build-input
 defect in this PR, not a browser-test failure or infrastructure outage. Added the
 required id/title/date metadata and verified news generation locally. Existing
 tests and assertions remain unchanged.
+
+## Admission wrapper stack correction
+
+Run `43793587312`, attempt 1, PostgreSQL-rest job `133058467655` at head
+`68fe2a8d7b4639229427f292b9ee9ec5cf0b40c1` aborted the existing
+`invited_group_join_restart_battle_reports_and_returns_in_both_runtimes` with
+SIGABRT/stack overflow after 6.126 s. This is not a provider failure. The other
+checks and automated review passed; the rest job and aggregate gate failed.
+
+The new production telemetry wrapper embedded the full SQL admission future in
+its callers. Boxing that future reduces the native `bound_admit4` future from
+9,496 to 2,144 bytes. This changes production async stack layout, not test stack
+limits or assertions. History and the repair ledger were inspected; the existing
+fleet-group scenario is retained as regression protection.
+
+A temporary size probe confirmed the reduction and was removed. Both before and
+after this correction, the native macOS fleet-group binary passed all four tests;
+therefore local success alone does not establish resolution of the Linux failure.
+The corrected admission metrics regression also passed. Linux CI must verify the
+corrected head before merge. No unchanged remote retry was used.
+
+Corrected local validation: compilation 5.06 s; metrics execution 2.544 s;
+fleet-group execution 41.185 s; focused Clippy 5.54 s with warnings denied.
+Rust formatting/diff checks passed and task-owned database resources were removed.
