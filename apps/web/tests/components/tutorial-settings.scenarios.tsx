@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import {
   createMemoryHistory,
+  createRouter,
+  createRootRoute,
   RouterContextProvider,
 } from '@tanstack/react-router'
-import { createAppRouter } from '../../src/router'
 import { readyFixture } from '../../src/test-support/bootstrap'
 import { tutorialFixture } from '../../src/test-support/tutorial'
 import { createGameStore } from '../../src/client-model/game-store'
@@ -49,7 +50,8 @@ function viewFixture() {
 }
 function Routing({ children }: { children: ReactNode }) {
   const [router] = useState(() =>
-    createAppRouter({
+    createRouter({
+      routeTree: createRootRoute().addChildren([]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     }),
   )

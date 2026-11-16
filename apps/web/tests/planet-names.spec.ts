@@ -50,7 +50,7 @@ test('a rejected rename preserves the draft and leaves the confirmed name unchan
   ).toBeVisible()
 })
 
-test('the fallback label is a valid explicit name for an unnamed planet', async ({
+test('the fallback label is a valid explicit name for an unnamed planet', { tag: '@journey' }, async ({
   page,
 }) => {
   const planet = { ...body, name: undefined as string | undefined }

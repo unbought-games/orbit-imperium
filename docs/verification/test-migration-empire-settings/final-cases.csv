@@ -1,0 +1,64 @@
+boundary,file,title_path,result
+application,active-work-summary.spec.ts,active-work-summary.spec.ts > resources active work card and pulse at 390px,expected
+application,empire-deletion.spec.ts,empire-deletion.spec.ts > request and cancel empire deletion 390px,expected
+application,empire-deletion.spec.ts,empire-deletion.spec.ts > recent sign-in rejection 390px,expected
+application,empire-history.spec.ts,empire-history.spec.ts > an empire profile keeps its loaded emblem after display observation expiry,expected
+application,empire-history.spec.ts,empire-history.spec.ts > public overview and closed campaign stay readable without game bootstrap at 1440px,expected
+application,empire-history.spec.ts,empire-history.spec.ts > public overview and closed campaign stay readable without game bootstrap at 390px,expected
+application,empire.spec.ts,empire.spec.ts > research directive opens its host planet and technology from the whole card at 390px,expected
+application,empire.spec.ts,"empire.spec.ts > empire shows every body, its own work and resources, and directional fleet traffic",expected
+application,empire.spec.ts,"empire.spec.ts > one quiet planet, unavailable fleets and missing art remain usable",expected
+application,empire.spec.ts,empire.spec.ts > current carried resources appear in owned fleet summaries at 390px,expected
+application,empire.spec.ts,empire.spec.ts > alliance panel waits for confirmed membership before offering discovery (member),expected
+application,empire.spec.ts,empire.spec.ts > alliance panel waits for confirmed membership before offering discovery (nonmember),expected
+application,empire.spec.ts,empire.spec.ts > desktop and phone command views keep all information readable without horizontal scrolling,expected
+application,empire.spec.ts,empire.spec.ts > fleet movements stay visible and fit the page with long names and manifests,expected
+application,planet-abandonment.spec.ts,"planet-abandonment.spec.ts > abandonment menu, losses, cancellation, blockers and removal at 390px",expected
+application,planet-names.spec.ts,planet-names.spec.ts > a rejected rename preserves the draft and leaves the confirmed name unchanged,expected
+application,planet-names.spec.ts,planet-names.spec.ts > the fallback label is a valid explicit name for an unnamed planet,expected
+application,vacation.spec.ts,"vacation.spec.ts > vacation review, commitment, minimum and return at 390px",expected
+application,vacation.spec.ts,vacation.spec.ts > vacation clears confirmation on the same mounted Settings page at 390px,expected
+application,vacation.spec.ts,vacation.spec.ts > capture only dismisses replacement notifications when evidence is enabled,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > resources active work card and pulse at 390px,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > research active work card and pulse at 390px,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > shipyard active work card and pulse at 390px,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > resources active work card and pulse at 1440px,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > research active work card and pulse at 1440px,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > shipyard active work card and pulse at 1440px,expected
+component,active-work.component.spec.ts,active-work.component.spec.ts > construction without a server start time stays honest and demolition remains distinct,expected
+component,empire.component.spec.ts,empire.component.spec.ts > each empire card centers idle construction beside Resources and Facilities,expected
+component,empire.component.spec.ts,empire.component.spec.ts > shipyard summary gives production full width with Shipyard and Defense below,expected
+component,empire.component.spec.ts,empire.component.spec.ts > fleet movements stay visible and fit the page with a single outbound flight,expected
+component,empire.component.spec.ts,empire.component.spec.ts > a large empire keeps every network target reachable and phone movements visible,expected
+component,empire.component.spec.ts,empire.component.spec.ts > all fleet movements are visible by default with owned and hostile tints at 320px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > all fleet movements are visible by default with owned and hostile tints at 390px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > all fleet movements are visible by default with owned and hostile tints at 1280px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > empire labels only the saved homeworld at 390px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > empire wealth and physical metadata at 390px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > empire labels only the saved homeworld at 1440px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > empire wealth and physical metadata at 1440px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > Empire wealth guide slowly repeats at 390px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > Empire wealth guide stops for reduced motion at 390px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > Empire wealth guide slowly repeats at 1440px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > Empire wealth guide stops for reduced motion at 1440px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > stationed inventory disclosure preserves updates and large totals at 390px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > stationed inventory disclosure preserves updates and large totals at 1440px,expected
+component,empire.component.spec.ts,empire.component.spec.ts > research directive keeps whole-card pointer and keyboard links and becomes compact when idle,expected
+component,lifecycle.component.spec.ts,lifecycle.component.spec.ts > rename keeps a local draft across authoritative updates and uncertain delivery at 1280px,expected
+component,lifecycle.component.spec.ts,lifecycle.component.spec.ts > rename keeps a local draft across authoritative updates and uncertain delivery at 390px,expected
+component,lifecycle.component.spec.ts,lifecycle.component.spec.ts > vacation keeps uncertain commands pending in the actual settings hook,expected
+component,lifecycle.component.spec.ts,lifecycle.component.spec.ts > deletion keeps uncertain commands pending in the actual settings hook,expected
+component,lifecycle.component.spec.ts,"lifecycle.component.spec.ts > desktop abandonment reviews losses, restores focus and rechecks changed blockers",expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > vacation confirmation and authoritative state changes at 1280px,expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > vacation blockers and rejection remain reviewable at 1280px,expected
+component,tutorial-settings.component.spec.ts,"tutorial-settings.component.spec.ts > empire deletion review, pending state and cancellation at 1280px",expected
+component,tutorial-settings.component.spec.ts,"tutorial-settings.component.spec.ts > empire deletion leader, rejection and inactivity controls at 1280px",expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > vacation confirmation and authoritative state changes at 390px,expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > vacation blockers and rejection remain reviewable at 390px,expected
+component,tutorial-settings.component.spec.ts,"tutorial-settings.component.spec.ts > empire deletion review, pending state and cancellation at 390px",expected
+component,tutorial-settings.component.spec.ts,"tutorial-settings.component.spec.ts > empire deletion leader, rejection and inactivity controls at 390px",expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > chapter headings disclose independently with keyboard and reduced motion 1440,expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > chapter headings disclose independently with keyboard and reduced motion 390,expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > briefing distinguishes rewards from a legacy directive's next upgrade shortfall 1440,expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > briefing distinguishes rewards from a legacy directive's next upgrade shortfall 390,expected
+component,tutorial-settings.component.spec.ts,tutorial-settings.component.spec.ts > full experience confirmation preserves focus and closes when authoritative preference changes,expected

@@ -1,3 +1,4 @@
+import { activeWorkLabel } from './active-work-label'
 import type { ReactNode } from 'react'
 import type { components } from '../contracts'
 import type { buildingProgress } from '../client-model/building-progress'
@@ -30,17 +31,12 @@ export function LevelWorkSummary({
   cancel?: ReactNode
 }) {
   const active = work.status === 'In progress'
-  const verb =
-    item.kind === 'Research'
-      ? 'Researching now'
-      : 'direction' in work && work.direction === 'down'
-        ? 'Tearing down'
-        : 'Upgrading now'
-  const status = active
-    ? work.secondsRemaining === null
-      ? 'Awaiting confirmation'
-      : verb
-    : work.status
+  const status = activeWorkLabel(
+    item.kind,
+    'direction' in work ? work.direction : undefined,
+    work.status,
+    work.secondsRemaining,
+  )
   return (
     <WorkCardSurface>
       <ActiveWorkCard
