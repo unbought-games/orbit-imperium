@@ -38,3 +38,15 @@ mobile empty/equipped captures. The four focused header journeys passed after
 resizing (preparation 5.080s; execution 10.1s), and the two emblem journeys passed
 after removing the word/hover outline (preparation 4.950s; execution 5.4s).
 Focused lint, formatting, and frontend typecheck passed for the size changes.
+
+## PR integration validation
+
+Merged main's Base UI overlay update into this branch because the rename popover
+uses that changed shared component. Tested code revision `bb2376ac`:
+
+- Four focused desktop/mobile overview journeys passed (bundle preparation
+  4.786s; browser execution 9.8s), with refreshed and inspected screenshots.
+- Identity validation, player-profile observations, and settings-navigation unit
+  checks: 22 passed in 3.01s.
+- Full frontend lint and formatting, frontend typecheck, and diff whitespace
+  checks passed. No integration conflicts or new validation failures.
