@@ -16,6 +16,7 @@ import { bodyName, coordinates, label } from '../ui/format'
 import { useGameScreen } from '../shell/screen-context'
 import { ownedDefenderImport } from './simulation-import'
 import { SimulationFields } from './simulation-fields'
+import { simulationUnitOutcomes } from './simulation-unit-outcomes'
 import { SimulationFlight } from './simulation-flight'
 import { SimulationPlanning } from './combat-simulation-planning'
 import {
@@ -354,11 +355,19 @@ function SimulationForm({
           {(['attacker', 'defender'] as const).map((side) => (
             <fieldset key={side} disabled={running}>
               <legend>{sideNames[side]}</legend>
+              <p className={styles.outcomeNote}>
+                Average remaining units
+                {allies.some((ally) => ally.side === side)
+                  ? ' across all fleets on this side'
+                  : ''}
+                .{side === 'defender' && ' Before defense repairs.'}
+              </p>
               <SimulationFields
                 key={`${side}-${defenderReport ? 'report' : 'manual'}`}
                 fields={fields.filter((f) => f.side === side)}
                 edits={edits}
                 edit={edit}
+                outcomes={simulationUnitOutcomes(result, prepared.inputs, side)}
               />
             </fieldset>
           ))}
@@ -459,7 +468,7 @@ function SimulationForm({
             ))}
           </div>
           <SimulationPlanning result={result} moonTarget={moonTarget} />
-          <details className={styles.resultDetails}>
+          <details open className={styles.resultDetails}>
             <summary>Losses and survivors</summary>
             {(['attacker', 'defender'] as const).map((side) => (
               <div key={side}>

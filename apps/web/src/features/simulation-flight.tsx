@@ -71,7 +71,7 @@ export function SimulationFlight({
   )
   return (
     <section aria-label="Attack planning">
-      <details className={styles.attackPlanning}>
+      <details open className={styles.attackPlanning}>
         <summary>Plan attack</summary>
         <div className={styles.flightLocations}>
           {body && (
