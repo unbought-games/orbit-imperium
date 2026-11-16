@@ -99,6 +99,16 @@ one component and compose the differing parts at the call site. Use explicit
 variants for appearance and children or named slots for content. Avoid copying a
 component or accumulating flags tied to individual screens.
 
+Use Base UI for overlay behavior. Compose [AnchoredPopover](anchored-popover.tsx)
+parts for anchored interactive surfaces; its `Content` owns portal placement,
+viewport collision padding, and positioning. Keep focus and dismissal policy in
+the appropriate shared wrapper: [Popover](popover.tsx) for hover/focus details,
+[ActionPopover](action-popover.tsx) for explicit actions, and
+[AdvisorBubble](advisor-bubble.tsx) for unsolicited guidance that does not steal
+focus. Use Base UI Dialog, AlertDialog, Menu, and Tooltip for their corresponding
+semantics. Keep custom sheet gestures in ActionSheet. Do not add direct Floating
+UI imports or copy positioning and focus code into features.
+
 Follow [Base UI's composition guide](https://base-ui.com/react/handbook/composition)
 when a behavior needs a custom control or underlying element:
 

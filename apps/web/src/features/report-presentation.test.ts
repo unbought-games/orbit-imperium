@@ -158,6 +158,53 @@ describe('report facts rendered by the production observation component', () => 
     expect(text).toContain('Rocket Launcher')
   })
 
+  it('keeps zero random explosions separate from 33 destroyed defenders', () => {
+    const attackers = {
+      ...attacker,
+      units: [{ item: { kind: 'Ship', id: 'Cruiser' }, count: '9' }],
+    }
+    const defenders = {
+      ...defender,
+      units: [{ item: { kind: 'Defense', id: 'RocketLauncher' }, count: '34' }],
+    }
+    const survivor = {
+      ...defenders,
+      units: [{ item: { kind: 'Defense', id: 'RocketLauncher' }, count: '1' }],
+    }
+    const { text, markup } = render({
+      payload: {
+        ...combat,
+        outcome: 'Draw',
+        participants: [attackers, defenders],
+        survivors: [attackers, survivor],
+        rounds: [
+          {
+            number: 1,
+            start: [attackers, defenders],
+            end: [attackers, survivor],
+            fire: [
+              {
+                owner: attackers.owner,
+                origin: attackers.origin,
+                side: 'Attacker',
+                shots: '116',
+                raw_attack_ticks: '6032000000',
+                shield_removed_ticks: '58000000',
+                hull_removed_ticks: '620000000',
+                explosions: '0',
+              },
+            ],
+          },
+        ],
+      },
+      viewer: 'attacker',
+    })
+    expect(text).toContain('34 → 1 (−33)')
+    expect(text).toContain('Explosions caused 0')
+    expect(text).not.toContain('Explosions caused 33')
+    expect(markup).toContain('aria-label="Explosions caused details"')
+  })
+
   it('renders legacy combined fire without inventing participant damage or attacker locations', () => {
     const { text, markup } = render({
       payload: {

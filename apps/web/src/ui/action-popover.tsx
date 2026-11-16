@@ -1,23 +1,11 @@
-import { useId, type ReactNode, type RefObject } from 'react'
-import {
-  autoUpdate,
-  flip,
-  offset,
-  shift,
-  size,
-  useFloating,
-  useDismiss,
-  useInteractions,
-  useRole,
-  useTransitionStatus,
-  FloatingFocusManager,
-  FloatingPortal,
-} from '@floating-ui/react'
-import { motion } from 'motion/react'
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react'
+import type { Popover as BasePopover } from '@base-ui/react/popover'
 import { useReducedMotion } from './use-reduced-motion'
+import { AnchoredPopover } from './anchored-popover'
 import { X } from 'lucide-react'
 import { Button } from './button'
 import { Heading } from './typography'
+import { usePopupFocusReturn } from './use-popup-focus-return'
 import styles from './action-popover.module.css'
 
 /** An explicit, nonmodal action dialog anchored to a persistent control. */
@@ -38,89 +26,64 @@ export function ActionPopover({
   description?: string
   children: ReactNode
 }) {
+  const popup = useRef<HTMLDivElement>(null)
+  const actions = useRef<BasePopover.Root.Actions>(null)
   const reduced = useReducedMotion()
-  const titleId = useId(),
-    descriptionId = useId()
-  const { refs, floatingStyles, context } = useFloating({
-    open,
-    onOpenChange,
-    elements: { reference: anchorRef.current },
-    strategy: 'fixed',
-    placement: 'bottom-end',
-    whileElementsMounted: autoUpdate,
-    middleware: [
-      offset(8),
-      // Reserve one CSS pixel for device-pixel rounding of floating coordinates.
-      flip({ padding: 13 }),
-      shift({ padding: 13 }),
-      size({
-        padding: 13,
-        apply({ availableHeight, elements }) {
-          elements.floating.style.maxHeight = `${Math.max(0, Math.floor(availableHeight))}px`
-        },
-      }),
-    ],
-  })
-  const dismiss = useDismiss(context, {
-    escapeKey: true,
-    outsidePressEvent: 'pointerdown',
-  })
-  const role = useRole(context, { role: 'dialog' })
-  const { getFloatingProps } = useInteractions([dismiss, role])
-  const { isMounted } = useTransitionStatus(context, {
-    duration: reduced ? 0 : { open: 140, close: 100 },
-  })
-  if (!isMounted) return null
+  const popupRef = usePopupFocusReturn(open, popup, anchorRef)
+  useLayoutEffect(() => {
+    // Base UI normally checks CSS transitions on the next frame. Reduced motion
+    // has no exit to await, including when the preference changes while open.
+    if (!open && reduced) actions.current?.unmount()
+  }, [open, reduced])
   return (
-    <FloatingPortal>
-      <FloatingFocusManager
-        context={context}
-        modal={false}
-        initialFocus={initialFocusRef ?? 0}
-        returnFocus={anchorRef}
-        disabled={!open}
+    <AnchoredPopover.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      actionsRef={actions}
+    >
+      <AnchoredPopover.Content
+        ref={popupRef}
+        inert={!open}
+        initialFocus={initialFocusRef}
+        finalFocus={anchorRef}
+        positionerProps={{
+          anchor: anchorRef,
+          side: 'bottom',
+          align: 'end',
+          collisionPadding: 13,
+          className: styles.positioner,
+        }}
+        className={styles.popup}
       >
-        <div
-          ref={refs.setFloating}
-          style={floatingStyles}
-          className={styles.positioner}
-          inert={!open}
-          {...getFloatingProps({
-            'aria-labelledby': titleId,
-            'aria-describedby': description ? descriptionId : undefined,
-          })}
-        >
-          <motion.div
-            className={styles.panel}
-            initial={reduced ? false : { opacity: 0, y: 4 }}
-            animate={{ opacity: open ? 1 : 0, y: open || reduced ? 0 : 4 }}
-            transition={{
-              duration: reduced ? 0 : open ? 0.14 : 0.1,
-              ease: 'easeOut',
-            }}
-          >
-            <header className={styles.header}>
-              <div>
-                <Heading level={2} id={titleId}>
-                  {title}
-                </Heading>
-                {description && <p id={descriptionId}>{description}</p>}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className={styles.close}
-                aria-label="Dismiss popover"
-                onClick={() => onOpenChange(false)}
-              >
-                <X size={16} aria-hidden="true" />
-              </Button>
-            </header>
-            {children}
-          </motion.div>
+        <div className={styles.panel}>
+          <header className={styles.header}>
+            <div>
+              <AnchoredPopover.Title render={<Heading level={2} />}>
+                {title}
+              </AnchoredPopover.Title>
+              {description && (
+                <AnchoredPopover.Description>
+                  {description}
+                </AnchoredPopover.Description>
+              )}
+            </div>
+            <AnchoredPopover.Close
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={styles.close}
+                  aria-label="Dismiss popover"
+                />
+              }
+            >
+              <X size={16} aria-hidden="true" />
+            </AnchoredPopover.Close>
+          </header>
+          {children}
         </div>
-      </FloatingFocusManager>
-    </FloatingPortal>
+      </AnchoredPopover.Content>
+    </AnchoredPopover.Root>
   )
 }
