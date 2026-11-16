@@ -57,6 +57,59 @@
   width: 100%;
   min-width: 0;
 }
+.field label {
+  overflow-wrap: anywhere;
+}
+.fieldWithOutcome {
+  grid-template-columns: minmax(0, 1fr) 84px 80px;
+}
+.fieldColumns {
+  display: grid;
+  align-items: end;
+  gap: 8px;
+  margin: 12px 0 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.fieldColumns .shipSubtype {
+  margin: 0;
+}
+.startingHeading {
+  text-align: center;
+}
+.unitOutcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  font-size: 0.875rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.fieldColumns .unitOutcome {
+  font-size: 0.75rem;
+}
+.unitOutcome > * {
+  white-space: nowrap;
+}
+.unitOutcome strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.outcomeNote {
+  min-height: 3em;
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+}
+@media (max-width: 760px) {
+  .fieldWithOutcome {
+    grid-template-columns: minmax(0, 1fr) 60px 80px;
+  }
+}
+@media (max-width: 620px) {
+  .technologyField {
+    grid-template-columns: minmax(0, 1fr) 84px;
+  }
+}
 .field small {
   display: block;
   color: var(--text-muted);

@@ -119,7 +119,7 @@ export function SimulationPlanning({
           </p>
         </section>
       </div>
-      <details className={styles.resultDetails}>
+      <details open className={styles.resultDetails}>
         <summary>Estimate ranges and assumptions</summary>
         <dl className={styles.survivors}>
           {summary.cargo && (

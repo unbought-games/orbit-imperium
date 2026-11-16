@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
+import { VisuallyHidden } from '../ui/visually-hidden'
 import { shipGroup, shipGroups } from './ship-order'
 import { label } from '../ui/format'
 import { formatWholeNumber } from '../ui/whole-number'
@@ -9,11 +10,13 @@ import {
   type SimulationField,
 } from './combat-simulation-model'
 import styles from './combat-simulation.module.css'
+import type { SimulationUnitOutcomes } from './simulation-unit-outcomes'
 
 type Props = {
   fields: SimulationField[]
   edits: Record<string, string>
   edit: (values: Record<string, string>) => void
+  outcomes?: SimulationUnitOutcomes | null
 }
 
 export function SimulationFields(props: Props) {
@@ -33,12 +36,16 @@ export function SimulationFields(props: Props) {
   )
 }
 
-function FieldGroup({ fields, edits, edit, group }: Props & { group: string }) {
+function FieldGroup({
+  fields,
+  edits,
+  edit,
+  outcomes,
+  group,
+}: Props & { group: string }) {
   const defender = fields[0].side === 'defender'
   const collapsible = defender && group !== 'Technologies'
-  const [expanded, setExpanded] = useState(
-    !fields.every((f) => f.source === 'Report' && f.value !== null),
-  )
+  const [expanded, setExpanded] = useState(true)
   const summary = simulationGroupSummary(fields, edits)
   const groups =
     group === 'Ships'
@@ -53,13 +60,28 @@ function FieldGroup({ fields, edits, edit, group }: Props & { group: string }) {
     .filter((group) => group.fields.length)
     .map((group) => (
       <Fragment key={group.name}>
-        {group.name && <h4 className={styles.shipSubtype}>{group.name}</h4>}
+        {outcomes !== undefined && group.fields[0].item ? (
+          <div className={`${styles.fieldWithOutcome} ${styles.fieldColumns}`}>
+            {group.name ? (
+              <h4 className={styles.shipSubtype}>{group.name}</h4>
+            ) : (
+              <span>Unit</span>
+            )}
+            <span className={styles.startingHeading}>Start</span>
+            <div className={styles.unitOutcome}>
+              <span>Remaining</span>
+            </div>
+          </div>
+        ) : (
+          group.name && <h4 className={styles.shipSubtype}>{group.name}</h4>
+        )}
         {group.fields.map((field) => (
           <SimulationFieldInput
             key={field.key}
             field={field}
             edits={edits}
             edit={edit}
+            outcomes={outcomes}
           />
         ))}
       </Fragment>
@@ -106,7 +128,15 @@ function SimulationFieldInput({
   field,
   edits,
   edit,
+  outcomes,
 }: Omit<Props, 'fields'> & { field: SimulationField }) {
+  const showOutcome = field.item !== undefined && outcomes !== undefined
+  const outcome =
+    field.item && outcomes
+      ? (outcomes[`${field.item.kind}:${field.item.id}`] ?? {
+          remaining: 0,
+        })
+      : null
   const value = edits[field.key] ?? field.value ?? '0'
   const invalid =
     !/^(0|[1-9][0-9]*)$/.test(value || '0') ||
@@ -129,7 +159,7 @@ function SimulationFieldInput({
           : ''
   return (
     <div
-      className={`${styles.field} ${value && value !== '0' ? styles.nonzero : ''}`}
+      className={`${styles.field} ${outcomes !== undefined ? styles.fieldWithOutcome : ''} ${field.technology !== undefined ? styles.technologyField : ''} ${value && value !== '0' ? styles.nonzero : ''}`}
     >
       <div>
         <label htmlFor={`simulation-${field.key}`} title={source}>
@@ -159,6 +189,24 @@ function SimulationFieldInput({
         placeholder="0"
         onChange={(event) => edit({ [field.key]: event.target.value })}
       />
+      {showOutcome && (
+        <div
+          className={styles.unitOutcome}
+          role="group"
+          aria-label={`${field.side === 'attacker' ? 'Attacker' : 'Defender'} ${label(field.label)} average outcome`}
+        >
+          <div title="Average remaining">
+            <strong>
+              {outcome
+                ? outcome.remaining.toLocaleString(undefined, {
+                    maximumFractionDigits: 1,
+                  })
+                : '—'}
+            </strong>
+            <VisuallyHidden> remaining</VisuallyHidden>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
