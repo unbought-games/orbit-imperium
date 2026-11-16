@@ -1,33 +1,20 @@
 import {
-  cloneElement,
   useId,
+  useCallback,
+  useRef,
+  useState,
   type ComponentPropsWithRef,
   type ReactElement,
+  type ReactNode,
   type Ref,
 } from 'react'
 import { Button } from './button'
-import { useState, type ReactNode } from 'react'
-import {
-  useMergeRefs,
-  autoUpdate,
-  flip,
-  offset,
-  shift,
-  safePolygon,
-  useFloating,
-  useClick,
-  useDismiss,
-  useFocus,
-  useHover,
-  useInteractions,
-  useRole,
-  FloatingFocusManager,
-  FloatingPortal,
-  type Placement,
-} from '@floating-ui/react'
+import { AnchoredPopover } from './anchored-popover'
+import { classes } from './classes'
 import styles from './popover.module.css'
 
-const linkControlProps = { 'data-touch-control': '' }
+type Side = 'top' | 'bottom' | 'left' | 'right'
+type Placement = Side | `${Side}-${'start' | 'end'}`
 
 /** Read-only details, available with a mouse, keyboard, or touch. */
 export function Popover({
@@ -53,119 +40,117 @@ export function Popover({
   placement?: Placement
   link?: ReactElement<ComponentPropsWithRef<'a'>>
 }) {
+  const id = useId()
   const descriptionId = useId()
-  const descriptionProps = triggerDescription
-    ? { 'aria-describedby': descriptionId }
-    : {}
-  const [open, setOpen] = useState(false)
-  const { refs, floatingStyles, context } = useFloating({
-    open,
-    onOpenChange: (next, event, reason) => {
-      // Escape dismisses these details, not an enclosing native dialog.
-      if (reason === 'escape-key') event?.preventDefault()
-      setOpen(next)
+  const popupId = useId()
+  const anchor = useRef<HTMLElement>(null)
+  const referenceRef = useCallback(
+    (element: HTMLElement | null) => {
+      anchor.current = element
+      if (typeof triggerRef === 'function') {
+        const cleanup = triggerRef(element)
+        if (cleanup)
+          return () => {
+            anchor.current = null
+            cleanup()
+          }
+      } else if (triggerRef) triggerRef.current = element
     },
-    placement,
-    middleware: [offset(8), flip(), shift({ padding: 12 })],
-    whileElementsMounted: autoUpdate,
-  })
-  const referenceRef = useMergeRefs([refs.setReference, triggerRef])
-  const hover = useHover(context, {
-    mouseOnly: true,
-    delay: { open: 150 },
-    handleClose: safePolygon(),
-  })
-  const focus = useFocus(context)
-  const click = useClick(context, { enabled: !link })
-  // Dismiss these details before an enclosing quote handles Escape.
-  const dismiss = useDismiss(context, { capture: { escapeKey: true } })
-  const role = useRole(context, { role: link ? 'tooltip' : 'dialog' })
-  const { getReferenceProps, getFloatingProps } = useInteractions([
-    hover,
-    focus,
-    click,
-    dismiss,
-    role,
-  ])
+    [triggerRef],
+  )
+  const popup = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const suppressRestoredFocus = useRef(false)
+  const changeOpen = (next: boolean) => {
+    suppressRestoredFocus.current = !next
+    setOpen(next)
+  }
+  const [side, align = 'center'] = placement.split('-') as [
+    Side,
+    'start' | 'end' | 'center',
+  ]
   return (
-    <>
-      {link ? (
-        cloneElement(link, {
-          ...linkControlProps,
-          ref: referenceRef,
-          className,
-          ...getReferenceProps({
-            ...descriptionProps,
-            'aria-label': link.props['aria-label'] ?? label,
-            onKeyUp: (event) => {
-              if (event.key === 'Tab') setOpen(true)
-            },
-          }),
-          children: trigger,
-        })
-      ) : (
-        <Button
-          variant="ghost"
-          type="button"
-          ref={referenceRef}
-          className={className}
-          {...getReferenceProps({
-            ...descriptionProps,
-            'aria-label': `${label} details`,
-            // A hover popup dismissed with Escape may not have focused its
-            // trigger. Explicit keyboard re-entry must still reopen it, even
-            // while Floating UI suppresses focus restored by dismissal.
-            onKeyUp: (event) => {
-              if (event.key === 'Tab') setOpen(true)
-            },
-          })}
-        >
-          {trigger}
-        </Button>
-      )}
+    <AnchoredPopover.Root open={open} triggerId={id} onOpenChange={changeOpen}>
+      <AnchoredPopover.Trigger
+        id={id}
+        ref={referenceRef}
+        nativeButton={!link}
+        openOnHover
+        delay={150}
+        className={className}
+        aria-label={
+          link ? (link.props['aria-label'] ?? label) : `${label} details`
+        }
+        aria-describedby={
+          [
+            triggerDescription ? descriptionId : null,
+            link && open ? popupId : null,
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined
+        }
+        aria-haspopup={link ? undefined : 'dialog'}
+        aria-expanded={link ? undefined : open}
+        role={link ? 'link' : undefined}
+        render={link ?? <Button variant="ghost" type="button" />}
+        onFocus={(event) => {
+          if (
+            !suppressRestoredFocus.current &&
+            event.currentTarget.matches(':focus-visible') &&
+            !(
+              event.relatedTarget instanceof Node &&
+              popup.current?.contains(event.relatedTarget)
+            )
+          )
+            setOpen(true)
+        }}
+        onBlur={() => {
+          suppressRestoredFocus.current = false
+        }}
+        onKeyUp={(event) => {
+          if (event.key === 'Tab') changeOpen(true)
+        }}
+        onClick={(event) => {
+          // A link still navigates, including modified clicks. Only suppress the
+          // popover's button behavior, not the browser's default action.
+          if (link) event.preventBaseUIHandler()
+        }}
+        data-touch-control={link ? '' : undefined}
+      >
+        {trigger}
+      </AnchoredPopover.Trigger>
       {triggerDescription && (
         <span id={descriptionId} hidden>
           {triggerDescription}
         </span>
       )}
-      {open && (
-        <FloatingPortal
-          root={refs.domReference.current?.closest('dialog') ?? undefined}
-        >
-          <FloatingFocusManager
-            context={context}
-            modal={false}
-            initialFocus={-1}
-          >
-            <div
-              ref={refs.setFloating}
-              style={floatingStyles}
-              className={[styles.popover, surfaceClassName]
-                .filter(Boolean)
-                .join(' ')}
-              {...getFloatingProps({
-                'aria-label': label,
-                onClick: (event) => {
-                  if (
-                    event.button === 0 &&
-                    !event.metaKey &&
-                    !event.ctrlKey &&
-                    !event.shiftKey &&
-                    !event.altKey &&
-                    event.target instanceof Element &&
-                    event.target.closest('a[href]')
-                  ) {
-                    setOpen(false)
-                  }
-                },
-              })}
-            >
-              {showTitle && <strong className={styles.title}>{label}</strong>}
-              {children}
-            </div>
-          </FloatingFocusManager>
-        </FloatingPortal>
-      )}
-    </>
+      <AnchoredPopover.Content
+        ref={popup}
+        id={popupId}
+        initialFocus={false}
+        aria-label={label}
+        role={link ? 'tooltip' : 'dialog'}
+        portalProps={{
+          container: anchor.current?.closest('dialog') ?? undefined,
+        }}
+        positionerProps={{ side, align }}
+        className={classes(styles.popover, surfaceClassName)}
+        onClick={(event) => {
+          if (
+            event.button === 0 &&
+            !event.metaKey &&
+            !event.ctrlKey &&
+            !event.shiftKey &&
+            !event.altKey &&
+            event.target instanceof Element &&
+            event.target.closest('a[href]')
+          )
+            changeOpen(false)
+        }}
+      >
+        {showTitle && <strong className={styles.title}>{label}</strong>}
+        {children}
+      </AnchoredPopover.Content>
+    </AnchoredPopover.Root>
   )
 }

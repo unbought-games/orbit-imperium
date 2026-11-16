@@ -136,8 +136,13 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('./galaxy-position.scenarios')).GalaxyTrafficScenario,
   'galaxy-disclosure': async () =>
     (await import('./galaxy-fleet.scenarios')).GalaxyDisclosureScenario,
+  'advisor-bubble': async () =>
+    (await import('./popover')).AdvisorBubbleExample,
+  'popover-details': async () =>
+    (await import('./popover')).DetailsPopoverExample,
   popover: async () => (await import('./popover')).PopoverExample,
-  timestamp: async () => (await import('./timestamp.scenario')).TimestampScenario,
+  timestamp: async () =>
+    (await import('./timestamp.scenario')).TimestampScenario,
   'number-form': async () => NumberForm,
   loading: async () => LoadingExample,
   'action-sheet': async () =>
