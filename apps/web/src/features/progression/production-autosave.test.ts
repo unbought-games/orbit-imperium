@@ -22,7 +22,7 @@ async function settle() {
 function setup() {
   // Exercise the queue deterministically; transport, persistence and receipt
   // validation are covered by coordinator tests and the browser fixture tests.
-  const model = new Coordinator({} as never, {} as never, {} as never)
+  const model = new Coordinator({} as never, {} as never)
   const binding = { account: 'a', player: 'p', universe: 'u', epoch: 'e' }
   const production = {
     body: 'body',

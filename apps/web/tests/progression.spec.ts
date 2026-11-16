@@ -5,7 +5,6 @@ import {test,expect,type APIResponse} from './fixtures/test';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
-import type {Attempt} from '../src/client-model/commands';
 test('mobile and desktop progression controls, blocked purchases, pending work, and private relogin',async({page})=>{
  // Isolate lost acknowledgments from the independent SSE outcome channel.
  await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
@@ -36,11 +35,10 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  await page.getByRole('button',{name:'Confirm research',exact:true}).click();await expect(page.getByRole('region',{name:'Active research'})).toBeVisible();
  await expect.poll(async()=>(await view()).progression.research_operation?.research).toBe('ComputerTechnology');
  await go('resources');await go('research');await expect(page.locator('main h1')).toHaveText('Research');
- let originalId='';let originalEnvelope:unknown;
- const savedManufacture=()=>page.evaluate(id=>Object.entries(sessionStorage).filter(([key])=>key.startsWith('orbit:attempts:v3:')).map(([,value])=>JSON.parse(value) as Attempt).find(a=>a.envelope.command_id===id),originalId);
+ let originalId='';
  const receiptRoute='**/api/v3/universes/*/commands/*?epoch=*';
  await page.route(receiptRoute,route=>new URL(route.request().url()).pathname.endsWith(`/${originalId}`)?route.fulfill({status:503,contentType:'application/problem+json',body:JSON.stringify({type:'about:blank',status:503,code:'Unavailable'})}):route.continue());
- await page.route('**/api/v3/universes/*/commands',async route=>{originalEnvelope=route.request().postDataJSON();originalId=route.request().postDataJSON().command_id;await route.fetch();await route.abort('failed')},{times:1});
+ await page.route('**/api/v3/universes/*/commands',async route=>{originalId=route.request().postDataJSON().command_id;await route.fetch();await route.abort('failed')},{times:1});
  await go('shipyard');
  await page.getByRole('link',{name:'Build Light Fighter',exact:true}).click();await page.getByLabel('Shipyard quantity').fill('2');await expect(page.getByRole('region',{name:'Progression quote'})).toContainText('No cancellation, pause, or reordering.');await page.getByRole('button',{name:'Build',exact:true}).click();
  await expect(page.getByRole('button',{name:'Retry order'})).toBeVisible();
@@ -49,11 +47,10 @@ test('mobile and desktop progression controls, blocked purchases, pending work, 
  const production=page.getByRole('list',{name:'Manufacturing queue'});
  await expect(production.getByRole('heading',{name:'Light Fighter',exact:true})).toBeVisible();
  await expect(production.getByTitle('Units remaining')).toHaveText('2 remaining');
- const restored=await page.evaluate(id=>Object.entries(sessionStorage).filter(([k,v])=>k.startsWith('orbit:attempts:v3:')&&JSON.parse(v).envelope.command_id===id).map(([,v])=>JSON.parse(v)),originalId);
- expect(restored).toHaveLength(1);expect(restored[0].envelope).toEqual(originalEnvelope);expect(restored[0].envelope.protocol).toBe(3);expect(restored[0].envelope.command.quantity).toBe('2');expect(restored[0].status).toBe('uncertain');
  await page.unroute(receiptRoute);
- await expect.poll(async()=>{const a=await savedManufacture();return a?.status==='committed'&&a.reconciled}).toBe(true);
- const recovered=await view(),attempt=await savedManufacture();expect(recovered.progression.manufacturing).toHaveLength(1);expect(recovered.progression.manufacturing[0].quantity).toBe('2');expect(attempt?.receipt?.status).toBe('Committed');if(attempt?.receipt?.status==='Committed')expect(attempt.receipt.result_ids).toEqual([recovered.progression.manufacturing[0].id]);
+ const recovered=await view();expect(recovered.progression.manufacturing).toHaveLength(1);expect(recovered.progression.manufacturing[0].quantity).toBe('2');
+ expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('orbit:attempts:')))).toEqual([]);
+ await expect(page.getByRole('button',{name:'Retry order'})).toHaveCount(0);
 
  await page.unroute('**/updates?epoch=*');await foreground(page);
  await go('facilities');

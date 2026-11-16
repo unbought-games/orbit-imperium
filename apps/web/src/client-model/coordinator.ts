@@ -13,7 +13,6 @@ import {
 import {
   type Attempt,
   type AttemptLedger,
-  type AttemptStorage,
   type Binding,
   type BoundQuote,
   type BoundReceipt,
@@ -159,12 +158,9 @@ export class Coordinator {
   private protocol: 2 | 3 | 4 = 2
   private loginPresenceWork: Promise<void> | null = null
   private universe = ''
-  private writes = new Map<string, Promise<void>>()
   constructor(
     private port: GamePort,
-    private storage: AttemptStorage,
     private platform: ClientPlatform,
-    private restoreSession = true,
     private updates?: GameUpdatesPort,
   ) {}
   subscribe = this.store.subscribe
@@ -262,18 +258,6 @@ export class Coordinator {
       sameBinding(response.binding, request.context.binding)
     )
   }
-  private persist(a: Attempt) {
-    const key = attemptKey(a.envelope.binding, a.envelope.command_id)
-    const record = {
-      ...a,
-      submitted_intent: this.store.getState().intents.get(key),
-    }
-    const write = (this.writes.get(key) ?? Promise.resolve())
-      .catch(() => {})
-      .then(() => this.storage.put(structuredClone(record)))
-    this.writes.set(key, write)
-    return write
-  }
   invalidate() {
     this.tutorial.invalidate()
     this.reports.invalidate()
@@ -308,10 +292,7 @@ export class Coordinator {
     })
   }
   async logout() {
-    const b = this.binding
     this.invalidate()
-    await Promise.allSettled(this.writes.values())
-    if (b) await this.storage.clear(b)
   }
   async connect(account: string, universe: string) {
     this.invalidate()
@@ -403,49 +384,10 @@ export class Coordinator {
   ) {
     const b = candidate.binding
     this.protocol = candidate.protocol
-    const restored = this.restoreSession ? await this.storage.load(b) : []
     if (g !== this.generation) return
     this.binding = structuredClone(b)
     this.view = next
     this.settings = settings
-    const attempts: AttemptLedger = new Map()
-    const intents = new Map<string, SubmittedIntent>()
-    for (const raw of restored) {
-      try {
-        const { submitted_intent, ...record } = validate<Attempt>(
-          'GameAttempt',
-          structuredClone(raw),
-        )
-        const a = record as Attempt
-        if (a.envelope.protocol !== this.protocol) continue
-        const key = attemptKey(a.envelope.binding, a.envelope.command_id)
-        if (
-          !sameBinding(a.envelope.binding, b) ||
-          attempts.has(key) ||
-          !this.validAttempt(a)
-        )
-          continue
-        if (!terminal(a) && a.receipt?.status !== 'Pending') {
-          a.status = 'uncertain'
-          a.receipt = null
-          a.reconciled = false
-        }
-        attempts.set(key, a)
-        if (submitted_intent) intents.set(key, submitted_intent)
-      } catch {
-        /* Quarantined by omission: never send invalid persisted records. */
-      }
-    }
-    // Restore command identities for receipt recovery without replaying notices.
-    this.store.setState({
-      attempts,
-      intents,
-      hiddenOrderNotices: new Set(
-        [...attempts]
-          .filter(([, attempt]) => hasOrderNotice(attempt))
-          .map(([key]) => key),
-      ),
-    })
     await this.reconcile()
     if (g === this.generation) {
       this.ready = true
@@ -460,19 +402,6 @@ export class Coordinator {
       this.view?.bodies[0]?.id ?? null,
     )
     return this.loginPresenceWork
-  }
-  private validAttempt(a: Attempt) {
-    if (
-      a.receipt &&
-      (!sameBinding(a.receipt.binding, a.envelope.binding) ||
-        a.receipt.command_id !== a.envelope.command_id ||
-        a.receipt.protocol !== a.envelope.protocol)
-    )
-      return false
-    if (a.status === 'committed') return a.receipt?.status === 'Committed'
-    if (a.status === 'rejected')
-      return a.receipt?.status === 'Rejected' && a.reconciled
-    return !a.reconciled && (!a.receipt || a.receipt.status === 'Pending')
   }
   private async problem(e: unknown, g: number, b: Binding) {
     if (!this.current(g, b)) return
@@ -1155,16 +1084,6 @@ export class Coordinator {
       attempts: new Map(this.attempts).set(key, a),
       intents: new Map(state.intents).set(key, structuredClone(intent)),
     })
-    try {
-      await this.persist(a)
-    } catch {
-      if (this.current(g, b)) {
-        this.removeAttempt(key)
-        this.message =
-          'Unable to save action. Free local storage and try again.'
-      }
-      return
-    }
     if (!this.current(g, b)) return
     if (!(await this.deliver(a, g, true))) return
     return commandId
@@ -1175,23 +1094,8 @@ export class Coordinator {
     const current = this.attempts.get(key)
     // A receipt is stronger evidence than a conflicting transport response.
     if (!current || current.receipt || terminal(current)) return false
-    try {
-      await this.storage.remove(a.envelope.binding, a.envelope.command_id)
-      if (!this.current(g, a.envelope.binding)) return false
-      if (this.attempts.get(key) !== current) {
-        const latest = this.attempts.get(key)
-        if (latest) await this.persist(latest)
-        return false
-      }
-      this.removeAttempt(key)
-      this.writes.delete(key)
-      return true
-    } catch {
-      // Retain the original ID if local cleanup fails. Background recovery only
-      // reads receipts, so even a restored record cannot silently resend it.
-      await this.uncertain(a, g)
-      return false
-    }
+    this.removeAttempt(key)
+    return true
   }
   private explainUnsentDuringRecovery(command: Command) {
     if (
@@ -1202,7 +1106,7 @@ export class Coordinator {
       this.message = 'This action was not sent. Please try again shortly.'
   }
   private async deliver(a: Attempt, g: number, firstDelivery = false) {
-    // A concurrent request can start a cooldown while this order is being saved.
+    // Respect an active cooldown before submitting an order.
     // A brand-new order has not reached the server and must not be queued.
     if (this.platform.monotonicNowMs() < this.retryAt) {
       if (firstDelivery && (await this.forgetUnsent(a, g))) {
@@ -1239,7 +1143,7 @@ export class Coordinator {
         rejected.code === 'SessionRefreshing'
       ) {
         // Authentication refused this request before command admission. A
-        // previous uncertain send still needs its original durable identity.
+        // previous uncertain send still needs its original identity.
         await this.problem(e, g, a.envelope.binding)
         if (firstDelivery && (await this.forgetUnsent(a, g))) {
           const command = a.envelope.command
@@ -1253,8 +1157,7 @@ export class Coordinator {
         }
         await this.uncertain(a, g)
       } else if (failure(e).status === 429) {
-        // Apply the cooldown before awaiting local storage, so concurrent clicks
-        // cannot send more orders while the rejected one is being cleared.
+        // Apply the cooldown before clearing the rejected order.
         await this.problem(e, g, a.envelope.binding)
         if (firstDelivery && (await this.forgetUnsent(a, g))) return false
         await this.uncertain(a, g)
@@ -1276,12 +1179,6 @@ export class Coordinator {
       status: 'uncertain',
     })
     this.saveAttempt(key, next)
-    try {
-      await this.persist(next)
-    } catch {
-      this.message =
-        'Unable to save latest status; the original action ID is retained.'
-    }
     this.delivery?.pending()
   }
   private async receive(a: Attempt, g: number, raw: BoundReceipt) {
@@ -1314,7 +1211,6 @@ export class Coordinator {
       attempts: new Map(this.attempts).set(key, next),
       reportHeaders,
     })
-    await this.persist(next)
     if (r.status === 'Pending') this.delivery?.pending()
     if (
       r.status === 'Rejected' &&
@@ -1366,7 +1262,7 @@ export class Coordinator {
         return
       if (failure(e).status === 404) {
         // A missing receipt is not proof an in-flight request cannot still arrive.
-        // Only the player can authorize another send, using the same durable ID.
+        // Only the player can authorize another send, using the same ID.
         if (!retry) return
         try {
           const request_id = this.platform.newId()
@@ -1472,15 +1368,10 @@ export class Coordinator {
       ) {
         const next = { ...a, reconciled: true }
         this.saveAttempt(key, next)
-        await this.persist(next)
         if (
           next.envelope.command.type === 'World' &&
           next.envelope.command.action.type === 'RecordForegroundPresence'
         ) {
-          await this.storage.remove(
-            next.envelope.binding,
-            next.envelope.command_id,
-          )
           if (this.current(generation, view.binding)) this.removeAttempt(key)
         }
       }
@@ -1489,20 +1380,7 @@ export class Coordinator {
   }
   private async pruneAttempts() {
     for (const [key, attempt] of supersededReportFailures(this.attempts)) {
-      try {
-        // A failed status write must still allow removal of its older record.
-        await this.writes.get(key)?.catch(() => {})
-        await this.storage.remove(
-          attempt.envelope.binding,
-          attempt.envelope.command_id,
-        )
-      } catch {
-        // Retain the confirming success until the older failure is durably
-        // removed, so it cannot become the latest feedback after pruning.
-        return
-      }
       if (this.attempts.get(key) === attempt) this.removeAttempt(key)
-      this.writes.delete(key)
     }
     const state = this.store.getState()
     const hiddenRejections = [...state.attempts].filter(
@@ -1528,16 +1406,6 @@ export class Coordinator {
     for (const [key, attempt] of history) {
       if (this.attempts.get(key) !== attempt) continue
       this.removeAttempt(key)
-      try {
-        await this.writes.get(key)
-        await this.storage.remove(
-          attempt.envelope.binding,
-          attempt.envelope.command_id,
-        )
-        this.writes.delete(key)
-      } catch {
-        // A retained durable success is harmless and is pruned again after restore.
-      }
     }
   }
   async dismiss(command_id: string) {
@@ -1546,7 +1414,6 @@ export class Coordinator {
     const key = attemptKey(b, command_id),
       a = this.attempts.get(key)
     if (!a || !terminal(a) || !a.reconciled) return
-    await this.storage.remove(b, command_id)
     this.removeAttempt(key)
   }
 }

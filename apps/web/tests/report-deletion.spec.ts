@@ -917,29 +917,40 @@ for (const width of [1280, 390]) {
 }
 
 for (const width of [1280, 390]) {
-  test(`closing or reloading clears the notice while preserving order recovery at ${width}px`, async ({ page }, info) => {
+  test(`immediate retry works and reload discards old order recovery at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
     await page.clock.pauseAt(new Date('2026-10-29T14:00:00Z'))
-    const fixture = await reportsFixture(page, false, 2, 50)
+    const fixture = await reportsFixture(page, true, 2, 50)
     const ids: string[] = []
     await page.route('**/commands', async route => {
       ids.push(route.request().postDataJSON().gameplay.command_id)
       return route.fallback()
+    })
+    await page.evaluate(() => {
+      for (const storage of [sessionStorage, localStorage]) {
+        storage.setItem('orbit:attempts:v4:obsolete', '{}')
+        storage.setItem('orbit:history:v3:obsolete', '{}')
+        storage.setItem('orbit:session:v2:obsolete', '{}')
+      }
     })
     fixture.setMode('uncertain')
     await page.getByRole('article').first().getByRole('button', { name: 'Archive report', exact: true }).click()
     const notice = page.getByRole('complementary', { name: 'Action needs attention' })
     const retry = notice.getByRole('button', { name: 'Retry order', exact: true })
     const dismiss = notice.getByRole('button', { name: 'Dismiss order notices', exact: true })
-    const receipt = (response: Response) =>
-      response.request().method() === 'GET' &&
-      new URL(response.url()).pathname.endsWith(`/commands/${ids[0]}`)
     await expect(retry).toBeVisible()
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
       await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: info.outputPath(`order-notice-${width}x900.png`) })
+    await withFixtureResponseStatus(page, response =>
+      response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/commands'),
+      () => retry.click(),
+      503,
+    )
+    expect(ids).toEqual([ids[0], ids[0]])
+    await expect(retry).toBeVisible()
     const originalAnnouncement = (await page.getByTestId('order-announcement').elementHandle())!
     await page.getByTestId('command-orb').click()
     const hud = page.getByRole('dialog', { name: 'Command uplink' })
@@ -964,10 +975,9 @@ for (const width of [1280, 390]) {
     await expect(notice).toHaveCount(0)
     await withReportListResponse(page, () => page.reload())
     await expect(page.getByRole('article')).toHaveCount(2)
-    await withFixtureResponseStatus(page, receipt, () => page.clock.runFor(60000), 404)
     await expect(notice).toHaveCount(0)
     await expect(page.getByTestId('order-announcement')).toBeEmpty()
-    expect(ids).toHaveLength(1)
+    expect(ids).toHaveLength(2)
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
       await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: info.outputPath(`order-notice-cleared-${width}x900.png`) })
@@ -975,14 +985,12 @@ for (const width of [1280, 390]) {
       page.goto(`/u/andromeda/b/${body.id}/settings/game`),
     )
     const recovery = page.getByRole('region', { name: 'Orders awaiting confirmation' })
-    const retryArchive = recovery.getByRole('button', { name: 'Retry order for Archive report' })
-    await expect(retryArchive).toBeVisible()
-    await diagnosticScreenshot(page, { path: info.outputPath(`order-recovery-${width}x900.png`) })
-    fixture.setMode('success')
-    await retryArchive.click()
-    await expect.poll(() => fixture.headers[0].hidden).toBe(true)
-    expect(ids).toEqual([ids[0], ids[0]])
-    await expect(notice).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Game settings', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Retry order/ })).toHaveCount(0)
+    expect(await page.evaluate(() => [sessionStorage, localStorage].flatMap(storage =>
+      Object.keys(storage).filter(key => /^orbit:(attempts|history|session):/.test(key)),
+    ))).toEqual([])
+    await diagnosticScreenshot(page, { path: info.outputPath(`game-settings-${width}x900.png`) })
     await expect(recovery).toHaveCount(0)
   })
 }

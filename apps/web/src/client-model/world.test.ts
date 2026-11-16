@@ -1,15 +1,7 @@
-import { readyFixture, memoryStorage } from '../test-support/bootstrap'
-import { attemptStorage } from '../adapters/attempt-storage'
+import { readyFixture } from '../test-support/bootstrap'
 import { expect, it, vi } from 'vitest'
 import { Coordinator } from './coordinator'
-import type {
-  Attempt,
-  AttemptStorage,
-  Binding,
-  Envelope,
-  GamePort,
-  ClientPlatform,
-} from './commands'
+import type { Binding, Envelope, GamePort, ClientPlatform } from './commands'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const binding: Binding = {
@@ -23,22 +15,7 @@ it.each(['Production', 'Attack'] as const)(
   async (action) => {
     let n = 10,
       lose = true
-    const sent: Envelope[] = [],
-      saved = new Map<string, Attempt>()
-    const storage: AttemptStorage = {
-      async load() {
-        return [...saved.values()]
-      },
-      async put(a) {
-        saved.set(a.envelope.command_id, structuredClone(a))
-      },
-      async remove(_, id) {
-        saved.delete(id)
-      },
-      async clear() {
-        saved.clear()
-      },
-    }
+    const sent: Envelope[] = []
     const port: GamePort = {
       async currentBinding(_, request_id) {
         return { protocol: 4, binding, request_id, sampled_at: 1000 }
@@ -121,7 +98,7 @@ it.each(['Production', 'Attack'] as const)(
       monotonicNowMs: () => 1000,
       isOnline: () => true,
     }
-    const first = new Coordinator(port, storage, platform)
+    const first = new Coordinator(port, platform)
     await first.connect(binding.account, binding.universe)
     await first.poll()
     expect(sent).toHaveLength(0)
@@ -181,17 +158,17 @@ it.each(['Production', 'Attack'] as const)(
         paired_command_id: envelope.command_id,
       },
     })
-    first.invalidate()
     lose = false
-    const restored = new Coordinator(port, storage, platform)
+    await first.recover(envelope.command_id)
+    expect(sent).toHaveLength(1)
+    await first.retryOrder(envelope.command_id)
+    expect(sent).toEqual([envelope, envelope])
+    first.invalidate()
+    const restored = new Coordinator(port, platform)
     await restored.connect(binding.account, binding.universe)
-    await restored.recover(envelope.command_id)
-    expect(
-      sent
-        .slice(1)
-        .every((e) => JSON.stringify(e) === JSON.stringify(envelope)),
-    ).toBe(true)
-    expect([...saved.values()][0].envelope).toEqual(envelope)
+    await restored.retryOrder(envelope.command_id)
+    expect(restored.ledger.size).toBe(0)
+    expect(sent).toHaveLength(2)
     let readCalls = 0
     port.world = async (context) => {
       readCalls++
@@ -276,11 +253,10 @@ it.each(['Production', 'Attack'] as const)(
 )
 
 it.each([false, true])(
-  'checks saved presence after an outage without automatically resending (reload=%s)',
+  'checks in-memory presence without resending and drops it on reload (reload=%s)',
   async (reload) => {
     vi.useFakeTimers()
     const { session, snapshot } = readyFixture(4)
-    const storage = attemptStorage(memoryStorage())
     const sent: Envelope[] = []
     let available = false
     let receiptConfirmed = false
@@ -338,7 +314,7 @@ it.each([false, true])(
         return () => clearTimeout(timer)
       },
     }
-    let model = new Coordinator(port, storage, platform)
+    let model = new Coordinator(port, platform)
     let stop = () => {}
     try {
       await model.initialize(session, snapshot)
@@ -347,24 +323,25 @@ it.each([false, true])(
       expect([...model.ledger.values()][0].status).toBe('uncertain')
       if (reload) {
         model.invalidate()
-        model = new Coordinator(port, storage, platform)
+        model = new Coordinator(port, platform)
         await model.initialize(session, snapshot)
       }
       stop = model.startDelivery()
       await vi.advanceTimersByTimeAsync(30000)
       expect(sent).toHaveLength(1)
-      expect(await storage.load(snapshot.candidate.binding)).toHaveLength(1)
+      expect(model.ledger.size).toBe(reload ? 0 : 1)
       available = true
       await vi.advanceTimersByTimeAsync(1000)
       expect(sent).toEqual([envelope])
-      expect([...model.ledger.values()][0].status).toBe('uncertain')
+      expect([...model.ledger.values()][0]?.status).toBe(
+        reload ? undefined : 'uncertain',
+      )
       // The original request can still be acknowledged after a missing receipt.
       receiptConfirmed = true
       await vi.advanceTimersByTimeAsync(1000)
       expect(sent).toEqual([envelope])
       expect(model.stale).toBe(false)
       expect(model.ledger.size).toBe(0)
-      expect(await storage.load(snapshot.candidate.binding)).toEqual([])
       await vi.advanceTimersByTimeAsync(60000)
       expect(sent).toHaveLength(1)
     } finally {

@@ -4,9 +4,8 @@ import {
   loadInitialRuntime,
   type RuntimeDependencies,
 } from './runtime'
-import { bootstrapFixture, memoryStorage, id } from '../test-support/bootstrap'
+import { bootstrapFixture, id } from '../test-support/bootstrap'
 const dependencies = (): RuntimeDependencies => ({
-  storage: memoryStorage(),
   platform: {
     newId: () => id(90),
     monotonicNowMs: () => 0,
@@ -76,19 +75,6 @@ it('fetches once for a missing payload and retains uncertainty on failure', asyn
   expect((await loadInitialRuntime(deps)).status).toBe('unavailable')
   expect(deps.fetchBootstrap).toHaveBeenCalledTimes(1)
 })
-it('storage failures cannot enable actions or discard known authentication', async () => {
-  const deps = dependencies()
-  deps.storage.setItem = () => {
-    throw Error('blocked')
-  }
-  const r = await prepareRuntime(bootstrapFixture(), 'document', deps)
-  expect(r.status).toBe('authenticated')
-  if (r.status === 'authenticated')
-    expect(r.game).toEqual({
-      status: 'unavailable',
-      code: 'StorageUnavailable',
-    })
-})
 it('wrong-principal data is never activated', async () => {
   const payload = bootstrapFixture()
   if (payload.result.status === 'authenticated')
@@ -99,41 +85,23 @@ it('wrong-principal data is never activated', async () => {
   else throw Error('lost auth')
 })
 
-it('fresh sessions quarantine old intents while same-session reload restores original IDs', async () => {
-  const { attemptStorage, prepareSession } = await import('./attempt-storage')
-  const deps = dependencies(),
-    payload = bootstrapFixture()
-  if (
-    payload.result.status !== 'authenticated' ||
-    payload.result.game.status !== 'ready'
-  )
-    throw Error('fixture')
-  const session = payload.result.session,
-    binding = payload.result.game.snapshot.candidate.binding
-  prepareSession(deps.storage, session)
-  await attemptStorage(deps.storage).put({
-    envelope: {
-      protocol: 2,
-      binding,
-      command_id: id(75),
-      command: { type: 'CancelConstruction', operation: id(76) },
-    },
-    status: 'uncertain',
-    receipt: null,
-    reconciled: false,
-  })
-  const restored = await prepareRuntime(payload, 'document', deps)
-  if (restored.status !== 'authenticated' || restored.game.status !== 'ready')
+it('reload starts from the server snapshot without recovering or resending old actions', async () => {
+  const deps = dependencies()
+  const port = deps.createPort('csrf', {} as never)
+  deps.createPort = () => port
+  const payload = bootstrapFixture()
+  const first = await prepareRuntime(payload, 'document', deps)
+  if (first.status !== 'authenticated' || first.game.status !== 'ready')
     throw Error('runtime')
-  expect(
-    [...restored.game.model.ledger.values()].map((a) => a.envelope.command_id),
-  ).toEqual([id(75)])
-  session.csrf = 'new-session'
-  const fresh = await prepareRuntime(payload, 'login', deps)
+  await first.game.model.send({ type: 'CancelConstruction', operation: id(76) })
+  expect([...first.game.model.ledger.values()][0].status).toBe('uncertain')
+  const fresh = await prepareRuntime(payload, 'document', deps)
   if (fresh.status !== 'authenticated' || fresh.game.status !== 'ready')
     throw Error('runtime')
+  await fresh.game.model.reconcilePending()
   expect(fresh.game.model.ledger.size).toBe(0)
-  expect(
-    Object.keys(deps.storage).some((k) => k.startsWith('orbit:history:')),
-  ).toBe(true)
+  expect(fresh.game.model.store.getState().intents.size).toBe(0)
+  expect(fresh.game.model.ready).toBe(true)
+  expect(port.receipt).not.toHaveBeenCalled()
+  expect(port.submit).toHaveBeenCalledOnce()
 })

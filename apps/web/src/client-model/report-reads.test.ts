@@ -10,20 +10,11 @@ async function setup() {
   const { session, snapshot } = readyFixture(4)
   const port = gamePort(session.csrf, snapshot.candidate)
   let sequence = 100
-  const model = new Coordinator(
-    port,
-    {
-      load: async () => [],
-      put: async () => {},
-      remove: async () => {},
-      clear: async () => {},
-    },
-    {
-      newId: () => id(sequence++),
-      monotonicNowMs: () => 0,
-      isOnline: () => true,
-    },
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(sequence++),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
   await model.initialize(session, snapshot)
   const refresh = vi.spyOn(model, 'refresh').mockResolvedValue()
   const header = (n: number) => ({

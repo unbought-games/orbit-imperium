@@ -1,7 +1,7 @@
 import { it, expect, vi } from 'vitest'
 import { RuntimeController } from './runtime-controller'
 import { browserDependencies, prepareRuntime } from './runtime'
-import { bootstrapFixture, memoryStorage } from '../test-support/bootstrap'
+import { bootstrapFixture } from '../test-support/bootstrap'
 import type { Bootstrap } from '../client-model/bootstrap'
 import { HttpError } from './http'
 import { ClientUpdateRequired } from './client-update'
@@ -10,7 +10,6 @@ it.each([false, true])(
   'a completed authentication requiring a new client suspends the old account without a credential error (signup=%s)',
   async (signup) => {
     const deps = browserDependencies()
-    Object.defineProperty(deps, 'storage', { value: memoryStorage() })
     const initial = await prepareRuntime(bootstrapFixture(), 'document', deps)
     const accepted = vi.fn(async () => {
       throw new ClientUpdateRequired()
@@ -63,7 +62,6 @@ function deferred<T>() {
 }
 it('a delayed retry cannot restore a signed-out session', async () => {
   const deps = browserDependencies()
-  Object.defineProperty(deps, 'storage', { value: memoryStorage() })
   const initial = await prepareRuntime(bootstrapFixture(), 'document', deps)
   const pending = deferred<Bootstrap>()
   const api = {
@@ -82,7 +80,6 @@ it('a delayed retry cannot restore a signed-out session', async () => {
 })
 it('restoring a cached page immediately suspends old gameplay until authentication is checked', async () => {
   const deps = browserDependencies()
-  Object.defineProperty(deps, 'storage', { value: memoryStorage() })
   const initial = await prepareRuntime(bootstrapFixture(), 'document', deps)
   const pending = deferred<Bootstrap>()
   const owner = new RuntimeController(initial, deps, {
@@ -108,7 +105,6 @@ it.each([false, true])(
   'preserves explicit sign-in intent across unavailable retries (signup=%s)',
   async (signup) => {
     const deps = browserDependencies()
-    Object.defineProperty(deps, 'storage', { value: memoryStorage() })
     const payload = bootstrapFixture(4),
       unavailable = structuredClone(payload)
     if (unavailable.result.status !== 'authenticated') throw Error('fixture')
@@ -154,7 +150,6 @@ it.each([
   'does not transfer pending login intent after %s',
   async (change) => {
     const deps = browserDependencies()
-    Object.defineProperty(deps, 'storage', { value: memoryStorage() })
     const payload = bootstrapFixture(4),
       unavailable = structuredClone(payload)
     if (
@@ -197,7 +192,6 @@ it.each([
 
 function recoveryFixture() {
   const deps = browserDependencies()
-  Object.defineProperty(deps, 'storage', { value: memoryStorage() })
   let online = true
   deps.platform.monotonicNowMs = () => Date.now()
   deps.platform.isOnline = () => online
@@ -299,7 +293,6 @@ it('does not overlap recovery requests or restore access after a concurrent sign
 
 it.each([
   'Unavailable',
-  'StorageUnavailable',
   'InvalidBootstrap',
   'MembershipUnavailable',
   'UnsupportedProtocol',

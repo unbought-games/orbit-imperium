@@ -152,20 +152,11 @@ async function setup() {
     receipt: vi.fn<GamePort['receipt']>(),
   } satisfies GamePort
   let sequence = 100
-  const model = new Coordinator(
-    port,
-    {
-      load: async () => [],
-      put: async () => {},
-      remove: async () => {},
-      clear: async () => {},
-    },
-    {
-      newId: () => id(sequence++),
-      monotonicNowMs: () => 0,
-      isOnline: () => true,
-    },
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(sequence++),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
   await model.initialize(session, snapshot)
   return { model, port, session, snapshot }
 }

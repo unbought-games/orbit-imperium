@@ -2,7 +2,7 @@ import type { Attempt, Command } from '../client-model/commands'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 import { label } from './format'
 // Report preferences update optimistically; only failures need announcement.
-// Presence uses the durable command ledger, but uncertainty is resolved by
+// Presence uses the in-memory command ledger, but uncertainty is resolved by
 // delivery reconciliation without asking the player to confirm an internal action.
 // Keep actual rejections visible, including presence failures.
 export function visibleAction(a: Attempt): boolean {
