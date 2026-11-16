@@ -436,3 +436,9 @@ test-announcements:
 	cargo nextest run -p orbit-application -p orbit-storage-assets -p orbit-transport-http -p orbit-server -E 'test(announcements) | binary(announcements_cli)'
 	npm test -- apps/web/src/features/announcements apps/web/src/features/alliances/markdown.test.ts apps/web/src/adapters/announcements.test.ts
 	npm run test:ui -- release-announcement.spec.ts
+
+.PHONY: test-request-metrics
+test-request-metrics:
+	cargo nextest run -p orbit-transport-http -E 'test(request_observation::) | test(command_metrics_)'
+	cargo nextest run -p orbit-application --lib -E 'test(request_observation::)'
+	cargo nextest run -p orbit-server --bin orbit -E 'test(request_metrics::) | test(metrics::)'

@@ -339,14 +339,35 @@ test.describe('HUD touch scroll ownership', () => {
       for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:from+(to-from)*i/8}]})
       await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
     }
-    await panel.evaluate(el=>{el.scrollTop=0})
-    await page.mouse.move(190,400);await page.mouse.wheel(0,300)
+    // Touch end and wheel delivery do not mean compositor scrolling has ended.
+    // Register the completion boundary before each gesture or programmatic move.
+    async function scrollGesture(action:()=>Promise<unknown>) {
+      await panel.evaluate(el=>{
+        el.setAttribute('data-test-scroll-pending','')
+        el.addEventListener('scrollend',()=>el.removeAttribute('data-test-scroll-pending'),{once:true})
+      })
+      await action()
+      await expect(panel).not.toHaveAttribute('data-test-scroll-pending','')
+    }
+    async function setScroll(edge:'start'|'end') {
+      await panel.evaluate(async (el,edge)=>{
+        const top=edge==='start'?0:el.scrollHeight-el.clientHeight
+        if(Math.abs(el.scrollTop-top)<1)return
+        await new Promise<void>(resolve=>{
+          el.addEventListener('scrollend',()=>resolve(),{once:true})
+          el.scrollTop=top
+        })
+      },edge)
+    }
+    await setScroll('start')
+    await page.mouse.move(190,400)
+    await scrollGesture(()=>page.mouse.wheel(0,300))
     await expect.poll(()=>panel.evaluate(el=>el.scrollTop)).toBeGreaterThan(0)
-    await panel.evaluate(el=>{el.scrollTop=0})
-    await swipe(190,620,300)
+    await setScroll('start')
+    await scrollGesture(()=>swipe(190,620,300))
     await expect.poll(()=>panel.evaluate(el=>el.scrollTop)).toBeGreaterThan(0)
     await diagnosticScreenshot(page,{path:`${output}/report-scrolled-390x844.png`})
-    await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
+    await setScroll('end')
     await expect.poll(()=>panel.evaluate(el=>Math.abs(el.scrollHeight-el.clientHeight-el.scrollTop))).toBeLessThan(2)
     await swipe(190,620,300)
     await page.mouse.move(4,400);await page.mouse.wheel(0,600)
@@ -359,8 +380,8 @@ test.describe('HUD touch scroll ownership', () => {
     await orb.click()
     await panel.getByRole('button',{name:/Message received/}).click()
     await expect(panel).toContainText('Field update 30')
-    await panel.evaluate(el=>{el.scrollTop=0})
-    await swipe(190,620,300)
+    await setScroll('start')
+    await scrollGesture(()=>swipe(190,620,300))
     await expect.poll(()=>panel.evaluate(el=>el.scrollTop)).toBeGreaterThan(0)
     await diagnosticScreenshot(page,{path:`${output}/message-scrolled-390x844.png`})
     // Resizing preserves the open detail and its scroll lock until dismissed.

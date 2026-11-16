@@ -1,26 +1,6 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ComponentPropsWithRef,
-  type ReactNode,
-} from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMatches } from '@tanstack/react-router'
-import {
-  arrow as arrowMiddleware,
-  autoUpdate,
-  flip,
-  offset,
-  shift,
-  useFloating,
-  useClick,
-  useDismiss,
-  useInteractions,
-  useRole,
-  FloatingPortal,
-  FloatingFocusManager,
-  FloatingArrow,
-} from '@floating-ui/react'
+import { AdvisorBubble, type BubbleTrigger } from '../../ui/advisor-bubble'
 import { bindingKey } from '../../client-model/commands'
 import { useGameSession } from '../../shell/session-context'
 import { resolveDestination } from '../../shell/routes'
@@ -37,12 +17,8 @@ import { AdvisorCelebrationContent } from './advisor-celebration-content'
 import { ProductionReviewAction } from './production-review-action'
 import styles from './advisor.module.css'
 
-type Trigger = (
-  props?: ComponentPropsWithRef<'button'>,
-  speaking?: boolean,
-) => ReactNode
 type Props = {
-  children: Trigger
+  children: BubbleTrigger
   suspended: boolean
   onOpenCommands: () => void
 }
@@ -53,6 +29,7 @@ export function TutorialAdvisor({
   suspended,
   onOpenCommands,
 }: Props) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const { view } = useGameSession()
   const { data } = useTutorial()
   const matches = useMatches()
@@ -72,7 +49,7 @@ export function TutorialAdvisor({
   const celebration = useAdvisorCelebration(scope, data)
   const celebrating = celebration.receipts.length > 0
   const finishCelebration = () => {
-    const trigger = bubble.refs.domReference.current
+    const trigger = triggerRef.current
     if (trigger instanceof HTMLElement) trigger.focus({ preventScroll: true })
     bubble.finish(lesson)
     celebration.clear()
@@ -100,83 +77,56 @@ export function TutorialAdvisor({
     bubble.open,
   )
   return (
-    <>
-      {children(
-        tip
-          ? {
-              ...bubble.getReferenceProps({
-                'aria-label': `${bubble.open ? 'Hide' : 'Show'} ${tip.triggerLabel}`,
-              }),
-              ref: bubble.refs.setReference,
-            }
-          : undefined,
-        bubble.open,
-      )}
-      {tip && bubble.open && (
-        <FloatingPortal>
-          <FloatingFocusManager
-            context={bubble.context}
-            modal={false}
-            initialFocus={-1}
-          >
-            <div
-              ref={bubble.refs.setFloating}
-              style={bubble.floatingStyles}
-              className={styles.bubble}
-              {...bubble.getFloatingProps({ 'aria-label': tip.title })}
-            >
-              <FloatingArrow
-                ref={bubble.arrow}
-                context={bubble.context}
-                fill="var(--surface-raised)"
-              />
-              {celebrating && data ? (
-                <AdvisorCelebrationContent
-                  data={data}
-                  receipts={celebration.receipts}
-                  onNavigate={finishCelebration}
-                />
-              ) : (
-                <div
-                  className={styles.content}
-                  role="status"
-                  aria-live="polite"
-                >
-                  <h2>{tip.title}</h2>
-                  {tip.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                  {lesson === 'production-settings' && (
-                    <ProductionReviewAction />
-                  )}
-                </div>
-              )}
-              <footer>
-                {!celebrating && (
-                  <BriefingLink onClick={() => bubble.setExpanded(false)} />
-                )}
-                <Button
-                  variant="ghost"
-                  size="small"
-                  onClick={() => {
-                    // The speech bubble disappears when the modal opens. Give
-                    // native dialog focus restoration a persistent return target.
-                    const trigger = bubble.refs.domReference.current
-                    if (trigger instanceof HTMLElement)
-                      trigger.focus({ preventScroll: true })
-                    if (celebrating) finishCelebration()
-                    else bubble.setExpanded(false)
-                    onOpenCommands()
-                  }}
-                >
-                  Command uplink
-                </Button>
-              </footer>
+    <AdvisorBubble
+      open={bubble.open && !!tip}
+      active={!!tip}
+      onOpenChange={bubble.onOpenChange}
+      trigger={children}
+      triggerRef={triggerRef}
+      triggerLabel={`${bubble.open ? 'Hide' : 'Show'} ${tip?.triggerLabel ?? 'briefing'}`}
+      label={tip?.title ?? ''}
+    >
+      {tip && (
+        <>
+          {celebrating && data ? (
+            <AdvisorCelebrationContent
+              data={data}
+              receipts={celebration.receipts}
+              onNavigate={finishCelebration}
+            />
+          ) : (
+            <div className={styles.content} role="status" aria-live="polite">
+              <h2>{tip.title}</h2>
+              {tip.paragraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+              {lesson === 'production-settings' && <ProductionReviewAction />}
             </div>
-          </FloatingFocusManager>
-        </FloatingPortal>
+          )}
+          <footer>
+            {!celebrating && (
+              <BriefingLink onClick={() => bubble.setExpanded(false)} />
+            )}
+            <Button
+              variant="ghost"
+              size="small"
+              onClick={() => {
+                // The speech bubble disappears when the modal opens. Give
+                // native dialog focus restoration a persistent return target.
+                const trigger = triggerRef.current
+                if (trigger instanceof HTMLElement)
+                  trigger.focus({ preventScroll: true })
+                if (celebrating) finishCelebration()
+                else bubble.setExpanded(false)
+                onOpenCommands()
+              }}
+            >
+              Command uplink
+            </Button>
+          </footer>
+        </>
       )}
-    </>
+    </AdvisorBubble>
   )
 }
 
@@ -213,34 +163,15 @@ function useAdvisorVisit(
   useEffect(() => {
     if (open && lesson) advisorHistory.remember(scope, lesson)
   }, [scope, lesson, open])
-  const arrow = useRef<SVGSVGElement>(null)
-  const floating = useFloating({
-    open,
-    onOpenChange: (expanded) => {
-      if (!expanded && onDismiss) onDismiss()
-      else setExpanded(expanded)
-    },
-    placement: 'top-end',
-    strategy: 'fixed',
-    middleware: [
-      offset(16),
-      flip(),
-      shift({ padding: 12 }),
-      arrowMiddleware({ element: arrow }),
-    ],
-    whileElementsMounted: autoUpdate,
-  })
-  const click = useClick(floating.context)
-  const dismiss = useDismiss(floating.context, { outsidePress: false })
-  const role = useRole(floating.context, { role: 'dialog' })
-  const interactions = useInteractions([click, dismiss, role])
+  const onOpenChange = (expanded: boolean) => {
+    if (!expanded && onDismiss) onDismiss()
+    else setExpanded(expanded)
+  }
   return {
     open,
     setExpanded,
     finish,
     finished: visit.finished,
-    arrow,
-    ...floating,
-    ...interactions,
+    onOpenChange,
   }
 }

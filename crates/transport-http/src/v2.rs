@@ -57,6 +57,7 @@ pub(super) async fn commands<S: GameStore + IdentityStore>(
     Path(id): Path<uuid::Uuid>,
     ApiJson(e): ApiJson<CommandEnvelopeV2>,
 ) -> Result<Response, Problem> {
+    super::request_observation::action(RequestAction::of_legacy(&e.command));
     let session = authenticate(&s, &h, true).await?;
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 2).await?;

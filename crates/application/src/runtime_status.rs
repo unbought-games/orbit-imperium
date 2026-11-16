@@ -29,9 +29,10 @@ pub enum RuntimeStage {
     EngineQueue,
     DependencyWait,
     Delivery,
+    AdmissionCommit,
 }
 impl RuntimeStage {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Admission,
         Self::Read,
         Self::Settlement,
@@ -42,6 +43,7 @@ impl RuntimeStage {
         Self::EngineQueue,
         Self::DependencyWait,
         Self::Delivery,
+        Self::AdmissionCommit,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -55,6 +57,7 @@ impl RuntimeStage {
             Self::EngineQueue => "engine_queue",
             Self::DependencyWait => "dependency_wait",
             Self::Delivery => "delivery",
+            Self::AdmissionCommit => "admission_commit",
         }
     }
 }
@@ -95,6 +98,9 @@ impl RuntimeEvent {
     }
 }
 pub trait RuntimeObserver: Send + Sync {
+    fn request(&self, _: crate::RequestObservation) {}
+    fn admission(&self, _: crate::RequestAction, _: bool, _: crate::AdmissionOutcome, _: Duration) {
+    }
     fn duration(&self, stage: RuntimeStage, elapsed: Duration);
     fn event(&self, event: RuntimeEvent);
     fn auth_duration(&self, _: crate::AuthPhase, _: crate::AuthOutcome, _: Duration) {}

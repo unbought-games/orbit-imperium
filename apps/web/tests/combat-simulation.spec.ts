@@ -44,11 +44,14 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await expect(dialog.getByLabel('Attacker Light Fighter', { exact: true })).toHaveValue('3')
   await expect(dialog.getByRole('region', { name: 'Attacker technologies', exact: true })).toBeVisible()
   await expect(dialog.getByRole('region', { name: 'Defender defenses', exact: true })).toBeAttached()
+  await expect(dialog.getByRole('region', { name: 'Defender defenses', exact: true }).locator('details')).toHaveJSProperty('open', true)
   const defenderShips = dialog.getByRole('region', { name: 'Defender ships', exact: true })
-  await expect(defenderShips.locator('details')).toHaveJSProperty('open', hidden)
+  await expect(defenderShips.locator('details')).toHaveJSProperty('open', true)
   if (!hidden) {
     await expect(defenderShips.locator('summary')).toContainText('12 units · 1 type')
     await defenderShips.locator('summary').focus()
+    await page.keyboard.press('Enter')
+    await expect(dialog.getByLabel('Defender Light Fighter', { exact: true })).not.toBeVisible()
     await page.keyboard.press('Enter')
     await expect(dialog.getByLabel('Defender Light Fighter', { exact: true })).toBeVisible()
     await dialog.getByLabel('Defender Light Fighter', { exact: true }).fill('2001')
@@ -88,6 +91,11 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    expect(await dialog.locator('input[id^="simulation-"]').evaluateAll(inputs => inputs.every(input => {
+      const label = input.parentElement!.querySelector('label')!.getBoundingClientRect()
+      const box = input.getBoundingClientRect()
+      return label.right <= box.left + 1 || label.bottom <= box.top + 1
+    }))).toBe(true)
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
       await dialog.evaluate(el => { el.scrollTop = 0 })
       await diagnosticScreenshot(page, { path: `test-results/simulation-${hidden}-${width}.png`, fullPage: false })
@@ -97,7 +105,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
       }
     }
   }
-  await dialog.getByText('Plan attack', {exact:true}).click()
+  await expect(dialog.getByRole('region', { name: 'Attack planning', exact: true }).locator('details')).toHaveJSProperty('open', true)
   if (!hidden) for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     await dialog.getByRole('region', { name: 'Attack planning', exact: true }).scrollIntoViewIfNeeded()
@@ -126,11 +134,16 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await page.setViewportSize({ width, height: 1000 })
     await results.evaluate(el => el.scrollIntoView({ block: 'start' }))
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    expect(await dialog.locator('input[id^="simulation-"]').evaluateAll(inputs => inputs.every(input => {
+      const label = input.parentElement!.querySelector('label')!.getBoundingClientRect()
+      const box = input.getBoundingClientRect()
+      return label.right <= box.left + 1 || label.bottom <= box.top + 1
+    }))).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/simulation-results-${hidden}-${width}.png`, fullPage: false })
   }
-  await results.getByText('Losses and survivors', { exact: true }).click()
+  await expect(results.locator('details').filter({ has: page.locator('summary', { hasText: 'Losses and survivors' }) })).toHaveJSProperty('open', true)
   await expect(results.getByText('Bomber', { exact: true })).toBeVisible()
-  await results.getByText('Estimate ranges and assumptions', { exact: true }).click()
+  await expect(results.locator('details').filter({ has: page.locator('summary', { hasText: 'Estimate ranges and assumptions' }) })).toHaveJSProperty('open', true)
   await expect(results.getByText('Generated debris · metal', { exact: true })).toBeVisible()
   if (process.env.ORBIT_TEST_SCREENSHOTS === '1') for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
@@ -232,7 +245,7 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
   const ship = dialog.getByLabel('Attacker Light Fighter', { exact: true })
   const plan = dialog.getByRole('region', { name: 'Attack planning', exact: true })
   const timing = plan.getByRole('region', { name: 'Flight timing' })
-  await plan.getByText('Plan attack', {exact:true}).click()
+  await expect(plan.locator('details')).toHaveJSProperty('open', true)
   const prepare = plan.getByRole('button', { name: 'Review attack' })
   await expect(prepare).toBeDisabled()
   await ship.fill('4')
@@ -298,6 +311,11 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
     await page.setViewportSize({ width, height: 1000 })
     await plan.scrollIntoViewIfNeeded()
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    expect(await dialog.locator('input[id^="simulation-"]').evaluateAll(inputs => inputs.every(input => {
+      const label = input.parentElement!.querySelector('label')!.getBoundingClientRect()
+      const box = input.getBoundingClientRect()
+      return label.right <= box.left + 1 || label.bottom <= box.top + 1
+    }))).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/simulation-planning-${width}.png`, fullPage: false })
   }
   await withFixtureResponse(page, r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'FleetQuote', () => prepare.click())
@@ -354,6 +372,7 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
   await entry.click()
   await expect(page.getByRole('heading', { name: 'Combat Simulator', exact: true })).toBeVisible()
   await expect(page).toHaveURL(/combat-simulator/)
+  for (const name of ['Defender ships', 'Defender defenses']) await expect(page.getByRole('region', { name, exact: true }).locator('details')).toHaveJSProperty('open', true)
   await expect(page.getByText('No report imported.', { exact: false })).toHaveCount(0)
   await expect(page.getByLabel('Defender Weapons Technology', { exact: true })).toHaveValue('0')
   await expect(page.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('0')
@@ -393,7 +412,30 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
   await ally.getByLabel('Defender Weapons Technology', { exact: true }).fill('')
   await ally.getByLabel('Defender Bomber', { exact: true }).fill('')
   await expect(page.getByRole('group', { name: 'Defender', exact: true }).getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('2')
+  const attackerOutcome = page.getByRole('group', { name: 'Attacker Light Fighter average outcome', exact: true })
+  const defenderOutcome = page.getByRole('group', { name: 'Defender Light Fighter average outcome', exact: true })
+  await expect(attackerOutcome).toHaveText('— remaining')
+  await expect(page.getByRole('group', { name: 'Defender', exact: true })).toContainText('across all fleets on this side')
+  // Results must fill reserved space without moving any draft row or input.
+  const draftGeometry = () => page.locator('input[id^="simulation-"]').evaluateAll(inputs => inputs.map(input => {
+    const row = input.parentElement!.getBoundingClientRect()
+    const box = input.getBoundingClientRect()
+    return [row.x, row.y + scrollY, row.width, row.height, box.x, box.width]
+  }))
+  const beforeResults = await draftGeometry()
   await withFixtureResponse(page, r => r.url().endsWith('/combat-simulation'), () => page.getByRole('button', { name: 'Run 10 battles' }).click())
+  await expect(attackerOutcome).toHaveText('8 remaining')
+  await expect(defenderOutcome).toHaveText('0 remaining')
+  const attackerShips = page.getByRole('region', { name: 'Attacker ships', exact: true })
+  await expect(attackerShips.getByText('Remaining', { exact: true }).first()).toBeVisible()
+  await expect(attackerShips.getByText('Lost', { exact: true })).toHaveCount(0)
+  await expect(attackerOutcome.locator('strong')).toHaveText('8')
+  await expect(page.getByRole('group', { name: 'Attacker Bomber average outcome', exact: true })).toHaveText('0 remaining')
+  expect(await draftGeometry()).toEqual(beforeResults)
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await page.getByRole('region', { name: 'Attacker ships', exact: true }).evaluate(el => el.scrollIntoView({ block: 'start' }))
+    await diagnosticScreenshot(page, { path: `test-results/simulation-inline-outcomes-${width}x1000.png` })
+  }
   for (const name of cleared) await expect(page.getByLabel(name, { exact: true }).first()).toHaveValue('0')
   await expect(ally.getByLabel('Defender Weapons Technology', { exact: true })).toHaveValue('0')
   await expect(ally.getByLabel('Defender Bomber', { exact: true })).toHaveValue('0')
@@ -414,6 +456,9 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByLabel('Attacker Light Fighter', { exact: true }).fill('11')
   await expect(results).toHaveCount(0)
+  await expect(attackerOutcome).toHaveText('— remaining')
+  await expect(defenderOutcome).toHaveText('— remaining')
+  expect(await draftGeometry()).toEqual(beforeResults)
   await withFixtureResponse(page, r => r.url().endsWith('/bootstrap'), () => page.reload())
   await expect(page.getByLabel('Defender Light Fighter', { exact: true })).toHaveValue('0')
   expect(reportRequests).toBe(0)
@@ -495,7 +540,7 @@ for (const width of [1440, 390]) test(`imports owned defender and samples new de
   await expect(page.getByRole('region', { name: 'Moon creation chance' })).toContainText('0%')
   const debris = page.getByRole('region', { name: 'New debris field', exact: true })
   await expect(debris).toContainText('9,000 average')
-  await page.getByText('Estimate ranges and assumptions', { exact: true }).click()
+  await expect(page.locator('details').filter({ has: page.locator('summary', { hasText: 'Estimate ranges and assumptions' }) })).toHaveJSProperty('open', true)
   await expect(page.getByRole('region', { name: 'Simulation results' })).toContainText('0–18,000')
   await expect(debris).toContainText('450 average')
   for (const resource of ['Metal', 'Crystal', 'Deuterium']) await expect(debris.getByRole('img', { name: resource, exact: true })).toHaveCount(1)

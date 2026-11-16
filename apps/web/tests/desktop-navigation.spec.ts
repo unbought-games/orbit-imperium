@@ -1,6 +1,6 @@
 import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
-import { body, id, shellFixture, refreshGame } from './fixtures/game'
+import { body, id, shellFixture, installGameFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
@@ -215,6 +215,7 @@ for (const width of [390, 320]) {
     await page.emulateMedia({reducedMotion:'reduce'})
     await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => shellFixture(page, {
       protocol:4,
+      accountUrl: width === 390 ? 'https://accounts.example/account' : undefined,
       missions:{fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'},
     }))
     const tab = page.getByRole('link', {name:'Menu',exact:true})
@@ -226,7 +227,21 @@ for (const width of [390, 320]) {
     await expect(menu).toBeVisible()
     await expect(tab).toHaveAttribute('aria-current','page')
     await expect(page.getByRole('dialog', {name:'Navigation'})).toHaveCount(0)
-    await expect(menu.getByRole('link')).toHaveText(['Messages','Alliance','High Scores','Reports','Combat Simulator','Settings'])
+    await expect(menu.getByRole('link')).toHaveText(['Messages','Alliance','High Scores','Reports','Combat Simulator','Settings', ...(width === 390 ? ['Unbought Games account'] : [])])
+    // Native external navigation must preserve the game tab on mobile.
+    if (width === 390) {
+      const account = menu.getByRole('region', {name:'Account'}).getByRole('link', {name:'Unbought Games account'})
+      await page.context().route('https://accounts.example/account', route => route.fulfill({contentType:'text/html',body:'<h1>Account destination</h1>'}))
+      const originalUrl = page.url()
+      const popupOpened = page.waitForEvent('popup')
+      await account.click()
+      const popup = await popupOpened
+      await expect(popup).toHaveURL('https://accounts.example/account')
+      await expect(popup.getByRole('heading', {name:'Account destination'})).toBeVisible()
+      await expect(page).toHaveURL(originalUrl)
+      expect(await popup.evaluate(() => window.opener)).toBeNull()
+      await popup.close()
+    }
     const main = page.getByRole('main')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     for (const row of await menu.getByRole('link').all())
@@ -299,4 +314,80 @@ test('mobile settings menu opens isolated sections and returns through back, his
   await expect(page).toHaveURL(new RegExp(`${base}/settings/identity$`))
   await expect(page.getByRole('complementary', { name: 'Section sidebar' }).getByRole('navigation', { name: 'Settings navigation' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Back to Settings', exact: true })).toBeHidden()
+})
+
+// The planetless support entry must resolve each player’s own body.
+// This journey also protects external-tab wiring and mobile action layout.
+test('support links share a recipient-safe destination and keep game context', async ({ page, context }) => {
+  const { installSettingsFixture } = await import('./fixtures/settings')
+  await installSettingsFixture(page)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  const canonical = `/u/andromeda/b/${body.id}/settings/support`
+  await withBootstrapResponse(page, () => page.goto(canonical))
+  const support = page.getByRole('region', { name: 'Help Orbit grow' })
+  await expect(support).toBeVisible()
+  await expect(support).toContainText('don’t award Renown')
+  const actions = [
+    ['Vote on BrowserGamesTop', 'https://browsergamestop.com/vote/orbit-imperium'],
+    ['Upvote on Foundplay', 'https://foundplay.io/games/orbit-imperium'],
+    ['Star Orbit Imperium on GitHub', 'https://github.com/unbought-games/orbit-imperium'],
+    ['Follow Unbought Games on GitHub', 'https://github.com/unbought-games'],
+    ['Follow Orbit Imperium on IndieDB', 'https://www.indiedb.com/games/orbit-imperium'],
+    ['Follow Orbit Imperium on ModDB', 'https://www.moddb.com/games/orbit-imperium'],
+  ]
+  await expect(support.getByRole('link')).toHaveCount(6)
+  for (const [name, href] of actions) {
+    const link = support.getByRole('link', { name: `${name} (opens in a new tab)`, exact: true })
+    await expect(link).toHaveAttribute('href', href)
+    await expect(link).toHaveAttribute('target', '_blank')
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  }
+  // Intercept the destination: validation must never cast a vote or visit a live campaign.
+  await context.route('https://browsergamestop.com/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>External vote page</h1>' }))
+  const popupReady = context.waitForEvent('page')
+  await support.getByRole('link', { name: 'Vote on BrowserGamesTop (opens in a new tab)', exact: true }).click()
+  const popup = await popupReady
+  await expect(popup.getByRole('heading')).toHaveText('External vote page')
+  await expect(page).toHaveURL(new RegExp(`${canonical}$`))
+  await popup.close()
+
+  const shared = new URL('/u/andromeda/settings/support', page.url()).href
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await expect(page.getByTestId('orb-caption')).toBeHidden()
+    await diagnosticScreenshot(page, { path: 'test-results/support-links/desktop-1440x1000.png' })
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(support.getByRole('link').first()).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  for (const link of await support.getByRole('link').all()) {
+    expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  }
+  await diagnosticScreenshot(page, { path: 'test-results/support-links/mobile-top-390x844.png' })
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await support.getByRole('link', { name: 'Follow Unbought Games on GitHub (opens in a new tab)', exact: true }).evaluate(element => element.scrollIntoView({ block: 'center' }))
+    await diagnosticScreenshot(page, { path: 'test-results/support-links/mobile-follows-390x844.png' })
+  }
+  // Until the shell reserves a desktop HUD gutter, actions must stay left of
+  // the orb at every scroll position, including tablet and compact desktop widths.
+  for (const width of [600, 768, 1024, 1280, 1439]) {
+    await page.setViewportSize({ width, height: 900 })
+    const orb = (await page.getByTestId('command-orb').boundingBox())!
+    for (const link of await support.getByRole('link').all()) {
+      const action = (await link.boundingBox())!
+      expect(action.x + action.width).toBeLessThanOrEqual(orb.x)
+    }
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && [768, 1024].includes(width)) {
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/support-links/support-${width}x900.png` })
+    }
+  }
+  const recipient = await context.newPage()
+  await installGameFixture(recipient, { protocol: 4, bodies: [{ ...body, id: id(6) }] })
+  await withBootstrapResponse(recipient, () => recipient.goto(shared))
+  await expect(recipient).toHaveURL(new RegExp(`/u/andromeda/b/${id(6)}/settings/support$`))
+  await expect(recipient.getByRole('region', { name: 'Help Orbit grow' })).toBeVisible()
+  await withBootstrapResponse(recipient, () => recipient.reload())
+  await expect(recipient.getByRole('region', { name: 'Help Orbit grow' })).toBeVisible()
+  await recipient.close()
 })

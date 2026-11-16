@@ -76,7 +76,7 @@ for (const [width, height] of [
     await expect(
       bubble.getByRole('link', { name: 'Read the update' }),
     ).toHaveAttribute('href', '/updates/research-network.html')
-    // Lazy editorial content changes the bubble height before Floating UI's
+    // Lazy editorial content changes the bubble height before the positioner's
     // ResizeObserver repositions it. Visibility/image readiness is not placement.
     await expect(bubble).toBeInViewport({ ratio: 1 })
     await diagnosticScreenshot(page, {
@@ -87,6 +87,8 @@ for (const [width, height] of [
     expect(box.y).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(width)
     expect(box.y + box.height).toBeLessThanOrEqual(height)
+    const orbBounds = (await page.getByTestId('command-orb').boundingBox())!
+    expect(box.y + box.height).toBeLessThanOrEqual(orbBounds.y)
     const content = bubble.getByRole('region', { name: 'Announcement content' })
     const dismiss = bubble.getByRole('button', { name: 'Got it' })
     await expect(dismiss).toBeInViewport({ ratio: 1 })

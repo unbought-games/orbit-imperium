@@ -57,7 +57,8 @@ pub struct RuntimeMetrics {
         >,
     >,
     publication_scan_failures: AtomicU64,
-    durations: [Histogram; 10],
+    durations: [Histogram; RuntimeStage::ALL.len()],
+    requests: crate::request_metrics::RequestMetrics,
     events: [AtomicU64; 8],
     auth: [[Histogram; orbit_application::AuthOutcome::ALL.len()];
         orbit_application::AuthPhase::ALL.len()],
@@ -67,6 +68,7 @@ impl RuntimeMetrics {
     pub fn new() -> Self {
         Self {
             publications: Default::default(),
+            requests: Default::default(),
             publication_scan_failures: AtomicU64::new(0),
             durations: std::array::from_fn(|_| Histogram::default()),
             events: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -187,10 +189,24 @@ impl RuntimeMetrics {
             writeln!(text, "orbit_public_feed_duration_seconds_sum{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_micros as f64 / 1_000_000.0).unwrap();
             writeln!(text, "orbit_public_feed_duration_seconds_count{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_count).unwrap();
         }
+        self.requests.render(&mut text);
         text
     }
 }
 impl RuntimeObserver for RuntimeMetrics {
+    fn request(&self, sample: orbit_application::RequestObservation) {
+        self.requests.observe(sample);
+    }
+    fn admission(
+        &self,
+        action: orbit_application::RequestAction,
+        machine: bool,
+        outcome: orbit_application::AdmissionOutcome,
+        elapsed: Duration,
+    ) {
+        self.requests.admission(action, machine, outcome, elapsed);
+    }
+
     fn auth_duration(
         &self,
         phase: orbit_application::AuthPhase,
@@ -315,6 +331,12 @@ async fn scrape(State(state): State<MetricsState>) -> impl IntoResponse {
         text,
     )
 }
+async fn slow_requests(State(state): State<MetricsState>) -> impl IntoResponse {
+    (
+        [(header::CACHE_CONTROL, "no-store")],
+        axum::Json(state.metrics.requests.recent()),
+    )
+}
 async fn ready(State(state): State<MetricsState>) -> StatusCode {
     if state.store.ready().await.is_ok() {
         StatusCode::NO_CONTENT
@@ -330,6 +352,7 @@ pub async fn serve(
 ) -> Result<(), std::io::Error> {
     let app = Router::new()
         .route("/metrics", get(scrape))
+        .route("/diagnostics/slow-requests", get(slow_requests))
         .route("/health/ready", get(ready))
         .route("/health/live", get(|| async { StatusCode::NO_CONTENT }))
         .with_state(MetricsState { store, metrics });

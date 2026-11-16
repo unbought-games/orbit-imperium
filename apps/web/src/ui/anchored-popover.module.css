@@ -1,0 +1,28 @@
+.positioner {
+  z-index: var(--popover-layer, 20);
+  max-width: calc(100vw - 24px);
+}
+.arrow {
+  display: flex;
+  color: var(--surface-raised);
+}
+.arrow svg {
+  fill: currentColor;
+  stroke: var(--border-accent);
+  stroke-width: 1;
+}
+.arrow[data-side='top'] {
+  bottom: -7px;
+  transform: rotate(180deg);
+}
+.arrow[data-side='bottom'] {
+  top: -7px;
+}
+.arrow[data-side='left'] {
+  right: -10px;
+  transform: rotate(90deg);
+}
+.arrow[data-side='right'] {
+  left: -10px;
+  transform: rotate(-90deg);
+}

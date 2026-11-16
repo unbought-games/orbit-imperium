@@ -1,3 +1,5 @@
+mod request_observation;
+pub use request_observation::RequestTimingObserver;
 mod community_rewards;
 pub use community_rewards::AccountRewardsClient;
 mod announcements;
@@ -428,40 +430,17 @@ where
             "/api/v4/universes/{id}/reports/{report}",
             post(v4::report::<S>),
         )
-        .layer(axum::middleware::from_fn_with_state(
-            observer,
-            observe_request,
-        ))
         .layer(DefaultBodyLimit::max(16 * 1024))
         .with_state(state.clone())
         .fallback_service(static_assets::router(state))
         .layer(axum::middleware::from_fn_with_state(
+            observer,
+            request_observation::observe,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
             client_build,
             client_build::advertise,
         ))
-}
-async fn observe_request(
-    State(observer): State<Arc<dyn RuntimeObserver>>,
-    request: axum::extract::Request,
-    next: axum::middleware::Next,
-) -> Response {
-    let path = request.uri().path();
-    let stage = path.contains("/universes/").then(|| {
-        if path.ends_with("/commands") || path.ends_with("/presence") {
-            RuntimeStage::Admission
-        } else {
-            RuntimeStage::Read
-        }
-    });
-    let started = Instant::now();
-    let response = next.run(request).await;
-    if let Some(stage) = stage {
-        observer.duration(stage, started.elapsed());
-    }
-    if response.status().is_server_error() {
-        observer.event(RuntimeEvent::HttpFailure);
-    }
-    response
 }
 
 struct Problem(ServiceError);
@@ -586,6 +565,7 @@ async fn authenticate<S: IdentityStore>(
     h: &HeaderMap,
     mutation: bool,
 ) -> Result<AuthenticatedSession, Problem> {
+    let _timing = request_observation::AuthenticationTimer::new();
     if let Some(value) = h.get(header::AUTHORIZATION) {
         let bearer = value
             .to_str()

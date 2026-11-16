@@ -139,7 +139,7 @@ for (const width of [390, 767, 768, 961, 1023, 1024, 1440]) {
 }
 
 // Native external navigation, popup sizing and breakpoint dismissal belong in a browser.
-test('configured account link supports keyboard navigation and stays out of the mobile popup', async ({
+test('configured account link opens a new tab by keyboard and stays out of the mobile popup', async ({
   page,
   mount,
 }) => {
@@ -173,18 +173,24 @@ test('configured account link supports keyboard navigation and stays out of the 
   })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.getByRole('button', { name: 'Account menu', exact: true }).click()
-  await page.route('https://accounts.example/account', (route) =>
+  await page.context().route('https://accounts.example/account', (route) =>
     route.fulfill({
       contentType: 'text/html',
       body: '<h1>Account destination</h1>',
     }),
   )
   await link.focus()
+  const originalUrl = page.url()
+  const popupOpened = page.waitForEvent('popup')
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL('https://accounts.example/account')
+  const popup = await popupOpened
+  await expect(popup).toHaveURL('https://accounts.example/account')
   await expect(
-    page.getByRole('heading', { name: 'Account destination' }),
+    popup.getByRole('heading', { name: 'Account destination' }),
   ).toBeVisible()
+  await expect(page).toHaveURL(originalUrl)
+  expect(await popup.evaluate(() => window.opener)).toBeNull()
+  await popup.close()
 })
 
 test('unconfigured account link is absent from the player menu', async ({
