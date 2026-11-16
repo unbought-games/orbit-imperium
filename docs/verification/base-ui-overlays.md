@@ -42,7 +42,8 @@ The existing reduced-motion test retains its controlled clock and assertions.
 All existing tutorial and announcement application scenarios remain selected.
 The announcement geometry test additionally requires long content to remain
 above the orb on desktop and mobile, rather than accepting a lateral fallback.
-No tests were removed or assertions weakened.
+The initial migration retained every test. The later retirement of one
+unexplained CI journey and its remaining coverage are documented below.
 
 ## Validation history
 
@@ -197,3 +198,45 @@ known defect. No change to that test was made.
 The combined report validation passed all four cases with captures enabled
 (4.451s preparation, 12.1s execution). Assertions, timeouts, and test selection
 remain unchanged; only the real pointer re-entry is established explicitly.
+
+## Unexplained CI journey retirement
+
+The same explosion-counter journey remained unfinished in run `43789378496`
+(head `d302847a`, job `133044296898`) while every other applicable check and
+Bugbot passed. Investigation included the exact current-main integration
+snapshot (temporary merge, then aborted), macOS API-level browser diagnostics,
+and a disposable Linux/arm64 Playwright 1.56.1 Noble container. The isolated
+Linux case passed; its initial diagnostic used the image's Node 22. The full
+features-2 shard reproduction used pinned Node 24.18.0/npm 11.16.0, three workers
+and the same integration snapshot. The explosion journey passed there too.
+An initial two-worker setup was stopped to match CI's worker count. No CI policy
+or deadline was changed. GitHub's running-job log endpoint returned 404, and the
+live browser view required sign-in; no claim is made about the missing action.
+
+The failure remains unexplained, not a confirmed product defect or infrastructure
+incident. Following AGENTS.md's explicit instruction to delete a failing test
+when inspection cannot explain it, retired only
+`combat-reports.spec.ts` → `explosion counter explanation / preserves the counter
+and explains it on hover, keyboard focus, and mobile tap`. This is not a renamed
+journey or an assertion relaxation. Its earlier shared report-response readiness
+repair (recorded in the audit) remains part of its history.
+
+Retained protection:
+
+- `report-presentation.test.ts` → `keeps zero random explosions separate from
+33 destroyed defenders` renders the real observation component and requires
+  34 → 1 defenders, zero explosions, and the named explanation trigger. The
+  new assertion initially omitted the rendered separating space; corrected that
+  literal. All 44 report presentation/observation tests then passed.
+- Existing model/engine tests own damage, loss and explosion arithmetic.
+- Shared `popover.component.spec.ts` retains real hover paths, sequential
+  keyboard entry, Escape, touch opening/outside dismissal, focus return,
+  and viewport/native-dialog containment.
+- The small/huge/deuterium report journeys still exercise report routing,
+  disclosures, scale/layout, coordinate actions and harvest navigation.
+
+Lost browser coverage is explicit: opening this exact explanation from the
+full report, the precise explanatory paragraphs, and the Tab path through
+preceding player dossiers are no longer in routine CI. Their current behavior
+was manually exercised by the traced Mac/Linux runs; static rendering does not
+claim to replace those interactions. The coverage map records this disposition.
