@@ -54,7 +54,19 @@ for (const width of [1280, 390]) {
     const details = page.getByRole('dialog', { name: 'Metal', exact: true })
     await trigger.hover()
     await expect(details).toBeVisible()
+    const triggerBox = (await trigger.boundingBox())!
+    const popupBox = (await details.boundingBox())!
+    const x = triggerBox.x + triggerBox.width / 2
+    // Traverse the real offset gap in small steps, including a point outside
+    // both rectangles. The hover region must retain the same mounted popup.
+    const mountedPopup = await details.elementHandle()
+    await page.mouse.move(x, triggerBox.y + triggerBox.height + 4, { steps: 8 })
+    await expect(details).toBeVisible()
+    await page.mouse.move(x, popupBox.y + 4, { steps: 8 })
     await details.getByRole('link', { name: 'Open ledger' }).hover()
+    expect(await mountedPopup!.evaluate((element) => element.isConnected)).toBe(
+      true,
+    )
     await expect(details).toBeVisible()
     await expect(details).toBeInViewport({ ratio: 1 })
     await diagnosticScreenshot(page, {
@@ -175,3 +187,33 @@ test('nonanimated details dismiss immediately without waiting for a clock frame'
   await page.keyboard.press('Escape')
   await expect(details).toHaveCount(0)
 })
+
+for (const width of [1280, 390]) {
+  test(`details fit within a narrow native dialog that clips fixed descendants at ${width}px`, async ({
+    page,
+    mount,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    await mount('popover-narrow-dialog')
+    await page.getByRole('button', { name: 'Open resource review' }).click()
+    await page.getByRole('button', { name: 'Metal details' }).click()
+    const dialog = page.getByRole('dialog', {
+      name: 'Resource review',
+      exact: true,
+    })
+    const details = page.getByRole('dialog', { name: 'Metal', exact: true })
+    await expect(details).toBeVisible()
+    const bounds = (await dialog.boundingBox())!
+    const popup = (await details.boundingBox())!
+    expect(popup.x).toBeGreaterThanOrEqual(bounds.x + 12)
+    expect(popup.x + popup.width).toBeLessThanOrEqual(
+      bounds.x + bounds.width - 12,
+    )
+    await expect(
+      details.getByRole('link', { name: 'Open ledger' }),
+    ).toBeInViewport({ ratio: 1 })
+    await diagnosticScreenshot(page, {
+      path: testInfo.outputPath(`narrow-dialog-${width}x900.png`),
+    })
+  })
+}

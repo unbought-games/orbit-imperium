@@ -138,6 +138,8 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('./galaxy-fleet.scenarios')).GalaxyDisclosureScenario,
   'advisor-bubble': async () =>
     (await import('./popover')).AdvisorBubbleExample,
+  'popover-narrow-dialog': async () =>
+    (await import('./popover')).NarrowDetailsPopoverExample,
   'popover-details': async () =>
     (await import('./popover')).DetailsPopoverExample,
   popover: async () => (await import('./popover')).PopoverExample,

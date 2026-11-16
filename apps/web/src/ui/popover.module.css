@@ -1,7 +1,7 @@
 .popover {
   z-index: 20;
   width: 270px;
-  max-width: calc(100vw - 24px);
+  max-width: min(calc(100vw - 24px), var(--available-width));
   padding: 12px 14px;
   border: 1px solid #5b7991;
   border-radius: 3px;

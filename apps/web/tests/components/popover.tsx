@@ -46,7 +46,11 @@ export function PopoverExample() {
   )
 }
 
-export function DetailsPopoverExample() {
+export function DetailsPopoverExample({
+  narrow = false,
+}: {
+  narrow?: boolean
+}) {
   const dialog = useRef<HTMLDialogElement>(null)
   return (
     <main style={{ padding: 24 }}>
@@ -57,7 +61,8 @@ export function DetailsPopoverExample() {
         ref={dialog}
         aria-label="Resource review"
         style={{
-          width: 'min(560px, calc(100vw - 32px))',
+          width: narrow ? 240 : 'min(560px, calc(100vw - 32px))',
+          transform: narrow ? 'translateZ(0)' : undefined,
           padding: 24,
           background: 'var(--surface)',
           color: 'var(--text)',
@@ -121,4 +126,8 @@ export function AdvisorBubbleExample() {
       </AdvisorBubble>
     </main>
   )
+}
+
+export function NarrowDetailsPopoverExample() {
+  return <DetailsPopoverExample narrow />
 }

@@ -138,3 +138,32 @@ Local repair verification:
 Refreshed and inspected the affected details captures. The application and
 component typechecks, focused ESLint/Prettier checks, and diff whitespace checks
 also pass for the repair. Test-runner previews and contexts were cleaned up.
+
+## Review findings
+
+- Thread `PRRT_kwDOVRgPYs63wS2g` (hover offset gap): false positive. Base UI
+  1.9.0's `Popover.Trigger` uses `safePolygon()` for `openOnHover`. Strengthened
+  the existing hover cases with an eight-step pointer path into the gap and
+  onward into the popup, checking the original popup stays mounted. Both
+  desktop/mobile geometry cases passed on the reviewed code before any repair.
+- Thread `PRRT_kwDOVRgPYs63wS2l` (narrow native dialogs): confirmed with a 240px
+  dialog that establishes a containing block and clips its descendants. The
+  popup's right edge was 805px against the allowed 748px. Details now cap their
+  width using Base UI's `--available-width`, which accounts for clipping
+  ancestors, as well as the viewport cap. The sizing rule belongs to the popup
+  and does not constrain unrelated popover placement.
+
+Review reproduction: preparation 4.305s, execution 3.5s; two hover cases passed
+and the narrow-width regression failed as expected. An intermediate attempt also
+set the dialog as an explicit collision boundary. It unnecessarily flipped
+ordinary details above their trigger, causing two pointer-path failures and a
+blocked outside-tap action. That task-owned run was interrupted (14 passed,
+2 failed, 1 interrupted, 5 not run). Removed that overconstraint; no assertions
+were relaxed. A focused recheck passed all three cases (4.165s preparation,
+3.2s execution).
+
+Final review repair validation: 23 component cases passed, including both narrow
+viewport captures, stepped hover paths, touch, immediate dismissal, player
+profiles, and Galaxy/Harvest interactions (3.951s preparation, 14.8s execution).
+The component typecheck, changed-file formatting, and diff checks passed.
+Refreshed the affected desktop/mobile screenshots after the width repair.
