@@ -19,6 +19,7 @@ import {
   type SettingsSection,
 } from '../shell/settings-navigation-model'
 import { SettingsIdentity } from './settings-identity'
+import { SupportLinks } from './support-links'
 
 export function SettingsScreen() {
   const { route, model } = useGameScreen()
@@ -42,6 +43,7 @@ export function SettingsScreen() {
         </Text>
       </SettingsPane>
       <SettingsPane section="support" selected={selected}>
+        <SupportLinks />
         <Section aria-label="Community">
           <Heading level={2}>Community</Heading>
           <Text>
@@ -88,9 +90,11 @@ function SettingsPane({
   if (section !== selected) return null
   return (
     <div id={section} className={styles.pane}>
-      <DestinationHeading>
-        {section === 'deletion' ? 'Delete empire' : settingsSections[section]}
-      </DestinationHeading>
+      {section !== 'support' && (
+        <DestinationHeading>
+          {section === 'deletion' ? 'Delete empire' : settingsSections[section]}
+        </DestinationHeading>
+      )}
       {children}
     </div>
   )

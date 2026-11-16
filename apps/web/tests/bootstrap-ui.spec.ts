@@ -999,6 +999,7 @@ for (const width of [1440, 390]) {
       const community = page.getByRole('region', { name: 'Community', exact: true })
       const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
       await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
+      await discord.scrollIntoViewIfNeeded()
       await expect(discord).toBeInViewport({ ratio: 1 })
       await expect(discord.locator('img')).toHaveAttribute('src', '/brand/discord-symbol-white.svg')
       await expect(discord.locator('img')).toBeVisible()
