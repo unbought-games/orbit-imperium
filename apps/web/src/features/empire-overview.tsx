@@ -12,6 +12,7 @@ import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlanetActions } from './planet-actions'
 import { PlanetRename } from './planet-rename'
+import { EmpireName } from './empire-name'
 import type { Coordinator } from '../client-model/coordinator'
 import { PlayerName } from './player-name'
 import {
@@ -727,7 +728,7 @@ export function EmpireOverview({
   return (
     <section className={styles.empire} aria-label="Empire overview">
       <header className={styles.heading}>
-        <h2>Empire</h2>
+        <EmpireName player={view.binding.player} />
         <BriefingIcon />
       </header>
       <div className={styles.empireLedger} aria-label="Empire resource totals">

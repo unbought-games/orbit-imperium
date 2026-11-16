@@ -1157,6 +1157,12 @@
 .heading h2 {
   font-size: 1.5rem;
 }
+@media (max-width: 767px) {
+  .heading {
+    padding-top: 16px;
+    margin-bottom: 0;
+  }
+}
 .commandDeck {
   grid-template-columns: minmax(0, 1fr);
 }

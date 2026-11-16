@@ -315,3 +315,195 @@ for (const width of [1440, 390]) {
     await expect(dossier).toHaveCount(0)
   })
 }
+
+// Protect the overview → identity API → shared profile refresh wiring, with a
+// separate touch layout because its pencil must be discoverable without hover.
+for (const width of [1440, 390]) {
+  test.describe(`overview name ${width}px`, () => {
+    test.use({ hasTouch: width === 390 })
+    test(`overview name popover saves and restores focus at ${width}px`, async ({
+      page,
+    }) => {
+      const { installGameFixture, body } = await import('./fixtures/game')
+      await page.setViewportSize({ width, height: 1000 })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await installGameFixture(page, {
+        protocol: 4,
+        missions: {
+          fleets: [],
+          incoming: [],
+          fleet_slots: '8',
+          score_value_micro: '0',
+        },
+      })
+      const f = await setup(page)
+      f.data.identity = {
+        name: 'Roman Empire',
+        tagline: 'Many worlds. One people.',
+        title_id: 'consul',
+      }
+      f.data.title = {
+        id: 'consul',
+        label: 'Consul',
+        address: 'Consul',
+        expires_at: null,
+      }
+      await page.route('**/player-profiles', (r) => {
+        const { context } = r.request().postDataJSON()
+        const now = Math.floor(Date.now() / 1000)
+        return r.fulfill({
+          json: {
+            ...context,
+            players: [
+              {
+                player: binding.player,
+                username: 'Aurelia',
+                observed_at: now,
+                expires_at: now + 300,
+                identity: f.data.identity,
+                title: f.data.title,
+              },
+            ],
+          },
+        })
+      })
+      await withFixtureResponse(
+        page,
+        (r) => r.url().endsWith('/player-profiles'),
+        () => page.goto(`/u/andromeda/b/${body.id}/overview`),
+      )
+      const overview = page.getByRole('region', {
+        name: 'Empire overview',
+        exact: true,
+      })
+      const heading = overview.getByRole('heading', {
+        name: 'Roman Empire',
+        exact: true,
+      })
+      const pencil = page.getByRole('button', {
+        name: 'Rename empire',
+        exact: true,
+      })
+      await expect(heading).toBeVisible()
+      if (width === 1440) {
+        await expect(pencil).toHaveCSS('opacity', '0')
+        await heading.hover()
+        await expect(pencil).toHaveCSS('opacity', '0.5')
+      } else {
+        await expect(pencil).toHaveCSS('opacity', '0.5')
+        const target = await pencil.boundingBox()
+        expect(target?.width).toBeGreaterThanOrEqual(44)
+        expect(target?.height).toBeGreaterThanOrEqual(44)
+      }
+      await diagnosticScreenshot(page, {
+        path: `test-results/empire-name-heading-${width}x1000.png`,
+      })
+      await loaded(page, () => pencil.click())
+      const dialog = page.getByRole('dialog', {
+        name: 'What should we call our empire, Consul?',
+      })
+      const input = dialog.getByRole('textbox', { name: 'Empire name' })
+      await expect(input).toBeFocused()
+      await expect(input).toHaveValue('Roman Empire')
+      await expect(
+        dialog.getByText('Empire name', { exact: true }),
+      ).toHaveCount(0)
+      const cancelBox = await dialog
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .boundingBox()
+      const saveBox = await dialog
+        .getByRole('button', { name: 'Save name', exact: true })
+        .boundingBox()
+      expect(cancelBox!.x + cancelBox!.width).toBeLessThan(saveBox!.x)
+      await diagnosticScreenshot(page, {
+        path: `test-results/empire-name-popover-${width}x1000.png`,
+      })
+      await input.fill('A draft to discard')
+      await page.keyboard.press('Escape')
+      await expect(dialog).toHaveCount(0)
+      await expect(pencil).toBeFocused()
+      await expect(heading).toBeVisible()
+      await loaded(page, () => pencil.click())
+      await expect(input).toHaveValue('Roman Empire')
+      await input.fill('Celestial Commonwealth')
+      await withFixtureResponse(
+        page,
+        (r) => r.url().endsWith('/player-profiles'),
+        () => dialog.getByRole('button', { name: 'Save name' }).click(),
+      )
+      await expect(dialog).toHaveCount(0)
+      await expect(pencil).toBeFocused()
+      await expect(
+        overview.getByRole('heading', {
+          name: 'Celestial Commonwealth',
+          exact: true,
+        }),
+      ).toBeVisible()
+      expect(f.data.identity).toEqual({
+        name: 'Celestial Commonwealth',
+        tagline: 'Many worlds. One people.',
+        title_id: 'consul',
+      })
+      await diagnosticScreenshot(page, {
+        path: `test-results/empire-name-saved-${width}x1000.png`,
+      })
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+
+      if (width === 390) {
+        f.data.identity!.name =
+          'The Celestial Commonwealth of the Distant Outer Stars'
+        await withFixtureResponse(
+          page,
+          (r) => r.url().endsWith('/player-profiles'),
+          () => page.reload(),
+        )
+        await expect(
+          overview.getByRole('heading', {
+            name: f.data.identity!.name,
+            exact: true,
+          }),
+        ).toBeVisible()
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true)
+        await diagnosticScreenshot(page, {
+          path: `test-results/empire-name-long-${width}x1000.png`,
+        })
+      }
+      if (width === 1440) {
+        await loaded(page, () => pencil.click())
+        await input.fill('x'.repeat(61))
+        await expect(dialog.getByRole('alert')).toContainText('up to 60')
+        await expect(
+          dialog.getByRole('button', { name: 'Save name' }),
+        ).toBeDisabled()
+        await input.fill('')
+        f.data.revision++
+        await dialog.getByRole('button', { name: 'Save name' }).click()
+        await expect(dialog.getByRole('alert')).toContainText('another window')
+        await expect(input).toHaveValue('')
+        await loaded(page, () =>
+          dialog.getByRole('button', { name: 'Refresh', exact: true }).click(),
+        )
+        await dialog
+          .getByRole('button', { name: 'Use refreshed version' })
+          .click()
+        await withFixtureResponse(
+          page,
+          (r) => r.url().endsWith('/player-profiles'),
+          () => dialog.getByRole('button', { name: 'Save name' }).click(),
+        )
+        await expect(dialog).toHaveCount(0)
+        await expect(
+          overview.getByRole('heading', { name: 'Empire', exact: true }),
+        ).toBeVisible()
+      }
+    })
+  })
+}

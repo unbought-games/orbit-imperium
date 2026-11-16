@@ -1,0 +1,45 @@
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.name h2 {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.edit {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+@media (hover: hover) and (pointer: fine) {
+  .edit {
+    opacity: 0;
+  }
+  .name:hover .edit,
+  .name:focus-within .edit {
+    opacity: 0.5;
+  }
+}
+.name .edit:hover,
+.name .edit:focus-visible,
+.name .edit[aria-expanded='true'] {
+  opacity: 1;
+}
+.actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.editorLoading {
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .pencil {
+    width: 12px;
+    height: 12px;
+  }
+}
