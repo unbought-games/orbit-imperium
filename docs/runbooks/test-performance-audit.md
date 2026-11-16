@@ -2321,3 +2321,27 @@ policies/right desktop policies, four aligned community rows, and one small
 homepage beta note above the footer. Auth-page beta notice and policy-link
 assertions remain. Names now describe the changed requirement; this does not
 reset repair history. Validate all bootstrap/home/hosted-auth cases together.
+
+## November 16, 2026: Empire header composition invalidated briefing geometry lookup
+
+PR #444, head `ead86dee`, CI run `43937162429` attempt 1, job
+`133544802711`, failed both viewport variants of “Empire briefing icon opens by
+keyboard or touch and remembers acknowledged progress” in `tutorial.spec.ts`.
+The test assumed the heading's immediate parent was the header and that its
+next sibling was the resource ledger. The new name/emblem grouping made that
+sibling null, producing a deterministic getBoundingClientRect TypeError before
+any briefing interaction assertion. The old exact 8px gap also described the
+superseded small-title layout, not the requested larger heading and touch target.
+
+Classified as a stale test contract. Checked the test's Git history and this
+ledger: earlier changes covered motion/viewport product fixes and screenshot
+preparation, with no prior repair of this lookup. First repair: measure the
+semantically located heading, resource totals, and briefing link directly;
+assert a compact nonnegative gap of at most 16px and independent nonoverlapping
+briefing placement. Preserve all keyboard/touch, attention, acknowledgment,
+reduced-motion, and viewport-overflow assertions. Repository search found no
+other header.nextElementSibling or spacing.extraHeight callers.
+
+`npm run test:ui -- tutorial.spec.ts -g 'Empire briefing icon' --workers=1`:
+2 passed (preparation 5.392s, execution 9.4s), on `ead86dee` plus this repair.
+No sleeps, retries, timeout changes, deleted scenarios, or production edits.
