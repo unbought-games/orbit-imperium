@@ -1102,3 +1102,92 @@ fn session_and_oidc_cookies_derive_all_attributes_from_browser_origin() {
         }
     }
 }
+
+#[tokio::test]
+async fn command_metrics_classify_before_auth_and_keep_malformed_requests_visible() {
+    #[derive(Default)]
+    struct Recorder(StdMutex<Vec<RequestObservation>>);
+    impl RuntimeObserver for Recorder {
+        fn duration(&self, _: RuntimeStage, _: Duration) {}
+        fn event(&self, _: RuntimeEvent) {}
+        fn request(&self, sample: RequestObservation) {
+            self.0.lock().unwrap().push(sample);
+        }
+    }
+    let recorder = Arc::new(Recorder::default());
+    let (entered, _started) = mpsc::unbounded_channel();
+    let app = router(
+        GatedStore {
+            hold_policy: false,
+            oidc_status: Arc::default(),
+            memberships: Arc::default(),
+            entered,
+            login: Arc::default(),
+            signup: Arc::default(),
+            policy: Arc::new(StdMutex::new(Ok(None))),
+        },
+        HttpConfig {
+            account_url: None,
+            origin: "https://game.test".into(),
+            assets: "absent".into(),
+            login_per_minute: 100,
+            signup: None,
+            signup_per_minute: 100,
+            legacy_signup_enabled: false,
+            wake: None,
+            observer: Some(recorder.clone()),
+        },
+    );
+    let id = uuid::Uuid::nil();
+    let binding = Binding {
+        universe: UniverseId(id),
+        account: AccountId(id),
+        player: PlayerId(id),
+        epoch: Epoch(id),
+    };
+    let command = CommandEnvelopeV4 {
+        protocol: 4,
+        binding,
+        command_id: CommandId(id),
+        command: CommandDto3::Progression(Command::StartManufacture {
+            body: BodyId(id),
+            item: orbit_engine::ManufacturedItem::Ship(orbit_engine::ShipType::EspionageProbe),
+            quantity: 1,
+            expected_terms_hash: Hash("0".repeat(64)),
+        }),
+    };
+    let pair = ForegroundAction {
+        presence: command.clone(),
+        gameplay: command.clone(),
+    };
+    for (suffix, body) in [
+        ("commands", serde_json::to_vec(&pair).unwrap()),
+        ("machine/commands", serde_json::to_vec(&command).unwrap()),
+        ("commands", b"invalid".to_vec()),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::post(format!("/api/v4/universes/{id}/{suffix}?private=secret"))
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(response.status().is_client_error());
+    }
+    let samples = recorder.0.lock().unwrap();
+    assert_eq!(samples.len(), 3);
+    for sample in &samples[..2] {
+        assert_eq!(sample.action, RequestAction::ShipOrder);
+        assert_eq!(sample.status, Some(401));
+        assert!(sample.phases[RequestPhase::Authentication as usize].is_some());
+        assert!(sample.admission.is_none());
+    }
+    assert_eq!(samples[0].route, "/api/v4/universes/{id}/commands");
+    assert_eq!(samples[1].route, "/api/v4/universes/{id}/machine/commands");
+    assert_eq!(samples[2].action, RequestAction::Unknown);
+    assert_eq!(samples[2].status, Some(400));
+    assert!(!format!("{samples:?}").contains("secret"));
+}

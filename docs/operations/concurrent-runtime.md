@@ -111,6 +111,9 @@ Use maximum gauges across replicas for a universe, not their sum. Sum the rate o
 
 These are operational objectives, not measurements already achieved. Adding API replicas increases admission/read capacity; adding workers increases independent simulation capacity. Neither removes a genuine conflict on one contested scope.
 
+See [request and command latency](request-latency.md) for per-route/action
+histograms, durable admission outcomes and private recent-slow-request diagnostics.
+
 ## Rules, repair, rollback, and retention
 
 Scoped rules activation is a durable global boundary. Earlier inputs settle first; later work waits behind it while API admission and committed reads continue. The operator may receive a pending activation ID after the CLI's observation window. Retry the same document to observe the same activation; disconnecting the CLI does not cancel it. Enrollment waits outside SQL for an existing configuration boundary so a new player cannot be initialized under obsolete terms. See [rules operations](rules-updates.md).

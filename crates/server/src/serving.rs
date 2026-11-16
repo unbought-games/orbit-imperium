@@ -41,7 +41,8 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
         None
     };
     let metrics = Arc::new(crate::metrics::RuntimeMetrics::new());
-    let store = store.with_observer(metrics.clone());
+    let observer = Arc::new(orbit_transport_http::RequestTimingObserver(metrics.clone()));
+    let store = store.with_observer(observer.clone());
     let started = Instant::now();
     let bind = if serve.role.serves_api() {
         let addresses: Vec<_> = tokio::time::timeout(
@@ -115,7 +116,7 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
     let scheduler = if serve.role.runs_worker() {
         Some(Scheduler(tokio::spawn(runtime::run(
             store.clone(),
-            BoundedEngine::new(serve.cpu_parallelism)?.with_observer(metrics.clone()),
+            BoundedEngine::new(serve.cpu_parallelism)?.with_observer(observer.clone()),
             wake.clone(),
             drain_rx.clone(),
             serve.max_in_flight,
@@ -144,7 +145,7 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
             legacy_signup_enabled: prepared.legacy_enabled,
             login_per_minute: serve.login_per_minute,
             wake: Some(wake.clone()),
-            observer: Some(metrics),
+            observer: Some(observer),
         };
         #[cfg(feature = "test-support")]
         let lab_router = std::env::var("ORBIT_LAB_WAKE_TOKEN")
