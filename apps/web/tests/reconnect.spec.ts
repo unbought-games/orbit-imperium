@@ -3,25 +3,20 @@ import {test,expect} from './fixtures/test'
 import {execFileSync} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import {overview} from './v2'
-import type {Attempt} from '../src/client-model/commands'
 const sql=(query:string)=>execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c',query],{stdio:'pipe'})
-test('lost POST acknowledgement survives refresh with one durable identity',async({page})=>{
+test('reload after a lost POST acknowledgement shows committed work without restoring retries',async({page})=>{
  // Isolate lost acknowledgments from the independent SSE outcome channel.
  await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill('alpha');await page.getByLabel('Password').fill(process.env.ALPHA_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click()
  const ids:string[]=[]
- let originalEnvelope:unknown
- const saved=()=>page.evaluate(()=>Object.entries(sessionStorage).filter(([key])=>key.startsWith('orbit:attempts:v2:')).map(([,value])=>JSON.parse(value) as Attempt))
  const attention=page.getByRole('complementary',{name:'Action needs attention',exact:true})
  const construction=page.getByRole('heading',{name:'Construction in progress',exact:true})
- await page.route('**/commands',async route=>{originalEnvelope=route.request().postDataJSON();ids.push(route.request().postDataJSON().command_id);await route.fetch();await route.abort('failed')})
+ await page.route('**/commands',async route=>{ids.push(route.request().postDataJSON().command_id);await route.fetch();await route.abort('failed')})
  await page.route('**/commands/*?epoch=*',route=>route.fulfill({status:503,contentType:'application/problem+json',body:JSON.stringify({type:'about:blank',status:503,code:'Unavailable'})}))
  await page.getByRole('button',{name:'Upgrade Crystal Mine',exact:true}).click();await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(attention).toContainText('We’re checking whether this order went through.')
- await expect.poll(async()=>(await saved()).filter(a=>a.status==='uncertain').length).toBe(1)
  await page.reload();await expect(construction).toContainText('Construction in progress');await expect(attention).toHaveCount(0)
- const restored=await saved();expect(restored).toHaveLength(1);expect(restored[0].envelope).toEqual(originalEnvelope);expect(restored[0].envelope.command_id).toBe(ids[0]);expect(restored[0].status).toBe('uncertain')
+ expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('orbit:attempts:')))).toEqual([])
  await page.unroute('**/commands/*?epoch=*')
- await expect.poll(async()=>(await saved()).filter(a=>a.envelope.command_id===ids[0]&&a.status==='committed'&&a.reconciled).length).toBe(1)
  await expect(attention).toHaveCount(0);expect(ids).toHaveLength(1);expect(new Set(ids).size).toBe(1)
  const confirmed=await overview(page.request);expect(confirmed.constructions).toHaveLength(1);expect(confirmed.constructions[0].building).toBe('CrystalMine')
  await page.unroute('**/commands');await page.getByRole('button',{name:'Cancel construction · full refund',exact:true}).click()

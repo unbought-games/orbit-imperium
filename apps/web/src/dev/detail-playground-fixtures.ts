@@ -598,23 +598,11 @@ export async function createDetailPreview(
       return receipts.get(commandId)!
     },
   }
-  const model = new Coordinator(
-    port,
-    {
-      async load() {
-        return []
-      },
-      async put() {},
-      async remove() {},
-      async clear() {},
-    },
-    {
-      newId: () => commandId(crypto),
-      monotonicNowMs: () => performance.now(),
-      isOnline: () => true,
-    },
-    false,
-  )
+  const model = new Coordinator(port, {
+    newId: () => commandId(crypto),
+    monotonicNowMs: () => performance.now(),
+    isOnline: () => true,
+  })
   await model.initialize(structuredClone(session), structuredClone(snapshot))
   return {
     model,

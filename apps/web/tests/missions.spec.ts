@@ -208,17 +208,9 @@ test('galaxy, dispatch, original-pair recovery, recall and authorized reports ac
     gameplay: { command_id: string }
     presence: { command_id: string }
   }
-  const stored = await page.evaluate(
-    (id) =>
-      Object.entries(sessionStorage)
-        .filter(([k]) => k.startsWith('orbit:attempts:v4:'))
-        .map(([, v]) => JSON.parse(v))
-        .find((x) => x.envelope.command_id === id)?.envelope,
-    pair.gameplay.command_id,
-  )
-  expect(stored.presence).toEqual(pair.presence)
-  expect(stored.command_id).toBe(pair.gameplay.command_id)
-  expect(stored.presence.command_id).not.toBe(stored.command_id)
+  expect(pair.presence.command_id).not.toBe(pair.gameplay.command_id)
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('orbit:attempts:')))).toEqual([])
+  await expect(page.getByRole('button', { name: 'Retry order' })).toHaveCount(0)
   await go('Fleets')
   await expect(page.getByRole('button', { name: 'Review recall' })).toBeVisible()
   let v = await freshSnapshot()

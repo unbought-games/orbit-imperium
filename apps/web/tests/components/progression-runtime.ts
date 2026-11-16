@@ -511,21 +511,11 @@ export async function createProgressionScene(params: URLSearchParams) {
       return recovery
     },
   }
-  const model = new Coordinator(
-    port,
-    {
-      load: async () => [],
-      put: async () => {},
-      remove: async () => {},
-      clear: async () => {},
-    },
-    {
-      newId: () => id(sequence++),
-      monotonicNowMs: () => elapsed,
-      isOnline: () => true,
-    },
-    false,
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(sequence++),
+    monotonicNowMs: () => elapsed,
+    isOnline: () => true,
+  })
   await model.initialize(structuredClone(session), structuredClone(snapshot))
   return {
     model,

@@ -73,12 +73,6 @@ export interface GamePort {
   submit(envelope: Envelope): Promise<BoundReceipt>
   receipt(binding: Binding, command_id: string): Promise<BoundReceipt>
 }
-export interface AttemptStorage {
-  load(binding: Binding): Promise<Attempt[]>
-  put(attempt: Attempt): Promise<void>
-  remove(binding: Binding, command_id: string): Promise<void>
-  clear(binding: Binding): Promise<void>
-}
 export interface ClientPlatform {
   random?(): number
   scheduleOnce?(callback: () => void, delayMs: number): () => void

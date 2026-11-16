@@ -6,14 +6,7 @@ import {
   pendingConstruction,
   projectGameView,
 } from './game-projection'
-import type {
-  Attempt,
-  Binding,
-  BoundReceipt,
-  BoundView,
-  GamePort,
-  AttemptStorage,
-} from './commands'
+import type { Binding, BoundReceipt, BoundView, GamePort } from './commands'
 import { attemptKey } from './commands'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${n.toString().padStart(12, '0')}`
@@ -47,22 +40,7 @@ function setup(
   clock = () => 0,
   lifecycle: { isOnline?(): boolean; isVisible?(): boolean } = {},
 ) {
-  const saved = new Map<string, Attempt>(),
-    sent: string[] = []
-  const storage: AttemptStorage = {
-    async load() {
-      return [...saved.values()]
-    },
-    async put(a) {
-      saved.set(a.envelope.command_id, structuredClone(a))
-    },
-    async remove(_, id) {
-      saved.delete(id)
-    },
-    async clear() {
-      saved.clear()
-    },
-  }
+  const sent: string[] = []
   const receipts = new Map<string, BoundReceipt>()
   const port: GamePort = {
     async currentBinding(_, request_id) {
@@ -105,13 +83,13 @@ function setup(
     },
   }
   let n = 10
-  const c = new Coordinator(port, storage, {
+  const c = new Coordinator(port, {
     newId: () => id(n++),
     monotonicNowMs: clock,
     isOnline: () => true,
     ...lifecycle,
   })
-  return { c, port, storage, saved, sent, receipts }
+  return { c, port, sent, receipts }
 }
 function quotedUpgrade(c: Coordinator) {
   const snapshot = view('snapshot')
@@ -157,15 +135,18 @@ function quotedUpgrade(c: Coordinator) {
     },
   }
 }
-it('reserves payment before awaiting persistence and blocks repeat or competing spending until reconciliation', async () => {
-  const { c, storage, sent } = setup()
+it('reserves payment before awaiting the server and blocks repeat or competing spending until reconciliation', async () => {
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   const { command, quote } = quotedUpgrade(c)
   let release!: () => void
-  storage.put = () =>
-    new Promise((resolve) => {
+  const submit = port.submit
+  port.submit = async (envelope) => {
+    await new Promise<void>((resolve) => {
       release = resolve
     })
+    return submit(envelope)
+  }
   const sending = c.send(command, quote)
   expect(projectGameView(c.store.getState())?.bodies[0].amounts.metal).toBe(
     '400',
@@ -173,28 +154,11 @@ it('reserves payment before awaiting persistence and blocks repeat or competing 
   await c.send(command, quote)
   await c.send({ ...command, building: 'CrystalMine' }, quote)
   expect(c.ledger.size).toBe(1)
-  // Complete the initial write; later status writes resolve normally.
-  await Promise.resolve()
-  await Promise.resolve()
-  storage.put = async () => {}
   release()
   await sending
   expect(sent).toHaveLength(1)
 })
-it('removes the optimistic queue and restores payment after a persistence failure', async () => {
-  const { c, storage } = setup()
-  await c.connect(binding.account, binding.universe)
-  const { command, quote } = quotedUpgrade(c)
-  storage.put = async () => {
-    throw Error('disk full')
-  }
-  await c.send(command, quote)
-  expect(projectGameView(c.store.getState())?.bodies[0].amounts.metal).toBe(
-    '1000',
-  )
-  expect(pendingConstruction(c.store.getState(), id(5))).toBeNull()
-  expect(c.store.getState().intents.size).toBe(0)
-})
+
 it('rolls back a server rejection and ignores later pending responses for that command', async () => {
   const { c, port, receipts } = setup()
   await c.connect(binding.account, binding.universe)
@@ -244,22 +208,7 @@ it('checks current resource affordability centrally before submitting a stale qu
   expect(c.ledger.size).toBe(0)
   expect(c.message).toContain('Resources')
 })
-it('restored uncertain attempts block a competing purchase without needing restored quote metadata', async () => {
-  const { c, sent, saved } = setup()
-  await c.connect(binding.account, binding.universe)
-  const { command, quote } = quotedUpgrade(c)
-  await c.send(command, quote)
-  for (const record of saved.values()) {
-    delete record.submitted_intent
-    record.status = 'uncertain'
-    record.receipt = null
-  }
-  await c.connect(binding.account, binding.universe)
-  quotedUpgrade(c)
-  expect(c.store.getState().intents.size).toBe(0)
-  await c.send({ ...command, building: 'CrystalMine' }, quote)
-  expect(sent).toHaveLength(1)
-})
+
 it('keeps a pending debit when a newer revision cannot yet be reconciled with its receipt', async () => {
   const { c, port } = setup()
   await c.connect(binding.account, binding.universe)
@@ -383,7 +332,7 @@ it('keeps a cancellation refund across unrelated revisions and applies the confi
   )
 })
 it('prunes old acknowledged successes without dropping unresolved actions or blocking future commands', async () => {
-  const { c, port, saved, sent } = setup()
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(999) })
   const pendingId = [...c.ledger.values()][0].envelope.command_id
@@ -418,7 +367,7 @@ it('prunes old acknowledged successes without dropping unresolved actions or blo
     await c.send({ type: 'CancelConstruction', operation: id(1000 + i) })
   expect(sent).toHaveLength(142)
   expect(c.ledger.size).toBeLessThanOrEqual(10)
-  expect(saved.size).toBeLessThanOrEqual(10)
+  expect(c.ledger.size).toBeLessThanOrEqual(10)
   expect(
     [...c.ledger.values()].filter((attempt) => attempt.status === 'rejected'),
   ).toHaveLength(1)
@@ -459,12 +408,11 @@ describe('R1 attempt coordinator', () => {
     stop()
   })
   it('keeps independent immutable A/B envelopes and retries only the same ID after 404', async () => {
-    const { c, saved, sent } = setup()
+    const { c, sent } = setup()
     await c.connect(binding.account, binding.universe)
     await c.send({ type: 'CancelConstruction', operation: id(40) })
     await c.send({ type: 'CancelConstruction', operation: id(41) })
     expect(c.ledger.size).toBe(2)
-    expect(saved.size).toBe(2)
     const a = [...c.ledger.values()][0]
     await c.retryOrder(a.envelope.command_id)
     expect(sent).toEqual([sent[0], sent[1], sent[0]])
@@ -491,36 +439,23 @@ describe('R1 attempt coordinator', () => {
     await c.refresh()
     expect([...c.ledger.values()][0].reconciled).toBe(true)
   })
-  it('blocks sending if persistence fails', async () => {
-    const { c, storage, sent } = setup()
-    await c.connect(binding.account, binding.universe)
-    storage.put = async () => {
-      throw Error('quota')
-    }
-    await c.send({ type: 'CancelConstruction', operation: id(40) })
-    expect(sent).toEqual([])
-    expect(c.message).toContain('save')
-  })
 })
-it('reload checks both accepted attempts without retrying until the player requests it', async () => {
+it('reconnecting drops earlier commands and never retries them', async () => {
   const { c, sent } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
   await c.send({ type: 'CancelConstruction', operation: id(41) })
   await c.connect(binding.account, binding.universe)
-  expect([...c.ledger.values()].map((a) => a.status)).toEqual([
-    'pending',
-    'pending',
-  ])
+  expect(c.ledger.size).toBe(0)
   expect(sent).toHaveLength(2)
   await c.poll()
   expect(sent).toHaveLength(2)
   for (const attempt of c.ledger.values())
     await c.retryOrder(attempt.envelope.command_id)
-  expect(sent).toHaveLength(4)
+  expect(sent).toHaveLength(2)
 })
-it('dismisses an uncertain order during retry and restores its identity silently', async () => {
-  const { c, port, saved, sent } = setup()
+it('dismisses an uncertain order during retry and drops it on reconnect', async () => {
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   port.submit = async (envelope) => {
     sent.push(envelope.command_id)
@@ -541,13 +476,13 @@ it('dismisses an uncertain order during retry and restores its identity silently
   finishReceipt({ status: 503 })
   await retry
   expect(c.store.getState().hiddenOrderNotices.has(key)).toBe(true)
-  expect(saved.get(commandId)?.status).toBe('uncertain')
+  expect(c.ledger.get(attemptKey(binding, commandId))?.status).toBe('uncertain')
   await c.connect(binding.account, binding.universe)
-  expect(c.store.getState().hiddenOrderNotices.has(key)).toBe(true)
-  expect(c.ledger.get(key)?.envelope).toEqual(saved.get(commandId)?.envelope)
+  expect(c.store.getState().hiddenOrderNotices.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
   expect(sent).toEqual([commandId])
   await c.send({ type: 'CancelConstruction', operation: id(41) })
-  expect(c.store.getState().hiddenOrderNotices).toEqual(new Set([key]))
+  expect(c.store.getState().hiddenOrderNotices.size).toBe(0)
   expect(sent).toHaveLength(2)
 })
 it('a B receipt cannot resolve A and a view cannot infer commitment', async () => {
@@ -605,7 +540,7 @@ it('drops late session callbacks and late discovery candidates', async () => {
   expect(c.view).toBeNull()
 })
 it('reset between discovery and confirmation rediscovers and never submits old work', async () => {
-  const { c, port, sent, saved } = setup()
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
   const next = { ...binding, epoch: id(99), player: id(98) }
@@ -626,7 +561,6 @@ it('reset between discovery and confirmation rediscovers and never submits old w
   expect(c.binding).toEqual(next)
   expect(c.ready).toBe(true)
   expect(c.ledger.size).toBe(0)
-  expect(saved.size).toBe(1)
   expect(sent).toHaveLength(1)
 })
 it('rejects higher revision with older sample and permits equal revision newer samples', async () => {
@@ -643,16 +577,15 @@ it('rejects higher revision with older sample and permits equal revision newer s
   await c.refresh()
   expect(c.view?.as_of_ms).toBe(1001)
 })
-it('a fresh login cannot automatically recover stored intent from an earlier session', async () => {
-  const { c, port, storage, sent } = setup()
+it('a fresh coordinator cannot recover intent from an earlier session', async () => {
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
-  const fresh = new Coordinator(
-    port,
-    storage,
-    { newId: () => id(90), monotonicNowMs: () => 0, isOnline: () => true },
-    false,
-  )
+  const fresh = new Coordinator(port, {
+    newId: () => id(90),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
   await fresh.connect(binding.account, binding.universe)
   await fresh.poll()
   expect(fresh.ledger.size).toBe(0)
@@ -706,48 +639,7 @@ it('old refresh and quote failures cannot invalidate newer successful requests',
   await oldQuote.catch(() => {})
   expect(c.ready).toBe(true)
 })
-it('invalidation during reconciliation cannot resurrect a second old attempt', async () => {
-  const { c, port, storage, receipts } = setup()
-  await c.connect(binding.account, binding.universe)
-  for (const n of [40, 41])
-    await c.send({ type: 'CancelConstruction', operation: id(n) })
-  for (const a of c.ledger.values()) {
-    receipts.set(a.envelope.command_id, {
-      protocol: 2,
-      binding,
-      command_id: a.envelope.command_id,
-      admitted_at: 1000,
-      executed_at: 1000,
-      status: 'Committed',
-      result_ids: [],
-      minimum_viewer_revision: '12',
-    })
-    await c.recover(a.envelope.command_id)
-  }
-  let release!: () => void, started!: () => void
-  const writing = new Promise<void>((r) => {
-    started = r
-  })
-  const original = storage.put
-  storage.put = async (a) => {
-    if (a.reconciled) {
-      started()
-      await new Promise<void>((r) => {
-        release = r
-      })
-    }
-    await original(a)
-  }
-  port.view = async (ctx) => view(ctx.request_id, '12')
-  const refresh = c.refresh()
-  await writing
-  c.invalidate()
-  storage.put = original
-  release()
-  await refresh
-  expect(c.binding).toBeNull()
-  expect(c.ledger.size).toBe(0)
-})
+
 it('receipt polling stops the batch and honors Retry-After before any retry', async () => {
   const { c, port } = setup()
   await c.connect(binding.account, binding.universe)
@@ -816,8 +708,8 @@ it('rejects settings from a different profile before restoring pending intents',
   expect(sent).toEqual([])
 })
 
-it('initialization restores saved command identities without startup network reads', async () => {
-  const { c, port, storage, sent } = setup()
+it('initialization starts without old commands or startup network reads', async () => {
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
   const snapshot = {
@@ -835,7 +727,7 @@ it('initialization restores saved command identities without startup network rea
   port.settings = async () => {
     throw Error('startup settings')
   }
-  const next = new Coordinator(port, storage, {
+  const next = new Coordinator(port, {
     newId: () => id(90),
     monotonicNowMs: () => 0,
     isOnline: () => true,
@@ -856,15 +748,14 @@ it('initialization restores saved command identities without startup network rea
     snapshot,
   )
   expect(next.ready).toBe(true)
-  expect([...next.ledger.values()][0].envelope.command_id).toBe(sent[0])
-  expect([...next.ledger.values()][0].status).toBe('pending')
+  expect(next.ledger.size).toBe(0)
   expect(sent).toHaveLength(1)
 })
 
 it('anchors initialized snapshots to receipt time and clears previous optimistic inputs on reinitialization', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
   const { session, snapshot } = readyFixture(2)
-  const { c, port, storage } = setup()
+  const { c, port } = setup()
   const { command, quote } = quotedUpgrade(c)
   if (snapshot.view.protocol !== 2 || c.view?.protocol !== 2)
     throw Error('fixture protocol')
@@ -878,16 +769,11 @@ it('anchors initialized snapshots to receipt time and clears previous optimistic
   }
   let now = 25000,
     sequence = 100
-  const model = new Coordinator(
-    port,
-    storage,
-    {
-      newId: () => id(sequence++),
-      monotonicNowMs: () => now,
-      isOnline: () => true,
-    },
-    false,
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(sequence++),
+    monotonicNowMs: () => now,
+    isOnline: () => true,
+  })
   await model.initialize(session, snapshot)
   expect(currentServerTime(model.store.getState())).toBe(1000)
   expect(projectGameView(model.store.getState())?.bodies[0].amounts.metal).toBe(
@@ -913,7 +799,7 @@ it('anchors initialized snapshots to receipt time and clears previous optimistic
 it('shares the in-flight Login request across repeated lifecycle starts', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
   const { session, snapshot } = readyFixture(4)
-  const { port, storage } = setup()
+  const { port } = setup()
   let release!: (receipt: BoundReceipt) => void
   const pending = new Promise<BoundReceipt>((resolve) => {
     release = resolve
@@ -923,7 +809,7 @@ it('shares the in-flight Login request across repeated lifecycle starts', async 
     submitted.push(envelope)
     return pending
   }
-  const model = new Coordinator(port, storage, {
+  const model = new Coordinator(port, {
     newId: () => id(90),
     monotonicNowMs: () => 0,
     isOnline: () => true,
@@ -953,7 +839,7 @@ it('shares the in-flight Login request across repeated lifecycle starts', async 
   expect(submitted).toHaveLength(1)
 })
 
-it('retains durable acceptance after a receipt transport failure', async () => {
+it('retains server acceptance after a receipt transport failure', async () => {
   const { c, port } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(50) })
@@ -965,27 +851,27 @@ it('retains durable acceptance after a receipt transport failure', async () => {
   expect([...c.ledger.values()][0].status).toBe('pending')
   expect([...c.ledger.values()][0].receipt?.status).toBe('Pending')
 })
-it('restores accepted immutable prediction inputs without resubmitting or double debiting', async () => {
-  const { c, port, storage, saved, sent } = setup()
+it('a fresh coordinator uses server resources without restoring optimistic debits', async () => {
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   const { command, quote } = quotedUpgrade(c)
   const confirmed = structuredClone(c.view!)
   await c.send(command, quote)
-  expect([...saved.values()][0]).toHaveProperty('submitted_intent.quote', quote)
+  expect([...c.store.getState().intents.values()][0].quote).toEqual(quote)
   port.view = async (context) => ({
     ...confirmed,
     request_id: context.request_id,
   })
-  const restored = new Coordinator(port, storage, {
+  const restored = new Coordinator(port, {
     newId: () => id(90),
     monotonicNowMs: () => 0,
     isOnline: () => true,
   })
   await restored.connect(binding.account, binding.universe)
-  expect([...restored.ledger.values()][0].status).toBe('pending')
+  expect(restored.ledger.size).toBe(0)
   expect(
     projectGameView(restored.store.getState())?.bodies[0].amounts.metal,
-  ).toBe('400')
+  ).toBe('1000')
   expect(sent).toHaveLength(1)
 })
 it('applies duplicate outcome updates once and coalesces invalidations at the largest revision', async () => {
@@ -1058,7 +944,7 @@ it('does not start fast recovery while Login submission is still in flight', asy
   vi.useFakeTimers()
   const { readyFixture } = await import('../test-support/bootstrap')
   const { session, snapshot } = readyFixture(4)
-  const { port, storage } = setup()
+  const { port } = setup()
   let release!: (receipt: BoundReceipt) => void
   port.submit = () =>
     new Promise((resolve) => {
@@ -1080,7 +966,6 @@ it('does not start fast recovery while Login submission is still in flight', asy
   )
   const model = new Coordinator(
     port,
-    storage,
     {
       newId: () => id(90),
       monotonicNowMs: () => Date.now(),
@@ -1091,7 +976,6 @@ it('does not start fast recovery while Login submission is still in flight', asy
         return () => clearTimeout(timer)
       },
     },
-    true,
     {
       async subscribe() {
         throw { status: 404 }
@@ -1125,12 +1009,12 @@ it('does not start fast recovery while Login submission is still in flight', asy
 it('retains a required revision across backoff and a still-behind snapshot', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
   const { session, snapshot } = readyFixture(2)
-  const { port, storage } = setup()
+  const { port } = setup()
   let now = 0
   let fail = true
   let revision = '4'
   const requested: (string | undefined)[] = []
-  const model = new Coordinator(port, storage, {
+  const model = new Coordinator(port, {
     newId: () => id(90),
     monotonicNowMs: () => now,
     isOnline: () => true,
@@ -1181,7 +1065,7 @@ it('preserves the required revision when manual refresh supersedes an in-flight 
 it('reconciles unread report alerts from live invalidations and reconnect snapshots', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
   const { session, snapshot } = readyFixture(4)
-  const { port, storage } = setup()
+  const { port } = setup()
   let unread = false
   let revision = BigInt(snapshot.view.viewer_revision)
   port.view = async (context) => ({
@@ -1190,7 +1074,7 @@ it('reconciles unread report alerts from live invalidations and reconnect snapsh
     viewer_revision: String(revision),
     has_unread_reports: unread,
   })
-  const model = new Coordinator(port, storage, {
+  const model = new Coordinator(port, {
     newId: () => id(90),
     monotonicNowMs: () => 0,
     isOnline: () => true,
@@ -1214,97 +1098,83 @@ it('reconciles unread report alerts from live invalidations and reconnect snapsh
   expect(model.store.getState().view).toBeNull()
 })
 
-it.each(['none', 'remove', 'write'])(
-  'does not resurrect report failures after pruning a successful retry (storage failure: %s)',
-  async (failureMode) => {
-    const { readyFixture } = await import('../test-support/bootstrap')
-    const { mergeReportHeaders } = await import('./report-state')
-    const { session, snapshot } = readyFixture(4)
-    const { c, port, storage, saved } = setup()
-    await c.initialize(session, snapshot)
-    const report = id(700),
-      other = id(701)
-    c.store.setState({
-      reportHeaders: mergeReportHeaders(
-        new Map(),
-        [report, other].map((id) => ({
-          id,
-          hidden: false,
-          read: true,
-          observed_at: 1000,
-          kind: 'Espionage',
-        })),
-        '1',
-      ),
+it('prunes superseded report failures after a successful retry', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { mergeReportHeaders } = await import('./report-state')
+  const { session, snapshot } = readyFixture(4)
+  const { c, port } = setup()
+  await c.initialize(session, snapshot)
+  const report = id(700),
+    other = id(701)
+  c.store.setState({
+    reportHeaders: mergeReportHeaders(
+      new Map(),
+      [report, other].map((id) => ({
+        id,
+        hidden: false,
+        read: true,
+        observed_at: 1000,
+        kind: 'Espionage',
+      })),
+      '1',
+    ),
+  })
+  let reject = true
+  port.submit = async (envelope) =>
+    ({
+      protocol: 4,
+      binding: snapshot.candidate.binding,
+      command_id: envelope.command_id,
+      admitted_at: 1000,
+      executed_at: 1000,
+      ...(reject
+        ? { status: 'Rejected', code: 'NotFound' }
+        : {
+            status: 'Committed',
+            result_ids: [],
+            minimum_viewer_revision: '2',
+          }),
+    }) as BoundReceipt
+  port.view = async (context) => ({
+    ...snapshot.view,
+    request_id: context.request_id,
+    viewer_revision: '2',
+  })
+  const change = (report: string, hidden = true) =>
+    c.send({
+      type: 'World',
+      action: { type: 'SetReportHidden', report, hidden },
     })
-    let reject = true
-    const put = storage.put
-    storage.put = async (attempt) => {
-      if (failureMode === 'write' && attempt.status === 'rejected')
-        throw Error('status write failed')
-      await put(attempt)
-    }
-    port.submit = async (envelope) =>
-      ({
-        protocol: 4,
-        binding: snapshot.candidate.binding,
-        command_id: envelope.command_id,
-        admitted_at: 1000,
-        executed_at: 1000,
-        ...(reject
-          ? { status: 'Rejected', code: 'NotFound' }
-          : {
-              status: 'Committed',
-              result_ids: [],
-              minimum_viewer_revision: '2',
-            }),
-      }) as BoundReceipt
-    port.view = async (context) => ({
-      ...snapshot.view,
-      request_id: context.request_id,
-      viewer_revision: '2',
-    })
-    const change = (report: string, hidden = true) =>
-      c.send({
-        type: 'World',
-        action: { type: 'SetReportHidden', report, hidden },
-      })
-    const failure = await change(report)
-    const otherFailure = await change(other)
-    const unrelated = await change(id(702))
-    const remove = storage.remove
-    storage.remove = async (binding, id) => {
-      if (failureMode === 'remove' && id === failure)
-        throw Error('storage unavailable')
-      await remove(binding, id)
-    }
-    reject = false
-    const retry = await change(report)
-    for (let i = 0; i < 10; i++) await change(other, i % 2 === 0)
-    if (failureMode === 'remove') {
-      expect(saved.has(failure!)).toBe(true)
-      expect(
-        [...c.ledger.values()].some((a) => a.envelope.command_id === retry),
-      ).toBe(true)
-      storage.remove = remove
-      await c.refresh()
-    }
-    expect(saved.has(failure!)).toBe(false)
-    expect(saved.has(retry!)).toBe(false)
-    expect(saved.has(otherFailure!)).toBe(false)
-    expect(saved.has(unrelated!)).toBe(true)
-    expect(
-      [...c.ledger.values()]
-        .filter((a) => a.status === 'rejected')
-        .map((a) => a.envelope.command_id),
-    ).toEqual([unrelated])
-    reject = true
-    storage.put = put
-    const latestFailure = await change(report, false)
-    await c.refresh()
-    expect(saved.has(latestFailure!)).toBe(true)
-  },
-)
+  const failure = await change(report)
+  const otherFailure = await change(other)
+  const unrelated = await change(id(702))
+  reject = false
+  const retry = await change(report)
+  for (let i = 0; i < 10; i++) await change(other, i % 2 === 0)
+  expect(c.ledger.has(attemptKey(snapshot.candidate.binding, failure!))).toBe(
+    false,
+  )
+  expect(c.ledger.has(attemptKey(snapshot.candidate.binding, retry!))).toBe(
+    false,
+  )
+  expect(
+    c.ledger.has(attemptKey(snapshot.candidate.binding, otherFailure!)),
+  ).toBe(false)
+  expect(c.ledger.has(attemptKey(snapshot.candidate.binding, unrelated!))).toBe(
+    true,
+  )
+  expect(
+    [...c.ledger.values()]
+      .filter((a) => a.status === 'rejected')
+      .map((a) => a.envelope.command_id),
+  ).toEqual([unrelated])
+  reject = true
+  const latestFailure = await change(report, false)
+  await c.refresh()
+  expect(
+    c.ledger.has(attemptKey(snapshot.candidate.binding, latestFailure!)),
+  ).toBe(true)
+})
 
 it('discards simulation responses from a changed identity, request or rules profile', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
@@ -1495,7 +1365,7 @@ it('discards a rules refresh whose settings finish after logout', async () => {
 
 it('stops throttled orders and waits for a new player request after cooldown', async () => {
   let now = 1000
-  const { c, port, saved, sent } = setup(() => now)
+  const { c, port, sent } = setup(() => now)
   await c.connect(binding.account, binding.universe)
   const submit = port.submit
   port.submit = async (envelope) => {
@@ -1508,7 +1378,6 @@ it('stops throttled orders and waits for a new player request after cooldown', a
   expect(connectionStatus(c.store.getState())?.message).toContain(
     'Try again in 60 seconds',
   )
-  expect(saved.size).toBe(0)
   expect(c.ledger.size).toBe(0)
   const announcement = connectionStatus(c.store.getState())?.announcement
   now = 60999
@@ -1592,38 +1461,8 @@ it('keeps a cooldown through an in-flight successful snapshot and resets it on s
   })
 })
 
-it('does not queue an unsent order behind a concurrent rate limit', async () => {
-  const { c, port, storage, sent } = setup()
-  await c.connect(binding.account, binding.universe)
-  const put = storage.put
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  let writes = 0
-  storage.put = async (attempt) => {
-    if (++writes === 1) await gate
-    await put(attempt)
-  }
-  const first = c.send({ type: 'CancelConstruction', operation: id(40) })
-  port.submit = async (envelope) => {
-    sent.push(envelope.command_id)
-    throw { status: 429, retryAfterMs: 60000 }
-  }
-  const secondId = await c.send({
-    type: 'CancelConstruction',
-    operation: id(41),
-  })
-  release()
-  const firstId = await first
-  expect(sent).toHaveLength(1)
-  expect(secondId).toBeUndefined()
-  expect(firstId).toBeUndefined()
-  expect(c.ledger.size).toBe(0)
-})
-
 it('checks lost responses without resending, but honors an explicit retry with the same ID', async () => {
-  const { c, port, sent, saved } = setup()
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   const submit = port.submit
   port.submit = async (envelope) => {
@@ -1637,68 +1476,16 @@ it('checks lost responses without resending, but honors an explicit retry with t
   port.submit = submit
   await c.poll()
   await c.recover(commandId)
-  await c.connect(binding.account, binding.universe)
   await c.poll()
   expect(sent).toEqual([commandId])
-  expect(saved.get(commandId)?.status).toBe('uncertain')
+  expect(c.ledger.get(attemptKey(binding, commandId))?.status).toBe('uncertain')
   await c.retryOrder(commandId)
   expect(sent).toEqual([commandId, commandId])
-})
-it('a failed local cleanup cannot cause a throttled order to resend after reload', async () => {
-  let now = 0
-  const { c, port, storage, sent } = setup(() => now)
-  await c.connect(binding.account, binding.universe)
-  storage.remove = async () => {
-    throw Error('storage unavailable')
-  }
-  port.submit = async (envelope) => {
-    sent.push(envelope.command_id)
-    throw { status: 429, retryAfterMs: 1000 }
-  }
-  await c.send({ type: 'CancelConstruction', operation: id(40) })
-  now = 1000
-  await c.poll()
-  await c.connect(binding.account, binding.universe)
-  await c.poll()
-  expect(sent).toHaveLength(1)
-})
-
-it('blocks concurrent clicks as soon as 429 arrives, before local cleanup finishes', async () => {
-  const { c, port, storage, sent } = setup()
-  await c.connect(binding.account, binding.universe)
-  let release!: () => void
-  let clearing!: () => void
-  const started = new Promise<void>((resolve) => {
-    clearing = resolve
-  })
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  const remove = storage.remove
-  storage.remove = async (b, id) => {
-    clearing()
-    await gate
-    await remove(b, id)
-  }
-  port.submit = async (envelope) => {
-    sent.push(envelope.command_id)
-    throw { status: 429, retryAfterMs: 60000 }
-  }
-  const first = c.send({ type: 'CancelConstruction', operation: id(40) })
-  await started
-  expect(connectionStatus(c.store.getState())?.kind).toBe('cooldown')
-  expect(
-    await c.send({ type: 'CancelConstruction', operation: id(41) }),
-  ).toBeUndefined()
-  expect(sent).toHaveLength(1)
-  release()
-  await first
-  expect(c.ledger.size).toBe(0)
 })
 
 it('clears an unadmitted deletion after the named recent-sign-in rejection without replaying it', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
-  const { c, port, saved, sent } = setup()
+  const { c, port, sent } = setup()
   const fixture = readyFixture(4)
   await c.initialize(fixture.session, fixture.snapshot)
   port.submit = async (envelope) => {
@@ -1716,7 +1503,6 @@ it('clears an unadmitted deletion after the named recent-sign-in rejection witho
   expect(await c.send(command)).toBeUndefined()
   expect(c.message).toContain('Sign out and sign in again')
   expect(c.ready).toBe(true)
-  expect(saved.size).toBe(0)
   expect(c.ledger.size).toBe(0)
   await c.reconcilePending()
   expect(sent).toHaveLength(1)
@@ -1738,7 +1524,7 @@ it('clears an unadmitted deletion after the named recent-sign-in rejection witho
 
 it('retains an uncertain deletion ID when a retry needs recent authentication', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
-  const { c, port, saved, sent } = setup()
+  const { c, port, sent } = setup()
   const fixture = readyFixture(4)
   await c.initialize(fixture.session, fixture.snapshot)
   port.submit = async (envelope) => {
@@ -1760,7 +1546,7 @@ it('retains an uncertain deletion ID when a retry needs recent authentication', 
   }
   await c.retryOrder(commandId!)
   expect(sent).toEqual([commandId, commandId])
-  expect(saved.size).toBe(1)
+  expect(c.ledger.size).toBe(1)
   expect([...c.ledger.values()][0].status).toBe('uncertain')
 })
 
@@ -1965,7 +1751,7 @@ it('treats a live session rotation as coordination, then refreshes at its server
 
 it('does not queue a gameplay action refused before admission by session rotation', async () => {
   let now = 0
-  const { c, port, saved } = setup(() => now)
+  const { c, port } = setup(() => now)
   await c.connect(binding.account, binding.universe)
   let submissions = 0
   port.submit = async () => {
@@ -1975,7 +1761,6 @@ it('does not queue a gameplay action refused before admission by session rotatio
   expect(
     await c.send({ type: 'CancelConstruction', operation: id(40) }),
   ).toBeUndefined()
-  expect(saved.size).toBe(0)
   expect(c.ledger.size).toBe(0)
   expect(c.message).toBe(
     'Your session is refreshing. This action was not sent. Try again.',
@@ -1990,12 +1775,11 @@ it('does not queue a gameplay action refused before admission by session rotatio
     'Your session is refreshing. This action was not sent. Try again.',
   )
   expect(submissions).toBe(1)
-  expect(saved.size).toBe(0)
   expect(c.ledger.size).toBe(0)
 })
 
 it('retains an older uncertain order when an explicit resend meets session rotation', async () => {
-  const { c, port, saved } = setup()
+  const { c, port } = setup()
   await c.connect(binding.account, binding.universe)
   port.submit = async () => {
     throw new TypeError('lost response')
@@ -2008,7 +1792,7 @@ it('retains an older uncertain order when an explicit resend meets session rotat
     throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 1000 }
   }
   await c.retryOrder(commandId!)
-  expect(saved.size).toBe(1)
+  expect(c.ledger.size).toBe(1)
   expect([...c.ledger.values()][0]).toMatchObject({
     status: 'uncertain',
     envelope: { command_id: commandId },
@@ -2018,7 +1802,7 @@ it('retains an older uncertain order when an explicit resend meets session rotat
 
 it('does not alarm for a background presence refusal during rotation, but expired claims still require sign-in', async () => {
   let now = 0
-  const { c, port, saved } = setup(() => now)
+  const { c, port } = setup(() => now)
   const { readyFixture } = await import('../test-support/bootstrap')
   const { session, snapshot } = readyFixture(4)
   await c.initialize(session, snapshot)
@@ -2026,7 +1810,7 @@ it('does not alarm for a background presence refusal during rotation, but expire
     throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
   }
   await c.recordPresence('BodyVisit', snapshot.view.bodies[0]?.id ?? null)
-  expect(saved.size).toBe(0)
+  expect(c.ledger.size).toBe(0)
   expect(c.message).toBe('')
   expect(connectionStatus(c.store.getState())).toBeNull()
   now = 4000
@@ -2039,7 +1823,7 @@ it('does not alarm for a background presence refusal during rotation, but expire
 })
 
 it('explains an action blocked by an earlier quiet session refresh without queueing it', async () => {
-  const { c, port, sent, saved } = setup()
+  const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   port.view = async () => {
     throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
@@ -2049,36 +1833,5 @@ it('explains an action blocked by an earlier quiet session refresh without queue
   await c.send({ type: 'CancelConstruction', operation: id(40) })
   expect(c.message).toBe('This action was not sent. Please try again shortly.')
   expect(sent).toHaveLength(0)
-  expect(saved.size).toBe(0)
-  expect(c.ledger.size).toBe(0)
-})
-
-it('explains a session refresh that starts while an unsent action is being saved', async () => {
-  const { c, port, storage, saved, sent } = setup()
-  await c.connect(binding.account, binding.universe)
-  const put = storage.put
-  let release!: () => void
-  let saving!: () => void
-  const started = new Promise<void>((resolve) => {
-    saving = resolve
-  })
-  storage.put = async (attempt) => {
-    saving()
-    await new Promise<void>((resolve) => {
-      release = resolve
-    })
-    await put(attempt)
-  }
-  const send = c.send({ type: 'CancelConstruction', operation: id(40) })
-  await started
-  port.view = async () => {
-    throw { status: 503, code: 'SessionRefreshing', retryAfterMs: 4000 }
-  }
-  await c.refresh()
-  release()
-  expect(await send).toBeUndefined()
-  expect(c.message).toBe('This action was not sent. Please try again shortly.')
-  expect(sent).toHaveLength(0)
-  expect(saved.size).toBe(0)
   expect(c.ledger.size).toBe(0)
 })

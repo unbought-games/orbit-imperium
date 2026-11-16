@@ -16,16 +16,11 @@ async function setup() {
     submit: unused,
     receipt: unused,
   }
-  const model = new Coordinator(
-    port,
-    {
-      load: async () => [],
-      put: async () => {},
-      remove: async () => {},
-      clear: async () => {},
-    },
-    { newId: () => id(90), monotonicNowMs: () => 0, isOnline: () => true },
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(90),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
   await model.initialize(session, snapshot)
   const response: Rankings = {
     binding: snapshot.candidate.binding,

@@ -10,12 +10,7 @@ import { GameShellFrame } from '../../src/shell/game-shell-frame'
 import { SessionContext } from '../../src/shell/session-context'
 import { Coordinator } from '../../src/client-model/coordinator'
 import { useCommands } from '../../src/client-model/use-commands'
-import { attemptStorage } from '../../src/adapters/attempt-storage'
-import {
-  readyFixture,
-  memoryStorage,
-  id,
-} from '../../src/test-support/bootstrap'
+import { readyFixture, id } from '../../src/test-support/bootstrap'
 import type { BoundView } from '../../src/client-model/commands'
 import type { Page } from '../../src/shell/routes'
 import { pageTitles } from '../../src/shell/navigation-model'
@@ -112,7 +107,6 @@ function preparedModel(bodies: BoundView['bodies'], hostile = false) {
       submit: unexpected,
       receipt: unexpected,
     },
-    attemptStorage(memoryStorage()),
     { newId: () => id(99), monotonicNowMs: () => 1000, isOnline: () => true },
   )
   model.store.setState({

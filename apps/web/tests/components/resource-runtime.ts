@@ -550,21 +550,11 @@ export async function createResourceScene(params: URLSearchParams) {
       throw Error('Presentation component unexpectedly requested a receipt')
     },
   }
-  const model = new Coordinator(
-    port,
-    {
-      load: async () => [],
-      put: async () => {},
-      remove: async () => {},
-      clear: async () => {},
-    },
-    {
-      newId: () => id(sequence++),
-      monotonicNowMs: () => 0,
-      isOnline: () => true,
-    },
-    false,
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(sequence++),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
   await model.initialize(structuredClone(session), structuredClone(snapshot))
   return {
     model,

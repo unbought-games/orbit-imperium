@@ -1,9 +1,5 @@
 import type { components } from '../../src/contracts'
-import type {
-  GamePort,
-  WorldQuery,
-  AttemptStorage,
-} from '../../src/client-model/commands'
+import type { GamePort, WorldQuery } from '../../src/client-model/commands'
 import { productionFixture } from '../../src/test-support/production'
 import { Coordinator } from '../../src/client-model/coordinator'
 import {
@@ -33,12 +29,6 @@ export async function createDispatchFixture() {
   }
   let sequence = 100
   let launches = 0
-  const storage: AttemptStorage = {
-    load: async () => [],
-    put: async () => {},
-    remove: async () => {},
-    clear: async () => {},
-  }
   const port: GamePort = {
     currentBinding: async (_universe, request_id) => ({
       ...data.ready.snapshot.candidate,
@@ -250,16 +240,11 @@ export async function createDispatchFixture() {
       }
     },
   }
-  const model = new Coordinator(
-    port,
-    storage,
-    {
-      newId: () => id(sequence++),
-      monotonicNowMs: () => 0,
-      isOnline: () => true,
-    },
-    false,
-  )
+  const model = new Coordinator(port, {
+    newId: () => id(sequence++),
+    monotonicNowMs: () => 0,
+    isOnline: () => true,
+  })
   await model.initialize(data.ready.session, data.ready.snapshot)
   return {
     model,

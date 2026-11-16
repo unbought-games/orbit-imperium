@@ -7,12 +7,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { Coordinator } from '../../src/client-model/coordinator'
-import { attemptStorage } from '../../src/adapters/attempt-storage'
-import {
-  readyFixture,
-  memoryStorage,
-  id,
-} from '../../src/test-support/bootstrap'
+import { readyFixture, id } from '../../src/test-support/bootstrap'
 import { ReportListRow } from '../../src/features/report-list-row'
 import { ReportObservation } from '../../src/features/report-observation'
 import { useMobileLayout } from '../../src/ui/use-mobile-layout'
@@ -94,7 +89,6 @@ function ReportsScene() {
         submit: unexpected,
         receipt: unexpected,
       },
-      attemptStorage(memoryStorage()),
       { newId: () => id(99), monotonicNowMs: () => 1000, isOnline: () => true },
     )
     const view = readyFixture(4).snapshot.view

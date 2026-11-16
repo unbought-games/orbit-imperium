@@ -8,7 +8,7 @@ import {
 import type { ClientPlatform } from '../client-model/commands'
 import { ContractDataError, validate } from '../client-model/schema'
 import { clientUpdate } from './client-update'
-import { attemptStorage, prepareSession } from './attempt-storage'
+import { clearLegacyOrderStorage } from './legacy-order-storage'
 import { gamePort, http } from './http'
 import { readEmbeddedBootstrap } from './bootstrap'
 import { createGameUpdatesPort } from './updates'
@@ -23,7 +23,6 @@ type GameIssue =
         | 'MembershipUnavailable'
         | 'UnsupportedProtocol'
         | 'InvalidBootstrap'
-        | 'StorageUnavailable'
     }
 export type AppRuntime = { signupEnabled: boolean } & (
   | { status: 'anonymous' }
@@ -40,7 +39,6 @@ export type AuthenticatedRuntime = Extract<
   { status: 'authenticated' }
 >
 export type RuntimeDependencies = {
-  storage: Storage
   platform: ClientPlatform
   createPort: typeof gamePort
   createUpdates?: typeof createGameUpdatesPort
@@ -48,10 +46,9 @@ export type RuntimeDependencies = {
   fetchBootstrap: () => Promise<Bootstrap>
 }
 export function browserDependencies(): RuntimeDependencies {
+  clearLegacyOrderStorage(() => sessionStorage)
+  clearLegacyOrderStorage(() => localStorage)
   return {
-    get storage() {
-      return sessionStorage
-    },
     platform: {
       scheduleOnce: (callback, delay) => {
         const timer = setTimeout(callback, delay)
@@ -101,12 +98,9 @@ export async function prepareRuntime(
   }
   let model: Coordinator | undefined
   try {
-    const restore = prepareSession(deps.storage, result.session)
     model = new Coordinator(
       deps.createPort(result.session.csrf, snapshot.candidate),
-      attemptStorage(deps.storage),
       deps.platform,
-      restore,
       deps.createUpdates?.(),
     )
     await model.initialize(result.session, snapshot)
@@ -116,7 +110,7 @@ export async function prepareRuntime(
     model?.invalidate()
     return {
       ...base,
-      game: { status: 'unavailable', code: 'StorageUnavailable' },
+      game: { status: 'unavailable', code: 'Unavailable' },
     }
   }
 }
