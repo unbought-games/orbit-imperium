@@ -21,9 +21,10 @@ import type { Page } from '@playwright/test'
 import { automaticTitlesFixture } from '../src/test-support/automatic-titles'
 test.use({ hasTouch: true })
 type S = components['schemas']
-async function rewardsFixture(page: Page) {
+async function rewardsFixture(page: Page, accountUrl?: string) {
   await shellFixture(page, {
     protocol: 4,
+    accountUrl,
     missions: {
       fleets: [],
       incoming: [],
@@ -192,11 +193,12 @@ for (const width of [1440, 390]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
-    await rewardsFixture(page)
+    await rewardsFixture(page, 'https://accounts.example/account')
     await withFixtureResponse(
       page,
       (r) => new URL(r.url()).pathname === '/api/v1/rewards',
-      () => page.goto('/u/andromeda/menu'),
+      () =>
+        page.goto('/u/andromeda/b/00000000-0000-4000-8000-000000000005/menu'),
     )
     let rewards
     if (width >= 1024) {
@@ -217,6 +219,11 @@ for (const width of [1440, 390]) {
     } else {
       const menu = page.getByRole('navigation', { name: 'Menu destinations' })
       const account = menu.getByRole('region', { name: 'Account', exact: true })
+      await expect(account.getByRole('link')).toHaveText([
+        'Rewards',
+        'Settings',
+        'Unbought Games account',
+      ])
       await expect(menu.getByRole('region').last()).toHaveAttribute(
         'aria-label',
         'Account',
@@ -234,6 +241,10 @@ for (const width of [1440, 390]) {
       'href',
       '/u/andromeda/b/00000000-0000-4000-8000-000000000005/rewards',
     )
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
+      await expect(page.getByTestId('orb-caption')).toHaveCount(0, {
+        timeout: 10000,
+      })
     await diagnosticScreenshot(page, {
       path: `test-results/rewards-account-menu-${width}x900.png`,
     })

@@ -376,7 +376,13 @@ export function Navigation({
                   {accountUrl && (
                     <AccountMenu.LinkItem
                       closeOnClick
-                      render={<a href={accountUrl} />}
+                      render={
+                        <a
+                          href={accountUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        />
+                      }
                       className={styles.accountMenuItem}
                     >
                       <img
