@@ -15,8 +15,8 @@ import type { components } from '../src/contracts'
 type S = components['schemas']
 
 
-for (const width of [390]) {
-  test(`research directive opens its host planet and technology from the whole card at ${width}px`, { tag: '@journey' }, async ({ page }) => {
+for (const width of [1440, 390]) {
+  test(`research directive opens its host planet and technology from the whole card at ${width}px`, { tag: width === 390 ? '@journey' : [] }, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const now = Date.parse('2026-10-24T12:00:00Z')
     await page.clock.install({ time: now })
@@ -338,7 +338,7 @@ test('desktop and phone command views keep all information readable without hori
   await expect(page.getByRole('article')).toHaveCount(5)
 })
 
-for (const longContent of [true]) {
+for (const longContent of [false, true]) {
   test(`fleet movements stay visible and fit the page with ${longContent ? 'long names and manifests' : 'a single outbound flight'}`, async ({
     page,
   }) => {

@@ -15,8 +15,8 @@ from main `816b01c197fcb53d768141d9c3db3445f9fbc4fc`, in chat
   application rows, including prior phase-one migrations and retirements.
 - [Delta ledger](test-migration-empire-settings/delta.csv): current-main changes
   and new test identities, including predecessor links where applicable.
-- [Final browser cases](test-migration-empire-settings/final-cases.csv): 20
-  required application cases and 43 required isolated cases, all executed.
+- [Final browser cases](test-migration-empire-settings/final-cases.csv): 22
+  required application cases and 41 required isolated cases, all executed.
   Counts are accounting, not a coverage target. Main had 54 owned application
   cases and 13 owned components immediately before this assignment.
 
@@ -41,7 +41,7 @@ selectors, store subscriptions and controls. Only the external game port is
 controlled; there is no application bootstrap or API client. Native links update
 the memory route; this proves activation/href, not destination rendering.
 Application journeys retain actual selected-body paths, research detail/history,
-fleet overview/list/detail composition and external profile delivery. Two
+fleet overview/list/detail composition and external profile delivery. Four
 full-shell layout cases remain in the application suite after failed component
 migrations (below). Static history presentation tests cover all event types,
 recorded commander precedence and unknown facts; public route/no-bootstrap and
@@ -174,7 +174,7 @@ visual design.
 
 ## Ownership handoff
 
-- **05:** shell.spec.ts is unchanged. This stream retains two actual-shell Empire
+- **05:** shell.spec.ts is unchanged. This stream retains four actual-shell Empire
   composition tests after rejected component migrations; do not silently remove
   them during shell work. Planet selection stays in canonical paths.
 - **06:** existing tutorial-settings component file remains under 04 for this
@@ -236,3 +236,46 @@ The merge gate remains required. No deployment, protection change, global test
 selection cutover, paid-content distribution or persistent-order behavior is part
 of this PR. Cross-owner notes above describe completed boundaries and retained
 coverage; there is no pending shared-source implementation requiring another owner.
+
+## PR #446 — first CI attempt and layout disposition
+
+[PR #446](https://github.com/unbought-games/orbit-imperium/pull/446), head
+`35d0cb249c0d6e4452ec5a9fcb3603db4d9a62c8`, first
+[CI run 43969454161](https://github.com/unbought-games/orbit-imperium/actions/runs/43969454161)
+passed native checks, all application shards and automated review. PostgreSQL
+was correctly unselected by changed-path scope; the four relevant binaries were
+executed locally. Components job `133657604346` failed two newly migrated cases
+(438 passed, two failed, 4.5-minute runner):
+
+- `fleet movements stay visible and fit the page with a single outbound flight`
+  failed document overflow after changing to 768px.
+- `research directive keeps whole-card pointer and keyboard links and becomes
+  compact when idle` failed document overflow after changing to 1024px.
+
+Both failures are in the new scene's full-page geometry checks, outside the
+particular control being exercised. The scene's earlier work-area class repair
+was already present. Its local passing reruns do not establish a reliable fix.
+Inspected screenshots, error contexts and traces from artifact `14276844329`,
+retained under `/tmp/stream04-evidence/ci-43969454161`. No external outage or
+production defect is established. Under the exhausted shared-scene repair policy,
+removed these component replacements and restored their original application
+variants (single-flight and desktop research); no assertions were weakened.
+
+The caller audit covers every `EmpireScenario` consumer. All intermediate-width
+whole-page composition checks now remain in the real shell. Remaining isolated
+checks cover owned control regions at explicit small/large widths, native
+inventory disclosure, source-specific facts and focused lifecycle behavior.
+There is no new shared harness change or unassigned repair. The four removed
+migration replacements must not be reintroduced under new names. Actual-shell
+counterparts remain required, so this causes no new browser-coverage gap.
+
+Final accounting after CI disposition: **22 application, 41 isolated cases**.
+Focused application validation passed all 22 in 22.1s; component validation and
+exact revision are recorded in the final case ledger and subsequent PR checks.
+The failed first CI attempt remains part of the outcome history. Queue enrollment
+had not occurred, so queue removals remain zero at this point.
+
+The CI-disposition validation passed: application preparation 6.024s, 22 cases
+in 22.1s; component preparation 4.710s, 41 cases in 19.3s. Focused ESLint and
+whitespace checks passed. No production source changed in this repair, so prior
+native, database, production-build and visual evidence remains applicable.
