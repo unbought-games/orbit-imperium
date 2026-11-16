@@ -713,3 +713,132 @@ for (const width of [1440, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
+
+// Browser contract: the overview entry preserves body context, lands at the
+// editor, and reflects a newly equipped design when returning to the overview.
+for (const width of [1440, 390]) {
+  test(`overview emblem links to the editor and reflects equipment at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const { appearance } = await fixture(page)
+    // The identity form arrives after the library and grows above the anchor.
+    let releaseIdentity!: () => void
+    const identityReady = new Promise<void>((resolve) => {
+      releaseIdentity = resolve
+    })
+    await page.route('**/api/v4/empire-profiles/**', async (route) => {
+      await identityReady
+      await route.fallback()
+    })
+    await playerProfilesFixture(page, () => [
+      {
+        player: binding.player,
+        username: 'Aurelia',
+        identity: { name: 'Roman Empire', tagline: '', title_id: 'commander' },
+        insignia: appearance() ?? undefined,
+      },
+    ])
+    await withFixtureResponse(
+      page,
+      (r) => r.url().endsWith('/player-profiles'),
+      () => page.goto(`/u/andromeda/b/${body.id}/overview`),
+    )
+    const overview = page.getByRole('region', {
+      name: 'Empire overview',
+      exact: true,
+    })
+    const create = overview.getByRole('link', {
+      name: 'Create your empire emblem',
+      exact: true,
+    })
+    const destination = `/u/andromeda/b/${body.id}/settings/identity#empire-insignia`
+    await expect(create).toHaveAttribute('href', destination)
+    await expect(create).toHaveText('')
+    await expect(
+      overview.getByRole('button', { name: 'Rename empire', exact: true }),
+    ).toHaveAttribute('aria-expanded', 'false')
+    const bounds = await create.boundingBox()
+    expect(bounds!.width).toBeGreaterThanOrEqual(44)
+    expect(bounds!.height).toBeGreaterThanOrEqual(44)
+    await diagnosticScreenshot(page, {
+      path: `test-results/empire-emblem-empty-${width}x1000.png`,
+    })
+    await withFixtureResponse(
+      page,
+      (r) =>
+        r.url().includes('/empire-profiles/') && r.request().method() === 'GET',
+      async () => {
+        await withFixtureResponse(
+          page,
+          (r) => r.url().endsWith('/insignias'),
+          () => create.click(),
+        )
+        releaseIdentity()
+      },
+    )
+    await expect(page).toHaveURL(new RegExp(`${destination}$`))
+    const editor = page.getByRole('region', {
+      name: 'Empire insignia',
+      exact: true,
+    })
+    const editorHeading = editor.getByRole('heading', {
+      name: 'Empire insignia',
+      exact: true,
+    })
+    await expect(editor).toBeFocused()
+    await expect(editorHeading).toBeInViewport()
+    await expect(
+      editor.getByRole('button', { name: 'New design', exact: true }),
+    ).toBeInViewport({ ratio: 1 })
+    await diagnosticScreenshot(page, {
+      path: `test-results/empire-emblem-destination-${width}x1000.png`,
+    })
+    await editor
+      .getByRole('button', { name: 'New design', exact: true })
+      .click()
+    await editor
+      .getByLabel('Design name', { exact: true })
+      .fill('Roman standard')
+    await editor.getByRole('button', { name: 'Starwing', exact: true }).click()
+    await withFixtureResponse(
+      page,
+      (r) => r.url().endsWith('/player-profiles'),
+      () => editor.getByRole('button', { name: 'Save & equip' }).click(),
+    )
+    await expect(editor.getByRole('status')).toHaveText(
+      'Design saved and equipped.',
+    )
+    // History returns to the original body-specific overview without a new page load.
+    await page.goBack()
+    const edit = overview.getByRole('link', {
+      name: 'Edit your empire emblem',
+      exact: true,
+    })
+    await expect(edit).toBeVisible()
+    await expect(edit).toHaveAttribute('href', destination)
+    await expect(create).toHaveCount(0)
+    await expect(edit.locator('[data-shape]')).toHaveAttribute(
+      'data-shape',
+      'shield',
+    )
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await diagnosticScreenshot(page, {
+      path: `test-results/empire-emblem-equipped-${width}x1000.png`,
+    })
+    await withFixtureResponse(
+      page,
+      (r) => r.url().endsWith('/insignias'),
+      () => edit.click(),
+    )
+    await expect(editorHeading).toBeInViewport()
+    await expect(editor.getByLabel('Design name', { exact: true })).toHaveValue(
+      'Roman standard',
+    )
+  })
+}

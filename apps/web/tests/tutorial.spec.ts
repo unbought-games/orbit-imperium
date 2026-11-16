@@ -65,19 +65,18 @@ for (const width of [1440, 390]) {
     await expect(icon).toHaveAttribute('data-attention', 'true')
     await expect(icon).toHaveAttribute('href', briefing)
     const heading = page.getByRole('heading', { name: 'Empire', exact: true })
-    const spacing = await heading.evaluate((el) => {
-      const header = el.parentElement!
-      return {
-        gap:
-          header.nextElementSibling!.getBoundingClientRect().top -
-          el.getBoundingClientRect().bottom,
-        extraHeight:
-          header.getBoundingClientRect().height -
-          el.getBoundingClientRect().height,
-      }
-    })
-    expect(spacing.gap).toBe(8)
-    expect(spacing.extraHeight).toBe(8)
+    const headingBox = await heading.boundingBox()
+    const totalsBox = await page
+      .getByLabel('Empire resource totals', { exact: true })
+      .boundingBox()
+    const iconBox = await icon.boundingBox()
+    // The name now shares the header with an emblem and rename control. Keep
+    // its compact gap to the ledger and keep briefing independent of the name.
+    const gap = totalsBox!.y - (headingBox!.y + headingBox!.height)
+    expect(gap).toBeGreaterThanOrEqual(0)
+    expect(gap).toBeLessThanOrEqual(16)
+    expect(iconBox!.x).toBeGreaterThanOrEqual(headingBox!.x + headingBox!.width)
+    expect(iconBox!.y + iconBox!.height).toBeLessThanOrEqual(totalsBox!.y)
     expect(
       await icon.evaluate(
         (el) => getComputedStyle(el, '::before').animationName,

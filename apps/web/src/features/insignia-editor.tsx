@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef } from 'react'
+import { useRouterState } from '@tanstack/react-router'
 import { Select } from '../ui/form'
 import { CosmeticColor, CosmeticTreatments } from './rewards/cosmetic-controls'
 import { InsigniaComposer } from './insignia-composer'
@@ -15,16 +17,31 @@ import styles from './insignia.module.css'
 
 export function InsigniaEditor({
   appearance = 'panel',
+  anchorReady = true,
 }: {
   appearance?: 'panel' | 'plain'
+  anchorReady?: boolean
 }) {
   const editor = useInsigniaEditor()
   const { snapshot, design } = editor
+  const section = useRef<HTMLElement>(null)
+  const hash = useRouterState({ select: (state) => state.location.hash })
+  const ready = anchorReady && !!snapshot
+  useLayoutEffect(() => {
+    if (hash !== 'empire-insignia' || !ready) return
+    // Both identity and library content must have settled before targeting this
+    // section; otherwise the identity form can push it below the viewport.
+    section.current?.focus({ preventScroll: true })
+    section.current?.scrollIntoView({ block: 'start' })
+  }, [hash, ready])
   const symbol = snapshot?.catalog.find((s) => s.id === design?.recipe.symbol)
   const previewSymbol =
     symbol ?? snapshot?.catalog.find((s) => s.id === defaultInsignia.symbol)
   return (
     <Section
+      ref={section}
+      id="empire-insignia"
+      tabIndex={-1}
       aria-label="Empire insignia"
       className={`${styles.panel} ${appearance === 'plain' ? styles.plain : ''}`}
     >

@@ -11,7 +11,7 @@ export function EmpireInsignia({
   label,
 }: {
   appearance: InsigniaAppearance
-  size?: 'inline' | 'small' | 'medium' | 'large'
+  size?: 'inline' | 'small' | 'compact' | 'medium' | 'large'
   label?: string
 }) {
   const rendering = appearance.rendering
