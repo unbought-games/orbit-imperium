@@ -1,6 +1,6 @@
 # 03 — Dispatch, Galaxy, fleets and mission controls
 
-Status: **delegated** to chat `01a1d61e-5bb1-79f3-8182-afcea36275c9` for the full stream through confirmed merge; read the [November 13 assignment and failure handoff](../STATUS.md#2026-11-13-rebase-and-stream-03-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **merged in PR #417** (`7d57e053`); implementation by chat `01a1d61e-5bb1-79f3-8182-afcea36275c9` for the full stream through confirmed merge; read the [November 13 assignment and failure handoff](../STATUS.md#2026-11-13-rebase-and-stream-03-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 

@@ -1,6 +1,6 @@
 # 04 — Empire, lifecycle and settings
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1e652-17b2-7ae2-b2b5-92de627738e4` for the whole stream through confirmed merge; see the [November 16 assignment](../STATUS.md#2026-11-16-rebase-and-stream-04-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -78,3 +78,11 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 04 in `docs/verification/e2e-migration/workstreams/04-empire-and-settings.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Current-main delta for this assignment
+
+Read the actual changes in #444 (personalized Empire overview), #439 (Base UI
+overlays) and #445 (in-memory order retries). The frozen snapshot predates them.
+Preserve current user behavior; do not reinstate removed persistent order retries
+or their old storage assertions merely because historical guidance mentions them.
+Record relevant added/changed/obsolete cases in the stream's delta ledger.

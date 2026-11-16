@@ -8,8 +8,8 @@ replacement-equivalence validation and final CI cutover remain open.
 | --- | --- | --- | --- | --- |
 | 01 Resources/quotes | Merged | PR #387 | Follow-up evidence in test-migration-resources.md; no new assignment | `d8b750211ef90a896e6b833ea28aa20c385ce20b` |
 | 02 Catalog/progression | Merged | PR #406 | Owned migration complete; post-merge failures assigned to 03/06 below | `7b2fa0612740ca40ad579a02e460a912f0e9da03` |
-| 03 Dispatch/fleets | Delegated | — | Whole stream through merge; inspect recorded moon-fleet failure | Chat `01a1d61e-5bb1-79f3-8182-afcea36275c9` |
-| 04 Empire/settings | Not started | — | Present/carried wealth and inventory | — |
+| 03 Dispatch/fleets | Merged | PR #417 | Complete handoff in test-migration-dispatch-fleets.md | `7d57e0532827fffe2bde0da65f03e8045b460dda` |
+| 04 Empire/settings | Delegated | — | Whole stream through merge; reconcile current Empire and retry behavior | Chat `01a1e652-17b2-7ae2-b2b5-92de627738e4` |
 | 05 Shell/navigation | Not started | — | Density/selection layout | — |
 | 06 Startup/HUD/tutorial | Not started | — | Buffered pagination/refresh | — |
 | 07 Social/identity | Not started | — | Directory filters/compact controls | — |
@@ -106,3 +106,24 @@ The stream-02 handoff also explicitly retains Cruiser attack and Large Cargo
 transport launch journeys for stream 03. Those exact launch cases are a narrow
 cross-file handoff; their catalog/comparison/manufacturing assertions remain
 owned by stream 02. Frozen CSVs stay unchanged; record the delta during 03.
+
+## 2026-11-16: rebase and stream 04 assignment
+
+Fetched main `816b01c197fcb53d768141d9c3db3445f9fbc4fc` and rebased the audit
+branch cleanly. Confirmed stream 03 merged in PR #417 at
+`7d57e0532827fffe2bde0da65f03e8045b460dda`. Its source handoff and case ledgers
+are on main; the originating chat reports PR, queue and main CI passed. The
+Arrival repair and retired desktop moon journey gap remain in that record.
+
+Assigned the whole Empire, lifecycle and settings stream to chat
+`01a1e652-17b2-7ae2-b2b5-92de627738e4` (Complete Empire lifecycle and settings
+test migration), explicitly authorized to use /pr and /finish-pr through
+confirmed merge. No implementation/validation success is claimed by this
+assignment. Other unassigned workstreams remain unstarted.
+
+The child must reconcile #444 Empire personalization, #439 Base UI overlays and
+#445 in-memory order retries against the frozen audit. Historical references to
+persisted/restored retry state are not permission to restore intentionally removed
+behavior. Keep the frozen inventories unchanged and record current-main deltas,
+including justified obsolete assertions, in the stream-04 handoff. Preserve
+canonical selected-body paths and the retired desktop vacation scenario's history.
