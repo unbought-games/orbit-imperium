@@ -207,7 +207,7 @@ Bugbot passed. Investigation included the exact current-main integration
 snapshot (temporary merge, then aborted), macOS API-level browser diagnostics,
 and a disposable Linux/arm64 Playwright 1.56.1 Noble container. The isolated
 Linux case passed; its initial diagnostic used the image's Node 22. The full
-features-2 shard reproduction used pinned Node 24.18.0/npm 11.16.0, three workers
+features-2 shard reproduction used pinned Node 24.18.0, three workers
 and the same integration snapshot. The explosion journey passed there too.
 An initial two-worker setup was stopped to match CI's worker count. No CI policy
 or deadline was changed. GitHub's running-job log endpoint returned 404, and the
@@ -240,3 +240,37 @@ full report, the precise explanatory paragraphs, and the Tab path through
 preceding player dossiers are no longer in routine CI. Their current behavior
 was manually exercised by the traced Mac/Linux runs; static rendering does not
 claim to replace those interactions. The coverage map records this disposition.
+
+## Queue scroll-boundary repair
+
+The first queue attempt used integration SHA
+`e79173220cfb752159075f1fd1300fa3ed591f37`, run `43793514964`, job
+`133057138222`. Features 2/6 finished with 110 passed and one failure in
+`HUD touch scroll ownership / report and long message capture gestures;
+backdrop and boundaries cannot move the game`: after a touch swipe followed by
+an immediate programmatic scroll-to-bottom, the panel remained 63px above its
+new endpoint. The original screenshot and context show a scrolled report, not
+an unavailable page or failed HTTP response.
+
+History traces the case to #199; no prior repair for this completion-boundary
+assumption was found in its history, HUD migration record, or repair audit.
+The test awaited positive scroll movement, which does not establish the end of
+wheel delivery or compositor touch scrolling. Its first repair registers native
+`scrollend` completion before positive gestures and programmatic scroll changes,
+then retains every existing scroll-lock, movement, endpoint, dismissal and
+resize assertion. No sleeps, retries, force clicks, or increased deadlines.
+The same sequence is used for both report and message scrolling. Audited other
+scroll-position writes in this file: none follows an unsettled touch fling;
+the other CDP touch case verifies press/cancel styling without a scroll gesture.
+
+The original case passes locally after repair (4.873s bundle preparation,
+4.3s test / 5.2s runner). Its DOM completion marker is test-only, removed by the
+one-shot scroll event; contexts and listeners are released by fixture cleanup.
+This is a test-only correction; overlay source and screenshots are unchanged.
+
+The focused scroll repair also passed in the disposable Linux/arm64 Chromium
+container with Node 24.18.0 (7.624s preparation, 4.6s test / 5.5s runner). The
+container and preview cleaned up normally. The earlier full Linux diagnostic
+completed with 103 passed and 8 HUD/navigation setup failures; those same eight
+cases passed in the d302847a GitHub run on identical production code. That
+supplemental diagnostic was not treated as clean full validation.
