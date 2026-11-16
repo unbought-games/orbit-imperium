@@ -11,6 +11,7 @@ import {
 import { Button } from './button'
 import { AnchoredPopover } from './anchored-popover'
 import { classes } from './classes'
+import { usePopupFocusReturn } from './use-popup-focus-return'
 import styles from './popover.module.css'
 
 type Side = 'top' | 'bottom' | 'left' | 'right'
@@ -60,6 +61,7 @@ export function Popover({
   )
   const popup = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const popupRef = usePopupFocusReturn(open, popup, anchor)
   const suppressRestoredFocus = useRef(false)
   const changeOpen = (next: boolean) => {
     suppressRestoredFocus.current = !next
@@ -124,33 +126,35 @@ export function Popover({
           {triggerDescription}
         </span>
       )}
-      <AnchoredPopover.Content
-        ref={popup}
-        id={popupId}
-        initialFocus={false}
-        aria-label={label}
-        role={link ? 'tooltip' : 'dialog'}
-        portalProps={{
-          container: anchor.current?.closest('dialog') ?? undefined,
-        }}
-        positionerProps={{ side, align }}
-        className={classes(styles.popover, surfaceClassName)}
-        onClick={(event) => {
-          if (
-            event.button === 0 &&
-            !event.metaKey &&
-            !event.ctrlKey &&
-            !event.shiftKey &&
-            !event.altKey &&
-            event.target instanceof Element &&
-            event.target.closest('a[href]')
-          )
-            changeOpen(false)
-        }}
-      >
-        {showTitle && <strong className={styles.title}>{label}</strong>}
-        {children}
-      </AnchoredPopover.Content>
+      {open && (
+        <AnchoredPopover.Content
+          ref={popupRef}
+          id={popupId}
+          initialFocus={false}
+          aria-label={label}
+          role={link ? 'tooltip' : 'dialog'}
+          portalProps={{
+            container: anchor.current?.closest('dialog') ?? undefined,
+          }}
+          positionerProps={{ side, align }}
+          className={classes(styles.popover, surfaceClassName)}
+          onClick={(event) => {
+            if (
+              event.button === 0 &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey &&
+              event.target instanceof Element &&
+              event.target.closest('a[href]')
+            )
+              changeOpen(false)
+          }}
+        >
+          {showTitle && <strong className={styles.title}>{label}</strong>}
+          {children}
+        </AnchoredPopover.Content>
+      )}
     </AnchoredPopover.Root>
   )
 }

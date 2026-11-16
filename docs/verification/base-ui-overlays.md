@@ -107,3 +107,34 @@ attached to a PR. Browser tests closed their contexts, preview servers and
 scratch bundles. The task-owned development preview was stopped after capture.
 No database or backend processes were started. No test execution timeout,
 assertion relaxation, retry setting or CI selection changed.
+
+## PR follow-through: immediate details dismissal
+
+CI run `43786501841`, attempt 1, head
+`8dd3a6dac8c83072c94866cf7213b432b6c949c0` exposed the same production
+regression in two jobs:
+
+- Job `133035324207` (features 6/6): 107 passed, three production-queue cases
+  failed at 320/390/1440px after Escape.
+- Job `133035324198` (components): 404 passed, three Galaxy traffic cases failed
+  at 320/390/1280px during dismissal/hover re-entry.
+
+Base UI retained a closed details popup until its next animation frame, although
+this surface has no exit animation. The existing controlled-clock cases exposed
+that changed lifecycle. `Popover` now unmounts its content immediately when
+closed and composes the existing shared focus-return hook. No tests were removed,
+relaxed, or retried unchanged. A new isolated paused-clock case verifies immediate
+Escape dismissal, restored focus, and keyboard reopening.
+
+Local repair verification:
+
+- Popover, profile-display, and galaxy-fleet component suites: 18 passed;
+  preparation 4.567s, execution 9.5s.
+- Original shell production-queue cases: 3 passed; preparation 4.795s,
+  execution 18.9s. Captures cover Overview, Shipyard and Defense.
+- Original Galaxy traffic component cases: 3 passed; preparation 5.629s,
+  execution 5.1s. Captures cover flight details at mobile and desktop sizes.
+
+Refreshed and inspected the affected details captures. The application and
+component typechecks, focused ESLint/Prettier checks, and diff whitespace checks
+also pass for the repair. Test-runner previews and contexts were cleaned up.

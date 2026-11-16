@@ -154,3 +154,24 @@ test('unsolicited guidance allows outside clicks and focus without dismissing or
   await expect(bubble).toHaveCount(0)
   await expect(trigger).toBeFocused()
 })
+
+test('nonanimated details dismiss immediately without waiting for a clock frame', async ({
+  page,
+  mount,
+}) => {
+  await page.clock.pauseAt(new Date('2040-01-01T00:00:00Z'))
+  await mount('popover-details')
+  await page.getByRole('button', { name: 'Open resource review' }).click()
+  const trigger = page.getByRole('button', { name: 'Metal details' })
+  const details = page.getByRole('dialog', { name: 'Metal', exact: true })
+  await trigger.click()
+  await expect(details).toBeVisible()
+  await details.getByRole('link', { name: 'Open ledger' }).focus()
+  await page.keyboard.press('Escape')
+  await expect(details).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await trigger.press('Enter')
+  await expect(details).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(details).toHaveCount(0)
+})
