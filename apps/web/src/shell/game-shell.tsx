@@ -164,6 +164,12 @@ function GameShellContent() {
     previousPathname.current = location.pathname
     previousGalaxySite.current = location.search.site
     if (browsingGalaxy) return
+    // Fragment links own their scroll destination; do not pull an editor link
+    // back to the page heading after the router has scrolled to its section.
+    if (location.hash) {
+      document.getElementById(location.hash)?.focus({ preventScroll: true })
+      return
+    }
     heading.current?.focus({ preventScroll: !!returningToReports })
     if (returningToReports) return
     const frame = requestAnimationFrame(() => {

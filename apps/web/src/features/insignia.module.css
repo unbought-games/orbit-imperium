@@ -27,6 +27,10 @@
   width: 26px;
   height: 28px;
 }
+.compact {
+  width: 36px;
+  height: 40px;
+}
 .medium {
   width: 52px;
   height: 58px;
@@ -37,6 +41,7 @@
   box-shadow: 0 18px 50px #0005;
 }
 .panel {
+  scroll-margin-block-start: calc(var(--shell-header-height, 0px) + 1rem);
   margin-block: 1.5rem 2rem;
   border: 1px solid #cbb68d40;
   border-radius: 16px;

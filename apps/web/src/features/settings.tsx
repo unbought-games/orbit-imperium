@@ -3,7 +3,6 @@ import { SettingsBackLink } from '../shell/settings-back-link'
 import { GalaxyProbeSettings } from './galaxy-probe-settings'
 import { VacationSettings } from './vacation'
 import { EmpireDeletion } from './empire-deletion'
-import { InsigniaEditor } from './insignia-editor'
 import { useGameScreen } from '../shell/screen-context'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
@@ -28,7 +27,6 @@ export function SettingsScreen() {
       <SettingsBackLink />
       <SettingsPane section="identity" selected={selected}>
         <SettingsIdentity />
-        <InsigniaEditor appearance="plain" />
       </SettingsPane>
       <SettingsPane section="game" selected={selected}>
         <Text>Fine-tune how you play in this universe.</Text>

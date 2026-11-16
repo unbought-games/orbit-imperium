@@ -3,6 +3,7 @@ import type { EmpireProfile } from '../adapters/empire-history'
 import { useArchive } from '../client-model/use-empire-history'
 import { useGameScreen } from '../shell/screen-context'
 import { IdentityEditor } from './empire-history/identity-editor'
+import { InsigniaEditor } from './insignia-editor'
 import { Button } from '../ui/button'
 import { LoadingRegion } from '../ui/loading-region'
 import { Text } from '../ui/typography'
@@ -68,6 +69,7 @@ export function SettingsIdentity() {
           ))}
       </LoadingRegion>
       {saved && <Text role="status">Empire identity saved.</Text>}
+      <InsigniaEditor appearance="plain" anchorReady={!!profile || !loading} />
     </>
   )
 }

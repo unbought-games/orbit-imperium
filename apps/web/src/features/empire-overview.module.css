@@ -14,6 +14,13 @@
   gap: 24px;
   margin-bottom: 28px;
 }
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
 .eyebrow,
 .kicker {
   font:
@@ -1155,7 +1162,7 @@
   margin-bottom: 8px;
 }
 .heading h2 {
-  font-size: 1.5rem;
+  font-size: 2rem;
 }
 @media (max-width: 767px) {
   .heading {
