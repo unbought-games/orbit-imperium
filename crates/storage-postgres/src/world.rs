@@ -1025,6 +1025,23 @@ impl PgStore {
         pair: ForegroundAction,
         machine: bool,
     ) -> Result<BoundReceipt, StoreError> {
+        let mut timing = AdmissionTimer::new(
+            self.observer.clone(),
+            RequestAction::of_v3(&pair.gameplay.command),
+            machine,
+        );
+        let result = self.admit_pair_observed(pair, machine, &mut timing).await;
+        if let Err(error) = &result {
+            timing.error(error);
+        }
+        result
+    }
+    async fn admit_pair_observed(
+        &self,
+        pair: ForegroundAction,
+        machine: bool,
+        timing: &mut AdmissionTimer,
+    ) -> Result<BoundReceipt, StoreError> {
         let (mut p, mut g) = pair.validate().map_err(|_| StoreError::Conflict)?;
         let b = pair.gameplay.binding;
         let (mut tx, scoped) = self.begin_admission(b.universe).await?;
@@ -1041,6 +1058,7 @@ impl PgStore {
         crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         let pair_hash = hash(&pair);
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
+            timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
         if matches!(
@@ -1138,6 +1156,7 @@ impl PgStore {
             )
         };
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
+            timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
         let recent: i64 = sqlx::query_scalar(
@@ -1218,7 +1237,10 @@ impl PgStore {
         }
         #[cfg(feature = "test-support")]
         self.test_fault("before_pair_admission").await?;
+        let commit_timing = self.timer(RuntimeStage::AdmissionCommit);
         tx.commit().await.map_err(db_error)?;
+        drop(commit_timing);
+        timing.finish(AdmissionOutcome::Committed);
         #[cfg(feature = "test-support")]
         self.test_fault("after_pair_admission").await?;
         let mut result = BoundReceipt::new(

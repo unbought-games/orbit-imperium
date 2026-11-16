@@ -58,6 +58,7 @@ pub(super) async fn commands<S: GameStore + IdentityStore>(
     Path(id): Path<uuid::Uuid>,
     ApiJson(e): ApiJson<ForegroundAction>,
 ) -> Result<Response, Problem> {
+    super::request_observation::action(RequestAction::of_v3(&e.gameplay.command));
     let session = authenticate(&s, &h, true).await?;
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
@@ -210,6 +211,7 @@ pub(super) async fn presence<S: GameStore + IdentityStore>(
     Path(id): Path<uuid::Uuid>,
     ApiJson(e): ApiJson<CommandEnvelopeV4>,
 ) -> Result<Response, Problem> {
+    super::request_observation::action(RequestAction::Presence);
     let session = authenticate(&s, &h, true).await?;
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;

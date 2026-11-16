@@ -1,5 +1,7 @@
 mod cosmetic_catalog;
+mod request_observation;
 pub use cosmetic_catalog::*;
+pub use request_observation::*;
 mod community_rewards;
 mod game_invitation;
 pub use community_rewards::*;

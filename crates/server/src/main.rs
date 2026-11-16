@@ -9,6 +9,7 @@ mod engine_executor;
 mod lab_support;
 mod metrics;
 mod public_universe;
+mod request_metrics;
 mod restart;
 mod rules_cli;
 mod runtime;
