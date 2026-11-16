@@ -1,4 +1,8 @@
-# Request and action latency diagnostics
+---
+id: request-latency-metrics
+title: Request and action latency diagnostics
+date: '2026-11-15T21:32:00-05:00'
+---
 
 Server operators can inspect API response times by route, action and outcome,
 including ship orders, building upgrades and fleet dispatches. Private diagnostics

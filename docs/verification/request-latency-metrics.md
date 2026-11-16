@@ -63,3 +63,12 @@ was not mutated. The private exporter and diagnostic buffer are implemented;
 hosted collection/dashboard activation, durable retention and client timing remain
 pending. No performance SLO compliance or production overhead claim follows from
 these functional tests.
+
+## PR validation correction
+
+PR #441 run `43792888635`, attempt 1, journey job `133055169011` failed during
+`make test-homepage-built`, before browser execution. `npm run news:build` rejected
+the new change note with `News needs YAML frontmatter`. This was a build-input
+defect in this PR, not a browser-test failure or infrastructure outage. Added the
+required id/title/date metadata and verified news generation locally. Existing
+tests and assertions remain unchanged.
