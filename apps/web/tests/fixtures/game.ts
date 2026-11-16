@@ -101,6 +101,7 @@ export async function installGameFixture(
     catalog?: components['schemas']['CatalogEntry3'][]
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
+    accountUrl?: string
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
     unreadReportCount?: () => number
@@ -173,6 +174,7 @@ export async function installGameFixture(
       return route.fulfill({
         json: {
           mode: 'local',
+          account_url: options.accountUrl,
           universes: [
             {
               universe: binding.universe,
@@ -394,7 +396,7 @@ export async function installGameFixture(
         },
       })
     if (url.pathname === '/api/v1/rewards')
-      return route.fulfill({ json: {enabled:false} })
+      return route.fulfill({ json: { enabled: false } })
     if (url.pathname === '/api/v1/session')
       return route.fulfill({ json: session })
     if (url.pathname.endsWith('/settings'))

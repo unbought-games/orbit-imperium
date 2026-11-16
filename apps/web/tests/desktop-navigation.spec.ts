@@ -215,6 +215,7 @@ for (const width of [390, 320]) {
     await page.emulateMedia({reducedMotion:'reduce'})
     await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => shellFixture(page, {
       protocol:4,
+      accountUrl: width === 390 ? 'https://accounts.example/account' : undefined,
       missions:{fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'},
     }))
     const tab = page.getByRole('link', {name:'Menu',exact:true})
@@ -226,7 +227,21 @@ for (const width of [390, 320]) {
     await expect(menu).toBeVisible()
     await expect(tab).toHaveAttribute('aria-current','page')
     await expect(page.getByRole('dialog', {name:'Navigation'})).toHaveCount(0)
-    await expect(menu.getByRole('link')).toHaveText(['Messages','Alliance','High Scores','Reports','Combat Simulator','Settings'])
+    await expect(menu.getByRole('link')).toHaveText(['Messages','Alliance','High Scores','Reports','Combat Simulator','Settings', ...(width === 390 ? ['Unbought Games account'] : [])])
+    // Native external navigation must preserve the game tab on mobile.
+    if (width === 390) {
+      const account = menu.getByRole('region', {name:'Account'}).getByRole('link', {name:'Unbought Games account'})
+      await page.context().route('https://accounts.example/account', route => route.fulfill({contentType:'text/html',body:'<h1>Account destination</h1>'}))
+      const originalUrl = page.url()
+      const popupOpened = page.waitForEvent('popup')
+      await account.click()
+      const popup = await popupOpened
+      await expect(popup).toHaveURL('https://accounts.example/account')
+      await expect(popup.getByRole('heading', {name:'Account destination'})).toBeVisible()
+      await expect(page).toHaveURL(originalUrl)
+      expect(await popup.evaluate(() => window.opener)).toBeNull()
+      await popup.close()
+    }
     const main = page.getByRole('main')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     for (const row of await menu.getByRole('link').all())

@@ -46,6 +46,10 @@ export function GameShell() {
 
 function GameShellContent() {
   const { state: accountConfig } = useOidcConfig()
+  const accountUrl =
+    accountConfig.status === 'ready'
+      ? accountConfig.config.account_url
+      : undefined
   const { commands, view, model, logout, universeName } = useGameSession()
   const unreadReports = useStore(model.store, hasUnreadReports)
   const navigate = useNavigate()
@@ -240,11 +244,7 @@ function GameShellContent() {
       : pageTitles[page]
   return (
     <GameShellFrame
-      accountUrl={
-        accountConfig.status === 'ready'
-          ? accountConfig.config.account_url
-          : undefined
-      }
+      accountUrl={accountUrl}
       sidebar={
         page === 'settings' || page === 'rewards' ? (
           <SettingsNavigation
@@ -354,6 +354,7 @@ function GameShellContent() {
               route,
               body,
               prepareDispatch,
+              accountUrl,
             }}
           >
             {page === 'fleets' && view.protocol !== 4 && (

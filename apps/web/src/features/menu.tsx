@@ -6,7 +6,7 @@ import {
   tutorialMorePages,
 } from './tutorial/model'
 import { Disclosure } from '../ui/disclosure'
-import { ChevronRight, LogOut } from 'lucide-react'
+import { ChevronRight, ExternalLink, LogOut } from 'lucide-react'
 import { useStore } from 'zustand'
 import {
   hasUnreadReports,
@@ -17,12 +17,13 @@ import { navigationGroups, pageTitles } from '../shell/navigation-model'
 import { routeTarget } from '../shell/route-target'
 import { resolveDestination, type Page } from '../shell/routes'
 import { useGameScreen } from '../shell/screen-context'
-import { Button, ButtonLink } from '../ui/button'
+import { Button, ButtonLink, ButtonLinkAnchor } from '../ui/button'
 import { PlayerName } from './player-name'
 import styles from './menu.module.css'
 
 export function MenuScreen() {
-  const { universeName, view, body, model, logout } = useGameScreen()
+  const { universeName, view, body, model, logout, accountUrl } =
+    useGameScreen()
   const rewardsVisible = useRewardsVisible()
   const { data: tutorial } = useTutorial()
   const visible = tutorialPages(tutorial, view.protocol === 4 ? view : null)
@@ -109,6 +110,26 @@ export function MenuScreen() {
                   <>
                     <h2>{title}</h2>
                     {links}
+                    {title === 'Account' && accountUrl && (
+                      <ButtonLinkAnchor
+                        variant="ghost"
+                        className={styles.row}
+                        href={accountUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <img
+                          src="/brand-unbought-symbol.svg"
+                          alt=""
+                          width={16}
+                          height={16}
+                        />
+                        <span className={styles.rowLabel}>
+                          Unbought Games account
+                        </span>
+                        <ExternalLink size={16} aria-hidden="true" />
+                      </ButtonLinkAnchor>
+                    )}
                   </>
                 )}
               </section>
