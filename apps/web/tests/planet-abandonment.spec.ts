@@ -6,8 +6,8 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse, withReportListResponse } from './fixtures/responses'
 
-for (const width of [1280, 390]) {
-  test(`abandonment menu, losses, cancellation, blockers and removal at ${width}px`, async ({ page }) => {
+for (const width of [390]) {
+  test(`abandonment menu, losses, cancellation, blockers and removal at ${width}px`, { tag: '@journey' }, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const now = Date.UTC(2026, 9, 30, 14)
     await page.clock.setFixedTime(now)

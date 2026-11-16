@@ -1,3 +1,5 @@
+import { StationedUnits } from './empire-inventory'
+import { EmpireWealth } from './empire-wealth'
 import { useStore } from 'zustand'
 import {
   currentServerTime,
@@ -26,10 +28,6 @@ import {
   ArrowUpRight,
   ArrowRight,
   Crosshair,
-  Globe2,
-  Rocket,
-  Hourglass,
-  Orbit,
   Radar,
   ShieldAlert,
   Shield,
@@ -55,7 +53,6 @@ import {
   empireFlights,
   empireNodes,
   empirePaths,
-  empireTotals,
   planetPhysicalFacts,
   storagePercent,
   type EmpireFlight,
@@ -455,58 +452,6 @@ function PlanetClimate({
   )
 }
 
-function StationedUnits({
-  body,
-  kind,
-}: {
-  body: Body
-  kind: 'Ship' | 'Defense'
-}) {
-  const items = body.inventories.filter(
-    (entry) => entry.item.kind === kind && BigInt(entry.count) > 0n,
-  )
-  const title = kind === 'Ship' ? 'Orbital fleet' : 'Planetary defenses'
-  const Icon = kind === 'Ship' ? Orbit : Shield
-  const total = items.reduce((sum, item) => sum + BigInt(item.count), 0n)
-  const unit = kind === 'Ship' ? 'ship' : 'defense'
-  return (
-    <details className={styles.inventory}>
-      <summary>
-        <span>
-          <Icon size={15} /> {title}
-        </span>
-        <span>
-          {total.toLocaleString('en-US')} {unit}
-          {total === 1n ? '' : 's'}
-        </span>
-      </summary>
-      <section aria-label={title}>
-        {items.length ? (
-          <dl>
-            {items.map((item) => (
-              <div key={item.item.id}>
-                <dt>{label(item.item.id)}</dt>
-                <dd>{item.count}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          <EmptyState
-            icon={Icon}
-            variant="compact"
-            headingLevel={3}
-            title={
-              kind === 'Ship'
-                ? 'No ships stationed here.'
-                : 'No defenses stationed here.'
-            }
-          />
-        )}
-      </section>
-    </details>
-  )
-}
-
 function PlanetDossier({
   model,
   view,
@@ -717,7 +662,6 @@ export function EmpireOverview({
   const researchActive = researchProgress(state) !== null
   const profile = usePlayerDisplay(view.binding.player)
   const pendingCargo = pendingFleetCargo(state)
-  const totals = empireTotals(view, pendingCargo)
   const planets = view.bodies.filter((b) => b.kind === 'Planet').length
   const moons = view.bodies.length - planets
   const researchHost =
@@ -735,66 +679,7 @@ export function EmpireOverview({
         </div>
         <BriefingIcon />
       </header>
-      <div className={styles.empireLedger} aria-label="Empire resource totals">
-        <div className={styles.ledgerLabel}>
-          <Globe2 size={17} />
-          <span>
-            Empire wealth<small>Worlds & owned fleet cargo</small>
-          </span>
-        </div>
-        {resourceNames.map((name) => (
-          <div
-            className={styles.total}
-            key={name}
-            role="group"
-            aria-label={`${label(name)} wealth`}
-          >
-            <ResourceMark resource={name} width={22} height={22} />
-            <span className={styles.totalContent}>{name}</span>
-            <strong>
-              <ResourceNumber value={totals.total[name]} />
-            </strong>
-            <dl
-              className={styles.wealthBreakdown}
-              style={
-                {
-                  '--wealth-guide-color': `var(--resource-${name})`,
-                } as CSSProperties
-              }
-            >
-              <div title="On planets and moons">
-                <dt>
-                  <Globe2 size={14} aria-hidden="true" />
-                  <span className={styles.srOnly}>On planets and moons</span>
-                </dt>
-                <dd>
-                  <ResourceNumber value={totals.onWorlds[name]} />
-                </dd>
-              </div>
-              <div title="On active fleets">
-                <dt>
-                  <Rocket size={14} aria-hidden="true" />
-                  <span className={styles.srOnly}>On active fleets</span>
-                </dt>
-                <dd>
-                  <ResourceNumber value={totals.inTransit[name]} />
-                </dd>
-              </div>
-              {pendingCargo.length > 0 && (
-                <div title="Launching">
-                  <dt>
-                    <Hourglass size={14} aria-hidden="true" />
-                    <span className={styles.srOnly}>Launching</span>
-                  </dt>
-                  <dd>
-                    <ResourceNumber value={totals.launching[name]} />
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
-        ))}
-      </div>
+      <EmpireWealth view={view} pendingCargo={pendingCargo} />
       <div className={styles.commandDeck}>
         <FleetBoard view={view} body={body} flights={flights} />
       </div>
