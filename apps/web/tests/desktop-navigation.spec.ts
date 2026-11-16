@@ -353,6 +353,20 @@ test('support links share a recipient-safe destination and keep game context', a
     await support.getByRole('link', { name: 'Follow Unbought Games on GitHub (opens in a new tab)', exact: true }).evaluate(element => element.scrollIntoView({ block: 'center' }))
     await diagnosticScreenshot(page, { path: 'test-results/support-links/mobile-follows-390x844.png' })
   }
+  // Until the shell reserves a desktop HUD gutter, actions must stay left of
+  // the orb at every scroll position, including tablet and compact desktop widths.
+  for (const width of [600, 768, 1024, 1280, 1439]) {
+    await page.setViewportSize({ width, height: 900 })
+    const orb = (await page.getByTestId('command-orb').boundingBox())!
+    for (const link of await support.getByRole('link').all()) {
+      const action = (await link.boundingBox())!
+      expect(action.x + action.width).toBeLessThanOrEqual(orb.x)
+    }
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && [768, 1024].includes(width)) {
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/support-links/support-${width}x900.png` })
+    }
+  }
   const recipient = await context.newPage()
   await installGameFixture(recipient, { protocol: 4, bodies: [{ ...body, id: id(6) }] })
   await withBootstrapResponse(recipient, () => recipient.goto(shared))

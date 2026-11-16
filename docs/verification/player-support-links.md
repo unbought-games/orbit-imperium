@@ -103,3 +103,35 @@ remains. Refreshed desktop and mobile captures after the cleanup.
 The updated journey passed (5.793 seconds preparation, 7.0 seconds test execution,
 8.0 seconds runner). Focused lint, formatting and diff checks passed. The runner
 cleaned up its browser, server and temporary bundle.
+
+## PR #440 CI and review follow-up
+
+PR head `a0d7ec742340cbb6d30a97e441e1ac8f44d3577e`, CI run
+`43792000560`, feature shard 1 job `133052414801`, failed the 390px
+`settings community / Discord matches the homepage and supports keyboard or touch navigation`
+case: the Discord button had viewport ratio 0. The new support section deliberately
+moves Community below the first viewport. This is an obsolete above-the-fold test
+assumption, not missing UI or an infrastructure failure. The shard passed 110
+other cases; bundle preparation took 9.480 seconds and the runner took 3.1 minutes.
+The failed test took 9.4 seconds. The job log is retained in GitHub and locally at
+`/tmp/orbit-pr440-feature1.log`.
+
+Reviewed the test's introduction (`af3f0876`), response-gating migration
+(`6292946b`), settings-route migration (`04d34c2a`), and the repair ledger.
+No earlier scenario-specific repair was recorded. Its one repair scrolls the
+Discord link into view before the existing full-visibility assertion; both
+viewport variants retain URL, appearance, focus, touch and navigation checks.
+The same test loop owns both callers; no other shared fixture changes are needed.
+
+Review also identified real action/orb overlap between the original 599px
+stacking breakpoint and the shell's 1440px HUD gutter. At 768px the ModDB action
+visibly overlapped the orb; action horizontal bounds were 636.8–748.8px versus
+the orb's 646–738px. The original right-column actions also intersected the orb's
+horizontal bounds at 1024px. Actions now stack left below 1440px. The existing
+journey checks horizontal clearance at 600, 768, 1024, 1280 and 1439px, so scrolling
+cannot put an action under the orb. Screenshots also cover 768×900 and 1024×900.
+
+All three focused browser cases passed after the repairs: 5.154 seconds bundle
+preparation, 10.8 seconds runner, and 6.8 seconds for the support journey.
+Refreshed desktop, phone, tablet and compact desktop screenshots were inspected.
+Formatting and diff checks passed; the runner cleaned up its owned resources.

@@ -31,7 +31,7 @@
   font-size: var(--font-size-sm);
 }
 
-@media (max-width: 599px) {
+@media (max-width: 1439px) {
   .row {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
