@@ -190,3 +190,49 @@ visual design.
   no global CI cutover is performed. The phase-one retirement gaps and failed
   component migrations remain visible. Five natural subsequent PR lifecycles
   remain a global reliability obligation, not a claim of this stream.
+
+## Final local validation — November 16
+
+Implementation/test source revision: `4c42f298ed346f4681895a19dfd6bf370d79dfcc`.
+The following documentation-only follow-up repairs the news frontmatter and adds
+results; it changes no implementation or test behavior. The application capture
+run preceded the fixture snapshot-clone review fix; that fix affects only the
+isolated runtime, which was revalidated afterward.
+
+- `make check` passed tooling (130 passed, one conditional skip), client (222
+  files / 1,969 tests), native (821 tests, 59 bridge-feature tests, 10 storage
+  library tests), Clippy, Rust formatting, ESLint, Prettier, component TypeScript,
+  contracts and boundary checks. The command then **failed** in `news:build`
+  because the new note lacked YAML frontmatter. Added the required ID/title/date
+  and reran the affected `npm run build` step successfully, including routes,
+  application TypeScript, production Vite and prerender. No earlier step was
+  skipped or called a pass on the failed command's behalf.
+- Native compilation phases: 61s, 34.66s and 15.35s; execution phases: 33.036s,
+  2.614s and 0.019s. Clippy: 46.63s. Client runner: 9.46s. Vite production build:
+  6.23s; prerender build: 0.445s. Other local setup/wall-clock phase timings were
+  not independently instrumented. Local runner allocation wait was zero.
+- Focused strengthened static wealth assertion: 3 passed in 0.324s. It checks the
+  metal group's own total, so another resource with the same value cannot make
+  a missing reserved-cargo contribution pass.
+- Final cloned-snapshot component validation: 43 passed, 20.9s runner; preparation
+  is recorded in `/tmp/stream04-components-cloned.log`. This is required validation
+  of the review fix, not an unchanged retry of the retired layout replacements.
+- `make test-db DB_SUITES='empire_deletion empire_history planet_names colonization'
+  DB_JOBS=2`: **29 passed**. Compile: 25.57s; Make's two isolated binaries incurred
+  brief native Cargo lock waits (not separately timed). Serial execution within
+  each database: deletion 16/56.726s, history 7/19.124s, names 1/7.048s,
+  colonization 5/17.768s. Each test database was dropped by the native runner.
+- Logs: `/tmp/stream04-check.log`, `/tmp/stream04-build.log`,
+  `/tmp/stream04-db.log`, `/tmp/stream04-application.log`,
+  `/tmp/stream04-components-accepted.log`, `/tmp/stream04-components-cloned.log`.
+- Cleanup: all task-owned browser runners exited and removed their temporary
+  bundles; `docker compose down --volumes --remove-orphans` removed only
+  `orbit-stream04`'s container, volume and temporary-subnet network. No other
+  chat's preview, container, network or source edits were changed. The build's
+  unrelated pre-existing analytics-route generation drift was restored rather
+  than included in this stream.
+
+The merge gate remains required. No deployment, protection change, global test
+selection cutover, paid-content distribution or persistent-order behavior is part
+of this PR. Cross-owner notes above describe completed boundaries and retained
+coverage; there is no pending shared-source implementation requiring another owner.
