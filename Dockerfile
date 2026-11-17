@@ -8,6 +8,7 @@ COPY apps apps
 COPY contracts contracts
 COPY crates crates
 COPY docs docs
+COPY packages packages
 COPY rules rules
 COPY scripts scripts
 COPY Cargo.lock Cargo.toml LICENSE rust-toolchain.toml ./

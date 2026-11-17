@@ -25,6 +25,11 @@ check: test-tooling test-client test-server
 	cargo clippy --workspace --all-targets --features orbit-server/test-support -- -D warnings
 	$(MAKE) _static
 	npm run build
+	$(MAKE) check-image-inputs
+
+.PHONY: check-image-inputs
+check-image-inputs:
+	node scripts/check-image-inputs.mjs
 
 _static:
 	cargo fmt --all --check

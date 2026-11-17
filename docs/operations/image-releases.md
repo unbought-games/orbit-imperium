@@ -34,17 +34,53 @@ explains why privileged follow-up workflows must validate their triggering run.
 No PR artifacts or caches are consumed by the release workflow. All actions use
 commit pins and all jobs use disposable GitHub-hosted Ubuntu runners.
 
+## Pre-merge packaging checks
+
+`make check` runs `make check-image-inputs` after the normal frontend build. This
+checks TypeScript's source files and relative assets against the Docker COPY
+layout, plus the generated analytics-route input transferred to Rust. It catches
+the two observed missing-file regressions without another compilation. The check
+supports this Dockerfile's explicit COPY syntax; it is not a Docker interpreter
+or a general Rust dependency scanner.
+
+CI additionally builds and inspects the actual `linux/amd64` image when packaging
+inputs change: Dockerfile/ignore rules, dependency manifests/locks, toolchains,
+Rust build scripts, vendored dependencies, packaging checks/workflows or Make.
+Selection covers the full PR or merge group and fails safe without a valid base.
+The existing required aggregate gate rejects a selected image job that fails,
+is cancelled or is skipped. Ordinary source changes do not incur this build.
+
+Run the complete packaging check locally with a unique image tag:
+
+```sh
+ORBIT_RELEASE_IMAGE=orbit-check:local ORBIT_RELEASE_SHA=$(git rev-parse HEAD) make release-image inspect-release-image
+```
+
+The image job has read-only repository access and no registry credentials. It
+neither publishes nor starts the image. Full-system/container acceptance remains
+explicit. The trusted publisher still rebuilds every selected main revision; it
+does not consume PR-produced images or caches. Native checks and these packaging
+checks do not promise to detect every production-only compilation difference.
+
+## Editorial exclusions
+
+`docs/news/excluded-commits.json` contains full commit IDs that must not appear
+in generated build history or official deployment summaries, for example work
+whose player-facing feature is still disabled. Keep unfinished feature notes out
+of `docs/news/changes/` as well. The website reads these exclusions from the exact
+deployed source revision. Announce the feature explicitly when it is ready.
+
 ## Registry and identity contract
 
 Infrastructure owns the private ECR repository and IAM role. Configure these
 GitHub repository variables after provisioning; missing or unexpected values
 fail before the image build:
 
-| Variable | Contract |
-| --- | --- |
-| `AWS_REGION` | `us-east-2` |
-| `AWS_PUBLISH_ROLE_ARN` | `arn:aws:iam::888782969020:role/unbought-orbit-imperium-publish` |
-| `ECR_REPOSITORY_URL` | `888782969020.dkr.ecr.us-east-2.amazonaws.com/unbought/orbit-imperium` |
+| Variable               | Contract                                                               |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `AWS_REGION`           | `us-east-2`                                                            |
+| `AWS_PUBLISH_ROLE_ARN` | `arn:aws:iam::888782969020:role/unbought-orbit-imperium-publish`       |
+| `ECR_REPOSITORY_URL`   | `888782969020.dkr.ecr.us-east-2.amazonaws.com/unbought/orbit-imperium` |
 
 Use GitHub OIDC with audience `sts.amazonaws.com` and exact subject
 `repo:unbought-games@342208397/orbit-imperium@1427640162:ref:refs/heads/main`. The immutable subject includes the owner and repository IDs. The workflow does not use

@@ -31,6 +31,7 @@ jobs:
     outputs:
       database: ${{ steps.integration.outputs.database }}
       ui: ${{ steps.integration.outputs.ui }}
+      image: ${{ steps.integration.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,11 +45,16 @@ jobs:
         run: |
           database=false
           ui=false
+          image=false
           if [ -z "$BASE_SHA" ] || ! git diff --name-only "$BASE_SHA...HEAD" > "$RUNNER_TEMP/changed-paths"; then
             database=true
             ui=true
+            image=true
           else
             while IFS= read -r path; do
+              case "$path" in
+                Dockerfile|.dockerignore|*.Dockerfile|package.json|package-lock.json|.node-version|Cargo.toml|Cargo.lock|rust-toolchain.toml|crates/*/Cargo.toml|crates/*/build.rs|vendor/*|scripts/check-image-inputs*|scripts/inspect-release-image*|.github/workflows/ci.yml|.github/workflows/release-image.yml|Makefile) image=true ;;
+              esac
               case "$path" in
                 docs/*|.agents/*|*.md) ;;
                 apps/web/*) ui=true ;;
@@ -58,6 +64,7 @@ jobs:
           fi
           echo "database=$database" >> "$GITHUB_OUTPUT"
           echo "ui=$ui" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
 
   native:
     name: Build, lint and unit checks
@@ -233,10 +240,34 @@ jobs:
         if: always()
         run: git diff --exit-code -- Cargo.lock package-lock.json
 
+  image:
+    name: Release image packaging
+    needs: scope
+    if: needs.scope.outputs.image == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      ORBIT_RELEASE_IMAGE: orbit-ci:${{ github.sha }}
+      ORBIT_RELEASE_SHA: ${{ github.sha }}
+      ORBIT_RELEASE_PLATFORM: linux/amd64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      # Exercise every Dockerfile stage, including files copied between stages.
+      # No registry credentials, publication, application startup or database.
+      - name: Build the release artifact
+        run: make release-image
+      - name: Inspect packaged licenses and runtime metadata
+        run: make inspect-release-image
+
   check:
     # Preserve the required-check name while covering all independent jobs.
     name: Build, lint and unit tests
-    needs: [scope, native, database, browser]
+    needs: [scope, native, database, browser, image]
     if: always()
     runs-on: ubuntu-24.04
     steps:
@@ -248,9 +279,15 @@ jobs:
           DATABASE_RESULT: ${{ needs.database.result }}
           UI_SELECTED: ${{ needs.scope.outputs.ui }}
           BROWSER_RESULT: ${{ needs.browser.result }}
+          IMAGE_SELECTED: ${{ needs.scope.outputs.image }}
+          IMAGE_RESULT: ${{ needs.image.result }}
         run: |
           test "$SCOPE_RESULT" = success
           test "$NATIVE_RESULT" = success
+          case "$IMAGE_SELECTED:$IMAGE_RESULT" in
+            true:success|false:skipped) ;;
+            *) exit 1 ;;
+          esac
           case "$DATABASE_SELECTED:$DATABASE_RESULT" in
             true:success|false:skipped) ;;
             *) exit 1 ;;
