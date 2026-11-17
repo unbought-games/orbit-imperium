@@ -6,7 +6,10 @@ export type ShipPaintRecipe = {
   package_revision: string
   primary: string
   accent: string
-  emblem: { treatment: 'none' | 'full' | 'layers'; placement: 'near-wing' | 'paired' }
+  emblem: {
+    treatment: 'none' | 'full' | 'layers'
+    placement: 'near-wing' | 'paired'
+  }
 }
 export type ShipSkin = {
   id: string
@@ -31,7 +34,14 @@ export type ShipDesign = {
   revision: number
   recipe: ShipPaintRecipe
 }
-export type ShipRenderStage = 'queued' | 'rendering' | 'preparing' | 'ready' | 'failed' | 'superseded' | 'canceled'
+export type ShipRenderStage =
+  | 'queued'
+  | 'rendering'
+  | 'preparing'
+  | 'ready'
+  | 'failed'
+  | 'superseded'
+  | 'canceled'
 export type ShipArtwork = {
   id: string
   variants: { width: number; height: number; url: string }[]
@@ -64,7 +74,18 @@ export type ShipAppearanceState = {
 }
 export type ShipAppearanceAction =
   | { type: 'Load' }
-  | { type: 'Save'; design: ShipDesign; equip: boolean; expected_equipment_revision: number }
-  | { type: 'Equip'; target: string; design_id: string; design_revision: number; expected_equipment_revision: number }
+  | {
+      type: 'Save'
+      design: ShipDesign
+      equip: boolean
+      expected_equipment_revision: number
+    }
+  | {
+      type: 'Equip'
+      target: string
+      design_id: string
+      design_revision: number
+      expected_equipment_revision: number
+    }
   | { type: 'Reset'; target: string; expected_equipment_revision: number }
   | { type: 'Cancel' | 'Retry'; request_id: string }
