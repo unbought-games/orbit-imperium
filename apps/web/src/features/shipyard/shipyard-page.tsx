@@ -81,6 +81,7 @@ export function ShipyardPage(props: ProgressionProps) {
               {...props}
               selected={selected}
               count={count(selected.key.id)}
+              orderLayout="stacked"
               renderLayout={(layout) => (
                 <ShipyardDetailLayout
                   {...layout}

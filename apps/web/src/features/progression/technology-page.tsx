@@ -229,11 +229,13 @@ export function TechnologyInspector({
   selected,
   count,
   renderLayout,
+  orderLayout,
   ...props
 }: ProgressionProps & {
   selected: Entry
   count: number | string
   renderLayout?: (layout: DetailLayoutProps) => ReactNode
+  orderLayout?: 'inline' | 'stacked'
 }) {
   const { view, body, coordinator: model } = props
   const progress = buildingProgress(model.store.getState(), body.id)
@@ -302,6 +304,7 @@ export function TechnologyInspector({
           entry={selected}
           count={count}
           renderLayout={renderLayout}
+          orderLayout={orderLayout}
           proposal={proposal}
           loading={loading}
           error={requestError}

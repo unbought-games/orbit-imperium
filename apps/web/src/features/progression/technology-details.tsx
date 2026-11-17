@@ -55,6 +55,7 @@ export function TechnologyDetails({
   onInspect,
   onTechnology,
   renderLayout = (layout) => <DetailLayout {...layout} />,
+  orderLayout = 'inline',
   ...props
 }: ProgressionProps & {
   entry: components['schemas']['CatalogEntry3']
@@ -67,6 +68,7 @@ export function TechnologyDetails({
   onInspect: () => void
   onTechnology: () => void
   renderLayout?: (layout: DetailLayoutProps) => ReactNode
+  orderLayout?: 'inline' | 'stacked'
 }) {
   const { coordinator: model, body, page, view } = props
   const unavailable = !entry.enabled || !entry.body_kinds.includes(body.kind)
@@ -310,7 +312,10 @@ export function TechnologyDetails({
                   )}
                 </>
               )}
-            <div className={manufacture ? styles.orderAction : undefined}>
+            <div
+              className={manufacture ? styles.orderAction : undefined}
+              data-order-layout={manufacture ? orderLayout : undefined}
+            >
               {manufacture && (
                 <Field className={styles.quantity}>
                   <span className={styles.quantityLabel}>Qty</span>

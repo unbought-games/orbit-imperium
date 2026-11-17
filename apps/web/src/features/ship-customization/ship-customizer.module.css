@@ -392,6 +392,9 @@
     width: 100%;
     box-sizing: border-box;
   }
+  .emblemOptions {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .footer {
     grid-template-columns: 1fr;
     gap: var(--space-3);
