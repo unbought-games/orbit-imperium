@@ -258,7 +258,10 @@ try {
       remaining < 8 && (await notices.count());
       remaining++
     ) {
-      await notices.first().press('Escape')
+      const notice = await notices.first().elementHandle()
+      assert.ok(notice)
+      await notice.press('Escape')
+      await notice.waitForElementState('hidden')
     }
   }
   async function shipImageReady() {
