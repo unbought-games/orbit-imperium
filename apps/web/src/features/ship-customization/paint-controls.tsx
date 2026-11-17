@@ -20,12 +20,9 @@ function DyePicker({
   onChange: (id: string) => void
   disabled: boolean
 }) {
-  const selected = dyes.find((dye) => dye.id === value)
   return (
     <fieldset className={styles.fieldset} disabled={disabled}>
-      <legend>
-        {label} <span>{selected?.name ?? 'Unavailable dye'}</span>
-      </legend>
+      <legend>{label}</legend>
       <div className={styles.dyes}>
         {dyes.map((dye) => (
           <button
@@ -72,31 +69,34 @@ export function PaintControls({
   )
   return (
     <>
-      <Field>
-        Ship finish
-        <Select
-          aria-label="Ship finish"
-          value={selectedSkin?.id ?? ''}
-          disabled={disabled}
-          onChange={(event) => {
-            const skin = skins.find((item) => item.id === event.target.value)
-            if (skin)
-              onChange({
-                ...recipe,
-                skin_id: skin.id,
-                package_revision: skin.package_revision,
-              })
-          }}
-        >
-          {!selectedSkin && <option value="">Unavailable finish</option>}
-          {skins.map((skin) => (
-            <option key={skin.id} value={skin.id} disabled={!skin.available}>
-              {skin.name}
-              {!skin.available ? ' · unavailable' : ''}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {(skins.filter((skin) => skin.available).length > 1 ||
+        !selectedSkin?.available) && (
+        <Field>
+          Ship skin
+          <Select
+            aria-label="Ship skin"
+            value={selectedSkin?.id ?? ''}
+            disabled={disabled}
+            onChange={(event) => {
+              const skin = skins.find((item) => item.id === event.target.value)
+              if (skin)
+                onChange({
+                  ...recipe,
+                  skin_id: skin.id,
+                  package_revision: skin.package_revision,
+                })
+            }}
+          >
+            {!selectedSkin && <option value="">Unavailable skin</option>}
+            {skins.map((skin) => (
+              <option key={skin.id} value={skin.id} disabled={!skin.available}>
+                {skin.name}
+                {!skin.available ? ' · unavailable' : ''}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <DyePicker
         label="Primary"
         value={recipe.primary}

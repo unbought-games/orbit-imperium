@@ -61,7 +61,7 @@ export function draftProblem(
         skin.available,
     )
   ) {
-    return 'This ship finish is unavailable. Choose an available finish to save a new revision.'
+    return 'This ship skin is unavailable. Choose an available skin to save a new revision.'
   }
   if (
     ![draft.recipe.primary, draft.recipe.accent].every((id) =>

@@ -64,6 +64,8 @@ export class ShipAppearancesController {
   reload = async (): Promise<void> => {
     await this.perform({ type: 'Load' })
   }
+  /** Capture the completed command's feedback before later background reads. */
+  errorMessage = (): string => this.store.getState().error
 
   perform = async (action: ShipAppearanceAction): Promise<boolean> => {
     if (!this.active || this.store.getState().busy) return false

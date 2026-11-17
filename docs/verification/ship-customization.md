@@ -102,3 +102,24 @@ originating chat, not uploaded to the PR.
 Each live run closes its browser, Vite, API and renderer and removes its disposable
 database and temporary asset directory. Database suites use the standard per-binary
 cleanup. The integration owner owns final removal of the task-only Compose project.
+
+## Owner UX feedback and automated review
+
+The first PR head `e460b409` passed every required CI job and the automated review
+completed. Its actionable UI finding was that a generic local failure obscured
+specific 400/403/409 feedback. The hangar now captures the completed command's
+actual message, retaining it through background reads without hiding later errors.
+A controlled rejection regression covers all three statuses.
+
+Owner feedback moves the ship rail to the far right on desktop, removes the
+requirements-needed card text, moves library/name/copy controls into the top-right
+Design options popover, hides singleton skin selection, and uses Ship skin wording.
+Redundant selected-color labels and explanatory lines were removed, and the title
+has a restrained dark backdrop. The current preview remains running for the owner;
+its separate database and processes are intentionally retained.
+
+Eight focused browser cases pass after these changes (14.6 s execution, 4.581 s
+bundle preparation). The scene now exercises nested menu focus/Escape while keeping
+paint and current-emblem observations live. Thirty-five focused client checks,
+full component types, static checks and the production build pass. Final captures
+are refreshed after source changes; the next PR head's CI is followed separately.

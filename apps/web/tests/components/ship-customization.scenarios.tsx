@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShipAppearancesController } from '../../src/client-model/ship-appearances'
+import { HttpError } from '../../src/adapters/http'
 import type {
   ShipAppearanceAction,
   ShipAppearanceState,
@@ -100,7 +101,7 @@ export type ShipCustomizationControl = {
   observe: (snapshot: ShipAppearanceState) => Promise<void>
   accept: (snapshot: ShipAppearanceState) => void
   loseResponse: (committed: ShipAppearanceState) => void
-  reject: () => void
+  reject: (status?: number) => void
   dispose: () => void
 }
 declare global {
@@ -115,7 +116,7 @@ function createScene() {
   let pending: {
     action: ShipAppearanceAction
     resolve: (value: ShipAppearanceState) => void
-    reject: () => void
+    reject: (status?: number) => void
     requestId: string
     signal: AbortSignal
   } | null = null
@@ -135,9 +136,13 @@ function createScene() {
           action: structuredClone(action),
           requestId,
           signal,
-          reject: () => {
+          reject: (status) => {
             signal.removeEventListener('abort', abort)
-            reject(Error('Controlled response loss'))
+            reject(
+              status
+                ? new HttpError(status, 'Controlled rejection')
+                : Error('Controlled response loss'),
+            )
           },
           resolve: (value) => {
             signal.removeEventListener('abort', abort)
@@ -169,12 +174,12 @@ function createScene() {
       server = structuredClone(committed)
       control.reject()
     },
-    reject: () => {
+    reject: (status) => {
       if (!pending || pending.signal.aborted)
         throw Error('No active mutation to reject')
       const request = pending
       pending = null
-      request.reject()
+      request.reject(status)
     },
     dispose: controller.stop,
   }

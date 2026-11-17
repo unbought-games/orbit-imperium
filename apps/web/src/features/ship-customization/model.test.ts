@@ -116,9 +116,7 @@ describe('ship customization drafts', () => {
   it('blocks stale package revisions even when the skin ID is still installed', () => {
     const snapshot = state()
     snapshot.catalog[0].package_revision = 'v2'
-    expect(draftProblem(snapshot, design)).toContain(
-      'ship finish is unavailable',
-    )
+    expect(draftProblem(snapshot, design)).toContain('ship skin is unavailable')
   })
 
   it('validates names without rejecting a valid recipe when the current emblem is absent', () => {

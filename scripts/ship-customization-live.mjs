@@ -285,8 +285,17 @@ try {
     timeout: 30_000,
   })
   await dialog
+    .getByRole('button', { name: 'Design options', exact: true })
+    .click()
+  const options = page.getByRole('dialog', {
+    name: 'Design options',
+    exact: true,
+  })
+  await options
     .getByLabel('Design name', { exact: true })
     .fill('Midnight standard')
+  await options.getByLabel('Design name', { exact: true }).press('Escape')
+  await expect(options).toHaveCount(0)
   await dialog
     .getByRole('button', { name: 'Primary: Graphite', exact: true })
     .click()
@@ -373,9 +382,9 @@ try {
       fullPage: width === 1440,
     })
     await page.getByRole('button', { name: 'Customize', exact: true }).click()
-    await expect(dialog.getByLabel('Design name', { exact: true })).toHaveValue(
-      'Midnight standard',
-    )
+    await expect(
+      dialog.getByRole('heading', { name: 'Midnight standard', exact: true }),
+    ).toBeVisible()
     await expect(dialog.locator('canvas')).toHaveCSS('opacity', '1')
     await dialog.screenshot({
       path: join(output, `hangar-current-emblem-${width}x${height}.png`),

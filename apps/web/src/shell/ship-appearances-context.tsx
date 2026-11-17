@@ -25,6 +25,7 @@ export function useShipAppearances() {
     ...observation,
     perform: controller.perform,
     reload: controller.reload,
+    errorMessage: controller.errorMessage,
   }
 }
 

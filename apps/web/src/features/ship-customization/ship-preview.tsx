@@ -37,7 +37,7 @@ export function ShipPreview({
   if (!skin || !primary || !accent)
     return (
       <p className={styles.previewUnavailable}>
-        Choose an available finish and dyes to preview this design.
+        Choose an available skin and dyes to preview this design.
       </p>
     )
   return (

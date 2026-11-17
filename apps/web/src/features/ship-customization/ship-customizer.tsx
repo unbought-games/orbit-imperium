@@ -1,12 +1,11 @@
 import { useRef, useState } from 'react'
 import { Dialog } from '@base-ui/react/dialog'
 import { AlertDialog } from '@base-ui/react/alert-dialog'
-import { ArrowLeft, Copy, X } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { useShipAppearances } from '../../shell/ship-appearances-context'
 import { Button } from '../../ui/button'
-import { Field, Input } from '../../ui/form'
 import { LoadingRegion } from '../../ui/loading-region'
-import { DesignLibrary } from './design-library'
+import { DesignOptions } from './design-options'
 import { EmblemControls } from './emblem-controls'
 import { PaintControls } from './paint-controls'
 import { RenderProgress } from './render-progress'
@@ -28,6 +27,7 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
     loading,
     error: providerError,
     perform,
+    errorMessage,
     reload,
   } = useShipAppearances()
   const {
@@ -41,7 +41,7 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
     notice,
     error,
     hasUnsavedChanges,
-  } = useShipDraft({ state: snapshot, target, perform })
+  } = useShipDraft({ state: snapshot, target, perform, errorMessage })
   const [open, setOpen] = useState(true)
   const [confirmClose, setConfirmClose] = useState(false)
   const [returnFocus] = useState(() =>
@@ -93,7 +93,7 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
         >
           <div className={styles.hangarPlate} aria-hidden="true" />
           <header className={styles.header}>
-            <div>
+            <div className={styles.titlePlate}>
               <span className={styles.eyebrow}>Ship hangar</span>
               <Dialog.Title>{targetLabel(target)}</Dialog.Title>
             </div>
@@ -103,10 +103,6 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
               <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </header>
-          <Dialog.Description className={styles.description}>
-            Design your ship. Save it to your library and equip it in this
-            empire.
-          </Dialog.Description>
           <LoadingRegion
             loading={!snapshot && loading}
             label="Loading ship designs"
@@ -125,15 +121,12 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                     <p>
                       {snapshot.catalog.find(
                         (item) => item.id === draft.recipe.skin_id,
-                      )?.name ?? 'Saved ship finish'}
+                      )?.name ?? 'Saved ship skin'}
                     </p>
                   </div>
                   <div className={styles.shipArrival}>
                     <ShipPreview state={snapshot} draft={draft} />
                   </div>
-                  <p className={styles.previewNote}>
-                    Engine glow and glass retain their original finish.
-                  </p>
                 </section>
                 <form
                   className={styles.controls}
@@ -143,53 +136,16 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                   }}
                 >
                   <div className={styles.controlHeading}>
-                    <h2>Your design</h2>
-                    <span>Saved designs for your fleet</span>
-                  </div>
-                  <DesignLibrary
-                    designs={snapshot.library.filter(
-                      (item) => item.target === target,
-                    )}
-                    selected={draft}
-                    disabled={busy}
-                    onChoose={choose}
-                    onNew={() =>
-                      choose({
-                        ...draft,
-                        id: '',
-                        revision: 0,
-                        name: `${targetLabel(target)} design`,
-                      })
-                    }
-                  />
-                  <div className={styles.nameRow}>
-                    <Field>
-                      Design name
-                      <Input
-                        value={draft.name}
-                        disabled={busy}
-                        maxLength={40}
-                        onChange={(event) => edit({ name: event.target.value })}
-                      />
-                    </Field>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-touch"
-                      title="Make a copy"
-                      aria-label="Make a copy of this design"
+                    <h2>Customize</h2>
+                    <DesignOptions
+                      designs={snapshot.library.filter(
+                        (item) => item.target === target,
+                      )}
+                      draft={draft}
                       disabled={busy}
-                      onClick={() =>
-                        choose({
-                          ...draft,
-                          id: '',
-                          revision: 0,
-                          name: `${draft.name} copy`.slice(0, 40),
-                        })
-                      }
-                    >
-                      <Copy size={16} aria-hidden="true" />
-                    </Button>
+                      onChoose={choose}
+                      onNameChange={(name) => edit({ name })}
+                    />
                   </div>
                   <PaintControls
                     recipe={draft.recipe}
@@ -252,12 +208,12 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                 <div className={styles.empty}>
                   <h2>
                     {snapshot
-                      ? 'No ship finishes available'
+                      ? 'No ship skines available'
                       : 'The hangar could not load'}
                   </h2>
                   <p>
                     {snapshot
-                      ? 'Your saved designs are preserved. Refresh to check for available finishes and dyes.'
+                      ? 'Your saved designs are preserved. Refresh to check for available skines and dyes.'
                       : 'Refresh to try loading your ship designs again.'}
                   </p>
                 </div>

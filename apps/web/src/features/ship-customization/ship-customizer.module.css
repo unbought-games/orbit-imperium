@@ -46,18 +46,22 @@
   font: 400 clamp(2rem, 3.5vw, 3.5rem) / 1.1 var(--font-editorial);
   margin: 6px 0 0;
 }
+.titlePlate {
+  min-width: 0;
+  padding: 16px 22px 18px;
+  border: 1px solid #d5c5a012;
+  border-radius: 12px;
+  background: linear-gradient(115deg, #061019d9, #08141da6 72%, #0a182166);
+  box-shadow:
+    0 10px 38px #01070c33,
+    inset 0 1px 0 #f2e4c407;
+  backdrop-filter: blur(8px);
+}
 .eyebrow {
   color: var(--champagne);
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-size: var(--font-size-xs);
-}
-.description {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0 clamp(20px, 4vw, 64px) var(--space-4);
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
 }
 .workspace {
   flex: 1;
@@ -85,8 +89,7 @@
 .stage h2 {
   font-size: clamp(1.75rem, 3vw, 3rem);
 }
-.stageCaption p,
-.previewNote {
+.stageCaption p {
   color: var(--text-muted);
   font-size: var(--font-size-sm);
 }
@@ -107,9 +110,6 @@
   min-width: 0;
   min-height: 0;
 }
-.previewNote {
-  margin: var(--space-4) 0;
-}
 .controls {
   display: flex;
   flex-direction: column;
@@ -126,6 +126,33 @@
 .emblem h3 {
   margin: 0;
   font: 400 var(--font-size-xl) var(--font-editorial);
+}
+.controlHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.designOptionsPositioner {
+  --popover-layer: 152;
+  width: min(340px, calc(100vw - 24px));
+}
+.designOptions {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-panel);
+  background: var(--surface-raised);
+  box-shadow: 0 12px 32px #0009;
+  color: var(--text);
+  max-height: var(--available-height);
+  overflow-y: auto;
+}
+.optionsTitle {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  margin: 0;
 }
 .controlHeading span {
   display: block;
@@ -152,10 +179,6 @@
   width: 100%;
   margin-bottom: var(--space-2);
   font-size: var(--font-size-sm);
-}
-.fieldset legend span {
-  float: right;
-  color: var(--text-muted);
 }
 .dyes {
   display: grid;
@@ -358,8 +381,9 @@
   .header h2 {
     font-size: var(--font-size-2xl);
   }
-  .description {
-    font-size: var(--font-size-xs);
+  .titlePlate {
+    padding: 12px;
+    border-radius: 9px;
   }
   .workspaceContent {
     display: flex;
@@ -383,10 +407,6 @@
   }
   .shipImage {
     max-height: 32dvh;
-  }
-  .previewNote {
-    margin: var(--space-2) 0 0;
-    font-size: var(--font-size-xs);
   }
   .controls {
     padding: var(--space-4);

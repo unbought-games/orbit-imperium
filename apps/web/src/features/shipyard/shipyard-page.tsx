@@ -4,10 +4,6 @@ import { useShipCustomizationLaunch } from '../../shell/ship-customization-launc
 import { Text } from '../../ui/typography'
 import type { ProgressionProps } from '../progression/shared'
 import { TechnologyInspector } from '../progression/technology-page'
-import {
-  requirementKey,
-  technologyLevel,
-} from '../progression/technology-dialog'
 import { compareShips } from '../ship-order'
 import { ShipyardSelectionRail } from './shipyard-selection-rail'
 import { WorkSummaries } from '../work-summaries'
@@ -65,13 +61,7 @@ export function ShipyardPage(props: ProgressionProps) {
           status={(entry) => {
             if (!entry.enabled || !entry.body_kinds.includes(body.kind))
               return 'Unavailable here'
-            return entry.requirements.some(
-              (requirement) =>
-                technologyLevel(requirementKey(requirement), props) <
-                requirement.level,
-            )
-              ? 'Requirements needed'
-              : ''
+            return ''
           }}
         />
         <div className={styles.selected}>

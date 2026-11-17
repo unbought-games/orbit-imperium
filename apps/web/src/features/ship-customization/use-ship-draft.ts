@@ -18,10 +18,12 @@ export function useShipDraft({
   state,
   target,
   perform,
+  errorMessage,
 }: {
   state: ShipAppearanceState | null
   target: string
   perform: (action: ShipAppearanceAction) => Promise<boolean>
+  errorMessage: () => string
 }) {
   // Only explicit selections and edits are local; fresh observations never replace them.
   const [edits, setEdits] = useState<ShipDraft | null>(null)
@@ -98,7 +100,8 @@ export function useShipDraft({
       if (ok) setNotice(success)
       else
         setError(
-          'The change could not be confirmed. Your edits are still here. Refresh the status before trying again.',
+          errorMessage() ||
+            'The change could not be confirmed. Your edits are still here. Refresh the status before trying again.',
         )
       return ok
     } catch {
