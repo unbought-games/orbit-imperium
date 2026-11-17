@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixture'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
-import { empireFixture, body, id } from '../../src/test-support/empire'
+import { empireFixture, body, id, binding } from '../../src/test-support/empire'
 import type { components } from '../../src/contracts'
 import type { EmpireSceneInput } from './empire-runtime'
 import type {} from './empire.scenarios'
@@ -758,5 +758,81 @@ for (const width of [390, 1440]) {
     await expect(
       planet.getByRole('region', { name: 'Planetary defenses', exact: true }),
     ).toHaveText('No defenses stationed here.')
+  })
+}
+
+for (const width of [1440, 390]) {
+  test(`empire name receives focus after its loading overlay clears at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const data = {
+      player: binding.player,
+      profile: id(80),
+      universe: binding.universe,
+      epoch: binding.epoch,
+      universe_name: 'Andromeda',
+      username: 'Aurelia',
+      display: null,
+      owner: true,
+      public: false,
+      removed: false,
+      closed: false,
+      revision: 0,
+      entries: [],
+      next: null,
+      identity: { name: 'Roman Empire', tagline: '', title_id: 'commander' },
+      title: {
+        id: 'commander',
+        label: 'Commander',
+        address: 'Commander',
+        expires_at: null,
+      },
+      title_choices: [],
+    }
+    await page.route('**/api/v1/session', (route) =>
+      route.fulfill({
+        json: {
+          account: binding.account,
+          csrf: 'fixture',
+          expires_at: Date.now() + 3600000,
+          memberships: [],
+        },
+      }),
+    )
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route('**/api/v4/empire-profiles/**', async (route) => {
+      await held
+      await route.fulfill({ json: data })
+    })
+    await mountEmpire(page, empireFixture())
+    const pencil = page.getByRole('button', {
+      name: 'Rename empire',
+      exact: true,
+    })
+    await pencil.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('status')).toHaveText(
+      'Loading empire identity…',
+    )
+    const delivered = page.waitForEvent('requestfinished', {
+      predicate: (request) =>
+        request.url().includes('/api/v4/empire-profiles/'),
+    })
+    release()
+    await delivered
+    const input = dialog.getByRole('textbox', { name: 'Empire name' })
+    await expect(input).toBeFocused()
+    await expect(input).toHaveValue('Roman Empire')
+    await diagnosticScreenshot(page, {
+      path: `test-results/empire-name-focus-${width}x1000.png`,
+    })
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(pencil).toBeFocused()
   })
 }

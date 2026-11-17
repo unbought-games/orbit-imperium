@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState, type RefObject } from 'react'
 import { Pencil } from 'lucide-react'
 import type { EmpireProfile, ProfileAction } from '../adapters/empire-history'
 import { defaultIdentity, identityError } from '../client-model/empire-identity'
@@ -19,11 +19,13 @@ function NameForm({
   busy,
   save,
   close,
+  inputRef,
 }: {
   profile: EmpireProfile
   busy: boolean
   save: (profile: EmpireProfile, action: ProfileAction) => Promise<boolean>
   close: () => void
+  inputRef: RefObject<HTMLInputElement | null>
 }) {
   const [name, setName] = useState(profile.identity?.name ?? '')
   const [revision, setRevision] = useState(profile.revision)
@@ -45,7 +47,7 @@ function NameForm({
       <Field>
         <Input
           aria-label="Empire name"
-          autoFocus
+          ref={inputRef}
           value={name}
           placeholder="Your empire’s name"
           onChange={(event) => setName(event.target.value)}
@@ -89,7 +91,15 @@ function NameForm({
   )
 }
 
-function NameEditor({ player, close }: { player: string; close: () => void }) {
+function NameEditor({
+  player,
+  close,
+  inputRef,
+}: {
+  player: string
+  close: () => void
+  inputRef: RefObject<HTMLInputElement | null>
+}) {
   const {
     data: profile,
     loading,
@@ -118,6 +128,7 @@ function NameEditor({ player, close }: { player: string; close: () => void }) {
         </div>
       )}
       <LoadingRegion
+        initialFocusRef={inputRef}
         className={styles.editorLoading}
         loading={loading && !profile}
         label="Loading empire identity…"
@@ -125,6 +136,7 @@ function NameEditor({ player, close }: { player: string; close: () => void }) {
         {profile &&
           (profile.owner && !profile.closed && !profile.removed ? (
             <NameForm
+              inputRef={inputRef}
               profile={profile}
               busy={busy || loading}
               save={async (current, action) => {
@@ -147,6 +159,7 @@ export function EmpireName({ player }: { player: string }) {
   const title = useIdentityTitle(profile?.title)
   const [open, setOpen] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
+  const input = useRef<HTMLInputElement>(null)
   return (
     <div className={styles.name}>
       <h2>{profile?.identity?.name.trim() || 'Empire'}</h2>
@@ -168,9 +181,16 @@ export function EmpireName({ player }: { player: string }) {
         open={open}
         onOpenChange={setOpen}
         anchorRef={anchor}
+        initialFocusRef={input}
         title={`What should we call our empire, ${title.address}?`}
       >
-        {open && <NameEditor player={player} close={() => setOpen(false)} />}
+        {open && (
+          <NameEditor
+            inputRef={input}
+            player={player}
+            close={() => setOpen(false)}
+          />
+        )}
       </ActionPopover>
     </div>
   )

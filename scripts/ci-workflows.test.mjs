@@ -195,6 +195,8 @@ test('integration selection includes earlier queued changes and fails safe witho
     'Cargo.lock',
     'crates/server/build.rs',
     'scripts/check-image-inputs.mjs',
+    'apps/web/vite.config.ts',
+    'scripts/analytics-routes.mjs',
   ]) {
     const previous = git('rev-parse', 'HEAD')
     commit(path)

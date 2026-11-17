@@ -53,7 +53,7 @@ jobs:
           else
             while IFS= read -r path; do
               case "$path" in
-                Dockerfile|.dockerignore|*.Dockerfile|package.json|package-lock.json|.node-version|Cargo.toml|Cargo.lock|rust-toolchain.toml|crates/*/Cargo.toml|crates/*/build.rs|vendor/*|scripts/check-image-inputs*|scripts/inspect-release-image*|.github/workflows/ci.yml|.github/workflows/release-image.yml|Makefile) image=true ;;
+                Dockerfile|.dockerignore|*.Dockerfile|package.json|package-lock.json|.node-version|Cargo.toml|Cargo.lock|rust-toolchain.toml|crates/*/Cargo.toml|crates/*/build.rs|vendor/*|apps/web/vite.config.ts|apps/web/tsconfig.json|scripts/news.mjs|scripts/news-history.mjs|scripts/analytics-routes.mjs|scripts/homepage-template.mjs|scripts/prerender-homepage.mjs|scripts/collect-rust-notices.sh|scripts/check-image-inputs*|scripts/inspect-release-image*|.github/workflows/ci.yml|.github/workflows/release-image.yml|Makefile) image=true ;;
               esac
               case "$path" in
                 docs/*|.agents/*|*.md) ;;

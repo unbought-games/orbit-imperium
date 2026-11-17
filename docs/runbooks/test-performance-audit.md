@@ -2345,3 +2345,28 @@ other header.nextElementSibling or spacing.extraHeight callers.
 `npm run test:ui -- tutorial.spec.ts -g 'Empire briefing icon' --workers=1`:
 2 passed (preparation 5.392s, execution 9.4s), on `ead86dee` plus this repair.
 No sleeps, retries, timeout changes, deleted scenarios, or production edits.
+
+## 2026-11-17: release repair PR #453 exposed delayed rename autofocus
+
+Run `44144806219`, head `595840998d856bbdb8bf379436e0efa0c09fc58b`,
+failed `overview name popover saves and restores focus at 1440px` in
+`empire-identity.spec.ts`: the profile input existed but remained inactive.
+The retained screenshot shows the loaded popover without input focus. History
+and this ledger were checked; the overview scenario was introduced in PR #444.
+
+This is a product focus defect, not a fixture repair or infrastructure retry.
+A controlled component response reproduces it at both 1440px and 390px: show
+LoadingRegion, then deliver the profile while its minimum-duration overlay is
+still inert. React's one-time autoFocus cannot focus the newly mounted input;
+removing inert later does not retry it. Both new cases failed against the old
+product at the same focus assertion, then passed after the product fix.
+
+LoadingRegion now accepts an optional initial focus target and focuses it once
+when loading and its overlay finish. EmpireName shares that target with its
+popover, so Base UI's opening focus and async form readiness agree. Background
+refreshes do not reclaim initial focus. The existing application journey retains
+all assertions; no timeout, sleep, retry or test deletion was introduced.
+The sibling scan found SettingsIdentity explicitly disables autofocus, while
+PlanetRename mounts synchronously outside a loading region. No sibling repair
+was needed. Desktop/mobile screenshots and focused journey results are retained
+in the originating release chat and its durable release directory.
