@@ -1,8 +1,11 @@
 import {
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import { classes } from './classes'
 import { LoadingPresence } from './loading-presence'
@@ -15,13 +18,16 @@ export function LoadingRegion({
   children,
   className,
   contentClassName,
+  initialFocusRef,
 }: {
   loading: boolean
   label?: string
   children?: ReactNode
   className?: string
   contentClassName?: string
+  initialFocusRef?: RefObject<HTMLElement | null>
 }) {
+  const focused = useRef(false)
   const [presence] = useState(() => new LoadingPresence())
   const visible = useSyncExternalStore(
     presence.subscribe,
@@ -32,6 +38,15 @@ export function LoadingRegion({
     presence.update(loading)
     return () => presence.cancel()
   }, [loading, presence])
+
+  useLayoutEffect(() => {
+    // Async forms can mount while the minimum-duration overlay is still inert.
+    // Focus once after that boundary, never again on background refreshes.
+    if (!loading && !visible && !focused.current && initialFocusRef?.current) {
+      initialFocusRef.current.focus({ preventScroll: true })
+      focused.current = document.activeElement === initialFocusRef.current
+    }
+  }, [loading, visible, initialFocusRef])
 
   return (
     <div className={classes(styles.region, className)}>

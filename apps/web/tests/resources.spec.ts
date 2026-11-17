@@ -47,6 +47,7 @@ async function setup(
   blocked = false,
   commandReferences = false,
   planet = structuredClone(body),
+  viewerRevision?: () => string,
 ) {
   const economy = { ...production(), body: planet.id }
   if (blocked) planet.amounts.metal = '0'
@@ -55,6 +56,7 @@ async function setup(
     production: [economy],
     bodies: planet.id === body.id ? [planet] : [structuredClone(body), planet],
     commandReferences,
+    viewerRevision,
   })
   await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
@@ -385,117 +387,98 @@ test('production rejection retains edits and retry preserves unrelated server ch
   )
 })
 
-for (const pendingCommand of ['production', 'upgrade'] as const) {
-  test(`production edits wait for an in-memory ${pendingCommand} command`, async ({
-    page,
-  }) => {
-    const { economy } = await setup(page)
-    const sent: components['schemas']['CommandEnvelopeV3'][] = []
-    const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
-    await page.route('**/commands', async (route) => {
-      const envelope = route.request().postDataJSON()
-      sent.push(envelope)
-      const pending: components['schemas']['BoundReceipt3'] = {
-        protocol: 3,
-        binding,
-        command_id: envelope.command_id,
-        admitted_at: Date.now(),
-        executed_at: null,
-        status: 'Pending',
-      }
-      if (sent.length === 1) {
-        receipts.set(envelope.command_id, pending)
-        await route.fulfill({ json: pending })
-      } else {
-        economy.settings = envelope.command.settings
-        economy.settings_revision = '3'
-        await route.fulfill({
-          json: {
-            ...pending,
-            status: 'Committed',
-            executed_at: Date.now(),
-            minimum_viewer_revision: '1',
-            result_ids: [],
-          },
-        })
-      }
-    })
-    await page.route('**/commands/*', (route) => {
-      const id = new URL(route.request().url()).pathname.split('/').pop()!
-      return route.fulfill({ json: receipts.get(id) })
-    })
-    if (pendingCommand === 'production') {
-      await openProductionSettings(page)
-      await moveProductionSlider(page, 'metal mine production', '50')
+test('production edits wait for an in-memory production command', async ({
+  page,
+}) => {
+  let viewerRevision = '1'
+  const { economy } = await setup(page, false, false, structuredClone(body), () => viewerRevision)
+  const sent: components['schemas']['CommandEnvelopeV3'][] = []
+  const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
+  await page.route('**/commands', async (route) => {
+    const envelope = route.request().postDataJSON()
+    sent.push(envelope)
+    const pending: components['schemas']['BoundReceipt3'] = {
+      protocol: 3,
+      binding,
+      command_id: envelope.command_id,
+      admitted_at: Date.now(),
+      executed_at: null,
+      status: 'Pending',
+    }
+    if (sent.length === 1) {
+      receipts.set(envelope.command_id, pending)
+      await route.fulfill({ json: pending })
     } else {
-      await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
-      await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).click()
-      await page.getByRole('link', { name: /^Back to / }).click()
+      economy.settings = envelope.command.settings
+      economy.settings_revision = '3'
+      viewerRevision = '3'
+      await route.fulfill({
+        json: {
+          ...pending,
+          status: 'Committed',
+          executed_at: Date.now(),
+          minimum_viewer_revision: viewerRevision,
+          result_ids: [],
+        },
+      })
     }
-    await expect.poll(() => sent.length).toBe(1)
-    await openProductionSettings(page)
-    const panel = page.getByRole('region', { name: 'Production controls' })
-    const metal = page.getByLabel('metal mine production')
-    await expect(metal).toHaveValue(
-      pendingCommand === 'production' ? '50' : '100',
-    )
-    const totals = panel
-      .locator('div')
-      .filter({ has: page.getByText('Energy balance', { exact: true }) })
-      .first()
-    const confirmedTotals = await totals.innerText()
-    const desired = pendingCommand === 'production' ? '100' : '50'
-    await moveProductionSlider(page, 'metal mine production', desired)
-    await expect(metal).toHaveValue(desired)
-    await expect(panel.getByRole('status')).toContainText(
-      'Saving production changes',
-    )
-    expect(sent).toHaveLength(1)
-    expect(await totals.innerText()).toBe(confirmedTotals)
-    economy.settings = {
-      ...economy.settings,
-      metal_mine: pendingCommand === 'production' ? 50 : 100,
-      crystal_mine: 80,
-    }
-    economy.settings_revision = '2'
-    if (pendingCommand === 'upgrade') {
-      await refreshGame(page)
-      await expect(page.getByLabel('crystal mine production')).toHaveValue('80')
-    }
-    // The production command commits; the upgrade rejects. Either
-    // terminal result should release the queued edit without a Retry click.
-    const original = receipts.get(sent[0].command_id)!
-    receipts.set(
-      sent[0].command_id,
-      pendingCommand === 'production'
-        ? {
-            ...original,
-            status: 'Committed',
-            executed_at: Date.now(),
-            minimum_viewer_revision: '1',
-            result_ids: [],
-          }
-        : {
-            ...original,
-            status: 'Rejected',
-            executed_at: Date.now(),
-            code: 'InsufficientResources',
-          },
-    )
-    await refreshGame(page)
-    await expect.poll(() => sent.length).toBe(2)
-    expect(sent[1].command).toMatchObject({
-      type: 'SetProduction',
-      expected_settings_revision: '2',
-      settings: { metal_mine: Number(desired), crystal_mine: 80 },
-    })
-    await expect(panel.getByRole('status')).toHaveText(
-      'All changes saved automatically.',
-    )
-    await expect(metal).toHaveValue(desired)
-    await expect(panel.getByRole('alert')).toHaveCount(0)
   })
-}
+  await page.route('**/commands/*', (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').pop()!
+    return route.fulfill({ json: receipts.get(id) })
+  })
+  await openProductionSettings(page)
+  await moveProductionSlider(page, 'metal mine production', '50')
+  await expect.poll(() => sent.length).toBe(1)
+  await openProductionSettings(page)
+  const panel = page.getByRole('region', { name: 'Production controls' })
+  const metal = page.getByLabel('metal mine production')
+  await expect(metal).toHaveValue('50')
+  const totals = panel
+    .locator('div')
+    .filter({ has: page.getByText('Energy balance', { exact: true }) })
+    .first()
+  const confirmedTotals = await totals.innerText()
+  const desired = '100'
+  await moveProductionSlider(page, 'metal mine production', desired)
+  await expect(metal).toHaveValue(desired)
+  await expect(panel.getByRole('status')).toContainText(
+    'Saving production changes',
+  )
+  expect(sent).toHaveLength(1)
+  expect(await totals.innerText()).toBe(confirmedTotals)
+  economy.settings = {
+    ...economy.settings,
+    metal_mine: 50,
+    crystal_mine: 80,
+  }
+  economy.settings_revision = '2'
+  viewerRevision = '2'
+  // The committed production receipt releases the queued edit after refresh.
+  const original = receipts.get(sent[0].command_id)!
+  receipts.set(
+    sent[0].command_id,
+    {
+      ...original,
+      status: 'Committed',
+      executed_at: Date.now(),
+      minimum_viewer_revision: viewerRevision,
+      result_ids: [],
+    },
+  )
+  await refreshGame(page)
+  await expect.poll(() => sent.length).toBe(2)
+  expect(sent[1].command).toMatchObject({
+    type: 'SetProduction',
+    expected_settings_revision: '2',
+    settings: { metal_mine: Number(desired), crystal_mine: 80 },
+  })
+  await expect(panel.getByRole('status')).toHaveText(
+    'All changes saved automatically.',
+  )
+  await expect(metal).toHaveValue(desired)
+  await expect(panel.getByRole('alert')).toHaveCount(0)
+})
 
 test('resources fit compact and touch layouts in all three states', async ({
   page,

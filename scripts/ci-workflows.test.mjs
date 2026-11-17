@@ -168,17 +168,42 @@ test('integration selection includes earlier queued changes and fails safe witho
     return readFileSync(output, 'utf8')
   }
   const docs = commit('docs/queue.md')
-  assert.equal(select(base), 'database=false\nui=false\n')
+  assert.equal(select(base), 'database=false\nui=false\nimage=false\n')
   const web = commit('apps/web/src/queue.ts')
-  assert.equal(select(docs), 'database=false\nui=true\n')
+  assert.equal(select(docs), 'database=false\nui=true\nimage=false\n')
   commit('crates/storage-postgres/migrations/9999_queue.sql')
   const database = git('rev-parse', 'HEAD')
   commit('docs/last-in-queue.md')
-  assert.equal(select(database), 'database=false\nui=false\n')
-  assert.equal(select(web), 'database=true\nui=true\n')
-  assert.equal(select(base), 'database=true\nui=true\n')
-  assert.equal(select(''), 'database=true\nui=true\n')
-  assert.equal(select('unavailable-base'), 'database=true\nui=true\n')
+  assert.equal(select(database), 'database=false\nui=false\nimage=false\n')
+  assert.equal(select(web), 'database=true\nui=true\nimage=false\n')
+  assert.equal(select(base), 'database=true\nui=true\nimage=false\n')
+  assert.equal(select(''), 'database=true\nui=true\nimage=true\n')
+  assert.equal(
+    select('unavailable-base'),
+    'database=true\nui=true\nimage=true\n',
+  )
+  // Ordinary imports use the fast input check; packaging/dependency edits build.
+  for (const path of ['packages/shared/new.ts', 'crates/server/src/new.rs']) {
+    const previous = git('rev-parse', 'HEAD')
+    commit(path)
+    assert.match(select(previous), /image=false/)
+  }
+  for (const path of [
+    'Dockerfile',
+    '.dockerignore',
+    'package-lock.json',
+    'Cargo.lock',
+    'crates/server/build.rs',
+    'scripts/check-image-inputs.mjs',
+    'apps/web/vite.config.ts',
+    'scripts/analytics-routes.mjs',
+  ]) {
+    const previous = git('rev-parse', 'HEAD')
+    commit(path)
+    assert.match(select(previous), /image=true/)
+    commit('docs/after-' + path.replaceAll('/', '-') + '.md')
+    assert.match(select(previous), /image=true/)
+  }
 })
 
 test('fixture browsers start independently of native compilation and stay routine-only', () => {
@@ -214,12 +239,38 @@ test('fixture browsers start independently of native compilation and stay routin
   )
 })
 
+test('CI builds and inspects the release artifact without publishing or starting it', () => {
+  const { image } = workflows.find(({ file }) => file === 'ci.yml').workflow
+    .jobs
+  assert.equal(image.needs, 'scope')
+  assert.equal(image.if, "needs.scope.outputs.image == 'true'")
+  assert.equal(image.env.ORBIT_RELEASE_SHA, '${{ github.sha }}')
+  assert.equal(image.env.ORBIT_RELEASE_PLATFORM, 'linux/amd64')
+  assert.equal(image.env.ORBIT_RELEASE_IMAGE, 'orbit-ci:${{ github.sha }}')
+  assert.deepEqual(
+    image.steps.filter((step) => step.run).map((step) => step.run),
+    ['make release-image', 'make inspect-release-image'],
+  )
+  assert.ok(
+    !image.steps.some((step) =>
+      /configure-aws-credentials|download-artifact/.test(step.uses ?? ''),
+    ),
+  )
+  assert.equal(image.permissions, undefined)
+})
+
 test('the stable required check rejects failed, cancelled or unexpectedly skipped jobs', () => {
   const { check } = workflows.find(({ file }) => file === 'ci.yml').workflow
     .jobs
   assert.equal(check.name, 'Build, lint and unit tests')
   assert.equal(check.if, 'always()')
-  assert.deepEqual(check.needs, ['scope', 'native', 'database', 'browser'])
+  assert.deepEqual(check.needs, [
+    'scope',
+    'native',
+    'database',
+    'browser',
+    'image',
+  ])
   assert.equal(check.steps.length, 1)
   const gate = check.steps[0]
   assert.deepEqual(gate.env, {
@@ -229,6 +280,8 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
     DATABASE_RESULT: '${{ needs.database.result }}',
     UI_SELECTED: '${{ needs.scope.outputs.ui }}',
     BROWSER_RESULT: '${{ needs.browser.result }}',
+    IMAGE_SELECTED: '${{ needs.scope.outputs.image }}',
+    IMAGE_RESULT: '${{ needs.image.result }}',
   })
   const success = {
     SCOPE_RESULT: 'success',
@@ -237,18 +290,25 @@ test('the stable required check rejects failed, cancelled or unexpectedly skippe
     DATABASE_RESULT: 'success',
     UI_SELECTED: 'true',
     BROWSER_RESULT: 'success',
+    IMAGE_SELECTED: 'true',
+    IMAGE_RESULT: 'success',
   }
   const run = (overrides) =>
     spawnSync('bash', ['-e', '-c', gate.run], {
       env: { ...process.env, ...success, ...overrides },
     }).status
   assert.equal(run({}), 0)
+  assert.equal(run({ IMAGE_SELECTED: 'false', IMAGE_RESULT: 'skipped' }), 0)
+  for (const result of ['success', 'failure', 'cancelled'])
+    assert.notEqual(run({ IMAGE_SELECTED: 'false', IMAGE_RESULT: result }), 0)
+  assert.notEqual(run({ IMAGE_SELECTED: '' }), 0)
   assert.equal(run({ UI_SELECTED: 'false', BROWSER_RESULT: 'skipped' }), 0)
   for (const key of [
     'SCOPE_RESULT',
     'NATIVE_RESULT',
     'DATABASE_RESULT',
     'BROWSER_RESULT',
+    'IMAGE_RESULT',
   ]) {
     for (const result of ['failure', 'cancelled', 'skipped']) {
       assert.notEqual(run({ [key]: result }), 0, `${key}=${result}`)
