@@ -42,6 +42,32 @@ Replace the example address with your computer's address. Open the printed URL o
 
 For a separately managed database, use the `orbit` binary with `DATABASE_URL`, `orbit setup`, and `orbit serve`. Make's local lifecycle refuses an ambient `DATABASE_URL` so resetting a playground cannot target a production database.
 
+### Ship customization development preview
+
+Run `VITE_SHIP_CUSTOMIZATION=true make dev` to enable the new Shipyard and
+full-screen hangar for the Light Fighter. Production builds ignore this opt-in.
+The other ship classes retain their ordinary artwork.
+
+Live previews run locally in the browser. Saving also needs the separate
+[ship renderer](../tools/ship-appearance/README.md): prepare it with
+`npm run ship-renderer:build`, then run `npm run ship-renderer` in another terminal
+with its documented bearer token configuration. Pass `ORBIT_APPEARANCE_RENDER_URL`
+(normally `http://127.0.0.1:52941`) and the matching
+`ORBIT_APPEARANCE_RENDER_TOKEN` to `make dev`. The API owns PostgreSQL records and
+publishes completed images through its configured asset store. Missing renderer
+configuration leaves saved choices intact and reports a retryable render failure.
+
+The preview supports two named paint colors and the empire's current emblem.
+Saving affects only the current empire. Editing its emblem automatically refreshes
+its authored ship images. Generated player ships and render currency are not part
+of this preview.
+
+`make test-ship-customization-live` explicitly exercises real persistence, rendering,
+reload/restart and desktop/mobile presentation against a caller-provided disposable
+Compose project. It requires `COMPOSE_PROJECT_NAME` and `ORBIT_TEST_DB_PORT` and
+refuses an ambient `DATABASE_URL`. It is not part of routine CI.
+
+
 ## Deploying and enabling content
 
 Fresh installations use `orbit setup` before `orbit serve`. Setup applies migrations and creates the first universe, and is safe to repeat. Legacy retained installations without database-owned policy still require the separate configuration bridge; setup does not replace that upgrade. See [universe configuration](operations/universe-configuration.md) for exact setup, live policy, two-artifact rollout and rollback commands.

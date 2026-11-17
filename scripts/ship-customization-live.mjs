@@ -358,15 +358,24 @@ try {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     )
+    await navigate(`/u/${slug}/b/${body}/fleets`)
+    const inventory = page.getByRole('region', {
+      name: 'Stationed ships',
+      exact: true,
+    })
+    const ship = inventory
+      .locator('img[src*="/api/media/ship-appearances/"]')
+      .first()
+    await expect(ship).toBeVisible()
+    await expect
+      .poll(() =>
+        ship.evaluate((node) => node.complete && node.naturalWidth > 0),
+      )
+      .toBe(true)
+    await inventory.screenshot({
+      path: join(output, `fleet-inventory-${width}x${height}.png`),
+    })
   }
-  await navigate(`/u/${slug}/b/${body}/fleets`)
-  await expect(
-    page.locator('img[src*="/api/media/ship-appearances/"]').first(),
-  ).toBeVisible()
-  await page.screenshot({
-    path: join(output, 'fleet-inventory-390x844.png'),
-    fullPage: true,
-  })
   assert.deepEqual(errors, [])
   timings.acceptance_ms = Math.round(
     performance.now() - started - timings.preparation_ms,

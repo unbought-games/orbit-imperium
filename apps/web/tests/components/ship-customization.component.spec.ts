@@ -69,6 +69,24 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   const { dialog, canvas, opener } = await openHangar(page, mount)
+  const entrance = await dialog.evaluate((node) =>
+    node.getAnimations({ subtree: true }).map((animation) => ({
+      name: (animation as CSSAnimation).animationName,
+      duration: animation.effect?.getTiming().duration,
+    })),
+  )
+  expect(
+    entrance.some(
+      (item) => item.name?.includes('ship-arrive') && item.duration === 1000,
+    ),
+  ).toBe(true)
+  await dialog.evaluate(async (node) => {
+    await Promise.all(
+      node
+        .getAnimations({ subtree: true })
+        .map((animation) => animation.finished),
+    )
+  })
   const back = dialog.getByRole('button', { name: 'Shipyard', exact: true })
   await expect(back).toBeFocused()
   await page.keyboard.press('Shift+Tab')
@@ -104,6 +122,11 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await opener.click()
   await expect(name).toHaveValue('First light')
+  expect(
+    await dialog.evaluate(
+      (node) => node.getAnimations({ subtree: true }).length,
+    ),
+  ).toBe(0)
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(opener).toBeFocused()
