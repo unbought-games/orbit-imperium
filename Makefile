@@ -313,6 +313,12 @@ test-insignias-live: _dev-binary
 	npm run build
 	$(TIMEOUT) full-system node scripts/insignias-live.mjs
 
+# Explicit-only real persistence, worker and development UI integration.
+.PHONY: test-ship-customization-live
+test-ship-customization-live: _dev-binary
+	npm run ship-renderer:build
+	$(TIMEOUT) full-system node scripts/ship-customization-live.mjs
+
 .PHONY: test-deuterium-debris test-deuterium-debris-db
 test-deuterium-debris:
 	cargo nextest run -p orbit-engine --test debris --test missions --test rules_update_impact --test persistence --lib
