@@ -56,6 +56,13 @@ initial check overlapped the extraction of `command_action`; two new fixture nam
 (`Actor::System`, `PresenceCause::Navigation`) were corrected to existing enum
 variants. No existing tests were deleted, weakened or retried to hide failures.
 
+CI run `44102373661` at `0cbe7d8e` found a build integration defect in the new
+change note: missing required YAML frontmatter stopped the news builder before
+browser execution. Added the standard id/title/date metadata. `npm run news:build`
+and the two `scripts/news.test.mjs` tests passed with the pinned Node 24.18.0 /
+npm 11.16.0 before pushing the correction. No browser test changed.
+
+
 ## Representative volume
 
 `logging::tests::representative_info_and_debug_volume` emits one synthetic minute:
