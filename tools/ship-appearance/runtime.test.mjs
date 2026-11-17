@@ -328,7 +328,7 @@ test('data-only installed registry loads a second independently authored package
       ORBIT_SHIP_PACKAGES: '[{"id":"fixture-fighter","revision":"fixture-v1"}]',
     })
     assert.equal(registry.size, 1)
-    const tiny = registry.get('fixture-fighter/fixture-v1')
+    const tiny = await registry.load('fixture-fighter/fixture-v1')
     tiny.source[3] = 0
     tiny.source[7] = 128
     const variants = await renderPixels(
@@ -352,13 +352,98 @@ test('data-only installed registry loads a second independently authored package
       )
     }
 
-    assert.equal(
-      renderShipPixels(
-        registry.get('fixture-fighter/fixture-v1'),
-        request.colors,
-      ).length,
-      16,
+    assert.equal(renderShipPixels(tiny, request.colors).length, 16)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('registry supports a full fourteen-hull collection and bounds the configured revision count', () => {
+  const entries = Array.from({ length: 32 }, (_, i) => ({
+    id: `fixture-ship-${i}`,
+    revision: 'v1',
+  }))
+  assert.equal(
+    packageSelection({
+      ORBIT_SHIP_PACKAGES: JSON.stringify(entries.slice(0, 14)),
+    }).length,
+    14,
+  )
+  assert.equal(
+    packageSelection({ ORBIT_SHIP_PACKAGES: JSON.stringify(entries) }).length,
+    32,
+  )
+  assert.throws(
+    () =>
+      packageSelection({
+        ORBIT_SHIP_PACKAGES: JSON.stringify([
+          ...entries,
+          { id: 'overflow', revision: 'v1' },
+        ]),
+      }),
+    /thirty-two/,
+  )
+})
+
+test('fourteen native-resolution packages pass startup hashes, then load lazily against pinned manifests', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ship-collection-test-'))
+  try {
+    const bytes = await sharp({
+      create: { width: 1536, height: 1024, channels: 4, background: '#123456' },
+    })
+      .png()
+      .toBuffer()
+    const map = {
+      file: 'map.png',
+      bytes: bytes.length,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    }
+    const entries = Array.from({ length: 14 }, (_, i) => ({
+      id: `fixture-ship-${i}`,
+      revision: 'v1',
+    }))
+    for (const entry of entries) {
+      const directory = join(root, entry.id, entry.revision)
+      await mkdir(directory, { recursive: true })
+      await writeFile(join(directory, 'map.png'), bytes)
+      await writeFile(
+        join(directory, 'manifest.json'),
+        JSON.stringify({
+          ...asset.manifest,
+          ...entry,
+          maps: Object.fromEntries(
+            Object.keys(asset.manifest.maps).map((key) => [key, map]),
+          ),
+        }),
+      )
+    }
+    const env = {
+      ORBIT_SHIP_PACKAGE_DIRECTORY: root,
+      ORBIT_SHIP_PACKAGES: JSON.stringify(entries),
+    }
+    const registry = await loadInstalledPackages(env)
+    assert.equal(registry.size, 14) // 22,020,096 native pixels; previously rejected.
+    const selected = await registry.load('fixture-ship-13/v1')
+    assert.equal(selected.source.length, 1536 * 1024 * 4)
+    assert.deepEqual(Array.from(selected.source.slice(0, 4)), [18, 52, 86, 255])
+    await assert.rejects(registry.load('../unlisted/v1'), /not installed/)
+    const signal = AbortSignal.abort(Error('fixture cancellation'))
+    await assert.rejects(
+      registry.load('fixture-ship-0/v1', signal),
+      /fixture cancellation/,
     )
+    // A warm package may not hide an original changed after readiness.
+    const damaged = Buffer.from(bytes)
+    damaged[damaged.length - 1] ^= 1
+    await writeFile(join(root, 'fixture-ship-13', 'v1', 'map.png'), damaged)
+    await assert.rejects(registry.load('fixture-ship-13/v1'), /hash mismatch/)
+    await assert.rejects(loadInstalledPackages(env), /hash mismatch/)
+    await writeFile(join(root, 'fixture-ship-13', 'v1', 'map.png'), bytes)
+    // Manifest swaps also cannot redefine a revision already pinned at startup.
+    await writeFile(join(root, 'fixture-ship-13', 'v1', 'manifest.json'), '{}')
+    const reloaded = await registry.load('fixture-ship-13/v1')
+    assert.equal(reloaded.manifest.id, 'fixture-ship-13')
+    assert.notEqual(reloaded.source, selected.source)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

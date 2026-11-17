@@ -3,3 +3,9 @@ export function decodePackagePng(
   width: number,
   height: number,
 ): Promise<Uint8ClampedArray>
+
+export function validatePackagePngHeader(
+  bytes: ArrayBuffer | Uint8Array,
+  width: number,
+  height: number,
+): { input: Uint8Array; view: DataView }

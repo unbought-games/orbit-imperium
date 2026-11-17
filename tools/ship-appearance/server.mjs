@@ -45,10 +45,10 @@ const service = createRenderService({
   token,
   ready: () => browser.isConnected(),
   render: async (request, signal) => {
-    const asset = packages.get(
+    const asset = await packages.load(
       request.package_id + '/' + request.package_revision,
+      signal,
     )
-    if (!asset) throw Error('Package revision is not installed')
     if (!browser.isConnected())
       browser = await chromium.launch({ headless: true })
     return renderRequest(

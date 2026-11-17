@@ -1,6 +1,6 @@
 // Decode the package's deliberately narrow RGBA8 PNG format without Canvas
 // premultiplication/color-management changing packed material/response bytes.
-export async function decodePackagePng(bytes, width, height) {
+export function validatePackagePngHeader(bytes, width, height) {
   const input = new Uint8Array(bytes),
     view = new DataView(input.buffer, input.byteOffset, input.byteLength)
   if (
@@ -9,6 +9,8 @@ export async function decodePackagePng(bytes, width, height) {
   )
     throw Error('Invalid PNG signature')
   if (
+    view.getUint32(8) !== 13 ||
+    String.fromCharCode(...input.slice(12, 16)) !== 'IHDR' ||
     view.getUint32(16) !== width ||
     view.getUint32(20) !== height ||
     input[24] !== 8 ||
@@ -18,6 +20,10 @@ export async function decodePackagePng(bytes, width, height) {
     input[28] !== 0
   )
     throw Error('Expected non-interlaced RGBA8 package map')
+  return { input, view }
+}
+export async function decodePackagePng(bytes, width, height) {
+  const { input, view } = validatePackagePngHeader(bytes, width, height)
   const chunks = []
   let ended = false
   for (let offset = 8; offset < input.length; ) {

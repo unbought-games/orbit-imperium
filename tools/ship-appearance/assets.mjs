@@ -15,12 +15,16 @@ import {
   checkedAssetBytes,
   appearanceAssetUrls,
 } from '../../packages/ship-appearance/assets.mjs'
-import { decodePackagePng } from '../../packages/ship-appearance/png.mjs'
-async function boundedFile(path, max) {
+import {
+  decodePackagePng,
+  validatePackagePngHeader,
+} from '../../packages/ship-appearance/png.mjs'
+async function boundedFile(path, max, signal) {
+  signal?.throwIfAborted()
   const info = await stat(path)
   if (!info.isFile() || info.size > max)
     throw Error('Installed file exceeds bound')
-  const bytes = await readFile(path)
+  const bytes = await readFile(path, { signal })
   if (bytes.length > max) throw Error('Installed file exceeds bound')
   return bytes
 }
@@ -29,7 +33,7 @@ export const packageRoot = new URL(
   '../../apps/web/public/art/ship-skins/',
   import.meta.url,
 ).pathname
-export async function loadPackage(id, revision, root = packageRoot) {
+async function readPackageManifest(id, revision, root) {
   if (
     !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id) ||
     !/^[a-z0-9][a-z0-9-]{0,63}$/.test(revision)
@@ -44,15 +48,28 @@ export async function loadPackage(id, revision, root = packageRoot) {
   const manifest = validateManifest(JSON.parse(manifestBytes))
   if (manifest.id !== id || manifest.revision !== revision)
     throw Error('Installed package identity mismatch')
-  const asset = { manifest }
+  return { directory, manifest }
+}
+async function packageMapBytes(directory, manifest, map, signal) {
+  const bytes = await boundedFile(join(directory, map.file), map.bytes, signal)
+  if (bytes.length !== map.bytes || digest(bytes) !== map.sha256)
+    throw Error('Installed map hash mismatch')
+  validatePackagePngHeader(bytes, manifest.width, manifest.height)
+  return bytes
+}
+async function decodeInstalledPackage({ directory, manifest }, signal) {
+  const asset = { manifest: structuredClone(manifest) }
   for (const [key, map] of Object.entries(manifest.maps)) {
-    const bytes = await boundedFile(join(directory, map.file), map.bytes)
-    if (bytes.length !== map.bytes || digest(bytes) !== map.sha256)
-      throw Error('Installed map hash mismatch')
+    const bytes = await packageMapBytes(directory, manifest, map, signal)
     asset[key] = await decodePackagePng(bytes, manifest.width, manifest.height)
+    signal?.throwIfAborted()
   }
   return asset
 }
+export async function loadPackage(id, revision, root = packageRoot) {
+  return decodeInstalledPackage(await readPackageManifest(id, revision, root))
+}
+
 export async function bundledAssets(
   directory = new URL(
     '../../crates/application/assets/insignias/',
@@ -205,10 +222,10 @@ export function packageSelection(env = process.env) {
   const text =
     env.ORBIT_SHIP_PACKAGES ??
     '[{"id":"orbit-light-fighter","revision":"concord-v1"}]'
-  if (text.length > 4096) throw Error('Installed package registry too large')
+  if (text.length > 16384) throw Error('Installed package registry too large')
   const entries = JSON.parse(text)
-  if (!Array.isArray(entries) || !entries.length || entries.length > 8)
-    throw Error('Install one to eight package revisions')
+  if (!Array.isArray(entries) || !entries.length || entries.length > 32)
+    throw Error('Install one to thirty-two package revisions')
   const keys = new Set()
   for (const entry of entries) {
     if (
@@ -231,13 +248,22 @@ export async function loadInstalledPackages(env = process.env) {
     ? resolve(env.ORBIT_SHIP_PACKAGE_DIRECTORY)
     : packageRoot
   const packages = new Map()
-  let totalPixels = 0
   for (const { id, revision } of packageSelection(env)) {
-    const asset = await loadPackage(id, revision, root)
-    totalPixels += asset.manifest.width * asset.manifest.height
-    if (totalPixels > 8_388_608)
-      throw Error('Installed package pixel budget exceeded')
-    packages.set(id + '/' + revision, asset)
+    const entry = await readPackageManifest(id, revision, root)
+    // Read/hash one compressed map at a time. Readiness checks every installed
+    // original without retaining decoded hull maps or allocating their pixels.
+    for (const map of Object.values(entry.manifest.maps))
+      await packageMapBytes(entry.directory, entry.manifest, map)
+    packages.set(id + '/' + revision, entry)
   }
-  return packages
+  return {
+    size: packages.size,
+    async load(key, signal) {
+      const entry = packages.get(key)
+      if (!entry) throw Error('Package revision is not installed')
+      // Keep the startup manifest snapshot; recheck map bytes before every bake.
+      // No decoded-package cache: the service admits only one active request.
+      return decodeInstalledPackage(entry, signal)
+    },
+  }
 }

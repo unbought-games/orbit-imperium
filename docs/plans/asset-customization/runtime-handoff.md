@@ -72,8 +72,14 @@ functional preparation/recovery deadline; tests have no execution deadline.
 
 `ORBIT_SHIP_PACKAGES` is an explicit JSON array of `{id,revision}`; default is the
 single Light Fighter revision. `ORBIT_SHIP_PACKAGE_DIRECTORY` optionally points
-at a trusted package root. It supports one to eight installed revisions and a
-combined 8,388,608 native-pixel budget. Unlisted packages and caller paths fail.
+at a trusted package root. It supports one to 32 installed revisions and a 16 KiB
+registry, enough for all 14 ships plus rolling revisions. Startup pins manifests
+and checks every map's size/hash/PNG header/dimensions, reading one compressed map
+at a time. Only the selected package is decoded during a render, with fresh hashes
+against the pinned manifest; no decoded package cache survives the request.
+Hash-consistent malformed compressed data fails at render time, before publication.
+There is no aggregate collection pixel limit; existing per-package bounds remain.
+Unlisted packages and caller paths fail.
 The machine-readable v1 schema is `packages/ship-appearance/manifest.schema.json`;
 geometry and map integrity receive additional pure validation. New valid packages
 install through this data-only registry without service/math changes.
@@ -155,3 +161,21 @@ accent membership/A coverage, receiver A is decal coverage. Maps never undergo
 lossy/premultiplied decoding or pre-render resizing. No new art was generated.
 Attribution and applicable CC-BY-SA-4.0 artwork / AGPL-3.0-only tooling provenance
 are retained; no private originals or private deployment details were included.
+
+## Full collection registry follow-up
+
+The original eight-revision / 8,388,608 aggregate-pixel limits were too small for
+14 Concord-sized ships. The follow-up separates startup manifest/hash readiness
+from lazy selected-package decoding, supports 32 revisions, and retains no decoded
+package cache between requests. This is independent of the worker/browser bundle;
+no Chromium/build/full-type validation was run by this lane. Focused tests now
+exercise a real 14-package, 22,020,096-native-pixel fixture registry, the 32/33 count
+boundary, cancellation, post-readiness original corruption, startup corruption,
+unlisted selection, pinned manifest snapshots and fresh loads.
+
+Follow-up validation: base `ef9cb50d` plus this registry change, Node 24.18.0;
+**13/13 focused tests passed in 2.073 s**, no failures/repairs. Focused ESLint,
+Prettier and whitespace checks passed. Fixture files, workers and injected HTTP
+servers were cleaned up; no browser/service process was started. Manifest and
+runtime asset hashes are unchanged. Integrator should cherry-pick the follow-up
+commit and use the updated async registry `load(key, signal)` service seam.

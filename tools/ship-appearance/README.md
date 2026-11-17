@@ -88,10 +88,24 @@ it defaults to `[{"id":"orbit-light-fighter","revision":"concord-v1"}]`.
 Install additional approved packages beneath `ORBIT_SHIP_PACKAGE_DIRECTORY`
 (default: bundled public `art/ship-skins` directory), preserving
 `<id>/<revision>/manifest.json`. No service/math changes are required. Startup
-loads/validates one to eight listed revisions, bounded to 8,388,608 total pixels
-across native sources, and fails if a package is missing/corrupt. Unlisted files
-are never discoverable by a request; callers supply only IDs and revisions, never
-filesystem paths. Package bytes are immutable for the lifetime of the process.
+accepts one to 32 listed revisions (enough for all 14 ships plus rolling revisions),
+with a 16 KiB registry and existing per-package byte/dimension limits. It pins each
+validated manifest and sequentially checks every map's byte count, SHA-256, PNG
+header/encoding and native dimensions before readiness. It retains only manifests,
+not all decoded hull maps; there is no aggregate pixel limit on the collection.
+
+Full bounded PNG decompression happens lazily for the selected request. Each map
+is reread and rehashed against the startup manifest snapshot, so altered files
+cannot silently redefine an installed revision. Missing/hash-corrupt/header-invalid
+maps fail startup; a hash-consistent but malformed compressed payload fails the
+render before publication. Replacing a manifest requires restarting the renderer.
+No decoded package cache is retained between requests; the service's one active
+render owns at most one package's five decoded maps (80 MiB maximum at 2048²),
+plus bounded PNG decode intermediates, output work and worker-transfer copies.
+
+Unlisted files are never discoverable by a request; callers supply only IDs and
+revisions, never filesystem paths. Install originals read-only. Startup integrity
+checks do not make later storage changes safe; runtime checks detect them.
 
 ## Installed and trusted insignia originals
 
