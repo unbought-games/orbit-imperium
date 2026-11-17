@@ -214,3 +214,20 @@ Repair complete: test-support server build passed in 22.67s. The executable at
 `/Users/ethan/.codex/worktrees/ship-appearance-backend/orbit-imperium/target/debug/orbit`
 contains this repair and migration 0049. No validation command or test service is
 running; the expensive validation slot is released to root again.
+
+Follow-through still in progress before final handoff: environment deadlines now
+also take the fresh account_observation expiry, because owned dyes/treatments can
+expire before supporter evidence. Pure coverage uses differing deadlines, both
+expiry orderings, freshness caps and already-expired fallback sources. Backend is
+finishing that focused check and updating the executable; root should keep the
+expensive validation slot clear until the final handoff.
+
+Final follow-through complete. `publication_deadline` bounds supporter-policy
+snapshots by both fresh supporter evidence and fresh account-observation expiry,
+within the existing freshness cap; expired sources already using fallbacks are
+ignored. `cargo test -p orbit-transport-http --lib ship_appearances::tests` passed
+(compile 5.78s, execution <0.01s); transport Clippy with warnings denied passed
+(14.87s); the updated test-support executable build passed (20.41s). Formatting
+and diff checks passed. This follow-up was tested on `f3cee429` plus the committed
+deadline-helper diff. The same executable path above includes both repair commits.
+No validation process is running. Root owns the shared validation slot again.

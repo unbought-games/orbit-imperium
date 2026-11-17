@@ -1,6 +1,28 @@
 use super::*;
 use serde_json::{Value, json};
 
+/// Bound publication by every fresh entitlement source used to resolve its pixels.
+/// Expired sources already produce fallback inputs and cannot shorten their lifetime.
+fn publication_deadline(
+    policy: CosmeticPolicy,
+    evidence: SupporterEvidence,
+    observation: Option<&AccountCosmeticObservation>,
+    now: i64,
+) -> i64 {
+    let cap = if policy == CosmeticPolicy::Supporter && evidence.expires_at > now {
+        now + 60
+    } else {
+        now + 30
+    };
+    if policy != CosmeticPolicy::Supporter {
+        return cap;
+    }
+    std::iter::once(evidence.expires_at)
+        .chain(observation.map(|value| value.expires_at))
+        .filter(|deadline| *deadline > now)
+        .fold(cap, i64::min)
+}
+
 /// Resolves current live emblem and dye access for both HTTP commands and the worker.
 /// Catalog evidence is fetched outside database write transactions.
 pub async fn ship_render_environment<S: IdentityStore>(
@@ -70,13 +92,12 @@ pub async fn ship_render_environment<S: IdentityStore>(
     }
     Ok((
         ShipRenderEnvironment {
-            valid_until: if customization.policy == CosmeticPolicy::Supporter
-                && evidence.expires_at > now
-            {
-                evidence.expires_at.min(now + 60)
-            } else {
-                now + 30
-            },
+            valid_until: publication_deadline(
+                customization.policy,
+                evidence,
+                catalog.account_observation.as_ref(),
+                now,
+            ),
             dyes,
             emblem,
             emblem_revision: snapshot.emblem_revision,
@@ -177,4 +198,45 @@ pub(super) fn renderer_media_authorized(headers: &HeaderMap) -> bool {
     use sha2::{Digest, Sha256};
     // Fixed-length digests avoid comparing secret token prefixes.
     Sha256::digest(candidate.as_bytes()) == Sha256::digest(token.as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn publication_uses_earliest_fresh_entitlement_expiry_and_ignores_expired_sources() {
+        let now = 100;
+        for (supporter_expiry, account_expiry, expected) in [
+            (200, Some(115), 115), // Owned dye/treatment evidence expires first.
+            (110, Some(150), 110), // Supporter evidence expires first.
+            (200, Some(190), 160), // Preserve the existing freshness cap.
+            (200, None, 160),
+            (90, Some(120), 120),  // Expired membership already fell back.
+            (130, Some(100), 130), // Expired account ingredients already fell back.
+            (90, Some(99), 130),
+        ] {
+            let evidence = SupporterEvidence {
+                known: true,
+                active: true,
+                expires_at: supporter_expiry,
+            };
+            let account = account_expiry.map(|expires_at| AccountCosmeticObservation {
+                expires_at,
+                membership: true,
+                items: vec![("dye".into(), "fixture-owned".into())],
+            });
+            assert_eq!(
+                publication_deadline(CosmeticPolicy::Supporter, evidence, account.as_ref(), now),
+                expected,
+                "supporter {supporter_expiry}, account {account_expiry:?}"
+            );
+            for policy in [CosmeticPolicy::Unrestricted, CosmeticPolicy::All] {
+                assert_eq!(
+                    publication_deadline(policy, evidence, account.as_ref(), now),
+                    130
+                );
+            }
+        }
+    }
 }
