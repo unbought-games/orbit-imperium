@@ -23,6 +23,7 @@ async fn delivery_return_recall_deadline_and_private_reports() {
     let origin = av.bodies[0].id;
     let target = bv.bodies[0].id;
     let worker = Uuid::new_v4().into();
+    let mut samples = Vec::new();
     let ships = vec![ShipStack {
         owner: a,
         ship_type: ShipType::SmallCargo,
@@ -64,7 +65,14 @@ async fn delivery_return_recall_deadline_and_private_reports() {
         .submit(Actor::Player(a), u, envelope.clone())
         .await
         .unwrap();
-    service.step(u, worker).await.unwrap();
+    let claim = store.claim_next(u, worker).await.unwrap().unwrap();
+    let snapshot = store.load_claim(&claim).await.unwrap();
+    let outcome = orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
+    samples.push((claim.input.clone(), snapshot, outcome.clone()));
+    assert!(matches!(
+        store.commit_claim(&claim, outcome).await.unwrap(),
+        CommitOutcome::Committed { .. }
+    ));
     let launched = service.view(Actor::Player(a), u).await.unwrap();
     assert_eq!(launched.bodies[0].inventories[0].count, "0");
     assert_eq!(launched.fleets[0].paid_fuel, "3000000");
@@ -87,8 +95,22 @@ async fn delivery_return_recall_deadline_and_private_reports() {
         .submit(Actor::Player(a), u, recall.clone())
         .await
         .unwrap();
-    service.step(u, worker).await.unwrap();
-    service.step(u, worker).await.unwrap();
+    let claim = store.claim_next(u, worker).await.unwrap().unwrap();
+    let snapshot = store.load_claim(&claim).await.unwrap();
+    let outcome = orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
+    samples.push((claim.input.clone(), snapshot, outcome.clone()));
+    assert!(matches!(
+        store.commit_claim(&claim, outcome).await.unwrap(),
+        CommitOutcome::Committed { .. }
+    ));
+    let claim = store.claim_next(u, worker).await.unwrap().unwrap();
+    let snapshot = store.load_claim(&claim).await.unwrap();
+    let outcome = orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
+    samples.push((claim.input.clone(), snapshot, outcome.clone()));
+    assert!(matches!(
+        store.commit_claim(&claim, outcome).await.unwrap(),
+        CommitOutcome::Committed { .. }
+    ));
     assert!(matches!(
         service
             .receipt(Actor::Player(a), u, recall.command_id)
@@ -107,28 +129,45 @@ async fn delivery_return_recall_deadline_and_private_reports() {
     assert_eq!(sender.bodies.len(), 1);
     assert_eq!(sender.reports[0].kind, "Delivered");
     store.set_test_time(10_482_000).await.unwrap();
-    service.step(u, worker).await.unwrap();
+    let claim = store.claim_next(u, worker).await.unwrap().unwrap();
+    let snapshot = store.load_claim(&claim).await.unwrap();
+    let outcome = orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
+    samples.push((claim.input.clone(), snapshot, outcome.clone()));
+    assert!(matches!(
+        store.commit_claim(&claim, outcome).await.unwrap(),
+        CommitOutcome::Committed { .. }
+    ));
     assert_eq!(
         service.view(Actor::Player(a), u).await.unwrap().bodies[0].inventories[0].count,
         "2"
     );
-    // Replay each recorded transition from its complete fact snapshot.
-    let pool = sqlx::PgPool::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
-        .await
-        .unwrap();
-    let rows = sqlx::query_as::<_, (serde_json::Value, serde_json::Value, serde_json::Value)>(
-        "SELECT input,facts,outcome FROM transition_journal ORDER BY cursor",
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
-    let rules = store.load_rules(u).await.unwrap();
-    for (input, facts, expected) in rows {
-        let input = serde_json::from_value(input).unwrap();
-        let facts = serde_json::from_value(facts).unwrap();
+    let reopened = GameService::new(
+        PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+            .await
+            .unwrap(),
+    );
+    let restarted = reopened.view(Actor::Player(a), u).await.unwrap();
+    assert_eq!(restarted.bodies[0].inventories[0].count, "2");
+    assert_eq!(
+        restarted.reports.len(),
+        service
+            .view(Actor::Player(a), u)
+            .await
+            .unwrap()
+            .reports
+            .len()
+    );
+    // Replay real pre-execution snapshots retained only in test-owned memory.
+    assert_eq!(samples.len(), 4);
+    for (input, snapshot, expected) in samples {
         assert_eq!(
-            serde_json::to_value(orbit_engine::transition(&facts, &input, &rules)).unwrap(),
-            expected
-        )
+            serde_json::to_value(orbit_engine::transition(
+                &snapshot.state,
+                &input,
+                &snapshot.rules
+            ))
+            .unwrap(),
+            serde_json::to_value(expected).unwrap()
+        );
     }
 }

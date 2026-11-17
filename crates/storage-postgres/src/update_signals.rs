@@ -135,7 +135,11 @@ impl PgStore {
                     }
                 }
             }
-            eprintln!("update listener disconnected; durable replay will recover delivery");
+            orbit_application::orbit_log!(
+                WARN,
+                event = "update_listener_disconnected",
+                outcome = "durable_replay_available"
+            );
             self.update_hub.wake_all();
             tokio::select! {_=tokio::time::sleep(Duration::from_millis(backoff))=>{},_=drain.changed()=>return}
             backoff = (backoff * 2).min(5000);

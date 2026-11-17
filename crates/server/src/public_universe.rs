@@ -33,7 +33,7 @@ async fn scan(store: &PgStore, metrics: &crate::metrics::RuntimeMetrics) {
         Ok(universes) => universes,
         Err(error) => {
             metrics.publication_scan_failed();
-            eprintln!("level=error event=public_feed_scan_failed error={error:?}");
+            orbit_application::orbit_log!(WARN, event = "public_feed_scan_failed", error_code = %error);
             return;
         }
     };
@@ -45,10 +45,7 @@ async fn scan(store: &PgStore, metrics: &crate::metrics::RuntimeMetrics) {
                 Ok(None) => {}
                 Err(error) => {
                     metrics.publication_event(universe, feed, "claim_failed", Duration::ZERO);
-                    eprintln!(
-                        "level=error event=public_feed_claim_failed universe={universe} feed={} error={error:?}",
-                        feed.name()
-                    );
+                    orbit_application::orbit_log!(WARN, event = "public_feed_claim_failed", universe = %universe, feed = feed.name(), error_code = %error);
                 }
             }
         }
@@ -61,14 +58,8 @@ async fn publish(
 ) {
     let started = Instant::now();
     metrics.publication_event(claim.universe, claim.feed, "attempt", Duration::ZERO);
-    eprintln!(
-        "level=info event=public_feed_attempt universe={} epoch={} feed={} boundary={} attempt={}",
-        claim.universe,
-        claim.epoch,
-        claim.feed.name(),
-        claim.boundary,
-        claim.attempt
-    );
+    orbit_application::orbit_log!(DEBUG, event = "public_feed_attempt", universe = %claim.universe,
+        feed = claim.feed.name(), boundary = claim.boundary, attempt = claim.attempt);
     // Operational I/O guard, shorter than the durable lease; not a test deadline.
     let result = tokio::time::timeout(Duration::from_secs(60), async {
         let observation = store.sample_publication(&claim).await?;
@@ -80,16 +71,9 @@ async fn publish(
     match result {
         Ok(sampled_at) => {
             metrics.publication_event(claim.universe, claim.feed, "success", started.elapsed());
-            eprintln!(
-                "level=info event=public_feed_published universe={} epoch={} feed={} boundary={} attempt={} sampled_at={} duration_ms={}",
-                claim.universe,
-                claim.epoch,
-                claim.feed.name(),
-                claim.boundary,
-                claim.attempt,
-                sampled_at,
-                started.elapsed().as_millis()
-            );
+            orbit_application::orbit_log!(INFO, event = "public_feed_published", universe = %claim.universe,
+                feed = claim.feed.name(), boundary = claim.boundary, attempt = claim.attempt,
+                sampled_at, duration_ms = started.elapsed().as_millis() as u64, commit_outcome = "acknowledged");
         }
         Err(error) => {
             let retry = publication_retry_ms(claim.attempt, &error);
@@ -99,16 +83,14 @@ async fn publish(
                 "exhausted"
             };
             metrics.publication_event(claim.universe, claim.feed, outcome, started.elapsed());
-            eprintln!(
-                "level={} event=public_feed_{outcome} universe={} epoch={} feed={} boundary={} attempt={} retry_delay_ms={retry:?} duration_ms={} error={error:?}",
-                if retry.is_some() { "warn" } else { "error" },
-                claim.universe,
-                claim.epoch,
-                claim.feed.name(),
-                claim.boundary,
-                claim.attempt,
-                started.elapsed().as_millis()
-            );
+            if retry.is_some() {
+                orbit_application::orbit_log!(WARN, event = "public_feed_retry", universe = %claim.universe,
+                    feed = claim.feed.name(), attempt = claim.attempt, retry_delay_ms = retry,
+                    error_code = %error, commit_outcome = "unknown");
+            } else {
+                orbit_application::orbit_log!(ERROR, event = "public_feed_exhausted", universe = %claim.universe,
+                    feed = claim.feed.name(), attempt = claim.attempt, error_code = %error, commit_outcome = "unknown");
+            }
             if let Err(error) = store.fail_publication(&claim, &error).await {
                 metrics.publication_event(
                     claim.universe,
@@ -116,11 +98,8 @@ async fn publish(
                     "record_failed",
                     Duration::ZERO,
                 );
-                eprintln!(
-                    "level=error event=public_feed_failure_record_failed universe={} feed={} error={error:?}",
-                    claim.universe,
-                    claim.feed.name()
-                );
+                orbit_application::orbit_log!(ERROR, event = "public_feed_failure_record_failed", universe = %claim.universe,
+                    feed = claim.feed.name(), error_code = %error, commit_outcome = "unknown");
             }
         }
     }

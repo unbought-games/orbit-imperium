@@ -57,6 +57,11 @@ async fn malformed_head_schema_errors_and_invalid_rules_block_without_advancing(
                 .fetch_one(&pool)
                 .await
                 .unwrap();
+        let original_bodies: serde_json::Value =
+            sqlx::query_scalar("SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM bodies b")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         if phase == "head" {
             sqlx::query("UPDATE commands SET input='{}'::jsonb")
                 .execute(&pool)
@@ -105,11 +110,19 @@ async fn malformed_head_schema_errors_and_invalid_rules_block_without_advancing(
                     .await
                     .unwrap();
             assert_eq!((fence, claim_input), (0, None));
-            let journal_count: i64 = sqlx::query_scalar("SELECT count(*) FROM transition_journal")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
-            assert_eq!(journal_count, 0);
+            let retained_bodies: serde_json::Value =
+                sqlx::query_scalar("SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM bodies b")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(retained_bodies, original_bodies);
+            assert_eq!(
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM constructions")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap(),
+                0
+            );
             sqlx::query("ALTER TABLE scheduled_events RENAME COLUMN damaged_input TO input")
                 .execute(&pool)
                 .await

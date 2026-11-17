@@ -43,7 +43,8 @@ pub fn validate_phalanx_scan_readiness<'a>(
 }
 
 /// A trusted operational loader extracts this only from an immutable, successful
-/// Applied transition journal. Arbitrary user JSON or reports are not evidence.
+/// Previously captured, complete trusted Applied transition artifact.
+/// Arbitrary user JSON, reports and ordinary diagnostic logs are not evidence.
 /// The loader must establish completeness/provenance of the candidate evidence;
 /// this pure helper cannot certify database coverage or exclude omitted conflicts.
 pub struct AppliedMissionReturnEvidence<'a> {
@@ -57,7 +58,7 @@ pub enum MissionReturnEvidenceError {
     #[error("select an unknown active returning deployment for explicit classification")]
     NotUnknownDeployment,
     #[error(
-        "no conclusive return transition supplied; restore authoritative journal evidence or let the fleet settle"
+        "no conclusive return transition supplied; supply a previously captured trusted transition artifact or let the fleet settle"
     )]
     MissingEvidence,
     #[error(
@@ -65,11 +66,11 @@ pub enum MissionReturnEvidenceError {
     )]
     StaleEvidence,
     #[error(
-        "journal evidence is not a valid deployment return transition; verify the applied journal and producing release"
+        "supplied artifact is not a valid deployment return transition; verify its provenance and producing release"
     )]
     InvalidEvidence,
     #[error(
-        "journal evidence conflicts; resolve its provenance or let the fleet settle without enabling scans"
+        "supplied artifacts conflict; resolve its provenance or let the fleet settle without enabling scans"
     )]
     ConflictingEvidence,
 }

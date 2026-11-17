@@ -55,7 +55,13 @@ try {
  const receipt=async(id,auth=a)=>{const res=await fetch(`${base}/api/v3/universes/${u}/commands/${id}?epoch=${ab.epoch}`,{headers:auth.headers});assert.equal(res.status,200);return valid('BoundReceipt3',await res.json())};
  const send=async(command,expected='Committed')=>{const envelope={protocol:3,binding:ab,command_id:randomUUID(),command};const res=await post(a,'commands',envelope);assert.equal(res.status,202);const r=await until(async()=>{const x=await receipt(envelope.command_id);return x.status!=='Pending'&&x},command.type);assert.equal(r.status,expected,JSON.stringify(r));return envelope};
  const advance=async(t)=>{assert.ok(t>=at);at=t;await client.query('UPDATE orbit_test_clock SET at_ms=$1',[at]);return fresh()};
- await stop();await prepareProgression(client,u,[{player:ab.player}]);await start();
+ await stop();
+ // Empty retained history cannot make a previously played fixture pristine.
+ await client.query('UPDATE universe_runtime SET cursor=1');
+ await assert.rejects(prepareProgression(client,u,[{player:ab.player}]), /Only pristine/);
+ assert.equal((await client.query('SELECT cursor FROM universe_runtime')).rows[0].cursor,'1');
+ await client.query('UPDATE universe_runtime SET cursor=0');
+ await prepareProgression(client,u,[{player:ab.player}]);await start();
  const prepared=await fresh();assert.equal(prepared.bodies[0].inventories.length,6);
  console.log('PASS: prepared progression state validates through the real server; quote, queue, cancellation, privacy and recovery checks follow.');
  console.log(execFileSync('npx',['playwright','test'],{env,stdio:'pipe'}).toString());

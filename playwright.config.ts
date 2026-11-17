@@ -119,7 +119,6 @@ export default defineConfig({
               ? 'missions.spec.ts'
               : process.env.ORBIT_PROGRESSION_E2E
                 ? [
-                    'progression.spec.ts',
                     'responsive.spec.ts',
                     'routing.spec.ts',
                   ]
@@ -149,7 +148,6 @@ export default defineConfig({
                   '**/raiding.spec.ts',
                   '**/missions.spec.ts',
                   '**/mvp.spec.ts',
-                  '**/progression.spec.ts',
                   '**/responsive.spec.ts',
                   '**/routing.spec.ts',
                 ]),

@@ -19,7 +19,6 @@ const GAMEPLAY_TABLES: &[&str] = &[
     "missile_flights",
     "debris_fields",
     "mission_reports",
-    "transition_journal",
 ];
 
 async fn snapshot(pool: &PgPool, tables: &[&str]) -> BTreeMap<String, Vec<Value>> {

@@ -17,9 +17,12 @@ use tokio::sync::{Semaphore, watch};
 // Fixed vocabulary only: never log tokens, request bodies, subjects or upstream
 // error text. A quota rejection is not an availability failure.
 fn failure(stage: &'static str, outcome: &'static str, status: StatusCode) -> StatusCode {
-    eprintln!(
-        "{}",
-        json!({"event":"analytics_bridge_failure","stage":stage,"outcome":outcome,"status":status.as_u16()})
+    orbit_application::orbit_log!(
+        WARN,
+        event = "analytics_bridge_failure",
+        stage,
+        outcome,
+        status = status.as_u16()
     );
     status
 }
@@ -142,10 +145,15 @@ impl Integration {
         })))
     }
     pub fn instrument(self: &Arc<Self>, router: Router) -> Router {
-        router.layer(axum::middleware::from_fn_with_state(
-            self.clone(),
-            attribution::middleware,
-        ))
+        router
+            .layer(axum::middleware::from_fn_with_state(
+                self.clone(),
+                attribution::middleware,
+            ))
+            .layer(axum::middleware::from_fn_with_state(
+                self.clone(),
+                activity_collection,
+            ))
     }
     fn public(&self) -> Value {
         json!({"endpoint":self.config.endpoint.trim_end_matches('/'),"propertyId":self.config.property_id,"publicToken":self.config.public_token,"policyVersion":self.config.policy_version,"environment":self.config.environment,"handoffOrigins":self.config.handoff_origins})
@@ -179,9 +187,13 @@ impl Integration {
                 )
             })?;
         if !response.status().is_success() {
-            eprintln!(
-                "{}",
-                json!({"event":"analytics_bridge_failure","stage":"upstream","outcome":"http_rejected","upstream_status":response.status().as_u16(),"status":503})
+            orbit_application::orbit_log!(
+                WARN,
+                event = "analytics_bridge_failure",
+                stage = "upstream",
+                outcome = "http_rejected",
+                upstream_status = response.status().as_u16(),
+                status = 503
             );
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         }
@@ -201,18 +213,19 @@ impl Integration {
         }
         serde_json::from_slice(&bytes).map_err(|_| StatusCode::BAD_GATEWAY)
     }
-    pub async fn dispatch(&self) -> Result<(), StatusCode> {
+    pub async fn dispatch(&self) -> Result<usize, StatusCode> {
         let events = self
             .store
             .claim_analytics()
             .await
             .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
         if events.is_empty() {
-            return Ok(());
+            return Ok(0);
         }
         let ack = self
             .post("/v1/ingest/server", json!({"events":events}))
             .await?;
+        let mut rate_limited = false;
         for result in ack["results"].as_array().ok_or(StatusCode::BAD_GATEWAY)? {
             let Some(event) = events.iter().find(|e| e["event_id"] == result["event_id"]) else {
                 continue;
@@ -222,6 +235,10 @@ impl Integration {
                     .map_err(|_| StatusCode::BAD_GATEWAY)?;
             let state = match result["status"].as_str() {
                 Some("accepted" | "duplicate") => "delivered",
+                Some("rejected") if result["code"] == "rate_limited" => {
+                    rate_limited = true;
+                    continue;
+                }
                 Some("rejected" | "conflict") => "quarantined",
                 _ => continue,
             };
@@ -234,11 +251,17 @@ impl Integration {
                 .await
                 .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
         }
-        Ok(())
+        if rate_limited {
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+        Ok(events.len())
     }
     pub async fn run(self: Arc<Self>, mut drain: watch::Receiver<bool>) {
         while !*drain.borrow() {
-            let _ = self.dispatch().await;
+            if matches!(self.dispatch().await, Ok(n) if n > 0) {
+                tokio::task::yield_now().await;
+                continue;
+            }
             tokio::select! {_ = tokio::time::sleep(Duration::from_secs(5))=>{},_ = drain.changed()=>{}}
         }
     }
@@ -380,6 +403,30 @@ async fn bridge(
         )]),
         Json(value),
     ))
+}
+
+// Freeze the request's collection choice at command admission. No remote call,
+// browser SDK or mutable account-level preference races participate in capture.
+async fn activity_collection(
+    State(s): State<Arc<Integration>>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    let disabled = blocked(request.headers())
+        || request
+            .headers()
+            .get("cookie")
+            .and_then(|h| h.to_str().ok())
+            .is_some_and(|h| {
+                h.split(';')
+                    .any(|p| p.trim() == "orbit_analytics_disabled=true")
+            });
+    let policy = if disabled {
+        json!({"reason":"collection_disabled"})
+    } else {
+        json!({"propertyId":s.config.property_id,"policyVersion":s.config.policy_version,"environment":s.config.environment})
+    };
+    orbit_storage_postgres::with_activity_collection(policy, next.run(request)).await
 }
 
 #[cfg(test)]

@@ -582,9 +582,25 @@ async fn pending_construction(legacy: bool) {
         .unwrap();
     let game = GameService::new(reopened.clone());
     reopened.set_test_time(before.0).await.unwrap();
+    let claim = reopened
+        .claim_next(u, WorkerId(Uuid::new_v4()))
+        .await
+        .unwrap()
+        .unwrap();
+    let snapshot = reopened.load_claim(&claim).await.unwrap();
+    let profiles = (
+        claim.input.profile_hash.0.clone(),
+        snapshot.state.profile_hash.0.clone(),
+    );
     assert!(matches!(
-        game.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
-        StepOutcome::Committed { .. }
+        reopened
+            .commit_claim(
+                &claim,
+                orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules)
+            )
+            .await
+            .unwrap(),
+        CommitOutcome::Committed { .. }
     ));
     let after: (i64, serde_json::Value, String, String) = sqlx::query_as(
         "SELECT due_at,paid,profile_hash,status FROM constructions WHERE universe=$1",
@@ -600,7 +616,6 @@ async fn pending_construction(legacy: bool) {
         StepOutcome::Idle
     ));
     let active = store.load_rules(u).await.unwrap();
-    let profiles:(String,String)=sqlx::query_as("SELECT input->>'profile_hash',facts->>'profile_hash' FROM transition_journal WHERE universe=$1 ORDER BY cursor DESC LIMIT 1").bind(u.0).fetch_one(&pool).await.unwrap();
     assert_ne!(profiles.0, active.hash.0);
     assert_eq!(profiles.1, active.hash.0);
 }

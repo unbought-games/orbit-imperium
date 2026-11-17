@@ -28,7 +28,7 @@ an ordered rules change rejects new jump admission but preserves gate-use facts
 and original command receipt recovery. A pending deactivation also blocks new
 admission. Re-enabling cannot reset a cooling gate. Before rolling back to a binary
 without this command vocabulary, deactivate it and settle already admitted work;
-follow the existing rollback compatibility policy for retained journal history.
+follow the existing rollback compatibility policy for supported live state and accepted terms.
 Do not run old writers after activation.
 
 This feature does not implement moon destruction or standalone moon abandonment.

@@ -1,3 +1,4 @@
+//! Offline supplied-artifact compatibility only; never queries production history.
 //! Read-only compatibility for journals written with stored debris reference counts.
 use crate::*;
 use serde_json::{Value, json};

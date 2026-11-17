@@ -11,6 +11,9 @@ name = "orbit"
 path = "src/main.rs"
 
 [dependencies]
+tracing.workspace = true
+tracing-subscriber = { version = "=0.3.23", features = ["json"] }
+tracing-appender = "=0.2.5"
 unbought-auth.workspace = true
 orbit-engine.workspace = true
 orbit-application.workspace = true

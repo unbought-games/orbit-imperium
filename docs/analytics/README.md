@@ -55,3 +55,8 @@ Validation: `npm run build`, `npm test`, `npm run lint`, and
 `TEST_DATABASE_URL=<disposable> cargo test -p orbit-storage-postgres --features test-support --test analytics`.
 The browser dependency is an MIT-licensed packed SDK under `vendor/`, pinned by
 lockfile integrity, with no dependency on a sibling checkout at build time.
+
+## Committed activity
+
+See [the activity contract and migration guide](committed-activity.md) for the
+server-owned meaningful-play feed, collection gaps and command-cleanup gate.

@@ -1,6 +1,6 @@
 # Development server operations
 
-The same release binary runs locally and in the container. PostgreSQL stores every authoritative checkpoint, ordered input, operation, report, receipt and journal entry. Application disks are disposable. `db-init` prepares schema and `universe create` explicitly creates a production world before serving. `serve` applies compatible pending SQLx migrations and validates existing worlds. It never creates player accounts or resets retained gameplay. Explicit seed/bootstrap commands are test-only and prepare schema before creating fixture data.
+The same release binary runs locally and in the container. PostgreSQL stores every authoritative checkpoint, ordered input, operation, report, receipt and delivery obligation. Application disks are disposable. `db-init` prepares schema and `universe create` explicitly creates a production world before serving. `serve` applies compatible pending SQLx migrations and validates existing worlds. It never creates player accounts or resets retained gameplay. Explicit seed/bootstrap commands are test-only and prepare schema before creating fixture data.
 
 ## Initialize and operate locally
 

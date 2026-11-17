@@ -329,6 +329,7 @@ impl PgStore {
             status: ReceiptStatus::Pending,
         };
         sqlx::query("INSERT INTO commands(universe,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt,epoch) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").bind(u.0).bind(player.0).bind(envelope.command_id.0).bind(id.0).bind(intent.0).bind(at).bind(sequence).bind(sqlx::types::Json(&input)).bind(sqlx::types::Json(&receipt)).bind(envelope.epoch.0).execute(&mut *tx).await.map_err(db_error)?;
+        crate::activity::admit(&mut tx, id.0).await?;
         if indexed {
             crate::admission::register(&mut tx, &input, &scopes).await?;
         }
@@ -341,6 +342,12 @@ impl PgStore {
                 .map_err(db_error)?;
         }
         tx.commit().await.map_err(db_error)?;
+        orbit_application::diagnostics::admitted(
+            u,
+            envelope.command_id,
+            id,
+            orbit_application::diagnostics::action(&input.payload),
+        );
         Ok(receipt)
     }
     pub(crate) async fn read_receipt(

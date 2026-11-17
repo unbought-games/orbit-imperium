@@ -1,5 +1,10 @@
 # Moon Fleet Operations Implementation Plan
 
+> Journal references below describe historical evidence. Current execution no longer
+> records full-state snapshots; replay/repair requires previously captured trusted
+> artifacts. See [journal removal](../operations/journal-removal.md).
+
+
 **Goal:** Make existing moons usable for every currently implemented fleet mission, with independent stationed ships/resources, ordinary warfare, allied defense, and correct fleet UI.
 
 **Architecture:** Extend the existing body-ID-based mission state machine and settlement paths. Keep moon construction disabled; use deployment and transport to establish lunar fleets and fuel. Reuse inventory, asset lineage, research, policy, ordering, and receipts rather than introducing a lunar fleet subsystem.

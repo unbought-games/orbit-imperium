@@ -1185,6 +1185,7 @@ impl PgStore {
         } else {
             return Err(StoreError::Conflict);
         };
+        let log_action = orbit_application::diagnostics::command_action(&g);
         for (envelope, command, id) in [(&pair.presence, p, pi), (&pair.gameplay, g, gi)] {
             let sequence = next_sequence(&mut tx, b.universe).await?;
             let input = OrderedInput {
@@ -1208,6 +1209,7 @@ impl PgStore {
                 status: ReceiptStatus::Pending,
             };
             sqlx::query("INSERT INTO commands(universe,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt,epoch) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").bind(b.universe.0).bind(b.player.0).bind(envelope.command_id.0).bind(id.0).bind(&pair_hash.0).bind(at).bind(sequence).bind(sqlx::types::Json(&input)).bind(sqlx::types::Json(receipt)).bind(b.epoch.0).execute(&mut *tx).await.map_err(db_error)?;
+            crate::activity::admit(&mut tx, id.0).await?;
             if indexed {
                 crate::admission::register(
                     &mut tx,
@@ -1243,6 +1245,18 @@ impl PgStore {
         tx.commit().await.map_err(db_error)?;
         drop(commit_timing);
         timing.finish(AdmissionOutcome::Committed);
+        orbit_application::diagnostics::admitted(
+            b.universe,
+            pair.gameplay.command_id,
+            gi,
+            log_action,
+        );
+        orbit_application::diagnostics::admitted(
+            b.universe,
+            pair.presence.command_id,
+            pi,
+            "presence",
+        );
         #[cfg(feature = "test-support")]
         self.test_fault("after_pair_admission").await?;
         let mut result = BoundReceipt::new(

@@ -1,5 +1,10 @@
 # Sensor Phalanx rolling-deployment repair — 2026-11-03
 
+> Journal references below describe historical evidence. Current execution no longer
+> records full-state snapshots; replay/repair requires previously captured trusted
+> artifacts. See [journal removal](../operations/journal-removal.md).
+
+
 Base commit: `a5a5f11ccd712f52b61821a81cc949756cbb26d7`.
 Branch: `emick/sensor-phalanx-foundations`.
 Tested source SHA-256:

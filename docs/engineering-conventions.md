@@ -29,7 +29,7 @@ Gameplay randomness uses an explicit versioned generator with restorable stream 
 
 ## Atomicity, retries and failures
 
-One domain transition commits state changes, consumed/created events, receipt, journal and visible reports/revisions together. Validate the current fence at commit. Publish only committed state. Roll back the complete tentative transition on conflict; do not patch an old computed result with fresh inventory values.
+One domain transition commits state changes, consumed/created events, receipt, committed-activity capture and visible reports/revisions together. Validate the current fence at commit. Publish only committed state. Roll back the complete tentative transition on conflict; do not patch an old computed result with fresh inventory values.
 
 Every player mutation has one command identity that survives retries. Canonical intent hash prevents reusing an ID for another action. A timeout is an uncertain outcome; resolve the receipt before creating another command. Logs distinguish malformed requests, ordinary game rejection, retryable infrastructure failures and invariant violations. Invariant violations stop that universe for investigation.
 

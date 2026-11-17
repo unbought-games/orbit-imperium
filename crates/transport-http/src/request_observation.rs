@@ -11,6 +11,7 @@ use std::{
 
 tokio::task_local! {
     static CURRENT: Arc<Mutex<RequestObservation>>;
+    static CORRELATION: Arc<Mutex<Option<(UniverseId, CommandId)>>>;
 }
 
 /// Wrap the shared storage/HTTP observer to associate existing phase timers with
@@ -67,6 +68,11 @@ pub(super) fn action(action: RequestAction) {
     });
 }
 
+pub(super) fn correlate(universe: UniverseId, command: CommandId) {
+    let _ = CORRELATION
+        .try_with(|ids| *ids.lock().unwrap_or_else(|e| e.into_inner()) = Some((universe, command)));
+}
+
 pub(super) struct AuthenticationTimer {
     sample: Option<Arc<Mutex<RequestObservation>>>,
     started: Instant,
@@ -92,6 +98,7 @@ struct Completion {
     observer: Arc<dyn RuntimeObserver>,
     started: Instant,
     legacy_stage: Option<RuntimeStage>,
+    correlation: Arc<Mutex<Option<(UniverseId, CommandId)>>>,
 }
 impl Drop for Completion {
     fn drop(&mut self) {
@@ -108,6 +115,46 @@ impl Drop for Completion {
             }
             if sample.status.is_some_and(|code| code >= 500) {
                 self.observer.event(RuntimeEvent::HttpFailure);
+            }
+        }
+        if sample.status.is_some_and(|s| s >= 500)
+            || tracing::enabled!(target: "orbit", tracing::Level::DEBUG)
+        {
+            let ids = *self.correlation.lock().unwrap_or_else(|e| e.into_inner());
+            let universe = ids.map(|(u, _)| u.to_string());
+            let command = ids.map(|(_, c)| c.to_string());
+            let status = sample.status;
+            let outcome = sample.outcome();
+            // Routine reads/polls are debug-only. Expected 4xx are not errors.
+            if status.is_some_and(|s| s >= 500) {
+                orbit_application::orbit_log!(
+                    ERROR,
+                    event = "http_request_failed",
+                    stage = "http",
+                    route = sample.route,
+                    method = sample.method,
+                    action = sample.action.name(),
+                    universe,
+                    command_id = command,
+                    status,
+                    outcome,
+                    commit_outcome = "unknown",
+                    duration_ms = sample.elapsed.as_millis() as u64
+                );
+            } else {
+                orbit_application::orbit_log!(
+                    DEBUG,
+                    event = "http_request_completed",
+                    stage = "http",
+                    route = sample.route,
+                    method = sample.method,
+                    action = sample.action.name(),
+                    universe,
+                    command_id = command,
+                    status,
+                    outcome,
+                    duration_ms = sample.elapsed.as_millis() as u64
+                );
             }
         }
         self.observer.request(sample);
@@ -151,13 +198,20 @@ pub(super) async fn observe(
         phases: [None; RequestPhase::ALL.len()],
         admission: None,
     }));
+    let correlation = Arc::new(Mutex::new(None));
     let completion = Completion {
+        correlation: correlation.clone(),
         sample: sample.clone(),
         observer,
         started: Instant::now(),
         legacy_stage,
     };
-    let response = CURRENT.scope(sample.clone(), next.run(request)).await;
+    let response = CORRELATION
+        .scope(
+            correlation,
+            CURRENT.scope(sample.clone(), next.run(request)),
+        )
+        .await;
     sample.lock().unwrap_or_else(|e| e.into_inner()).status = Some(response.status().as_u16());
     drop(completion);
     response

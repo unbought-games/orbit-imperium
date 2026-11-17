@@ -74,7 +74,7 @@ async function rollingUpgrade() {
   const {db, url} = await database();
   const universe = randomUUID();
   const oldEnv = environment(url, await port(), {ORBIT_SEED_PASSWORD_FILE:passwords});
-  cli(oldEnv,['dev-seed','--universe',universe,'--at','1000000']);
+  cli(oldEnv,['test-foundation-create','--universe',universe,'--at','1000000']);
   await db.query('CREATE TABLE orbit_test_clock(at_ms bigint); INSERT INTO orbit_test_clock VALUES(1000000); CREATE TABLE orbit_test_migration_gate(value integer)');
   let old = launch(oldEnv); await ready(old, oldEnv);
   const base = oldEnv.ORBIT_ORIGIN;
@@ -141,7 +141,9 @@ async function rollingUpgrade() {
   assert.equal((await api(`commands/${commandId}?epoch=${binding.epoch}`)).status,'Committed');
   assert.equal((await view()).bodies[0].levels.MetalMine,initial.bodies[0].levels.MetalMine+1);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM commands WHERE command_id=$1',[commandId])).rows[0].n,1);
-  assert.equal((await db.query('SELECT count(*)::int AS n FROM transition_journal')).rows[0].n,2);
+  const completed = (await db.query("SELECT done,cancelled FROM scheduled_events WHERE input#>>'{payload,Event,type}'='ConstructionDue' AND at_ms=$1",[due])).rows;
+  assert.deepEqual(completed,[{done:true,cancelled:false}]);
+  assert.equal((await db.query("SELECT status FROM constructions")).rows[0].status,'Completed');
   await stop(old);await stop(second);
   console.log('PASS overlapping old/new servers, live reads/writes/scheduling, concurrent upgrade, killed migrator recovery, and older-version restart');
 }

@@ -136,11 +136,11 @@ Orbit does not detect replica versions or attest database credential exclusion.
    retires the boundary with active rules unchanged. Later fleet settlement can
    proceed, so retry after natural settlement can activate normally. Existing
    pending/stale/retry semantics remain; publication never trusts a saved preview.
-5. Any separately authorized repair must use conclusive Applied journal evidence
+5. Any separately authorized repair must use a previously captured, complete trusted Applied transition artifact
    and compare-and-set the exact inspected fleet under the operational barrier.
    The read-only `classify_legacy_deployment_return` helper validates supplied
    Outbound-to-Returning evidence; it does not query, mutate or certify provenance.
-   Preserve terms, hashes, deadlines, revisions and journal bytes. Missing/stale/
+   Preserve terms, hashes, deadlines, revisions and original artifact bytes. Missing/stale/
    conflicting evidence stays unknown. No repair service ships in this increment.
 6. Every scan independently checks all relevant return facts on its complete ordered
    snapshot before debit/report creation. Unknowns refuse the whole observation,
@@ -155,8 +155,9 @@ this activation contract without requiring new operational infrastructure.
 For journals produced before causal returns, explicitly select
 `replay_legacy_mission_transition` by producing release. It reproduces the old
 outcome shape without rewriting the saved facts or outcome. The older debris
-replay adapter also strips these newly recorded causes. Current journals replay
-with ordinary `transition`. No-op/rejected outcomes must remain absent rather
+replay adapter also strips these newly recorded causes. Supplied current-format snapshots replay
+with ordinary `transition`. New continuous full snapshots are not generated;
+ordinary diagnostics cannot reconstruct missing facts. See [journal removal](../operations/journal-removal.md). No-op/rejected outcomes must remain absent rather
 than acquire synthetic world fields.
 
 Scenario mission edits accept `return_reason` only with `returning: true`; omitted

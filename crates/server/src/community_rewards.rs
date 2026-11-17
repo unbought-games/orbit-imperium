@@ -323,7 +323,11 @@ impl Integration {
                 .community_worker_observe(worker, outcome.is_ok())
                 .await;
             if let Err(status) = outcome {
-                eprintln!("community rewards delivery pending: {}", status.as_u16());
+                orbit_application::orbit_log!(
+                    WARN,
+                    event = "community_rewards_delivery_pending",
+                    status = status.as_u16()
+                );
             }
             tokio::select! { _ = tokio::time::sleep(Duration::from_secs(10)) => {}, _ = drain.changed() => {} }
         }

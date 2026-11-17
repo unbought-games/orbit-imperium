@@ -375,10 +375,15 @@ pub(super) async fn middleware(
                     .await,
                     Ok(Ok(()))
                 ) {
-                    eprintln!("analytics page capture unavailable");
+                    orbit_application::orbit_log!(
+                        WARN,
+                        event = "analytics_page_capture_unavailable"
+                    );
                 }
             }
-            Err(_) => eprintln!("analytics page capture saturated"),
+            Err(_) => {
+                orbit_application::orbit_log!(WARN, event = "analytics_page_capture_saturated")
+            }
         }
     }
     if let Some(value) = cookie(&journey, &s).and_then(|v| v.parse().ok()) {

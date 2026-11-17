@@ -41,6 +41,7 @@ _static:
 
 test-tooling:
 	node --test scripts/*.test.mjs scripts/fixtures/*.test.mjs
+	python3 -m unittest discover -s scripts/activity -p 'test_*.py'
 	npm run test:ship-appearance
 
 .PHONY: test-placement

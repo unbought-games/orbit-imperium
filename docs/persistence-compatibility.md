@@ -100,8 +100,11 @@ Omitted causes remain unknown and readable/writable by mixed-version workers
 while scans are disabled. There is no automatic migration/backfill or strict
 cause constraint. Old full-record writers can erase newly added causes; scan
 activation must separately exclude those writers and establish complete fleet
-readiness. Old journals remain unchanged and use an explicit legacy replay
-adapter. See the [Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
+readiness. Previously captured historical artifacts remain unchanged and use an explicit legacy replay
+adapter. The [journal-independent bridge](operations/journal-removal.md) preserves
+supported live formats, accepted terms and rules; it creates no new full-state
+history or indefinite receipt-retention contract. Request expiry and cleanup
+remain separate gated changes. See the [Sensor Phalanx compatibility contract](architecture/sensor-phalanx.md#causal-returns-and-compatibility)
 for rolling deployment, explicit evidence classification and the activation gate
 required in part 2.
 

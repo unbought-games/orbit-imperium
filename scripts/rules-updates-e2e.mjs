@@ -96,16 +96,16 @@ try {
   const policy = JSON.parse(readFileSync(policyFile))
   assert.equal(policy.immutable.speed, 10, 'bridge import must retain historical fixture speed')
   assert.equal(policy.immutable.systems_per_galaxy, 5)
-  assert.deepEqual(policy.policy, { signup_enabled: true, max_players: 45, signup_per_minute: 5, commands_per_minute: 10000 })
+  assert.deepEqual(policy.policy, { signup_enabled: true, max_players: 45, signup_per_minute: 5, commands_per_minute: 10000, bots: { version: 1, enabled: false, display: 'visible', max_active: 0, action_units_per_24h: null } })
   execFileSync(previous, ['universe', 'config', 'initialize', '--universe', universe, '--file', policyFile, '--acknowledge-bridge-rollout'], { env, stdio: 'pipe' })
   db = new pg.Client({ connectionString: url }); await db.connect()
   await db.query('CREATE TABLE orbit_test_clock(at_ms bigint NOT NULL); INSERT INTO orbit_test_clock VALUES(1000000)')
   assert.equal((await db.query("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='universe_runtime' AND column_name='executor_mode') AS bridge")).rows[0].bridge, true, 'ORBIT_PREVIOUS_SERVER must retain the durable runtime bridge')
+  const players = (await db.query('SELECT p.id player,a.name FROM players p JOIN universe_memberships m ON m.player=p.id JOIN accounts a ON a.id=m.account ORDER BY a.name')).rows
+  await prepareProgression(db, universe, players.slice(0, 2).map(p => ({ player: p.player, research: { ComputerTechnology: 5 }, inventory: { SmallCargo: 10, LightFighter: 100 } })))
   // API bindings now require existing worlds; this independent world retains the new default.
   const otherCreated = JSON.parse(execFileSync(current, ['universe', 'create', '--universe', other], { env, encoding: 'utf8', stdio: 'pipe' }))
   assert.equal(otherCreated.configuration.immutable.speed, 3)
-  const players = (await db.query('SELECT p.id player,a.name FROM players p JOIN universe_memberships m ON m.player=p.id JOIN accounts a ON a.id=m.account ORDER BY a.name')).rows
-  await prepareProgression(db, universe, players.slice(0, 2).map(p => ({ player: p.player, research: { ComputerTechnology: 5 }, inventory: { SmallCargo: 10, LightFighter: 100 } })))
   let old = await start(previous); active = old; auth = await login(active)
   binding = (await (await fetch(`${active.base}/api/v4/universes/${universe}/binding?request_id=${randomUUID()}`, { headers: headers() })).json()).binding
   body = (await fresh()).bodies[0].id
@@ -148,7 +148,7 @@ try {
   const split = auth.cookie.indexOf('=')
   await page.context().addCookies([{ name: auth.cookie.slice(0, split), value: auth.cookie.slice(split + 1), domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' }])
   const browserUniverse = (await db.query('SELECT universe_name_key(name) AS slug FROM universes WHERE id=$1', [universe])).rows[0].slug
-  await page.goto(`${active.base}/u/${browserUniverse}/research`)
+  await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/research`)
   await expect(page.getByRole('link', { name: 'Research Laser Technology', exact: true })).toHaveAttribute('title', /unavailable in this universe/)
   cli('export'); const document = JSON.parse(readFileSync(rulesFile))
   document.artifact = JSON.parse(readFileSync('scripts/fixtures/rules-expanded.json'))
@@ -189,7 +189,7 @@ try {
   active = modern
   const newCommitments = (await db.query('SELECT id,data FROM mission_fleets WHERE universe=$1 ORDER BY id', [universe])).rows
   assert.deepEqual(newCommitments, oldCommitments)
-  await page.reload()
+  await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/research`)
   await expect(page.getByRole('link', { name: 'Research Laser Technology', exact: true })).not.toHaveAttribute('title', /unavailable/)
   await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/shipyard`)
   await expect(page.getByRole('link', { name: 'Build Large Cargo', exact: true })).not.toHaveAttribute('title', /unavailable/)
@@ -211,12 +211,11 @@ try {
   const earned = await fresh(); assert.equal(earned.research.find(r => r.research === 'LaserTechnology').level, 1)
   assert.equal(earned.bodies[0].inventories.find(i => i.item.id === 'LargeCargo').count, '1')
   await page.goto(`${active.base}/u/${browserUniverse}/b/${body}/dispatch`)
-  await expect(page.getByRole('button', { name: 'All Large Cargo', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'All Large Cargo', exact: true }).click()
-  await page.getByLabel('System', { exact: true }).fill(String(target.system))
-  await page.getByLabel('Position', { exact: true }).fill(String(target.position))
+  await expect(page.getByRole('button', { name: 'Max Large Cargo', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Max Large Cargo', exact: true }).click()
+  await page.getByLabel('Destination coordinates', { exact: true }).fill(`${target.galaxy}:${target.system}:${target.position}`)
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
-  await expect(page.getByRole('heading', { name: /^Review dispatch:/ })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Fleet quote', exact: true })).toBeVisible()
   await browser.close(); browser = null
   const registration = await fetch(active.base + '/api/v1/registration', { method: 'POST', headers: { Origin: active.base, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'newafteractivation', password: 'password' }) })
   assert.equal(registration.status, 201)
