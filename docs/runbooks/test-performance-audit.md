@@ -2370,3 +2370,30 @@ The sibling scan found SettingsIdentity explicitly disables autofocus, while
 PlanetRename mounts synchronously outside a loading region. No sibling repair
 was needed. Desktop/mobile screenshots and focused journey results are retained
 in the originating release chat and its durable release directory.
+
+## 2026-11-17: PR #453 queue exposed an obsolete upgrade-blocking scenario
+
+Merge-group run `44149648676`, integration `baf32ca719cbcae6e109d29c9198cb87bdfe7095`,
+failed `production edits wait for an in-memory upgrade command`. The second
+SetProduction correctly used the current settings revision 1 and crystal 100,
+while the test expected a later synthetic revision 2 / crystal 80.
+
+History shows PR #445 (`816b01c1`) changed this from a restored legacy-upgrade
+scenario into an in-memory scenario and removed its reload/intent removal. Those
+states have different admission contracts: `pendingCommand` fences an active
+body command with no known intent, but permits independent production edits when
+an upgrade's quote/intent is retained. The original fixture lost that evidence on
+reload; the replacement retains it. Its 300ms autosave debounce sometimes fires
+before the test's unrelated synthetic update and sometimes afterward. The test
+was asserting obsolete blocking behavior; this is not a gameplay regression or
+an infrastructure failure, and an unchanged retry would not repair it.
+
+Remove only the obsolete upgrade variant. Keep every assertion of the existing
+in-memory SetProduction waiting/rebase browser case. The deterministic
+`game-projection.test.ts` case now asserts that a known upgrade allows production,
+missing intent fences it, and rejection releases that fence. Existing
+`production-autosave.test.ts` retains queued edits/revision merging, same-body
+unknown-intent blocking, other-body independence and rejected-edit recovery.
+This retires invalid browser coverage rather than renaming/recreating it or
+weakening a valid user guarantee. No production source, waits or timeouts change.
+The earlier rename focus defect remains a separate product repair.

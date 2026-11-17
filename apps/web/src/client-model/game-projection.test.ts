@@ -1205,6 +1205,26 @@ it('does not make an accepted construction block an independent manufacturing or
   expect(pendingCommand(s, { ...upgrade, building: 'CrystalMine' })).toBe(true)
 })
 
+it('allows production changes beside a known upgrade but fences an unknown intent', () => {
+  const s = state()
+  const parent = intent(s, upgrade, quote())
+  parent.status = 'pending'
+  const production =
+    s.view!.protocol !== 2 ? s.view!.progression.production[0] : null
+  if (!production) throw new Error('Production fixture required')
+  const command: Command = {
+    type: 'SetProduction',
+    body: 'body',
+    expected_settings_revision: '1',
+    settings: { ...production.settings, metal_mine: 50 },
+  }
+  expect(pendingCommand(s, command)).toBe(false)
+  s.intents.clear()
+  expect(pendingCommand(s, command)).toBe(true)
+  parent.status = 'rejected'
+  expect(pendingCommand(s, command)).toBe(false)
+})
+
 it('derives due work from confirmed state and the anchored server clock', () => {
   const store = createGameStore()
   expect(nextWorkDelay(store.getState())).toBe(Infinity)
