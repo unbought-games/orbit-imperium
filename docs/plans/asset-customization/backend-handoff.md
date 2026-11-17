@@ -1,89 +1,104 @@
-# Backend lane (in progress)
+# Backend lane handoff
 
-Branch `emick/ship-appearance-backend`, assigned checkout only.
+Branch `emick/ship-appearance-backend`; implementation commit `18f31e75`.
+No PR, merge, deployment, browser suite, production web build or frontend full
+typecheck was performed by this lane. Integrator owns the one final PR and acceptance.
+
+## Delivered
+
+- Migration 0048 copies each empire's current authored emblem into independent
+  recipe/revision fields. Template edits/deletes no longer mutate other empires.
+  All current display readers consume the empire copy; the existing editor's
+  selected library entry projects the authored copy, including unavailable content
+  and deleted-template copies. History is retained and new observations append,
+  including multiple edits within the same millisecond.
+- Immutable account ship-design revisions; independently pinned empire equipment;
+  account-owned UUID artifacts retained across empire removal. The library returns
+  latest revisions plus any older revision currently pinned by this empire.
+- Authenticated/CSRF-bound POST ship-appearances with Load, Save, Equip, Reset,
+  Cancel and Retry; exact canonical response and OpenAPI/generated contracts.
+  Atomic save/equip intent, stale-revision conflicts, request replay protection,
+  ownership and installed-target/dye validation. No bootstrap additions.
+- Application-owned ShipRenderer port with render/cancel methods; bounded HTTP
+  /v1/render adapter; durable per-empire/target latest pending request and active
+  lease. Worker fencing checks lease, latest request, original player/epoch and
+  current emblem revision. No DB transaction crosses HTTP or object writes.
+- API-host processor, one render per process; restart/lease recovery, live emblem
+  and access-fallback refresh, bounded 429 backoff, recoverable renderer absence.
+  Canceling active work remains rendering/can_cancel=false until the worker drops
+  its HTTP future and best-effort cancels provider work. Queued cancellation is
+  immediate. Running superseded work can never activate.
+- Renderer output is bounded by body/variant/byte/dimension/decoded-allocation
+  limits with actual image validation, alpha, MIME and aspect consistency. Backend
+  writes UUID objects through AssetStore before ready. Public artwork returns one
+  preferred WebP URL per width; PNG variants remain retained in artifact metadata.
+  Delivery requires the owning account and uses private immutable caching.
+
+## Integration seams
+
 Canonical package `orbit-light-fighter` / `concord-v1`, target `LightFighter`.
-HTTP renderer seam matches IMPLEMENTATION.md; backend uses UUID request/artifact IDs.
-The worker runs on API hosts (where catalog/assets/profile evidence are available),
-with database leases and one bounded render per process. Worker-only roles do not
-need renderer/catalog configuration. No bootstrap response additions.
+Backend URL setting `ORBIT_APPEARANCE_RENDER_URL` is a base URL; adapter appends
+`/v1/render`. `ORBIT_APPEARANCE_RENDER_TOKEN` is a shared 32+ character secret.
+Use its value for runtime `ORBIT_SHIP_RENDERER_TOKEN` and `ORBIT_SHIP_ASSET_TOKEN`.
+Restricted originals accept that bearer only on
+`/api/media/insignias/{symbol}/{sha256}.svg`, restricted to installed catalog IDs.
+It provides no game identity or command access. Runtime must attach it only to
+its configured exact game origin. No browser session is forwarded.
 
-Empire insignia migration copies selected recipe into empire-owned storage and
-stops template mutation/deletion from changing other empires. Existing template
-API remains usable; current appearance projects the empire copy.
+Free dye IDs: free-ivory, free-graphite, free-steel, free-blue, free-red, free-gold,
+free-green. Installed catalog dyes are additional named options. Expired/missing
+access preserves authored choices and derives free fallback inputs; resolved
+access snapshots expire before command admission. AccountProfiles clones share
+its existing cache, preserving one source of entitlement evidence.
 
-Rust validation has not started. This file will record its start/completion so the
-integrator can serialize expensive checks. Browser/build/typecheck remain pending
-with integrator.
+API hosts own the processor because they have assets/catalog/profile evidence;
+worker-only roles need no new configuration. S3 needs the additional
+`ship-appearances/*` prefix. Migration guards reject old insignia writers; remove
+old binaries from identity-serving traffic after migration. Wire response shapes
+remain compatible. Rollback requires a compatible writer or paused cosmetic writes.
+See `docs/operations/empire-customization.md` for operator details.
 
-Renderer media access: actual insignia route is `/api/media/insignias/{symbol}/{sha256}.svg`.
-API accepts `Authorization: Bearer $ORBIT_APPEARANCE_RENDER_TOKEN` on that route
-only, for installed catalog originals. It grants no session or other API access.
-Runtime should send this shared token only to the configured exact game origin;
-set its origin token to the same credential. Minimum token length 32 bytes.
-Renderer base URL is `ORBIT_APPEARANCE_RENDER_URL` (backend appends `/v1/render`).
-Dyes guaranteed offline: free-ivory, free-graphite, free-steel, free-blue, free-red,
-free-gold, free-green. Catalog dyes are additional named options.
+## Verification
 
-Rust validation starting now: `cargo check -p orbit-server` (sole Rust validation
-owner). Editor source is preserved by projecting this empire's authored recipe
-onto the selected library entry; other reusable templates remain account scoped.
-Deleted templates leave other empires' selected recipe/ID available as a saved
-empire copy (revision zero can recreate the reusable template).
+Tested implementation revision: `18f31e759eaca3fdfc6e82a344488386c0909a88`.
+No production source changes followed that commit; handoff edits are documentation.
 
-Compile check passed after sharing AccountProfiles' existing cache via Arc; no
-second cache or duplicate entitlement source. Public artifact variants prefer
-WebP, one URL per width; PNG remains retained in private artifact metadata.
-OpenAPI ShipAppearanceState + action/request schemas added; generated contracts
-updated using installed pinned openapi-typescript (checkout has no node_modules).
+- `make test-db DB_SUITES='ship_appearances ship_appearance_upgrade insignias' DB_JOBS=1`
+  passed: 5 ship tests (11.477s), migration upgrade (0.762s), existing insignias
+  (3.700s). Compile preparation 9.27s; runner setup 0.24/0.16/0.14s. Covers auth,
+  replay, namespace isolation, immutable pinning, A/B/C supersession, cancellation,
+  durable busy deferral, lease restart/fencing, emblem/editor isolation, history,
+  dye-access fallback/restoration, artifact privacy and retention.
+- `cargo test -p orbit-transport-http --lib ship_renderer::tests`: 2 passed,
+  compile 28.41s, execution 0.01s. Actual PNG validation, generic aspect ratio,
+  forged metadata rejection and HTTP 429/Retry-After clamp.
+- `cargo clippy -p orbit-application -p orbit-storage-postgres -p orbit-transport-http
+  -p orbit-server --lib --bins --features orbit-server/test-support -- -D warnings`:
+  passed in 17.00s; includes final server compilation.
+- `cargo fmt --all`, `git diff --check`, pinned AJV compilation of both new endpoint
+  schemas passed. Generated contracts used installed openapi-typescript 7.10.1;
+  this checkout has no node_modules, so `npm run contracts` initially failed with
+  missing executable, then the same pinned installed executable succeeded.
 
-Schema review addressed: generic target text (installed package validation remains
-LightFighter-only); latest input compared against immutable request snapshot, no
-equipment render_input; account-owned artifacts and jobs survive membership deletion;
-job provenance includes original player/epoch; older insignia writers are explicitly
-rejected by a database writer guard. New writer sets a transaction-local flag.
-API rollout must complete before allowing old editor writes; old readers work,
-but rollback needs current compatible insignia writer or paused cosmetic writes.
+Failure record: first DB run passed the worker test, then failed identity fixture
+setup on duplicate fixed universe name (2.100s). History/repair ledger checked; no
+prior test history. Its one repair uses UUID-derived names; the same new migration
+fixture pattern was audited/fixed. Two tests were canceled by fail-fast. Subsequent
+focused runs passed. Initial server compilation required sharing AccountProfiles
+via Arc; later generic renderer editing needed an explicit tuple type annotation.
+Neither was a test assertion defect. No unchanged retry was used.
 
-Focused test binary compilation is running. DB execution will remain with the
-integrator as requested; tests use normal Make discovery, no runner changes.
+Each disposable DB was removed by the standard runner; temporary test assets and
+HTTP fixtures were cleaned up. Root owns the provided Compose project's lifecycle.
+Queue/merge timing is not applicable. Initial setup/compile caches were cold.
 
-First DB run: ship supersession/lease test passed (2.999s), next identity test failed
-in fixture setup (2.100s): fixed second-universe name collided with the previous
-fixture under universe_names_unique. This is a new test-fixture defect, not a product
-failure. History/repair ledger inspected (no prior test history). One repair: derive
-fixture names from their UUIDs; audited the new migration fixture and fixed the same
-constant-name pattern there. Two remaining tests were canceled by fail-fast.
-Preparation compile: 12.62s; runner setup: 0.23s. Disposable DB cleaned by runner.
-
-## Validation slot released
-
-Current focused Rust/DB command completed successfully. **No Rust compilation or
-expensive validation is running in this lane. Root owns the slot now.**
-`make test-db DB_SUITES='ship_appearances ship_appearance_upgrade insignias' DB_JOBS=1`
-passed: ship command/worker suite 4/4 (9.559s), migration upgrade 1/1 (0.795s),
-existing insignias 1/1 (3.872s). Compile preparation 24.98s; per-suite runner startup
-0.25/0.27/0.16s. Standard runner removed each disposable DB; root owns Compose.
-The added dye-access expiry/restoration test and renderer adapter unit tests still
-need execution after the frontend validation slot. Final server check also pending
-since the renderer port/cancellation/backoff edits followed the earlier server check.
-No browser, production build, or frontend full typecheck was run here.
-
-Renderer is now an application-owned ShipRenderer port with render/cancel methods.
-HTTP output validation is generic bounded dimensions/aspect consistency (not a
-Concord-only dimension list). Worker observes cancellation/supersession during
-HTTP work, drops its HTTP future, best-effort DELETEs provider work, then records
-canceled. Running cancellation stays rendering/can_cancel=false until acknowledged.
-429 uses durable not_before scheduling (1–60s clamp), preserving request identity.
-
-Library response includes each account design's newest revision plus any older
-revision currently pinned by this empire. This lets the Hangar start from the exact
-pinned recipe even after another universe updates the account template. Save still
-checks the account's latest revision and rejects stale writes. Other empires'
-private equipment is not included.
-
-Cheap schema verification while frontend owns validation slot: ShipAppearanceRequest
-and ShipAppearanceState compile with the pinned AJV 2020 + format configuration.
-Formatting complete. No Rust process is running.
+Pending integration proof belongs to root: actual Node renderer publication and
+server restart via the recipe below, final integrated schema/tooling checks and
+owner UX acceptance. Root has separately reported browser/type/build acceptance
+and real renderer POST; this lane does not claim those as its own verification.
+A crash during object publication can leave unreferenced immutable bytes; they are
+never served without an authorized artifact record. Storage garbage collection
+was not added in this slice.
 
 ## Real local persistence acceptance recipe
 
@@ -144,3 +159,13 @@ The deterministic DB tests already cover authorization, replay, A/B/C, lease
 recovery, cancellation, busy deferral, namespace isolation, empire deletion,
 migration history and previous-artwork preservation. This recipe proves the actual
 Node renderer integration and process restart; DB tests do not claim that proof.
+
+## Complete — validation slot released to root
+
+`cargo build -p orbit-server --features test-support --bin orbit` passed in 44.77s.
+Reusable executable:
+`/Users/ethan/.codex/worktrees/ship-appearance-backend/orbit-imperium/target/debug/orbit`.
+If root needs another build, reuse
+`CARGO_TARGET_DIR=/Users/ethan/.codex/worktrees/ship-appearance-backend/orbit-imperium/target`
+after cherry-picking the backend implementation. No Rust command, test HTTP server,
+or task API is running in this lane. Root may resume all integrated validation.
