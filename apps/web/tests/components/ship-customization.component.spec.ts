@@ -348,9 +348,12 @@ test('mobile hangar keeps final controls reachable without horizontal overflow',
   await save.scrollIntoViewIfNeeded()
   await expect(save).toBeInViewport()
   await expect(save).toBeEnabled()
-  const refresh = dialog.getByRole('button', { name: 'Refresh status' })
-  await refresh.scrollIntoViewIfNeeded()
-  await expect(refresh).toBeInViewport()
+  await expect(
+    dialog.getByRole('button', { name: 'Reload choices' }),
+  ).toHaveCount(0)
+  const reset = dialog.getByRole('button', { name: 'Use standard appearance' })
+  await reset.scrollIntoViewIfNeeded()
+  await expect(reset).toBeInViewport()
   await diagnosticScreenshot(page, {
     path: testInfo.outputPath('hangar-controls-mobile-390x844.png'),
   })
@@ -404,7 +407,7 @@ test('reload confirms a lost save response without losing edits or clearing a la
   await dialog
     .getByRole('button', { name: 'Primary: Copper', exact: true })
     .click()
-  await dialog.getByRole('button', { name: 'Refresh status' }).click()
+  await dialog.getByRole('button', { name: 'Reload choices' }).click()
   await expect(alert).toHaveCount(0)
   await expect(
     dialog.getByText('“Recovered original” is saved.', { exact: false }),
@@ -497,7 +500,7 @@ test('hangar preserves specific conflict, access and validation rejection messag
     )
     await expect(dialog.getByRole('alert')).toHaveText(message)
     await dialog
-      .getByRole('button', { name: 'Refresh status', exact: true })
+      .getByRole('button', { name: 'Reload choices', exact: true })
       .click()
     await expect(dialog.getByRole('alert')).toHaveText(message)
     await expectDraftName(dialog, `Draft ${status}`)

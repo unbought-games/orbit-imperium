@@ -230,14 +230,16 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                 </p>
               )}
               <div className={styles.actions}>
-                <Button
-                  variant="ghost"
-                  size="small"
-                  disabled={busy || loading}
-                  onClick={() => void refresh()}
-                >
-                  Refresh status
-                </Button>
+                {(error || providerError || refreshError) && (
+                  <Button
+                    variant="ghost"
+                    size="small"
+                    disabled={busy || loading}
+                    onClick={() => void refresh()}
+                  >
+                    Reload choices
+                  </Button>
+                )}
                 {equipment?.design_id && (
                   <Button
                     variant="ghost"
