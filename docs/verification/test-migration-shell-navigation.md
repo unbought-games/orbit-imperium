@@ -161,23 +161,24 @@ scheduler or subprocess wrapper was introduced.
 
 | Local check | Result | Preparation / execution |
 | --- | --- | --- |
-| Initial form/tablet replacement batch | 21 passed | 3.9s / 6.1s |
-| Menu and body-label replacement batch | 24 passed | see log / 7.3s |
-| Public layout and native selection | 6 passed | see log / 2.8s |
-| Header and completion-date/form batch | 11 passed | see log / 3.1s |
+| Initial form/tablet replacement batch | 21 passed | 4.154s / 6.1s |
+| Menu and body-label replacement batch | 24 passed | 4.353s / 7.3s |
+| Public layout and native selection | 6 passed | 4.105s / 2.8s |
+| Header and completion-date/form batch | 11 passed | 4.006s / 3.1s |
 | Shell route, router, access and coordinate models | 61 passed | 3.21s total |
 | Existing primitive/queue/cancellation models | 114 passed | 0.974s total |
-| First owned application run | 137 passed, 2 failed | see log / 2.5 minutes |
-| Geometry repair | 2 passed | see log / 3.8s |
+| First owned application run | 137 passed, 2 failed | 4.627s / 2.5 minutes |
+| Geometry repair | 2 passed | 10.736s / 3.8s |
 | Manufacturing replacement | 3 passed | 3.970s / 2.2s |
-| Final changed application/capture cases | 4 passed | see log / 6.8s |
-| Final complete owned component suite, captures enabled | 89 passed | see log / 48.3s |
+| Final changed application/capture cases | 4 passed | 4.973s / 6.8s |
+| Final complete owned component suite, captures enabled | 89 passed | 4.091s / 48.3s |
 
 The broad application run included the two subsequently removed duplicate queue
 widths. All **137 final surviving application cases** passed either there or in
 the focused repair/final narrowing run. Source formatting afterward changes no
 behavior. A passing retry is not the diagnosis: both failures and the specific
-repairs above remain part of the result. Full-check, exact source revision and CI
+repairs above remain part of the result. Implementation/test source revision: `6f1759c2f0940a7bf25556b73593455fa660a715`.
+The following documentation changes only record evidence. Full-check and CI
 results are appended below.
 
 Final actual running shell/Menu captures at desktop 1440×900 and phone 390×844 /
@@ -204,3 +205,40 @@ No shared-source repair is pending with those owners. Registry additions are
 limited to stream-owned scenes. No deployment, repository-protection change,
 paid cosmetic content, CHANGELOG edit or new external contributor claim is part
 of this change.
+
+## Final local check — November 17
+
+`make check` **passed** at source `6f1759c2f0940a7bf25556b73593455fa660a715`:
+130 tooling tests passed (one conditional skip), 1,997 client tests in 223 files,
+821 native workspace tests, 59 bridge-feature tests and 10 storage-library tests.
+Clippy, Rust formatting, ESLint, Prettier, component TypeScript, contracts,
+boundaries, news generation, app TypeScript, Vite production and homepage
+prerender all passed. No database integration or explicit acceptance was invoked.
+
+Measured phases: tooling 14.531s; client 9.58s; native compilations 73s / 39.17s /
+16.70s; native execution 31.984s / 2.926s / 0.017s; Clippy 48.09s; Vite 4.51s;
+prerender 0.691s. Native discovery after compilation and other static/setup phases
+were not separately instrumented, so these are not a sum claiming end-to-end
+latency. Dependency installation and local runner allocation were not timed
+separately. An unrelated analytics native build started during validation;
+no browser suite, frontend build or full typecheck overlapped. No process from
+that task was stopped.
+
+The build reproduced pre-existing analytics-route generation drift (dropping
+`alliance/:item/:section`), also noted in stream 04. Restored that unrelated
+tracked file; no analytics generator change belongs to this migration.
+The full log is `/tmp/stream05-check.log`. Focused ESLint and final whitespace
+checks passed. CSV integrity checks confirm every original frozen field is
+preserved, all 452 original/current rows have dispositions, and all 226 final
+browser identities are unique. CSV newline normalization changes no records.
+
+The manufacturing component runtime uses protocol 4; the retained three-consumer
+application case uses the original protocol 3 fixture. Both exercise the shared
+production summary with the original batch values, retaining the legacy adapter
+wiring without multiplying the state/geometry permutations.
+
+All task-owned browser runners exited and removed their temporary bundles and
+servers. No Docker project, database, shared process or other checkout was changed.
+Images remain local, with durable copies in the originating chat's visualization
+folder. CI/queue outcome and timing are reported in the originating chat after
+confirmed merge; operational five-lifecycle follow-up remains with stream 10.
