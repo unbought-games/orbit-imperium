@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "light-fighter-v1",
+  "name": "Light Fighter",
+  "width": 1536,
+  "height": 1024,
+  "master": "master.png",
+  "regions": "panels.svg",
+  "groups": ["Wings", "Drive cowls", "Nose & fins"],
+  "referenceAlbedo": 0.55,
+  "decalSurfaces": [
+    [
+      [223, 365],
+      [339, 348],
+      [305, 411],
+      [180, 395]
+    ],
+    [
+      [1217, 489],
+      [1325, 556],
+      [1288, 605],
+      [1170, 571]
+    ]
+  ],
+  "invariants": [
+    "Fixed camera and silhouette",
+    "Original alpha",
+    "Canopy, vents, structure and drives remain untouched",
+    "No generative calls after master approval"
+  ],
+  "provenance": {
+    "date": "2026-11-14",
+    "tool": "OpenAI built-in image_gen",
+    "reference": "apps/web/public/art/atlas/masters/ships-defense/light-fighter.png",
+    "license": "CC-BY-SA-4.0",
+    "attribution": "Orbit Imperium contributors / Unbought Games, LLC",
+    "access": "free",
+    "status": "Prototype; not an approved replacement for shipped art"
+  }
+}

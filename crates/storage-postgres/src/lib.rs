@@ -237,3 +237,5 @@ mod report_reads;
 mod tutorial;
 
 mod mission_sites;
+
+mod ship_appearances;

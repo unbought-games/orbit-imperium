@@ -175,11 +175,12 @@ impl ProfileCache {
     }
 }
 
+#[derive(Clone)]
 pub struct AccountProfiles {
     rewards: Option<Arc<AccountRewardsClient>>,
     issuer: String,
-    client: PublicProfileClient,
-    cache: ProfileCache,
+    client: Arc<PublicProfileClient>,
+    cache: Arc<ProfileCache>,
 }
 impl AccountProfiles {
     pub fn with_rewards(mut self, rewards: Arc<AccountRewardsClient>) -> Self {
@@ -198,8 +199,8 @@ impl AccountProfiles {
         Ok(Self {
             rewards: None,
             issuer: issuer.into(),
-            client: PublicProfileClient::new(api_url, issuer, credential)?,
-            cache: ProfileCache::default(),
+            client: Arc::new(PublicProfileClient::new(api_url, issuer, credential)?),
+            cache: Arc::new(ProfileCache::default()),
         })
     }
     pub(super) async fn display(&self, identities: Vec<PlayerIdentity>) -> Vec<PlayerDisplay> {

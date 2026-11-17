@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+<!-- Authoritative panel boundaries, traced against master.png. R=primary, G=secondary, B=accent. Inset from bevels; holes protect vents. -->
+<g fill="#ff0000">
+<path id="port-wing" d="M161 407 L245 341 L393 320 L354 367 L328 415 L312 429 Z"/>
+<path id="starboard-wing" d="M1119 575 L1218 458 L1363 551 L1313 629 Z"/>
+</g>
+<g fill="#00ff00" fill-rule="evenodd">
+<path id="port-drive" d="M407 329 Q454 260 530 241 Q581 236 618 270 Q646 301 651 333 L558 410 Q549 370 522 346 Q471 318 407 329 Z M470 272 L500 249 L526 247 L499 265 Z"/>
+<path id="starboard-drive" d="M953 432 Q989 368 1053 337 Q1105 315 1150 333 Q1197 353 1218 398 L1110 504 Q1103 470 1073 449 Q1018 418 953 432 Z M1125 377 L1153 349 L1186 367 L1160 395 Z"/>
+</g>
+<g fill="#0000ff">
+<path id="port-nose" d="M274 846 L328 748 L380 659 L450 557 L507 510 L490 548 L461 583 L433 631 L408 663 L383 708 L347 770 L321 815 L296 855 Z"/>
+<path id="starboard-nose" d="M325 864 L363 816 L425 756 L478 710 L513 677 L561 652 L610 630 L579 663 L560 702 L513 740 L471 778 L459 809 L385 867 L341 899 Z"/>
+<path id="port-tail" d="M790 180 L850 78 L868 75 L834 161 L811 185 Z"/>
+<path id="starboard-tail" d="M1058 221 L1114 121 L1132 116 L1095 207 L1078 229 Z"/>
+</g>
+</svg>

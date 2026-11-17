@@ -17,6 +17,7 @@ mod runtime;
 mod runtime_cli;
 mod serving;
 mod setup_cli;
+mod ship_appearances;
 mod universe_cli;
 mod universe_serving;
 mod world_cli;

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Concord · Finish atelier</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="finish.css" />
+  </head>
+  <body>
+    <header>
+      <a href="finish.html">ORBIT IMPERIUM</a
+      ><span>CONCORD / FINISH STUDY</span>
+    </header>
+    <main>
+      <section class="presentation">
+        <div class="intro">
+          <p class="eyebrow">MADE IN YOUR COLORS</p>
+          <h1>Concord.</h1>
+          <p id="source-note">Finished master · deterministic recolor</p>
+        </div>
+        <div class="stage">
+          <canvas
+            id="ship"
+            width="1536"
+            height="1024"
+            aria-label="Recolored Concord fighter"
+          ></canvas>
+          <p id="status" role="status">Preparing the finishes…</p>
+        </div>
+        <div class="caption">
+          <span>ONE PILOT · RED COMBUSTION DRIVE</span
+          ><span>Unbought Games</span>
+        </div>
+      </section>
+      <aside aria-label="Finish controls">
+        <p class="eyebrow">HULL PAINT / METAL TRIM</p>
+        <h2 id="livery-name">Rose / Platinum</h2>
+        <fieldset>
+          <legend>Choose your colors</legend>
+          <label
+            >Primary<input id="primary" type="color" value="#d34c88" /></label
+          ><label
+            >Accent<input id="accent" type="color" value="#d2dce5"
+          /></label>
+        </fieldset>
+        <div class="finish-presets" aria-label="Finish presets"></div>
+        <label class="view-label" for="method">Compare the process</label
+        ><select id="method">
+          <option value="finished">Finished master · local recolor</option>
+          <option value="gray">Gray master · full coating</option>
+          <option value="previous">Gray master · previous masks</option>
+          <option value="reference">Your supplied reference</option>
+          <option value="debug">Inspect material regions</option>
+        </select>
+        <p class="note" id="method-note">
+          Uses the approved finished image as its source. Color changes run
+          locally, without AI calls.
+        </p>
+        <button id="download" class="download">
+          Export transparent PNG ↗
+        </button>
+        <p class="note">1536 × 1024 · Lighting and camera stay fixed.</p>
+        <a class="notes-link" href="FINISH.md"
+          >Iterations, findings &amp; limitations ↗</a
+        >
+      </aside>
+    </main>
+    <footer>
+      <span>FREE PROTOTYPE · CC BY-SA 4.0</span
+      ><a href="output/finish/progression.png">View the comparisons ↗</a>
+    </footer>
+    <script type="module" src="finish-viewer.mjs"></script>
+  </body>
+</html>

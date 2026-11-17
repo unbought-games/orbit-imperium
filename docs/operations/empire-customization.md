@@ -112,9 +112,20 @@ account, universe, epoch and player binding. Reloads can show known emblems befo
 the profile request finishes. Storage denial or quota exhaustion leaves the
 session cache working but may prevent persistence across reloads.
 
-Deleting a design clears its equipment references across universes. Editing a
-design updates every empire using that design. Repeated stale saves return 409;
-reload the collection before retrying to avoid overwriting another tab's edit.
+Each empire owns its selected authored recipe. Reusable account templates remain
+available, but editing or deleting one changes only the current empire's selected
+emblem. Other empires keep their independent authored copies, including missing or
+unavailable content. The editor starts from the current empire's authored recipe.
+Repeated stale saves return 409; reload before retrying another tab's edit.
+
+Migration 0048 copies current template selections into empire-owned recipes without
+rewriting history. New observations append to history, including multiple edits in
+one millisecond. Old API binaries cannot write the new ownership model: database
+writer guards reject their cosmetic mutations. Complete the API rollout before
+resuming cosmetic writes; rollback requires a binary with the compatible writer or
+keeping cosmetic writes paused. Existing response contracts and bootstrap shapes remain compatible. Old API
+binaries must be removed from identity-serving traffic after the migration, because
+they still read mutable templates rather than empire-owned recipes.
 
 ## Backup, move, and verify
 
@@ -322,3 +333,56 @@ account entitlement observations separate from game grants and membership access
 separate from paid supporter badges. Migration 0044 records every grant source in
 `cosmetic_grant_sources`; repeated legitimate awards for the same item preserve
 all provenance while the existing ownership key remains unique.
+
+
+## Asynchronous ship appearances
+
+The additive ship appearance API saves immutable account design revisions and pins
+an empire's equipment to a specific revision. Initial installed content is the
+free Concord Light Fighter package. Editing a template does not change other
+empires' equipment. The current empire emblem follows automatically, including
+removal and access fallback. Saved paint choices are retained when unavailable;
+free dyes remain available without Accounts or hosted content.
+
+API hosts run one bounded render processor per process; worker-only hosts do not
+need cosmetic assets. PostgreSQL enforces one active lease and one latest pending
+request per empire/target across API replicas. Restart recovers expired leases;
+late completions cannot replace a newer selection. An expired current lease remains
+recoverable even when it completes before another worker reclaims it. Migration
+0049 captures the resolved access deadline before object publication; activation
+checks both that deadline and the lease against the database clock. Expired
+publication retains previous artwork and refreshes or retries the current choice.
+Renderer contention uses a
+bounded 1–60 second retry delay. Network/storage failures expose a retry action
+while retaining previous artwork. Cancellation is acknowledged after the worker
+stops its HTTP request; pending requests can be canceled immediately.
+
+Configure the replaceable internal HTTP renderer with:
+
+```sh
+ORBIT_APPEARANCE_RENDER_URL=http://renderer:8789
+ORBIT_APPEARANCE_RENDER_TOKEN=<shared-secret-at-least-32-characters>
+```
+
+The backend appends `/v1/render`; set the renderer's bearer credential to the same
+secret. Restrict the renderer's asset fetches to installed originals or the exact
+trusted game origin. That origin accepts the same bearer credential only on
+`/api/media/insignias/<symbol>/<hash>.svg`, not on game commands or identity APIs.
+The renderer is an internal service; never expose its credential to browsers.
+When it is absent, the API still starts and saves designs; render requests have a
+recoverable failure status. No bootstrap additions or frontend flag are required
+for backend rollout.
+
+UUID artifact bytes use the `ship-appearances/<account>/<artifact>/<variant>`
+AssetStore namespace. S3 operators must grant the API object read/write permissions
+for this additional prefix; local operators must retain the existing asset volume.
+Artifact responses require the owning account and use private immutable caching.
+Account designs and published artifacts survive empire removal. Back them up with
+the database and asset storage. PNG and WebP variants remain stored; the public
+artwork list selects one preferred WebP URL per width.
+
+The initial frontend is development-only behind `VITE_SHIP_CUSTOMIZATION=true`.
+Production shipyard ordering and UI are unaffected. Local backend verification uses
+`make test-db DB_SUITES="ship_appearances ship_appearance_upgrade insignias" DB_JOBS=1`
+with the normal disposable PostgreSQL setup. Actual renderer and UI acceptance are
+explicit integrated checks, not additions to the full-system CI gate.

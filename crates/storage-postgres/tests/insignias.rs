@@ -782,13 +782,14 @@ async fn insignia_library_storage_access_and_public_identity_work_together() {
         .await
         .unwrap();
     assert!(fresh.insignia_library(b).await.unwrap().equipped.is_none());
-    assert!(
-        fresh
-            .insignia_library(second)
-            .await
-            .unwrap()
-            .equipped
-            .is_none()
+    assert_eq!(
+        fresh.insignia_library(second).await.unwrap().equipped,
+        Some(design.id),
+        "deleting a reusable template does not remove another empire's emblem"
+    );
+    assert_eq!(
+        fresh.insignia_library(second).await.unwrap().designs[0].recipe,
+        design.recipe
     );
     assert!(fresh.insignia_library(b).await.unwrap().designs.is_empty());
     let after = fresh.bound_world(b).await.unwrap().facts.0.state;

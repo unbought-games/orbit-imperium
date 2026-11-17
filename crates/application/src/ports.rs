@@ -76,6 +76,28 @@ pub trait IdentityStore: Send + Sync {
     ) -> impl std::future::Future<Output = Result<bool, StoreError>> + Send {
         async { Ok(false) }
     }
+    fn ship_appearance_snapshot(
+        &self,
+        _b: Binding,
+    ) -> impl std::future::Future<Output = Result<ShipAppearanceSnapshot, StoreError>> + Send {
+        async { Err(StoreError::Unavailable) }
+    }
+    fn change_ship_appearance(
+        &self,
+        _b: Binding,
+        _request: uuid::Uuid,
+        _action: ShipAppearanceAction,
+        _environment: ShipRenderEnvironment,
+    ) -> impl std::future::Future<Output = Result<(), ServiceError>> + Send {
+        async { Err(ServiceError::Unavailable) }
+    }
+    fn ship_artifact(
+        &self,
+        _account: AccountId,
+        _id: uuid::Uuid,
+    ) -> impl std::future::Future<Output = Result<Vec<ShipStoredVariant>, StoreError>> + Send {
+        async { Err(StoreError::NotFound) }
+    }
     fn insignia_library(
         &self,
         _binding: Binding,

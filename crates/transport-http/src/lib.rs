@@ -1,3 +1,7 @@
+mod ship_renderer;
+pub use ship_renderer::HttpShipRenderer;
+mod ship_appearances;
+pub use ship_appearances::ship_render_environment;
 mod request_observation;
 pub use request_observation::RequestTimingObserver;
 mod community_rewards;
@@ -231,6 +235,14 @@ where
         .route(
             "/api/v1/universes/{id}/player-preferences",
             post(player_preferences::handle::<S>),
+        )
+        .route(
+            "/api/v1/universes/{id}/ship-appearances",
+            post(ship_appearances::handle::<S>),
+        )
+        .route(
+            "/api/media/ship-appearances/{id}/{index}",
+            get(ship_appearances::media::<S>),
         )
         .route(
             "/api/v1/universes/{id}/insignias",

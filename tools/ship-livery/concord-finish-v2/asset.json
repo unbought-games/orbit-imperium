@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "name": "Concord finish study",
+  "width": 1536,
+  "height": 1024,
+  "sources": [
+    {
+      "path": "concord-v1/master.png",
+      "sha256": "8136a7e3addc30ab4912fbddfe692e87dbfbdf96cf6c83054351ad528756a9ed"
+    },
+    {
+      "path": "concord-finish-v2/finished-master.png",
+      "sha256": "568c862fba527546fc5d0a287faf17ab7676074ac0376a0c61ea236560625b76"
+    }
+  ],
+  "groups": ["Hull paint", "Metal trim and markings"],
+  "camera": "Fixed front three-quarter, nose lower-left",
+  "sourceOfFinish": "User-supplied AI-finished derivative. No new image-generation calls in this study.",
+  "maskAuthoring": "Protected vector guides plus reviewed offline color/structure selection; frozen material mask at runtime.",
+  "lighting": "Fixed-view material response, not recovered physical scene lighting.",
+  "license": "CC-BY-SA-4.0 under repository artwork scope",
+  "attribution": "Orbit Imperium contributors / Unbought Games, LLC"
+}

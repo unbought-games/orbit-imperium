@@ -8,18 +8,20 @@ import type { CatalogContent } from './catalog-content'
 import type { CatalogSelection } from '../../shell/use-catalog-selection'
 import styles from './detail-layout.module.css'
 
+export type DetailLayoutProps = {
+  content: CatalogContent
+  back: CatalogSelection['back']
+  children: ReactNode
+  footer?: ReactNode
+}
+
 /** One reading order for every item: current state, decision, then supporting art. */
 export function DetailLayout({
   content,
   back,
   children,
   footer,
-}: {
-  content: CatalogContent
-  back: CatalogSelection['back']
-  children: ReactNode
-  footer?: ReactNode
-}) {
+}: DetailLayoutProps) {
   return (
     <article className={styles.detail}>
       <header className={styles.header}>
