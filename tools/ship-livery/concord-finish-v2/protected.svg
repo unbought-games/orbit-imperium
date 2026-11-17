@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024">
+<!-- White protects glass, propulsion and exposed mechanical cavities. Hull seams are painted with their parent material. -->
+<g fill="white">
+<path id="canopy" d="M400 691 Q409 634 451 577 Q493 519 551 477 Q608 437 664 421 Q702 409 714 431 Q728 451 701 502 Q663 573 606 626 Q534 678 457 700 Q422 710 400 699Z"/>
+<path id="port-engine" d="M608 277 L631 251 L713 239 L705 266 L684 275 L618 285Z"/>
+<path id="starboard-engine" d="M1193 320 L1214 310 L1291 340 L1300 367 L1292 376 L1216 347Z"/>
+<path id="port-dorsal-vent" d="M706 362 L753 329 L814 280 L841 269 L858 270 L803 318 L738 382Z"/>
+<path id="starboard-dorsal-vent" d="M919 306 L943 285 L986 285 L1005 300 L968 343 L946 336Z"/>
+<path id="port-canopy-vent" d="M333 681 L402 591 L412 575 L425 569 L411 599 L366 655Z"/>
+<path id="starboard-canopy-vent" d="M649 641 L673 623 L704 610 L690 639 L674 666Z"/>
+<path id="starboard-rail-vent" d="M841 470 L888 419 L941 357 L964 350 L973 348 L936 399 L871 454Z"/>
+<path id="underwing-machinery" d="M556 776 L709 746 L875 711 L985 693 L962 717 L864 751 L620 806 L560 793Z"/>
+</g></svg>

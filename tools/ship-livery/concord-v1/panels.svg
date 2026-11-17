@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+<!-- Red = primary; green = accent. Ventilation and engine glow stay outside both groups. -->
+<g fill="#ff0000">
+<path id="port-wing-main" d="M201 391 L233 360 L577 302 L690 288 L707 311 L445 512 L326 506 L276 525 L247 488 L253 470 Z"/>
+<path id="port-wing-forward" d="M281 531 L326 513 L438 519 L294 671 L280 682 L243 567 Z"/>
+<path id="starboard-wing-main" d="M869 565 L1070 376 L1158 348 L1269 395 L1353 458 L1435 508 L1414 539 L1007 629 L1000 607 L913 579 Z"/>
+<path id="starboard-wing-forward" d="M571 754 L715 626 L742 603 L857 581 L993 612 L998 633 L786 676 Z"/>
+<path id="nose-main" d="M142 925 L272 772 L344 732 L391 742 L391 761 L355 839 L361 850 L180 945 Z"/>
+<path id="nose-forward" d="M100 982 L143 933 L176 947 L129 977 L111 987 Z"/>
+<path id="nose-starboard" d="M364 838 L398 762 L532 691 L552 736 L454 798 L372 846 Z"/>
+<path id="starboard-canopy-rail" d="M539 685 L647 622 L669 638 L623 703 L559 738 Z"/>
+<path id="dorsal-upper" d="M705 397 L775 358 L812 362 L833 337 L932 232 L1016 188 L1051 191 L1064 201 L1026 231 L973 272 L961 280 L908 342 L868 387 L839 443 L812 471 L756 478 L759 440 L750 412 Z"/>
+</g>
+<g fill="#00ff00">
+<path id="port-wing-edge" d="M161 425 L183 405 L246 470 L240 490 L271 533 L318 596 L280 651 L270 677 L227 582 Z"/>
+<path id="starboard-wing-edge" d="M576 760 L789 683 L997 643 L1034 645 L982 694 L855 719 L712 748 L601 775 Z"/>
+<path id="starboard-wing-edge-aft" d="M1004 639 L1410 548 L1399 578 L1138 640 L1130 659 L992 691 L1039 646 Z"/>
+<path id="port-fin-leading-face" d="M750 304 L932 62 L952 52 L975 30 L989 30 L957 70 L808 275 L778 303 Z"/>
+<path id="starboard-fin-leading-face" d="M988 343 L1174 112 L1195 97 L1235 71 L1243 73 L1193 123 L1044 331 L1016 354 Z"/>
+<path id="port-nose-rail" d="M143 913 L265 726 L283 711 L302 704 L274 742 L258 763 Z"/>
+<path id="port-canopy-rail" d="M297 701 L413 571 L433 570 L412 613 L348 691 L326 714 Z"/>
+<path id="starboard-dorsal-rail" d="M695 594 L768 503 L810 477 L846 495 L826 523 L721 604 Z"/>
+<path id="port-dorsal-rail" d="M663 419 L725 343 L758 322 L778 317 L769 337 L697 399 Z"/>
+</g></svg>

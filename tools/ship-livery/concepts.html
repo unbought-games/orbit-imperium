@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Two civilizations · Orbit Imperium</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="concepts.css" />
+  </head>
+  <body>
+    <header>
+      <a href="concepts.html">ORBIT IMPERIUM</a
+      ><span>LIGHT FIGHTER / DESIGN STUDY 002</span>
+    </header>
+    <main>
+      <section class="presentation">
+        <div class="intro">
+          <nav class="concept-nav" aria-label="Ship concept">
+            <button type="button" data-ship="rupture-v1" aria-pressed="true">
+              01 / Rupture</button
+            ><button type="button" data-ship="concord-v1" aria-pressed="false">
+              02 / Concord
+            </button>
+          </nav>
+          <p class="eyebrow" id="principle">Instinct. Force. Freedom.</p>
+          <h1 id="ship-name">Rupture</h1>
+          <p id="description">
+            A compact power wedge. Broad armor shoulders and exposed load paths
+            turn decisive action into a silhouette.
+          </p>
+        </div>
+        <div class="stage">
+          <canvas
+            id="ship"
+            width="1536"
+            height="1024"
+            aria-label="Customized Light Fighter"
+          ></canvas>
+          <p id="status" role="status">Preparing the two fighters…</p>
+        </div>
+        <div class="caption">
+          <span>SINGLE PILOT · COMBUSTION DRIVE</span
+          ><span>Unbought Games</span>
+        </div>
+      </section>
+      <aside aria-label="Paint controls">
+        <p class="eyebrow">TWO COLORS. YOUR SIGNATURE.</p>
+        <h2 id="livery-name">Graphite / Brass</h2>
+        <p class="note">
+          Switch hulls to compare the same palette on two different
+          civilizations.
+        </p>
+        <fieldset>
+          <legend>Paintwork</legend>
+          <label
+            >Primary<input type="color" id="primary" value="#243340" /></label
+          ><label
+            >Accent<input type="color" id="accent" value="#c69c56"
+          /></label>
+        </fieldset>
+        <div class="concept-presets" aria-label="Palette presets"></div>
+        <label class="select"
+          >Markings<select id="markings" aria-label="Markings">
+            <option value="none">Unmarked</option>
+            <option value="chevron">Twin chevrons</option>
+            <option value="bands">Accent bands</option>
+          </select></label
+        >
+        <label class="select"
+          >View<select id="view" aria-label="View">
+            <option value="livery">Your livery</option>
+            <option value="original">Neutral master</option>
+            <option value="debug">Paint masks</option>
+          </select></label
+        >
+        <button type="button" class="download" id="download">
+          Export this fighter ↗
+        </button>
+        <p class="note">
+          Transparent PNG · 1536 × 1024<br />Red combustion glow stays
+          unchanged.
+        </p>
+        <p class="mask-key" hidden>Red = primary · Green = accent</p>
+        <a class="research" href="CONCEPTS.md"
+          >Read the design &amp; pipeline notes ↗</a
+        >
+      </aside>
+    </main>
+    <footer>
+      <span>FREE CONCEPT ART · CC BY-SA 4.0</span
+      ><a href="output/concepts/comparison.png">Compare all six liveries ↗</a>
+    </footer>
+    <script type="module" src="concept-viewer.mjs"></script>
+  </body>
+</html>
