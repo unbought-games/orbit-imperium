@@ -7,9 +7,11 @@ Current state, terminal outcomes, committed-activity capture, game updates and
 other delivery obligations still commit atomically. Both serial and scoped
 execution retain their fences, claims and accepted scheduled deadlines.
 
-This release deliberately **does not drop the table**. It runs with the relation
-present or absent. Fresh installations still run the published migration history,
-including the original CREATE. There is no replacement full-state history.
+The bridge release (PR #451) deliberately does not drop the table and runs with
+the relation present or absent. The separate removal release adds migration 0051.
+Deploy that removal release only after every writer is on the verified bridge.
+Fresh installations apply the published CREATE followed by the forward DROP and
+finish without the journal. There is no replacement full-state history.
 
 Request IDs, acceptance, receipts, scheduled events and cleanup are unchanged.
 There is no UUIDv7 requirement or 15-minute expiry in this bridge. Retained
@@ -43,8 +45,7 @@ review packet, not authorization to run production SQL.
    views/materialized views, triggers, functions, policies, publications and grants.
    November 16 measurements are historical evidence, not current health.
 4. Prepare a **separate reviewed forward SQLx migration** at the next unused
-   version after the final integrated bundle (0051 is only the candidate at this
-   writing). Preserve all published SQL and checksums. Its removal statement is:
+   version after the final integrated bundle (0051 in the removal release). Preserve all published SQL and checksums. Its removal statement is:
 
    ```sql
    DROP TABLE transition_journal RESTRICT;

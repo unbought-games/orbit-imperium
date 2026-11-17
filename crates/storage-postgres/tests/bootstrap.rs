@@ -212,7 +212,7 @@ async fn restart_checks_metadata_without_gameplay_locks_or_reads() {
         .await
         .unwrap();
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
-    sqlx::query("DROP TABLE transition_journal RESTRICT")
+    sqlx::query("DROP TABLE IF EXISTS transition_journal RESTRICT")
         .execute(&pool)
         .await
         .unwrap();

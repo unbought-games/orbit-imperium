@@ -82,11 +82,15 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
             let passwords = [Uuid::new_v4().to_string(), Uuid::new_v4().to_string()];
             s.seed(u, 1_000_000, 1, &passwords).await.unwrap();
             s.set_test_time(1_000_000).await.unwrap();
-            if absent {
-                sqlx::query("DROP TABLE transition_journal RESTRICT")
-                    .execute(&pool)
-                    .await
+            if !absent {
+                // Preserve the no-write compatibility regression after fresh installs
+                // apply removal. The supported prefix upgrade is tested separately
+                // in migrations.rs; this is only a historical-table test fixture.
+                let create = include_str!("../migrations/0001_fresh.sql")
+                    .lines()
+                    .find(|line| line.starts_with("CREATE TABLE transition_journal "))
                     .unwrap();
+                sqlx::raw_sql(create).execute(&pool).await.unwrap();
             }
             if scoped {
                 s.prepare_scoped_runtime(u, 100).await.unwrap();
@@ -285,6 +289,82 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
                         .await
                         .unwrap(),
                     0
+                );
+                // Rehearse the exact removal SQL over real retained receipts and
+                // accepted future work. Migration-ledger/prefix handling is covered
+                // in migrations.rs, independently of this gameplay fixture.
+                sqlx::query("UPDATE orbit_test_fault SET enabled=false")
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+                let quote = game
+                    .quote(
+                        actor,
+                        u,
+                        QuoteRequest::Upgrade {
+                            body,
+                            building: Building::MetalMine,
+                        },
+                    )
+                    .await
+                    .unwrap();
+                let next = CommandEnvelope {
+                    command_id: Uuid::new_v4().into(),
+                    command: Command::StartUpgrade {
+                        body,
+                        building: Building::MetalMine,
+                        expected_terms_hash: quote.terms_hash,
+                    },
+                    ..envelope.clone()
+                };
+                game.submit(actor, u, next.clone()).await.unwrap();
+                let pending = claim(&s, u, scoped).await;
+                let f = pending.load(&s).await;
+                let outcome = transition(&f.state, pending.input(), &f.rules);
+                assert!(matches!(outcome, TransitionResult::Applied(_)));
+                pending.commit(&s, outcome).await.unwrap();
+                let retained = effects(&pool).await;
+                sqlx::raw_sql(include_str!(
+                    "../migrations/0051_drop_transition_journal.sql"
+                ))
+                .execute(&pool)
+                .await
+                .unwrap();
+                assert_eq!(
+                    effects(&pool).await,
+                    retained,
+                    "removal must preserve all retained state and future work"
+                );
+                reopened.migrate().await.unwrap();
+                assert!(matches!(
+                    game.submit(actor, u, next).await.unwrap().status,
+                    ReceiptStatus::Committed { .. }
+                ));
+                assert_eq!(
+                    game.submit(actor, u, envelope.clone()).await.unwrap(),
+                    receipt
+                );
+                let due: i64 =
+                    sqlx::query_scalar("SELECT due_at FROM constructions WHERE status='Active'")
+                        .fetch_one(&pool)
+                        .await
+                        .unwrap();
+                s.set_test_time(due).await.unwrap();
+                let pending = claim(&s, u, scoped).await;
+                let f = pending.load(&s).await;
+                pending
+                    .commit(&s, transition(&f.state, pending.input(), &f.rules))
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    sqlx::query_scalar::<_, i64>(
+                        "SELECT level FROM building_levels WHERE body=$1 AND building='MetalMine'"
+                    )
+                    .bind(body.0)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap(),
+                    3
                 );
             }
         }

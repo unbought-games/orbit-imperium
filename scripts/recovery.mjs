@@ -64,7 +64,7 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
     const cli = args => execFileSync('target/debug/orbit', args, { env, stdio: 'pipe' })
     cli(['test-foundation-create', '--universe', universe, '--at', '1000000'])
     db = new pg.Client({ connectionString: url }); await db.connect()
-    await db.query('DROP TABLE transition_journal RESTRICT; CREATE TABLE orbit_test_clock(at_ms bigint); INSERT INTO orbit_test_clock VALUES(1000000); CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text,enabled boolean,seen integer)')
+    await db.query('DROP TABLE IF EXISTS transition_journal RESTRICT; CREATE TABLE orbit_test_clock(at_ms bigint); INSERT INTO orbit_test_clock VALUES(1000000); CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text,enabled boolean,seen integer)')
     cli(['runtime', 'prepare', '--universe', universe])
     cli(['runtime', 'activate', '--universe', universe])
     assert.equal((await db.query('SELECT executor_mode FROM universe_runtime')).rows[0].executor_mode, 'scoped')

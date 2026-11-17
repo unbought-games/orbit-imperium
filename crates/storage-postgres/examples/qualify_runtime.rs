@@ -248,7 +248,7 @@ async fn main() {
     }
     tx.commit().await.unwrap();
     // Every measured read, admission and commit below runs on the absent schema.
-    sqlx::query("DROP TABLE transition_journal RESTRICT")
+    sqlx::query("DROP TABLE IF EXISTS transition_journal RESTRICT")
         .execute(&pool)
         .await
         .unwrap();
