@@ -40,7 +40,8 @@
     "test:livery:emblems": "node --test tools/ship-livery/emblem.test.mjs tools/ship-livery/finish.test.mjs",
     "art:ship-appearance": "node tools/ship-appearance/compile.mjs",
     "test:ship-appearance": "node --test tools/ship-appearance/*.test.mjs",
-    "ship-renderer": "node tools/ship-appearance/server.mjs"
+    "ship-renderer": "node tools/ship-appearance/server.mjs",
+    "ship-renderer:build": "node tools/ship-appearance/build.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

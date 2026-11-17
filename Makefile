@@ -36,6 +36,7 @@ _static:
 
 test-tooling:
 	node --test scripts/*.test.mjs scripts/fixtures/*.test.mjs
+	npm run test:ship-appearance
 
 .PHONY: test-placement
 test-placement:

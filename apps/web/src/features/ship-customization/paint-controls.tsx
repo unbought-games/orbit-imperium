@@ -75,6 +75,7 @@ export function PaintControls({
       <Field>
         Ship finish
         <Select
+          aria-label="Ship finish"
           value={selectedSkin?.id ?? ''}
           disabled={disabled}
           onChange={(event) => {

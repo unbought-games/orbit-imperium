@@ -41,7 +41,7 @@ export function ShipPreview({
       </p>
     )
   return (
-    <div>
+    <div className={styles.previewFrame}>
       <ShipAppearancePreview
         key={attempt}
         skin={skin}

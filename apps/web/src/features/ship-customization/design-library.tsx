@@ -22,6 +22,7 @@ export function DesignLibrary({
     <Field>
       Saved designs
       <Select
+        aria-label="Saved designs"
         value={selected.id ? key : ''}
         disabled={disabled}
         onChange={(event) => {

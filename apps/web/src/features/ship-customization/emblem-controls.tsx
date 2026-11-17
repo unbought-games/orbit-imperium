@@ -40,6 +40,7 @@ export function EmblemControls({
         <Field>
           Appearance
           <Select
+            aria-label="Appearance"
             value={value.treatment}
             disabled={disabled}
             onChange={(event) =>
@@ -57,6 +58,7 @@ export function EmblemControls({
         <Field>
           Placement
           <Select
+            aria-label="Placement"
             value={value.placement}
             disabled={disabled || value.treatment === 'none'}
             onChange={(event) =>

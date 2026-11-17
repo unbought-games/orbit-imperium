@@ -61,7 +61,7 @@ export function RenderProgress({
             onClick={() =>
               void run(
                 { type: 'Cancel', request_id: render.id },
-                'Render canceled. Your design remains saved.',
+                'Cancellation requested. Your design remains saved.',
               )
             }
           >

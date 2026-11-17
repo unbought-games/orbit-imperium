@@ -1,4 +1,9 @@
-# Ship customization foundation
+---
+id: ship-customization-foundation
+title: Ship customization foundation
+date: 2026-11-16
+summary: A development preview of ship paint, empire markings, and saved fleet appearances.
+---
 
 This development preview introduces an authored Light Fighter with two paint
 channels and the empire's current emblem, a full-screen customization hangar,
