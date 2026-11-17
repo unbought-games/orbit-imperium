@@ -16,17 +16,13 @@ export function RenderProgress({
   run: (action: ShipAppearanceAction, success: string) => Promise<boolean>
 }) {
   const render = equipment?.render
-  const status = render ? renderStatus[render.stage] : null
+  if (!render || render.stage === 'ready') return null
+  const status = renderStatus[render.stage]
   return (
     <section className={styles.progress} aria-label="Fleet appearance status">
       <div role="status" aria-live="polite" aria-atomic="true">
-        <strong>{status?.title ?? 'Fleet appearance'}</strong>
-        <p>
-          {status?.detail ??
-            (equipment?.design_id
-              ? 'Your saved design is selected for this empire.'
-              : 'Your fleet is using its standard appearance.')}
-        </p>
+        <strong>{status.title}</strong>
+        <p>{status.detail}</p>
         {render?.stage === 'failed' && render.error && <p>{render.error}</p>}
         {equipment?.fallback_reason && <p>{equipment.fallback_reason}</p>}
         {equipment?.artwork &&

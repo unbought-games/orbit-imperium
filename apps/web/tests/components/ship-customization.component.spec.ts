@@ -53,10 +53,13 @@ async function openHangar(page: Page, mount: (name: string) => Promise<void>) {
     name: 'Light Fighter',
     exact: true,
   })
-  await expectDraftName(dialog, 'First light')
   await expect(dialog.getByLabel('Ship skin', { exact: true })).toHaveCount(0)
   const canvas = dialog.locator('canvas')
   await expect(canvas).toHaveCSS('opacity', '1')
+  await expect(canvas).toHaveAttribute(
+    'aria-label',
+    'First light — live ship preview',
+  )
   return { dialog, canvas, opener }
 }
 
@@ -80,10 +83,19 @@ async function renameDraft(page: Page, dialog: Locator, value: string) {
   await expect(options).toHaveCount(0)
   await expect(dialog).toBeVisible()
 }
-async function expectDraftName(dialog: Locator, value: string) {
-  await expect(
-    dialog.getByRole('heading', { name: value, exact: true }),
-  ).toBeVisible()
+async function expectDraftName(page: Page, dialog: Locator, value: string) {
+  const popup = page.getByRole('dialog', {
+    name: 'Design options',
+    exact: true,
+  })
+  const alreadyOpen = await popup.isVisible()
+  const options = await openDesignOptions(page, dialog)
+  const input = options.getByLabel('Design name', { exact: true })
+  await expect(input).toHaveValue(value)
+  if (!alreadyOpen) {
+    await input.press('Escape')
+    await expect(options).toHaveCount(0)
+  }
 }
 
 // Regression: nested discard confirmation must preserve the editor and return
@@ -112,11 +124,14 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
         .map((animation) => animation.finished),
     )
   })
-  const back = dialog.getByRole('button', { name: 'Shipyard', exact: true })
+  const back = dialog.getByRole('button', {
+    name: 'Back to Shipyard',
+    exact: true,
+  })
   await expect(back).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await expect(
-    dialog.getByRole('button', { name: 'Use standard appearance' }),
+    dialog.getByRole('button', { name: 'Save and equip', exact: true }),
   ).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(back).toBeFocused()
@@ -136,7 +151,7 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
   await confirmation.getByRole('button', { name: 'Keep editing' }).click()
   await expect(confirmation).toHaveCount(0)
   await expect(back).toBeFocused()
-  await expectDraftName(dialog, 'Night watch')
+  await expectDraftName(page, dialog, 'Night watch')
   expect(await originalCanvas!.evaluate((node) => node.isConnected)).toBe(true)
   await expect(canvas).toHaveCSS('opacity', '1')
   await page.keyboard.press('Escape')
@@ -145,7 +160,7 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
   await expect(opener).toBeFocused()
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await opener.click()
-  await expectDraftName(dialog, 'First light')
+  await expectDraftName(page, dialog, 'First light')
   expect(
     await dialog.evaluate(
       (node) => node.getAnimations({ subtree: true }).length,
@@ -207,7 +222,7 @@ test('hangar retains edits across emblem observations and allows another save wh
   })
   const deliveredEmblem = await emblemDelivery
   expect(await deliveredEmblem.finished()).toBeNull()
-  await expectDraftName(dialog, 'Copper wings')
+  await expectDraftName(page, dialog, 'Copper wings')
   await expect(name).toBeFocused()
   await expect(
     dialog.getByRole('button', { name: 'Primary: Copper', exact: true }),
@@ -319,8 +334,10 @@ test('hangar retains edits across emblem observations and allows another save wh
     (snapshot) => window.shipCustomizationScene!.observe(snapshot),
     accepted,
   )
-  await expect(dialog.getByText('Ready', { exact: true })).toBeVisible()
-  await expectDraftName(dialog, 'Second flight')
+  await expect(
+    dialog.getByRole('region', { name: 'Fleet appearance status' }),
+  ).toHaveCount(0)
+  await expectDraftName(page, dialog, 'Second flight')
   await diagnosticScreenshot(page, {
     path: testInfo.outputPath('hangar-saved-desktop-1280x900.png'),
   })
@@ -351,14 +368,16 @@ test('mobile hangar keeps final controls reachable without horizontal overflow',
   await expect(
     dialog.getByRole('button', { name: 'Reload choices' }),
   ).toHaveCount(0)
-  const reset = dialog.getByRole('button', { name: 'Use standard appearance' })
-  await reset.scrollIntoViewIfNeeded()
-  await expect(reset).toBeInViewport()
+  await expect(
+    dialog.getByRole('region', { name: 'Fleet appearance status' }),
+  ).toHaveCount(0)
   await diagnosticScreenshot(page, {
     path: testInfo.outputPath('hangar-controls-mobile-390x844.png'),
   })
   await renameDraft(page, dialog, 'Mobile flight')
-  await dialog.getByRole('button', { name: 'Shipyard', exact: true }).click()
+  await dialog
+    .getByRole('button', { name: 'Back to Shipyard', exact: true })
+    .click()
   const confirmation = page.getByRole('alertdialog', {
     name: 'Discard unsaved changes?',
   })
@@ -412,7 +431,7 @@ test('reload confirms a lost save response without losing edits or clearing a la
   await expect(
     dialog.getByText('“Recovered original” is saved.', { exact: false }),
   ).toBeVisible()
-  await expectDraftName(dialog, 'Unsaved next flight')
+  await expectDraftName(page, dialog, 'Unsaved next flight')
   await expect(
     dialog.getByRole('button', { name: 'Primary: Copper', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
@@ -449,7 +468,9 @@ test('reload confirms a lost save response without losing edits or clearing a la
     committed,
   )
   await expect(alert).toContainText('We could not confirm the change.')
-  await dialog.getByRole('button', { name: 'Use standard appearance' }).click()
+  await (await openDesignOptions(page, dialog))
+    .getByRole('button', { name: 'Use standard appearance' })
+    .click()
   await expect
     .poll(() =>
       page.evaluate(() => window.shipCustomizationScene!.pending()?.type),
@@ -462,7 +483,7 @@ test('reload confirms a lost save response without losing edits or clearing a la
     (snapshot) => window.shipCustomizationScene!.observe(snapshot),
     committed,
   )
-  await expectDraftName(dialog, 'Unsaved next flight')
+  await expectDraftName(page, dialog, 'Unsaved next flight')
   const options = await openDesignOptions(page, dialog)
   await expect(options.getByLabel('Saved designs')).toHaveValue(
     `${next.design.id}:3`,
@@ -503,6 +524,6 @@ test('hangar preserves specific conflict, access and validation rejection messag
       .getByRole('button', { name: 'Reload choices', exact: true })
       .click()
     await expect(dialog.getByRole('alert')).toHaveText(message)
-    await expectDraftName(dialog, `Draft ${status}`)
+    await expectDraftName(page, dialog, `Draft ${status}`)
   }
 })

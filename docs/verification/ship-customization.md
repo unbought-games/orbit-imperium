@@ -123,3 +123,12 @@ bundle preparation). The scene now exercises nested menu focus/Escape while keep
 paint and current-emblem observations live. Thirty-five focused client checks,
 full component types, static checks and the production build pass. Final captures
 are refreshed after source changes; the next PR head's CI is followed separately.
+
+Further owner feedback removes the persistent footer and preview heading entirely.
+Concord is part of the title plate; only its arrow/Ship hangar row navigates back.
+Reset moved to Design options. Pending render progress and recoverable errors stay
+beside Save, while idle/ready/default artwork adds no status panel. The launch
+context is independent of the lazy editor module so development updates do not
+replace its identity. Eight updated component cases passed (15.2 s execution,
+4.868 s setup), followed by static checks and a production build. The empty-state
+skin spelling reported by automated review is corrected in this batch.

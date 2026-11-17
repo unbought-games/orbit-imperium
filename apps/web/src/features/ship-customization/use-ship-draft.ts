@@ -54,9 +54,7 @@ export function useShipDraft({
     saved.current = null
     if (feedbackAction.current === pending.feedbackAction) {
       setError('')
-      setNotice(
-        `“${submitted.name}” is saved. Your fleet appearance will update when its artwork is ready.`,
-      )
+      setNotice(`“${submitted.name}” is saved.`)
     }
     // Advance only our successful save's revision token, preserving subsequent edits.
     setEdits((current) =>
@@ -120,11 +118,10 @@ export function useShipDraft({
     const action = savePayload(draft, state, draft.id || commandId(crypto))
     // The selected revision describes this empire's recipe, not the account head.
     setEdits({ ...action.design, revision: draft.revision })
-    await run(
-      action,
-      'Design saved. Your fleet appearance will update when its artwork is ready.',
-      { design: action.design, selectedRevision: draft.revision },
-    )
+    await run(action, 'Design saved.', {
+      design: action.design,
+      selectedRevision: draft.revision,
+    })
     // An uncertain response may be confirmed by a later reload; retain its token.
   }
 

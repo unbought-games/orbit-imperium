@@ -13,12 +13,14 @@ export function DesignOptions({
   disabled,
   onChoose,
   onNameChange,
+  onReset,
 }: {
   designs: ShipDesign[]
   draft: ShipDesign
   disabled: boolean
   onChoose: (design: ShipDesign) => void
   onNameChange: (name: string) => void
+  onReset?: () => void
 }) {
   return (
     <AnchoredPopover.Root>
@@ -89,6 +91,20 @@ export function DesignOptions({
             <Copy size={16} aria-hidden="true" />
           </Button>
         </div>
+        {onReset && (
+          <AnchoredPopover.Close
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={disabled}
+                onClick={onReset}
+              />
+            }
+          >
+            Use standard appearance
+          </AnchoredPopover.Close>
+        )}
       </AnchoredPopover.Content>
     </AnchoredPopover.Root>
   )

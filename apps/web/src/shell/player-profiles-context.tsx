@@ -2,7 +2,7 @@ import { CommunityRewardsProvider } from './community-rewards-context'
 import { PlayerPreferencesProvider } from './player-preferences-context'
 import { InsigniaProvider } from './insignia-context'
 import { ShipAppearancesProvider } from './ship-appearances-context'
-import { ShipCustomizationLaunchProvider } from './ship-customization-launch-context'
+import { ShipCustomizationLaunchProvider } from './ship-customization-launch-provider'
 import {
   createContext,
   useContext,

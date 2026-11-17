@@ -1,43 +1,8 @@
-import {
-  createContext,
-  lazy,
-  Suspense,
-  useContext,
-  useState,
-  type ReactNode,
-} from 'react'
-import { shipCustomizationEnabled } from '../client-model/ship-customization-enabled'
+import { createContext, useContext } from 'react'
 
-const ShipCustomizer = shipCustomizationEnabled
-  ? lazy(() =>
-      import('../features/ship-customization/ship-customizer').then(
-        (module) => ({
-          default: module.ShipCustomizer,
-        }),
-      ),
-    )
-  : null
+// Keep context identity independent of the lazily edited hangar module.
 export const ShipCustomizationLaunchContext = createContext({
   open: (_target: string) => {},
 })
 export const useShipCustomizationLaunch = () =>
   useContext(ShipCustomizationLaunchContext)
-
-export function ShipCustomizationLaunchProvider({
-  children,
-}: {
-  children: ReactNode
-}) {
-  const [target, setTarget] = useState<string | null>(null)
-  if (!shipCustomizationEnabled) return children
-  return (
-    <ShipCustomizationLaunchContext.Provider value={{ open: setTarget }}>
-      {children}
-      {target && ShipCustomizer && (
-        <Suspense fallback={<p role="status">Opening hangar…</p>}>
-          <ShipCustomizer target={target} onClose={() => setTarget(null)} />
-        </Suspense>
-      )}
-    </ShipCustomizationLaunchContext.Provider>
-  )
-}

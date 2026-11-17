@@ -41,12 +41,15 @@
   padding: var(--space-6) clamp(20px, 4vw, 64px) var(--space-3);
   background: linear-gradient(var(--surface-page), transparent);
 }
-.header h2,
-.stage h2 {
+.shipTitle {
+  display: block;
   font: 400 clamp(2rem, 3.5vw, 3.5rem) / 1.1 var(--font-editorial);
   margin: 6px 0 0;
 }
 .titlePlate {
+  text-align: left;
+  font: inherit;
+  color: inherit;
   min-width: 0;
   padding: 16px 22px 18px;
   border: 1px solid #d5c5a012;
@@ -56,6 +59,29 @@
     0 10px 38px #01070c33,
     inset 0 1px 0 #f2e4c407;
   backdrop-filter: blur(8px);
+}
+.backLink:focus-visible {
+  outline: 2px solid var(--ice);
+  outline-offset: 4px;
+}
+.backLink {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.backLink:hover {
+  color: var(--champagne-light);
+}
+@media (pointer: coarse) {
+  .backLink {
+    min-height: 44px;
+  }
 }
 .eyebrow {
   color: var(--champagne);
@@ -81,15 +107,9 @@
   flex-direction: column;
   justify-content: center;
 }
-.stageCaption {
-  padding: var(--space-6) 0;
-  text-shadow: 0 2px 16px var(--surface-page);
-  overflow-wrap: anywhere;
-}
-.stage h2 {
-  font-size: clamp(1.75rem, 3vw, 3rem);
-}
-.stageCaption p {
+.skinCaption {
+  display: block;
+  margin: 8px 0 0;
   color: var(--text-muted);
   font-size: var(--font-size-sm);
 }
@@ -261,16 +281,6 @@
   font-size: var(--font-size-xs);
   line-height: 1.6;
 }
-.footer {
-  flex-shrink: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);
-  padding: var(--space-5) clamp(20px, 4vw, 64px)
-    max(var(--space-5), env(safe-area-inset-bottom));
-  border-top: 1px solid var(--border);
-  background: var(--surface-page);
-}
 .progress p,
 .feedback p {
   margin: var(--space-1) 0;
@@ -378,7 +388,7 @@
   .header {
     padding-top: max(var(--space-4), env(safe-area-inset-top));
   }
-  .header h2 {
+  .shipTitle {
     font-size: var(--font-size-2xl);
   }
   .titlePlate {
@@ -393,15 +403,6 @@
   .stage {
     min-height: 230px;
   }
-  .stageCaption {
-    padding: var(--space-2) 0;
-  }
-  .stageCaption h2 {
-    font-size: var(--font-size-xl);
-  }
-  .stageCaption p {
-    display: none;
-  }
   .shipArrival {
     min-height: 180px;
   }
@@ -415,10 +416,6 @@
   }
   .emblemOptions {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .footer {
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
   }
 }
 @media (prefers-reduced-motion: reduce) {

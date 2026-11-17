@@ -314,10 +314,19 @@ try {
   const response = await saved
   assert.equal(response.status(), 200)
   await response.finished()
+  let state
+  await expect
+    .poll(
+      async () => {
+        state = await act({ type: 'Load' })
+        return state.equipment[0].render?.stage
+      },
+      { timeout: 60_000 },
+    )
+    .toBe('ready')
   await expect(
     dialog.getByRole('region', { name: 'Fleet appearance status' }),
-  ).toContainText('Ready', { timeout: 60_000 })
-  let state = await act({ type: 'Load' })
+  ).toHaveCount(0)
   const firstAsset = state.equipment[0].artwork.id
   for (const variant of state.equipment[0].artwork.variants) {
     const media = await page.request.get(origin + variant.url)
@@ -331,7 +340,9 @@ try {
   await dialog.screenshot({
     path: join(output, 'hangar-desktop-1440x1000.png'),
   })
-  await dialog.getByRole('button', { name: 'Shipyard', exact: true }).click()
+  await dialog
+    .getByRole('button', { name: 'Back to Shipyard', exact: true })
+    .click()
   await expect(dialog).toHaveCount(0)
   await shipImageReady()
   await page.screenshot({
@@ -382,9 +393,10 @@ try {
       fullPage: width === 1440,
     })
     await page.getByRole('button', { name: 'Customize', exact: true }).click()
-    await expect(
-      dialog.getByRole('heading', { name: 'Midnight standard', exact: true }),
-    ).toBeVisible()
+    await expect(dialog.locator('canvas')).toHaveAttribute(
+      'aria-label',
+      'Midnight standard — live ship preview',
+    )
     await expect(dialog.locator('canvas')).toHaveCSS('opacity', '1')
     await dialog.screenshot({
       path: join(output, `hangar-current-emblem-${width}x${height}.png`),
@@ -397,7 +409,9 @@ try {
         path: join(output, 'hangar-controls-390x844.png'),
       })
     }
-    await dialog.getByRole('button', { name: 'Shipyard', exact: true }).click()
+    await dialog
+      .getByRole('button', { name: 'Back to Shipyard', exact: true })
+      .click()
     await expect(dialog).toHaveCount(0)
     assert.ok(
       await page.evaluate(

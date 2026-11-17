@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Dialog } from '@base-ui/react/dialog'
 import { AlertDialog } from '@base-ui/react/alert-dialog'
-import { ArrowLeft, X } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useShipAppearances } from '../../shell/ship-appearances-context'
 import { Button } from '../../ui/button'
 import { LoadingRegion } from '../../ui/loading-region'
@@ -73,6 +73,28 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
       )
     }
   }
+  const feedback =
+    notice || error || providerError || refreshError ? (
+      <div className={styles.feedback}>
+        {notice && <p role="status">{notice}</p>}
+        {(error || providerError || refreshError) && (
+          <>
+            <p role="alert" className={styles.warning}>
+              {error || providerError || refreshError}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="small"
+              disabled={busy || loading}
+              onClick={() => void refresh()}
+            >
+              Reload choices
+            </Button>
+          </>
+        )}
+      </div>
+    ) : null
   return (
     <Dialog.Root
       open={open}
@@ -94,14 +116,26 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
           <div className={styles.hangarPlate} aria-hidden="true" />
           <header className={styles.header}>
             <div className={styles.titlePlate}>
-              <span className={styles.eyebrow}>Ship hangar</span>
-              <Dialog.Title>{targetLabel(target)}</Dialog.Title>
+              <Dialog.Close
+                ref={closeButton}
+                className={`${styles.eyebrow} ${styles.backLink}`}
+                aria-label="Back to Shipyard"
+                title="Back to Shipyard"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                Ship hangar
+              </Dialog.Close>
+              <Dialog.Title className={styles.shipTitle}>
+                {targetLabel(target)}
+              </Dialog.Title>
+              {snapshot && draft && (
+                <span className={styles.skinCaption}>
+                  {snapshot.catalog.find(
+                    (item) => item.id === draft.recipe.skin_id,
+                  )?.name ?? 'Saved ship skin'}
+                </span>
+              )}
             </div>
-            <Dialog.Close ref={closeButton} render={<Button variant="ghost" />}>
-              <ArrowLeft size={16} aria-hidden="true" />
-              <span>Shipyard</span>
-              <X size={16} aria-hidden="true" />
-            </Dialog.Close>
           </header>
           <LoadingRegion
             loading={!snapshot && loading}
@@ -115,15 +149,6 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                   className={styles.stage}
                   aria-label="Live ship preview"
                 >
-                  <div className={styles.stageCaption}>
-                    <span className={styles.eyebrow}>Live preview</span>
-                    <h2>{draft.name || 'Untitled design'}</h2>
-                    <p>
-                      {snapshot.catalog.find(
-                        (item) => item.id === draft.recipe.skin_id,
-                      )?.name ?? 'Saved ship skin'}
-                    </p>
-                  </div>
                   <div className={styles.shipArrival}>
                     <ShipPreview state={snapshot} draft={draft} />
                   </div>
@@ -145,6 +170,20 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                       disabled={busy}
                       onChoose={choose}
                       onNameChange={(name) => edit({ name })}
+                      onReset={
+                        equipment?.design_id
+                          ? () =>
+                              void run(
+                                {
+                                  type: 'Reset',
+                                  target,
+                                  expected_equipment_revision:
+                                    equipment.revision,
+                                },
+                                'Standard appearance restored.',
+                              )
+                          : undefined
+                      }
                     />
                   </div>
                   <PaintControls
@@ -201,6 +240,8 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                     Saved designs are reusable. Changes here leave ships in
                     other empires as they are.
                   </p>
+                  <RenderProgress equipment={equipment} busy={busy} run={run} />
+                  {feedback}
                 </form>
               </>
             ) : (
@@ -208,60 +249,19 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                 <div className={styles.empty}>
                   <h2>
                     {snapshot
-                      ? 'No ship skines available'
+                      ? 'No ship skins available'
                       : 'The hangar could not load'}
                   </h2>
                   <p>
                     {snapshot
-                      ? 'Your saved designs are preserved. Refresh to check for available skines and dyes.'
+                      ? 'Your saved designs are preserved. No available skins and dyes are installed for this ship.'
                       : 'Refresh to try loading your ship designs again.'}
                   </p>
+                  {feedback}
                 </div>
               )
             )}
           </LoadingRegion>
-          <footer className={styles.footer}>
-            <RenderProgress equipment={equipment} busy={busy} run={run} />
-            <div className={styles.feedback}>
-              {notice && <p role="status">{notice}</p>}
-              {(error || providerError || refreshError) && (
-                <p role="alert" className={styles.warning}>
-                  {error || providerError || refreshError}
-                </p>
-              )}
-              <div className={styles.actions}>
-                {(error || providerError || refreshError) && (
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    disabled={busy || loading}
-                    onClick={() => void refresh()}
-                  >
-                    Reload choices
-                  </Button>
-                )}
-                {equipment?.design_id && (
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(
-                        {
-                          type: 'Reset',
-                          target,
-                          expected_equipment_revision: equipment.revision,
-                        },
-                        'Standard fleet appearance restored. Your designs remain saved.',
-                      )
-                    }
-                  >
-                    Use standard appearance
-                  </Button>
-                )}
-              </div>
-            </div>
-          </footer>
           <AlertDialog.Root open={confirmClose} onOpenChange={setConfirmClose}>
             <AlertDialog.Portal>
               <AlertDialog.Backdrop className={styles.confirmBackdrop} />
