@@ -189,3 +189,11 @@ required-features = ["test-support"]
 [[test]]
 name = "pools"
 required-features = ["test-support"]
+
+[[test]]
+name = "ship_appearances"
+required-features = ["test-support"]
+
+[[test]]
+name = "ship_appearance_upgrade"
+required-features = ["test-support"]

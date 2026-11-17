@@ -8627,6 +8627,55 @@
         ],
         "description": "Atomically mark the supplied displayed report IDs read for the authenticated recipient. No history traversal. Other preferences remain unchanged. Retries are idempotent. At most 10000 displayed reports per request."
       }
+    },
+    "/api/v1/universes/{universe}/ship-appearances": {
+      "post": {
+        "x-bot-category": "profile-or-tactical",
+        "description": "Account ship design revisions and independently pinned empire equipment. Rendering is asynchronous.",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipAppearanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current appearance state, including durable render status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipAppearanceState"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Authentication, binding, ownership, availability or revision conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -29569,6 +29618,511 @@
           "cooldown_ms"
         ],
         "additionalProperties": false
+      },
+      "ShipPaintRecipe": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "skin_id",
+          "package_revision",
+          "primary",
+          "accent",
+          "emblem"
+        ],
+        "properties": {
+          "version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "skin_id": {
+            "type": "string"
+          },
+          "package_revision": {
+            "type": "string"
+          },
+          "primary": {
+            "type": "string"
+          },
+          "accent": {
+            "type": "string"
+          },
+          "emblem": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "treatment",
+              "placement"
+            ],
+            "properties": {
+              "treatment": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "full",
+                  "layers"
+                ]
+              },
+              "placement": {
+                "type": "string",
+                "enum": [
+                  "near-wing",
+                  "paired"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "ShipSkin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "target",
+          "package_revision",
+          "package_url",
+          "preview_url",
+          "available"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "package_revision": {
+            "type": "string"
+          },
+          "package_url": {
+            "type": "string"
+          },
+          "preview_url": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ShipDye": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "color",
+          "availability"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "palette_id": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "locked",
+              "unavailable"
+            ]
+          }
+        }
+      },
+      "ShipDesign": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "target",
+          "revision",
+          "recipe"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recipe": {
+            "$ref": "#/components/schemas/ShipPaintRecipe"
+          }
+        }
+      },
+      "ShipArtwork": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "variants"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "width",
+                "height",
+                "url"
+              ],
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ShipRenderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "stage",
+          "can_cancel",
+          "can_retry"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "rendering",
+              "preparing",
+              "ready",
+              "failed",
+              "superseded",
+              "canceled"
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "can_cancel": {
+            "type": "boolean"
+          },
+          "can_retry": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ShipEquipment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "target",
+          "revision",
+          "design_id",
+          "design_revision",
+          "render",
+          "artwork"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "design_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "design_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "render": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShipRenderRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artwork": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShipArtwork"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fallback_reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ShipAppearanceState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "binding",
+          "request_id",
+          "catalog",
+          "dyes",
+          "library",
+          "equipment",
+          "emblem",
+          "emblem_revision"
+        ],
+        "properties": {
+          "binding": {
+            "$ref": "#/components/schemas/Binding"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "catalog": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipSkin"
+            }
+          },
+          "dyes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipDye"
+            }
+          },
+          "library": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipDesign"
+            }
+          },
+          "equipment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShipEquipment"
+            }
+          },
+          "emblem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsigniaAppearance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emblem_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ShipAppearanceAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "Load"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "design",
+              "equip",
+              "expected_equipment_revision"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "Save"
+              },
+              "design": {
+                "$ref": "#/components/schemas/ShipDesign"
+              },
+              "equip": {
+                "type": "boolean"
+              },
+              "expected_equipment_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "target",
+              "design_id",
+              "design_revision",
+              "expected_equipment_revision"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "Equip"
+              },
+              "target": {
+                "type": "string"
+              },
+              "design_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "design_revision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "expected_equipment_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "target",
+              "expected_equipment_revision"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "Reset"
+              },
+              "target": {
+                "type": "string"
+              },
+              "expected_equipment_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "request_id"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "Cancel"
+              },
+              "request_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "request_id"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "Retry"
+              },
+              "request_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        ]
+      },
+      "ShipAppearanceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context",
+          "action"
+        ],
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/QueryContext"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ShipAppearanceAction"
+          }
+        }
       }
     },
     "securitySchemes": {

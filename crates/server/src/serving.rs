@@ -90,6 +90,20 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
             .profiles
             .map(|profiles| profiles.with_rewards(rewards.observations.clone()));
     }
+    let _ship_appearances = if serve.role.serves_api() {
+        let renderer = crate::ship_appearances::configured_renderer()?;
+        customization.clone().map(|customization| {
+            BackgroundTask(tokio::spawn(crate::ship_appearances::run(
+                store.clone(),
+                customization,
+                serve.profiles.clone(),
+                renderer,
+                drain_rx.clone(),
+            )))
+        })
+    } else {
+        None
+    };
     let _rewards_worker = if serve.role.runs_worker() {
         rewards.as_ref().map(|integration| {
             BackgroundTask(tokio::spawn(integration.clone().run(drain_rx.clone())))

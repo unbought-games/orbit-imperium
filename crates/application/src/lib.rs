@@ -216,3 +216,6 @@ pub use alliance_media::*;
 
 mod asset_store;
 pub use asset_store::*;
+
+mod ship_appearance;
+pub use ship_appearance::*;

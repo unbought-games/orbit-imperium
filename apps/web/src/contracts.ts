@@ -6219,6 +6219,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/universes/{universe}/ship-appearances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Account ship design revisions and independently pinned empire equipment. Rendering is asynchronous. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ShipAppearanceRequest"];
+                };
+            };
+            responses: {
+                /** @description Current appearance state, including durable render status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShipAppearanceState"];
+                    };
+                };
+                /** @description Authentication, binding, ownership, availability or revision conflict */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11006,6 +11057,120 @@ export interface components {
         JumpGateStatus4: {
             ready_at: number;
             cooldown_ms: number;
+        };
+        ShipPaintRecipe: {
+            /** @constant */
+            version: 1;
+            skin_id: string;
+            package_revision: string;
+            primary: string;
+            accent: string;
+            emblem: {
+                /** @enum {string} */
+                treatment: "none" | "full" | "layers";
+                /** @enum {string} */
+                placement: "near-wing" | "paired";
+            };
+        };
+        ShipSkin: {
+            id: string;
+            name: string;
+            target: string;
+            package_revision: string;
+            package_url: string;
+            preview_url: string;
+            available: boolean;
+        };
+        ShipDye: {
+            id: string;
+            name: string;
+            color: string;
+            palette_id?: string;
+            /** @enum {string} */
+            availability: "available" | "locked" | "unavailable";
+        };
+        ShipDesign: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            target: string;
+            revision: number;
+            recipe: components["schemas"]["ShipPaintRecipe"];
+        };
+        ShipArtwork: {
+            /** Format: uuid */
+            id: string;
+            variants: {
+                width: number;
+                height: number;
+                url: string;
+            }[];
+        };
+        ShipRenderRequest: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            stage: "queued" | "rendering" | "preparing" | "ready" | "failed" | "superseded" | "canceled";
+            error?: string;
+            can_cancel: boolean;
+            can_retry: boolean;
+        };
+        ShipEquipment: {
+            target: string;
+            revision: number;
+            design_id: string | null;
+            design_revision: number | null;
+            render: components["schemas"]["ShipRenderRequest"] | null;
+            artwork: components["schemas"]["ShipArtwork"] | null;
+            fallback_reason?: string;
+        };
+        ShipAppearanceState: {
+            binding: components["schemas"]["Binding"];
+            /** Format: uuid */
+            request_id: string;
+            catalog: components["schemas"]["ShipSkin"][];
+            dyes: components["schemas"]["ShipDye"][];
+            library: components["schemas"]["ShipDesign"][];
+            equipment: components["schemas"]["ShipEquipment"][];
+            emblem: components["schemas"]["InsigniaAppearance"] | null;
+            emblem_revision: number;
+        };
+        ShipAppearanceAction: {
+            /** @constant */
+            type: "Load";
+        } | {
+            /** @constant */
+            type: "Save";
+            design: components["schemas"]["ShipDesign"];
+            equip: boolean;
+            expected_equipment_revision: number;
+        } | {
+            /** @constant */
+            type: "Equip";
+            target: string;
+            /** Format: uuid */
+            design_id: string;
+            design_revision: number;
+            expected_equipment_revision: number;
+        } | {
+            /** @constant */
+            type: "Reset";
+            target: string;
+            expected_equipment_revision: number;
+        } | {
+            /** @constant */
+            type: "Cancel";
+            /** Format: uuid */
+            request_id: string;
+        } | {
+            /** @constant */
+            type: "Retry";
+            /** Format: uuid */
+            request_id: string;
+        };
+        ShipAppearanceRequest: {
+            context: components["schemas"]["QueryContext"];
+            action: components["schemas"]["ShipAppearanceAction"];
         };
     };
     responses: never;
