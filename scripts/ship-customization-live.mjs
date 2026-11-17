@@ -166,7 +166,7 @@ try {
     '-d',
     database,
     '-Atc',
-    `SELECT id FROM bodies WHERE owner='${binding.player}' AND kind='Planet' ORDER BY id LIMIT 1`,
+    `SELECT id FROM bodies WHERE owner='${binding.player}' AND kind='Planet' AND galaxy=1 AND system=51 AND position=8`,
   )
     .toString()
     .trim()
@@ -222,10 +222,44 @@ try {
     const delivered = page.waitForResponse(
       (r) => r.url() === endpoint && r.request().method() === 'POST',
     )
+    const options = path.includes('/shipyard/')
+      ? page.waitForResponse((r) => {
+          if (
+            !/\/progression-options(?:\/bulk)?$/.test(r.url()) ||
+            r.request().method() !== 'POST'
+          )
+            return false
+          const data = r.request().postDataJSON()
+          return [data.request, ...(data.requests ?? [])].some(
+            (request) =>
+              request?.body === body && request?.item?.id === 'LightFighter',
+          )
+        })
+      : null
     await page.goto(origin + path)
     const response = await delivered
     assert.equal(response.status(), 200)
     await response.finished()
+    if (options) {
+      const quote = await options
+      assert.equal(quote.status(), 200)
+      await quote.finished()
+      await expect(
+        page
+          .getByRole('region', { name: 'New order', exact: true })
+          .getByRole('button', { name: 'Build', exact: true }),
+      ).toBeEnabled()
+    }
+    // Dismiss the playground's existing toast stack through its keyboard action
+    // before capturing this feature; this creates no gameplay command.
+    const notices = page.getByLabel('Recent game events').getByRole('button')
+    for (
+      let remaining = 0;
+      remaining < 8 && (await notices.count());
+      remaining++
+    ) {
+      await notices.first().press('Escape')
+    }
   }
   async function shipImageReady() {
     const image = page

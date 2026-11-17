@@ -32,8 +32,10 @@ async fn migration_copies_each_empires_authored_recipe_and_retains_prior_history
     let empires: Vec<_> = (0..2)
         .map(|_| (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()))
         .collect();
-    let mut recipe = InsigniaRecipe::default();
-    recipe.symbol = "temporarily-uninstalled-symbol".into();
+    let recipe = InsigniaRecipe {
+        symbol: "temporarily-uninstalled-symbol".into(),
+        ..Default::default()
+    };
     sqlx::query("INSERT INTO insignia_designs(account,id,name,recipe,revision) VALUES($1,$2,'Retained emblem',$3,4)").bind(account).bind(template).bind(Json(&recipe)).execute(&pool).await.unwrap();
     for &(universe, epoch, player) in &empires {
         sqlx::query("INSERT INTO universes(id,epoch,development,speed,started_at,profile_hash,name) VALUES($1,$2,true,1,1000,'ship-upgrade-fixture','Upgrade '||$1::text)").bind(universe).bind(epoch).execute(&pool).await.unwrap();
