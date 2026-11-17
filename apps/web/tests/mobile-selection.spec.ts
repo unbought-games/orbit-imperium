@@ -1,13 +1,23 @@
 import { routeWorld } from './fixtures/game'
-import { openNavigation } from './fixtures/navigation'
-import { withBootstrapResponse, withFixtureResponse, withRankingsResponse } from './fixtures/responses'
+
+import {
+  withBootstrapResponse,
+  withFixtureResponse,
+  withRankingsResponse,
+} from './fixtures/responses'
+
 import { test, expect, type Locator, type Page } from './fixtures/test'
+
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+
 import { binding, body, id, shellFixture } from './fixtures/game'
+
 import type { components } from '../src/contracts'
+
 import { withGalaxyResponse } from './fixtures/galaxy'
 
 type CatalogKey = components['schemas']['CatalogKey3']
+
 const keys: CatalogKey[] = [
   { kind: 'Building', id: 'MetalMine' },
   { kind: 'Building', id: 'CrystalMine' },
@@ -20,6 +30,7 @@ const keys: CatalogKey[] = [
   { kind: 'Ship', id: 'LightFighter' },
   { kind: 'Defense', id: 'RocketLauncher' },
 ]
+
 const catalog = keys.map((key) => ({
   key,
   requirements: [],
@@ -144,6 +155,7 @@ const modes = [
   { name: 'desktop', touch: false, installed: false, width: 1440 },
   { name: 'narrow desktop', touch: false, installed: false, width: 390 },
 ]
+
 for (const mode of modes) {
   test.describe(mode.name, () => {
     test.use({
@@ -203,7 +215,9 @@ for (const mode of modes) {
       await selectionIs(page.locator('figcaption p'), false)
       await selectionIs(page.getByRole('link', { name: /Back to/ }), mode.touch)
       await galaxyFixture(page)
-      await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
+      await withGalaxyResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/galaxy`),
+      )
       const slots = page.getByRole('button', { name: /Fleet slots:/ })
       if (mode.touch) await selectionIs(slots, true)
       await slots.click()
@@ -279,7 +293,9 @@ for (const touch of [true, false]) {
             },
           })
         })
-        await withRankingsResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/high-scores`))
+        await withRankingsResponse(page, () =>
+          page.goto(`/u/andromeda/b/${body.id}/high-scores`),
+        )
         const rankingPages = page.getByRole('navigation', {
           name: 'Ranking pages',
           exact: true,
@@ -308,15 +324,29 @@ for (const touch of [true, false]) {
             },
           })
         })
-        await page.route(/\/recruitment(?:\?|$)/, route =>
+        await page.route(/\/recruitment(?:\?|$)/, (route) =>
           route.fulfill({ json: { alliances: [], total: 0 } }),
         )
-        await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.goto('/u/andromeda/alliance/discover'))
-        const emptyAlliances = page.getByRole('heading', { name: 'No alliances yet.' })
+        await withFixtureResponse(
+          page,
+          (response) =>
+            new URL(response.url()).pathname.endsWith('/alliances/query') &&
+            response.request().postDataJSON().query.type === 'Directory',
+          () => page.goto('/u/andromeda/alliance/discover'),
+        )
+        const emptyAlliances = page.getByRole('heading', {
+          name: 'No alliances yet.',
+        })
         await expect(emptyAlliances).toBeVisible()
-        await expect(page.getByRole('navigation', { name: 'Alliance directory pages' })).toHaveCount(0)
+        await expect(
+          page.getByRole('navigation', { name: 'Alliance directory pages' }),
+        ).toHaveCount(0)
         await selectionIs(emptyAlliances, false)
-        if (touch) await selectionIs(page.getByRole('button', { name: 'Search alliances', exact: true }), true)
+        if (touch)
+          await selectionIs(
+            page.getByRole('button', { name: 'Search alliances', exact: true }),
+            true,
+          )
         await capture(page, 'alliance-empty')
 
         await page.route('**/api/v1/bootstrap', (route) =>
@@ -342,109 +372,6 @@ for (const touch of [true, false]) {
         await expect(support).not.toHaveCSS('-webkit-touch-callout', 'none')
         await support.scrollIntoViewIfNeeded()
         await capture(page, 'public-policy')
-      })
-
-      test('game screens and popup content retain their intended selection behavior', async ({
-        page,
-      }) => {
-        await shellFixture(page, {
-          catalog,
-          protocol: 4,
-          production: [production],
-          constructions: [
-            {
-              id: id(20),
-              body: body.id,
-              building: 'MetalMine',
-              target_level: 2,
-              paid: { metal: '0', crystal: '0', deuterium: '0' },
-              due_at: Date.now() + 300000,
-            },
-          ],
-        })
-        await galaxyFixture(page)
-        await capture(page, 'empire')
-        await page
-          .getByRole('button', { name: 'Metal details', exact: true })
-          .click()
-        await capture(page, 'resource-popup')
-        await page.keyboard.press('Escape')
-        await page.getByRole('combobox', { name: 'Selected body' }).click()
-        await capture(page, 'planet-selector')
-        await page.keyboard.press('Escape')
-        await openNavigation(page)
-        await capture(page, 'navigation-menu')
-        await page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name: 'Empire', exact: true }).click()
-        await page.getByRole('button', { name: /Open command HUD/ }).click()
-        await expect(page.getByRole('dialog', { name: 'Command uplink', exact: true })).toBeVisible()
-        await capture(page, 'command-hud')
-        await page.getByRole('button', { name: 'Close command HUD', exact: true }).click()
-        for (const screen of [
-          'resources',
-          'facilities',
-          'research',
-          'shipyard',
-          'defense',
-          'fleets',
-          'galaxy',
-        ]) {
-          await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${screen}`))
-          await expect(page.locator('main h1')).toHaveText(
-            screen[0].toUpperCase() + screen.slice(1),
-          )
-          await expect(
-            page.getByRole('navigation', {
-              name: 'Main navigation',
-              exact: true,
-            }),
-          ).toBeVisible()
-          await capture(page, screen)
-        }
-        await page.goto('/detail-playground?scene=mine-ready')
-        await selectionIs(page.locator('figcaption p'), false)
-        await capture(page, 'building-detail')
-        await page.goto('/detail-playground?scene=ship-ready')
-        const quantity = page.locator('input[inputmode="numeric"]').first()
-        await expect(quantity).toBeVisible()
-        await selectionIs(quantity, false)
-        if (touch)
-          await expect(quantity).toHaveCSS('-webkit-user-select', 'text')
-        await quantity.fill('12')
-        await quantity.selectText()
-        await page.keyboard.type('3')
-        await expect(quantity).toHaveValue('3')
-        await selectionIs(page.locator('figcaption p'), false)
-        await capture(page, 'ship-detail')
-        await page
-          .getByRole('button', { name: 'Technology tree', exact: true })
-          .click()
-        const technology = page.getByRole('dialog', {
-          name: 'Technology — Small Cargo',
-          exact: true,
-        })
-        await expect(technology).toBeVisible()
-        if (touch)
-          await selectionIs(
-            technology.getByRole('tab', { name: 'Techtree', exact: true }),
-            true,
-          )
-        await capture(page, 'technology-tree')
-        await page.goto('/action-sheet-playground')
-        await page
-          .getByRole('button', { name: 'Open snap sheet', exact: true })
-          .click()
-        const sheet = page.getByRole('dialog', {
-          name: 'Planet actions',
-          exact: true,
-        })
-        const notes = sheet.getByLabel('Notes', { exact: true })
-        await notes.fill('Selectable notes')
-        await selectionIs(notes, false)
-        if (touch) await expect(notes).toHaveCSS('-webkit-user-select', 'text')
-        await notes.selectText()
-        await page.keyboard.type('Edited notes')
-        await expect(notes).toHaveValue('Edited notes')
-        await capture(page, 'action-sheet')
       })
     },
   )

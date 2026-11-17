@@ -1,7 +1,9 @@
-import { test, expect } from './fixture'
 import { selectBody } from '../fixtures/body-selector'
-import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
+
 import { id } from '../../src/test-support/bootstrap'
+import { test, expect } from './fixture'
+
+import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 
 test('alliance pages retain a visible attack warning without the planet bar on desktop and mobile', async ({
   page,
@@ -545,4 +547,206 @@ test('wide sticky header does not overflow a narrower layout viewport', async ({
       layoutRight: document.body.getBoundingClientRect().right,
     }))
   expect(bounds.headerRight).toBeLessThanOrEqual(bounds.layoutRight)
+})
+
+for (const width of [768]) {
+  test(`tablet header pins identity and resources above the bottom navigation at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 900 })
+    await mount('shell-default')
+    const brand = page.getByRole('link', {
+      name: 'ORBIT IMPERIUM',
+      exact: true,
+    })
+    const primary = page.getByRole('navigation', {
+      name: 'Main navigation',
+      exact: true,
+    })
+    const planet = page.getByRole('combobox', { name: 'Selected body' })
+    const resources = page.getByLabel('Current resources')
+    const header = brand.locator('../..')
+    await expect(page.getByLabel('Current universe')).toBeHidden()
+    const assertRow = async () => {
+      const boxes = await Promise.all(
+        [brand, planet, resources].map((locator) => locator.boundingBox()),
+      )
+      for (let i = 1; i < boxes.length; i++) {
+        expect(boxes[i]!.x).toBeGreaterThanOrEqual(
+          boxes[i - 1]!.x + boxes[i - 1]!.width,
+        )
+        expect(
+          Math.abs(
+            boxes[i]!.y +
+              boxes[i]!.height / 2 -
+              boxes[0]!.y -
+              boxes[0]!.height / 2,
+          ),
+        ).toBeLessThan(2)
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      expect((await header.boundingBox())!.y).toBe(0)
+      await expect(primary).toHaveCSS('position', 'fixed')
+      const navigation = (await primary.boundingBox())!
+      expect(navigation.y + navigation.height).toBe(900)
+    }
+    await assertRow()
+    await expect(
+      page.getByRole('navigation', { name: /^(Develop|Fleet) navigation$/ }),
+    ).toHaveCount(0)
+    for (const group of ['Develop', 'Galaxy', 'Fleets']) {
+      await primary.getByRole('link', { name: group, exact: true }).click()
+      const secondary = page.getByRole('navigation', {
+        name: `${group} navigation`,
+        exact: true,
+      })
+      if (group !== 'Develop') {
+        await expect(secondary).toHaveCount(0)
+        for (const scroll of [0, 300, 100000]) {
+          await page.evaluate((y) => window.scrollTo(0, y), scroll)
+          await assertRow()
+        }
+        continue
+      }
+      await expect(secondary).toBeVisible()
+      const row = (await page
+        .getByRole('group', { name: 'Planet and resources' })
+        .boundingBox())!
+      expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
+      for (const scroll of [0, 300, 100000]) {
+        await page.evaluate((y) => window.scrollTo(0, y), scroll)
+        await assertRow()
+        expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
+      }
+    }
+    await page
+      .getByRole('button', { name: 'Metal details', exact: true })
+      .click()
+    await expect(
+      page.getByRole('dialog', { name: 'Metal', exact: true }),
+    ).toBeVisible()
+    await page.keyboard.press('Escape')
+    await selectBody(page, id(6))
+    await expect(planet).toHaveAttribute('data-value', id(6))
+    await primary.getByRole('link', { name: 'Develop', exact: true }).click()
+    await expect(page.locator('main h1')).toHaveText('Resources')
+    await page.mouse.move(width / 2, 300)
+    await diagnosticScreenshot(page, {
+      path: `test-results/desktop-pinned-header-${width}.png`,
+    })
+  })
+}
+
+for (const width of [768]) {
+  test(`tablet brand stays aligned with a large world roster at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width, height: 900 })
+    await mount('shell-tablet-roster')
+    const brand = page.getByRole('link', {
+      name: 'ORBIT IMPERIUM',
+      exact: true,
+    })
+    const primary = page.getByRole('navigation', {
+      name: 'Main navigation',
+      exact: true,
+    })
+    const planet = page.getByRole('combobox', { name: 'Selected body' })
+    const resources = page.getByLabel('Current resources')
+    const search = page.getByRole('searchbox', { name: 'Search owned worlds' })
+    await expect(search).toHaveCount(0)
+    const assertAlignment = async () => {
+      const brandBox = (await brand.boundingBox())!
+      for (const locator of [planet, resources]) {
+        const box = (await locator.boundingBox())!
+        expect(
+          Math.abs(box.y + box.height / 2 - brandBox.y - brandBox.height / 2),
+        ).toBeLessThan(2)
+      }
+      expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
+      await expect(primary).toHaveCSS('position', 'fixed')
+      const navigation = (await primary.boundingBox())!
+      expect(navigation.y + navigation.height).toBe(900)
+    }
+    await assertAlignment()
+    await primary.getByRole('link', { name: 'Develop', exact: true }).click()
+    const secondary = page.getByRole('navigation', {
+      name: 'Develop navigation',
+      exact: true,
+    })
+    await expect(secondary).toBeVisible()
+    for (const scroll of [0, 300, 100000]) {
+      await page.evaluate((y) => window.scrollTo(0, y), scroll)
+      await assertAlignment()
+      const row = (await page
+        .getByRole('group', { name: 'Planet and resources' })
+        .boundingBox())!
+      expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(
+        row.y + row.height,
+      )
+    }
+    await selectBody(page, id(28))
+    await expect(planet).toHaveAttribute('data-value', id(28))
+    await assertAlignment()
+  })
+}
+
+test('selected body labels truncate on phones and remain complete at larger widths and text scales', async ({
+  page,
+  mount,
+}) => {
+  await mount('shell-wide-coordinates')
+  for (const width of [1280, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    const text = page
+      .getByRole('combobox', { name: 'Selected body' })
+      .getByText('Planet', { exact: true })
+      .locator('..')
+    await expect(text).toHaveText('Planet [1:499:15]')
+    await expect(
+      page.getByRole('combobox', { name: 'Selected body' }),
+    ).toHaveText('Planet [1:499:15]')
+    if (width < 768) {
+      for (const part of await text.locator('span').all()) {
+        await expect(part).toHaveCSS('text-overflow', 'ellipsis')
+        await expect(part).toHaveCSS('overflow', 'hidden')
+        expect((await part.boundingBox())!.width).toBeLessThan(70)
+      }
+    } else {
+      expect(
+        await text.evaluate((element) => {
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          const bounds = element.getBoundingClientRect()
+          return [...range.getClientRects()].every(
+            (rect) =>
+              rect.left >= bounds.left &&
+              rect.right <= bounds.right &&
+              rect.right <= innerWidth,
+          )
+        }),
+      ).toBe(true)
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width)
+  }
+  await page.addStyleTag({ content: 'html { font-size: 200% }' })
+  const text = page
+    .getByRole('combobox', { name: 'Selected body' })
+    .getByText('Planet', { exact: true })
+    .locator('..')
+  expect(
+    await text.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true)
 })

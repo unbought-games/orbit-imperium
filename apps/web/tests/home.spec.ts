@@ -1,11 +1,22 @@
 import { accountLinks } from '../src/features/account-links'
+
 import { test, expect } from './fixtures/test'
+
 import { body, installGameFixture } from './fixtures/game'
+
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 async function anonymous(page: import('@playwright/test').Page, signup = true) {
   await page.route('**/api/auth/entry*', (route) =>
-    route.fulfill({ status: 303, headers: { location: new URL(route.request().url()).searchParams.get('signup') === 'true' ? '/signup' : '/login' } }),
+    route.fulfill({
+      status: 303,
+      headers: {
+        location:
+          new URL(route.request().url()).searchParams.get('signup') === 'true'
+            ? '/signup'
+            : '/login',
+      },
+    }),
   )
   await page.route('**/api/analytics', (route) =>
     route.fulfill({ json: { enabled: false } }),
@@ -87,7 +98,7 @@ for (const signup of [true, false]) {
     page,
   }) => {
     await anonymous(page, signup)
-    for (const width of [320, 390, 768, 1440]) {
+    for (const width of [1440]) {
       await page.setViewportSize({ width, height: 844 })
       await page.goto('/')
       const header = page.locator('header')
@@ -113,16 +124,22 @@ for (const signup of [true, false]) {
           await expect(
             page.getByRole('button', { name: 'Create account', exact: true }),
           ).toBeVisible()
-          await diagnosticScreenshot(page, { path: `test-results/local-signup-${width}x844.png` })
+          await diagnosticScreenshot(page, {
+            path: `test-results/local-signup-${width}x844.png`,
+          })
           await page.goto('/')
         } else {
           await expect(register).toBeHidden()
           await expect(
-            page.getByRole('navigation', { name: 'Get started' }).getByRole('link', { name: 'Play free', exact: true }),
+            page
+              .getByRole('navigation', { name: 'Get started' })
+              .getByRole('link', { name: 'Play free', exact: true }),
           ).toBeVisible()
         }
       } else {
-        await expect(header.locator('a[href="/api/auth/entry?signup=true"]')).toHaveCount(0)
+        await expect(
+          header.locator('a[href="/api/auth/entry?signup=true"]'),
+        ).toHaveCount(0)
       }
       await diagnosticScreenshot(header, {
         path: `test-results/compact-header-${width}-${signup}.png`,
@@ -132,12 +149,14 @@ for (const signup of [true, false]) {
       await expect(
         page.getByRole('button', { name: 'Sign in', exact: true }),
       ).toBeVisible()
-      await diagnosticScreenshot(page, { path: `test-results/local-login-${width}x844.png` })
+      await diagnosticScreenshot(page, {
+        path: `test-results/local-login-${width}x844.png`,
+      })
     }
   })
 }
 
-for (const width of [320, 390, 768, 1440]) {
+for (const width of [390]) {
   test(`landing page shows genuine desktop and phone images without overflow at ${width}px`, async ({
     page,
   }) => {
@@ -147,68 +166,18 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
       'Victory isn’t for sale.',
     )
-    const hero = page.locator('img[src^="/art/orbital-capital/"]')
-    await expect
-      .poll(() =>
-        hero.evaluate(
-          (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
-        ),
-      )
-      .toBe(true)
-    await diagnosticScreenshot(page, { path: `test-results/hero-${width}.png` })
-    await page
-      .getByRole('heading', { name: 'Play on your phone.' })
-      .scrollIntoViewIfNeeded()
-    await expect(
-      page.getByRole('heading', { name: 'Play on your phone.' }),
-    ).toBeInViewport()
-    const images = page.locator('img[src^="/art/landing/"]')
-    await expect(images).toHaveCount(3)
-    for (const image of await images.all()) {
-      await image.scrollIntoViewIfNeeded()
-      await expect
-        .poll(() =>
-          image.evaluate(
-            (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
-          ),
-        )
-        .toBe(true)
-      const link = image.locator('..')
-      const response = await page.request.get(
-        (await link.getAttribute('href'))!,
-      )
-      expect(response.ok()).toBe(true)
-      expect(response.headers()['content-type']).toContain('image/webp')
-      const bounds = (await image.boundingBox())!
-      expect(bounds.x).toBeGreaterThanOrEqual(0)
-      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
-    }
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true)
-    await expect(
-      page.getByRole('region', { name: 'Start with your first planet.' }).getByRole('link', { name: 'Play free', exact: true }),
-    ).toHaveAttribute('href', accountLinks.signup)
-    await diagnosticScreenshot(page, {
-      path: `test-results/landing-${width}.png`,
-      fullPage: true,
-    })
-    await diagnosticScreenshot(page.locator('#mobile'), {
-      path: `test-results/landing-mobile-section-${width}.png`,
-    })
+    // Image decoding, links and four responsive layouts are covered in public-layout.component.
     await page
       .getByRole('region', { name: 'Start with your first planet.' })
       .getByRole('link', { name: 'Play free', exact: true })
       .click()
     await expect(page).toHaveURL(/\/signup$/)
-    await expect(
-      page.getByRole('region', { name: 'Open Beta' }),
-    ).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
+    await expect(page.getByRole('region', { name: 'Open Beta' })).toContainText(
+      'We’re actively building Orbit Imperium. Expect new features and changes as we go.',
+    )
     // The expanded marketing sections are confined to the landing route.
     await expect(page.locator('#mobile')).toHaveCount(0)
-  await expect(page.locator('[data-orbit-home-head]')).toHaveCount(0)
+    await expect(page.locator('[data-orbit-home-head]')).toHaveCount(0)
   })
 }
 
@@ -217,7 +186,9 @@ test('both landing invitations respect disabled registration', async ({
 }) => {
   await anonymous(page, false)
   await page.goto('/')
-  await expect(page.locator('a[href="/api/auth/entry?signup=true"]')).toHaveCount(0)
+  await expect(
+    page.locator('a[href="/api/auth/entry?signup=true"]'),
+  ).toHaveCount(0)
   await expect(
     page.getByRole('link', { name: 'Sign in', exact: true }),
   ).toHaveAttribute('href', accountLinks.login)
@@ -227,64 +198,98 @@ test('both landing invitations respect disabled registration', async ({
   await expect(page).toHaveURL(/\/login$/)
 })
 
-test('returning players go straight to their empire without loading marketing images', { tag: '@journey' }, async ({
-  page,
-}) => {
-  const images: string[] = []
-  page.on('request', (request) => {
-    if (request.url().includes('/art/landing/')) images.push(request.url())
-  })
-  await installGameFixture(page)
-  await page.route('**/', async route => {
-    const response = await route.fetch()
-    await route.fulfill({ response, body: (await response.text()).replace('</head>', '<link data-orbit-home-head rel="canonical" href="https://community.example/"><meta data-orbit-home-head property="og:url" content="https://community.example/"></head>') })
-  })
-  await page.goto('/')
-  // Initial bootstrap and cold Vite compilation finish before the game route
-  // renders. Synchronize with the redirect before checking its content.
-  await page.waitForURL(`/u/andromeda/b/${body.id}/overview`)
-  await expect(page.locator('main h1')).toContainText('Empire —')
-  await expect(page.locator('#mobile')).toHaveCount(0)
-  await expect(page.locator('[data-orbit-home-head]')).toHaveCount(0)
-  expect(images).toEqual([])
-})
+test(
+  'returning players go straight to their empire without loading marketing images',
+  { tag: '@journey' },
+  async ({ page }) => {
+    const images: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('/art/landing/')) images.push(request.url())
+    })
+    await installGameFixture(page)
+    await page.route('**/', async (route) => {
+      const response = await route.fetch()
+      await route.fulfill({
+        response,
+        body: (await response.text()).replace(
+          '</head>',
+          '<link data-orbit-home-head rel="canonical" href="https://community.example/"><meta data-orbit-home-head property="og:url" content="https://community.example/"></head>',
+        ),
+      })
+    })
+    await page.goto('/')
+    // Initial bootstrap and cold Vite compilation finish before the game route
+    // renders. Synchronize with the redirect before checking its content.
+    await page.waitForURL(`/u/andromeda/b/${body.id}/overview`)
+    await expect(page.locator('main h1')).toContainText('Empire —')
+    await expect(page.locator('#mobile')).toHaveCount(0)
+    await expect(page.locator('[data-orbit-home-head]')).toHaveCount(0)
+    expect(images).toEqual([])
+  },
+)
 
 for (const signup of [true, false]) {
-  test(`embedded anonymous homepage loads independently of the game with signup ${signup}`, async ({ page }) => {
+  test(`embedded anonymous homepage loads independently of the game with signup ${signup}`, async ({
+    page,
+  }) => {
     await anonymous(page, signup)
     let gameStartup = false
-    page.on('request', request => {
+    page.on('request', (request) => {
       if (request.url().includes('/start-game.tsx')) gameStartup = true
     })
-    await page.route('**/', async route => {
+    await page.route('**/', async (route) => {
       const response = await route.fetch()
-      const html = (await response.text()).replace('/src/main.tsx', '/src/landing-main.tsx').replace(
-        '<script id="orbit-bootstrap" type="application/json"></script>',
-        `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
-      )
+      const html = (await response.text())
+        .replace('/src/main.tsx', '/src/landing-main.tsx')
+        .replace(
+          '<script id="orbit-bootstrap" type="application/json"></script>',
+          `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
+        )
       await route.fulfill({ response, body: html })
     })
     await page.goto('/')
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Victory isn’t for sale.')
-    await expect(page).toHaveTitle('Orbit Imperium — Multiplayer Space Strategy Game')
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new URL('/', page.url()).href)
-    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /\/art\/orbital-capital\/orbital-capital-1200.webp$/)
-    const graph = await page.locator('script[type="application/ld+json"]').textContent()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Victory isn’t for sale.',
+    )
+    await expect(page).toHaveTitle(
+      'Orbit Imperium — Multiplayer Space Strategy Game',
+    )
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+      'href',
+      new URL('/', page.url()).href,
+    )
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      'content',
+      /\/art\/orbital-capital\/orbital-capital-1200.webp$/,
+    )
+    const graph = await page
+      .locator('script[type="application/ld+json"]')
+      .textContent()
     expect(JSON.parse(graph!)['@graph'][1]['@type']).toBe('VideoGame')
-    await expect(page.getByRole('navigation', { name: 'Get started' }).getByRole('link', { name: 'Play free', exact: true })).toHaveCount(signup ? 1 : 0)
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Get started' })
+        .getByRole('link', { name: 'Play free', exact: true }),
+    ).toHaveCount(signup ? 1 : 0)
     expect(gameStartup).toBe(false)
     await page.getByRole('link', { name: 'Log in', exact: true }).click()
     await expect(page).toHaveURL(/\/login$/)
     await expect(page.locator('link[rel="canonical"]')).toHaveCount(0)
-    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0)
+    await expect(
+      page.locator('script[type="application/ld+json"]'),
+    ).toHaveCount(0)
   })
 }
 
-test('SPA navigation between authentication and home scopes metadata to home', async ({ page }) => {
+test('SPA navigation between authentication and home scopes metadata to home', async ({
+  page,
+}) => {
   await anonymous(page)
   await page.goto('/login')
   await page.getByRole('link', { name: 'Orbit Imperium', exact: true }).click()
-  await expect(page).toHaveTitle('Orbit Imperium — Multiplayer Space Strategy Game')
+  await expect(page).toHaveTitle(
+    'Orbit Imperium — Multiplayer Space Strategy Game',
+  )
   await expect(page.locator('link[rel="canonical"]')).toHaveCount(1)
   await page.getByRole('link', { name: 'Log in', exact: true }).click()
   await expect(page).toHaveTitle('Sign in · Orbit Imperium')

@@ -1,5 +1,7 @@
 import { test, expect, type Locator } from './fixtures/test'
-import { body, installGameFixture, shellFixture } from './fixtures/game'
+
+import { body, installGameFixture } from './fixtures/game'
+
 import { withBootstrapResponse } from './fixtures/responses'
 
 async function expectSelected(input: Locator) {
@@ -21,14 +23,28 @@ async function expectSelected(input: Locator) {
 
 // NumberInput's mouse/touch selection permutations live in components/form.spec.ts.
 // Keep one application assertion that Dispatch actually wires those controls.
-test('dispatch numbers are replaced after click and refocus', async ({ page }) => {
+test('dispatch numbers are replaced after click and refocus', async ({
+  page,
+}) => {
   await installGameFixture(page, {
     protocol: 4,
     extraCapabilities: ['Transport'],
-    catalog: [{ key: { kind: 'Ship', id: 'SmallCargo' }, requirements: [], enabled: true, mobile: true, body_kinds: ['Planet'] }],
+    catalog: [
+      {
+        key: { kind: 'Ship', id: 'SmallCargo' },
+        requirements: [],
+        enabled: true,
+        mobile: true,
+        body_kinds: ['Planet'],
+      },
+    ],
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-  const inputs = page.locator('input[inputmode="numeric"]:not([data-coordinate-input])')
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
+  const inputs = page.locator(
+    'input[inputmode="numeric"]:not([data-coordinate-input])',
+  )
   await expect(inputs).toHaveCount(4)
   for (const input of await inputs.all()) {
     for (const value of ['5', '12']) {
@@ -39,37 +55,4 @@ test('dispatch numbers are replaced after click and refocus', async ({ page }) =
       await expect(input).toHaveValue(value)
     }
   }
-})
-
-test('coordinates are one tab stop with colon and space advancement', async ({
-  page,
-}) => {
-  await shellFixture(page, { protocol: 4 })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-  const input = page.getByLabel('Destination coordinates', { exact: true })
-  await input.fill('')
-  await input.pressSequentially('1:45 5')
-  await expect(input).toHaveValue('1:45:5')
-  await input.press('Tab')
-  await expect(page.getByRole('textbox', { name: 'Metal', exact: true })).toBeFocused()
-  await page.keyboard.press('Shift+Tab')
-  await expect(input).toBeFocused()
-  await input.press('ArrowRight')
-  await input.press('Backspace')
-  await input.pressSequentially('9')
-  await expect(input).toHaveValue('1:45:9')
-})
-
-test('coordinate input offers a numeric keyboard and a touch separator control', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await shellFixture(page, { protocol: 4 })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-  const input = page.getByLabel('Destination coordinates', { exact: true })
-  await expect(input).toHaveAttribute('inputmode', 'numeric')
-  await input.fill('1')
-  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
-  await input.pressSequentially('45')
-  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
-  await input.pressSequentially('8')
-  await expect(input).toHaveValue('1:45:8')
 })

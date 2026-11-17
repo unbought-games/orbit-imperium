@@ -20,7 +20,7 @@ import {
 } from '@tanstack/react-router'
 import { useGameSession } from './session-context'
 import { ScreenContext } from './screen-context'
-import { bodyPages, resolveNamedDestination } from './routes'
+import { resolveShellRoute, type ShellParams } from './shell-route'
 import { withoutBodySearch } from './page-search'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
@@ -56,13 +56,7 @@ function GameShellContent() {
   const location = useRouterState({ select: (state) => state.location })
   const matches = useMatches()
   const leaf = matches[matches.length - 1]
-  const params = leaf.params as {
-    universe?: string
-    body?: string
-    item?: string
-    section?: string
-    coordinates?: string
-  }
+  const params = leaf.params as ShellParams
   const search = leaf.search as {
     body?: string
     alliance?: string
@@ -70,25 +64,13 @@ function GameShellContent() {
     invitation?: string
     player?: string
   }
-  const route = resolveNamedDestination(
-    {
-      universe: params.universe,
-      page: leaf.staticData.page ?? null,
-      body:
-        params.body ??
-        search.body ??
-        (bodyPages.includes(leaf.staticData.page!)
-          ? view.bodies[0]?.id
-          : undefined),
-      item:
-        leaf.staticData.page === 'alliance' && params.section
-          ? `${params.item}/${params.section}`
-          : params.item,
-    },
+  const { route, body, canonicalPage, canonicalizing } = resolveShellRoute(
+    leaf.staticData.page ?? null,
+    params,
+    search,
     view,
     universeName,
   )
-  const body = view.bodies.find((b) => b.id === route.body)
   const { page, available } = route
   const requestedBody = params.body ?? search.body
   const abandonment = useStore(model.store, (state) =>
@@ -118,13 +100,6 @@ function GameShellContent() {
   const heading = useRef<HTMLHeadingElement>(null)
   const previousPathname = useRef(location.pathname)
   const previousGalaxySite = useRef(location.search.site)
-  const canonicalPage =
-    page === 'alliance' && search.alliance ? 'alliance-discover' : page
-  const canonicalizing =
-    available &&
-    !params.coordinates &&
-    !!body &&
-    (!params.body || search.body !== undefined || canonicalPage !== page)
   // Default context is recorded once; later view changes must not silently select another planet.
   useEffect(() => {
     if (canonicalizing && body) {

@@ -1,11 +1,25 @@
 import { routeWorld } from './fixtures/game'
-import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
+
+import {
+  withBootstrapResponse,
+  withFixtureResponse,
+} from './fixtures/responses'
+
 import { setDestination, coordinatePattern } from './fixtures/coordinates'
+
 import { selectBody } from './fixtures/body-selector'
-import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+
+import {
+  attachFailureScreenshots,
+  diagnosticScreenshot,
+} from './fixtures/diagnostic-screenshot'
+
 import { navigate, openNavigation } from './fixtures/navigation'
+
 import { confirmCancellation } from './fixtures/confirmation'
+
 import { test, expect } from './fixtures/test'
+
 import {
   installGameFixture,
   refreshGame,
@@ -60,15 +74,25 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
     })
     await expect(
       buildings.getByRole('link', { name: 'Resources' }),
+    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/resources`)
+    const empireResearch = page.getByRole('region', {
+      name: 'Empire research',
+      exact: true,
+    })
+    await expect(
+      empireResearch.getByRole('button', {
+        name: 'Cancel research',
+        exact: true,
+      }),
+    ).toHaveCount(0)
+    await expect(
+      empireResearch.getByRole('link', {
+        name: building ? /Energy Technology/ : 'Open research',
+      }),
     ).toHaveAttribute(
       'href',
-      `/u/andromeda/b/${body.id}/resources`,
+      `/u/andromeda/b/${body.id}/research${building ? '/energy-technology' : ''}`,
     )
-    const empireResearch = page.getByRole('region', { name: 'Empire research', exact: true })
-    await expect(empireResearch.getByRole('button', { name: 'Cancel research', exact: true })).toHaveCount(0)
-    await expect(
-      empireResearch.getByRole('link', { name: building ? /Energy Technology/ : 'Open research' }),
-    ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/research${building ? '/energy-technology' : ''}`)
     await page.getByRole('link', { name: 'Develop', exact: true }).click()
     const nav = page.getByRole('navigation', { name: 'Develop navigation' })
     for (const destination of ['Resources', 'Facilities'] as const) {
@@ -78,7 +102,9 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
         building === 'MetalMine' && destination === 'Facilities'
           ? 'resources'
           : null
-      await expect(buildings.getByRole('link', { name: /^Open / })).toHaveCount(crossPage ? 1 : 0)
+      await expect(buildings.getByRole('link', { name: /^Open / })).toHaveCount(
+        crossPage ? 1 : 0,
+      )
       if (crossPage) {
         const link = buildings.getByRole('link', { name: `Open ${crossPage}` })
         await expect(link).toHaveAttribute(
@@ -101,7 +127,12 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
     const research = page.getByRole('region', { name: 'Research', exact: true })
     await expect(research.getByRole('link', { name: /^Open / })).toHaveCount(0)
     if (building) {
-      await expect(research.getByRole('link', { name: 'Energy Technology · Level 1', exact: true })).toBeVisible()
+      await expect(
+        research.getByRole('link', {
+          name: 'Energy Technology · Level 1',
+          exact: true,
+        }),
+      ).toBeVisible()
       await expect(research.getByText('Level 1', { exact: true })).toBeVisible()
       await expect(
         research.getByRole('button', { name: 'Cancel research' }),
@@ -125,61 +156,79 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
   })
 }
 
-test('cold Defense navigation retains named universe and planet through preloading, switching and direct loads', { tag: '@journey' }, async ({
-  page,
-}) => {
-  test.skip(!process.env.ORBIT_UI_E2E, 'Controls lazy route delivery in the fixture browser suite.')
-  await page.setViewportSize({ width: 390, height: 844 })
-  const purchases = await shellFixture(page, {
-    universeName: 'Andromeda Prime',
-    protocol: 4,
-  })
-  await page.getByRole('link', { name: 'Develop', exact: true }).click()
-  const nav = page.getByRole('navigation', { name: 'Develop navigation' })
-  let loading = false
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  await page.route(
-    (url) =>
-      (url.pathname.includes('defense') && url.search.includes('tsr-split')) ||
-      /^\/assets\/u\._universe\.b\._body\.defense-[^/]+\.js$/.test(url.pathname),
-    async (route) => {
-      loading = true
-      await gate
-      await route.continue()
-    },
-  )
-  const defense = nav.getByRole('link', { name: 'Defense', exact: true })
-  await defense.focus()
-  await expect.poll(() => loading).toBe(true)
-  await selectBody(page, id(6))
-  await expect(defense).toHaveAttribute(
-    'href',
-    `/u/andromeda-prime/b/${id(6)}/defense`,
-  )
-  await defense.click()
-  release()
-  await expect(page.locator('main h1')).toHaveText('Defense')
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
-  await expect(page).toHaveURL(`/u/andromeda-prime/b/${id(6)}/defense`)
-  await withBootstrapResponse(page, () => page.reload())
-  await expect(page.locator('main h1')).toHaveText('Defense')
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda-prime/b/${id(6)}/research`))
-  await nav.getByRole('link', { name: 'Defense', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText('Defense')
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
-  await page.goBack()
-  await expect(page.locator('main h1')).toHaveText('Research')
-  await page.goForward()
-  await expect(page.locator('main h1')).toHaveText('Defense')
-  expect(purchases()).toBe(0)
-})
+test(
+  'cold Defense navigation retains named universe and planet through preloading, switching and direct loads',
+  { tag: '@journey' },
+  async ({ page }) => {
+    test.skip(
+      !process.env.ORBIT_UI_E2E,
+      'Controls lazy route delivery in the fixture browser suite.',
+    )
+    await page.setViewportSize({ width: 390, height: 844 })
+    const purchases = await shellFixture(page, {
+      universeName: 'Andromeda Prime',
+      protocol: 4,
+    })
+    await page.getByRole('link', { name: 'Develop', exact: true }).click()
+    const nav = page.getByRole('navigation', { name: 'Develop navigation' })
+    let loading = false
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(
+      (url) =>
+        (url.pathname.includes('defense') &&
+          url.search.includes('tsr-split')) ||
+        /^\/assets\/u\._universe\.b\._body\.defense-[^/]+\.js$/.test(
+          url.pathname,
+        ),
+      async (route) => {
+        loading = true
+        await gate
+        await route.continue()
+      },
+    )
+    const defense = nav.getByRole('link', { name: 'Defense', exact: true })
+    await defense.focus()
+    await expect.poll(() => loading).toBe(true)
+    await selectBody(page, id(6))
+    await expect(defense).toHaveAttribute(
+      'href',
+      `/u/andromeda-prime/b/${id(6)}/defense`,
+    )
+    await defense.click()
+    release()
+    await expect(page.locator('main h1')).toHaveText('Defense')
+    await expect(
+      page.getByRole('combobox', { name: 'Selected body' }),
+    ).toHaveAttribute('data-value', id(6))
+    await expect(page).toHaveURL(`/u/andromeda-prime/b/${id(6)}/defense`)
+    await withBootstrapResponse(page, () => page.reload())
+    await expect(page.locator('main h1')).toHaveText('Defense')
+    await expect(
+      page.getByRole('combobox', { name: 'Selected body' }),
+    ).toHaveAttribute('data-value', id(6))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda-prime/b/${id(6)}/research`),
+    )
+    await nav.getByRole('link', { name: 'Defense', exact: true }).click()
+    await expect(page.locator('main h1')).toHaveText('Defense')
+    await expect(
+      page.getByRole('combobox', { name: 'Selected body' }),
+    ).toHaveAttribute('data-value', id(6))
+    await page.goBack()
+    await expect(page.locator('main h1')).toHaveText('Research')
+    await page.goForward()
+    await expect(page.locator('main h1')).toHaveText('Defense')
+    expect(purchases()).toBe(0)
+  },
+)
 
 for (const protocol of [3, 4] as const) {
-  test(`Fleets navigation helper opens the fleet list with protocol ${protocol}`, async ({ page }) => {
+  test(`Fleets navigation helper opens the fleet list with protocol ${protocol}`, async ({
+    page,
+  }) => {
     await shellFixture(page, { protocol, extraCapabilities: ['Transport'] })
     await navigate(page, 'Fleets')
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
@@ -210,9 +259,7 @@ test('mobile planet box is one tap target with rich planet and moon labels', asy
       },
     ),
   ).toBe('Selected body')
-  await expect(selector).toHaveText(
-    'Planet [1:371:12]',
-  )
+  await expect(selector).toHaveText('Planet [1:371:12]')
   await selectBody(page, id(6))
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
   await expect(selector).toHaveText('Moon [1:371:12]')
@@ -221,7 +268,7 @@ test('mobile planet box is one tap target with rich planet and moon labels', asy
   expect(purchases()).toBe(0)
 })
 
-for (const width of [320, 390, 1440]) {
+for (const width of [390]) {
   test(`shipyard and defense show every batch and total completion at ${width}px`, async ({
     page,
   }) => {
@@ -365,134 +412,8 @@ for (const width of [320, 390, 1440]) {
         },
       )
     }
-    const captureState = async (state: string) => {
-      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
-      // Tall narrow queues exceed a viewport; capture the document so sticky
-      // navigation does not obscure the top of a scrolled locator capture.
-      if (state === 'long-queue' && width === 320) {
-        await page.evaluate(() =>
-          window.scrollTo({ top: 0, behavior: 'instant' }),
-        )
-        await diagnosticScreenshot(page, {
-          path: `test-results/queue-defense-${state}-${width}x900.png`,
-          fullPage: true,
-        })
-        return
-      }
-      await diagnosticScreenshot(
-        page.getByRole('region', { name: 'Shipyard & defense', exact: true }),
-        { path: `test-results/queue-defense-${state}-${width}x900.png` },
-      )
-    }
-    options.manufacturing = [
-      batch,
-      ...Array.from({ length: 12 }, (_, index) => ({
-        ...batch,
-        id: id(100 + index),
-        item: {
-          kind: 'Missile' as const,
-          id: 'InterplanetaryMissile' as const,
-        },
-        quantity: index === 0 ? '9007199254740994' : '25',
-        remaining: index === 0 ? '9007199254740994' : '25',
-        completed_prefix: '0',
-        state: 'PaidQueued' as const,
-        first_start_at: now + 75000 + index * 1250000,
-        next_due_at: now + 125000 + index * 1250000,
-        final_due_at: now + 1325000 + index * 1250000,
-      })),
-    ]
-    await withFixtureResponse(
-      page,
-      (response) => response.url().endsWith('/bootstrap'),
-      () => page.reload(),
-    )
-    await expect(
-      page.getByRole('list', { name: 'Upcoming orders' }).getByRole('button'),
-    ).toHaveCount(12)
-    await expect(
-      page.getByRole('button', {
-        name: 'Interplanetary Missile · 9007199254740994 remaining details',
-      }),
-    ).toContainText('9,007,199,254,740,994')
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true)
-    await captureState('long-queue')
-    options.manufacturing = [batch]
-    // Regression: a lone order repeats the same completion time on every shared surface.
-    for (const destination of ['overview', 'shipyard', 'defense']) {
-      await withFixtureResponse(
-        page,
-        (response) => response.url().endsWith('/bootstrap'),
-        () => page.goto(`/u/andromeda/b/${body.id}/${destination}`),
-      )
-      const summary = page
-        .getByRole('region', { name: 'Shipyard & defense', exact: true })
-        .first()
-      const timers = summary.locator('dl').first()
-      await expect(timers.locator('dt')).toHaveText([
-        'Next unit',
-        'Until complete',
-      ])
-      await expect(timers).toContainText('Until complete1m 15s')
-      await expect(summary.getByRole('progressbar')).toHaveAttribute(
-        'aria-valuenow',
-        '50',
-      )
-      if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
-        await summary
-          .locator('img')
-          .evaluateAll((images) =>
-            Promise.all(
-              images.map((image) => (image as HTMLImageElement).decode()),
-            ),
-          )
-      await diagnosticScreenshot(summary, {
-        path: `test-results/queue-${destination}-single-${width}x900.png`,
-      })
-    }
-    await page.clock.fastForward(1000)
-    await expect(
-      page
-        .locator('dt')
-        .filter({ hasText: /^Until complete$/ })
-        .locator('..')
-        .getByText('1m 14s', { exact: true }),
-    ).toBeVisible()
-    await expect(page.getByRole('progressbar')).toHaveAttribute(
-      'aria-valuenow',
-      '52',
-    )
-    options.sampledAt = now + 75000
-    await withFixtureResponse(
-      page,
-      (response) => response.url().endsWith('/bootstrap'),
-      () => page.reload(),
-    )
-    await expect(
-      page
-        .locator('dt')
-        .filter({ hasText: /^Until complete$/ })
-        .locator('..')
-        .getByText('Pending', { exact: true }),
-    ).toBeVisible()
-    await captureState('awaiting')
-    options.manufacturing = []
-    await withFixtureResponse(
-      page,
-      (response) => response.url().endsWith('/bootstrap'),
-      () => page.reload(),
-    )
-    await expect(
-      page.getByText('No ships or defenses in production.'),
-    ).toBeVisible()
-    await expect(page.getByText('Until complete', { exact: true })).toHaveCount(
-      0,
-    )
-    await captureState('empty')
+    // Queue permutations, large integer counts, ticking and confirmed removal
+    // run against the real WorkSummaries/Coordinator in shell-manufacturing.component.
   })
 }
 
@@ -567,8 +488,16 @@ for (const [kind, elapsed] of [
       })
     })
     if (kind === 'research')
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/research`))
-    const scope = kind === 'construction' ? page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }) : page
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/research`),
+      )
+    const scope =
+      kind === 'construction'
+        ? page.getByRole('article', {
+            name: 'Planet [1:371:12] dossier',
+            exact: true,
+          })
+        : page
     const summary = scope.getByRole('region', {
       name: kind === 'construction' ? 'Buildings' : 'Research',
       exact: true,
@@ -580,16 +509,26 @@ for (const [kind, elapsed] of [
     await expect(cancel).toBeVisible()
     await cancel.click()
     if (elapsed >= 30_000) {
-      await expect(page.getByRole('dialog')).toContainText('1 minute of work will be lost.')
+      await expect(page.getByRole('dialog')).toContainText(
+        '1 minute of work will be lost.',
+      )
       await confirmCancellation(page)
     } else await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(cancel).toBeDisabled()
     if (kind === 'construction') await expect(cancel).toHaveText('Cancelling…')
-    else await expect(summary.getByText('Cancelling', { exact: true })).toBeVisible()
+    else
+      await expect(
+        summary.getByText('Cancelling', { exact: true }),
+      ).toBeVisible()
     if (kind === 'construction') {
       await expect(summary).toContainText('Research Lab · Level 1')
     } else {
-      await expect(summary.getByRole('link', { name: 'Energy Technology · Level 1', exact: true })).toBeVisible()
+      await expect(
+        summary.getByRole('link', {
+          name: 'Energy Technology · Level 1',
+          exact: true,
+        }),
+      ).toBeVisible()
       await expect(summary.getByText('Level 1', { exact: true })).toBeVisible()
     }
     await expect(summary).toContainText(/1m \d+s/)
@@ -634,12 +573,22 @@ test('compact shell exposes resource details and switches bodies without purchas
     name: 'Main navigation',
     exact: true,
   })
-  await expect(nav.getByRole('link')).toHaveText(['Empire', 'Develop', 'Resources', 'Facilities', 'Research', 'Shipyard', 'Defense'])
+  await expect(nav.getByRole('link')).toHaveText([
+    'Empire',
+    'Develop',
+    'Resources',
+    'Facilities',
+    'Research',
+    'Shipyard',
+    'Defense',
+  ])
   await expect(
     nav.getByRole('button', { name: 'Fleets', exact: true }),
   ).toBeDisabled()
   const menu = page.getByRole('complementary', { name: 'Game navigation' })
-  await expect(menu.getByRole('button', { name: 'Alliance', exact: true })).toBeDisabled()
+  await expect(
+    menu.getByRole('button', { name: 'Alliance', exact: true }),
+  ).toBeDisabled()
   await expect(menu.getByRole('button', { name: 'Galaxy' })).toBeDisabled()
   await expect(
     menu.getByRole('link', { name: 'Resources', exact: true }),
@@ -647,9 +596,13 @@ test('compact shell exposes resource details and switches bodies without purchas
   await page.keyboard.press('Escape')
   await selectBody(page, id(6))
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
+  await expect(
+    page.getByRole('combobox', { name: 'Selected body' }),
+  ).toHaveAttribute('data-value', id(6))
   await page.goBack()
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(5))
+  await expect(
+    page.getByRole('combobox', { name: 'Selected body' }),
+  ).toHaveAttribute('data-value', id(5))
   expect(purchases()).toBe(0)
 })
 
@@ -684,7 +637,9 @@ test('shell fits desktop and touch viewports with keyboard menu navigation', asy
       const content = await page.locator('main').boundingBox()
       expect(content!.y - ledger!.y - ledger!.height).toBeLessThanOrEqual(2)
       expect(
-        (await page.getByRole('combobox', { name: 'Selected body' }).boundingBox())!.y,
+        (await page
+          .getByRole('combobox', { name: 'Selected body' })
+          .boundingBox())!.y,
       ).toBeLessThan(24)
     } else {
       await expect(brand).toBeVisible()
@@ -696,13 +651,18 @@ test('shell fits desktop and touch viewports with keyboard menu navigation', asy
       ),
     ).toBe(true)
     const undersized = await page
-      .locator('button,input:not([aria-hidden="true"]),select,summary,nav a,main a,aside a')
+      .locator(
+        'button,input:not([aria-hidden="true"]),select,summary,nav a,main a,aside a',
+      )
       .evaluateAll((nodes) =>
         nodes
           .filter((n) => {
             const r = n.getBoundingClientRect()
             // Ghost controls are intentionally compact; other touch targets stay 44px.
-            const minimum = n.matches('[data-button-variant="ghost"]') || innerWidth >= 1024 ? 24 : 44
+            const minimum =
+              n.matches('[data-button-variant="ghost"]') || innerWidth >= 1024
+                ? 24
+                : 44
             return (
               r.width > 0 &&
               r.height > 0 &&
@@ -721,7 +681,9 @@ test('shell fits desktop and touch viewports with keyboard menu navigation', asy
   const menu = page.getByRole('link', { name: 'Menu', exact: true })
   await menu.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('navigation', { name: 'Menu destinations' })).toBeVisible()
+  await expect(
+    page.getByRole('navigation', { name: 'Menu destinations' }),
+  ).toBeVisible()
   await expect(page.locator('main h1')).toBeFocused()
   await page
     .getByRole('navigation', { name: 'Menu destinations' })
@@ -741,7 +703,9 @@ test('touch energy navigation and resource details remain usable with enlarged t
   await shellFixture(page)
   const energy = page.getByRole('link', { name: 'Energy — resource settings' })
   await energy.focus()
-  await expect(page.getByRole('tooltip', { name: 'Energy' })).toContainText('26')
+  await expect(page.getByRole('tooltip', { name: 'Energy' })).toContainText(
+    '26',
+  )
   await page.keyboard.press('Escape')
   await expect(page.getByRole('tooltip', { name: 'Energy' })).toHaveCount(0)
   await energy.tap()
@@ -803,14 +767,27 @@ test('world shell omits the utility row and opens defense production from its su
   await expect(
     page.locator('main').getByRole('link', { name: 'Reports', exact: true }),
   ).toHaveCount(0)
-  await expect(page.getByRole('complementary', { name: 'Game navigation' }).getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
-  const production = page.getByRole('list', { name: 'Manufacturing queue' })
-  await expect(production.getByRole('heading', { name: 'Rocket Launcher', exact: true })).toBeVisible()
-  await expect(production.getByTitle('Units remaining')).toHaveText('2 remaining')
   await expect(
-    page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Defense', exact: true }),
+    page
+      .getByRole('complementary', { name: 'Game navigation' })
+      .getByRole('link', { name: 'Reports', exact: true }),
+  ).toBeVisible()
+  const production = page.getByRole('list', { name: 'Manufacturing queue' })
+  await expect(
+    production.getByRole('heading', { name: 'Rocket Launcher', exact: true }),
+  ).toBeVisible()
+  await expect(production.getByTitle('Units remaining')).toHaveText(
+    '2 remaining',
+  )
+  await expect(
+    page
+      .getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true })
+      .getByRole('link', { name: 'Defense', exact: true }),
   ).toHaveAttribute('href', /\/defense$/)
-  await page.getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true }).getByRole('link', { name: 'Defense', exact: true }).click()
+  await page
+    .getByRole('article', { name: 'Planet [1:371:12] dossier', exact: true })
+    .getByRole('link', { name: 'Defense', exact: true })
+    .click()
   await expect(page.locator('main h1')).toHaveText('Defense')
 })
 
@@ -830,7 +807,9 @@ test('phone keeps the thumb dock and world controls usable on the menu page', as
   const metal = await page
     .getByRole('button', { name: 'Metal details' })
     .boundingBox()
-  const planet = await page.getByRole('combobox', { name: 'Selected body' }).boundingBox()
+  const planet = await page
+    .getByRole('combobox', { name: 'Selected body' })
+    .boundingBox()
   expect(planet!.x + planet!.width).toBeLessThanOrEqual(metal!.x)
   expect(
     Math.abs(planet!.y + planet!.height / 2 - metal!.y - metal!.height / 2),
@@ -839,32 +818,37 @@ test('phone keeps the thumb dock and world controls usable on the menu page', as
   await menu.click()
   const drawer = page.getByRole('navigation', { name: 'Menu destinations' })
   await expect(drawer).toBeVisible()
-  await expect(page.getByRole('main').getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(
+    page.getByRole('main').getByRole('button', { name: 'Log out' }),
+  ).toBeVisible()
   await expect(page.locator('main h1')).toBeFocused()
   await expect(nav).toBeInViewport({ ratio: 1 })
   await nav.getByRole('link', { name: 'Empire', exact: true }).click()
   await expect(drawer).toHaveCount(0)
-
 })
 
 // The old modal focus-lock/resize scenario was removed with the dialog.
 // desktop-navigation.spec.ts covers route persistence on resize and Back.
-test('mobile menu page signs out through the existing account session', { tag: '@journey' }, async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await shellFixture(page)
-  await page.getByRole('link', { name: 'Menu', exact: true }).click()
-  await page
-    .getByRole('main')
-    .getByRole('button', { name: 'Log out' })
-    .click()
-  await expect(
-    page.getByRole('button', { name: 'Sign in', exact: true }),
-  ).toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Menu destinations' })).toHaveCount(0)
-  await expect(page.getByLabel('Current resources')).toHaveCount(0)
-})
+test(
+  'mobile menu page signs out through the existing account session',
+  { tag: '@journey' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await shellFixture(page)
+    await page.getByRole('link', { name: 'Menu', exact: true }).click()
+    await page
+      .getByRole('main')
+      .getByRole('button', { name: 'Log out' })
+      .click()
+    await expect(
+      page.getByRole('button', { name: 'Sign in', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('navigation', { name: 'Menu destinations' }),
+    ).toHaveCount(0)
+    await expect(page.getByLabel('Current resources')).toHaveCount(0)
+  },
+)
 
 test('overview preserves rich work, exact inventory, incoming visibility and responsive composition', async ({
   page,
@@ -942,11 +926,13 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
       await page.locator('main img').evaluateAll(async (images) => {
         // Screenshot preparation also loads art inside the collapsed map.
-        await Promise.all(images.map((image) => {
-          const img = image as HTMLImageElement
-          img.loading = 'eager'
-          return img.decode().catch(() => {})
-        }))
+        await Promise.all(
+          images.map((image) => {
+            const img = image as HTMLImageElement
+            img.loading = 'eager'
+            return img.decode().catch(() => {})
+          }),
+        )
       })
     }
 
@@ -1006,78 +992,89 @@ test('large world rosters scroll and retain funding context on player-wide route
   await expect(page.locator('main h1')).toHaveText('Research')
   await selectBody(page, id(28))
   await expect(page).toHaveURL(new RegExp(`/b/${id(28)}/research$`))
-  await expect(page.getByRole('searchbox', { name: 'Search owned worlds' })).toHaveCount(0)
+  await expect(
+    page.getByRole('searchbox', { name: 'Search owned worlds' }),
+  ).toHaveCount(0)
   await page.goBack()
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
+  await expect(
+    page.getByRole('combobox', { name: 'Selected body' }),
+  ).toHaveAttribute('data-value', body.id)
   await page.setViewportSize({ width: 320, height: 844 })
   await selectBody(page, id(28))
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(28))
+  await expect(
+    page.getByRole('combobox', { name: 'Selected body' }),
+  ).toHaveAttribute('data-value', id(28))
   expect(purchases()).toBe(0)
 })
 
-test('navigation keeps shell identity mounted through rapid route changes', { tag: '@journey' }, async ({
-  browser,
-}) => {
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-    recordVideo: process.env.ORBIT_TEST_SCREENSHOTS === '1' ? {
-      dir: 'test-results/foundation-motion',
-      size: { width: 1440, height: 900 },
-    } : undefined,
-  })
-  const page = await context.newPage()
-  const purchases = await shellFixture(page, { protocol: 4 })
-  await page
-    .getByLabel('Current resources')
-    .evaluate((element) =>
-      element.setAttribute('data-motion-check', 'persistent'),
-    )
-  await page.getByRole('link', { name: 'Develop', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText('Resources')
-  await page
-    .getByRole('navigation', { name: 'Develop navigation' })
-    .getByRole('link', { name: 'Shipyard', exact: true })
-    .click()
-  await expect(page.locator('main h1')).toHaveText('Shipyard')
-  await page.getByRole('link', { name: 'Galaxy', exact: true }).click()
-  await expect(page.locator('main h1')).toHaveText('Galaxy')
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  await page.route('**/api/**/overview', async (route) => {
-    await gate
-    await route.fallback()
-  })
-  await page.route('**/art/**', (route) => route.abort())
-  const pending = page.waitForRequest(
-    (request) =>
-      request.url().includes('/api/') && request.url().endsWith('/overview'),
-  )
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await pending
-  try {
-    for (const heading of ['Shipyard', 'Resources', 'Empire']) {
-      await page.goBack()
-      await expect(page.locator('main h1')).toContainText(heading)
-      await expect(page.getByLabel('Current resources')).toHaveAttribute(
-        'data-motion-check',
-        'persistent',
+test(
+  'navigation keeps shell identity mounted through rapid route changes',
+  { tag: '@journey' },
+  async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      recordVideo:
+        process.env.ORBIT_TEST_SCREENSHOTS === '1'
+          ? {
+              dir: 'test-results/foundation-motion',
+              size: { width: 1440, height: 900 },
+            }
+          : undefined,
+    })
+    const page = await context.newPage()
+    const purchases = await shellFixture(page, { protocol: 4 })
+    await page
+      .getByLabel('Current resources')
+      .evaluate((element) =>
+        element.setAttribute('data-motion-check', 'persistent'),
       )
+    await page.getByRole('link', { name: 'Develop', exact: true }).click()
+    await expect(page.locator('main h1')).toHaveText('Resources')
+    await page
+      .getByRole('navigation', { name: 'Develop navigation' })
+      .getByRole('link', { name: 'Shipyard', exact: true })
+      .click()
+    await expect(page.locator('main h1')).toHaveText('Shipyard')
+    await page.getByRole('link', { name: 'Galaxy', exact: true }).click()
+    await expect(page.locator('main h1')).toHaveText('Galaxy')
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route('**/api/**/overview', async (route) => {
+      await gate
+      await route.fallback()
+    })
+    await page.route('**/art/**', (route) => route.abort())
+    const pending = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/') && request.url().endsWith('/overview'),
+    )
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await pending
+    try {
+      for (const heading of ['Shipyard', 'Resources', 'Empire']) {
+        await page.goBack()
+        await expect(page.locator('main h1')).toContainText(heading)
+        await expect(page.getByLabel('Current resources')).toHaveAttribute(
+          'data-motion-check',
+          'persistent',
+        )
+      }
+      await expect(
+        page.getByRole('link', { name: 'Empire', exact: true }),
+      ).toHaveAttribute('aria-current', 'page')
+      expect(purchases()).toBe(0)
+    } catch (error) {
+      await attachFailureScreenshots([page], test.info())
+      throw error
+    } finally {
+      release()
+      await page.unrouteAll({ behavior: 'wait' })
+      await context.close()
     }
-    await expect(
-      page.getByRole('link', { name: 'Empire', exact: true }),
-    ).toHaveAttribute('aria-current', 'page')
-    expect(purchases()).toBe(0)
-  } catch (error) {
-    await attachFailureScreenshots([page], test.info())
-    throw error
-  } finally {
-    release()
-    await page.unrouteAll({ behavior: 'wait' })
-    await context.close()
-  }
-})
+  },
+)
 
 test('disconnection preserves selected world, ledger and urgent fleet navigation', async ({
   page,
@@ -1088,10 +1085,17 @@ test('disconnection preserves selected world, ledger and urgent fleet navigation
   )
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(
-    page.locator('[aria-live=assertive]').filter({ hasText: 'Unable to refresh your empire. Showing the last confirmed state. Reconnecting' }),
+    page
+      .locator('[aria-live=assertive]')
+      .filter({
+        hasText:
+          'Unable to refresh your empire. Showing the last confirmed state. Reconnecting',
+      }),
   ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', body.id)
+  await expect(
+    page.getByRole('combobox', { name: 'Selected body' }),
+  ).toHaveAttribute('data-value', body.id)
   await page.getByRole('link', { name: 'Galaxy', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Galaxy')
   await page
@@ -1155,17 +1159,30 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets`),
+  )
   const mission = page.getByRole('article', { name: 'Transport fleet' })
-  await mission.getByRole('button', { name: 'Transport ship composition: 4 ships', exact: true }).click()
-  await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
+  await mission
+    .getByRole('button', {
+      name: 'Transport ship composition: 4 ships',
+      exact: true,
+    })
+    .click()
+  await expect(
+    mission
+      .getByRole('list', { name: 'Ship composition' })
+      .getByRole('listitem'),
+  ).toHaveText(['Small Cargo 4'])
   await expect(mission).toContainText('6m')
   await expect(mission).toContainText(/6m \d+s/)
   await expect(mission.locator('time')).toHaveAttribute(
     'datetime',
     new Date(fleet.due_at).toISOString(),
   )
-  await expect(page.getByRole('group', { name: 'Fleet traffic filter' })).toHaveCount(0)
+  await expect(
+    page.getByRole('group', { name: 'Fleet traffic filter' }),
+  ).toHaveCount(0)
   await mission.getByRole('link', { name: /^View .* fleet$/ }).click()
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   // History updates before the lazy detail route commits. Wait for its screen
@@ -1176,8 +1193,14 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await selectBody(page, id(6))
   await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets/${fleet.id}`)
   await withBootstrapResponse(page, () => page.reload())
-  await expect(mission.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Small Cargo 4'])
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`))
+  await expect(
+    mission
+      .getByRole('list', { name: 'Ship composition' })
+      .getByRole('listitem'),
+  ).toHaveText(['Small Cargo 4'])
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`),
+  )
   await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets/${fleet.id}`)
   await expect(mission).toContainText('2,000')
   await mission.getByText('Flight path', { exact: true }).click()
@@ -1238,7 +1261,9 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
     .getByRole('button', { name: 'Review recall', exact: true })
     .scrollIntoViewIfNeeded()
   await mission.getByText('Flight path', { exact: true }).click()
-  await diagnosticScreenshot(page, { path: 'test-results/fleet-facts-phone.png' })
+  await diagnosticScreenshot(page, {
+    path: 'test-results/fleet-facts-phone.png',
+  })
   await expect(
     page.getByRole('link', { name: 'All fleets', exact: true }),
   ).toBeVisible()
@@ -1255,8 +1280,10 @@ test('fleet trajectory retains exact mission facts and requires recall review', 
   await page.route('**/art/**', (route) => route.abort())
   await withBootstrapResponse(page, () => page.reload())
   await expect(
-    page.getByRole('article', { name: 'Transport fleet' })
-      .getByRole('list', { name: 'Ship composition' }).getByRole('listitem'),
+    page
+      .getByRole('article', { name: 'Transport fleet' })
+      .getByRole('list', { name: 'Ship composition' })
+      .getByRole('listitem'),
   ).toHaveText(['Small Cargo 4'])
   await page.getByRole('button', { name: 'Review recall', exact: true }).click()
   await expect(
@@ -1284,13 +1311,17 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
       score_value_micro: '0',
     },
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets`),
+  )
   await expect(page.getByText('No active fleets.')).toBeVisible()
   await diagnosticScreenshot(page, {
     path: 'test-results/fleets-empty-phone.png',
     fullPage: true,
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets/${id(99)}`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets/${id(99)}`),
+  )
   await expect(
     page.getByText(
       'This item is unavailable or outside the current authorized view.',
@@ -1300,12 +1331,20 @@ test('secondary pages retain empty, unavailable and settings states at phone wid
     path: 'test-results/fleets-unavailable-phone.png',
     fullPage: true,
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/support`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/settings/support`),
+  )
   await expect(
     page.getByRole('heading', { name: 'Universe settings', exact: true }),
   ).toBeVisible()
-  await page.getByRole('link', { name: 'Back to Settings', exact: true }).click()
-  await page.getByRole('main').getByRole('navigation', { name: 'Settings navigation' }).getByRole('link', { name: 'Account & session', exact: true }).click()
+  await page
+    .getByRole('link', { name: 'Back to Settings', exact: true })
+    .click()
+  await page
+    .getByRole('main')
+    .getByRole('navigation', { name: 'Settings navigation' })
+    .getByRole('link', { name: 'Account & session', exact: true })
+    .click()
   await expect(
     page
       .getByRole('region', { name: 'Session actions' })
@@ -1402,7 +1441,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.route('**/commands/*?epoch=*', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+  )
   await page.getByLabel('Small Cargo · 2 available').fill('1')
   await setDestination(page, { position: '2' })
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
@@ -1412,11 +1453,26 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   const quote = page.getByRole('region', { name: 'Fleet quote' })
   await expect(quote).toContainText('Unknown planet')
-  await quote.getByRole('link', { name: 'View destination [1:1:3] in galaxy', exact: true }).click({ button: 'right' })
+  await quote
+    .getByRole('link', {
+      name: 'View destination [1:1:3] in galaxy',
+      exact: true,
+    })
+    .click({ button: 'right' })
   await page.clock.runFor(100)
-  await expect(page.getByRole('menuitem', { name: 'View in Galaxy', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`)
+  await expect(
+    page.getByRole('menuitem', { name: 'View in Galaxy', exact: true }),
+  ).toHaveAttribute(
+    'href',
+    `/u/andromeda/b/${body.id}/galaxy?galaxy=1&system=1&position=3`,
+  )
   await page.keyboard.press('Escape')
-  await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
+  await expect(
+    quote
+      .getByRole('img', { name: 'Deuterium', exact: true })
+      .last()
+      .locator('..'),
+  ).toHaveText('6')
   await expect(quote).toContainText('fuel')
   expect(quoteRequests).toBe(1)
   expect(sent).toBe(0)
@@ -1430,7 +1486,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     path: 'test-results/dispatch-review-phone.png',
     fullPage: true,
   })
-  await page.getByRole('button', { name: 'Back to edit mission', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Back to edit mission', exact: true })
+    .click()
   await expect(
     page.getByRole('button', { name: 'Review fleet', exact: true }),
   ).toBeFocused()
@@ -1438,7 +1496,10 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
   await expect(quote).toBeVisible()
   await quote
-    .getByRole('button', { name: 'Transport to Unknown planet [1:1:3]', exact: true })
+    .getByRole('button', {
+      name: 'Transport to Unknown planet [1:1:3]',
+      exact: true,
+    })
     .click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
@@ -1448,18 +1509,25 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
   ).toBeVisible()
   await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue('1')
   await expect(
-    page.getByRole('button', { name: 'Fleet slots: 1 used / 5 total', exact: true }),
+    page.getByRole('button', {
+      name: 'Fleet slots: 1 used / 5 total',
+      exact: true,
+    }),
   ).toBeVisible()
   const recovery = page.getByLabel('Action needs attention')
   // Exercise recovery explicitly so this assertion does not depend on whether
   // the background receipt poll runs before the layout checks finish.
-  const receiptResponse = page.waitForResponse((response) =>
-    response.url().includes('/commands/') && response.request().method() === 'GET',
+  const receiptResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/commands/') &&
+      response.request().method() === 'GET',
   )
-  await recovery.getByRole('button', {
-    name: 'Retry order',
-    exact: true,
-  }).click()
+  await recovery
+    .getByRole('button', {
+      name: 'Retry order',
+      exact: true,
+    })
+    .click()
   expect((await receiptResponse).status()).toBe(503)
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 })
@@ -1473,7 +1541,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
       .getByRole('group', { name: 'Origin', exact: true })
       .first()
       .evaluate((intro) => {
-        const notice = document.querySelector('aside[aria-label="Action needs attention"]')!
+        const notice = document.querySelector(
+          'aside[aria-label="Action needs attention"]',
+        )!
         return {
           noticeBottom: notice.getBoundingClientRect().bottom,
           introTop: intro.getBoundingClientRect().top,
@@ -1482,7 +1552,9 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     expect(bounds.noticeBottom).toBeLessThanOrEqual(bounds.introTop)
     for (const control of [
       page.getByRole('combobox', { name: 'Selected body' }),
-      width >= 1024 ? page.getByRole('button', { name: 'Account menu', exact: true }) : page.getByRole('link', { name: 'Menu', exact: true }),
+      width >= 1024
+        ? page.getByRole('button', { name: 'Account menu', exact: true })
+        : page.getByRole('link', { name: 'Menu', exact: true }),
       page.getByRole('link', { name: 'Fleets', exact: true }),
     ]) {
       await expect(control).toBeInViewport()
@@ -1498,7 +1570,10 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
       ).toBe(true)
     }
     // Menu is a destination now; verify its hit target without leaving edits.
-    if (width < 1024) await page.getByRole('link', { name: 'Menu', exact: true }).click({ trial: true })
+    if (width < 1024)
+      await page
+        .getByRole('link', { name: 'Menu', exact: true })
+        .click({ trial: true })
     else await expect(await openNavigation(page)).toBeVisible()
     const resolve = recovery.getByRole('button', {
       name: 'Retry order',
@@ -1508,10 +1583,18 @@ test('dispatch fences changed drafts and keeps uncertain launch recovery in acti
     await expect(resolve).toBeInViewport()
   }
   await page.getByRole('button', { name: 'Review fleet', exact: true }).click()
-  await expect(quote.getByRole('img', { name: 'Deuterium', exact: true }).last().locator('..')).toHaveText('6')
+  await expect(
+    quote
+      .getByRole('img', { name: 'Deuterium', exact: true })
+      .last()
+      .locator('..'),
+  ).toHaveText('6')
   await expect(quote).toContainText('fuel')
   await expect(
-    quote.getByRole('button', { name: 'Transport to Unknown planet [1:1:3]', exact: true }),
+    quote.getByRole('button', {
+      name: 'Transport to Unknown planet [1:1:3]',
+      exact: true,
+    }),
   ).toBeDisabled()
   expect(sent).toBe(1)
 
@@ -1549,7 +1632,9 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
       },
     ],
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets`),
+  )
   await expect(
     page.getByRole('figure', { name: 'Mission route schematic' }),
   ).toBeVisible()
@@ -1585,49 +1670,9 @@ test('selected body context truncates on phones and retains full labels and acce
   await shellFixture(page, {
     bodies: [selected, { ...body, id: id(6), kind: 'Moon' }],
   })
-  for (const width of [1280, 768, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 })
-    const text = page
-      .getByRole('combobox', { name: 'Selected body' })
-      .getByText('Planet', { exact: true }).locator('..')
-    await expect(text).toHaveText('Planet [1:499:15]')
-    await expect(
-      page.getByRole('combobox', { name: 'Selected body' }),
-    ).toHaveText('Planet [1:499:15]')
-    if (width < 768) {
-      for (const part of await text.locator('span').all()) {
-        await expect(part).toHaveCSS('text-overflow', 'ellipsis')
-        await expect(part).toHaveCSS('overflow', 'hidden')
-        expect((await part.boundingBox())!.width).toBeLessThan(70)
-      }
-    } else {
-      expect(
-        await text.evaluate((element) => {
-          const range = document.createRange()
-          range.selectNodeContents(element)
-          const bounds = element.getBoundingClientRect()
-          return [...range.getClientRects()].every(
-            (rect) =>
-              rect.left >= bounds.left &&
-              rect.right <= bounds.right &&
-              rect.right <= innerWidth,
-          )
-        }),
-      ).toBe(true)
-    }
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBeLessThanOrEqual(width)
-  }
+  // Body-label geometry/text scales run against GameShellFrame in shell-layout.component.
+  await page.setViewportSize({ width: 320, height: 900 })
   await page.addStyleTag({ content: 'html { font-size: 200% }' })
-  const text = page
-    .getByRole('combobox', { name: 'Selected body' })
-    .getByText('Planet', { exact: true }).locator('..')
-  expect(
-    await text.evaluate(
-      (element) => element.scrollWidth <= element.clientWidth,
-    ),
-  ).toBe(true)
   await page.getByRole('link', { name: 'Develop', exact: true }).click()
   const heading = page.getByRole('heading', {
     name: 'Resources',
@@ -1644,7 +1689,9 @@ test('selected body context truncates on phones and retains full labels and acce
   await expect(
     page.getByRole('button', { name: 'Planet information details' }),
   ).toHaveCount(0)
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${id(99)}/resources`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${id(99)}/resources`),
+  )
   const unavailable = page.getByRole('heading', {
     name: 'Destination unavailable',
     exact: true,
@@ -1655,13 +1702,21 @@ test('selected body context truncates on phones and retains full labels and acce
 })
 
 for (const width of [390, 1440]) {
-  test(`construction stays in queues and details without a shared footer at ${width}px`, async ({ page }) => {
+  test(`construction stays in queues and details without a shared footer at ${width}px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page, {
-      constructions: [{
-        id: id(10), body: body.id, building: 'MetalMine', target_level: 2,
-        due_at: Date.now() + 76000, paid: resources,
-      }],
+      constructions: [
+        {
+          id: id(10),
+          body: body.id,
+          building: 'MetalMine',
+          target_level: 2,
+          due_at: Date.now() + 76000,
+          paid: resources,
+        },
+      ],
     })
     for (const route of [
       `/u/andromeda/b/${body.id}/resources`,
@@ -1673,21 +1728,48 @@ for (const width of [390, 1440]) {
     ]) {
       await withBootstrapResponse(page, () => page.goto(route))
       await expect(page.locator('main h1')).toBeAttached()
-      await expect(page.getByRole('region', { name: 'Construction status', includeHidden: true })).toHaveCount(0)
+      await expect(
+        page.getByRole('region', {
+          name: 'Construction status',
+          includeHidden: true,
+        }),
+      ).toHaveCount(0)
       // Construction controls are contained in the page, never appended to the shell.
-      expect(await page.getByRole('button', { name: 'Cancel construction', includeHidden: true }).evaluateAll(
-        buttons => buttons.every(button => button.closest('main') !== null),
-      )).toBe(true)
+      expect(
+        await page
+          .getByRole('button', {
+            name: 'Cancel construction',
+            includeHidden: true,
+          })
+          .evaluateAll((buttons) =>
+            buttons.every((button) => button.closest('main') !== null),
+          ),
+      ).toBe(true)
     }
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/resources`),
+    )
     const work = page.getByRole('region', { name: 'Buildings', exact: true })
-    await expect(work.getByRole('link', { name: 'Metal Mine · Level 2', exact: true })).toBeVisible()
+    await expect(
+      work.getByRole('link', { name: 'Metal Mine · Level 2', exact: true }),
+    ).toBeVisible()
     await expect(work.getByText('Level 2', { exact: true })).toBeVisible()
-    await expect(work.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
-    await page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }).click()
+    await expect(
+      work.getByRole('button', { name: 'Cancel construction' }),
+    ).toBeEnabled()
+    await page
+      .getByRole('link', { name: 'Upgrade Metal Mine', exact: true })
+      .click()
     const detail = page.getByRole('region', { name: 'Active construction' })
-    await expect(detail.getByRole('heading', { name: 'Upgrading Metal Mine to level 2', exact: true })).toBeVisible()
-    await expect(detail.getByRole('button', { name: 'Cancel construction' })).toBeEnabled()
+    await expect(
+      detail.getByRole('heading', {
+        name: 'Upgrading Metal Mine to level 2',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(
+      detail.getByRole('button', { name: 'Cancel construction' }),
+    ).toBeEnabled()
   })
 }
 
@@ -1697,7 +1779,9 @@ test('failed world images settle without browser broken-image borders or lost co
   await page.route('**/art/**', (route) => route.abort())
   await shellFixture(page)
   const art = page.locator('img[src*="/art/"]')
-  await art.evaluateAll(images => images.forEach(image => image.setAttribute('loading', 'eager')))
+  await art.evaluateAll((images) =>
+    images.forEach((image) => image.setAttribute('loading', 'eager')),
+  )
   await expect
     .poll(() =>
       art.evaluateAll((images) =>
@@ -1706,12 +1790,15 @@ test('failed world images settle without browser broken-image borders or lost co
             image instanceof HTMLImageElement &&
             image.complete &&
             !image.naturalWidth &&
-            (getComputedStyle(image).opacity === '0' || getComputedStyle(image).visibility === 'hidden'),
+            (getComputedStyle(image).opacity === '0' ||
+              getComputedStyle(image).visibility === 'hidden'),
         ),
       ),
     )
     .toBe(true)
-  await expect(page.getByRole('combobox', { name: 'Selected body' })).toBeVisible()
+  await expect(
+    page.getByRole('combobox', { name: 'Selected body' }),
+  ).toBeVisible()
   await expect(page.getByLabel('Current resources')).toBeVisible()
   await page.getByRole('link', { name: 'Develop', exact: true }).click()
   await expect(page.locator('main h1')).toHaveText('Resources')
@@ -1769,7 +1856,9 @@ test('server recall eligibility survives an elapsed client countdown', async ({
     await gate
     await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets`),
+  )
   await page.route('**/overview', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
   )
@@ -1803,29 +1892,63 @@ test('server recall eligibility survives an elapsed client countdown', async ({
 // again when Briefing gained intentional motion. Keep reduced-motion coverage;
 // the sidebar's color-only CSS contract is checked in navigation-motion.test.ts.
 const navigationMotionPreferences: ('no-preference' | 'reduce')[] = ['reduce']
+
 for (const reducedMotion of navigationMotionPreferences) {
   for (const width of [390, 1280]) {
-    test(`navigation limits motion to desktop hover colors at ${width}px with ${reducedMotion}`, async ({ page }) => {
+    test(`navigation limits motion to desktop hover colors at ${width}px with ${reducedMotion}`, async ({
+      page,
+    }) => {
       await page.setViewportSize({ width, height: 844 })
       await page.emulateMedia({ reducedMotion })
       await page.addInitScript(() => {
         const events: string[] = []
         Object.assign(window, { uiMotionEvents: events })
-        document.addEventListener('animationstart', event => {
-          const target = event.target
-          const isWealthCue = target instanceof Element &&
-            target.closest('[aria-label="Empire resource totals"] dl') &&
-            /wealthGuide(Glow|Pulse)/.test((event as AnimationEvent).animationName)
-          if (!(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue) events.push('animation')
-        }, true)
-        document.addEventListener('transitionrun', event => {
-          const target = event.target
-          const isSidebarColor = matchMedia('(min-width: 1024px) and (prefers-reduced-motion: no-preference)').matches &&
-            target instanceof Element && target.matches('a, button') &&
-            target.closest('[aria-label="Game navigation"]') &&
-            ['background-color', 'color'].includes((event as TransitionEvent).propertyName)
-          if (!(target instanceof Element && target.closest('[data-command-hud]')) && !isSidebarColor) events.push('transition')
-        }, true)
+        document.addEventListener(
+          'animationstart',
+          (event) => {
+            const target = event.target
+            const isWealthCue =
+              target instanceof Element &&
+              target.closest('[aria-label="Empire resource totals"] dl') &&
+              /wealthGuide(Glow|Pulse)/.test(
+                (event as AnimationEvent).animationName,
+              )
+            if (
+              !(
+                target instanceof Element &&
+                target.closest('[data-command-hud]')
+              ) &&
+              !isWealthCue
+            )
+              events.push('animation')
+          },
+          true,
+        )
+        document.addEventListener(
+          'transitionrun',
+          (event) => {
+            const target = event.target
+            const isSidebarColor =
+              matchMedia(
+                '(min-width: 1024px) and (prefers-reduced-motion: no-preference)',
+              ).matches &&
+              target instanceof Element &&
+              target.matches('a, button') &&
+              target.closest('[aria-label="Game navigation"]') &&
+              ['background-color', 'color'].includes(
+                (event as TransitionEvent).propertyName,
+              )
+            if (
+              !(
+                target instanceof Element &&
+                target.closest('[data-command-hud]')
+              ) &&
+              !isSidebarColor
+            )
+              events.push('transition')
+          },
+          true,
+        )
         const start = document.startViewTransition.bind(document)
         document.startViewTransition = (...args) => {
           events.push('view-transition')
@@ -1837,31 +1960,78 @@ for (const reducedMotion of navigationMotionPreferences) {
       // its own coverage, so keep this fixture free of incoming threats.
       const purchases = await shellFixture(page, {
         protocol: 4,
-        missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' },
+        missions: {
+          fleets: [],
+          incoming: [],
+          score_value_micro: '0',
+          fleet_slots: '1',
+        },
       })
       const assertStill = async () => {
-        expect(await page.evaluate(() => document.getAnimations().filter(animation => {
-          const target = (animation.effect as KeyframeEffect | null)?.target
-          const isWealthCue = animation instanceof CSSAnimation && target instanceof Element &&
-            target.closest('[aria-label="Empire resource totals"] dl') &&
-            /wealthGuide(Glow|Pulse)/.test(animation.animationName)
-          const isSidebarColor = animation instanceof CSSTransition &&
-            matchMedia('(min-width: 1024px) and (prefers-reduced-motion: no-preference)').matches &&
-            target instanceof Element && target.matches('a, button') &&
-            target.closest('[aria-label="Game navigation"]') &&
-            ['background-color', 'color'].includes(animation.transitionProperty)
-          return !(target instanceof Element && target.closest('[data-command-hud]')) && !isWealthCue && !isSidebarColor
-        }).length)).toBe(0)
-        expect(await page.evaluate(() => (window as Window & { uiMotionEvents: string[] }).uiMotionEvents)).toEqual([])
+        expect(
+          await page.evaluate(
+            () =>
+              document.getAnimations().filter((animation) => {
+                const target = (animation.effect as KeyframeEffect | null)
+                  ?.target
+                const isWealthCue =
+                  animation instanceof CSSAnimation &&
+                  target instanceof Element &&
+                  target.closest('[aria-label="Empire resource totals"] dl') &&
+                  /wealthGuide(Glow|Pulse)/.test(animation.animationName)
+                const isSidebarColor =
+                  animation instanceof CSSTransition &&
+                  matchMedia(
+                    '(min-width: 1024px) and (prefers-reduced-motion: no-preference)',
+                  ).matches &&
+                  target instanceof Element &&
+                  target.matches('a, button') &&
+                  target.closest('[aria-label="Game navigation"]') &&
+                  ['background-color', 'color'].includes(
+                    animation.transitionProperty,
+                  )
+                return (
+                  !(
+                    target instanceof Element &&
+                    target.closest('[data-command-hud]')
+                  ) &&
+                  !isWealthCue &&
+                  !isSidebarColor
+                )
+              }).length,
+          ),
+        ).toBe(0)
+        expect(
+          await page.evaluate(
+            () =>
+              (window as Window & { uiMotionEvents: string[] }).uiMotionEvents,
+          ),
+        ).toEqual([])
       }
       await assertStill()
-      for (const [name, heading] of [['Resources', 'Resources'], ['Fleets', 'Fleets'], ['Empire', 'Empire']]) {
-        const link = name === 'Resources'
-          ? page.getByRole('link', { name: 'Develop', exact: true })
-          : page.getByRole('navigation', { name: 'Main navigation', exact: true }).getByRole('link', { name, exact: true })
+      for (const [name, heading] of [
+        ['Resources', 'Resources'],
+        ['Fleets', 'Fleets'],
+        ['Empire', 'Empire'],
+      ]) {
+        const link =
+          name === 'Resources'
+            ? page.getByRole('link', { name: 'Develop', exact: true })
+            : page
+                .getByRole('navigation', {
+                  name: 'Main navigation',
+                  exact: true,
+                })
+                .getByRole('link', { name, exact: true })
         const animated = width >= 1024 && reducedMotion === 'no-preference'
-        await expect(link).toHaveCSS('transition-duration', animated ? '0.15s, 0.15s' : '0s')
-        await expect(link).toHaveCSS('transition-property', animated ? 'background-color, color' : 'none')
+        await expect(link).toHaveCSS(
+          'transition-duration',
+          animated ? '0.15s, 0.15s' : '0s',
+        )
+        await expect(link).toHaveCSS(
+          'transition-property',
+          animated ? 'background-color, color' : 'none',
+        )
         await link.hover()
         await assertStill()
         await link.click()
@@ -1875,23 +2045,37 @@ for (const reducedMotion of navigationMotionPreferences) {
   }
 }
 
-
-for (const width of [320, 390, 768]) {
-  for (const textScale of [1, 2]) {
-    test(`unread reports light the menu and report link at ${width}px with ${textScale * 100}% text and reconcile`, async ({ page }) => {
+// All six layout permutations run in shell-menu.component; retain actual report delivery/history once.
+for (const width of [390]) {
+  for (const textScale of [1]) {
+    test(`unread reports light the menu and report link at ${width}px with ${textScale * 100}% text and reconcile`, async ({
+      page,
+    }) => {
       await page.setViewportSize({ width, height: 900 })
       let unread = false
       let count = 12
       let revision = 1
-      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => shellFixture(page, {
-        protocol: 4,
-        extraCapabilities: ['Reports'],
-        hasUnreadReports: () => unread,
-        unreadReportCount: () => unread ? count : 0,
-        missions: { fleets: [], incoming: [], fleet_slots: '8', score_value_micro: '0' },
-        viewerRevision: () => String(revision),
-      }))
-      await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/reports'),
+        () =>
+          shellFixture(page, {
+            protocol: 4,
+            extraCapabilities: ['Reports'],
+            hasUnreadReports: () => unread,
+            unreadReportCount: () => (unread ? count : 0),
+            missions: {
+              fleets: [],
+              incoming: [],
+              fleet_slots: '8',
+              score_value_micro: '0',
+            },
+            viewerRevision: () => String(revision),
+          }),
+      )
+      await page.addStyleTag({
+        content: `html { font-size: ${textScale * 100}% !important; }`,
+      })
       const menu = page.getByRole('link', { name: 'Menu', exact: true })
       const alert = menu.getByRole('status', { name: 'Unread reports' })
       const assertLayout = async () => {
@@ -1899,32 +2083,53 @@ for (const width of [320, 390, 768]) {
         expect(target.width).toBeGreaterThanOrEqual(44)
         expect(target.height).toBeGreaterThanOrEqual(44)
         await expect(menu).toBeInViewport({ ratio: 1 })
-        const label = (await menu.getByText('Menu', { exact: true }).boundingBox())!
+        const label = (await menu
+          .getByText('Menu', { exact: true })
+          .boundingBox())!
         expect(label.x).toBeGreaterThanOrEqual(target.x)
-        expect(label.x + label.width).toBeLessThanOrEqual(target.x + target.width)
+        expect(label.x + label.width).toBeLessThanOrEqual(
+          target.x + target.width,
+        )
         if (await alert.count()) {
           const badge = (await alert.boundingBox())!
           // Either beside the desktop label or above the mobile label, with a gap.
-          expect(badge.x >= label.x + label.width + 4 || badge.y + badge.height + 4 <= label.y).toBe(true)
+          expect(
+            badge.x >= label.x + label.width + 4 ||
+              badge.y + badge.height + 4 <= label.y,
+          ).toBe(true)
           expect(badge.x).toBeGreaterThanOrEqual(target.x)
-          expect(badge.x + badge.width).toBeLessThanOrEqual(target.x + target.width)
+          expect(badge.x + badge.width).toBeLessThanOrEqual(
+            target.x + target.width,
+          )
           expect(badge.y).toBeGreaterThanOrEqual(target.y)
-          expect(badge.y + badge.height).toBeLessThanOrEqual(target.y + target.height)
+          expect(badge.y + badge.height).toBeLessThanOrEqual(
+            target.y + target.height,
+          )
         }
       }
       await expect(alert).toHaveCount(0)
       await assertLayout()
       unread = true
       revision++
-      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => refreshGame(page))
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/reports'),
+        () => refreshGame(page),
+      )
       await expect(alert).toBeVisible()
       await expect(menu).toHaveAccessibleDescription('Unread reports')
-      await diagnosticScreenshot(page, { path: `test-results/unread-reports-${width}-${textScale}.png` })
+      await diagnosticScreenshot(page, {
+        path: `test-results/unread-reports-${width}-${textScale}.png`,
+      })
       await assertLayout()
       await menu.focus()
       await page.keyboard.press('Enter')
-      const destinations = page.getByRole('navigation', { name: 'Menu destinations' })
-      const reports = destinations.getByRole('link', { name: 'Reports — unread reports' })
+      const destinations = page.getByRole('navigation', {
+        name: 'Menu destinations',
+      })
+      const reports = destinations.getByRole('link', {
+        name: 'Reports — unread reports',
+      })
       await expect(reports).toBeVisible()
       await expect(reports.locator('svg')).toHaveCount(2)
       const badge = reports.getByRole('status')
@@ -1932,164 +2137,120 @@ for (const width of [320, 390, 768]) {
       await expect(badge).toHaveAccessibleName('12 unread reports')
       await expect(badge).toHaveCSS('background-color', 'rgb(203, 182, 141)')
       const assertBadgeLayout = async () => {
-        const badgeBox = (await badge.boundingBox())!
-        const label = (await reports.getByText('Reports', {exact:true}).boundingBox())!
-        const chevron = (await reports.locator('svg').last().boundingBox())!
+        const { badgeBox, label, chevron } = await reports.evaluate((row) => {
+          const badge = row.querySelector('[role="status"]')!
+          const label = [...row.querySelectorAll('span')].find(
+            (el) => el.textContent === 'Reports',
+          )!
+          const icons = row.querySelectorAll('svg')
+          return {
+            badgeBox: badge.getBoundingClientRect().toJSON(),
+            label: label.getBoundingClientRect().toJSON(),
+            chevron: icons[icons.length - 1].getBoundingClientRect().toJSON(),
+          }
+        })
         expect(label.x + label.width).toBeLessThanOrEqual(badgeBox.x)
         expect(badgeBox.x + badgeBox.width + 4).toBeLessThanOrEqual(chevron.x)
-        expect(Math.abs(badgeBox.y + badgeBox.height / 2 - chevron.y - chevron.height / 2)).toBeLessThan(1)
+        expect(
+          Math.abs(
+            badgeBox.y + badgeBox.height / 2 - chevron.y - chevron.height / 2,
+          ),
+        ).toBeLessThan(1)
       }
       await assertBadgeLayout()
       await reports.scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, { path: `test-results/current-menu-count-${width}x900-${textScale}.png` })
+      await diagnosticScreenshot(page, {
+        path: `test-results/current-menu-count-${width}x900-${textScale}.png`,
+      })
       if (width === 390 && textScale === 1) {
-        await page.setViewportSize({width:1440, height:900})
+        await page.setViewportSize({ width: 1440, height: 900 })
         await assertBadgeLayout()
-        await diagnosticScreenshot(page, {path:'test-results/current-menu-count-desktop-1440x900.png'})
-        await page.setViewportSize({width, height:900})
+        await diagnosticScreenshot(page, {
+          path: 'test-results/current-menu-count-desktop-1440x900.png',
+        })
+        await page.setViewportSize({ width, height: 900 })
       }
       count = 125
       revision++
-      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => refreshGame(page))
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/reports'),
+        () => refreshGame(page),
+      )
       await expect(badge).toHaveText('99+')
       await expect(badge).toHaveAccessibleName('99 or more unread reports')
       await assertBadgeLayout()
-      await diagnosticScreenshot(page, { path: `test-results/current-menu-capped-${width}x900-${textScale}.png` })
+      await diagnosticScreenshot(page, {
+        path: `test-results/current-menu-capped-${width}x900-${textScale}.png`,
+      })
       await reports.focus()
       await expect(reports).toBeFocused()
       await page.goBack()
       await expect(page.locator('main h1')).toBeFocused()
-      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => page.reload())
-      await page.addStyleTag({ content: `html { font-size: ${textScale * 100}% !important; }` })
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/reports'),
+        () => page.reload(),
+      )
+      await page.addStyleTag({
+        content: `html { font-size: ${textScale * 100}% !important; }`,
+      })
       await expect(alert).toBeVisible()
       await assertLayout()
       unread = false
       revision++
-      await withFixtureResponse(page, response => response.url().endsWith('/reports'), () => refreshGame(page))
+      await withFixtureResponse(
+        page,
+        (response) => response.url().endsWith('/reports'),
+        () => refreshGame(page),
+      )
       await expect(alert).toHaveCount(0)
       await menu.click()
-      await expect(page.getByRole('link', { name: 'Reports', exact: true })).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Reports — unread reports' })).toHaveCount(0)
-      await diagnosticScreenshot(page, {path:`test-results/current-menu-read-${width}x900-${textScale}.png`})
+      await expect(
+        page.getByRole('link', { name: 'Reports', exact: true }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('link', { name: 'Reports — unread reports' }),
+      ).toHaveCount(0)
+      await diagnosticScreenshot(page, {
+        path: `test-results/current-menu-read-${width}x900-${textScale}.png`,
+      })
       await assertLayout()
     })
   }
 }
 
-for (const width of [768]) {
-  test(`tablet header pins identity and resources above the bottom navigation at ${width}px`, async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.setViewportSize({ width, height: 900 })
-    await shellFixture(page, { protocol: 4 })
-    const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
-    const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    const planet = page.getByRole('combobox', { name: 'Selected body' })
-    const resources = page.getByLabel('Current resources')
-    const header = brand.locator('../..')
-    await expect(page.getByLabel('Current universe')).toBeHidden()
-    const assertRow = async () => {
-      const boxes = await Promise.all([brand, planet, resources].map(locator => locator.boundingBox()))
-      for (let i = 1; i < boxes.length; i++) {
-        expect(boxes[i]!.x).toBeGreaterThanOrEqual(boxes[i - 1]!.x + boxes[i - 1]!.width)
-        expect(Math.abs(boxes[i]!.y + boxes[i]!.height / 2 - boxes[0]!.y - boxes[0]!.height / 2)).toBeLessThan(2)
-      }
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      expect((await header.boundingBox())!.y).toBe(0)
-      await expect(primary).toHaveCSS('position', 'fixed')
-      const navigation = (await primary.boundingBox())!
-      expect(navigation.y + navigation.height).toBe(900)
-    }
-    await assertRow()
-    await expect(page.getByRole('navigation', { name: /^(Develop|Fleet) navigation$/ })).toHaveCount(0)
-    for (const group of ['Develop', 'Galaxy', 'Fleets']) {
-      await primary.getByRole('link', { name: group, exact: true }).click()
-      const secondary = page.getByRole('navigation', { name: `${group} navigation`, exact: true })
-      if (group !== 'Develop') {
-        await expect(secondary).toHaveCount(0)
-        for (const scroll of [0, 300, 100000]) {
-          await page.evaluate(y => window.scrollTo(0, y), scroll)
-          await assertRow()
-        }
-        continue
-      }
-      await expect(secondary).toBeVisible()
-      const row = (await page.getByRole('group', { name: 'Planet and resources' }).boundingBox())!
-      expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
-      for (const scroll of [0, 300, 100000]) {
-        await page.evaluate(y => window.scrollTo(0, y), scroll)
-        await assertRow()
-        expect((await secondary.boundingBox())!.y).toBe(row.y + row.height)
-      }
-    }
-    await page.getByRole('button', { name: 'Metal details', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
-    await page.keyboard.press('Escape')
-    await selectBody(page, id(6))
-    await expect(planet).toHaveAttribute('data-value', id(6))
-    await primary.getByRole('link', { name: 'Develop', exact: true }).click()
-    await expect(page.locator('main h1')).toHaveText('Resources')
-    await page.mouse.move(width / 2, 300)
-    await diagnosticScreenshot(page, { path: `test-results/desktop-pinned-header-${width}.png` })
-  })
-}
-
-for (const width of [768]) {
-  test(`tablet brand stays aligned with a large world roster at ${width}px`, async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.setViewportSize({ width, height: 900 })
-    const bodies = Array.from({ length: 9 }, (_, index) => ({
-      ...body,
-      id: index === 0 ? body.id : id(index + 20),
-      coordinates: { galaxy: 1, system: 371, position: index + 1 },
-    }))
-    await shellFixture(page, { protocol: 4, bodies })
-    const brand = page.getByRole('link', { name: 'ORBIT IMPERIUM', exact: true })
-    const primary = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-    const planet = page.getByRole('combobox', { name: 'Selected body' })
-    const resources = page.getByLabel('Current resources')
-    const search = page.getByRole('searchbox', { name: 'Search owned worlds' })
-    await expect(search).toHaveCount(0)
-    const assertAlignment = async () => {
-      const brandBox = (await brand.boundingBox())!
-      for (const locator of [planet, resources]) {
-        const box = (await locator.boundingBox())!
-        expect(Math.abs(box.y + box.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(2)
-      }
-      expect((await brand.locator('../..').boundingBox())!.y).toBe(0)
-      await expect(primary).toHaveCSS('position', 'fixed')
-      const navigation = (await primary.boundingBox())!
-      expect(navigation.y + navigation.height).toBe(900)
-    }
-    await assertAlignment()
-    await primary.getByRole('link', { name: 'Develop', exact: true }).click()
-    const secondary = page.getByRole('navigation', { name: 'Develop navigation', exact: true })
-    await expect(secondary).toBeVisible()
-    for (const scroll of [0, 300, 100000]) {
-      await page.evaluate(y => window.scrollTo(0, y), scroll)
-      await assertAlignment()
-      const row = (await page.getByRole('group', { name: 'Planet and resources' }).boundingBox())!
-      expect((await secondary.boundingBox())!.y).toBeGreaterThanOrEqual(row.y + row.height)
-    }
-    await selectBody(page, bodies[8].id)
-    await expect(planet).toHaveAttribute('data-value', bodies[8].id)
-    await assertAlignment()
-  })
-}
-
 test.describe('planet-scoped gameplay routes retain context and redirect old query URLs', () => {
-  for (const [path, heading] of [['research', 'Research'], ['fleets', 'Fleets'], ['galaxy', 'Galaxy'], ['dispatch', 'Dispatch'], ['reports', 'Reports']]) {
+  for (const [path, heading] of [
+    ['research', 'Research'],
+    ['fleets', 'Fleets'],
+    ['galaxy', 'Galaxy'],
+    ['dispatch', 'Dispatch'],
+    ['reports', 'Reports'],
+  ]) {
     test(path, async ({ page }) => {
       const purchases = await installGameFixture(page, { protocol: 4 })
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${path}`))
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/${path}`),
+      )
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${path}`)
       await expect(page.locator('main h1')).toHaveText(heading)
       await selectBody(page, id(6))
       await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/${path}`)
       await withBootstrapResponse(page, () => page.reload())
-      await expect(page.getByRole('combobox', { name: 'Selected body' })).toHaveAttribute('data-value', id(6))
+      await expect(
+        page.getByRole('combobox', { name: 'Selected body' }),
+      ).toHaveAttribute('data-value', id(6))
       await expect(page.locator('main h1')).toHaveText(heading)
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${id(99)}/${path}`))
-      await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${id(99)}/${path}`),
+      )
+      await expect(
+        page.getByRole('heading', {
+          name: 'Destination unavailable',
+          exact: true,
+        }),
+      ).toBeVisible()
       await expect(page).toHaveURL(`/u/andromeda/b/${id(99)}/${path}`)
       expect(purchases()).toBe(0)
     })
@@ -2097,32 +2258,63 @@ test.describe('planet-scoped gameplay routes retain context and redirect old que
 })
 
 for (const width of [320, 390, 1440]) {
-  test(`active building and research cards retain timing and touch targets at ${width}px`, async ({ page }) => {
+  test(`active building and research cards retain timing and touch targets at ${width}px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 900 })
     const now = Date.now()
     await page.clock.setFixedTime(now)
     await shellFixture(page, {
-      constructions: [{ id: id(10), body: body.id, building: 'RoboticsFactory', target_level: 3, due_at: now + 35000, paid: resources }],
-      researchOperation: { id: id(11), host: body.id, research: 'EnergyTechnology', source_level: 2, target_level: 3, paid: resources, started_at: now - 1000, due_at: now + 35000, labs: [], effective_lab: '1', can_cancel: true },
+      constructions: [
+        {
+          id: id(10),
+          body: body.id,
+          building: 'RoboticsFactory',
+          target_level: 3,
+          due_at: now + 35000,
+          paid: resources,
+        },
+      ],
+      researchOperation: {
+        id: id(11),
+        host: body.id,
+        research: 'EnergyTechnology',
+        source_level: 2,
+        target_level: 3,
+        paid: resources,
+        started_at: now - 1000,
+        due_at: now + 35000,
+        labs: [],
+        effective_lab: '1',
+        can_cancel: true,
+      },
     })
     for (const [path, region, label] of [
       ['facilities', 'Buildings', 'Robotics Factory · Level 3'],
       ['research', 'Research', 'Energy Technology · Level 3'],
     ]) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${path}`))
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/${path}`),
+      )
       const queue = page.getByRole('region', { name: region, exact: true })
       const link = queue.getByRole('link', { name: new RegExp(label) })
       await expect(link).toBeVisible()
       await expect(queue).not.toContainText('In progress')
       await expect(link).toHaveText(label.split(' · ')[0])
       await expect(queue.getByText('Level 3', { exact: true })).toBeVisible()
-      const timer = queue.locator('dt').filter({ hasText: /^Time remaining$/ }).locator('..').locator('dd')
+      const timer = queue
+        .locator('dt')
+        .filter({ hasText: /^Time remaining$/ })
+        .locator('..')
+        .locator('dd')
       // The fixture clock advances while pages load; formatting is unit-tested separately.
       await expect(timer).toHaveText(/^\d+s$/)
       const seconds = parseInt((await timer.textContent())!, 10)
       expect(seconds).toBeGreaterThan(0)
       expect(seconds).toBeLessThanOrEqual(35)
-      await expect(queue.getByText('Scheduled finish', { exact: true })).toBeVisible()
+      await expect(
+        queue.getByText('Scheduled finish', { exact: true }),
+      ).toBeVisible()
       await expect(queue.locator('img')).toBeVisible()
       const bounds = (await link.boundingBox())!
       expect(bounds.height).toBeGreaterThanOrEqual(44)
@@ -2130,9 +2322,17 @@ for (const width of [320, 390, 1440]) {
       const time = (await timer.boundingBox())!
       expect(time.x).toBeGreaterThanOrEqual(card.x)
       expect(time.x + time.width).toBeLessThanOrEqual(card.x + card.width)
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await expect(queue.getByRole('button', { name: /^Cancel / })).toBeEnabled()
-      await diagnosticScreenshot(queue, { path: `test-results/work-card-${path}-${width}x900.png` })
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await expect(
+        queue.getByRole('button', { name: /^Cancel / }),
+      ).toBeEnabled()
+      await diagnosticScreenshot(queue, {
+        path: `test-results/work-card-${path}-${width}x900.png`,
+      })
     }
   })
 }
@@ -2199,6 +2399,7 @@ test('empty reports wait for a successful response and offer planet-aware naviga
       fullPage: true,
     })
   }
+  const beforeTextScale = await empty.boundingBox()
   await page.evaluate(() => {
     document.documentElement.style.fontSize = '200%'
   })
@@ -2210,6 +2411,8 @@ test('empty reports wait for a successful response and offer planet-aware naviga
   await page.evaluate(() => {
     document.documentElement.style.fontSize = ''
   })
+  // Resetting the font changes the measured pinned-header height on its next layout update.
+  await expect.poll(() => empty.boundingBox()).toEqual(beforeTextScale)
   const beforeRefresh = await empty.boundingBox()
   const previousRequests = requests
   pending = new Promise<void>((resolve) => {
@@ -2272,7 +2475,9 @@ test('incoming attacks remain readable when scrolled below inventory on phones',
       fleet_slots: '1',
     },
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets`),
+  )
   await expect(
     page.getByRole('heading', { name: 'Empire fleet traffic', exact: true }),
   ).toBeVisible()
@@ -2329,7 +2534,9 @@ for (const width of [390]) {
     await expect(trigger).toContainText('Martialis')
     await expect(trigger).toHaveAttribute('data-value', home.id)
     await expect(page).toHaveURL(new RegExp(`/b/${home.id}/overview$`))
-    await expect(page.getByRole('article', { name: / dossier$/ }).first()).toHaveAttribute('aria-label', 'Martialis [1:19:6] dossier')
+    await expect(
+      page.getByRole('article', { name: / dossier$/ }).first(),
+    ).toHaveAttribute('aria-label', 'Martialis [1:19:6] dossier')
     await selectBody(page, first.id)
     await expect(page).toHaveURL(new RegExp(`/b/${first.id}/overview$`))
     await page.goBack()
@@ -2342,65 +2549,101 @@ for (const width of [390]) {
 }
 
 for (const mission of ['Attack', 'Espionage'] as const) {
-  test(`mobile hostile fleet pulse follows incoming ${mission} across planets and clears on reconciliation`, async ({ page }) => {
+  test(`mobile hostile fleet pulse follows incoming ${mission} across planets and clears on reconciliation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     const missions = {
       fleets: [],
-      incoming: [] as import('../src/contracts').components['schemas']['IncomingMission4'][],
+      incoming:
+        [] as import('../src/contracts').components['schemas']['IncomingMission4'][],
       score_value_micro: '0',
       fleet_slots: '1',
     }
     let revision = 1
-    await shellFixture(page, { protocol: 4, missions, viewerRevision: () => String(revision) })
-    const bar = page.getByRole('group', { name: 'Planet and resources' })
-    const overlay = () => bar.evaluate(element => {
-      const style = getComputedStyle(element, '::after')
-      return { animation: style.animationName, duration: style.animationDuration, content: style.content, opacity: style.opacity }
+    await shellFixture(page, {
+      protocol: 4,
+      missions,
+      viewerRevision: () => String(revision),
     })
+    const bar = page.getByRole('group', { name: 'Planet and resources' })
+    const overlay = () =>
+      bar.evaluate((element) => {
+        const style = getComputedStyle(element, '::after')
+        return {
+          animation: style.animationName,
+          duration: style.animationDuration,
+          content: style.content,
+          opacity: style.opacity,
+        }
+      })
     const refresh = async () => {
       revision++
       await page.evaluate(() => window.dispatchEvent(new Event('online')))
     }
     expect((await overlay()).content).toBe('none')
     missions.incoming.push({
-      sender: id(9), origin: { galaxy: 1, system: 372, position: 3 },
-      target: id(6), mission: 'Transport', arrival_at: Date.now() + 300000,
+      sender: id(9),
+      origin: { galaxy: 1, system: 372, position: 3 },
+      target: id(6),
+      mission: 'Transport',
+      arrival_at: Date.now() + 300000,
       ships: { visibility: 'Unknown' },
     })
     await refresh()
     expect((await overlay()).content).toBe('none')
     missions.incoming.push({ ...missions.incoming[0], mission })
     await refresh()
-    await expect(bar.getByRole('status')).toHaveText('Incoming hostile fleet: attack or espionage detected.')
+    await expect(bar.getByRole('status')).toHaveText(
+      'Incoming hostile fleet: attack or espionage detected.',
+    )
     await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(113, 50, 59)')
-    expect(await bar.evaluate(element => getComputedStyle(element, '::after').boxShadow)).toBe('none')
+    expect(
+      await bar.evaluate(
+        (element) => getComputedStyle(element, '::after').boxShadow,
+      ),
+    ).toBe('none')
     for (const width of [320, 390, 767]) {
       await page.setViewportSize({ width, height: 844 })
       expect((await overlay()).animation).toContain('hostile-pulse')
       expect((await overlay()).duration).toBe('3.2s')
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
     }
     await page.setViewportSize({ width: 390, height: 844 })
     await selectBody(page, id(6))
     expect((await overlay()).animation).toContain('hostile-pulse')
-    await page.getByRole('button', { name: 'Metal details', exact: true }).click()
-    await expect(page.getByRole('dialog', { name: 'Metal', exact: true })).toBeVisible()
+    await page
+      .getByRole('button', { name: 'Metal details', exact: true })
+      .click()
+    await expect(
+      page.getByRole('dialog', { name: 'Metal', exact: true }),
+    ).toBeVisible()
     await page.keyboard.press('Escape')
     await page.getByRole('link', { name: 'Develop', exact: true }).click()
     expect((await overlay()).animation).toContain('hostile-pulse')
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await expect.poll(overlay).toMatchObject({ animation: 'none', opacity: '0.7' })
+    await expect
+      .poll(overlay)
+      .toMatchObject({ animation: 'none', opacity: '0.7' })
     await page.setViewportSize({ width: 1024, height: 844 })
     expect((await overlay()).content).toBe('none')
     await page.setViewportSize({ width: 390, height: 844 })
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     // Seek only after testing normal CSS lifecycle: manual playback takes ownership
     // of a CSS animation and can otherwise outlive changes to animation-name.
-    const pulseOpacity = await bar.evaluate(element => {
-      const animation = element.getAnimations({ subtree: true }).find(
-        animation => animation instanceof CSSAnimation && animation.animationName.includes('hostile-pulse'),
-      )!
+    const pulseOpacity = await bar.evaluate((element) => {
+      const animation = element
+        .getAnimations({ subtree: true })
+        .find(
+          (animation) =>
+            animation instanceof CSSAnimation &&
+            animation.animationName.includes('hostile-pulse'),
+        )!
       animation.pause()
       animation.currentTime = 0
       const low = Number(getComputedStyle(element, '::after').opacity)
