@@ -29,9 +29,12 @@ export function useShipDraft({
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const running = useRef(false)
-  const saved = useRef<{ design: ShipDesign; selectedRevision: number } | null>(
-    null,
-  )
+  const feedbackAction = useRef<symbol | null>(null)
+  const saved = useRef<{
+    design: ShipDesign
+    selectedRevision: number
+    feedbackAction: symbol
+  } | null>(null)
   const draft = edits ?? (state ? initialDraft(state, target) : null)
   const equipment = state?.equipment.find((item) => item.target === target)
 
@@ -47,6 +50,12 @@ export function useShipDraft({
     )
     if (!observed) return
     saved.current = null
+    if (feedbackAction.current === pending.feedbackAction) {
+      setError('')
+      setNotice(
+        `“${submitted.name}” is saved. Your fleet appearance will update when its artwork is ready.`,
+      )
+    }
     // Advance only our successful save's revision token, preserving subsequent edits.
     setEdits((current) =>
       acknowledgeSave(
@@ -73,9 +82,14 @@ export function useShipDraft({
   async function run(
     action: ShipAppearanceAction,
     success: string,
+    submission?: { design: ShipDesign; selectedRevision: number },
   ): Promise<boolean> {
     if (running.current) return false
     running.current = true
+    const actionIdentity = Symbol(action.type)
+    feedbackAction.current = actionIdentity
+    if (submission)
+      saved.current = { ...submission, feedbackAction: actionIdentity }
     setBusy(true)
     setError('')
     setNotice('')
@@ -103,10 +117,10 @@ export function useShipDraft({
     const action = savePayload(draft, state, draft.id || commandId(crypto))
     // The selected revision describes this empire's recipe, not the account head.
     setEdits({ ...action.design, revision: draft.revision })
-    saved.current = { design: action.design, selectedRevision: draft.revision }
     await run(
       action,
       'Design saved. Your fleet appearance will update when its artwork is ready.',
+      { design: action.design, selectedRevision: draft.revision },
     )
     // An uncertain response may be confirmed by a later reload; retain its token.
   }

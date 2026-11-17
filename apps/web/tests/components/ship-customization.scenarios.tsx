@@ -99,6 +99,8 @@ export type ShipCustomizationControl = {
   pending: () => ShipAppearanceAction | null
   observe: (snapshot: ShipAppearanceState) => Promise<void>
   accept: (snapshot: ShipAppearanceState) => void
+  loseResponse: (committed: ShipAppearanceState) => void
+  reject: () => void
   dispose: () => void
 }
 declare global {
@@ -113,6 +115,7 @@ function createScene() {
   let pending: {
     action: ShipAppearanceAction
     resolve: (value: ShipAppearanceState) => void
+    reject: () => void
     requestId: string
     signal: AbortSignal
   } | null = null
@@ -132,6 +135,10 @@ function createScene() {
           action: structuredClone(action),
           requestId,
           signal,
+          reject: () => {
+            signal.removeEventListener('abort', abort)
+            reject(Error('Controlled response loss'))
+          },
           resolve: (value) => {
             signal.removeEventListener('abort', abort)
             resolve(value)
@@ -157,6 +164,17 @@ function createScene() {
         ...structuredClone(server),
         request_id: request.requestId,
       })
+    },
+    loseResponse: (committed) => {
+      server = structuredClone(committed)
+      control.reject()
+    },
+    reject: () => {
+      if (!pending || pending.signal.aborted)
+        throw Error('No active mutation to reject')
+      const request = pending
+      pending = null
+      request.reject()
     },
     dispose: controller.stop,
   }

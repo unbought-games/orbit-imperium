@@ -320,3 +320,106 @@ test('mobile hangar keeps final controls reachable without horizontal overflow',
   await confirmation.getByRole('button', { name: 'Discard and leave' }).click()
   await expect(opener).toBeFocused()
 })
+
+// Regression: a committed save with a lost response must become confirmed after
+// reload, without discarding later edits or hiding another action's later error.
+test('reload confirms a lost save response without losing edits or clearing a later failure', async ({
+  page,
+  mount,
+}) => {
+  const { dialog } = await openHangar(page, mount)
+  const name = dialog.getByRole('textbox', { name: 'Design name' })
+  const save = dialog.getByRole('button', {
+    name: 'Save and equip',
+    exact: true,
+  })
+  const alert = dialog.getByRole('alert')
+  await name.fill('Recovered original')
+  await save.click()
+  await expect(
+    dialog.getByRole('button', { name: 'Saving changes…' }),
+  ).toBeDisabled()
+  const committed = await page.evaluate(() => {
+    const scene = window.shipCustomizationScene!
+    const action = scene.pending()
+    if (action?.type !== 'Save') throw Error('Expected Save')
+    const snapshot = scene.snapshot()
+    snapshot.library.push({ ...action.design, revision: 2 })
+    snapshot.equipment[0] = {
+      ...snapshot.equipment[0],
+      revision: 2,
+      design_revision: 2,
+    }
+    scene.loseResponse(snapshot)
+    return snapshot
+  })
+  await expect(alert).toContainText('could not be confirmed')
+  await expect(save).toBeEnabled()
+  await name.fill('Unsaved next flight')
+  await dialog
+    .getByRole('button', { name: 'Primary: Copper', exact: true })
+    .click()
+  await dialog.getByRole('button', { name: 'Refresh status' }).click()
+  await expect(alert).toHaveCount(0)
+  await expect(
+    dialog.getByText('“Recovered original” is saved.', { exact: false }),
+  ).toBeVisible()
+  await expect(name).toHaveValue('Unsaved next flight')
+  await expect(
+    dialog.getByRole('button', { name: 'Primary: Copper', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  expect(
+    await page.evaluate(() => window.shipCustomizationScene!.pending()),
+  ).toBeNull()
+
+  // A second uncertain save later recovers, but its confirmation must not erase
+  // the intervening Reset error. The observation still advances the draft token.
+  await save.click()
+  await expect(
+    dialog.getByRole('button', { name: 'Saving changes…' }),
+  ).toBeDisabled()
+  const next = await page.evaluate(() =>
+    window.shipCustomizationScene!.pending(),
+  )
+  expect(next).toMatchObject({
+    type: 'Save',
+    design: {
+      revision: 2,
+      name: 'Unsaved next flight',
+      recipe: { primary: 'copper' },
+    },
+  })
+  if (next?.type !== 'Save') throw Error('Expected second Save')
+  committed.library.push({ ...next.design, revision: 3 })
+  committed.equipment[0] = {
+    ...committed.equipment[0],
+    revision: 3,
+    design_revision: 3,
+  }
+  await page.evaluate(
+    (snapshot) => window.shipCustomizationScene!.loseResponse(snapshot),
+    committed,
+  )
+  await expect(alert).toContainText('could not be confirmed')
+  await dialog.getByRole('button', { name: 'Use standard appearance' }).click()
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.shipCustomizationScene!.pending()?.type),
+    )
+    .toBe('Reset')
+  await page.evaluate(() => window.shipCustomizationScene!.reject())
+  await expect(alert).toContainText('could not be confirmed')
+  await expect(save).toBeEnabled()
+  await page.evaluate(
+    (snapshot) => window.shipCustomizationScene!.observe(snapshot),
+    committed,
+  )
+  await expect(name).toHaveValue('Unsaved next flight')
+  await expect(dialog.getByLabel('Saved designs')).toHaveValue(
+    `${next.design.id}:3`,
+  )
+  await expect(alert).toContainText('could not be confirmed')
+  await expect(
+    dialog.getByText('“Unsaved next flight” is saved.', { exact: false }),
+  ).toHaveCount(0)
+})
