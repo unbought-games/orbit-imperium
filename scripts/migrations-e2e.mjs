@@ -74,7 +74,7 @@ async function rollingUpgrade() {
   const {db, url} = await database();
   const universe = randomUUID();
   const oldEnv = environment(url, await port(), {ORBIT_SEED_PASSWORD_FILE:passwords});
-  cli(oldEnv,['dev-seed','--universe',universe,'--at','1000000']);
+  cli(oldEnv,['test-foundation-create','--universe',universe,'--at','1000000']);
   await db.query('CREATE TABLE orbit_test_clock(at_ms bigint); INSERT INTO orbit_test_clock VALUES(1000000); CREATE TABLE orbit_test_migration_gate(value integer)');
   let old = launch(oldEnv); await ready(old, oldEnv);
   const base = oldEnv.ORBIT_ORIGIN;

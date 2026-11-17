@@ -170,6 +170,7 @@ async fn main() {
                 bots: BotPolicy {
                     enabled: true,
                     max_active: 1,
+                    action_units_per_24h: Some(100),
                     ..Default::default()
                 },
                 ..Default::default()

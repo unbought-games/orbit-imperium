@@ -97,6 +97,14 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
                 .await
                 .unwrap();
             let actor = Actor::Player(login.session.memberships[0].player);
+            let other_universe = UniverseId(Uuid::new_v4());
+            s.create_universe(&UniverseCreate {
+                universe: other_universe,
+                immutable: UniverseImmutable::default(),
+                policy: UniversePolicy::default(),
+            })
+            .await
+            .unwrap();
             let game = GameService::new(s.clone());
             let view = game.view(actor, u).await.unwrap();
             let body = view.bodies[0].id;
@@ -155,7 +163,15 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
                 game.submit(actor, u, envelope.clone()).await.unwrap(),
                 receipt
             );
-            for field in 0..4 {
+            let mut changed_request = envelope.clone();
+            changed_request.command = Command::CancelConstruction {
+                operation: Uuid::new_v4().into(),
+            };
+            assert!(matches!(
+                game.submit(actor, u, changed_request).await,
+                Err(ServiceError::Conflict)
+            ));
+            for field in 0..5 {
                 let mut bad = c.clone();
                 match field {
                     0 => bad.input_mut().actor = Actor::Scheduler,
@@ -165,7 +181,8 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
                             operation: Uuid::new_v4().into(),
                         })
                     }
-                    _ => bad.input_mut().profile_hash = Hash("changed".into()),
+                    3 => bad.input_mut().profile_hash = Hash("changed".into()),
+                    _ => bad.input_mut().universe = other_universe,
                 }
                 assert!(matches!(
                     bad.commit(&reopened, result.clone()).await,

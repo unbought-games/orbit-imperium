@@ -77,6 +77,7 @@ impl PgStore {
                         return Err(StoreError::Conflict);
                     }
                     if row.try_get::<bool, _>("cancelled").map_err(db_error)? {
+                        self.observe_event(RuntimeEvent::StaleCommit);
                         return Ok(CommitOutcome::StaleClaim);
                     }
                     if row.try_get::<bool, _>("done").map_err(db_error)? {
@@ -92,6 +93,7 @@ impl PgStore {
             }
         };
         if !record {
+            self.observe_event(RuntimeEvent::StaleCommit);
             return Ok(CommitOutcome::StaleClaim);
         }
         let valid = match claim {

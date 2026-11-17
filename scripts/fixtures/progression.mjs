@@ -155,7 +155,7 @@ export async function prepareProgression(client, universe, players) {
         ...spec.research,
       })) {
         const result = await client.query(
-          'UPDATE research_levels SET level=$2, revision=revision+1 WHERE owner=$1 AND research=$3',
+          'UPDATE research_levels SET level=$2 WHERE owner=$1 AND research=$3',
           [spec.player, level, id],
         )
         assert.equal(result.rowCount, 1)
@@ -167,6 +167,10 @@ export async function prepareProgression(client, universe, players) {
             levelValue(artifact.progression.research[id].base, [2, 1], n),
           )
       }
+      // ResearchLevels is one revisioned collection, including newly supported
+      // technologies that this fixture leaves at zero. Mixed row revisions are
+      // corrupt at the production loader boundary.
+      await client.query('UPDATE research_levels SET revision=revision+1 WHERE owner=$1', [spec.player])
       for (const [id, count] of Object.entries({
         ...inventory,
         ...spec.inventory,

@@ -1,4 +1,4 @@
-// Explicit-only real CLI/API/worker/browser speed-cutover validation.
+// Explicit-only real CLI/API/worker speed-cutover validation.
 import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
@@ -6,7 +6,6 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
 import pg from 'pg'
-import { chromium, expect } from '@playwright/test'
 import { reserveTestPort } from './fixtures/ports.mjs'
 import { prepareProgression } from './fixtures/progression.mjs'
 import { cleanupAll } from './fixtures/cleanup.mjs'
@@ -21,8 +20,8 @@ const url = `postgres://orbit:${encodeURIComponent(password)}@127.0.0.1:${proces
 const compose = (...args) => execFileSync('docker', ['compose', ...args], { stdio: 'pipe' })
 const safe = text => String(text).replaceAll(password === 'orbit' ? '\0' : password, '[redacted]')
 const children = [], leases = []
-let db, browser, active, auth, binding, body, at = 1000000, created = false
-const env = { ...process.env, DATABASE_URL: url, ORBIT_ASSETS: resolve('apps/web/dist'), ORBIT_UNIVERSE_ID: universe, ORBIT_LOCAL_INSECURE: '1' }
+let db, active, auth, binding, body, at = 1000000, created = false
+const env = { ...process.env, DATABASE_URL: url, ORBIT_ASSETS: resolve('apps/web/dist'), ORBIT_UNIVERSE_ID: universe, ORBIT_ALLOW_INSECURE_HTTP: '1' }
 for (const key of ['ORBIT_TEST_SEEDED', 'ORBIT_METRICS_BIND', 'ORBIT_SPEED', 'ORBIT_GALAXIES', 'ORBIT_SYSTEMS_PER_GALAXY', 'ORBIT_POSITIONS_PER_SYSTEM', 'ORBIT_MAX_PLAYERS', 'ORBIT_SIGNUP_ENABLED', 'ORBIT_SIGNUP_PER_MINUTE', 'ORBIT_COMMANDS_PER_MINUTE']) delete env[key]
 const accounts = Array.from({ length: 3 }, (_, i) => ({ name: `speedplayer${i}`, password: randomUUID() }))
 const rulesFile = join(dir, 'rules.json')
@@ -155,12 +154,12 @@ try {
   assert.equal(oldWork.research_operations.length, 1)
   assert.equal(oldWork.manufacturing_batches.length, 2)
   assert.equal(oldWork.mission_fleets.length, 3)
-  browser = await chromium.launch(); const page = await browser.newPage()
-  const split = auth.cookie.indexOf('=')
-  await page.context().addCookies([{ name: auth.cookie.slice(0, split), value: auth.cookie.slice(split + 1), domain: 'localhost', path: '/', httpOnly: true, sameSite: 'Lax' }])
-  const slug = (await db.query('SELECT universe_name_key(name) AS slug FROM universes WHERE id=$1', [universe])).rows[0].slug
-  await page.goto(`${active.base}/u/${slug}/settings`)
-  await expect(page.getByLabel('Universe settings', { exact: true })).toContainText('Universe speed: 5×.')
+  const settings = async () => {
+    const response = await post('settings', context())
+    assert.equal(response.status, 200)
+    return response.json()
+  }
+  assert.equal((await settings()).speed, 5)
   cli('export'); const document = JSON.parse(readFileSync(rulesFile)); document.speed = 3
   writeFileSync(rulesFile, JSON.stringify(document))
   const diff = JSON.parse(cli('diff'))
@@ -178,8 +177,9 @@ try {
   assert.deepEqual(shown.configuration.policy, initial.configuration.policy)
   assert.equal(shown.configuration.base_revision, initial.configuration.base_revision)
   assert.deepEqual(operator(['universe', 'show', '--universe', other]), otherInitial)
-  // The open browser must refresh its rules/settings after the invalidation.
-  await expect(page.getByLabel('Universe settings', { exact: true })).toContainText('Universe speed: 3×.')
+  // Real bound settings agree with the committed cutover. Client refresh/race
+  // semantics are covered by coordinator.test.ts at the controlled port boundary.
+  assert.equal((await settings()).speed, 3)
   const checkpoint = (await db.query('SELECT checkpoint_at,amounts,carry FROM bodies WHERE id=$1', [idle.id])).rows[0]
   assert.equal(Number(checkpoint.checkpoint_at), at)
   const elapsed = BigInt(at) - BigInt(idle.checkpoint_at)
@@ -195,7 +195,7 @@ try {
   const afterFlight = await world({ type: 'FleetQuote', intent })
   assert.notEqual(afterFlight.terms_hash, beforeFlight.terms_hash)
   assert.ok(afterFlight.duration_ms > beforeFlight.duration_ms)
-  console.log(`PASS: 5× → 3× CLI activation, unchanged paid work, exact old-rate settlement, new quotes, live browser update (${Math.round(performance.now() - cutover)} ms)`)
+  console.log(`PASS: 5× → 3× CLI activation, unchanged paid work, exact old-rate settlement, new quotes, bound settings update (${Math.round(performance.now() - cutover)} ms)`)
 
   // Recall one old outbound mission under new rules; elapsed original travel
   // determines the return, not a re-quote at 3×.
@@ -206,7 +206,6 @@ try {
   assert.equal(recalled.duration_ms, slow.duration_ms)
   // Restart both roles while the old construction, research, batches and fleets
   // are still pending, proving canonical metadata and historical rules agree.
-  await browser.close(); browser = null
   await stop(active); await stop(worker)
   worker = await start('worker'); active = await start(); auth = await login(active)
   assert.equal((await fresh()).profile_hash, applied.profile_hash)
@@ -256,7 +255,6 @@ try {
 } finally {
   const cleanup = performance.now()
   await cleanupAll([
-    () => browser?.close(),
     ...children.map(child => () => stop(child)),
     ...leases.map(lease => () => lease.release()),
     () => db?.end(),
