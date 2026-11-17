@@ -1067,3 +1067,83 @@ async fn retained_report_filters_require_online_indexes_and_keep_legacy_cursors(
         1
     );
 }
+
+#[tokio::test]
+async fn journal_removal_preserves_prefix_data_and_refuses_external_dependencies() {
+    let (store, pool) = fresh().await;
+    let all = sqlx::migrate!("./migrations");
+    let bridge = sqlx::migrate::Migrator {
+        migrations: all
+            .migrations
+            .iter()
+            .filter(|m| m.version < 51)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into(),
+        ..sqlx::migrate::Migrator::DEFAULT
+    };
+    store.migrate_with_for_test(&bridge).await.unwrap();
+    sqlx::raw_sql("INSERT INTO accounts(id,name,password_hash) VALUES('00000000-0000-4000-8000-000000000051','migration-retained','fixture');
+        CREATE VIEW journal_dependency_probe AS SELECT input_id FROM transition_journal;")
+        .execute(&pool).await.unwrap();
+    let before: Vec<(i64, Vec<u8>)> =
+        sqlx::query_as("SELECT version,checksum FROM _sqlx_migrations ORDER BY version")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    let error = store.migrate().await.unwrap_err();
+    assert!(error.to_string().contains("2BP01"), "{error}");
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT to_regclass('transition_journal') IS NOT NULL")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    );
+    let failed_ledger: Vec<(i64, Vec<u8>)> =
+        sqlx::query_as("SELECT version,checksum FROM _sqlx_migrations ORDER BY version")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        before, failed_ledger,
+        "failed DDL must not advance the ledger"
+    );
+    sqlx::query("DROP VIEW journal_dependency_probe")
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    store.migrate().await.unwrap();
+    store.migrate_with_for_test(&bridge).await.unwrap();
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT to_regclass('transition_journal') IS NULL")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT name FROM accounts")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        "migration-retained"
+    );
+    let retained: Vec<(i64, Vec<u8>)> = sqlx::query_as(
+        "SELECT version,checksum FROM _sqlx_migrations WHERE version<51 ORDER BY version",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        retained, before,
+        "published migration checksums remain intact"
+    );
+    let (_, fresh_pool) = fresh().await;
+    store.migrate().await.unwrap();
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT to_regclass('transition_journal') IS NULL")
+            .fetch_one(&fresh_pool)
+            .await
+            .unwrap()
+    );
+}

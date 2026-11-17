@@ -105,7 +105,7 @@ async fn rolling_startup_and_legacy_full_record_writes_accept_unknown_causes_wit
     let (store, pool, u, mut fleets) = fixture().await;
     legacy(&pool, &mut fleets[0]).await;
     let f = &fleets[0];
-    sqlx::query("DROP TABLE transition_journal RESTRICT")
+    sqlx::query("DROP TABLE IF EXISTS transition_journal RESTRICT")
         .execute(&pool)
         .await
         .unwrap();
