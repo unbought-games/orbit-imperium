@@ -419,5 +419,20 @@ async fn gameplay_activity_commits_once_without_remote_analytics_and_obeys_admis
             ("collection_unknown".into(), 1)
         ]
     );
+    let account: Uuid =
+        sqlx::query_scalar("SELECT account FROM analytics_delivery WHERE event_id=$1")
+            .bind(claim.input.id.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(account, login.session.account.0);
+    sqlx::query("DELETE FROM analytics_delivery WHERE event_id=$1")
+        .bind(claim.input.id.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let removed:i64=sqlx::query_scalar("SELECT events FROM activity_coverage_gaps WHERE universe=$1 AND reason='source_deleted_without_ack'").bind(u.0).fetch_one(&pool).await.unwrap();
+    assert_eq!(removed, 1);
+
     pool.close().await;
 }

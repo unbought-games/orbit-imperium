@@ -32,7 +32,10 @@ with required string properties world/epoch/actor/action (maximum 128 characters
 
 The capture marker and outbox insert roll back together. A repeated commit or
 projection cannot add a second fact. New activity uses the existing server outbox
-without the optional visit capture's 200/account/day admission limit. Delivery is
+without the optional visit capture's 200/account/day admission limit. Activity is
+excluded from that optional budget while retaining the source account foreign key.
+Account deletion therefore retains existing source privacy semantics; removing an
+unacknowledged activity payload records an anonymous source-deletion coverage gap. Delivery is
 asynchronous: at most 100 events and 192 KiB of payload per claim, a 30-second
 lease, and continuous draining while work exists. Idle/errors wait five seconds;
 remote calls retain the existing two-second timeout. Quota rejection remains

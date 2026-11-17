@@ -38,6 +38,21 @@ BEGIN
  'properties',jsonb_build_object('world',c.universe::text,'epoch',c.epoch::text,'actor',c.actor::text,
  'action',CASE WHEN c.input#>>'{payload,Command,type}'='World' THEN 'World.'||(c.input#>>'{payload,Command,action,type}') ELSE c.input#>>'{payload,Command,type}' END));
  INSERT INTO analytics_delivery(event_id,fact_key,account,payload)
- VALUES(c.input_id,'activity:'||c.input_id::text,NULL,payload)
+ VALUES(c.input_id,'activity:'||c.input_id::text,
+  (SELECT account FROM universe_memberships WHERE universe=c.universe AND player=c.actor),payload)
  ON CONFLICT(event_id) DO NOTHING;
 END $$;
+
+-- Preserve source account-deletion semantics without disguising undelivered loss.
+CREATE FUNCTION record_activity_source_removal() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF OLD.payload->>'name'='committed_activity' AND OLD.state<>'delivered' THEN
+  INSERT INTO activity_coverage_gaps VALUES((OLD.payload#>>'{properties,world}')::uuid,
+   (OLD.payload#>>'{properties,epoch}')::uuid,(OLD.payload->>'logical_time')::bigint/86400000,
+   'source_deleted_without_ack',1)
+  ON CONFLICT(universe,epoch,day,reason) DO UPDATE SET events=activity_coverage_gaps.events+1;
+ END IF;
+ RETURN OLD;
+END $$;
+CREATE TRIGGER activity_source_removed AFTER DELETE ON analytics_delivery
+ FOR EACH ROW EXECUTE FUNCTION record_activity_source_removal();

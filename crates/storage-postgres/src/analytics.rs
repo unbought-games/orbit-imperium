@@ -23,7 +23,7 @@ impl PgStore {
             .execute(&mut *tx)
             .await
             .map_err(db_error)?;
-        let mut count:i64=sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1 AND created_at>now()-interval '1 day'").bind(account.0).fetch_one(&mut *tx).await.map_err(db_error)?;
+        let mut count:i64=sqlx::query_scalar("SELECT count(*) FROM analytics_delivery WHERE account=$1 AND created_at>now()-interval '1 day' AND payload->>'category' IS DISTINCT FROM 'human_action'").bind(account.0).fetch_one(&mut *tx).await.map_err(db_error)?;
         let now:String=sqlx::query_scalar("SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')").fetch_one(&mut *tx).await.map_err(db_error)?;
         let property = config["propertyId"]
             .as_str()
