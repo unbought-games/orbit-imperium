@@ -114,3 +114,13 @@ including safe cause/redaction checks and existing shutdown/guard behavior. Scop
 server Clippy with warnings denied passed (5.43 s). The prior nine logger tests
 also cover the correction that receipt-less scheduled completion must not claim
 an applied action; committed command receipts now carry their command ID in logs.
+
+A second review found that the compatibility label still conflated a typed
+`StartupError::Unavailable` with schema/profile conflicts. The compatibility owner
+now emits distinct codes for unavailable storage, schema, configuration, active
+rules, invalid required state and blocked resolution before any string conversion.
+Missing-world and API-binding refusals also emit separate fixed codes. The
+compatibility wrapper no longer claims every failure is a schema/speed conflict.
+Fifteen focused logger/serving tests passed (18.04 s preparation, 0.097 s execution);
+scoped server/storage Clippy with test-support passed (24.33 s). These additions
+only observe the existing refusals and do not change startup or database behavior.

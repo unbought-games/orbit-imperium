@@ -357,6 +357,45 @@ mod tests {
     }
 
     #[test]
+    fn startup_timeouts_and_binding_refusals_keep_distinct_safe_causes() {
+        use orbit_storage_postgres::StartupError;
+        let u = UniverseId(uuid::Uuid::from_u128(10));
+        let other = UniverseId(uuid::Uuid::from_u128(11));
+        let records = capture(LevelFilter::ERROR, || {
+            StartupError::Unavailable.log_diagnostic();
+            StartupError::Configuration(u).log_diagnostic();
+            StartupError::Schema.log_diagnostic();
+            StartupError::Unsupported(u).log_diagnostic();
+            StartupError::Invalid(u, "runtime frontier").log_diagnostic();
+            StartupError::Blocked(u).log_diagnostic();
+            assert!(crate::universe_serving::binding(&[], None).is_err());
+            assert!(crate::universe_serving::binding(&[u], Some(other)).is_err());
+            assert!(crate::universe_serving::binding(&[u, other], None).is_err());
+        });
+        let codes: Vec<_> = records
+            .iter()
+            .map(|r| r["error_code"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            codes,
+            [
+                "StartupStorageUnavailable",
+                "ConflictingStartupConfiguration",
+                "IncompatibleSchema",
+                "UnsupportedActiveRules",
+                "InvalidRequiredState",
+                "ResolutionBlocked",
+                "NoUniverses",
+                "UnknownConfiguredUniverse",
+                "UniverseBindingRequired"
+            ]
+        );
+        assert_eq!(records[1]["universe"], u.to_string());
+        assert_eq!(records[4]["component"], "runtime frontier");
+        assert!(records[0].get("universe").is_none());
+    }
+
+    #[test]
     fn metrics_are_recorded_at_every_threshold() {
         use orbit_application::{RuntimeEvent, RuntimeObserver, RuntimeStage};
         for threshold in [

@@ -88,19 +88,68 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
         stage = "schema",
         duration_ms = phase.elapsed().as_millis() as u64
     );
-    let (mut guard,listener,metrics_listener,prepared)=tokio::time::timeout(Duration::from_secs(5),async {
-        let guard=store.acquire_server_guard().await.map_err(|e| failure("operator_guard", "GuardAcquisitionFailed", e))?;
-        let phase=Instant::now();
-        let prepared=crate::universe_serving::prepare(store, &serve).await
-            .map_err(|e|failure("universe_preparation", "UniversePreparationFailed", format!("Startup refused: {e}")))?;
-        orbit_application::orbit_log!(INFO, event = "startup_phase", stage = "configuration", duration_ms = phase.elapsed().as_millis() as u64);
-        let phase=Instant::now();prepared.store.check_serving_compatibility(serve.speed).await
-            .map_err(|e|failure("compatibility", "IncompatibleSchemaProfileOrSpeed", format!("Startup refused: incompatible schema/profile or conflicting ORBIT_SPEED; {e}")))?;
-        orbit_application::orbit_log!(INFO, event = "startup_phase", stage = "compatibility", duration_ms = phase.elapsed().as_millis() as u64);
-        let listener=if serve.role.serves_api() {Some(tokio::net::TcpListener::bind(bind.as_slice()).await.map_err(|e| io_failure("api_bind", e))?)}else{None};
-        let metrics_listener=if let Some(bind)=serve.metrics_bind {Some(tokio::net::TcpListener::bind(bind).await.map_err(|e| io_failure("metrics_bind", e))?)}else{None};
-        Ok::<_,Box<dyn Error>>((guard,listener,metrics_listener,prepared))
-    }).await.map_err(|_|failure("startup_preparation", "PreparationTimeout", "Startup refused: preparation exceeded 5 seconds; no readiness granted"))??;
+    let (mut guard, listener, metrics_listener, prepared) =
+        tokio::time::timeout(Duration::from_secs(5), async {
+            let guard = store
+                .acquire_server_guard()
+                .await
+                .map_err(|e| failure("operator_guard", "GuardAcquisitionFailed", e))?;
+            let phase = Instant::now();
+            let prepared = crate::universe_serving::prepare(store, &serve)
+                .await
+                .map_err(|e| {
+                    failure(
+                        "universe_preparation",
+                        "UniversePreparationFailed",
+                        format!("Startup refused: {e}"),
+                    )
+                })?;
+            orbit_application::orbit_log!(
+                INFO,
+                event = "startup_phase",
+                stage = "configuration",
+                duration_ms = phase.elapsed().as_millis() as u64
+            );
+            let phase = Instant::now();
+            prepared
+                .store
+                .check_serving_compatibility(serve.speed)
+                .await
+                .map_err(|e| format!("Startup refused: {e}"))?;
+            orbit_application::orbit_log!(
+                INFO,
+                event = "startup_phase",
+                stage = "compatibility",
+                duration_ms = phase.elapsed().as_millis() as u64
+            );
+            let listener = if serve.role.serves_api() {
+                Some(
+                    tokio::net::TcpListener::bind(bind.as_slice())
+                        .await
+                        .map_err(|e| io_failure("api_bind", e))?,
+                )
+            } else {
+                None
+            };
+            let metrics_listener = if let Some(bind) = serve.metrics_bind {
+                Some(
+                    tokio::net::TcpListener::bind(bind)
+                        .await
+                        .map_err(|e| io_failure("metrics_bind", e))?,
+                )
+            } else {
+                None
+            };
+            Ok::<_, Box<dyn Error>>((guard, listener, metrics_listener, prepared))
+        })
+        .await
+        .map_err(|_| {
+            failure(
+                "startup_preparation",
+                "PreparationTimeout",
+                "Startup refused: preparation exceeded 5 seconds; no readiness granted",
+            )
+        })??;
     let store = prepared.store;
     let (drain_tx, drain_rx) = watch::channel(false);
     let analytics =

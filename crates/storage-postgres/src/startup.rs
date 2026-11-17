@@ -20,6 +20,26 @@ pub enum StartupError {
     Unavailable,
 }
 impl StartupError {
+    /// Typed compatibility causes remain useful without formatting driver errors.
+    pub fn log_diagnostic(&self) {
+        let (code, universe, component) = match self {
+            Self::Schema => ("IncompatibleSchema", None, None),
+            Self::Configuration(u) => ("ConflictingStartupConfiguration", Some(*u), None),
+            Self::Unsupported(u) => ("UnsupportedActiveRules", Some(*u), None),
+            Self::Invalid(u, field) => ("InvalidRequiredState", Some(*u), Some(*field)),
+            Self::Blocked(u) => ("ResolutionBlocked", Some(*u), None),
+            Self::Unavailable => ("StartupStorageUnavailable", None, None),
+        };
+        orbit_application::orbit_log!(
+            ERROR,
+            event = "serve_phase_failed",
+            stage = "compatibility",
+            error_code = code,
+            universe = universe.map(|u| u.to_string()),
+            component
+        );
+    }
+
     pub(crate) fn store_error(self) -> StoreError {
         match self {
             Self::Schema => StoreError::IncompatibleSchema,
@@ -118,7 +138,9 @@ impl PgStore {
         &self,
         speed: Option<i32>,
     ) -> Result<(), StartupError> {
-        self.check_startup(speed).await
+        self.check_startup(speed)
+            .await
+            .inspect_err(StartupError::log_diagnostic)
     }
     pub async fn check_startup(&self, speed: Option<i32>) -> Result<(), StartupError> {
         tokio::time::timeout(Duration::from_secs(2), self.check_startup_inner(speed))
