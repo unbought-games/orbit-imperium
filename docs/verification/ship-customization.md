@@ -71,10 +71,20 @@ cases to the existing coverage layers.
 
 ## Review and remaining boundary
 
-Integration review identified a save-confirmation error message that survived a
-successful refresh, plus lease-expiry recovery and access-expiry publication races.
-These require focused regression checks before PR readiness. CI and automated
-review evidence will be recorded on the PR at its final head.
+Integration review fixes are complete. Matching save observations clear only their
+own unconfirmed error, preserving later edits/errors. Current expired leases remain
+recoverable; activation checks the database clock against both the lease and earliest
+fresh supporter/account evidence deadline. Controlled DB schedules cover the late
+completion and publication expiry orderings.
+
+Final integrated browser verification at `0eaf34ff` passed seven cases in 11.6 s
+(5.259 s bundle setup), including actual entrance motion, reduced-motion behavior,
+and lost-response recovery. Final real-backend verification at the same clean
+revision passed with 31.352 s preparation and 24.447 s execution, zero page errors,
+and refreshed desktop/mobile Shipyard, hangar, controls and fleet-inventory images.
+The backend repair passed seven ship DB tests, the migration upgrade, focused
+adapter/deadline tests, Clippy and a rebuilt executable. CI and automated review
+are followed on the PR at its final head; owner acceptance remains separate.
 
 Native worker execution is verified. Container packaging is supplied but is not a
 claim of production-container smoke validation or deployment. The first installed
