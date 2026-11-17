@@ -198,20 +198,20 @@ pub fn commit_result(
     let action = action(&input.payload);
     match result {
         Ok(crate::CommitOutcome::Committed { receipt, .. }) => {
-            let outcome = if receipt
-                .as_ref()
-                .is_some_and(|r| matches!(r.status, crate::ReceiptStatus::Rejected { .. }))
-            {
-                "rejected"
-            } else {
-                "applied"
+            let outcome = match receipt.as_ref().map(|r| &r.status) {
+                Some(crate::ReceiptStatus::Rejected { .. }) => "rejected",
+                Some(crate::ReceiptStatus::Committed { .. }) => "applied",
+                Some(crate::ReceiptStatus::Pending) => "pending",
+                None => "completed",
             };
             if action == "presence" {
                 crate::orbit_log!(DEBUG, event = "game_transition_committed", input_id = %input.id,
-                    universe = %input.universe, action, stage = "commit", outcome, commit_outcome = "acknowledged");
+                    universe = %input.universe, command_id = receipt.as_ref().map(|r| r.command_id.to_string()),
+                    action, stage = "commit", outcome, commit_outcome = "acknowledged");
             } else {
                 crate::orbit_log!(INFO, event = "game_transition_committed", input_id = %input.id,
-                    universe = %input.universe, action, stage = "commit", outcome, commit_outcome = "acknowledged");
+                    universe = %input.universe, command_id = receipt.as_ref().map(|r| r.command_id.to_string()),
+                    action, stage = "commit", outcome, commit_outcome = "acknowledged");
             }
         }
         Err(

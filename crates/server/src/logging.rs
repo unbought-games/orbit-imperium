@@ -257,7 +257,28 @@ mod tests {
         assert_eq!(records[0]["commit_outcome"], "not_attempted");
         assert_eq!(records[1]["level"], "INFO");
         assert_eq!(records[1]["outcome"], "rejected");
+        assert_eq!(
+            records[1]["command_id"],
+            uuid::Uuid::from_u128(5).to_string()
+        );
     }
+    #[test]
+    fn commit_without_a_receipt_does_not_claim_gameplay_was_applied() {
+        let i = input();
+        let records = capture(LevelFilter::INFO, || {
+            diagnostics::commit_result(
+                &i,
+                &Ok(orbit_application::CommitOutcome::Committed {
+                    input_id: i.id,
+                    receipt: None,
+                }),
+            )
+        });
+        assert_eq!(records[0]["outcome"], "completed");
+        assert_eq!(records[0]["commit_outcome"], "acknowledged");
+        assert!(records[0].get("command_id").is_none());
+    }
+
     #[test]
     fn metrics_are_recorded_at_every_threshold() {
         use orbit_application::{RuntimeEvent, RuntimeObserver, RuntimeStage};
@@ -299,7 +320,15 @@ mod tests {
                         &i,
                         &Ok(orbit_application::CommitOutcome::Committed {
                             input_id: i.id,
-                            receipt: None,
+                            receipt: Some(orbit_application::Receipt {
+                                command_id: CommandId(uuid::Uuid::from_u128(5)),
+                                epoch: i.epoch,
+                                admitted_at: 1,
+                                executed_at: Some(2),
+                                status: orbit_application::ReceiptStatus::Rejected {
+                                    code: GameError::NotOwned,
+                                },
+                            }),
                         }),
                     );
                     let mut presence = i.clone();
@@ -324,7 +353,15 @@ mod tests {
                         &presence,
                         &Ok(orbit_application::CommitOutcome::Committed {
                             input_id: presence.id,
-                            receipt: None,
+                            receipt: Some(orbit_application::Receipt {
+                                command_id: CommandId(uuid::Uuid::from_u128(5)),
+                                epoch: i.epoch,
+                                admitted_at: 1,
+                                executed_at: Some(2),
+                                status: orbit_application::ReceiptStatus::Rejected {
+                                    code: GameError::NotOwned,
+                                },
+                            }),
                         }),
                     );
                     for _ in 0..7 {

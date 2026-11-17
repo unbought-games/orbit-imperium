@@ -34,7 +34,8 @@ never implies that the command did not execute.
 
 `game_engine_decision` describes a proposed result with
 `commit_outcome=not_attempted`. `game_transition_committed` is emitted only after
-the store acknowledges its result, with `outcome=applied|rejected` and
+the store acknowledges its result, with `outcome=applied|rejected` from the command receipt (or `completed` when no
+command receipt exists) and
 `commit_outcome=acknowledged`. Failed commit calls use `stage=commit` and
 `commit_outcome=unknown`: a missing acknowledgement is not proof of rollback.
 Runtime resolution errors cover failures outside that commit boundary and may

@@ -42,7 +42,7 @@ replacement commit receipt. The coordinator owns integration and production gate
   task-local isolation, route-template privacy and cancellation behavior.
 - `cargo nextest run -p orbit-server -p orbit-transport-http -j 2`: 150 passed,
   33.238 seconds execution after 40.36 seconds preparation (before final sizing fixture).
-- Final focused logging tests: 8 passed, 0.082 seconds execution (16.75 seconds preparation); sizing below.
+- Final focused logging tests: 9 passed, 0.093 seconds execution (16.05 seconds preparation); sizing below.
 - `cargo clippy -p orbit-server -p orbit-application -p orbit-transport-http
   -p orbit-storage-postgres --lib --bins --tests --features orbit-server/test-support
   -j 2 -- -D warnings`: passed, 44.29 seconds.
@@ -73,13 +73,15 @@ This is a sizing scenario, not observed player traffic or a performance benchmar
 
 | Threshold | Events/min | JSON bytes/min | JSON MB/day at the same sustained rate |
 | --- | ---: | ---: | ---: |
-| INFO | 120 | 42,660 | 61.43 |
-| DEBUG | 780 | 254,160 | 365.99 |
+| INFO | 120 | 45,840 | 66.01 |
+| DEBUG | 780 | 260,520 | 375.15 |
 
+The fixture includes durable rejection receipts and their command IDs. Scheduled
+work without a command receipt logs `completed`, never an inferred `applied`.
 The official image identity adds bytes to every record; event framing adds more.
 Budget a conservative additional 200 bytes per record for release identity and
-service framing: about 96 MB/day INFO or 591 MB/day DEBUG for this scenario, before
-publication/error/retry bursts. Fourteen days is about 1.34 GB/8.27 GB uncompressed;
+service framing: about 101 MB/day INFO or 600 MB/day DEBUG for this scenario, before
+publication/error/retry bursts. Fourteen days is about 1.41 GB/8.40 GB uncompressed;
 actual retained/compressed/billed volume must be measured after commissioning.
 Scheduled transitions and errors add records; presence/read-heavy traffic changes
 the ratio. DEBUG remains enabled until explicitly changed.
