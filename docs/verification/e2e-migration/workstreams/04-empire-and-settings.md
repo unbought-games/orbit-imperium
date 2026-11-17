@@ -1,6 +1,6 @@
 # 04 — Empire, lifecycle and settings
 
-Status: **delegated** to chat `01a1e652-17b2-7ae2-b2b5-92de627738e4` for the whole stream through confirmed merge; see the [November 16 assignment](../STATUS.md#2026-11-16-rebase-and-stream-04-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **merged in PR #446** (`3e5540e1`); implementation by chat `01a1e652-17b2-7ae2-b2b5-92de627738e4` for the whole stream through confirmed merge; see the [November 16 assignment](../STATUS.md#2026-11-16-rebase-and-stream-04-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 

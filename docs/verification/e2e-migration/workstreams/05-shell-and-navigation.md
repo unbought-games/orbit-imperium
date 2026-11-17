@@ -1,6 +1,6 @@
 # 05 — Shell, navigation, public layout and primitives
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1e9c6-d23e-7fe2-8118-f85d3787a333` for the whole stream through confirmed merge; see the [November 17 assignment](../STATUS.md#2026-11-17-rebase-and-stream-05-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -89,3 +89,13 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 05 in `docs/verification/e2e-migration/workstreams/05-shell-and-navigation.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Landed domain handoff
+
+Read test-migration-empire-settings.md and its ledgers before changing mixed
+shell/overview coverage. Four full-shell layout cases remain required after
+failed component migrations. Preserve their healthy source coverage and the
+failed replacements' repair history; do not rename/revive those replacements or
+weaken their layout assertions. Reconcile current Base UI overlays, canonical
+body paths, resource-header overscroll, account-link behavior, Empire identity
+and the intentional removal of persisted order retries against the frozen audit.

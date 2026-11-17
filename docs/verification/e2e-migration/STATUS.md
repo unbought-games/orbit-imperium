@@ -9,8 +9,8 @@ replacement-equivalence validation and final CI cutover remain open.
 | 01 Resources/quotes | Merged | PR #387 | Follow-up evidence in test-migration-resources.md; no new assignment | `d8b750211ef90a896e6b833ea28aa20c385ce20b` |
 | 02 Catalog/progression | Merged | PR #406 | Owned migration complete; post-merge failures assigned to 03/06 below | `7b2fa0612740ca40ad579a02e460a912f0e9da03` |
 | 03 Dispatch/fleets | Merged | PR #417 | Complete handoff in test-migration-dispatch-fleets.md | `7d57e0532827fffe2bde0da65f03e8045b460dda` |
-| 04 Empire/settings | Delegated | — | Whole stream through merge; reconcile current Empire and retry behavior | Chat `01a1e652-17b2-7ae2-b2b5-92de627738e4` |
-| 05 Shell/navigation | Not started | — | Density/selection layout | — |
+| 04 Empire/settings | Merged | PR #446 | Complete handoff in test-migration-empire-settings.md; retained layout gaps remain explicit | `3e5540e1d9834ca45ecd007f853b3f793720431b` |
+| 05 Shell/navigation | Delegated | — | Whole stream through merge; preserve cross-domain coverage and repair history | Chat `01a1e9c6-d23e-7fe2-8118-f85d3787a333` |
 | 06 Startup/HUD/tutorial | Not started | — | Buffered pagination/refresh | — |
 | 07 Social/identity | Not started | — | Directory filters/compact controls | — |
 | 08 Reports | Not started | — | Independent rollback/archive outcomes | — |
@@ -127,3 +127,27 @@ persisted/restored retry state are not permission to restore intentionally remov
 behavior. Keep the frozen inventories unchanged and record current-main deltas,
 including justified obsolete assertions, in the stream-04 handoff. Preserve
 canonical selected-body paths and the retired desktop vacation scenario's history.
+
+## 2026-11-17: rebase and stream 05 assignment
+
+Fetched main `3e5540e1d9834ca45ecd007f853b3f793720431b` and rebased/published
+the audit branch cleanly. Confirmed stream 04 merged in PR #446 at that revision.
+Its originating chat reports PR, queue and main CI passed; local validation
+passed 22 application, 41 component and 29 database cases. The focused handoff
+and current/historical/delta ledgers are on main.
+
+Assigned the full Shell, navigation, public layout and primitives stream to
+chat `01a1e9c6-d23e-7fe2-8118-f85d3787a333` (Complete shell and navigation test
+migration), explicitly authorized to use /pr and /finish-pr through confirmed
+merge. The assignment includes all owned case dispositions and relevant
+current-main reconciliation, not only the suggested first slice. No implementation
+or validation success is claimed by this delegation record.
+
+Stream 04 retained four full-shell application layout cases after failed
+component migrations, including command-view overflow and long fleet names/
+manifests. Preserve the original healthy coverage and exhausted replacement
+history documented in test-migration-empire-settings.md. The child also owns
+reconciliation of canonical routeTarget paths, Base UI overlays, account-link
+new-tab behavior, fixed resource-header overscroll, personalized Empire identity
+and in-memory-only retries. Other streams' unfinished domain coverage must not
+be silently removed while splitting mixed shell cases.
