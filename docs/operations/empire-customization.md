@@ -347,7 +347,12 @@ free dyes remain available without Accounts or hosted content.
 API hosts run one bounded render processor per process; worker-only hosts do not
 need cosmetic assets. PostgreSQL enforces one active lease and one latest pending
 request per empire/target across API replicas. Restart recovers expired leases;
-late completions cannot replace a newer selection. Renderer contention uses a
+late completions cannot replace a newer selection. An expired current lease remains
+recoverable even when it completes before another worker reclaims it. Migration
+0049 captures the resolved access deadline before object publication; activation
+checks both that deadline and the lease against the database clock. Expired
+publication retains previous artwork and refreshes or retries the current choice.
+Renderer contention uses a
 bounded 1–60 second retry delay. Network/storage failures expose a retry action
 while retaining previous artwork. Cancellation is acknowledged after the worker
 stops its HTTP request; pending requests can be canceled immediately.

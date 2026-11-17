@@ -118,6 +118,7 @@ async fn publish(
     let (environment, _) = ship_render_environment(store, job.binding, c, profiles)
         .await
         .map_err(|_| "Appearance access unavailable")?;
+    let publication_valid_until = environment.valid_until;
     store
         .change_ship_appearance(
             job.binding,
@@ -128,7 +129,7 @@ async fn publish(
         .await
         .map_err(|_| "Appearance changed; retry available")?;
     if !store
-        .prepare_ship_render(job)
+        .prepare_ship_render(job, publication_valid_until)
         .await
         .map_err(|_| "Render storage unavailable")?
     {

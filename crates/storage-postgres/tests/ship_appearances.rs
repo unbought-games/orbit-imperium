@@ -605,7 +605,10 @@ async fn published_artifacts_are_private_and_survive_empire_deletion_and_render_
         mime_type: "image/webp".into(),
         key,
     }];
-    f.store.prepare_ship_render(&job).await.unwrap();
+    f.store
+        .prepare_ship_render(&job, f.env(f.b).await.valid_until)
+        .await
+        .unwrap();
     f.store
         .finish_ship_render(&job, Ok((id, variants)))
         .await
@@ -743,5 +746,217 @@ async fn lost_dye_access_refreshes_to_free_paint_without_mutating_revision() {
         .unwrap();
     let restored = f.store.claim_ship_render().await.unwrap().unwrap();
     assert_eq!(restored.input["colors"]["primary"], "#ab7432");
+    f.stop_jobs().await;
+}
+
+// This fixture crosses the real AssetStore boundary; renderer pixel validation is
+// covered in transport tests. The regression here is activation after byte writes.
+async fn publication_fixture(f: &Fixture) -> (Uuid, Vec<ShipStoredVariant>) {
+    let id = Uuid::new_v4();
+    let key = format!("ship-appearances/{}/{id}/0", f.b.account.0);
+    f.customization
+        .assets
+        .create_immutable(&key, b"published-fixture-bytes".to_vec(), 1024)
+        .await
+        .unwrap();
+    (
+        id,
+        vec![ShipStoredVariant {
+            width: 192,
+            height: 128,
+            mime_type: "image/webp".into(),
+            key,
+        }],
+    )
+}
+
+#[tokio::test]
+async fn expired_current_lease_finished_before_reclaim_remains_recoverable() {
+    let f = Fixture::new().await;
+    f.change(f.b, Uuid::new_v4(), save(design(), 0))
+        .await
+        .unwrap();
+    let expired = f.store.claim_ship_render().await.unwrap().unwrap();
+    assert!(
+        f.store
+            .prepare_ship_render(&expired, f.env(f.b).await.valid_until)
+            .await
+            .unwrap()
+    );
+    let stale_output = publication_fixture(&f).await;
+    sqlx::query("UPDATE ship_render_requests SET lease_until=clock_timestamp()-interval '1 second' WHERE id=$1")
+        .bind(expired.id).execute(&f.pool).await.unwrap();
+    // Deliberately finish before another worker claims the expired lease.
+    f.store
+        .finish_ship_render(&expired, Ok(stale_output))
+        .await
+        .unwrap();
+    let state = f.state(f.b).await;
+    assert!(state.equipment[0].artwork.is_none());
+    assert_eq!(state.equipment[0].render.as_ref().unwrap().stage, "failed");
+    assert!(state.equipment[0].render.as_ref().unwrap().can_retry);
+    f.change(f.b, Uuid::new_v4(), ShipAppearanceAction::Load)
+        .await
+        .unwrap();
+    let recovered = f.store.claim_ship_render().await.unwrap().unwrap();
+    assert_eq!(recovered.id, expired.id);
+    assert_ne!(recovered.lease, expired.lease);
+    assert!(
+        f.store
+            .prepare_ship_render(&recovered, f.env(f.b).await.valid_until)
+            .await
+            .unwrap()
+    );
+    let output = publication_fixture(&f).await;
+    let id = output.0;
+    f.store
+        .finish_ship_render(&recovered, Ok(output))
+        .await
+        .unwrap();
+    let recovered = f.state(f.b).await;
+    assert_eq!(
+        recovered.equipment[0].render.as_ref().unwrap().stage,
+        "ready"
+    );
+    assert_eq!(recovered.equipment[0].artwork.as_ref().unwrap().id, id);
+    f.stop_jobs().await;
+}
+
+#[tokio::test]
+async fn access_expiring_during_publication_preserves_artwork_and_refreshes_current_work() {
+    let f = Fixture::new().await;
+    let mut d = design();
+    f.change(f.b, Uuid::new_v4(), save(d.clone(), 0))
+        .await
+        .unwrap();
+    let original = f.store.claim_ship_render().await.unwrap().unwrap();
+    assert!(
+        f.store
+            .prepare_ship_render(&original, f.env(f.b).await.valid_until)
+            .await
+            .unwrap()
+    );
+    let output = publication_fixture(&f).await;
+    let usable = output.0;
+    f.store
+        .finish_ship_render(&original, Ok(output))
+        .await
+        .unwrap();
+
+    // The account-evidence resolver supplies this authorized named dye. Its
+    // deadline is persisted before publication, never inferred from worker time.
+    d.revision = 1;
+    d.recipe.primary = "fixture-earned-dye".into();
+    let mut allowed = f.env(f.b).await;
+    allowed
+        .dyes
+        .insert("fixture-earned-dye".into(), "#ab7432".into());
+    f.store
+        .change_ship_appearance(f.b, Uuid::new_v4(), save(d, 1), allowed.clone())
+        .await
+        .unwrap();
+    let restricted = f.store.claim_ship_render().await.unwrap().unwrap();
+    assert!(
+        f.store
+            .prepare_ship_render(&restricted, allowed.valid_until)
+            .await
+            .unwrap()
+    );
+    let captured: Option<i64> =
+        sqlx::query_scalar("SELECT publication_valid_until FROM ship_render_requests WHERE id=$1")
+            .bind(restricted.id)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(captured, Some(allowed.valid_until));
+    let output = publication_fixture(&f).await;
+    let rejected = output.0;
+    // Controlled deadline crossing after prepare and object writes, before
+    // completion. No wall-clock sleep or simulation clock can establish this.
+    sqlx::query("UPDATE ship_render_requests SET publication_valid_until=floor(extract(epoch FROM clock_timestamp()))::bigint-1 WHERE id=$1")
+        .bind(restricted.id).execute(&f.pool).await.unwrap();
+    f.store
+        .finish_ship_render(&restricted, Ok(output))
+        .await
+        .unwrap();
+    let state = f.state(f.b).await;
+    assert_eq!(state.equipment[0].artwork.as_ref().unwrap().id, usable);
+    assert_eq!(state.equipment[0].render.as_ref().unwrap().stage, "failed");
+    assert!(state.equipment[0].render.as_ref().unwrap().can_retry);
+    assert!(matches!(
+        f.store.ship_artifact(f.b.account, rejected).await,
+        Err(StoreError::NotFound)
+    ));
+
+    // Fresh evidence can authorize the identical inputs: Load must still enqueue
+    // a new request rather than treating the failed immutable input as sufficient.
+    let mut renewed = f.env(f.b).await;
+    renewed
+        .dyes
+        .insert("fixture-earned-dye".into(), "#ab7432".into());
+    f.store
+        .change_ship_appearance(
+            f.b,
+            Uuid::new_v4(),
+            ShipAppearanceAction::Load,
+            renewed.clone(),
+        )
+        .await
+        .unwrap();
+    let renewed_job = f.store.claim_ship_render().await.unwrap().unwrap();
+    assert_ne!(renewed_job.id, restricted.id);
+    assert_eq!(renewed_job.input["colors"], restricted.input["colors"]);
+    assert!(
+        f.store
+            .prepare_ship_render(&renewed_job, renewed.valid_until)
+            .await
+            .unwrap()
+    );
+    let output = publication_fixture(&f).await;
+    sqlx::query("UPDATE ship_render_requests SET publication_valid_until=floor(extract(epoch FROM clock_timestamp()))::bigint-1 WHERE id=$1")
+        .bind(renewed_job.id).execute(&f.pool).await.unwrap();
+    f.store
+        .finish_ship_render(&renewed_job, Ok(output))
+        .await
+        .unwrap();
+    assert_eq!(
+        f.state(f.b).await.equipment[0].artwork.as_ref().unwrap().id,
+        usable
+    );
+
+    // If the evidence no longer grants the dye, refresh derives free paint and
+    // keeps the authored revision. Only freshly authorized publication activates.
+    let fallback_environment = f.env(f.b).await;
+    f.store
+        .change_ship_appearance(
+            f.b,
+            Uuid::new_v4(),
+            ShipAppearanceAction::Load,
+            fallback_environment.clone(),
+        )
+        .await
+        .unwrap();
+    let fallback = f.store.claim_ship_render().await.unwrap().unwrap();
+    assert_eq!(fallback.input["colors"]["primary"], "#e5dfce");
+    assert!(
+        f.store
+            .prepare_ship_render(&fallback, fallback_environment.valid_until)
+            .await
+            .unwrap()
+    );
+    let output = publication_fixture(&f).await;
+    let fallback_artifact = output.0;
+    f.store
+        .finish_ship_render(&fallback, Ok(output))
+        .await
+        .unwrap();
+    let state = f.state(f.b).await;
+    assert_eq!(state.equipment[0].render.as_ref().unwrap().stage, "ready");
+    assert_eq!(
+        state.equipment[0].artwork.as_ref().unwrap().id,
+        fallback_artifact
+    );
+    assert_eq!(state.library[0].recipe.primary, "fixture-earned-dye");
+    assert_eq!(state.equipment[0].design_revision, Some(2));
     f.stop_jobs().await;
 }

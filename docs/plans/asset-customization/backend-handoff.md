@@ -169,3 +169,48 @@ If root needs another build, reuse
 `CARGO_TARGET_DIR=/Users/ethan/.codex/worktrees/ship-appearance-backend/orbit-imperium/target`
 after cherry-picking the backend implementation. No Rust command, test HTTP server,
 or task API is running in this lane. Root may resume all integrated validation.
+
+## Integration-review repair
+
+Confirmed two product schedule gaps in the first implementation: expire→finish→claim
+stranded a current request as superseded, and publication discarded resolved access
+valid_until before awaited object writes. Current stale completion paths now remain
+failed/retryable; genuinely replaced requests alone become superseded. Lease expiry
+uses the existing automatic recovery marker, so both finish/reclaim orderings work.
+
+Migration **0049_ship_render_authorization.sql** adds publication_valid_until.
+The worker captures the resolved deadline before moving its environment into refresh,
+and preparation persists it under the current lease. Every claimed attempt clears
+old preparation evidence. Completion requires preparation evidence and checks the
+database clock, including at the actual artwork activation write. That final write
+also rechecks the lease. Expired evidence preserves the prior artwork and marks the
+request refreshable; fresh evidence requeues even identical inputs, while lost
+access queues the free fallback without rewriting the authored design.
+
+New focused DB schedules exercise expire→finish→claim and deadline expiry after
+preparation plus real AssetStore writes, before completion. They verify rejected
+activation, previous-artwork retention, same-input reauthorization, free fallback,
+preserved authored revision and successful fresh completion. Deadlines are crossed
+through controlled DB fixtures, with no sleeps or simulation-clock assumptions.
+
+Validation on base `873b8cd3` plus this repair's committed production/test diff:
+
+- `make test-db DB_SUITES='ship_appearances ship_appearance_upgrade' DB_JOBS=1`:
+  7 ship tests passed (16.520s), upgrade passed (0.945s), compile 8.13s and runner
+  setup 0.26/0.38s. Both new regressions passed on their first run.
+- After adding the final activation-write lease recheck,
+  `make test-db DB_SUITES=ship_appearances DB_JOBS=1`: 7/7 passed (16.457s), compile
+  7.35s, runner setup 0.24s. Upgrade schema/source was unchanged.
+- `cargo clippy -p orbit-storage-postgres -p orbit-server --lib --bins
+  --features orbit-server/test-support -- -D warnings`: passed in 3.84s.
+- Formatting and diff whitespace checks passed. No failures, retries for luck,
+  test repairs, browser suites or frontend builds in this repair.
+
+Standard runners removed all disposable DBs; fixture assets were cleaned up. Root
+still owns Compose cleanup. The test-support executable is being rebuilt at the
+same absolute path above; final completion below releases the validation slot.
+
+Repair complete: test-support server build passed in 22.67s. The executable at
+`/Users/ethan/.codex/worktrees/ship-appearance-backend/orbit-imperium/target/debug/orbit`
+contains this repair and migration 0049. No validation command or test service is
+running; the expensive validation slot is released to root again.

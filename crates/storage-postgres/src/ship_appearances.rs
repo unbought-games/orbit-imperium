@@ -4,6 +4,9 @@ use serde_json::{Value, json};
 use sqlx::{PgConnection, Row, types::Json};
 use uuid::Uuid;
 
+const ACCESS_REFRESH_REQUIRED: &str = "Appearance access expired; refresh required";
+const SOURCE_REFRESH_REQUIRED: &str = "Appearance source changed; refresh required";
+
 impl PgStore {
     pub(crate) async fn read_ship_appearances(
         &self,
@@ -281,7 +284,7 @@ impl PgStore {
         let job = if let Some(row) = row {
             let id: Uuid = row.try_get("id").map_err(db_error)?;
             let lease = Uuid::new_v4();
-            sqlx::query("UPDATE ship_render_requests SET stage='rendering',lease=$2,lease_until=clock_timestamp()+interval '120 seconds' WHERE id=$1").bind(id).bind(lease).execute(&mut *tx).await.map_err(db_error)?;
+            sqlx::query("UPDATE ship_render_requests SET stage='rendering',publication_valid_until=NULL,lease=$2,lease_until=clock_timestamp()+interval '120 seconds' WHERE id=$1").bind(id).bind(lease).execute(&mut *tx).await.map_err(db_error)?;
             let mut input: Value = row.try_get::<Json<Value>, _>("input").map_err(db_error)?.0;
             input["request_id"] = json!(id);
             Some(ShipRenderJob {
@@ -321,11 +324,15 @@ impl PgStore {
         tx.commit().await.map_err(db_error)?;
         Ok(())
     }
-    pub async fn prepare_ship_render(&self, job: &ShipRenderJob) -> Result<bool, StoreError> {
+    pub async fn prepare_ship_render(
+        &self,
+        job: &ShipRenderJob,
+        valid_until: i64,
+    ) -> Result<bool, StoreError> {
         if !self.ship_render_wanted(job).await? {
             return Ok(false);
         }
-        Ok(sqlx::query("UPDATE ship_render_requests SET stage='preparing' WHERE id=$1 AND lease=$2 AND lease_until>clock_timestamp() AND stage='rendering'").bind(job.id).bind(job.lease).execute(self.admission_pool()?).await.map_err(db_error)?.rows_affected()==1)
+        Ok(sqlx::query("UPDATE ship_render_requests SET stage='preparing',publication_valid_until=$3 WHERE id=$1 AND lease=$2 AND lease_until>clock_timestamp() AND stage='rendering' AND $3>floor(extract(epoch FROM clock_timestamp()))::bigint").bind(job.id).bind(job.lease).bind(valid_until).execute(self.admission_pool()?).await.map_err(db_error)?.rows_affected()==1)
     }
     pub async fn finish_ship_render(
         &self,
@@ -356,36 +363,58 @@ impl PgStore {
             .fetch_one(&mut *tx)
             .await
             .map_err(db_error)?;
-            let (stage, error) = if canceled
-                || !r.try_get::<bool, _>("binding_current").map_err(db_error)?
-                || latest != Some(job.id)
-                || r.try_get::<i64, _>("emblem_revision").map_err(db_error)?
-                    != r.try_get::<i64, _>("current_emblem_revision")
-                        .map_err(db_error)?
-                || !alive
-                || !matches!(stage.as_str(), "rendering" | "preparing")
-            {
+            let source_current = r.try_get::<bool, _>("binding_current").map_err(db_error)?
+                && r.try_get::<i64, _>("emblem_revision").map_err(db_error)?
+                    == r.try_get::<i64, _>("current_emblem_revision")
+                        .map_err(db_error)?;
+            let (stage, error) = if canceled || stage == "canceled" {
+                ("canceled", None)
+            } else if latest != Some(job.id) {
+                // Only actual replacement is terminal supersession. A selected
+                // request must remain refreshable/retryable on every stale path.
+                ("superseded", None)
+            } else if !source_current || !matches!(stage.as_str(), "rendering" | "preparing") {
+                ("failed", Some(SOURCE_REFRESH_REQUIRED.to_owned()))
+            } else if !alive {
+                // Same recovery marker as claim-time lease expiry. This ordering
+                // also covers expire -> finish -> claim, without stranding Load.
                 (
-                    if canceled || stage == "canceled" {
-                        "canceled"
-                    } else {
-                        "superseded"
-                    },
-                    None,
+                    "failed",
+                    Some("Render interrupted; retry available".to_owned()),
                 )
             } else {
                 match result {
                     Ok((id, variants)) => {
-                        sqlx::query("INSERT INTO ship_artifacts(id,account,request,variants) VALUES($1,$2,$3,$4)").bind(id).bind(job.account.0).bind(job.id).bind(Json(variants)).execute(&mut *tx).await.map_err(db_error)?;
-                        sqlx::query(
-                            "UPDATE empire_ship_equipment SET artwork=$2 WHERE latest_request=$1",
-                        )
-                        .bind(job.id)
-                        .bind(id)
-                        .execute(&mut *tx)
-                        .await
-                        .map_err(db_error)?;
-                        ("ready", None)
+                        let deadline: Option<i64> =
+                            r.try_get("publication_valid_until").map_err(db_error)?;
+                        let authorized:bool = sqlx::query_scalar("SELECT $1::bigint>floor(extract(epoch FROM clock_timestamp()))::bigint")
+                            .bind(deadline.unwrap_or(0)).fetch_one(&mut *tx).await.map_err(db_error)?;
+                        if stage != "preparing" || !authorized {
+                            ("failed", Some(ACCESS_REFRESH_REQUIRED.to_owned()))
+                        } else {
+                            sqlx::query("INSERT INTO ship_artifacts(id,account,request,variants) VALUES($1,$2,$3,$4)").bind(id).bind(job.account.0).bind(job.id).bind(Json(variants)).execute(&mut *tx).await.map_err(db_error)?;
+                            // Recheck at the actual activation write as well: an
+                            // awaited object/SQL write cannot outlive access evidence.
+                            let activated=sqlx::query("UPDATE empire_ship_equipment SET artwork=$2 WHERE latest_request=$1 AND $3::bigint>floor(extract(epoch FROM clock_timestamp()))::bigint AND EXISTS(SELECT 1 FROM ship_render_requests WHERE id=$1 AND lease=$4 AND lease_until>clock_timestamp())")
+                                .bind(job.id).bind(id).bind(deadline.unwrap_or(0)).bind(job.lease).execute(&mut *tx).await.map_err(db_error)?.rows_affected()==1;
+                            if activated {
+                                ("ready", None)
+                            } else {
+                                let lease_alive:bool=sqlx::query_scalar("SELECT lease_until>clock_timestamp() FROM ship_render_requests WHERE id=$1")
+                                    .bind(job.id).fetch_one(&mut *tx).await.map_err(db_error)?;
+                                (
+                                    "failed",
+                                    Some(
+                                        if lease_alive {
+                                            ACCESS_REFRESH_REQUIRED
+                                        } else {
+                                            "Render interrupted; retry available"
+                                        }
+                                        .to_owned(),
+                                    ),
+                                )
+                            }
+                        }
                     }
                     Err(error) => ("failed", Some(error)),
                 }
@@ -412,7 +441,7 @@ async fn refresh(
     env: &ShipRenderEnvironment,
     force: bool,
 ) -> Result<(), ServiceError> {
-    let row=sqlx::query("SELECT e.revision,r.input,r.emblem_revision,d.recipe FROM empire_ship_equipment e LEFT JOIN ship_render_requests r ON r.id=e.latest_request JOIN ship_design_revisions d ON d.account=e.account AND d.id=e.design_id AND d.revision=e.design_revision WHERE e.universe=$1 AND e.account=$2 AND e.target=$3").bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).fetch_optional(&mut *tx).await.map_err(db_error)?;
+    let row=sqlx::query("SELECT e.revision,r.input,r.emblem_revision,r.error,r.stage,r.epoch,r.player,d.recipe FROM empire_ship_equipment e LEFT JOIN ship_render_requests r ON r.id=e.latest_request JOIN ship_design_revisions d ON d.account=e.account AND d.id=e.design_id AND d.revision=e.design_revision WHERE e.universe=$1 AND e.account=$2 AND e.target=$3").bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).fetch_optional(&mut *tx).await.map_err(db_error)?;
     let Some(row) = row else {
         return Ok(());
     };
@@ -425,7 +454,24 @@ async fn refresh(
         env.input(&fallback).expect("guaranteed free dyes")
     });
     let old: Option<Json<Value>> = row.try_get("input").map_err(db_error)?;
+    let needs_refresh = row
+        .try_get::<Option<String>, _>("stage")
+        .map_err(db_error)?
+        .as_deref()
+        == Some("failed")
+        && row
+            .try_get::<Option<String>, _>("error")
+            .map_err(db_error)?
+            .is_some_and(|error| {
+                matches!(
+                    error.as_str(),
+                    ACCESS_REFRESH_REQUIRED | SOURCE_REFRESH_REQUIRED
+                )
+            });
     if !force
+        && !needs_refresh
+        && row.try_get::<Option<Uuid>, _>("epoch").map_err(db_error)? == Some(b.epoch.0)
+        && row.try_get::<Option<Uuid>, _>("player").map_err(db_error)? == Some(b.player.0)
         && old.is_some_and(|v| v.0 == input)
         && row
             .try_get::<Option<i64>, _>("emblem_revision")
