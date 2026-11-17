@@ -46,3 +46,64 @@ for (const interaction of ['click', 'tap'] as const) {
     })
   })
 }
+
+test('coordinates are one tab stop with colon and space advancement', async ({
+  page,
+  mount,
+}) => {
+  await mount('coordinate-form')
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await input.fill('')
+  await input.pressSequentially('1:45 5')
+  await expect(input).toHaveValue('1:45:5')
+  await input.press('Tab')
+  await expect(
+    page.getByRole('textbox', { name: 'Metal', exact: true }),
+  ).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(input).toBeFocused()
+  await input.press('ArrowRight')
+  await input.press('Backspace')
+  await input.pressSequentially('9')
+  await expect(input).toHaveValue('1:45:9')
+})
+
+test('coordinate input offers a numeric keyboard and a touch separator control', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mount('coordinate-form')
+  const input = page.getByLabel('Destination coordinates', { exact: true })
+  await expect(input).toHaveAttribute('inputmode', 'numeric')
+  await input.fill('1')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('45')
+  await page.getByRole('button', { name: 'Next coordinate segment' }).click()
+  await input.pressSequentially('8')
+  await expect(input).toHaveValue('1:45:8')
+})
+
+test.describe('scheduled completion date', () => {
+  test.use({ timezoneId: 'UTC', locale: 'en-US' })
+  test('completion details include day, year and semantic time across midnight', async ({
+    page,
+    mount,
+  }) => {
+    await page.clock.pauseAt(new Date('2026-12-31T12:00:00Z'))
+    await mount('completion-details')
+    await page
+      .getByRole('button', { name: 'Completion time details', exact: true })
+      .click()
+    const details = page.getByRole('dialog', {
+      name: 'Completion time',
+      exact: true,
+    })
+    await expect(details).toContainText('Jan 2, 2027')
+    await expect(details).toContainText('6:00 PM')
+    await expect(details.locator('time')).toHaveAttribute(
+      'datetime',
+      '2027-01-02T18:00:00.000Z',
+    )
+  })
+})

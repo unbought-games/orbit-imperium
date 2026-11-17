@@ -1,4 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useStore } from 'zustand'
+import { hasUnreadReports } from '../../src/client-model/report-state'
+import { ScreenContext } from '../../src/shell/screen-context'
+import { resolveDestination } from '../../src/shell/routes'
+import { MenuScreen } from '../../src/features/menu'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -141,16 +146,36 @@ function Shell({
   initialPage = 'overview',
   hostile = false,
   accountUrl,
+  menuContent = false,
 }: {
   bodies?: BoundView['bodies']
   badges?: boolean
   initialPage?: Page
   hostile?: boolean
   accountUrl?: string
+  menuContent?: boolean
 }) {
   const [router] = useState(() => {
     function Sample() {
       const [{ model, view }] = useState(() => preparedModel(bodies, hostile))
+      const reportUnread = useStore(model.store, hasUnreadReports)
+      useEffect(() => {
+        if (!menuContent) return
+        window.setShellReportCount = (count: number) =>
+          model.store.setState({
+            reportInbox: {
+              items: [],
+              has_more: false,
+              next_cursor: null,
+              unread_count: count,
+              as_of_ms: 1000,
+              revision: '1',
+            },
+          })
+        return () => {
+          delete window.setShellReportCount
+        }
+      }, [model])
       const commands = useCommands(null)
       const [selected, select] = useState(bodies[0].id)
       const [page, visit] = useState<Page>(initialPage)
@@ -172,7 +197,7 @@ function Shell({
             body={bodies.find((b) => b.id === selected)}
             page={page}
             universeName="Andromeda"
-            unreadReports={unread}
+            unreadReports={menuContent ? reportUnread : unread}
             activity={working ? new Set(['resources']) : new Set()}
             blockers={
               working
@@ -196,20 +221,46 @@ function Shell({
               className={styles['work-area']}
             >
               <h1>{pageTitles[page]}</h1>
-              <p>
-                Prepared shell content. Navigation destinations and session
-                journeys are tested in application tests.
-              </p>
-              <Button
-                onClick={() => {
-                  setUnread(false)
-                  setWorking(false)
-                }}
-              >
-                Clear prepared alerts
-              </Button>
-              <div style={{ height: 2000 }} aria-hidden="true" />
-              <p>End of scrollable content</p>
+              {menuContent ? (
+                <ScreenContext.Provider
+                  value={{
+                    model,
+                    view,
+                    commands,
+                    universeName: 'Andromeda',
+                    logout: unexpected,
+                    body: bodies.find((b) => b.id === selected),
+                    route: resolveDestination(
+                      {
+                        universe: view.binding.universe,
+                        page: 'menu',
+                        body: selected,
+                      },
+                      view,
+                    ),
+                    prepareDispatch: unexpected,
+                  }}
+                >
+                  <MenuScreen />
+                </ScreenContext.Provider>
+              ) : (
+                <>
+                  <p>
+                    Prepared shell content. Navigation destinations and session
+                    journeys are tested in application tests.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setUnread(false)
+                      setWorking(false)
+                    }}
+                  >
+                    Clear prepared alerts
+                  </Button>
+                  <div style={{ height: 2000 }} aria-hidden="true" />
+                  <p>End of scrollable content</p>
+                </>
+              )}
             </ContentColumn>
           </GameShellFrame>
         </SessionContext.Provider>
@@ -266,4 +317,29 @@ export const ShellWideStocks = () => (
 
 export const ShellAccountLink = () => (
   <Shell accountUrl="https://accounts.example/account" />
+)
+
+export const ShellTabletRoster = () => (
+  <Shell
+    bodies={Array.from({ length: 9 }, (_, index) => ({
+      ...body,
+      id: index === 0 ? body.id : id(index + 20),
+      coordinates: { galaxy: 1, system: 371, position: index + 1 },
+    }))}
+  />
+)
+
+declare global {
+  interface Window {
+    setShellReportCount?: (count: number) => void
+  }
+}
+export const ShellMenu = () => <Shell menuContent />
+export const ShellWideCoordinates = () => (
+  <Shell
+    bodies={[
+      { ...body, coordinates: { galaxy: 1, system: 499, position: 15 } },
+      { ...body, id: id(6), kind: 'Moon' },
+    ]}
+  />
 )

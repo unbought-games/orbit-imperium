@@ -83,11 +83,16 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
       .ProgressionComparisonScenario,
   'shell-account-link': async () =>
     (await import('./shell.story')).ShellAccountLink,
+  'shell-menu': async () => (await import('./shell.story')).ShellMenu,
+  'shell-wide-coordinates': async () =>
+    (await import('./shell.story')).ShellWideCoordinates,
   'shell-default': async () => (await import('./shell.story')).ShellDefault,
   'shell-alliance-threat': async () =>
     (await import('./shell.story')).ShellAllianceThreat,
   'shell-named': async () => (await import('./shell.story')).ShellNamed,
   'shell-worlds': async () => (await import('./shell.story')).ShellWorlds,
+  'shell-tablet-roster': async () =>
+    (await import('./shell.story')).ShellTabletRoster,
   'shell-roster': async () => (await import('./shell.story')).ShellRoster,
   'shell-badges': async () => (await import('./shell.story')).ShellBadges,
   'shell-large-stocks': async () =>
@@ -146,6 +151,11 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   popover: async () => (await import('./popover')).PopoverExample,
   timestamp: async () =>
     (await import('./timestamp.scenario')).TimestampScenario,
+  'public-layout': async () => (await import('./public-layout')).PublicLayout,
+  'completion-details': async () =>
+    (await import('./completion-details')).CompletionDetails,
+  'coordinate-form': async () =>
+    (await import('./coordinate-form')).CoordinateForm,
   'number-form': async () => NumberForm,
   loading: async () => LoadingExample,
   'action-sheet': async () =>
