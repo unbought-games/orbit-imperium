@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         orbit_application::orbit_log!(
             ERROR,
             event = "serve_failed",
-            stage = "supervise",
+            stage = "serve",
             error_code = "ServeFailed",
             commit_outcome = "unknown"
         );
@@ -127,7 +127,15 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
     // Validate serve configuration before opening a database connection.
     let serve_config = (selected == "serve")
         .then(|| config::ServeConfig::parse(|key| env::var(key).ok()))
-        .transpose()?;
+        .transpose()
+        .inspect_err(|_| {
+            orbit_application::orbit_log!(
+                ERROR,
+                event = "startup_failed",
+                stage = "configuration",
+                error_code = "InvalidServeConfiguration"
+            )
+        })?;
     let connection_started = std::time::Instant::now();
     let url = env::var("DATABASE_URL")?;
     let store = match serve_config.as_ref() {
