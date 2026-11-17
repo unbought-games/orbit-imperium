@@ -5,12 +5,14 @@ DATABASE_URL and ANALYTICS_SERVER_TOKEN are environment-only secrets.
 Export never writes the source database. All output is private by default.
 """
 import argparse
+from contextlib import closing
 import datetime as dt
 import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 import sqlite3
 import urllib.request
 import urllib.error
@@ -111,7 +113,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def deliver(args):
     # Memory is bounded by one extraction page and one 100-event ingest batch.
-    with sqlite3.connect(args.output / 'delivery.sqlite') as state:
+    with closing(sqlite3.connect(args.output / 'delivery.sqlite')) as state:
         state.execute('CREATE TABLE IF NOT EXISTS acked(event_id TEXT PRIMARY KEY,digest TEXT NOT NULL)')
         pending=[];batches=0
         opener=urllib.request.build_opener(NoRedirect())
@@ -154,23 +156,68 @@ def deliver(args):
         if pending: flush()
 
 
+def normalized(row):
+    if 'properties' in row:
+        row = dict(row['properties'], event_id=row['event_id'], at_ms=int(row['logical_time']))
+    value={k:row[k] for k in ('world','epoch','actor','action')}
+    value['at_ms']=int(row['at_ms'])
+    return row['event_id'],json.dumps(value,sort_keys=True)
+
+
+def add_record(db, table, row):
+    try:
+        db.execute('INSERT INTO '+table+' VALUES(?,?)',normalized(row))
+    except sqlite3.IntegrityError:
+        raise ValueError('Duplicate event identity in reconciliation input') from None
+
+
+def reconciliation_result(db):
+    result={'complete':True,'expected':db.execute('SELECT count(*) FROM expected').fetchone()[0],
+            'actual':db.execute('SELECT count(*) FROM actual').fetchone()[0]}
+    for name,query in [('missing','SELECT e.event_id FROM expected e LEFT JOIN actual a USING(event_id) WHERE a.event_id IS NULL'),
+                       ('unexpected','SELECT a.event_id FROM actual a LEFT JOIN expected e USING(event_id) WHERE e.event_id IS NULL'),
+                       ('changed','SELECT e.event_id FROM expected e JOIN actual a USING(event_id) WHERE e.value<>a.value')]:
+        result[name+'_count']=db.execute('SELECT count(*) FROM ('+query+')').fetchone()[0]
+        result[name]=[r[0] for r in db.execute(query+' ORDER BY 1 LIMIT 100')]
+    return result
+
+
 def reconcile(expected, actual):
-    def normalized(rows):
-        result = {}
-        for row in rows:
-            if 'properties' in row:
-                row = dict(row['properties'], event_id=row['event_id'], at_ms=int(row['logical_time']))
-            key = row['event_id']
-            value = {k: row[k] for k in ('world', 'epoch', 'actor', 'action')}
-            value['at_ms'] = int(row['at_ms'])
-            if key in result:
-                raise ValueError('Duplicate event identity in reconciliation input')
-            result[key] = value
-        return result
-    left, right = normalized(expected), normalized(actual)
-    return {'expected': len(left), 'actual': len(right),
-            'missing': sorted(left.keys()-right.keys()), 'unexpected': sorted(right.keys()-left.keys()),
-            'changed': sorted(k for k in left.keys() & right.keys() if left[k] != right[k])}
+    # Iterable inputs and disk indexes keep memory independent of historical size.
+    with tempfile.TemporaryDirectory() as directory, closing(sqlite3.connect(Path(directory)/'reconcile.sqlite')) as db:
+        for table,rows in [('expected',expected),('actual',actual)]:
+            db.execute('CREATE TABLE '+table+'(event_id TEXT PRIMARY KEY,value TEXT NOT NULL)')
+            for row in rows:add_record(db,table,row)
+        return reconciliation_result(db)
+
+
+def reconcile_files(args):
+    # Retained immutable exports are bound by path, byte count and mtime. Any
+    # replacement/change requires a new checkpoint, never silent continuation.
+    with closing(sqlite3.connect(args.checkpoint)) as db:
+        db.execute('CREATE TABLE IF NOT EXISTS inputs(name TEXT PRIMARY KEY,identity TEXT NOT NULL,offset INTEGER NOT NULL,complete INTEGER NOT NULL)')
+        remaining=args.max_rows
+        for table,path in [('expected',args.expected),('actual',args.actual)]:
+            stat=path.stat();identity=json.dumps([str(path.resolve()),stat.st_size,stat.st_mtime_ns])
+            db.execute('CREATE TABLE IF NOT EXISTS '+table+'(event_id TEXT PRIMARY KEY,value TEXT NOT NULL)')
+            saved=db.execute('SELECT identity,offset,complete FROM inputs WHERE name=?',(table,)).fetchone()
+            if saved and saved[0]!=identity: raise ValueError('Reconciliation input changed; use a fresh checkpoint')
+            if saved and saved[2]:continue
+            offset=saved[1] if saved else 0
+            with path.open('rb') as source:
+                source.seek(offset)
+                while remaining:
+                    line=source.readline(8193)
+                    if not line:break
+                    if len(line)>8192:raise ValueError('Oversized reconciliation row')
+                    add_record(db,table,json.loads(line));remaining-=1
+                offset=source.tell()
+            db.execute('INSERT OR REPLACE INTO inputs VALUES(?,?,?,?)',(table,identity,offset,int(offset==stat.st_size)))
+            db.commit()
+        complete=db.execute('SELECT count(*) FROM inputs WHERE complete=1').fetchone()[0]==2
+        if not complete:
+            return {'complete':False,'resume_with_same_inputs':True}
+        return reconciliation_result(db)
 
 
 def main():
@@ -184,6 +231,7 @@ def main():
     p = sub.add_parser('deliver');p.add_argument('--endpoint', required=True);p.add_argument('--output', type=Path, required=True)
     p.add_argument('--max-batches', type=int, default=100)
     p = sub.add_parser('reconcile');p.add_argument('--expected', type=Path, required=True);p.add_argument('--actual', type=Path, required=True)
+    p.add_argument('--checkpoint',type=Path,required=True);p.add_argument('--max-rows',type=int,default=10000)
     args = parser.parse_args()
     if hasattr(args, 'max_batches') and not 1 <= args.max_batches <= 1000:
         parser.error('max-batches must be 1..1000')
@@ -194,9 +242,11 @@ def main():
         if not args.endpoint.startswith(('https://', 'http://127.0.0.1:')): parser.error('HTTPS endpoint required')
         deliver(args)
     else:
-        result = reconcile([json.loads(x) for x in args.expected.read_text().splitlines()], [json.loads(x) for x in args.actual.read_text().splitlines()])
+        if not 1 <= args.max_rows <= 100000: parser.error('max-rows must be 1..100000')
+        result = reconcile_files(args)
         print(json.dumps(result, sort_keys=True))
-        if any(result[k] for k in ('missing', 'unexpected', 'changed')): raise SystemExit(1)
+        if not result['complete']: raise SystemExit(2)
+        if any(result[k+'_count'] for k in ('missing', 'unexpected', 'changed')): raise SystemExit(1)
 
 if __name__ == '__main__':
     main()

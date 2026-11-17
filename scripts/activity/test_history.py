@@ -71,4 +71,20 @@ class HistoryTests(unittest.TestCase):
                     self.assertEqual(calls,[100,100,100,5]);self.assertEqual(len(seen),205)
             finally:
                 server.shutdown();thread.join()
+    def test_reconciliation_checkpoints_bounded_rows_and_rejects_changed_inputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);expected=root/'expected.jsonl';actual=root/'actual.jsonl'
+            rows=[history.envelope(self.row(n),self.policy())[0] for n in range(1,5)]
+            content=''.join(json.dumps(row)+'\n' for row in rows)
+            expected.write_text(content);actual.write_text(content)
+            args=argparse.Namespace(expected=expected,actual=actual,checkpoint=root/'state.sqlite',max_rows=2)
+            for _ in range(3):self.assertFalse(history.reconcile_files(args)['complete'])
+            result=history.reconcile_files(args);self.assertTrue(result['complete']);self.assertEqual(result['expected'],4)
+            self.assertEqual(result['missing_count'],0);self.assertEqual(result['changed_count'],0)
+            actual.write_text(content+'\n')
+            with self.assertRaisesRegex(ValueError,'input changed'):history.reconcile_files(args)
+    def test_large_reconciliation_returns_bounded_examples_with_exact_counts(self):
+        rows=(history.envelope(self.row(n),self.policy())[0] for n in range(1,151))
+        result=history.reconcile(rows,[])
+        self.assertEqual(result['missing_count'],150);self.assertEqual(len(result['missing']),100)
 if __name__=='__main__':unittest.main()

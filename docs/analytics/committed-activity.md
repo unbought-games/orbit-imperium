@@ -115,10 +115,13 @@ expected JSONL and run:
 
 ```sh
 python3 scripts/activity/history.py reconcile --expected /private/expected.jsonl \
-  --actual /private/actual.jsonl
+  --actual /private/actual.jsonl --checkpoint /private/reconcile.sqlite --max-rows 10000
 ```
 
-The result must have no missing/unexpected/changed identities; duplicate identities
+Reconciliation uses disk indexes and checkpoints byte offsets across invocations;
+exit 2 means incomplete and requires the same command again. Changed input files
+require a fresh checkpoint. Only 100 example mismatches are printed per category,
+with exact total mismatch counts. The result must have no missing/unexpected/changed identities; duplicate identities
 are an error. Compare excluded/unknown policy gaps separately, then run baseline
 and completed-week report parity at the same cutoff and with the same population
 exclusions. Repeat around live/backfill overlap, drain pending/quarantined facts,

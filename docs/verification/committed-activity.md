@@ -13,7 +13,7 @@ Local checks on this implementation:
 - `cargo check -p orbit-server -j 2`: passed (61 seconds including dependency checks).
 - `CARGO_BUILD_JOBS=2 cargo clippy -p orbit-server -p orbit-storage-postgres --all-targets --features orbit-server/test-support -- -D warnings`: passed.
 - `TEST_DATABASE_URL=<disposable> CARGO_BUILD_JOBS=2 cargo nextest run -p orbit-storage-postgres --features test-support --test analytics --test-threads=1`: 3 passed, 2.506 seconds execution after 4.50 seconds build. Real admission/commit, pre-commit rollback, lost-ack retry, 206 facts without the optional daily cap, 100-day outage retention and preference/unknown gaps are covered.
-- `python3 -m unittest discover -s scripts/activity -p 'test_*.py'`: 4 passed. Stable envelopes, unknown/refused historical policy, bounded extraction/resume, exact-key reconciliation and HTTP lost-ack/resumed delivery with 205 facts.
+- `python3 -m unittest discover -s scripts/activity -p 'test_*.py'`: 6 passed. Stable envelopes, unknown/refused historical policy, bounded extraction/resume, bounded disk-backed resumable exact-key reconciliation and HTTP lost-ack/resumed delivery with 205 facts.
 - Formatting and diff whitespace checks passed. Required PR CI is tracked in the originating chat; full local/browser validation was not duplicated.
 
 Initial failures: a gap-path PL/pgSQL variable shadowed a conflict-key column; the
