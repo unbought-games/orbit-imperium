@@ -183,6 +183,13 @@ impl PgStore {
                 None
             }
         };
+        if receipt.is_some() {
+            sqlx::query("SELECT capture_committed_activity($1)")
+                .bind(i.id.0)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_error)?;
+        }
         let viewers = match &outcome {
             TransitionResult::Applied(change) => change.affected_viewers.clone(),
             _ => BTreeSet::new(),

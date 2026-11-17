@@ -36,6 +36,7 @@ _static:
 
 test-tooling:
 	node --test scripts/*.test.mjs scripts/fixtures/*.test.mjs
+	python3 -m unittest discover -s scripts/activity -p 'test_*.py'
 
 .PHONY: test-placement
 test-placement:

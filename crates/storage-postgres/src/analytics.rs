@@ -83,7 +83,7 @@ impl PgStore {
  gap AS (INSERT INTO analytics_coverage_gaps(events,oldest,newest,reason)
  SELECT count(*),min(created_at),max(created_at),'source_retention_without_ack' FROM doomed WHERE state<>'delivered' HAVING count(*)>0)
  DELETE FROM analytics_delivery d USING doomed WHERE d.event_id=doomed.event_id").execute(&self.pool).await.map_err(db_error)?;
-        sqlx::query_scalar("WITH picked AS (SELECT event_id FROM analytics_delivery WHERE state='pending' AND retry_at<=now() ORDER BY created_at,event_id FOR UPDATE SKIP LOCKED LIMIT 20) UPDATE analytics_delivery d SET retry_at=now()+interval '30 seconds',attempts=attempts+1 FROM picked WHERE d.event_id=picked.event_id RETURNING d.payload").fetch_all(&self.pool).await.map_err(db_error)
+        sqlx::query_scalar("WITH candidates AS MATERIALIZED (SELECT event_id,payload,created_at FROM analytics_delivery WHERE state='pending' AND retry_at<=now() ORDER BY created_at,event_id FOR UPDATE SKIP LOCKED LIMIT 100), sized AS (SELECT event_id,sum(octet_length(payload::text)+1) OVER (ORDER BY created_at,event_id) AS bytes FROM candidates), picked AS (SELECT event_id FROM sized WHERE bytes<=196608) UPDATE analytics_delivery d SET retry_at=now()+interval '30 seconds',attempts=attempts+1 FROM picked WHERE d.event_id=picked.event_id RETURNING d.payload").fetch_all(&self.pool).await.map_err(db_error)
     }
     pub async fn acknowledge_analytics(
         &self,
