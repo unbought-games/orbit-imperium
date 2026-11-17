@@ -89,3 +89,59 @@ One short fixture/application journey should cover:
 5. Verify production flag-off entry/fetch behavior in integrator-owned wiring.
 
 No separate PR, merge or deployment was made.
+
+## Isolated component follow-up
+
+Added `apps/web/tests/components/ship-customization.scenarios.tsx` and
+`ship-customization.component.spec.ts`. Integrator registry addition:
+
+```ts
+'ship-customization': async () =>
+  (await import('./ship-customization.scenarios')).ShipCustomizationScenario,
+```
+
+The scene imports the integrated real `ShipAppearancesController` and exported
+`ShipAppearancesContext` from the e1ab integration checkout's published seams.
+It starts/stops the controller normally. Only the API port is controlled:
+Load returns the prepared server observation; mutations wait for explicit
+`window.shipCustomizationScene.accept(snapshot)`. `observe(snapshot)` travels
+through controller.reload rather than directly modifying the Zustand store.
+The scene never emulates draft, UI or controller transitions. No registry/config
+or production changes were made in this follow-up.
+
+Actual runtime package assets must be integrated under
+`apps/web/public/art/ship-skins/orbit-light-fighter/concord-v1`. The preview is the
+real compositor. Specs intercept exactly the hash-addressed compass and
+forge-starwing media URLs and fulfill the actual freely bundled SVG bytes from
+`crates/application/assets/insignias/`. Unexpected API calls remain subject to the
+isolated fixture's blanket catcher. Each test stops the controller at teardown;
+pending requests remove abort listeners when acknowledged.
+
+Three narrowly scoped browser regressions:
+
+- Desktop keyboard trap/wrap, nested dirty-close cancel preserving canvas mount,
+  discard restoring the opener, and clean close under reduced motion.
+- Dye/treatment/placement and current-emblem changes repaint real canvas pixels;
+  each preceding render is observed before advancing. Emblem delivery uses a
+  listener installed before the update and checks complete successful delivery.
+  Name/selection/focus survive the observation. Held Save returns queued then
+  rendering; another save submits the advanced revision while rendering continues,
+  and explicit preparing/ready observations complete the flow.
+- 390×844 reduced-motion layout has no dialog horizontal overflow, reachable Save
+  and footer controls, and an onscreen discard dialog with restored opener focus.
+
+Screenshot points (only active with `ORBIT_TEST_SCREENSHOTS=1`):
+`hangar-discard-desktop-1280x900.png`,
+`hangar-live-emblem-desktop-1280x900.png`,
+`hangar-saved-desktop-1280x900.png`,
+`hangar-preview-mobile-390x844.png`, and
+`hangar-controls-mobile-390x844.png` in the test output directories. Screenshots
+are evidence points, not readiness waits; compositor assertions run independently.
+
+Follow-up checks: focused ESLint passed for both files; TypeScript
+`transpileModule` syntax validation passed for both (not a typecheck); Prettier
+check and whitespace validation passed. No browser/build/full tsc executed.
+Integrator must register the scene, run `npm run test:components --
+ship-customization.component.spec.ts`, inspect captures, and retain the separate
+real backend persistence/authorization acceptance. These controlled API results
+are not evidence of server persistence.
