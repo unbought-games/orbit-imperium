@@ -10,6 +10,7 @@ import {
   hasUnsavedDraft,
   initialDraft,
   sameDesign,
+  savePayload,
   type ShipDraft,
 } from './model'
 
@@ -28,13 +29,16 @@ export function useShipDraft({
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const running = useRef(false)
-  const saved = useRef<ShipDesign | null>(null)
+  const saved = useRef<{ design: ShipDesign; selectedRevision: number } | null>(
+    null,
+  )
   const draft = edits ?? (state ? initialDraft(state, target) : null)
   const equipment = state?.equipment.find((item) => item.target === target)
 
   useEffect(() => {
-    const submitted = saved.current
-    if (!submitted || !state) return
+    const pending = saved.current
+    if (!pending || !state) return
+    const submitted = pending.design
     const observed = state.library.find(
       (item) =>
         item.id === submitted.id &&
@@ -44,7 +48,14 @@ export function useShipDraft({
     if (!observed) return
     saved.current = null
     // Advance only our successful save's revision token, preserving subsequent edits.
-    setEdits((current) => acknowledgeSave(current, submitted, state.library))
+    setEdits((current) =>
+      acknowledgeSave(
+        current,
+        submitted,
+        state.library,
+        pending.selectedRevision,
+      ),
+    )
   }, [state])
 
   function edit(patch: Partial<ShipDraft>) {
@@ -88,21 +99,13 @@ export function useShipDraft({
   }
 
   async function save() {
-    if (!draft || running.current) return
-    const design = {
-      ...draft,
-      id: draft.id || commandId(crypto),
-      name: draft.name.trim(),
-    }
-    setEdits(design)
-    saved.current = design
+    if (!draft || !state || running.current) return
+    const action = savePayload(draft, state, draft.id || commandId(crypto))
+    // The selected revision describes this empire's recipe, not the account head.
+    setEdits({ ...action.design, revision: draft.revision })
+    saved.current = { design: action.design, selectedRevision: draft.revision }
     await run(
-      {
-        type: 'Save',
-        design,
-        equip: true,
-        expected_equipment_revision: equipment?.revision ?? 0,
-      },
+      action,
       'Design saved. Your fleet appearance will update when its artwork is ready.',
     )
     // An uncertain response may be confirmed by a later reload; retain its token.

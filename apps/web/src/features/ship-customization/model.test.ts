@@ -9,6 +9,7 @@ import {
   draftProblem,
   initialDraft,
   sameDesign,
+  savePayload,
 } from './model'
 
 const design: ShipDesign = {
@@ -195,5 +196,83 @@ describe('unsaved-close protection', () => {
     const snapshot = state()
     snapshot.library = [{ ...design, revision: 3 }]
     expect(hasUnsavedDraft(snapshot, design)).toBe(false)
+  })
+})
+
+describe('saving an empire-pinned recipe against the account design head', () => {
+  it('expects head 2 while preserving the edited revision-1 recipe, then acknowledges revision 3', () => {
+    const snapshot = state()
+    const pinned = { ...design, revision: 1 }
+    const otherEmpireHead = {
+      ...design,
+      revision: 2,
+      recipe: { ...design.recipe, primary: 'gold', accent: 'navy' },
+    }
+    snapshot.library = [otherEmpireHead, pinned]
+    snapshot.equipment[0].design_revision = 1
+    const selected = initialDraft(snapshot, 'LightFighter')!
+    expect(selected).toEqual(pinned)
+    const edited = {
+      ...selected,
+      name: 'This empire',
+      recipe: {
+        ...selected.recipe,
+        emblem: { ...selected.recipe.emblem, placement: 'near-wing' as const },
+      },
+    }
+    const payload = savePayload(edited, snapshot, 'unused-new-id')
+    expect(payload).toEqual({
+      type: 'Save',
+      equip: true,
+      expected_equipment_revision: 1,
+      design: { ...edited, revision: 2 },
+    })
+    expect(payload.design.recipe.primary).toBe('navy')
+    expect(payload.design.recipe.accent).toBe('gold')
+    expect(edited.revision).toBe(1)
+    const furtherEdits = { ...edited, name: 'Still editing' }
+    const observed = { ...payload.design, revision: 3 }
+    expect(
+      acknowledgeSave(
+        furtherEdits,
+        payload.design,
+        [observed, otherEmpireHead, pinned],
+        edited.revision,
+      ),
+    ).toEqual({ ...furtherEdits, revision: 3 })
+    // Acknowledgement does not move a subsequently selected version of that design.
+    expect(
+      acknowledgeSave(
+        otherEmpireHead,
+        payload.design,
+        [observed],
+        edited.revision,
+      ),
+    ).toBe(otherEmpireHead)
+  })
+
+  it('uses the maximum known matching head independently of library order', () => {
+    const snapshot = state()
+    snapshot.library = [
+      { ...design, revision: 1 },
+      { ...design, id: 'another-design', revision: 99 },
+      { ...design, revision: 4 },
+      { ...design, revision: 2 },
+    ]
+    expect(
+      savePayload({ ...design, revision: 1 }, snapshot, 'unused').design
+        .revision,
+    ).toBe(4)
+    expect(snapshot.library[0].revision).toBe(1)
+  })
+
+  it('keeps a new design at revision zero and retains the selected recipe', () => {
+    const draft = { ...design, id: '', revision: 0, name: ' New design ' }
+    expect(savePayload(draft, state(), 'new-design-id')).toEqual({
+      type: 'Save',
+      equip: true,
+      expected_equipment_revision: 1,
+      design: { ...draft, id: 'new-design-id', name: 'New design' },
+    })
   })
 })

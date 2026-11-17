@@ -1,4 +1,5 @@
 import type {
+  ShipAppearanceAction,
   ShipAppearanceState,
   ShipDesign,
   ShipPaintRecipe,
@@ -125,11 +126,40 @@ export const renderStatus: Record<
   },
 }
 
+/** Save the selected recipe against the latest observed account design head. */
+export function savePayload(
+  draft: ShipDraft,
+  state: ShipAppearanceState,
+  newDesignId: string,
+): Extract<ShipAppearanceAction, { type: 'Save' }> {
+  const revision = draft.id
+    ? state.library.reduce(
+        (head, item) =>
+          item.id === draft.id ? Math.max(head, item.revision) : head,
+        draft.revision,
+      )
+    : 0
+  return {
+    type: 'Save',
+    design: {
+      ...draft,
+      id: draft.id || newDesignId,
+      name: draft.name.trim(),
+      revision,
+    },
+    equip: true,
+    expected_equipment_revision:
+      state.equipment.find((item) => item.target === draft.target)?.revision ??
+      0,
+  }
+}
+
 /** Accept our submitted revision without importing recipe edits from later polls. */
 export function acknowledgeSave(
   current: ShipDraft | null,
   submitted: ShipDesign,
   library: ShipDesign[],
+  selectedRevision = submitted.revision,
 ): ShipDraft | null {
   const observed = library.find(
     (item) =>
@@ -139,7 +169,7 @@ export function acknowledgeSave(
   )
   return observed &&
     current?.id === observed.id &&
-    current.revision === submitted.revision
+    current.revision === selectedRevision
     ? { ...current, revision: observed.revision }
     : current
 }
