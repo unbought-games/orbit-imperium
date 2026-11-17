@@ -227,6 +227,17 @@ try {
     assert.equal(response.status(), 200)
     await response.finished()
   }
+  async function shipImageReady() {
+    const image = page
+      .getByRole('figure', { name: 'Light Fighter illustration' })
+      .locator('img')
+    await expect(image).toHaveAttribute('src', /api\/media\/ship-appearances/)
+    await expect
+      .poll(() =>
+        image.evaluate((node) => node.complete && node.naturalWidth > 0),
+      )
+      .toBe(true)
+  }
   await navigate(route)
   await page.getByRole('button', { name: 'Customize', exact: true }).click()
   const dialog = page.getByRole('dialog', {
@@ -276,6 +287,7 @@ try {
   })
   await dialog.getByRole('button', { name: 'Shipyard', exact: true }).click()
   await expect(dialog).toHaveCount(0)
+  await shipImageReady()
   await page.screenshot({
     path: join(output, 'shipyard-equipped-desktop-1440x1000.png'),
     fullPage: true,
@@ -318,6 +330,7 @@ try {
   ]) {
     await page.setViewportSize({ width, height })
     await navigate(route)
+    await shipImageReady()
     await page.screenshot({
       path: join(output, `shipyard-current-emblem-${width}x${height}.png`),
       fullPage: width === 1440,
