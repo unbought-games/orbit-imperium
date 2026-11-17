@@ -98,3 +98,19 @@ Return to INFO by changing the environment and recreating normally. Application
 rollback follows the existing release and schema compatibility rules. This change
 adds no migration and does not alter or remove the existing journal. Retain selected
 incident evidence and do not purge data as part of logging rollback.
+
+## Review follow-up
+
+Automated review correctly identified that the generic sanitized process exit
+hid startup/supervision causes. Added `serve_phase_failed` records at configuration,
+database, DNS, asset preparation, migration, compatibility, bind, timeout and task
+boundaries. They preserve fixed stage/cause codes and typed I/O kinds while returning
+the original error for control flow; raw error text remains excluded. Scheduler
+store failures retain the safe StoreError category. The generic exit is now a
+summary accompanied by these actionable records.
+
+Fourteen focused logger/serving tests passed (13.77 s preparation, 0.090 s execution),
+including safe cause/redaction checks and existing shutdown/guard behavior. Scoped
+server Clippy with warnings denied passed (5.43 s). The prior nine logger tests
+also cover the correction that receipt-less scheduled completion must not claim
+an applied action; committed command receipts now carry their command ID in logs.

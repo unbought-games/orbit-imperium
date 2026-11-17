@@ -1,5 +1,10 @@
 //! Shared preparation, role-aware serving, and bounded process draining.
-use crate::{config::ServeConfig, engine_executor::BoundedEngine, runtime};
+use crate::{
+    config::ServeConfig,
+    engine_executor::BoundedEngine,
+    logging::{failure, io_failure, task_failure},
+    runtime,
+};
 use orbit_application::StoreError;
 use orbit_storage_postgres::PgStore;
 use orbit_transport_http::{Customization, HttpConfig, router_with_customization};
@@ -20,21 +25,28 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
         .oidc
         .clone()
         .map(unbought_auth::RelyingParty::new)
-        .transpose()?;
+        .transpose()
+        .map_err(|e| failure("oidc_configuration", "OidcConfigurationFailed", e))?;
     let announcements = match &serve.asset_store {
         Some(config) => Some(orbit_transport_http::announcement_router(Arc::new(
-            orbit_storage_assets::announcements::AnnouncementStorage::connect(config).await?,
+            orbit_storage_assets::announcements::AnnouncementStorage::connect(config)
+                .await
+                .map_err(|e| failure("announcement_storage", "AssetConnectionFailed", e))?,
         ))),
         None => None,
     };
     let customization = if let Some(config) = &serve.asset_store {
-        let assets = config.connect().await?;
+        let assets = config
+            .connect()
+            .await
+            .map_err(|e| failure("cosmetic_storage", "AssetConnectionFailed", e))?;
         let mut customization = Customization::load(
             serve.cosmetic_policy,
             assets,
             serve.cosmetic_catalog.as_deref(),
         )
-        .await?;
+        .await
+        .map_err(|e| failure("cosmetic_catalog", "CatalogLoadFailed", e))?;
         customization.media_limits = serve.media_limits;
         Some(customization)
     } else {
@@ -49,17 +61,27 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
             Duration::from_secs(3),
             tokio::net::lookup_host(serve.bind.as_str()),
         )
-        .await??
+        .await
+        .map_err(|e| failure("bind_dns", "DnsTimeout", e))?
+        .map_err(|e| io_failure("bind_dns", e))?
         .collect();
         if addresses.is_empty() {
-            return Err("ORBIT_BIND did not resolve to any listening addresses".into());
+            return Err(failure(
+                "bind_dns",
+                "NoListeningAddresses",
+                "ORBIT_BIND did not resolve to any listening addresses",
+            )
+            .into());
         }
         addresses
     } else {
         vec![]
     };
     let phase = Instant::now();
-    store.migrate().await?;
+    store
+        .migrate()
+        .await
+        .map_err(|e| failure("schema", "MigrationFailed", e))?;
     orbit_application::orbit_log!(
         INFO,
         event = "startup_phase",
@@ -67,29 +89,31 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
         duration_ms = phase.elapsed().as_millis() as u64
     );
     let (mut guard,listener,metrics_listener,prepared)=tokio::time::timeout(Duration::from_secs(5),async {
-        let guard=store.acquire_server_guard().await?;
+        let guard=store.acquire_server_guard().await.map_err(|e| failure("operator_guard", "GuardAcquisitionFailed", e))?;
         let phase=Instant::now();
         let prepared=crate::universe_serving::prepare(store, &serve).await
-            .map_err(|e|format!("Startup refused: {e}"))?;
+            .map_err(|e|failure("universe_preparation", "UniversePreparationFailed", format!("Startup refused: {e}")))?;
         orbit_application::orbit_log!(INFO, event = "startup_phase", stage = "configuration", duration_ms = phase.elapsed().as_millis() as u64);
         let phase=Instant::now();prepared.store.check_serving_compatibility(serve.speed).await
-            .map_err(|e|format!("Startup refused: incompatible schema/profile or conflicting ORBIT_SPEED; {e}"))?;
+            .map_err(|e|failure("compatibility", "IncompatibleSchemaProfileOrSpeed", format!("Startup refused: incompatible schema/profile or conflicting ORBIT_SPEED; {e}")))?;
         orbit_application::orbit_log!(INFO, event = "startup_phase", stage = "compatibility", duration_ms = phase.elapsed().as_millis() as u64);
-        let listener=if serve.role.serves_api() {Some(tokio::net::TcpListener::bind(bind.as_slice()).await?)}else{None};
-        let metrics_listener=if let Some(bind)=serve.metrics_bind {Some(tokio::net::TcpListener::bind(bind).await?)}else{None};
+        let listener=if serve.role.serves_api() {Some(tokio::net::TcpListener::bind(bind.as_slice()).await.map_err(|e| io_failure("api_bind", e))?)}else{None};
+        let metrics_listener=if let Some(bind)=serve.metrics_bind {Some(tokio::net::TcpListener::bind(bind).await.map_err(|e| io_failure("metrics_bind", e))?)}else{None};
         Ok::<_,Box<dyn Error>>((guard,listener,metrics_listener,prepared))
-    }).await.map_err(|_|"Startup refused: preparation exceeded 5 seconds; no readiness granted")??;
+    }).await.map_err(|_|failure("startup_preparation", "PreparationTimeout", "Startup refused: preparation exceeded 5 seconds; no readiness granted"))??;
     let store = prepared.store;
     let (drain_tx, drain_rx) = watch::channel(false);
     let analytics =
-        crate::analytics::Integration::from_env(store.clone(), oidc.clone(), serve.origin.clone())?;
+        crate::analytics::Integration::from_env(store.clone(), oidc.clone(), serve.origin.clone())
+            .map_err(|e| failure("analytics_configuration", "AnalyticsConfigurationFailed", e))?;
     let rewards = crate::community_rewards::Integration::from_env(
         store.clone(),
         oidc.clone(),
         serve.origin.clone(),
         customization.as_ref(),
         serve.assets.clone(),
-    )?;
+    )
+    .map_err(|e| failure("rewards_configuration", "RewardsConfigurationFailed", e))?;
     if let Some(rewards) = &rewards {
         serve.profiles = serve
             .profiles
@@ -121,7 +145,9 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
     let scheduler = if serve.role.runs_worker() {
         Some(Scheduler(tokio::spawn(runtime::run(
             store.clone(),
-            BoundedEngine::new(serve.cpu_parallelism)?.with_observer(observer.clone()),
+            BoundedEngine::new(serve.cpu_parallelism)
+                .map_err(|e| failure("engine_configuration", "InvalidCpuParallelism", e))?
+                .with_observer(observer.clone()),
             wake.clone(),
             drain_rx.clone(),
             serve.max_in_flight,
@@ -205,7 +231,11 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
     } else {
         None
     };
-    orbit_application::orbit_log!(INFO, event = "serve_ready", role = ?serve.role, duration_ms = started.elapsed().as_millis() as u64);
+    orbit_application::orbit_log!(
+        INFO,
+        event = "serve_ready",
+        duration_ms = started.elapsed().as_millis() as u64
+    );
     supervise(
         server,
         scheduler,
@@ -262,9 +292,9 @@ async fn supervise(
     tokio::pin!(guard);
     let stopped: ServeResult = tokio::select! {
         _=shutdown=>Ok(()),
-        result=http_result(&mut server)=>{server=None; result.map_err(Into::into).and_then(|r| r.map_err(Into::into))},
-        result=worker_result(&mut scheduler)=>Err(format!("scheduler stopped: {result:?}").into()),
-        result=&mut guard=>Err(format!("operator guard stopped: {result:?}").into()),
+        result=http_result(&mut server)=>{server=None; result.map_err(|e| failure("http_task", "HttpTaskFailed", e).into()).and_then(|r| r.map_err(|e| io_failure("http_server", e).into()))},
+        result=worker_result(&mut scheduler)=>{task_failure("scheduler", &result); Err(format!("scheduler stopped: {result:?}").into())},
+        result=&mut guard=>{failure("operator_guard", "GuardMonitorStopped", ()); Err(format!("operator guard stopped: {result:?}").into())},
     };
     // Publish unready before cancelling tasks, including on guard loss. Never
     // gracefully continue uncertain writers after a retained fence fails.
@@ -273,10 +303,17 @@ async fn supervise(
     stopped?;
     let finish = async {
         if server.is_some() {
-            http_result(&mut server).await??;
+            http_result(&mut server)
+                .await
+                .map_err(|e| failure("http_drain", "HttpTaskFailed", e))?
+                .map_err(|e| io_failure("http_drain", e))?;
         }
         if scheduler.is_some() {
-            worker_result(&mut scheduler).await??;
+            let result = worker_result(&mut scheduler).await;
+            if !matches!(result, Ok(Ok(()))) {
+                task_failure("scheduler_drain", &result);
+            }
+            result??;
         }
         Ok::<_, Box<dyn Error>>(())
     };
@@ -285,7 +322,7 @@ async fn supervise(
             Ok(result)=>result,
             Err(_)=>{orbit_application::orbit_log!(WARN, event = "shutdown_grace_expired", outcome = "leases_recoverable");Ok(())}
         },
-        result=&mut guard=>{result.map_err(|e| format!("operator guard check failed: {e}"))?;Err("operator guard monitor stopped unexpectedly".into())}
+        result=&mut guard=>{failure("operator_guard_drain", "GuardMonitorStopped", ()); result.map_err(|e| format!("operator guard check failed: {e}"))?;Err("operator guard monitor stopped unexpectedly".into())}
     }
 }
 

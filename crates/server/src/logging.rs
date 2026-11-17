@@ -48,6 +48,47 @@ pub fn dropped_lines() -> usize {
     DROPPED.get().map_or(0, ErrorCounter::dropped_lines)
 }
 
+/// Preserve the original error for control flow, but log only caller-owned
+/// vocabulary. Never format arbitrary error/source text to describe a phase.
+pub fn failure<E>(stage: &'static str, code: &'static str, error: E) -> E {
+    orbit_application::orbit_log!(
+        ERROR,
+        event = "serve_phase_failed",
+        stage,
+        error_code = code
+    );
+    error
+}
+
+pub fn io_failure(stage: &'static str, error: std::io::Error) -> std::io::Error {
+    orbit_application::orbit_log!(ERROR, event = "serve_phase_failed", stage,
+        error_code = "IoFailure", io_kind = ?error.kind());
+    error
+}
+
+pub fn task_failure(
+    stage: &'static str,
+    result: &Result<Result<(), orbit_application::StoreError>, tokio::task::JoinError>,
+) {
+    let code = match result {
+        Err(error) if error.is_panic() => "TaskPanicked",
+        Err(_) => "TaskCancelled",
+        Ok(Err(_)) => "StoreFailure",
+        Ok(Ok(())) => "UnexpectedExit",
+    };
+    let store_error = match result {
+        Ok(Err(error)) => Some(error.to_string()),
+        _ => None,
+    };
+    orbit_application::orbit_log!(
+        ERROR,
+        event = "serve_phase_failed",
+        stage,
+        error_code = code,
+        store_error
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -277,6 +318,42 @@ mod tests {
         assert_eq!(records[0]["outcome"], "completed");
         assert_eq!(records[0]["commit_outcome"], "acknowledged");
         assert!(records[0].get("command_id").is_none());
+    }
+
+    #[test]
+    fn serving_failure_context_keeps_causes_and_excludes_raw_error_values() {
+        let records = capture(LevelFilter::ERROR, || {
+            let original = io::Error::new(io::ErrorKind::AddrInUse, "password=private-cookie");
+            assert_eq!(
+                io_failure("api_bind", original).kind(),
+                io::ErrorKind::AddrInUse
+            );
+            assert_eq!(
+                failure("bind_dns", "DnsTimeout", "private-dns-value"),
+                "private-dns-value"
+            );
+            failure("database_configuration", "MissingDatabaseUrl", ());
+            failure("startup_preparation", "PreparationTimeout", ());
+            task_failure(
+                "scheduler",
+                &Ok(Err(orbit_application::StoreError::UnsupportedState)),
+            );
+        });
+        assert_eq!(records.len(), 5);
+        assert_eq!(records[0]["stage"], "api_bind");
+        assert_eq!(records[0]["io_kind"], "AddrInUse");
+        assert_eq!(records[1]["error_code"], "DnsTimeout");
+        assert_eq!(records[2]["error_code"], "MissingDatabaseUrl");
+        assert_eq!(records[3]["error_code"], "PreparationTimeout");
+        assert_eq!(records[4]["stage"], "scheduler");
+        assert_eq!(records[4]["error_code"], "StoreFailure");
+        assert!(
+            records[4]["store_error"]
+                .as_str()
+                .unwrap()
+                .contains("unsupported")
+        );
+        assert!(!serde_json::to_string(&records).unwrap().contains("private"));
     }
 
     #[test]

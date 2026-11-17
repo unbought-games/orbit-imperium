@@ -16,7 +16,9 @@ set it from the image identity. The local CLI's command output remains on stdout
 
 - Error identifies unexpected failures and blocked execution. Warn identifies
   recoverable operational problems. Driver messages, SQL values and arbitrary
-  error text are excluded.
+  error text are excluded. `serve_phase_failed` identifies startup/supervision
+  stages with fixed cause codes and typed I/O kinds (for example `api_bind` /
+  `AddrInUse`, `bind_dns` / `DnsTimeout`, or `MissingDatabaseUrl`).
 - Info records startup/draining, acknowledged admissions, transition outcomes
   and publication summaries. Gameplay rejections recorded at commit are ordinary
   `rejected` outcomes. Reads/polls and foreground presence are debug-only.

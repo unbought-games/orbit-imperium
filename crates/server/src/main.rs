@@ -34,7 +34,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let _logging = logging::init()?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .build()?;
+        .build()
+        .map_err(|e| logging::io_failure("async_runtime", e))?;
     let serving = command(&env::args().collect::<Vec<_>>()).is_ok_and(|name| name == "serve");
     let result = runtime.block_on(run_main());
     // Blocking engine jobs cannot be aborted. Durable fencing makes their late
@@ -137,9 +138,17 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
             )
         })?;
     let connection_started = std::time::Instant::now();
-    let url = env::var("DATABASE_URL")?;
+    let url = env::var("DATABASE_URL").map_err(|error| {
+        let code = match &error {
+            env::VarError::NotPresent => "MissingDatabaseUrl",
+            env::VarError::NotUnicode(_) => "InvalidDatabaseUrlEncoding",
+        };
+        logging::failure("database_configuration", code, error)
+    })?;
     let store = match serve_config.as_ref() {
-        Some(config) => PgStore::connect_with_limits(&url, config.pools).await?,
+        Some(config) => PgStore::connect_with_limits(&url, config.pools)
+            .await
+            .map_err(|e| logging::failure("database_connection", "DatabaseConnectionFailed", e))?,
         None => PgStore::connect(&url).await?,
     };
     orbit_application::orbit_log!(
