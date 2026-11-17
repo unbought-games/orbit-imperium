@@ -7,6 +7,7 @@ mod config;
 mod engine_executor;
 #[cfg(feature = "test-support")]
 mod lab_support;
+mod logging;
 mod metrics;
 mod public_universe;
 mod request_metrics;
@@ -30,6 +31,7 @@ use std::{env, error::Error};
 #[cfg(feature = "test-support")]
 use uuid::Uuid;
 fn main() -> Result<(), Box<dyn Error>> {
+    let _logging = logging::init()?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
@@ -43,13 +45,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Container restart backoff may reset after a brief healthy interval;
         // this floor also bounds repeated fail/serve/fail cycles.
         let delay = restart::delay(uuid::Uuid::new_v4().as_u128());
-        eprintln!(
-            "{}",
-            serde_json::json!({"level":"warn", "event":"serve_restart_backoff", "duration_ms":delay.as_millis()})
+        orbit_application::orbit_log!(
+            ERROR,
+            event = "serve_failed",
+            stage = "supervise",
+            error_code = "ServeFailed",
+            commit_outcome = "unknown"
+        );
+        orbit_application::orbit_log!(
+            WARN,
+            event = "serve_restart_backoff",
+            duration_ms = delay.as_millis() as u64
         );
         std::thread::sleep(delay);
     }
-    result
+    if serving {
+        result.map_err(|_| "serve failed; see structured diagnostics".into())
+    } else {
+        result
+    }
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -120,9 +134,11 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         Some(config) => PgStore::connect_with_limits(&url, config.pools).await?,
         None => PgStore::connect(&url).await?,
     };
-    eprintln!(
-        "startup connection_ms={}",
-        connection_started.elapsed().as_millis()
+    orbit_application::orbit_log!(
+        INFO,
+        event = "startup_phase",
+        stage = "connection",
+        duration_ms = connection_started.elapsed().as_millis() as u64
     );
     match selected {
         "bots" => bots_cli::run(&store, bots_cli::parse(&args)?).await?,

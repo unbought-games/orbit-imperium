@@ -38,6 +38,7 @@ pub(super) async fn commands<S: GameStore + IdentityStore>(
     ApiJson(q): ApiJson<CommandEnvelopeV4>,
 ) -> Result<Response, Problem> {
     super::request_observation::action(RequestAction::of_v3(&q.command));
+    super::request_observation::correlate(UniverseId(id), q.command_id);
     let session = authenticate(&s, &h, true).await?;
     let u = UniverseId(id);
     let p = principal(&session, u)?;

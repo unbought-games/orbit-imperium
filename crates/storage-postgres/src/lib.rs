@@ -105,17 +105,14 @@ fn db_error(error: sqlx::Error) -> StoreError {
     {
         return StoreError::Conflict;
     }
-    if let sqlx::Error::Database(ref db) = error {
-        eprintln!("database constraint: {}", db.constraint().unwrap_or("none"));
-    }
-    // SQL diagnostics belong in operator logging; never propagate SQL/values to clients.
-    eprintln!(
-        "database operation failed: {} ({})",
-        error
-            .as_database_error()
-            .map(|e| e.code().map(|c| c.into_owned()).unwrap_or_default())
-            .unwrap_or_else(|| "connection".into()),
-        connection_diagnostic(&error)
+    // Never include driver text, constraint names or SQL values.
+    orbit_application::orbit_log!(
+        WARN,
+        event = "database_operation_failed",
+        stage = "storage",
+        error_code = "StorageUnavailable",
+        diagnostic = connection_diagnostic(&error),
+        commit_outcome = "unknown"
     );
     StoreError::Unavailable
 }

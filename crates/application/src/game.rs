@@ -128,7 +128,9 @@ impl<S: GameStore> GameService<S> {
                     .await?;
             // Serial resolution leaves lease cleanup to its caller. Preserve its error contract:
             // a stale commit outcome retries; a stale store error propagates.
-            match self.store.commit_claim(&claim, outcome).await {
+            let committed = self.store.commit_claim(&claim, outcome).await;
+            crate::diagnostics::commit_result(&claim.input, &committed);
+            match committed {
                 Ok(CommitOutcome::Committed { input_id, .. }) => {
                     Ok(StepOutcome::Committed { input_id })
                 }
@@ -171,7 +173,9 @@ impl<S: ScopedGameStore> GameService<S> {
                 executor,
             )
             .await?;
-            match self.store.commit_scoped(&claim, outcome).await {
+            let committed = self.store.commit_scoped(&claim, outcome).await;
+            crate::diagnostics::commit_result(&claim.input, &committed);
+            match committed {
                 Ok(CommitOutcome::Committed { input_id, .. }) => {
                     Ok(StepOutcome::Committed { input_id })
                 }

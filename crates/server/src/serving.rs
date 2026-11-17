@@ -60,16 +60,21 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
     };
     let phase = Instant::now();
     store.migrate().await?;
-    eprintln!("startup schema_ms={}", phase.elapsed().as_millis());
+    orbit_application::orbit_log!(
+        INFO,
+        event = "startup_phase",
+        stage = "schema",
+        duration_ms = phase.elapsed().as_millis() as u64
+    );
     let (mut guard,listener,metrics_listener,prepared)=tokio::time::timeout(Duration::from_secs(5),async {
         let guard=store.acquire_server_guard().await?;
         let phase=Instant::now();
         let prepared=crate::universe_serving::prepare(store, &serve).await
             .map_err(|e|format!("Startup refused: {e}"))?;
-        eprintln!("startup configuration_ms={}",phase.elapsed().as_millis());
+        orbit_application::orbit_log!(INFO, event = "startup_phase", stage = "configuration", duration_ms = phase.elapsed().as_millis() as u64);
         let phase=Instant::now();prepared.store.check_serving_compatibility(serve.speed).await
             .map_err(|e|format!("Startup refused: incompatible schema/profile or conflicting ORBIT_SPEED; {e}"))?;
-        eprintln!("startup compatibility_ms={}",phase.elapsed().as_millis());
+        orbit_application::orbit_log!(INFO, event = "startup_phase", stage = "compatibility", duration_ms = phase.elapsed().as_millis() as u64);
         let listener=if serve.role.serves_api() {Some(tokio::net::TcpListener::bind(bind.as_slice()).await?)}else{None};
         let metrics_listener=if let Some(bind)=serve.metrics_bind {Some(tokio::net::TcpListener::bind(bind).await?)}else{None};
         Ok::<_,Box<dyn Error>>((guard,listener,metrics_listener,prepared))
@@ -200,11 +205,7 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
     } else {
         None
     };
-    eprintln!(
-        "startup role={:?} serving_ms={}",
-        serve.role,
-        started.elapsed().as_millis()
-    );
+    orbit_application::orbit_log!(INFO, event = "serve_ready", role = ?serve.role, duration_ms = started.elapsed().as_millis() as u64);
     supervise(
         server,
         scheduler,
@@ -267,6 +268,7 @@ async fn supervise(
     };
     // Publish unready before cancelling tasks, including on guard loss. Never
     // gracefully continue uncertain writers after a retained fence fails.
+    orbit_application::orbit_log!(INFO, event = "serve_draining", stage = "shutdown");
     drain.send_replace(true);
     stopped?;
     let finish = async {
@@ -281,7 +283,7 @@ async fn supervise(
     tokio::select! {
         result=tokio::time::timeout(grace,finish)=>match result {
             Ok(result)=>result,
-            Err(_)=>{eprintln!("shutdown grace expired; remaining tasks aborted and accepted work retained");Ok(())}
+            Err(_)=>{orbit_application::orbit_log!(WARN, event = "shutdown_grace_expired", outcome = "leases_recoverable");Ok(())}
         },
         result=&mut guard=>{result.map_err(|e| format!("operator guard check failed: {e}"))?;Err("operator guard monitor stopped unexpectedly".into())}
     }

@@ -341,6 +341,12 @@ impl PgStore {
                 .map_err(db_error)?;
         }
         tx.commit().await.map_err(db_error)?;
+        orbit_application::diagnostics::admitted(
+            u,
+            envelope.command_id,
+            id,
+            orbit_application::diagnostics::action(&input.payload),
+        );
         Ok(receipt)
     }
     pub(crate) async fn read_receipt(

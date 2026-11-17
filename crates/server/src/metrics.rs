@@ -96,7 +96,10 @@ impl RuntimeMetrics {
         }
     }
     pub fn render(&self) -> String {
-        let mut text = String::from("# TYPE orbit_runtime_seconds histogram\n");
+        let mut text = format!(
+            "# TYPE orbit_log_dropped_lines_total counter\norbit_log_dropped_lines_total {}\n# TYPE orbit_runtime_seconds histogram\n",
+            crate::logging::dropped_lines()
+        );
         for stage in RuntimeStage::ALL {
             let histogram = &self.durations[stage as usize];
             for ((_, bound), counter) in BUCKETS.iter().zip(&histogram.buckets) {

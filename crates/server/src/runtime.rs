@@ -21,6 +21,12 @@ enum Attempt {
     Scoped(ScopedClaim),
 }
 impl Attempt {
+    fn input(&self) -> &orbit_engine::OrderedInput {
+        match self {
+            Self::Serial(c) => &c.input,
+            Self::Scoped(c) => &c.input,
+        }
+    }
     fn id(&self) -> InputId {
         match self {
             Self::Serial(c) => c.input.id,
@@ -141,7 +147,9 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
             for attempt in active.values() {
                 match attempt.release(&store).await {
                     Ok(()) | Err(StoreError::StaleClaim) => {}
-                    Err(error) => eprintln!("drain release {}: {error}", attempt.id()),
+                    Err(error) => {
+                        orbit_application::orbit_log!(WARN, event = "drain_release_failed", input_id = %attempt.id(), error_code = %error)
+                    }
                 }
             }
         };
@@ -149,7 +157,11 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
             .await
             .is_err()
         {
-            eprintln!("drain release timed out; durable leases remain recoverable after expiry");
+            orbit_application::orbit_log!(
+                WARN,
+                event = "drain_release_timeout",
+                outcome = "leases_recoverable"
+            );
         }
     }
     result
@@ -172,7 +184,12 @@ where
     match result {
         Ok(next) => *universes = next,
         Err(StoreError::Unavailable) => {
-            eprintln!("scheduler universe refresh: storage unavailable; retaining previous worlds")
+            orbit_application::orbit_log!(
+                WARN,
+                event = "universe_refresh_failed",
+                error_code = "StorageUnavailable",
+                outcome = "retained_previous_worlds"
+            )
         }
         Err(error) => return Err(error),
     }
@@ -194,7 +211,7 @@ fn claim_failure(error: StoreError) -> Result<(), StoreError> {
     if matches!(error, StoreError::UnsupportedState) {
         return Err(error);
     }
-    eprintln!("scheduler claim: {error}");
+    orbit_application::orbit_log!(WARN, event = "scheduler_claim_failed", error_code = %error);
     Ok(())
 }
 async fn complete(
@@ -212,8 +229,8 @@ async fn complete(
             ) {
                 store.observe_event(orbit_application::RuntimeEvent::StorageRetry);
             }
-            if let Err(error) = &outcome {
-                eprintln!("scheduler input={id}: {error}");
+            if let Some(claim) = &claim {
+                orbit_application::diagnostics::resolution(claim.input(), &outcome);
             }
             let progressed = resolution_progress(outcome);
             if let Some(claim) = claim {
@@ -228,8 +245,8 @@ async fn complete(
                 Err(RulesUpdateError::Store(StoreError::UnsupportedState)) => {
                     Err(StoreError::UnsupportedState)
                 }
-                Err(error) => {
-                    eprintln!("rules activation {u}: {error}");
+                Err(_error) => {
+                    orbit_application::orbit_log!(ERROR, event = "rules_activation_failed", universe = %u, error_code = "RulesActivationFailed");
                     Ok(false)
                 }
             }
@@ -248,7 +265,7 @@ fn start_retention(store: PgStore, mut drain: watch::Receiver<bool>) -> RenewalG
                     Ok(1000) => {}
                     Ok(_) => break,
                     Err(error) => {
-                        eprintln!("update retention: {error}");
+                        orbit_application::orbit_log!(WARN, event = "update_retention_failed", error_code = %error);
                         store.observe_event(orbit_application::RuntimeEvent::StorageRetry);
                         break;
                     }

@@ -106,9 +106,7 @@ pub async fn prepare(
                     .map_err(|e| e.to_string())?;
             }
         } else if !config.legacy_env.is_empty() {
-            eprintln!(
-                "Deprecated universe environment variables ignored: database policies are authoritative; remove these variables before deploying the final release."
-            );
+            orbit_application::orbit_log!(WARN, event = "deprecated_universe_environment_ignored");
         }
         if config.role.serves_api() {
             let id = binding(&ids, config.signup.universe)?;

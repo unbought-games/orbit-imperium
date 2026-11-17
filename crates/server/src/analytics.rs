@@ -17,9 +17,12 @@ use tokio::sync::{Semaphore, watch};
 // Fixed vocabulary only: never log tokens, request bodies, subjects or upstream
 // error text. A quota rejection is not an availability failure.
 fn failure(stage: &'static str, outcome: &'static str, status: StatusCode) -> StatusCode {
-    eprintln!(
-        "{}",
-        json!({"event":"analytics_bridge_failure","stage":stage,"outcome":outcome,"status":status.as_u16()})
+    orbit_application::orbit_log!(
+        WARN,
+        event = "analytics_bridge_failure",
+        stage,
+        outcome,
+        status = status.as_u16()
     );
     status
 }
@@ -179,9 +182,13 @@ impl Integration {
                 )
             })?;
         if !response.status().is_success() {
-            eprintln!(
-                "{}",
-                json!({"event":"analytics_bridge_failure","stage":"upstream","outcome":"http_rejected","upstream_status":response.status().as_u16(),"status":503})
+            orbit_application::orbit_log!(
+                WARN,
+                event = "analytics_bridge_failure",
+                stage = "upstream",
+                outcome = "http_rejected",
+                upstream_status = response.status().as_u16(),
+                status = 503
             );
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         }

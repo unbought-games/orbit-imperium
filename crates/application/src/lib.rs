@@ -1,4 +1,5 @@
 mod cosmetic_catalog;
+pub mod diagnostics;
 mod request_observation;
 pub use cosmetic_catalog::*;
 pub use request_observation::*;
