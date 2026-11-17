@@ -2397,3 +2397,11 @@ unknown-intent blocking, other-body independence and rejected-edit recovery.
 This retires invalid browser coverage rather than renaming/recreating it or
 weakening a valid user guarantee. No production source, waits or timeouts change.
 The earlier rename focus defect remains a separate product repair.
+
+The sibling production variant also claimed a committed command was visible at
+viewer revision 1, the same revision as the old snapshot. Its fixture now advances
+viewer revisions with settings commits and reports that actual minimum revision,
+so a receipt cannot reconcile against the pre-commit snapshot. The fixture's
+optional revision callback is used only by this scenario; other callers retain
+their existing behavior. This is part of the same fixture audit/repair, not a
+changed runtime ordering guarantee. The focused retained browser case passes.

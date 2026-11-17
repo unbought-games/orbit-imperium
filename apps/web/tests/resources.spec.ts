@@ -47,6 +47,7 @@ async function setup(
   blocked = false,
   commandReferences = false,
   planet = structuredClone(body),
+  viewerRevision?: () => string,
 ) {
   const economy = { ...production(), body: planet.id }
   if (blocked) planet.amounts.metal = '0'
@@ -55,6 +56,7 @@ async function setup(
     production: [economy],
     bodies: planet.id === body.id ? [planet] : [structuredClone(body), planet],
     commandReferences,
+    viewerRevision,
   })
   await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
@@ -388,7 +390,8 @@ test('production rejection retains edits and retry preserves unrelated server ch
 test('production edits wait for an in-memory production command', async ({
   page,
 }) => {
-  const { economy } = await setup(page)
+  let viewerRevision = '1'
+  const { economy } = await setup(page, false, false, structuredClone(body), () => viewerRevision)
   const sent: components['schemas']['CommandEnvelopeV3'][] = []
   const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
   await page.route('**/commands', async (route) => {
@@ -408,12 +411,13 @@ test('production edits wait for an in-memory production command', async ({
     } else {
       economy.settings = envelope.command.settings
       economy.settings_revision = '3'
+      viewerRevision = '3'
       await route.fulfill({
         json: {
           ...pending,
           status: 'Committed',
           executed_at: Date.now(),
-          minimum_viewer_revision: '1',
+          minimum_viewer_revision: viewerRevision,
           result_ids: [],
         },
       })
@@ -449,6 +453,7 @@ test('production edits wait for an in-memory production command', async ({
     crystal_mine: 80,
   }
   economy.settings_revision = '2'
+  viewerRevision = '2'
   // The committed production receipt releases the queued edit after refresh.
   const original = receipts.get(sent[0].command_id)!
   receipts.set(
@@ -457,7 +462,7 @@ test('production edits wait for an in-memory production command', async ({
       ...original,
       status: 'Committed',
       executed_at: Date.now(),
-      minimum_viewer_revision: '1',
+      minimum_viewer_revision: viewerRevision,
       result_ids: [],
     },
   )
