@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "id": "concord-v1",
+  "name": "Concord",
+  "width": 1536,
+  "height": 1024,
+  "master": "master.png",
+  "regions": "panels.svg",
+  "groups": ["Primary", "Accent"],
+  "accentGroup": 1,
+  "referenceAlbedo": 0.55,
+  "decalSurfaces": [
+    [
+      [320, 375],
+      [521, 346],
+      [445, 460],
+      [288, 457]
+    ],
+    [
+      [1058, 432],
+      [1221, 426],
+      [1315, 506],
+      [1115, 556]
+    ]
+  ],
+  "protectedPoints": [
+    [665, 260],
+    [1256, 341],
+    [558, 552],
+    [959, 314],
+    [788, 308]
+  ],
+  "propulsion": {
+    "drive": "CombustionDrive",
+    "glow": "red",
+    "source": "rules/mvp-v1-slice-11.json:777",
+    "colorConvention": "User art direction: combustion red, impulse blue, hyperspace faint green"
+  },
+  "orientation": "Elevated front three-quarter; nose near lower-left, tail far upper-right",
+  "provenance": {
+    "date": "2026-11-14",
+    "tool": "OpenAI built-in image_gen",
+    "reference": "Original concept, no image reference",
+    "license": "CC-BY-SA-4.0",
+    "attribution": "Orbit Imperium contributors / Unbought Games, LLC",
+    "access": "free",
+    "status": "Prototype; not equipped game content"
+  },
+  "masterSha256": "8136a7e3addc30ab4912fbddfe692e87dbfbdf96cf6c83054351ad528756a9ed",
+  "protectedEngineRects": [
+    [650, 251, 38, 20],
+    [1230, 334, 45, 21]
+  ]
+}

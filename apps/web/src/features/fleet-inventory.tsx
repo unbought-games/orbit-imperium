@@ -1,4 +1,9 @@
 import { Fragment } from 'react'
+import { shipCustomizationEnabled } from '../client-model/ship-customization-enabled'
+import { useShipAppearances } from '../shell/ship-appearances-context'
+import type { ShipAppearanceState } from '../client-model/ship-appearance-types'
+import { shipAppearancesForOwner } from './shipyard/ship-appearance-art'
+import { ShipAppearanceImage } from './shipyard/ship-appearance-image'
 import { CircleHelp } from 'lucide-react'
 import { InfoTooltip } from '../ui/info-tooltip'
 import { shipGroup } from './ship-order'
@@ -31,6 +36,15 @@ export function FleetInventory({
   // Inventory and queues must come from the same confirmed snapshot, not launch overlays.
   const view = useStore(model.store, (state) => state.view)
   if (!view || view.protocol === 2) return null
+  if (shipCustomizationEnabled)
+    return (
+      <FleetInventoryWithAppearances
+        view={view}
+        origin={origin}
+        universe={universe}
+        scope={scope}
+      />
+    )
   return (
     <FleetInventoryView
       view={view}
@@ -41,18 +55,28 @@ export function FleetInventory({
   )
 }
 
+function FleetInventoryWithAppearances(
+  props: Parameters<typeof FleetInventoryView>[0],
+) {
+  const { snapshot } = useShipAppearances()
+  return <FleetInventoryView {...props} appearances={snapshot} />
+}
+
 /** Confirmed snapshot presentation, independent of session and transport lifetime. */
 export function FleetInventoryView({
   view,
   origin,
   universe,
   scope,
+  appearances = null,
 }: {
   scope: FleetInventoryScope
   view: Parameters<typeof fleetInventoryRows>[0]
   origin: string
   universe: string
+  appearances?: ShipAppearanceState | null
 }) {
+  const appearance = shipAppearancesForOwner(appearances, view.binding)
   const empire = scope === 'empire'
   const body = view.bodies.find((candidate) => candidate.id === origin)
   if (!body) return null
@@ -144,12 +168,22 @@ export function FleetInventoryView({
                           title={`Build more ${name} in Shipyard`}
                           className={styles.build}
                         >
-                          <img
-                            src={resolveCatalogArt(entry.key).thumbnail}
-                            width={32}
-                            height={32}
-                            alt=""
-                          />
+                          {appearance ? (
+                            <ShipAppearanceImage
+                              item={entry.key}
+                              equipment={appearance.equipment}
+                              sizes="32px"
+                              width={32}
+                              height={32}
+                            />
+                          ) : (
+                            <img
+                              src={resolveCatalogArt(entry.key).thumbnail}
+                              width={32}
+                              height={32}
+                              alt=""
+                            />
+                          )}
                           <span>{name}</span>
                         </Link>
                       </th>

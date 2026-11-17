@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Light Fighter · Orbit Imperium atelier</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <a href="./">ORBIT IMPERIUM</a><span>DESIGN STUDY / 001</span>
+    </header>
+    <main>
+      <section class="presentation">
+        <div class="intro">
+          <p class="eyebrow">THE LIGHT FIGHTER</p>
+          <h1>Make it yours.</h1>
+          <p>
+            Two drives. One unmistakable silhouette.<br />Your colors, down to
+            the last panel.
+          </p>
+        </div>
+        <div class="stage">
+          <canvas
+            id="ship"
+            width="1536"
+            height="1024"
+            aria-label="Customized Light Fighter preview"
+          ></canvas>
+          <p id="status" role="status">Preparing the fighter…</p>
+        </div>
+        <div class="caption">
+          <span>01 — TWIN-DRIVE INTERCEPTOR</span
+          ><span>ORBIT IMPERIUM / Unbought Games</span>
+        </div>
+      </section>
+      <aside aria-label="Livery controls">
+        <p class="eyebrow">YOUR LIVERY</p>
+        <h2 id="livery-name">Porcelain</h2>
+        <div class="presets" aria-label="Livery presets"></div>
+        <fieldset>
+          <legend>Paintwork</legend>
+          <label>Wings<input type="color" id="color-0" value="#e6e9e8" /></label
+          ><label
+            >Drive cowls<input
+              type="color"
+              id="color-1"
+              value="#84949e" /></label
+          ><label
+            >Nose &amp; fins<input type="color" id="color-2" value="#c5a467"
+          /></label>
+        </fieldset>
+        <label class="select"
+          >Wing treatment<select id="pattern" aria-label="Wing treatment">
+            <option value="solid">Solid panels</option>
+            <option value="bands">Squadron bands</option>
+          </select></label
+        ><label class="select"
+          >Insignia<select id="emblem" aria-label="Insignia">
+            <option value="chevron">Twin chevrons</option>
+            <option value="none">Unmarked</option>
+          </select></label
+        ><label class="select"
+          >Paint finish<select id="finish" aria-label="Paint finish">
+            <option value="satin">Satin</option>
+            <option value="matte">Matte</option>
+          </select></label
+        ><button class="download" id="download">Export your fighter ↗</button>
+        <p class="note">
+          A local design study. Your export is a transparent PNG.
+        </p>
+        <details>
+          <summary>Inspect the artwork</summary>
+          <label class="check"
+            ><input type="checkbox" id="original" />Original master</label
+          ><label class="check"
+            ><input type="checkbox" id="debug" />Paint-region overlay</label
+          >
+          <p class="note">
+            Red: wings · Green: cowls · Blue: nose &amp; fins. Fixed camera and
+            baked lighting.
+          </p>
+          <a href="output/comparison.png">Open three-livery comparison</a>
+        </details>
+      </aside>
+    </main>
+    <footer>
+      FREE PROTOTYPE ART · CC BY-SA 4.0
+      <a href="README.md">Process &amp; research</a>
+    </footer>
+    <script type="module" src="viewer.mjs"></script>
+  </body>
+</html>

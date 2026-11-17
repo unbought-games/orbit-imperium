@@ -1,6 +1,8 @@
 import { CommunityRewardsProvider } from './community-rewards-context'
 import { PlayerPreferencesProvider } from './player-preferences-context'
 import { InsigniaProvider } from './insignia-context'
+import { ShipAppearancesProvider } from './ship-appearances-context'
+import { ShipCustomizationLaunchProvider } from './ship-customization-launch-provider'
 import {
   createContext,
   useContext,
@@ -54,7 +56,11 @@ export function PlayerProfilesProvider({
       >
         <CommunityRewardsProvider csrf={csrf} changed={controller.refreshAll}>
           <PlayerPreferencesProvider binding={view.binding} csrf={csrf}>
-            {children}
+            <ShipAppearancesProvider binding={view.binding} csrf={csrf}>
+              <ShipCustomizationLaunchProvider>
+                {children}
+              </ShipCustomizationLaunchProvider>
+            </ShipAppearancesProvider>
           </PlayerPreferencesProvider>
         </CommunityRewardsProvider>
       </InsigniaProvider>

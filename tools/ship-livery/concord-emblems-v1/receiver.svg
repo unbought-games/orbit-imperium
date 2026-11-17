@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+<!-- Authored visible wing receivers. Black exclusions are panel joints/rivets; SVG is compiled offline. -->
+<path fill="white" d="M1070 376 1363 412 1442 507 1404 548 1035 657 805 679Z M208 354 560 298 663 320 381 541 291 531 193 389Z"/>
+<g fill="none" stroke="black" stroke-width="2.2" stroke-linecap="round">
+<path d="M1045 419 833 626 M938 634 1367 507 M295 344 340 352 M290 531 552 453"/>
+</g>
+</svg>

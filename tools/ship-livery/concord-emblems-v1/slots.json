@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "width": 1536,
+  "height": 1024,
+  "masterSha256": "568c862fba527546fc5d0a287faf17ab7676074ac0376a0c61ea236560625b76",
+  "cornerOrder": "top-left, top-right, bottom-right, bottom-left in emblem space; top points aft; never mirror opposite-wing symbols",
+  "slots": [
+    {
+      "id": "near-wing",
+      "quad": [
+        [1040, 414],
+        [1212, 457],
+        [1090, 598],
+        [907, 549]
+      ]
+    },
+    {
+      "id": "far-wing",
+      "quad": [
+        [327, 331],
+        [440, 351],
+        [350, 456],
+        [226, 426]
+      ]
+    }
+  ],
+  "receiver": "receiver.svg intersected with frozen primary material coverage; accents and functional details excluded",
+  "paint": { "opacity": 0.96, "responseFloor": 0.0, "responseCeiling": 1.5 },
+  "treatments": ["full", "layers"],
+  "notes": "Fixed-view planar approximation; no new geometry, source removal, or dynamic relighting. UI drop shadow removed from both textures. Layers treatment explicitly omits background and border, preserving all symbol layers, colors, inset and shape clipping."
+}

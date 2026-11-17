@@ -100,6 +100,29 @@ impl IdentityStore for PgStore {
         sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sessions WHERE digest=$1 AND authenticated_at>0 AND authenticated_at>=floor(extract(epoch FROM clock_timestamp())*1000)::bigint-300000 AND expires_at>floor(extract(epoch FROM clock_timestamp())*1000)::bigint)")
             .bind(digest).fetch_one(&self.pool).await.map_err(db_error)
     }
+    async fn ship_appearance_snapshot(
+        &self,
+        b: Binding,
+    ) -> Result<ShipAppearanceSnapshot, StoreError> {
+        self.read_ship_appearances(b).await
+    }
+    async fn change_ship_appearance(
+        &self,
+        b: Binding,
+        request: uuid::Uuid,
+        action: ShipAppearanceAction,
+        environment: ShipRenderEnvironment,
+    ) -> Result<(), ServiceError> {
+        self.write_ship_appearance(b, request, action, environment)
+            .await
+    }
+    async fn ship_artifact(
+        &self,
+        account: AccountId,
+        id: uuid::Uuid,
+    ) -> Result<Vec<ShipStoredVariant>, StoreError> {
+        self.read_ship_artifact(account, id).await
+    }
     async fn insignia_library(&self, b: Binding) -> Result<InsigniaLibrary, StoreError> {
         self.read_insignia_library(b).await
     }

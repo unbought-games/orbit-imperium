@@ -156,7 +156,7 @@ fn resolve_color(catalog: &InsigniaCatalog, color: &str) -> String {
         .and_then(|id| catalog.dye(id))
         .map_or_else(|| color.to_owned(), |d| d.color.clone())
 }
-fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppearance {
+pub(super) fn appearance(catalog: &InsigniaCatalog, recipe: InsigniaRecipe) -> InsigniaAppearance {
     let layers = recipe.layers.as_ref().map(|layers| {
         [
             InsigniaGroup::Stripes,
@@ -443,7 +443,10 @@ pub(super) async fn media<S: IdentityStore>(
         return StatusCode::NOT_FOUND.into_response();
     }
     let bundled = c.catalog.bundled(&symbol);
-    if !bundled && let Err(error) = authenticate(&s, &headers, false).await {
+    if !bundled
+        && !super::ship_appearances::renderer_media_authorized(&headers)
+        && let Err(error) = authenticate(&s, &headers, false).await
+    {
         let mut response = error.into_response();
         response.headers_mut().insert(
             header::CACHE_CONTROL,

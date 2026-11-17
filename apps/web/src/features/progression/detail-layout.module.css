@@ -239,6 +239,9 @@
   min-width: 0;
   margin: 0;
 }
+.orderAction[data-order-layout='stacked'] {
+  grid-template-columns: minmax(0, 1fr);
+}
 .orderLabel {
   min-width: 0;
   overflow: hidden;
