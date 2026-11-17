@@ -251,6 +251,12 @@ impl PgStore {
             .map_err(|e| e.to_string())?;
         let universes = self.universes().await.map_err(operator_error)?;
         if universes.is_empty() {
+            orbit_application::orbit_log!(
+                ERROR,
+                event = "serve_phase_failed",
+                stage = "universe_preparation",
+                error_code = "NoUniverses"
+            );
             return Err(
                 "no universes exist; run orbit setup before serving (or db-init then universe create)".into(),
             );

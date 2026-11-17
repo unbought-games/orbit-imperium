@@ -1185,6 +1185,7 @@ impl PgStore {
         } else {
             return Err(StoreError::Conflict);
         };
+        let log_action = orbit_application::diagnostics::command_action(&g);
         for (envelope, command, id) in [(&pair.presence, p, pi), (&pair.gameplay, g, gi)] {
             let sequence = next_sequence(&mut tx, b.universe).await?;
             let input = OrderedInput {
@@ -1244,6 +1245,18 @@ impl PgStore {
         tx.commit().await.map_err(db_error)?;
         drop(commit_timing);
         timing.finish(AdmissionOutcome::Committed);
+        orbit_application::diagnostics::admitted(
+            b.universe,
+            pair.gameplay.command_id,
+            gi,
+            log_action,
+        );
+        orbit_application::diagnostics::admitted(
+            b.universe,
+            pair.presence.command_id,
+            pi,
+            "presence",
+        );
         #[cfg(feature = "test-support")]
         self.test_fault("after_pair_admission").await?;
         let mut result = BoundReceipt::new(

@@ -55,8 +55,12 @@ impl EngineExecutor for BoundedEngine {
         snapshot: ClaimSnapshot,
         input: OrderedInput,
     ) -> Result<TransitionResult, ServiceError> {
-        self.blocking(move || orbit_engine::transition(&snapshot.state, &input, &snapshot.rules))
-            .await
+        self.blocking(move || {
+            let result = orbit_engine::transition(&snapshot.state, &input, &snapshot.rules);
+            orbit_application::diagnostics::engine_decision(&input, &result);
+            result
+        })
+        .await
     }
 }
 

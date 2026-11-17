@@ -9,19 +9,20 @@ pub struct PreparedUniverses {
     pub legacy_enabled: bool,
     pub legacy_signup_per_minute: u32,
 }
-fn binding(ids: &[UniverseId], requested: Option<UniverseId>) -> Result<UniverseId, String> {
+pub(crate) fn binding(
+    ids: &[UniverseId],
+    requested: Option<UniverseId>,
+) -> Result<UniverseId, String> {
     match requested {
         Some(id) if ids.contains(&id) => Ok(id),
         Some(_) => {
-            Err("ORBIT_UNIVERSE_ID must name an existing universe; use universe list".into())
+            Err(crate::logging::failure("universe_binding", "UnknownConfiguredUniverse", "ORBIT_UNIVERSE_ID must name an existing universe; use universe list".to_owned()))
         }
         None => match ids {
             [id] => Ok(*id),
-            [] => Err("no universes exist; run orbit setup before serving (or db-init then universe create)".into()),
-            _ => Err(
-                "multiple universes exist; set ORBIT_UNIVERSE_ID for this API's signup route"
-                    .into(),
-            ),
+            [] => Err(crate::logging::failure("universe_binding", "NoUniverses", "no universes exist; run orbit setup before serving (or db-init then universe create)".to_owned())),
+            _ => Err(crate::logging::failure("universe_binding", "UniverseBindingRequired",
+                "multiple universes exist; set ORBIT_UNIVERSE_ID for this API's signup route".to_owned())),
         },
     }
 }
@@ -106,9 +107,7 @@ pub async fn prepare(
                     .map_err(|e| e.to_string())?;
             }
         } else if !config.legacy_env.is_empty() {
-            eprintln!(
-                "Deprecated universe environment variables ignored: database policies are authoritative; remove these variables before deploying the final release."
-            );
+            orbit_application::orbit_log!(WARN, event = "deprecated_universe_environment_ignored");
         }
         if config.role.serves_api() {
             let id = binding(&ids, config.signup.universe)?;

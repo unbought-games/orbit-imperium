@@ -7,6 +7,7 @@ mod config;
 mod engine_executor;
 #[cfg(feature = "test-support")]
 mod lab_support;
+mod logging;
 mod metrics;
 mod public_universe;
 mod request_metrics;
@@ -30,9 +31,11 @@ use std::{env, error::Error};
 #[cfg(feature = "test-support")]
 use uuid::Uuid;
 fn main() -> Result<(), Box<dyn Error>> {
+    let _logging = logging::init()?;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .build()?;
+        .build()
+        .map_err(|e| logging::io_failure("async_runtime", e))?;
     let serving = command(&env::args().collect::<Vec<_>>()).is_ok_and(|name| name == "serve");
     let result = runtime.block_on(run_main());
     // Blocking engine jobs cannot be aborted. Durable fencing makes their late
@@ -43,13 +46,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         // Container restart backoff may reset after a brief healthy interval;
         // this floor also bounds repeated fail/serve/fail cycles.
         let delay = restart::delay(uuid::Uuid::new_v4().as_u128());
-        eprintln!(
-            "{}",
-            serde_json::json!({"level":"warn", "event":"serve_restart_backoff", "duration_ms":delay.as_millis()})
+        orbit_application::orbit_log!(
+            ERROR,
+            event = "serve_failed",
+            stage = "serve",
+            error_code = "ServeFailed",
+            commit_outcome = "unknown"
+        );
+        orbit_application::orbit_log!(
+            WARN,
+            event = "serve_restart_backoff",
+            duration_ms = delay.as_millis() as u64
         );
         std::thread::sleep(delay);
     }
-    result
+    if serving {
+        result.map_err(|_| "serve failed; see structured diagnostics".into())
+    } else {
+        result
+    }
 }
 async fn run_main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -113,16 +128,34 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
     // Validate serve configuration before opening a database connection.
     let serve_config = (selected == "serve")
         .then(|| config::ServeConfig::parse(|key| env::var(key).ok()))
-        .transpose()?;
+        .transpose()
+        .inspect_err(|_| {
+            orbit_application::orbit_log!(
+                ERROR,
+                event = "startup_failed",
+                stage = "configuration",
+                error_code = "InvalidServeConfiguration"
+            )
+        })?;
     let connection_started = std::time::Instant::now();
-    let url = env::var("DATABASE_URL")?;
+    let url = env::var("DATABASE_URL").map_err(|error| {
+        let code = match &error {
+            env::VarError::NotPresent => "MissingDatabaseUrl",
+            env::VarError::NotUnicode(_) => "InvalidDatabaseUrlEncoding",
+        };
+        logging::failure("database_configuration", code, error)
+    })?;
     let store = match serve_config.as_ref() {
-        Some(config) => PgStore::connect_with_limits(&url, config.pools).await?,
+        Some(config) => PgStore::connect_with_limits(&url, config.pools)
+            .await
+            .map_err(|e| logging::failure("database_connection", "DatabaseConnectionFailed", e))?,
         None => PgStore::connect(&url).await?,
     };
-    eprintln!(
-        "startup connection_ms={}",
-        connection_started.elapsed().as_millis()
+    orbit_application::orbit_log!(
+        INFO,
+        event = "startup_phase",
+        stage = "connection",
+        duration_ms = connection_started.elapsed().as_millis() as u64
     );
     match selected {
         "bots" => bots_cli::run(&store, bots_cli::parse(&args)?).await?,
