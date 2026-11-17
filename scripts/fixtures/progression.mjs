@@ -64,7 +64,10 @@ export async function prepareProgression(client, universe, players) {
     } = await client.query(`SELECT
       (SELECT count(*) FROM universes) universes,
       (SELECT count(*) FROM commands) commands,
-      (SELECT count(*) FROM transition_journal) transitions,
+      (SELECT count(*) FROM scheduled_events WHERE done OR cancelled) terminal_events,
+      (SELECT count(*) FROM universe_runtime r WHERE cursor<>0 OR next_sequence<>COALESCE((SELECT max(sequence)+1 FROM scheduled_events e WHERE e.universe=r.universe),1) OR claim_input IS NOT NULL) progressed,
+      (SELECT count(*) FROM execution_scopes WHERE resolved_ordinal IS NOT NULL OR claim_input IS NOT NULL) resolved,
+      (SELECT count(*) FROM pg_sequences s JOIN universes u ON s.sequencename='orbit_order_'||replace(u.id::text,'-','') WHERE s.schemaname='public' AND s.last_value>COALESCE((SELECT max(sequence) FROM scheduled_events e WHERE e.universe=u.id),0)) used_sequences,
       (SELECT count(*) FROM inventories) inventories,
       (SELECT count(*) FROM building_levels WHERE level<>0) levels,
       (SELECT count(*) FROM research_levels WHERE level<>0) research,
@@ -74,7 +77,10 @@ export async function prepareProgression(client, universe, players) {
       {
         universes: '1',
         commands: '0',
-        transitions: '0',
+        terminal_events: '0',
+        progressed: '0',
+        resolved: '0',
+        used_sequences: '0',
         inventories: '0',
         levels: '0',
         research: '0',
@@ -82,6 +88,9 @@ export async function prepareProgression(client, universe, players) {
       },
       'Only pristine acceptance worlds can be prepared',
     )
+    // Exercise bridge startup and every importing acceptance journey without the
+    // retired table. This helper has already refused non-disposable databases.
+    await client.query('DROP TABLE IF EXISTS transition_journal RESTRICT')
     const {
       rows: [rules],
     } = await client.query(

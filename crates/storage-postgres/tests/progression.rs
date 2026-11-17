@@ -33,15 +33,35 @@ impl Journey {
     }
     async fn drain(&self) {
         for _ in 0..1000 {
-            if matches!(
-                self.game
-                    .step(self.binding.universe, WorkerId(Uuid::new_v4()))
-                    .await
-                    .unwrap(),
-                StepOutcome::Idle
-            ) {
+            let Some(claim) = self
+                .store
+                .claim_next(self.binding.universe, WorkerId(Uuid::new_v4()))
+                .await
+                .unwrap()
+            else {
                 return;
-            }
+            };
+            let snapshot = self.store.load_claim(&claim).await.unwrap();
+            let facts = serde_json::to_value(&snapshot.state).unwrap();
+            assert!(
+                facts["bodies"]
+                    .as_object()
+                    .unwrap()
+                    .values()
+                    .all(|body| body.get("capacity").is_none())
+            );
+            assert!(facts.get("progression_reservations").is_none());
+            assert!(facts["coverage"].get("reservation_bodies").is_none());
+            let outcome = transition(&snapshot.state, &claim.input, &snapshot.rules);
+            assert!(
+                !serde_json::to_string(&outcome)
+                    .unwrap()
+                    .contains("progression_reservations")
+            );
+            assert!(matches!(
+                self.store.commit_claim(&claim, outcome).await.unwrap(),
+                CommitOutcome::Committed { .. }
+            ));
         }
         panic!("unbounded drain")
     }
@@ -443,8 +463,6 @@ async fn concurrent_spend_deadline_ordering_and_restart_preserve_state() {
             .unwrap(),
         0
     );
-    assert_eq!(sqlx::query_scalar::<_, i64>("SELECT count(*) FROM transition_journal j, jsonb_each(j.facts->'bodies') b WHERE b.value ? 'capacity'")
-        .fetch_one(&pool).await.unwrap(), 0);
 }
 
 impl Journey {
@@ -668,12 +686,6 @@ async fn competing_construction_and_dome_admissions_derive_capacity_after_restar
             .blockers
             .iter()
             .any(|b| b.code == GameError::CapacityReserved)
-    );
-    let legacy: i64 = sqlx::query_scalar("SELECT count(*) FROM transition_journal WHERE universe=$1 AND (facts ? 'progression_reservations' OR outcome::text LIKE '%progression_reservations%' OR facts->'coverage' ? 'reservation_bodies')")
-        .bind(u.0).fetch_one(&pool).await.unwrap();
-    assert_eq!(
-        legacy, 0,
-        "new journals must not persist derived reservations"
     );
     let table: Option<String> =
         sqlx::query_scalar("SELECT to_regclass('progression_reservations')::text")

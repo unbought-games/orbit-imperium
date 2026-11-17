@@ -1,6 +1,6 @@
 //! Explicit local characterization, never a production load generator.
 use orbit_application::*;
-use orbit_engine::{Building, WorkerId};
+use orbit_engine::*;
 use orbit_storage_postgres::PgStore;
 use serde_json::{Value, json};
 use std::{
@@ -118,24 +118,146 @@ async fn main() {
             .unwrap();
         players.push((b, token_digest(&token), BodyId(body)));
     }
-    // Independent inactive history in a different universe does not masquerade
-    // as authoritative receipts. Row counts stress indexes, not RDS burst storage.
+    // Explicit synthetic mature live inventory, with exact paid lineage. These
+    // are isolated fixture edits, not a production retention or backfill path.
+    let lots_per_player = number("QUALIFY_ASSET_LOTS", 1, 10000);
+    let rules = store.load_rules(universe).await.unwrap();
+    for (binding, _, body) in &players {
+        let item = ManufacturedItem::Ship(ShipType::SmallCargo);
+        sqlx::query(
+            "INSERT INTO inventories(body,owner,item,count,revision) VALUES($1,$2,$3,$4,0)",
+        )
+        .bind(body.0)
+        .bind(binding.player.0)
+        .bind(sqlx::types::Json(item))
+        .bind(lots_per_player as i64)
+        .execute(&pool)
+        .await
+        .unwrap();
+        for n in 0..lots_per_player {
+            let id = OperationId(Uuid::new_v4());
+            let lot = AssetLot {
+                id,
+                owner: binding.player,
+                item: CatalogKey::Ship(ShipType::SmallCargo),
+                level: None,
+                location: AssetLocation::Body(*body),
+                quantity: 1,
+                unit_value_micro: 4_000 * SCALE,
+                rules_hash: rules.hash.clone(),
+                source_operation: id,
+                acquired_at: 0,
+                acquired_sequence: n as i64,
+            };
+            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
+                .bind(universe.0)
+                .bind(id.to_string())
+                .bind(sqlx::types::Json(lot))
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+    }
+    // Retained terminal operations live in a separate fixture universe. The
+    // recent/older split models retry saturation and a cleanup backlog, without
+    // asserting that expiry or cleanup is already implemented.
     let retained = UniverseId(Uuid::new_v4());
     store
         .create_universe(&UniverseCreate {
             universe: retained,
             immutable: UniverseImmutable::default(),
-            policy: UniversePolicy::default(),
+            policy: UniversePolicy {
+                bots: BotPolicy {
+                    enabled: true,
+                    max_active: 1,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
         })
         .await
         .unwrap();
-    sqlx::query("INSERT INTO transition_journal(universe,cursor,input_id,input,facts,outcome) SELECT $1,n,gen_random_uuid(),'{}'::jsonb,jsonb_build_object('synthetic',md5(n::text)),'{}'::jsonb FROM generate_series(1,$2::bigint) n")
-        .bind(retained.0).bind(history as i64).execute(&pool).await.unwrap();
-    let retained_bytes: i64 =
-        sqlx::query_scalar("SELECT pg_total_relation_size('transition_journal')")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let owner = store
+        .create_bot(retained, "retained-fixture", 0)
+        .await
+        .unwrap();
+    let retained_rules = store.load_rules(retained).await.unwrap();
+    let mut recent_bytes = 0usize;
+    let mut backlog_bytes = 0usize;
+    let mut tx = pool.begin().await.unwrap();
+    for n in 0..history {
+        let at = if n < history / 2 {
+            12 * 3_600_000 - 1_000
+        } else {
+            0
+        };
+        let input = OrderedInput {
+            schema_version: 4,
+            id: Uuid::new_v4().into(),
+            universe: retained,
+            epoch: owner.epoch,
+            actor: Actor::Player(owner.player),
+            at,
+            phase: 1,
+            sequence: n as i64 + 1,
+            protocol: 4,
+            profile_hash: retained_rules.hash.clone(),
+            payload: Input::Command(Command::CancelConstruction {
+                operation: Uuid::new_v4().into(),
+            }),
+        };
+        let receipt = Receipt {
+            command_id: Uuid::new_v4().into(),
+            epoch: owner.epoch,
+            admitted_at: at,
+            executed_at: Some(at),
+            status: ReceiptStatus::Rejected {
+                code: GameError::NotFound,
+            },
+        };
+        let bytes =
+            serde_json::to_vec(&input).unwrap().len() + serde_json::to_vec(&receipt).unwrap().len();
+        if n < history / 2 {
+            recent_bytes += bytes;
+        } else {
+            backlog_bytes += bytes;
+        }
+        sqlx::query("INSERT INTO commands(universe,epoch,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt,done) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)")
+            .bind(retained.0).bind(owner.epoch.0).bind(owner.player.0).bind(receipt.command_id.0).bind(input.id.0).bind(hash(&input).0).bind(at).bind(input.sequence)
+            .bind(sqlx::types::Json(&input)).bind(sqlx::types::Json(&receipt)).execute(&mut *tx).await.unwrap();
+        let event = ScheduledEvent::EmpireDeletionDue {
+            player: owner.player,
+        };
+        let input = OrderedInput {
+            id: Uuid::new_v4().into(),
+            actor: Actor::Scheduler,
+            phase: 0,
+            payload: Input::Event(event.clone()),
+            ..input
+        };
+        let bytes =
+            serde_json::to_vec(&input).unwrap().len() + serde_json::to_vec(&event).unwrap().len();
+        if n < history / 2 {
+            recent_bytes += bytes;
+        } else {
+            backlog_bytes += bytes;
+        }
+        sqlx::query("INSERT INTO scheduled_events(id,universe,at_ms,sequence,input,event,done) VALUES($1,$2,$3,$4,$5,$6,true)")
+            .bind(input.id.0).bind(retained.0).bind(at).bind(input.sequence).bind(sqlx::types::Json(input)).bind(sqlx::types::Json(event)).execute(&mut *tx).await.unwrap();
+    }
+    tx.commit().await.unwrap();
+    // Every measured read, admission and commit below runs on the absent schema.
+    sqlx::query("DROP TABLE transition_journal RESTRICT")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let live_bytes: i64 = sqlx::query_scalar("SELECT pg_total_relation_size('asset_lots') + pg_total_relation_size('inventories') + pg_total_relation_size('bodies')").fetch_one(&pool).await.unwrap();
+    let completed_bytes: i64 = sqlx::query_scalar(
+        "SELECT pg_total_relation_size('commands') + pg_total_relation_size('scheduled_events')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     let provider_history = manifest["retained_history_pairs"].as_u64().unwrap_or(0);
     let preparation_ms = prepared.elapsed().as_millis();
     let mut guard = store.acquire_server_guard().await.unwrap();
@@ -304,7 +426,7 @@ async fn main() {
     let command_rows: i64 = classes.values().sum();
     assert!(
         command_rows as u64 * 60 >= seconds * minimum_rows_per_minute,
-        "command/journal write scenario fell below planned observed-load margin"
+        "command write scenario fell below planned observed-load margin"
     );
     assert_eq!(classes.get("StartUpgrade"), Some(&(actions as i64)));
     assert_eq!(
@@ -316,9 +438,31 @@ async fn main() {
         2 * actions as i64,
         "duplicate admission must not duplicate commands"
     );
-    let (pending, missing_journal):(i64,i64) = sqlx::query_as("SELECT count(*) FILTER(WHERE NOT c.done),count(*) FILTER(WHERE j.input_id IS NULL) FROM commands c LEFT JOIN transition_journal j USING(input_id) WHERE c.universe=$1")
+    let (pending, invalid_receipts):(i64,i64) = sqlx::query_as("SELECT count(*) FILTER(WHERE NOT done),count(*) FILTER(WHERE receipt->>'status'<>'Committed' OR receipt->>'executed_at' IS NULL) FROM commands WHERE universe=$1")
         .bind(universe.0).fetch_one(&pool).await.unwrap();
-    assert_eq!((pending, missing_journal), (0, 0));
+    assert_eq!((pending, invalid_receipts), (0, 0));
+    let operations: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM constructions WHERE universe=$1")
+            .bind(universe.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        operations, actions as i64,
+        "each accepted upgrade creates one operation"
+    );
+    let levels: i64 = sqlx::query_scalar("SELECT COALESCE(sum(level),0)::bigint FROM building_levels b JOIN bodies p ON p.id=b.body WHERE p.universe=$1 AND building='MetalMine'").bind(universe.0).fetch_one(&pool).await.unwrap();
+    let completed: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM constructions WHERE universe=$1 AND status='Completed'",
+    )
+    .bind(universe.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        levels, completed,
+        "every completed upgrade changes the live level once"
+    );
     let max_units:i64=sqlx::query_scalar("SELECT COALESCE(max(n),0)::bigint FROM (SELECT count(*) n FROM bot_activity WHERE universe=$1 GROUP BY player) q")
         .bind(universe.0).fetch_one(&pool).await.unwrap();
     assert!(max_units as u64 <= allowance);
@@ -326,6 +470,6 @@ async fn main() {
     assert!(minimum_spacing >= Duration::from_millis(250));
     println!(
         "{}",
-        json!({"bots":bots,"action_units_per_day":allowance,"max_charged_units_per_actor":max_units,"command_interval_ms":command_interval_ms,"command_rows":command_rows,"command_classes":classes,"logical_client_requests":pacer.starts.len(),"minimum_request_spacing_ms":minimum_spacing.as_millis(),"synthetic_history_rows":history,"synthetic_journal_bytes":retained_bytes,"provider_history_pairs":provider_history,"preparation_ms":preparation_ms,"duration_ms":started.elapsed().as_millis(),"game_iterations":requests,"latency":{"machine_auth":latency(machine_times),"bot_status":latency(status_times),"world_view":latency(read_times),"admission_settlement":latency(commit_times)},"commands_committed":committed,"commands_rejected":rejected,"auth":auth,"limitations":"direct game services, synthetic row history not a 5.3GB storage replica; local PostgreSQL cannot certify RDS burst capacity"})
+        json!({"bots":bots,"action_units_per_day":allowance,"max_charged_units_per_actor":max_units,"command_interval_ms":command_interval_ms,"command_rows":command_rows,"command_classes":classes,"logical_client_requests":pacer.starts.len(),"minimum_request_spacing_ms":minimum_spacing.as_millis(),"workload_version":2,"retained_completed_pairs":history,"asset_lots_per_player":lots_per_player,"live_state_relation_bytes":live_bytes,"completed_operation_relation_bytes":completed_bytes,"recent_completed_payload_bytes":recent_bytes,"cleanup_backlog_payload_bytes":backlog_bytes,"emitted_log_bytes":0,"provider_history_pairs":provider_history,"preparation_ms":preparation_ms,"duration_ms":started.elapsed().as_millis(),"game_iterations":requests,"latency":{"machine_auth":latency(machine_times),"bot_status":latency(status_times),"world_view":latency(read_times),"admission_settlement":latency(commit_times)},"commands_committed":committed,"commands_rejected":rejected,"auth":auth,"limitations":"direct game services without a logging subscriber (zero emitted log bytes); synthetic terminal rows, no cleanup or expiry policy; local PostgreSQL cannot certify RDS burst capacity"})
     );
 }

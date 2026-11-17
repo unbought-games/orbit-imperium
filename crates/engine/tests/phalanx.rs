@@ -696,7 +696,7 @@ fn explicit_return_classification_requires_conclusive_applied_evidence_without_m
         ),
         Err(MissionReturnEvidenceError::InvalidEvidence)
     );
-    // A new transition's recorded cause can survive in the journal even when an
+    // A captured transition artifact can retain a recorded cause even when an
     // old writer erased it in current storage. Contradictory evidence is refused.
     let mut recorded = after.clone();
     recorded.return_reason = Some(MissionReturnReason::VoluntaryRecall);
@@ -725,6 +725,6 @@ fn explicit_return_classification_requires_conclusive_applied_evidence_without_m
     );
     // Fixed actionable operator messages cannot leak the contents of driver errors.
     let diagnostic = MissionReturnEvidenceError::MissingEvidence.to_string();
-    assert!(diagnostic.contains("authoritative journal evidence"));
+    assert!(diagnostic.contains("previously captured trusted transition artifact"));
     assert!(!diagnostic.contains(&after.id.to_string()));
 }

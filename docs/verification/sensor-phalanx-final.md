@@ -1,5 +1,10 @@
 # Sensor Phalanx final integration validation — 2026-11-03
 
+> Journal references below describe historical evidence. Current execution no longer
+> records full-state snapshots; replay/repair requires previously captured trusted
+> artifacts. See [journal removal](../operations/journal-removal.md).
+
+
 Final source revision: `9ebb8f48f612d5e632c238c58e9b90d826c60983`.
 Part 3 was integrated from `1427ff5e0a5a18596cb5fd2cd331ac6ac92bd588`.
 Main's bulk-report-read change `25d0db7` was merged because it intersects the

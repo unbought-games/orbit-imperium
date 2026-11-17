@@ -1,3 +1,4 @@
+//! Offline supplied-artifact compatibility only; never queries production history.
 //! Read-only replay boundary for journals predating causal return facts.
 use crate::*;
 use serde_json::Value;

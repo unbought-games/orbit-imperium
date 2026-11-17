@@ -64,7 +64,7 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
     const cli = args => execFileSync('target/debug/orbit', args, { env, stdio: 'pipe' })
     cli(['test-foundation-create', '--universe', universe, '--at', '1000000'])
     db = new pg.Client({ connectionString: url }); await db.connect()
-    await db.query('CREATE TABLE orbit_test_clock(at_ms bigint); INSERT INTO orbit_test_clock VALUES(1000000); CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text,enabled boolean,seen integer)')
+    await db.query('DROP TABLE transition_journal RESTRICT; CREATE TABLE orbit_test_clock(at_ms bigint); INSERT INTO orbit_test_clock VALUES(1000000); CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text,enabled boolean,seen integer)')
     cli(['runtime', 'prepare', '--universe', universe])
     cli(['runtime', 'activate', '--universe', universe])
     assert.equal((await db.query('SELECT executor_mode FROM universe_runtime')).rows[0].executor_mode, 'scoped')
@@ -147,6 +147,12 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
       const fault = index === crashIndex || availabilityProbe
       const faultStage = availabilityProbe ? 'after_writes' : stage
       if (fault) { await db.query('SELECT pg_advisory_lock(901322)'); await db.query("INSERT INTO orbit_test_fault VALUES($1,'pause',true,0)", [faultStage]) }
+      // Capture the exact scheduled identity before waking the worker. Commands
+      // use the submitted client identity; neither barrier relies on history size.
+      const dueEvent = [1, 4, 6, 7].includes(index)
+        ? (await db.query('SELECT id FROM scheduled_events WHERE NOT done AND NOT cancelled AND at_ms=$1', [times[index]])).rows
+        : null
+      if (dueEvent) assert.equal(dueEvent.length, 1)
       await db.query('UPDATE orbit_test_clock SET at_ms=$1', [times[index]])
       await actions[index]()
       if (fault) {
@@ -173,7 +179,12 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
           worker = await start('worker', workerLease)
         }
       }
-      await until(async () => Number((await db.query('SELECT count(*) FROM transition_journal')).rows[0].count) === index + 1 + extra, `commit ${index}`)
+      await until(async () => {
+        const result = dueEvent
+          ? await db.query('SELECT done AND NOT cancelled AS terminal FROM scheduled_events WHERE id=$1', [dueEvent[0].id])
+          : await db.query("SELECT done AND receipt->>'status'='Committed' AS terminal FROM commands WHERE command_id=$1", [lastEnvelope.command_id])
+        return result.rows[0]?.terminal === true
+      }, `durable outcome ${index}`)
       view = await getView(a)
       if (availabilityProbe) {
         const outcome = await nextUpdate(stream)
@@ -194,9 +205,9 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
     assert.deepEqual(recipient.bodies[0].amounts, { metal: '1391935000', crystal: '1221453888', deuterium: '1010000000' })
     assert.equal(view.bodies[0].inventories[0].count, '2'); assert.equal(view.fleets.length, 0)
     assert.equal(view.reports.length, 4); assert.equal(recipient.reports.length, 1)
-    const counts = (await db.query('SELECT (SELECT count(*) FROM commands WHERE NOT done) pending_commands,(SELECT count(*) FROM scheduled_events WHERE NOT done AND NOT cancelled) pending_events,(SELECT count(*) FROM transition_journal) journal')).rows[0]
-    assert.deepEqual(counts, { pending_commands: '0', pending_events: '0', journal: String(8 + extra) })
-    console.log(`PASS ${overlap ? 'separate redundant API/workers, paused work and stream replay' : crashIndex === null ? 'scoped baseline' : `${stage} worker kill at transition ${crashIndex + 1}`} — exact balances, ships, reports and journal`)
+    const counts = (await db.query("SELECT (SELECT count(*) FROM commands WHERE NOT done) pending_commands,(SELECT count(*) FROM scheduled_events WHERE NOT done AND NOT cancelled) pending_events,(SELECT count(*) FROM commands WHERE done AND receipt->>'status'='Committed') committed_commands,(SELECT count(*) FROM commands WHERE done AND receipt->>'status'='Rejected') rejected_commands,(SELECT count(*) FROM scheduled_events WHERE done AND NOT cancelled) completed_events")).rows[0]
+    assert.deepEqual(counts, { pending_commands: '0', pending_events: '0', committed_commands: '4', rejected_commands: String(extra), completed_events: '4' })
+    console.log(`PASS ${overlap ? 'separate redundant API/workers, paused work and stream replay' : crashIndex === null ? 'scoped baseline' : `${stage} worker kill at transition ${crashIndex + 1}`} — exact balances, ships, reports and terminal outcomes`)
   } finally {
     cleanupAt = performance.now()
     await cleanupAll([

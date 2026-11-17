@@ -880,7 +880,7 @@ async fn migrated_objective_sets_commit_after_encoding_repair() {
         assert_eq!(run.receipts.len(), 1);
         assert!(run.receipts.contains_key("production-settings"));
         let committed_input: serde_json::Value =
-            sqlx::query_scalar("SELECT input FROM transition_journal WHERE input_id=$1")
+            sqlx::query_scalar("SELECT input FROM commands WHERE input_id=$1 AND done")
                 .bind(original_input.id.0)
                 .fetch_one(&pool)
                 .await
@@ -889,5 +889,14 @@ async fn migrated_objective_sets_commit_after_encoding_repair() {
             serde_json::from_value::<OrderedInput>(committed_input).unwrap(),
             original_input
         );
+        let receipt: serde_json::Value =
+            sqlx::query_scalar("SELECT receipt FROM commands WHERE input_id=$1 AND done")
+                .bind(original_input.id.0)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let receipt: Receipt = serde_json::from_value(receipt).unwrap();
+        assert!(matches!(receipt.status, ReceiptStatus::Committed { .. }));
+        assert_eq!(receipt.executed_at, Some(original_input.at));
     }
 }

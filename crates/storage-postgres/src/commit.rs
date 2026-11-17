@@ -36,31 +36,63 @@ impl PgStore {
         if matches!(claim, CommitClaim::Serial(_)) {
             gate(&mut tx, i.universe).await?;
         }
-        if let Some(record) =
-            sqlx::query("SELECT input FROM transition_journal WHERE input_id=$1 AND universe=$2")
+        // Immutable admitted inputs are the retry authority. Lock the input row
+        // so concurrent duplicate commits observe the first terminal receipt.
+        // This remains in the same transaction as state, completion and delivery.
+        let command =
+            sqlx::query("SELECT input,done,receipt FROM commands WHERE input_id=$1 FOR UPDATE")
                 .bind(i.id.0)
-                .bind(i.universe.0)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_error)?;
+        let record = match command {
+            Some(row) => {
+                let recorded: OrderedInput = decode(row.try_get("input").map_err(db_error)?)?;
+                if recorded != *i {
+                    return Err(StoreError::Conflict);
+                }
+                if row.try_get::<bool, _>("done").map_err(db_error)? {
+                    let receipt: Receipt = decode(row.try_get("receipt").map_err(db_error)?)?;
+                    if matches!(receipt.status, ReceiptStatus::Pending) {
+                        return Err(StoreError::CorruptData);
+                    }
+                    return Ok(CommitOutcome::Committed {
+                        input_id: i.id,
+                        receipt: Some(receipt),
+                    });
+                }
+                true
+            }
+            None => {
+                if let Some(row) = sqlx::query(
+                    "SELECT input,done,cancelled FROM scheduled_events WHERE id=$1 FOR UPDATE",
+                )
+                .bind(i.id.0)
                 .fetch_optional(&mut *tx)
                 .await
                 .map_err(db_error)?
-        {
-            let recorded: OrderedInput = decode(record.try_get("input").map_err(db_error)?)?;
-            if recorded != *i {
-                return Err(StoreError::Conflict);
+                {
+                    let recorded: OrderedInput = decode(row.try_get("input").map_err(db_error)?)?;
+                    if recorded != *i {
+                        return Err(StoreError::Conflict);
+                    }
+                    if row.try_get::<bool, _>("cancelled").map_err(db_error)? {
+                        return Ok(CommitOutcome::StaleClaim);
+                    }
+                    if row.try_get::<bool, _>("done").map_err(db_error)? {
+                        return Ok(CommitOutcome::Committed {
+                            input_id: i.id,
+                            receipt: None,
+                        });
+                    }
+                    true
+                } else {
+                    false
+                }
             }
-            let receipt = sqlx::query_scalar::<_, serde_json::Value>(
-                "SELECT receipt FROM commands WHERE input_id=$1",
-            )
-            .bind(i.id.0)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(db_error)?
-            .map(decode)
-            .transpose()?;
-            return Ok(CommitOutcome::Committed {
-                input_id: i.id,
-                receipt,
-            });
+        };
+        if !record {
+            return Ok(CommitOutcome::StaleClaim);
         }
         let valid = match claim {
             CommitClaim::Serial(c) => valid_claim(&mut tx, c).await?,
@@ -202,7 +234,6 @@ impl PgStore {
                 .ok_or(StoreError::CorruptData)?,
             CommitClaim::Scoped(_) => next_sequence(&mut tx, i.universe).await?,
         };
-        sqlx::query("INSERT INTO transition_journal(universe,cursor,input_id,input,facts,outcome) VALUES($1,$2,$3,$4,$5,$6)").bind(i.universe.0).bind(cursor).bind(i.id.0).bind(sqlx::types::Json(i)).bind(sqlx::types::Json(facts)).bind(sqlx::types::Json(&outcome)).execute(&mut *tx).await.map_err(db_error)?;
         #[cfg(feature = "test-support")]
         {
             self.test_fault("after_writes").await?;

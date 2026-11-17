@@ -104,7 +104,6 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     'raiding.spec.ts',
     'missions.spec.ts',
     'mvp.spec.ts',
-    'progression.spec.ts',
     'responsive.spec.ts',
     'routing.spec.ts',
     'homepage-built.spec.ts',

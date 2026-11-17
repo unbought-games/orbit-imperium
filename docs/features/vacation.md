@@ -28,8 +28,10 @@ visible alongside the vacation notice.
 Player policy stores one active interval with its entry timestamp and policy
 identity. The vacation flag, exit eligibility, entry blockers, production rates
 and inactivity exemption are derived. Entry and exit settle every owned body at
-their ordered timestamps and signal body activity. Historical intervals remain in
-the ordinary transition journal.
+their ordered timestamps and signal body activity. Only the current active interval is authoritative. Recent entry/exit diagnostics
+are available within configured log retention; indefinite vacation history and
+full historical replay are not promised. Economy, minimum stay and scheduling
+never depend on log level or delivery. See [journal independence](../operations/journal-removal.md).
 
 Production settings remain unchanged. Vacation produces only the body's base
 income under the current universe economy speed (zero on moons); mines, energy

@@ -1,5 +1,10 @@
 # Debris reference counter removal
 
+> Journal references below describe historical evidence. Current execution no longer
+> records full-state snapshots; replay/repair requires previously captured trusted
+> artifacts. See [journal removal](../operations/journal-removal.md).
+
+
 > Historical implementation record. The migrations and upgrade procedures described below have been superseded by `0001_fresh.sql`. This release requires the [fresh database cutover](../runbooks/development-server.md#fresh-database-cutover); it does not convert retained worlds.
 
 

@@ -1,5 +1,10 @@
 # Alliance Depot validation
 
+> Journal references below describe historical evidence. Current execution no longer
+> records full-state snapshots; replay/repair requires previously captured trusted
+> artifacts. See [journal removal](../operations/journal-removal.md).
+
+
 Validated October 31, 2026 (America/New_York). Scope: planet allied holding,
 Alliance Depot construction/resupply, combat and espionage participation,
 owner-specific reports, client flows, persistence and explicit rules activation.

@@ -141,7 +141,9 @@ async function rollingUpgrade() {
   assert.equal((await api(`commands/${commandId}?epoch=${binding.epoch}`)).status,'Committed');
   assert.equal((await view()).bodies[0].levels.MetalMine,initial.bodies[0].levels.MetalMine+1);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM commands WHERE command_id=$1',[commandId])).rows[0].n,1);
-  assert.equal((await db.query('SELECT count(*)::int AS n FROM transition_journal')).rows[0].n,2);
+  const completed = (await db.query("SELECT done,cancelled FROM scheduled_events WHERE input#>>'{payload,Event,type}'='ConstructionDue' AND at_ms=$1",[due])).rows;
+  assert.deepEqual(completed,[{done:true,cancelled:false}]);
+  assert.equal((await db.query("SELECT status FROM constructions")).rows[0].status,'Completed');
   await stop(old);await stop(second);
   console.log('PASS overlapping old/new servers, live reads/writes/scheduling, concurrent upgrade, killed migrator recovery, and older-version restart');
 }

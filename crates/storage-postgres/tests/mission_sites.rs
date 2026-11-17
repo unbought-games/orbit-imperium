@@ -1,4 +1,4 @@
-//! Regression: site source facts must use the same journal, rollback and scope
+//! Regression: site source facts must use the same atomic completion, rollback and scope
 //! fences as gameplay, including unknown-commit retries and retirement history.
 use orbit_application::*;
 use orbit_engine::*;

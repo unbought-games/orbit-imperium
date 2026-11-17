@@ -101,11 +101,11 @@ try {
   db = new pg.Client({ connectionString: url }); await db.connect()
   await db.query('CREATE TABLE orbit_test_clock(at_ms bigint NOT NULL); INSERT INTO orbit_test_clock VALUES(1000000)')
   assert.equal((await db.query("SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='universe_runtime' AND column_name='executor_mode') AS bridge")).rows[0].bridge, true, 'ORBIT_PREVIOUS_SERVER must retain the durable runtime bridge')
+  const players = (await db.query('SELECT p.id player,a.name FROM players p JOIN universe_memberships m ON m.player=p.id JOIN accounts a ON a.id=m.account ORDER BY a.name')).rows
+  await prepareProgression(db, universe, players.slice(0, 2).map(p => ({ player: p.player, research: { ComputerTechnology: 5 }, inventory: { SmallCargo: 10, LightFighter: 100 } })))
   // API bindings now require existing worlds; this independent world retains the new default.
   const otherCreated = JSON.parse(execFileSync(current, ['universe', 'create', '--universe', other], { env, encoding: 'utf8', stdio: 'pipe' }))
   assert.equal(otherCreated.configuration.immutable.speed, 3)
-  const players = (await db.query('SELECT p.id player,a.name FROM players p JOIN universe_memberships m ON m.player=p.id JOIN accounts a ON a.id=m.account ORDER BY a.name')).rows
-  await prepareProgression(db, universe, players.slice(0, 2).map(p => ({ player: p.player, research: { ComputerTechnology: 5 }, inventory: { SmallCargo: 10, LightFighter: 100 } })))
   let old = await start(previous); active = old; auth = await login(active)
   binding = (await (await fetch(`${active.base}/api/v4/universes/${universe}/binding?request_id=${randomUUID()}`, { headers: headers() })).json()).binding
   body = (await fresh()).bodies[0].id

@@ -122,7 +122,7 @@ For a stranded scope, inspect its persisted diagnostic, the original pending inp
 
 After scoped activation, rollback is limited to binaries that understand scoped claims, fences, rules, and the retained schema. Do not set the executor back to serial or run a pre-bridge binary. Roll forward when the older executable cannot interpret the authority. A deliberate restore is a separate epoch-changing operation, never part of a rolling deployment.
 
-Update notifications retain seven days and are pruned in bounded batches. Expired cursors reset to snapshots plus durable receipts; another device consuming a stream never deletes its history. Canonical receipts/idempotency and transition evidence are retained independently. Monitor their storage cost at the target historical population; notification pruning is not permission to discard accepted-order identity.
+Update notifications retain seven days and are pruned in bounded batches. Expired cursors reset to snapshots plus durable receipts; another device consuming a stream never deletes its history. Command receipts and scheduled-event terminal rows independently protect retries. This bridge retains them without introducing expiry or cleanup; notification pruning is not permission to discard accepted-order identity. Full-state transition history is no longer written. Diagnostics have finite configured retention and are not retry or replay authority. See [journal removal and staged retention](journal-removal.md).
 
 ### Authentication contention evidence
 

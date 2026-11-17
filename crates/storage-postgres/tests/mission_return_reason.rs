@@ -105,13 +105,10 @@ async fn rolling_startup_and_legacy_full_record_writes_accept_unknown_causes_wit
     let (store, pool, u, mut fleets) = fixture().await;
     legacy(&pool, &mut fleets[0]).await;
     let f = &fleets[0];
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM transition_journal")
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        0
-    );
+    sqlx::query("DROP TABLE transition_journal RESTRICT")
+        .execute(&pool)
+        .await
+        .unwrap();
     // Missing historical evidence is an activation concern, never a startup task.
     store.migrate().await.unwrap();
     let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
