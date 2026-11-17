@@ -60,6 +60,9 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  'ship-customization': async () =>
+    (await import('./ship-customization.scenarios')).ShipCustomizationScenario,
+  shipyard: async () => (await import('./shipyard.scenarios')).ShipyardScenario,
   empire: async () => (await import('./empire.scenarios')).EmpireScenario,
   'report-readability': async () =>
     (await import('./report-readability.scenario')).ReportReadabilityScenario,

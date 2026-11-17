@@ -1,5 +1,8 @@
 # Asset customization: delivery plan
 
+> Implementation is now underway. [The approved first-slice contract](IMPLEMENTATION.md)
+> supersedes older proposals below, especially shared bake keys and pinned emblems.
+
 Date: 2026-11-16. **Status: agreed product direction, proposed implementation.**
 This is the coordination entry point for future chats. It does not claim the
 hangar, account library, skin catalogs, or generation service are implemented.

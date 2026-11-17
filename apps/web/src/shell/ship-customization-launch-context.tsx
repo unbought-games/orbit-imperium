@@ -8,12 +8,16 @@ import {
 } from 'react'
 import { shipCustomizationEnabled } from '../client-model/ship-customization-enabled'
 
-const ShipCustomizer = lazy(() =>
-  import('../features/ship-customization/ship-customizer').then((module) => ({
-    default: module.ShipCustomizer,
-  })),
-)
-const ShipCustomizationLaunchContext = createContext({
+const ShipCustomizer = shipCustomizationEnabled
+  ? lazy(() =>
+      import('../features/ship-customization/ship-customizer').then(
+        (module) => ({
+          default: module.ShipCustomizer,
+        }),
+      ),
+    )
+  : null
+export const ShipCustomizationLaunchContext = createContext({
   open: (_target: string) => {},
 })
 export const useShipCustomizationLaunch = () =>
@@ -29,7 +33,7 @@ export function ShipCustomizationLaunchProvider({
   return (
     <ShipCustomizationLaunchContext.Provider value={{ open: setTarget }}>
       {children}
-      {target && (
+      {target && ShipCustomizer && (
         <Suspense fallback={<p role="status">Opening hangar…</p>}>
           <ShipCustomizer target={target} onClose={() => setTarget(null)} />
         </Suspense>

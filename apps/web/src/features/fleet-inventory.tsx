@@ -76,9 +76,7 @@ export function FleetInventoryView({
   universe: string
   appearances?: ShipAppearanceState | null
 }) {
-  const appearance = shipCustomizationEnabled
-    ? shipAppearancesForOwner(appearances, view.binding)
-    : null
+  const appearance = shipAppearancesForOwner(appearances, view.binding)
   const empire = scope === 'empire'
   const body = view.bodies.find((candidate) => candidate.id === origin)
   if (!body) return null

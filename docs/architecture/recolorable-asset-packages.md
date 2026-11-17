@@ -1,5 +1,8 @@
 # Recolorable asset package contract
 
+> Implementation is now underway. [The approved first-slice contract](../plans/asset-customization/IMPLEMENTATION.md)
+> supersedes older proposals below, especially shared bake keys and pinned emblems.
+
 Status: **proposed v1**, 2026-11-16. This defines the W1/W2 agreement to implement;
 it is not an existing JSON schema or catalog-reader version. See the
 [delivery plan](../plans/asset-customization/README.md) and
