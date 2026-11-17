@@ -1,7 +1,8 @@
 import { compareShips } from '../ship-order'
 import { UnitComparison } from './unit-comparison'
 import { ShipComparison } from './ship-comparison'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import type { DetailLayoutProps } from './detail-layout'
 import { Network } from 'lucide-react'
 import { CatalogStage } from '../../ui/catalog-stage'
 import { CatalogSection, ImageCatalog } from '../../ui/image-catalog'
@@ -224,11 +225,16 @@ export function TechnologyPage(props: ProgressionProps) {
   )
 }
 
-function TechnologyInspector({
+export function TechnologyInspector({
   selected,
   count,
+  renderLayout,
   ...props
-}: ProgressionProps & { selected: Entry; count: number | string }) {
+}: ProgressionProps & {
+  selected: Entry
+  count: number | string
+  renderLayout?: (layout: DetailLayoutProps) => ReactNode
+}) {
   const { view, body, coordinator: model } = props
   const progress = buildingProgress(model.store.getState(), body.id)
   const research = researchProgress(model.store.getState())
@@ -295,6 +301,7 @@ function TechnologyInspector({
           {...props}
           entry={selected}
           count={count}
+          renderLayout={renderLayout}
           proposal={proposal}
           loading={loading}
           error={requestError}
