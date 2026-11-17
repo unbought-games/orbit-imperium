@@ -66,7 +66,7 @@ class HistoryTests(unittest.TestCase):
                     root=Path(name);facts=[history.envelope(self.row(n),self.policy())[0] for n in range(1,206)]
                     (root/'page-000000.json').write_text(json.dumps({'facts':facts}))
                     args=argparse.Namespace(output=root,endpoint='http://127.0.0.1:'+str(server.server_port),max_batches=1)
-                    with self.assertRaises(urllib.error.HTTPError):history.deliver(args)
+                    with self.assertRaisesRegex(RuntimeError,'facts retained'):history.deliver(args)
                     for _ in range(4):history.deliver(args)
                     self.assertEqual(calls,[100,100,100,5]);self.assertEqual(len(seen),205)
             finally:

@@ -13,6 +13,7 @@ from pathlib import Path
 import subprocess
 import sqlite3
 import urllib.request
+import urllib.error
 import uuid
 
 ACTIONS = ('SetProduction', 'StartDemolition', 'StartResearch', 'CancelResearch',
@@ -118,10 +119,14 @@ def deliver(args):
             request=urllib.request.Request(args.endpoint.rstrip('/')+'/v1/ingest/server',
                 data=json.dumps({'events':[f for f,d in pending]}).encode(),
                 headers={'Authorization':'Bearer '+os.environ['ANALYTICS_SERVER_TOKEN'],'Content-Type':'application/json'})
-            with opener.open(request,timeout=10) as response:
-                body=response.read(262145)
-                if len(body)>262144: raise RuntimeError('Oversized acknowledgement')
-                results=json.loads(body)['results']
+            try:
+                with opener.open(request,timeout=10) as response:
+                    body=response.read(262145)
+                    if len(body)>262144: raise RuntimeError('Oversized acknowledgement')
+                    results=json.loads(body)['results']
+            except urllib.error.HTTPError as error:
+                error.close()
+                raise RuntimeError('Analytics delivery failed; facts retained') from None
             by_id={r['event_id']:r for r in results}
             if len(by_id)!=len(results) or set(by_id)!={f['event_id'] for f,d in pending}:
                 raise RuntimeError('Invalid acknowledgement identities; no checkpoint advance')
