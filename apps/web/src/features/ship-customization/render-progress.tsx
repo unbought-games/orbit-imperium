@@ -36,6 +36,7 @@ export function RenderProgress({
       <div className={styles.actions}>
         {render?.can_retry && (
           <Button
+            type="button"
             variant="secondary"
             size="small"
             disabled={busy}
@@ -51,6 +52,7 @@ export function RenderProgress({
         )}
         {render?.can_cancel && (
           <Button
+            type="button"
             variant="ghost"
             size="small"
             disabled={busy}

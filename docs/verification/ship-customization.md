@@ -132,3 +132,11 @@ context is independent of the lazy editor module so development updates do not
 replace its identity. Eight updated component cases passed (15.2 s execution,
 4.868 s setup), followed by static checks and a production build. The empty-state
 skin spelling reported by automated review is corrected in this batch.
+
+Review of head `e92d0e45` identified that the render recovery buttons inherited
+native submit behavior inside the newly enclosing form. Retry and Cancel now
+explicitly use `type="button"`. A focused browser regression observes native form
+submission events and confirms each command reaches the controller without
+submitting Save. All six hangar component cases passed (6.7 s execution, 4.974 s
+bundle preparation); desktop retry and mobile cancel screenshots were captured
+and inspected. No preview data or processes were changed.

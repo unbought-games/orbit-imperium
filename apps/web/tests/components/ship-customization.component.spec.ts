@@ -171,6 +171,81 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
   await expect(opener).toBeFocused()
 })
 
+// Regression: render recovery controls must never submit the surrounding Save
+// form, even when the mutation guard would swallow that unintended submission.
+test('retry and cancel render do not submit the design form', async ({
+  page,
+  mount,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  const { dialog } = await openHangar(page, mount)
+  const form = dialog.locator('form')
+  await form.evaluate((node) => {
+    node.dataset.submissions = '0'
+    node.addEventListener('submit', () => {
+      node.dataset.submissions = String(Number(node.dataset.submissions) + 1)
+    })
+  })
+  await page.evaluate(async () => {
+    const scene = window.shipCustomizationScene!
+    const snapshot = scene.snapshot()
+    snapshot.equipment[0].render = {
+      ...snapshot.equipment[0].render!,
+      stage: 'failed',
+      can_retry: true,
+      can_cancel: false,
+      error: 'The renderer could not prepare this appearance.',
+    }
+    await scene.observe(snapshot)
+  })
+  const retry = dialog.getByRole('button', { name: 'Retry render' })
+  await expect(retry).toBeEnabled()
+  await retry.scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, {
+    path: testInfo.outputPath('hangar-retry-desktop-1280x900.png'),
+  })
+  await retry.click()
+  await expect(form).toHaveAttribute('data-submissions', '0')
+  expect(
+    await page.evaluate(() => window.shipCustomizationScene!.pending()),
+  ).toMatchObject({ type: 'Retry' })
+  await page.evaluate(() => {
+    const scene = window.shipCustomizationScene!
+    const snapshot = scene.snapshot()
+    snapshot.equipment[0].render = {
+      ...snapshot.equipment[0].render!,
+      stage: 'rendering',
+      can_retry: false,
+      can_cancel: true,
+      error: undefined,
+    }
+    scene.accept(snapshot)
+  })
+  const cancel = dialog.getByRole('button', { name: 'Cancel render' })
+  await expect(cancel).toBeEnabled()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await cancel.scrollIntoViewIfNeeded()
+  await diagnosticScreenshot(page, {
+    path: testInfo.outputPath('hangar-cancel-mobile-390x844.png'),
+  })
+  await cancel.click()
+  await expect(form).toHaveAttribute('data-submissions', '0')
+  expect(
+    await page.evaluate(() => window.shipCustomizationScene!.pending()),
+  ).toMatchObject({ type: 'Cancel' })
+  await page.evaluate(() => {
+    const scene = window.shipCustomizationScene!
+    const snapshot = scene.snapshot()
+    snapshot.equipment[0].render = {
+      ...snapshot.equipment[0].render!,
+      stage: 'canceled',
+      can_cancel: false,
+    }
+    scene.accept(snapshot)
+  })
+  await expect(cancel).toHaveCount(0)
+})
+
 // Regression: newer observations must repaint the current emblem without
 // overwriting local edits; rendering must not lock out a subsequent submission.
 test('hangar retains edits across emblem observations and allows another save while rendering', async ({
