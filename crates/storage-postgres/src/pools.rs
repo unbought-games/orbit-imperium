@@ -65,6 +65,7 @@ impl PgStore {
             refresh_waiters: Default::default(),
             update_hub: Default::default(),
             scan_cursors: Default::default(),
+            retention_positions: Default::default(),
             observer: std::sync::Arc::new(orbit_application::NoopRuntimeObserver),
         })
     }
