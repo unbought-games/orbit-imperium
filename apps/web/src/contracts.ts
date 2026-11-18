@@ -7464,6 +7464,12 @@ export interface components {
             reports: string[];
         } | {
             /** @constant */
+            type: "ArchiveReport";
+            /** Format: uuid */
+            report: string;
+            revoke_share: boolean;
+        } | {
+            /** @constant */
             type: "SetReportHidden";
             /** Format: uuid */
             report: string;

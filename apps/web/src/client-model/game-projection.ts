@@ -271,6 +271,7 @@ export function canSubmitIntent(
         'RenamePlanet',
         'MarkReportRead',
         'MarkReportsRead',
+        'ArchiveReport',
         'SetReportHidden',
         'SetReportsHidden',
         'SetReportStarred',

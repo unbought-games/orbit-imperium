@@ -85,9 +85,9 @@ pub fn command_action(command: &Command) -> &'static str {
                 "read_reports"
             }
             WorldAction::SetReportStarred { .. } => "star_report",
-            WorldAction::SetReportHidden { .. } | WorldAction::SetReportsHidden { .. } => {
-                "hide_reports"
-            }
+            WorldAction::ArchiveReport { .. }
+            | WorldAction::SetReportHidden { .. }
+            | WorldAction::SetReportsHidden { .. } => "hide_reports",
         },
         Command::SetProduction { .. } => "set_production",
         Command::StartDemolition { .. } => "start_demolition",
