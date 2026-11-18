@@ -64,18 +64,30 @@ test('desktop pagination resets when language and recruiting filters combine', a
     pagination = page.getByRole('navigation', {
       name: 'Alliance directory pages',
     })
+  const recruiting = page.getByRole('checkbox', {
+    name: 'Only show recruiting',
+  })
+  await expect(recruiting).toHaveCount(0)
+  await expect(
+    page.getByText('Recruitment closed', { exact: true }),
+  ).toBeVisible()
   await expect(list.locator(':scope > li')).toHaveCount(20)
   await pagination.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(list.locator(':scope > li')).toHaveCount(3)
   await page.getByRole('button', { name: 'Filters', exact: true }).click()
+  await expect(recruiting).not.toBeChecked()
   await page.getByLabel('Language', { exact: true }).selectOption('en')
   await page.keyboard.press('Escape')
   await expect(page.getByText('22 alliances', { exact: true })).toBeVisible()
   await expect(
     pagination.getByRole('button', { name: 'Previous', exact: true }),
   ).toBeDisabled()
+  await expect(
+    page.getByText('Recruitment closed', { exact: true }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Filters (1)', exact: true }).click()
-  await page.getByRole('checkbox', { name: 'Only show recruiting' }).check()
+  await recruiting.check()
+  await expect(recruiting).toBeChecked()
   await page.keyboard.press('Escape')
   await expect(page.getByText('21 alliances', { exact: true })).toBeVisible()
   await expect(
@@ -87,7 +99,28 @@ test('desktop pagination resets when language and recruiting filters combine', a
   )
   const search = page.getByRole('searchbox', { name: 'Search alliances' }),
     submit = page.getByRole('button', { name: 'Search alliances', exact: true })
+  await expect(
+    page.getByRole('button', { name: 'Filters (2)', exact: true }),
+  ).toBeVisible()
+  await search.fill('missing')
+  await submit.click()
+  await expect(
+    page.getByRole('heading', { name: 'No alliances match your search.' }),
+  ).toBeVisible()
+  await expect(pagination).toHaveCount(0)
+  await expect(search).toHaveValue('missing')
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
+  await page.getByRole('button', { name: 'Filters', exact: true }).click()
+  await expect(recruiting).not.toBeChecked()
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('23 alliances', { exact: true })).toBeVisible()
   await search.focus()
+  await expect(search).toBeFocused()
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
   await expect(search.locator('..')).toHaveCSS('outline-style', 'solid')
   const inputBox = (await search.boundingBox())!,
     buttonBox = (await submit.boundingBox())!

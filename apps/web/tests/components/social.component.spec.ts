@@ -233,12 +233,14 @@ for (const width of [1440, 390]) {
       await expect(page.getByText('Start your conversation.')).toBeVisible()
       const composer = page.getByLabel('Message', { exact: true })
       await composer.fill('First draft')
+      const composerBounds = await composer.boundingBox()
       await page.evaluate(() => {
         window.socialScenario.hold()
         void window.socialScenario.poll()
       })
       await expect(page.getByText('Loading messages…')).toHaveCount(0)
       await expect(composer).toBeFocused()
+      expect(await composer.boundingBox()).toEqual(composerBounds)
       await page.evaluate(() => window.socialScenario.release())
       await expect
         .poll(() =>
@@ -374,14 +376,25 @@ test('contact menus and one-way circular composer expose their resulting state',
   ).toBeVisible()
   await page.keyboard.press('Escape')
   await category(page, 'Circulars')
-  await page.getByLabel('Alliance announcement').fill('Meet at the outpost.')
+  await page
+    .getByLabel('Alliance announcement')
+    .fill('**Meet at the outpost.**')
   await page.getByRole('button', { name: 'Send circular', exact: true }).click()
   await expect(
-    page.getByRole('article').getByText('Meet at the outpost.'),
+    page
+      .getByRole('article')
+      .locator('strong')
+      .filter({ hasText: 'Meet at the outpost.' }),
   ).toBeVisible()
   await expect(
     page.getByText('One-way announcement to current members. No reply-all.'),
   ).toBeVisible()
+  await expect(page.getByRole('button', { name: /reply all/i })).toHaveCount(0)
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
   await page.getByRole('button', { name: 'Hide circular', exact: true }).click()
   await expect(page.getByRole('article')).toHaveCount(0)
 })

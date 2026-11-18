@@ -226,79 +226,80 @@ for (const width of [390]) {
   })
 }
 
-for (const width of [1440, 390]) {
-  test(`dossier keyboard focus and orb use the same empire identity at ${width}px`, async ({
-    page,
-  }) => {
-    const { installGameFixture, body } = await import('./fixtures/game')
-    const { focusPlayerDetails } = await import('./fixtures/profile-navigation')
-    await page.setViewportSize({ width, height: 1000 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.clock.install()
-    await installGameFixture(page, {
-      protocol: 4,
-      missions: {
-        fleets: [],
-        incoming: [],
-        fleet_slots: '8',
-        score_value_micro: '0',
+test('dossier keyboard focus and orb use the same empire identity', async ({
+  page,
+}) => {
+  const { installGameFixture, body } = await import('./fixtures/game')
+  const { focusPlayerDetails } = await import('./fixtures/profile-navigation')
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.clock.install()
+  await installGameFixture(page, {
+    protocol: 4,
+    missions: {
+      fleets: [],
+      incoming: [],
+      fleet_slots: '8',
+      score_value_micro: '0',
+    },
+  })
+  await page.route('**/rankings', (r) =>
+    r.fulfill({
+      json: {
+        binding,
+        request_id: r.request().postDataJSON().request_id,
+        sampled_at: Date.now(),
+        processing_pending: false,
+        players: [
+          {
+            player: binding.player,
+            username: 'Aurelia',
+            points: '12',
+            rank: 1,
+          },
+        ],
+      },
+    }),
+  )
+  await page.route('**/player-profiles', (r) => {
+    const { context } = r.request().postDataJSON()
+    const now = Math.floor(Date.now() / 1000)
+    return r.fulfill({
+      json: {
+        binding,
+        request_id: context.request_id,
+        players: [
+          {
+            player: binding.player,
+            username: 'Aurelia',
+            kind: 'human',
+            observed_at: now,
+            expires_at: now + 300,
+            identity: {
+              name: 'Roman Empire',
+              tagline: 'Many worlds. One people.',
+              title_id: 'consul',
+            },
+            title: {
+              id: 'consul',
+              label: 'Consul',
+              address: 'Consul',
+              expires_at: null,
+            },
+          },
+        ],
       },
     })
-    await page.route('**/rankings', (r) =>
-      r.fulfill({
-        json: {
-          binding,
-          request_id: r.request().postDataJSON().request_id,
-          sampled_at: Date.now(),
-          processing_pending: false,
-          players: [
-            {
-              player: binding.player,
-              username: 'Aurelia',
-              points: '12',
-              rank: 1,
-            },
-          ],
-        },
-      }),
-    )
-    await page.route('**/player-profiles', (r) => {
-      const { context } = r.request().postDataJSON()
-      const now = Math.floor(Date.now() / 1000)
-      return r.fulfill({
-        json: {
-          binding,
-          request_id: context.request_id,
-          players: [
-            {
-              player: binding.player,
-              username: 'Aurelia',
-              kind: 'human',
-              observed_at: now,
-              expires_at: now + 300,
-              identity: {
-                name: 'Roman Empire',
-                tagline: 'Many worlds. One people.',
-                title_id: 'consul',
-              },
-              title: {
-                id: 'consul',
-                label: 'Consul',
-                address: 'Consul',
-                expires_at: null,
-              },
-            },
-          ],
-        },
-      })
-    })
-    await withFixtureResponse(
-      page,
-      (r) =>
-        r.url().endsWith('/player-profiles') &&
-        r.request().postDataJSON().source.type === 'Rankings',
-      () => page.goto(`/u/andromeda/b/${body.id}/high-scores`),
-    )
+  })
+  await withFixtureResponse(
+    page,
+    (r) =>
+      r.url().endsWith('/player-profiles') &&
+      r.request().postDataJSON().source.type === 'Rankings',
+    () => page.goto(`/u/andromeda/b/${body.id}/high-scores`),
+  )
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
     const caption = page.getByTestId('orb-caption')
     await expect(caption).toHaveText('Welcome, Consul.')
     await capture(page, 'orb', width)
@@ -313,8 +314,8 @@ for (const width of [1440, 390]) {
     await capture(page, 'dossier', width)
     await page.keyboard.press('Escape')
     await expect(dossier).toHaveCount(0)
-  })
-}
+  }
+})
 
 // Protect the overview → identity API → shared profile refresh wiring, with a
 // separate touch layout because its pencil must be discoverable without hover.

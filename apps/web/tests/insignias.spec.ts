@@ -1,7 +1,7 @@
 import { installEmpireIdentityFixture } from './fixtures/empire-identity'
 import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { test, expect } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -105,7 +105,7 @@ test('Galaxy emblems remain visible during refresh and reload from the persisten
 test.use({ hasTouch: true })
 
 type Design = components['schemas']['InsigniaDesign']
-async function fixture(page: Page, layered = false) {
+async function fixture(page: Page) {
   await shellFixture(page, {
     protocol: 4,
     missions: {
@@ -128,18 +128,6 @@ async function fixture(page: Page, layered = false) {
       bytes,
     }
   })
-  if(layered){
-    for(const file of readdirSync('crates/application/assets/insignias').filter(f=>f.startsWith('forge-'))){
-      const id=file.slice(0,-4),bytes=readFileSync(`crates/application/assets/insignias/${file}`)
-      const centers=['wayfinder','starwing','ascendant','anvil','helix','quarter-moon','full-circle','triforce']
-      catalog.push({id,name:id.slice(6),group:centers.includes(id.slice(6))?'center':'accents',supporter:false,asset_url:`/api/media/insignias/${id}/${createHash('sha256').update(bytes).digest('hex')}.svg`,bytes})
-    }
-    // Independently authored fixtures; no official supporter originals in public tests.
-    for(const [id,group] of [['test-center','center'],['test-accent','accents'],['test-stripe-a','stripes'],['test-stripe-b','stripes'],['test-stripe-c','stripes']] as const){
-      const bytes=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 108"><path fill="white" d="M40 10h20v88H40Z"/></svg>')
-      catalog.push({id,name:id,group,supporter:true,asset_url:`/api/media/insignias/${id}/${createHash('sha256').update(bytes).digest('hex')}.svg`,bytes})
-    }
-  }
   for (const item of catalog)
     await page.route(`**${item.asset_url}`, (r) =>
       r.fulfill({ contentType: 'image/svg+xml', body: item.bytes }),
@@ -148,21 +136,15 @@ async function fixture(page: Page, layered = false) {
     designs: [] as Design[],
     equipped: null as string | null,
     supporter: false,
-    installed: true,
-    unknown: false,
-    permanent: false,
     fail: false,
   }
-  const available = (symbol: string) =>
-    !symbol.startsWith('test-') ||
-    (state.installed && (state.permanent || (state.supporter && !state.unknown)))
+  const available=(symbol:string)=>symbol!=='test-star'||state.supporter
   const appearance = () => {
     const selected = state.designs.find((d) => d.id === state.equipped)?.recipe
     if (!selected) return null
-    const recipe = available(selected.symbol) && (selected.layers??[]).every(l=>available(l.symbol)) ? selected : fallback
+    const recipe = available(selected.symbol) ? selected : fallback
     return {
       recipe,
-      ...(recipe.version===2?{layers:[...(recipe.layers??[])].sort((a,b)=>['stripes','center','accents'].indexOf(catalog.find(e=>e.id===a.symbol)!.group!)-['stripes','center','accents'].indexOf(catalog.find(e=>e.id===b.symbol)!.group!)).map(l=>({...l,asset_url:catalog.find(e=>e.id===l.symbol)!.asset_url}))}:{}),
       asset_url: catalog.find((s) => s.id === recipe.symbol)!.asset_url,
     }
   }
@@ -197,17 +179,15 @@ async function fixture(page: Page, layered = false) {
         library: {
           designs: state.designs,
           equipped: state.equipped,
-          permanent_symbols: state.permanent ? ['test-star'] : [],
+          permanent_symbols: [],
         },
         policy: 'supporter',
-        composition_access: state.unknown?'unavailable':state.supporter?'available':'supporter_required',
-        catalog: catalog.filter((item) => state.installed || item.id !== 'test-star').map(({ bytes: _bytes, ...item }) => ({
+        composition_access: state.supporter?'available':'supporter_required',
+        catalog: catalog.map(({ bytes: _bytes, ...item }) => ({
           ...item,
           access: available(item.id)
             ? 'available'
-            : state.unknown
-              ? 'unavailable'
-              : 'supporter_required',
+            : 'supporter_required',
         })),
         appearance: appearance(),
         expires_at: Math.floor(Date.now() / 1000) + 30,
@@ -216,148 +196,76 @@ async function fixture(page: Page, layered = false) {
   })
   return { state, appearance }
 }
-for (const width of [1440, 390]) {
-  test(`insignia collection, supporter access and Galaxy identity at ${width}px`, async ({
+test('a newly equipped design reaches the Galaxy profile consumer', async ({
+  page,
+}) => {
+  const { state } = await fixture(page)
+  state.supporter = true
+  await withFixtureResponse(
     page,
-  }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { state, appearance } = await fixture(page)
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
-    const panel = page.getByRole('region', { name: 'Empire insignia' })
-    await expect(
-      panel.getByRole('button', { name: 'New design' }),
-    ).toBeVisible()
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-empty-${width}x1000.png`,
-    })
-    await panel.getByRole('button', { name: 'New design' }).click()
-    await panel
-      .getByLabel('Design name', { exact: true })
-      .fill('Aurelian expedition')
-    await panel.getByRole('button', { name: 'Starwing', exact: true }).click()
-    await expect(
-      panel.getByRole('button', {
-        name: 'Test star · Membership access required',
-      }),
-    ).toBeDisabled()
-    await panel.getByLabel('Symbol color', { exact: true }).fill('#f2ca74')
-    await panel.getByLabel('Background color', { exact: true }).fill('#743c4c')
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-editing-${width}x1000.png`,
-    })
-    await panel.getByRole('button', { name: 'Save & equip' }).click()
-    await expect(panel.getByRole('status')).toHaveText(
-      'Design saved and equipped.',
-    )
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
-      'Aurelian expedition',
-    )
-    expect(state.designs[0].recipe.foreground).toBe('#f2ca74')
-    state.supporter = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await panel.getByRole('button', { name: 'Test star', exact: true }).click()
-    await panel.getByRole('button', { name: 'Save & equip' }).click()
-    await expect(panel.getByRole('status')).toHaveText(
-      'Design saved and equipped.',
-    )
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-supporter-${width}x1000.png`,
-    })
-    state.supporter = false
-    state.unknown = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await expect(panel).toContainText(
-      'Membership verification is temporarily unavailable',
-    )
-    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
-      'Aurelian expedition',
-    )
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-unavailable-${width}x1000.png`,
-    })
-    state.permanent = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await expect(panel.getByLabel('Permanently unlocked')).toBeVisible()
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-permanent-${width}x1000.png`,
-    })
-    expect(appearance()?.recipe.symbol).toBe('test-star')
-    await routeWorld(page, (route) => {
-      const q = route.request().postDataJSON()
-      return route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          request_id: q.context.request_id,
-          viewer_revision: '1',
-          sampled_at: Date.now(),
-          as_of_ms: Date.now(),
-          data: {
-            galaxy: 1,
-            system: 371,
-            observed_at: Date.now(),
-            positions: Array.from({ length: 15 }, (_, i) => ({
-              coordinates: { galaxy: 1, system: 371, position: i + 1 },
-              body:
-                i === 11
-                  ? {
-                      id: body.id,
-                      kind: 'Planet',
-                      owner: binding.player,
-                      name: 'Aurelia',
-                      activity: { type: 'None' },
-                      inactivity: 'Active',
-                      vacation: false,
-                      espionage_eligible: true,
-                    }
-                  : null,
-              debris: null,
-            })),
-          },
+    (r) => r.url().endsWith('/insignias'),
+    () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`),
+  )
+  const panel = page.getByRole('region', { name: 'Empire insignia' })
+  await panel.getByRole('button', { name: 'New design' }).click()
+  await panel.getByRole('button', { name: 'Test star', exact: true }).click()
+  await panel.getByRole('button', { name: 'Save & equip' }).click()
+  await expect(panel.getByRole('status')).toHaveText(
+    'Design saved and equipped.',
+  )
+  await routeWorld(page, (route) => {
+    const q = route.request().postDataJSON()
+    return route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        request_id: q.context.request_id,
+        viewer_revision: '1',
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        data: {
+          galaxy: 1,
+          system: 371,
+          observed_at: Date.now(),
+          positions: Array.from({ length: 15 }, (_, i) => ({
+            coordinates: { galaxy: 1, system: 371, position: i + 1 },
+            body:
+              i === 11
+                ? {
+                    id: body.id,
+                    kind: 'Planet',
+                    owner: binding.player,
+                    name: 'Aurelia',
+                    activity: { type: 'None' },
+                    inactivity: 'Active',
+                    vacation: false,
+                    espionage_eligible: true,
+                  }
+                : null,
+            debris: null,
+          })),
         },
-      })
+      },
     })
-    await withGalaxyResponse(page, () =>
-      page.goto(`/u/andromeda/b/${body.id}/galaxy`),
-    )
-    const card = page
-      .getByRole('listitem')
-      .filter({ hasText: 'Aurelia' })
-      .first()
-    await expect(card).toBeVisible()
+  })
+  await withGalaxyResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/galaxy`),
+  )
+  const card = page.getByRole('listitem').filter({ hasText: 'Aurelia' }).first()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await card.scrollIntoViewIfNeeded()
+    await expect(card).toBeInViewport()
     await expect(
       card.locator('span[style*="--insignia-foreground"]'),
     ).toBeVisible()
-    await expect(async () => {
-      await card.scrollIntoViewIfNeeded()
-      await expect(card).toBeInViewport()
-    }).toPass({ timeout: 5000 })
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-galaxy-${width}x1000.png`,
-    })
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-  })
-}
+  }
+})
 test('failed saves preserve the draft and the library can recover', async ({
   page,
 }) => {
@@ -381,63 +289,6 @@ test('failed saves preserve the draft and the library can recover', async ({
   ).toContainText('Design saved and equipped.')
   expect(state.designs).toHaveLength(1)
 })
-
-for (const width of [1440, 390]) {
-  test(`saved collection remains visible without an equipped design at ${width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { state } = await fixture(page)
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
-    const panel = page.getByRole('region', { name: 'Empire insignia' })
-    for (const name of ['First standard', 'Second standard']) {
-      await panel.getByRole('button', { name: 'New design' }).click()
-      await panel.getByLabel('Design name', { exact: true }).fill(name)
-      await panel.getByRole('button', { name: 'Save & equip' }).click()
-      await expect(
-        panel.getByLabel('Saved designs').locator('option:checked'),
-      ).toHaveText(`${name} · Equipped`)
-    }
-    await panel.getByRole('button', { name: 'Remove insignia' }).click()
-    await expect(
-      panel.getByRole('button', { name: 'Remove insignia' }),
-    ).toHaveCount(0)
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
-      'First standard',
-    )
-    await expect(panel).not.toContainText('Your collection starts here')
-    expect(state.equipped).toBeNull()
-    await expect(panel.getByLabel('Current empire insignia')).toHaveCount(0)
-    await expect(panel).toContainText('No insignia equipped.')
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-library-default-${width}x1000.png`,
-    })
-    await panel
-      .getByLabel('Saved designs')
-      .selectOption({ label: 'Second standard' })
-    await panel
-      .getByRole('button', { name: 'Delete design', exact: true })
-      .click()
-    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
-      'First standard',
-    )
-    await expect(panel).not.toContainText('Your collection starts here')
-    expect(state.designs).toHaveLength(1)
-    expect(state.equipped).toBeNull()
-    await expect(panel.getByLabel('Current empire insignia')).toHaveCount(0)
-    await expect(panel).toContainText('No insignia equipped.')
-    await panel.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 72),
-    )
-    await diagnosticScreenshot(page, {
-      path: `test-results/insignia-library-after-delete-${width}x1000.png`,
-    })
-  })
-}
 
 for (const width of [1440, 390]) {
   test(`player dossier opens by hover, keyboard and tap at ${width}px`, async ({
@@ -580,137 +431,6 @@ for (const width of [1440, 390]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true)
-  })
-}
-
-for (const width of [1440, 390]) {
-  test(`community catalog and preserved missing selection at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { state } = await fixture(page)
-    state.installed = false
-    state.permanent = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
-    const panel = page.getByRole('region', { name: 'Empire insignia' })
-    await panel.getByRole('button', { name: 'New design' }).click()
-    await expect(panel.getByRole('button', { name: 'Test star', exact: true })).toHaveCount(0)
-    await expect(panel.getByRole('button', { name: 'Wayfinder', exact: true })).toBeVisible()
-    await expect(panel).not.toContainText('Members can use additional symbols')
-    await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 72))
-    await diagnosticScreenshot(page, { path: `test-results/catalog-community-${width}x1000.png` })
-    const id = '00000000-0000-4000-8000-000000000031'
-    state.designs = [{ id, name: 'Preserved design', recipe: { ...fallback, symbol: 'test-star' }, revision: 1 }]
-    state.equipped = id
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue('Preserved design')
-    await expect(panel).toContainText('This symbol is not installed on this server.')
-    await expect(panel.getByRole('button', { name: 'Equip design', exact: true })).toBeDisabled()
-    await expect(panel.getByRole('button', { name: 'Delete design', exact: true })).toBeEnabled()
-    await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 72))
-    await diagnosticScreenshot(page, { path: `test-results/catalog-missing-${width}x1000.png` })
-    if (width === 390) {
-      await panel.getByRole('button', { name: 'Equip design', exact: true }).scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, { path: `test-results/catalog-missing-controls-${width}x1000.png` })
-    }
-    await panel.getByRole('button', { name: 'Wayfinder', exact: true }).click()
-    await expect(panel.getByRole('button', { name: 'Save & equip' })).toBeEnabled()
-    await panel.getByRole('button', { name: 'Save & equip' }).click()
-    await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
-    expect(state.designs[0].recipe.symbol).toBe('compass')
-  })
-}
-
-for(const width of [1440,390]){
- test(`layered composer saves colors and slots at ${width}px`,async({page})=>{
-  await page.setViewportSize({width,height:1000})
-  const {state}=await fixture(page,true)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
-  const panel=page.getByRole('region',{name:'Empire insignia'})
-  await panel.getByRole('button',{name:'New design'}).click()
-  await expect(panel.getByRole('button',{name:'test-center',exact:true})).toBeDisabled()
-  await panel.getByRole('button',{name:'triforce',exact:true}).click()
-  await panel.getByRole('button',{name:'mini-stripes',exact:true}).click()
-  await panel.getByLabel('Element color',{exact:true}).fill('#aabbcc')
-  await panel.getByRole('button',{name:'Hexagon',exact:true}).click()
-  await panel.getByRole('button',{name:'Save & equip'}).click()
-  await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
-  expect(state.designs[0].recipe.version).toBe(2)
-  expect(state.designs[0].recipe.shape).toBe('hexagon')
-  expect(state.designs[0].recipe.layers).toHaveLength(2)
-  expect(state.designs[0].recipe.layers?.every(l=>l.color==='#aabbcc')).toBe(true)
-  await panel.evaluate(el=>window.scrollBy(0,el.getBoundingClientRect().top-72))
-  await diagnosticScreenshot(page,{path:`test-results/composer-free-${width}x1000.png`,fullPage:true})
-  state.supporter=true;await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-  for(const id of ['test-stripe-a','test-stripe-b','test-stripe-c'])await panel.getByRole('button',{name:id,exact:true}).click()
-  await panel.getByLabel('Accent color',{exact:true}).fill('#ffeeaa')
-  await panel.getByRole('button',{name:'Save & equip'}).click()
-  await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
-  expect(state.designs[0].recipe.layers).toHaveLength(4)
-  expect(state.designs[0].recipe.layers?.some(l=>l.symbol==='test-stripe-a')).toBe(false)
-  await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-  await expect(panel.getByRole('button',{name:'test-stripe-c',exact:true})).toHaveAttribute('aria-pressed','true')
-  await panel.evaluate(el=>window.scrollBy(0,el.getBoundingClientRect().top-72))
-  await diagnosticScreenshot(page,{path:`test-results/composer-supporter-${width}x1000.png`,fullPage:true})
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
- })
-}
-
-for (const width of [1440, 390]) {
-  test(`empty color groups and background shape persistence at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const { state } = await fixture(page, true)
-    state.supporter = true
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.goto(`/u/andromeda/b/${body.id}/settings/identity`))
-    const panel = page.getByRole('region', { name: 'Empire insignia' })
-    await panel.getByRole('button', { name: 'New design' }).click()
-    const accent = panel.getByLabel('Accent color', { exact: true })
-    await expect(accent).toBeDisabled()
-    await expect(accent).toHaveAccessibleDescription('Select an element to set its color.')
-    await panel.getByRole('button', { name: 'crown', exact: true }).click()
-    await accent.fill('#22cc88')
-    await panel.getByRole('button', { name: 'moons', exact: true }).click()
-    await expect(accent).toHaveValue('#22cc88')
-    await panel.getByRole('button', { name: 'moons', exact: true }).click()
-    await expect(accent).toBeDisabled()
-    await panel.getByRole('button', { name: 'crown', exact: true }).click()
-    await accent.fill('#22cc88')
-    const stripe = panel.getByLabel('Stripe color', { exact: true })
-    await expect(stripe).toBeDisabled()
-    await panel.getByRole('button', { name: 'test-stripe-a', exact: true }).click()
-    await stripe.fill('#8866cc')
-    await panel.getByRole('button', { name: 'test-stripe-b', exact: true }).click()
-    await panel.getByRole('button', { name: 'test-stripe-c', exact: true }).click()
-    await expect(stripe).toHaveValue('#8866cc')
-    const preview = panel.getByRole('img', { name: 'Insignia preview' })
-    for (const [shape, name] of [['shield', 'Shield'], ['circle', 'Circle'], ['rounded_square', 'Rounded square'], ['diamond', 'Diamond'], ['hexagon', 'Hexagon']]) {
-      const choice = panel.getByRole('button', { name, exact: true })
-      await choice.focus()
-      await choice.press('Space')
-      await expect(choice).toHaveAttribute('aria-pressed', 'true')
-      await expect(preview).toHaveAttribute('data-shape', shape)
-      if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-        await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 80))
-        await diagnosticScreenshot(page, { path: `test-results/composer-${shape}-${width}x1000.png` })
-      }
-    }
-    await panel.getByRole('button', { name: 'Save & equip' }).click()
-    await expect(panel.getByRole('status')).toHaveText('Design saved and equipped.')
-    expect(state.designs[0].recipe.shape).toBe('hexagon')
-    expect(state.designs[0].recipe.layers?.filter(l => l.symbol.startsWith('test-stripe')).map(l => l.color)).toEqual(['#8866cc', '#8866cc'])
-    await withFixtureResponse(page, (response) => response.url().endsWith('/insignias'), () => page.reload())
-    await expect(preview).toHaveAttribute('data-shape', 'hexagon')
-    await expect(accent).toHaveValue('#22cc88')
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-      await panel.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 80))
-      await diagnosticScreenshot(page, { path: `test-results/composer-saved-${width}x1000.png` })
-    }
-    await panel.getByRole('button', { name: 'Clear elements' }).click()
-    for (const label of ['Center color', 'Stripe color', 'Accent color']) await expect(panel.getByLabel(label, { exact: true })).toBeDisabled()
-    await expect(preview).toHaveAttribute('data-shape', 'hexagon')
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-      await panel.getByLabel('Accent color', { exact: true }).scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, { path: `test-results/composer-empty-colors-${width}x1000.png` })
-    }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
 

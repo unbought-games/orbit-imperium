@@ -60,6 +60,8 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  'insignia-editor': async () => (await import('./insignia.scenario')).InsigniaScenario,
+  rankings: async () => (await import('./rankings.scenario')).RankingsScenario,
   'orb-personality': async () =>
     (await import('./orb-editorial.scenarios')).PersonalityCaptionScene,
   'orb-refresh': async () =>

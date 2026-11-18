@@ -1,5 +1,5 @@
 import { recruitmentFixture, alliance as recruitmentAlliance } from './fixtures/recruitment'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withFixtureResponseStatus } from './fixtures/responses'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
@@ -60,9 +60,9 @@ function withAllianceProfile(page: Page, navigate: () => Promise<unknown>) {
   )
 }
 
-test('discovery applications preserve rejected drafts, withdraw and create an alliance', async ({ page }) => {
+test('discovery reload preserves the target and withdrawal returns to membership home', async ({ page }) => {
   const f = await fixture(page, null)
-  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
+  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto(`/u/andromeda/b/${body.id}/alliance`))
   await expect(page.getByRole('heading', { name: 'You’re not in an alliance yet.' })).toBeVisible()
   await expect(page.getByRole('searchbox')).toHaveCount(0)
   await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.getByRole('link', { name: 'Discover alliances', exact: true }).click())
@@ -91,50 +91,46 @@ test('discovery applications preserve rejected drafts, withdraw and create an al
   await page.getByRole('button', { name: 'Withdraw STAR', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm withdraw star' }).click()
   await expect(page.getByRole('heading', { name: 'You’re not in an alliance yet.' })).toBeVisible()
-  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.getByRole('link', { name: 'Create Alliance', exact: true }).click())
-  await expect(page).toHaveURL(/\/alliance\/create$/)
-  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query'), () => page.reload())
-  await expect(page.getByRole('searchbox')).toHaveCount(0)
-  await page.getByLabel('Alliance name', { exact: true }).fill('New Horizon')
-  await page.getByLabel('Alliance tag', { exact: true }).fill('NEW')
-  await page.getByRole('button', { name: 'Create Alliance', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'New Horizon' })).toBeVisible()
-  await expect(page).toHaveURL(/\/alliance$/)
-  await expect(page.getByRole('heading', { name: 'My alliance', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Discover alliances', exact: true })).toBeVisible()
-  expect(f.commands.map(c => c.action.type)).toEqual(['Apply', 'Apply', 'Withdraw', 'Create'])
+  expect(f.commands.map(c => c.action.type)).toEqual(['Apply','Apply','Withdraw'])
   expect(f.commands[0].command_id).not.toBe(f.commands[1].command_id)
 })
 
-test('open and closed recruitment and existing membership drive the available controls', async ({ page }) => {
-  const f = await fixture(page, null)
-  await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary: { ...summary, recruitment: 'Closed' }, public_text: 'Private explorers.' } }))
-  await withAllianceProfile(page, () => page.goto(`/u/andromeda/alliance?alliance=${alliance}`))
-  await expect(page.getByRole('heading', { name: summary.name, exact: true })).toBeVisible()
-  await expect(page.getByText('This alliance is not recruiting.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Send application' })).toHaveCount(0)
-  await page.route(`**/alliances/${alliance}`, route => route.fulfill({ json: { summary: { ...summary, recruitment: 'Open' }, public_text: 'Welcome explorers.' } }))
-  await withAllianceProfile(page, () => page.reload())
-  await page.getByRole('button', { name: 'Join STAR', exact: true }).click()
-  await page.getByRole('button', { name: 'Confirm join star' }).click()
-  await expect(page.getByRole('heading', { name: 'Welcome aboard' })).toBeVisible()
-  await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory', () => page.getByRole('link', { name: 'Discover alliances' }).click())
-  await expect(page.getByRole('link', { name: 'Create Alliance', exact: true })).toHaveCount(0)
+test('discovery opens membership home when a member selects their own alliance', async ({
+  page,
+}) => {
+  const f = await fixture(page, own())
+  await withFixtureResponse(
+    page,
+    (r) =>
+      r.url().endsWith('/alliances/query') &&
+      r.request().postDataJSON().query.type === 'Mine',
+    () => page.goto(`/u/andromeda/b/${body.id}/alliance`),
+  )
+  await withFixtureResponse(
+    page,
+    (response) =>
+      response.url().endsWith('/alliances/query') &&
+      response.request().postDataJSON().query.type === 'Directory',
+    () => page.getByRole('link', { name: 'Discover alliances' }).click(),
+  )
+  await expect(
+    page.getByRole('link', { name: 'Create Alliance', exact: true }),
+  ).toHaveCount(0)
   await page.getByRole('button', { name: 'View STAR', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Welcome aboard' })).toBeVisible()
-  expect(f.commands.map(c => c.action.type)).toEqual(['Join'])
+  await expect(
+    page.getByRole('heading', { name: 'Welcome aboard' }),
+  ).toBeVisible()
+  expect(f.commands).toHaveLength(0)
 })
 
 test('lost membership clears private board, roster and administration after an access-denied reload', async ({ page }) => {
   const f = await fixture(page, own())
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto(`/u/andromeda/b/${body.id}/alliance`))
   await page.getByRole('link', { name: 'Members', exact: true }).click()
   const roster = page.getByRole('region', { name: 'Alliance roster' })
   await expect(roster.getByRole('link', { name: /profile details/ }).getByText('[STAR]', {exact: true})).toHaveCount(2)
   f.denyReads()
-  const denied = page.waitForResponse(response => response.url().endsWith('/alliances/query') && response.status() === 403)
-  await page.reload()
-  expect((await denied).status()).toBe(403)
+  await withFixtureResponseStatus(page, r => r.url().endsWith('/alliances/query') && r.request().postDataJSON().query.type==='Mine', () => page.reload(), 403)
   await expect(page.getByRole('alert')).toContainText('Forbidden')
   await expect(page.getByRole('region', { name: 'Alliance roster' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Roles', exact: true })).toHaveCount(0)
@@ -149,10 +145,11 @@ test('uncertain command retry reuses identity and does not send an edited duplic
     if (requests.length === 1) return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     return route.fulfill({ json: { command_id: requests[0].command_id, alliance, revision: 1 } })
   })
-  await withAllianceProfile(page, () => page.goto(`/u/andromeda/alliance?alliance=${alliance}`))
+  await withAllianceProfile(page, () => page.goto(`/u/andromeda/b/${body.id}/alliance?alliance=${alliance}`))
   await page.getByLabel('Application message').fill('My original application')
   await page.getByRole('button', { name: 'Send application' }).click()
   await expect(page.getByRole('button', { name: 'Send application' })).toBeDisabled()
+  await expect(page.getByLabel('Application message')).toBeDisabled()
   await expect(page.getByLabel('Application message')).toHaveValue('My original application')
   await withFixtureResponse(page, response => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.getByRole('button', { name: 'Retry last command' }).click())
   await expect(page).toHaveURL(/\/alliance$/)
@@ -173,11 +170,11 @@ test('departed notice authors use authorized current profile tags while roster m
     const now = Math.floor(Date.now() / 1000)
     return route.fulfill({ json: { ...context, players: (source.players ?? []).map((player: string) => ({ player, username: player === departed ? 'Departed Pilot' : player === member ? 'Nova' : 'Commander', observed_at: now, expires_at: now + 300, alliance: { id: id(889), universe: binding.universe, name: 'Other Alliance', tag: 'AWAY' } })) } })
   })
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto(`/u/andromeda/b/${body.id}/alliance`))
   const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Welcome aboard' }) })
   await focusPlayerDetails(page, article.getByRole('link', { name: 'Departed Pilot profile details' }))
   await expect(page.getByRole('tooltip').getByRole('link', { name: 'Alliance Other Alliance [AWAY]', exact: true })).toBeVisible()
-  for (const width of [1440, 390]) {
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') for (const width of [1440, 390]) {
     await page.setViewportSize({width, height: 1000})
     await diagnosticScreenshot(page, {path: `test-results/profile-alliance-board-${width}x1000.png`})
   }
@@ -210,7 +207,7 @@ for (const viewport of [{ width: 390, height: 740 }]) {
       // A tall preformatted notice mirrors the ASCII art in the iPhone report.
       detail.posts![0].body = '```\n' + Array.from({ length: 60 }, (_, index) => `| Standing order ${index + 1} |`).join('\n') + '\n```\n\nRead these standing orders together.\n\n[Read recruitment](/alliances/' + binding.universe + '/' + alliance + ')'
       await fixture(page, detail)
-      await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
+      await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto(`/u/andromeda/b/${body.id}/alliance`))
       const article = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Welcome aboard' }) })
       await expect(article).toBeVisible()
       await page.clock.runFor(500)
@@ -235,7 +232,7 @@ for (const viewport of [{ width: 390, height: 740 }]) {
       const refreshed = page.waitForResponse(response => response.url().endsWith('/overview'))
       await refreshGame(page)
       await page.clock.runFor(1000)
-      await refreshed
+      expect(await (await refreshed).finished()).toBeNull()
       await expect(link).toBeFocused()
       expect(await page.evaluate(() => scrollY)).toBeCloseTo(focusedPosition, 0)
 
@@ -254,64 +251,6 @@ for (const viewport of [{ width: 390, height: 740 }]) {
   })
 }
 
-// Mobile variant removed after its second failure; see alliance-discovery verification notes.
-for (const width of [1440]) {
-  test(`alliance search combines language and recruiting filters and keeps compact controls at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({width, height: 900})
-    await fixture(page, null)
-    const rows = Array.from({length: 23}, (_, index) => ({...summary, id: id(1100 + index), name: `Alliance ${String(index).padStart(2, '0')}`, tag: `A${index}`, recruitment: index === 0 ? 'Closed' : 'Application', recruitment_profile: {listed:false, languages:[index === 22 ? 'fr' : 'en'], beginners:'Welcome', activity:'Weekly'}}))
-    await page.route('**/alliances/query', route => {
-      const {context, query} = route.request().postDataJSON()
-      const matches = query.type === 'Directory' ? rows.filter(row => (!query.search || row.name.toLowerCase().includes(query.search.toLowerCase())) && (!query.language || row.recruitment_profile.languages.includes(query.language)) && (!query.recruiting_only || row.recruitment !== 'Closed')) : []
-      return route.fulfill({json:{...context, sampled_at:1700000000000, directory:matches.slice(query.offset ?? 0, (query.offset ?? 0) + 20), directory_count:matches.length, alliance:null, applications:[]}})
-    })
-    const directoryResponse = (response: import('@playwright/test').Response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Directory'
-    await withFixtureResponse(page, directoryResponse, () => page.goto('/u/andromeda/alliance/discover'))
-    const recruiting = page.getByRole('checkbox', {name:'Only show recruiting'})
-    await expect(recruiting).toHaveCount(0)
-    await expect(page.getByText('Recruitment closed', {exact:true})).toBeVisible()
-    const list = page.getByRole('list', {name:'Alliances', exact:true})
-    await expect(list.locator(':scope > li')).toHaveCount(20)
-    const pagination = page.getByRole('navigation', {name:'Alliance directory pages'})
-    await withFixtureResponse(page, directoryResponse, () => pagination.getByRole('button', {name:'Next', exact:true}).click())
-    await expect(list.locator(':scope > li')).toHaveCount(3)
-    await page.getByRole('button', {name:'Filters', exact:true}).click()
-    await expect(recruiting).not.toBeChecked()
-    await withFixtureResponse(page, directoryResponse, () => page.getByLabel('Language', {exact:true}).selectOption('en'))
-    await page.keyboard.press('Escape')
-    await expect(page.getByText('22 alliances', {exact:true})).toBeVisible()
-    await expect(page.getByText('Recruitment closed', {exact:true})).toBeVisible()
-    await expect(pagination.getByRole('button', {name:'Previous', exact:true})).toBeDisabled()
-    await page.getByRole('button', {name:'Filters (1)', exact:true}).click()
-    await withFixtureResponse(page, directoryResponse, () => recruiting.check())
-    await expect(recruiting).toBeChecked()
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('button', {name:'Filters (2)', exact:true})).toBeVisible()
-    await expect(page.getByText('21 alliances', {exact:true})).toBeVisible()
-    await expect(page.getByText('Recruitment closed', {exact:true})).toHaveCount(0)
-    const search = page.getByRole('searchbox', {name:'Search alliances'})
-    const submit = page.getByRole('button', {name:'Search alliances', exact:true})
-    await search.fill('missing')
-    await withFixtureResponse(page, directoryResponse, () => submit.click())
-    await expect(page.getByRole('heading', {name:'No alliances match your search.'})).toBeVisible()
-    await expect(pagination).toHaveCount(0)
-    await expect(search).toHaveValue('missing')
-    await withFixtureResponse(page, directoryResponse, () => page.getByRole('button', {name:'Clear filters', exact:true}).click())
-    await page.getByRole('button', {name:'Filters', exact:true}).click()
-    await expect(recruiting).not.toBeChecked()
-    await page.keyboard.press('Escape')
-    await expect(page.getByText('23 alliances', {exact:true})).toBeVisible()
-    await search.focus()
-    await expect(search).toBeFocused()
-    await expect(search.locator('..')).toHaveCSS('outline-style', 'solid')
-    const inputBox = (await search.boundingBox())!, buttonBox = (await submit.boundingBox())!
-    expect(inputBox.height).toBeLessThanOrEqual(46)
-    expect(buttonBox.height).toBeLessThanOrEqual(46)
-    expect(buttonBox.x).toBeGreaterThanOrEqual(inputBox.x + inputBox.width)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  })
-}
-
 for (const action of ['Join', 'Apply'] as const) {
   test(`welcome ${action} retry returns to alliance home with the original command`, async ({ page }) => {
     await fixture(page, null)
@@ -325,7 +264,7 @@ for (const action of ['Join', 'Apply'] as const) {
       if (requests.length === 1) return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
       return route.fallback()
     })
-    await withAllianceProfile(page, () => page.goto(`/u/andromeda/alliance/discover?alliance=${alliance}&welcome=1`))
+    await withAllianceProfile(page, () => page.goto(`/u/andromeda/b/${body.id}/alliance/discover?alliance=${alliance}&welcome=1`))
     const unavailable = page.waitForResponse(response => response.url().endsWith('/alliances/commands') && response.status() === 503)
     if (action === 'Join') {
       await page.getByRole('button', { name: 'Join STAR', exact: true }).click()
@@ -350,13 +289,18 @@ for (const action of ['Join', 'Apply'] as const) {
 test('creates an alliance from its route and returns to membership home', { tag: '@journey' }, async ({ page }) => {
   const f = await fixture(page, null)
   const membership = (response: import('@playwright/test').Response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine'
-  await withFixtureResponse(page, membership, () => page.goto('/u/andromeda/alliance/create'))
+  await withFixtureResponse(page, membership, () => page.goto(`/u/andromeda/b/${body.id}/alliance`))
+  await withFixtureResponse(page, membership, () => page.getByRole('link', {name:'Create Alliance',exact:true}).click())
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/alliance/create`)
+  await withFixtureResponse(page, membership, () => page.reload())
+  await expect(page.getByRole('searchbox')).toHaveCount(0)
   await page.getByLabel('Alliance name', { exact: true }).fill('New Horizon')
   await page.getByLabel('Alliance tag', { exact: true }).fill('NEW')
   await withFixtureResponse(page, membership, () => page.getByRole('button', { name: 'Create Alliance', exact: true }).click())
   await expect(page).toHaveURL(/\/alliance$/)
   await expect(page.getByRole('heading', { name: 'New Horizon', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'My alliance', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Discover alliances', exact: true })).toBeVisible()
   expect(f.commands.map(command => command.action.type)).toEqual(['Create'])
 })
 
@@ -376,7 +320,7 @@ test('expired noticeboard cursors recover to fresh notices', { tag: '@journey' }
     }
     return route.fulfill({json:{...context,sampled_at:1700000000000,directory:[],directory_count:0,alliance:detail,applications:[]}})
   })
-  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto('/u/andromeda/alliance'))
+  await withFixtureResponse(page, (response) => response.url().endsWith('/alliances/query') && response.request().postDataJSON().query.type === 'Mine', () => page.goto(`/u/andromeda/b/${body.id}/alliance`))
   await page.getByRole('button', { name:'Load older notices', exact:true }).click()
   await expect(page.getByRole('heading',{name:'Fresh standing orders',exact:true})).toBeVisible()
   await expect(page.getByRole('region', { name: 'Alliance noticeboard' }).getByRole('status').filter({hasText:'Showing the newest notices'})).toBeVisible()
@@ -397,7 +341,7 @@ test('alliance presentation previews unsaved edits and publishes them through th
     response.url().endsWith('/alliances/query') &&
     response.request().postDataJSON().query.type === 'Mine'
   await withFixtureResponse(page, mine, () =>
-    page.goto('/u/andromeda/alliance'),
+    page.goto(`/u/andromeda/b/${body.id}/alliance`),
   )
   await withFixtureResponse(
     page,

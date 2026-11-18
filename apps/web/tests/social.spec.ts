@@ -1,7 +1,10 @@
-import { withSocialResponse } from './fixtures/responses'
+import {
+  withSocialResponse,
+  withFixtureResponseStatus,
+} from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, binding, id } from './fixtures/game'
+import { installGameFixture, binding, body, id } from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
 const peer = id(800),
@@ -31,15 +34,12 @@ async function fixture(page: Page, count = 65) {
       fleet_slots: '1',
     },
   })
-  let c = contact(),
-    messages = Array.from({ length: count }, (_, i) => message(i + 1)),
-    hidden = false,
-    read = 0,
-    failNext = false
+  const c = contact()
+  const messages = Array.from({ length: count }, (_, i) => message(i + 1))
+  let hidden = false,
+    read = 0
   const requests: S['SocialQuery'][] = [],
     commands: S['SocialCommandRequest'][] = []
-  let extras: S['SocialConversation'][] = []
-  let circulars: S['SocialCircular'][] = []
   await page.route('**/alliances/query', (route) => {
     const { context } = route.request().postDataJSON()
     return route.fulfill({
@@ -120,27 +120,12 @@ async function fixture(page: Page, count = 65) {
           ),
         },
       ]
-    if (q.type === 'Conversations') result.conversations.push(...extras)
-    if (
-      q.type === 'Contacts' &&
-      (q.kind === 'Blocks'
-        ? c.blocked
-        : q.kind === 'Friends'
-          ? c.accepted
-          : !!c.request && !c.accepted)
-    )
-      result.contacts = [{ ...c }]
-    if (q.type === 'Circulars') result.circulars = circulars
     return route.fulfill({ json: result })
   })
   await page.route('**/social/commands', (route) => {
     const req = route.request().postDataJSON() as S['SocialCommandRequest']
     commands.push(req)
     const a = req.action
-    if (failNext && a.type === 'Send') {
-      failNext = false
-      return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
-    }
     let sent: string | null = null
     if (a.type === 'Send') {
       const m = {
@@ -155,43 +140,6 @@ async function fixture(page: Page, count = 65) {
     if (a.type === 'Read')
       read = Number(messages.find((m) => m.id === a.message)!.sequence)
     if (a.type === 'Hide') hidden = true
-    if (a.type === 'RequestFriend')
-      c = { ...c, request: id(3000), requested_by: binding.player }
-    if (a.type === 'AcceptFriend') c = { ...c, accepted: true }
-    if (a.type === 'RemoveFriend')
-      c = { ...c, request: null, requested_by: null, accepted: false }
-    if (a.type === 'Block')
-      c = {
-        ...c,
-        blocked: true,
-        request: null,
-        requested_by: null,
-        accepted: false,
-      }
-    if (a.type === 'Unblock') c = { ...c, blocked: false }
-    if (a.type === 'Circular') {
-      sent = id(4000 + circulars.length)
-      circulars = [
-        {
-          id: sent,
-          alliance,
-          alliance_name: 'Starlight',
-          alliance_tag: 'STAR',
-          sender: binding.player,
-          sender_name: 'Commander',
-          body: a.body,
-          sent_at: 1700000000000,
-          read: true,
-        },
-        ...circulars,
-      ]
-    }
-    if (a.type === 'ReadCircular')
-      circulars = circulars.map((m) =>
-        m.id === a.circular ? { ...m, read: true } : m,
-      )
-    if (a.type === 'HideCircular')
-      circulars = circulars.filter((m) => m.id !== a.circular)
     return route.fulfill({
       json: { command_id: req.command_id, message: sent },
     })
@@ -199,13 +147,6 @@ async function fixture(page: Page, count = 65) {
   return {
     requests,
     commands,
-    seed: (
-      items: S['SocialMessage'][],
-      others: S['SocialConversation'][] = [],
-    ) => {
-      messages = items
-      extras = others
-    },
     holdHistory: () => {
       let release!: () => void
       historyGate = new Promise<void>((resolve) => {
@@ -216,29 +157,10 @@ async function fixture(page: Page, count = 65) {
     failHistory: () => {
       failHistory = true
     },
-    failSend: () => {
-      failNext = true
-    },
     incoming: () => {
       messages.push(message(messages.length + 1))
       hidden = false
     },
-    invite: () => {
-      c = { ...c, request: id(3001), requested_by: peer }
-    },
-  }
-}
-
-async function chooseCategory(page: Page, name: string) {
-  const dropdown = page.getByRole('button', {
-    name: 'Message categories',
-    exact: true,
-  })
-  if ((page.viewportSize()?.width ?? 1280) <= 767) {
-    await dropdown.click()
-    await page.getByRole('menuitemradio', { name, exact: true }).click()
-  } else {
-    await page.getByRole('button', { name, exact: true }).click()
   }
 }
 
@@ -247,7 +169,7 @@ test('conversation action announces unread state and clears it after reading', a
 }) => {
   await fixture(page)
   await withSocialResponse(page, 'Conversations', () =>
-    page.goto('/u/andromeda/messages'),
+    page.goto(`/u/andromeda/b/${body.id}/messages`),
   )
   const action = page.getByRole('button', {
     name: /^Open conversation with Nova/,
@@ -266,57 +188,12 @@ test('conversation action announces unread state and clears it after reading', a
   await expect(action).not.toContainText('Unread')
 })
 
-test('mobile friends and one-way circulars', async ({ page }) => {
-  const f = await fixture(page)
-  f.invite()
-  await page.setViewportSize({ width: 390, height: 844 })
-  await withSocialResponse(page, 'Conversations', () =>
-    page.goto('/u/andromeda/messages'),
-  )
-  await chooseCategory(page, 'Requests')
-  await page
-    .getByRole('button', { name: 'Contact options for Nova', exact: true })
-    .click()
-  await page
-    .getByRole('menuitem', { name: 'Accept friend', exact: true })
-    .click()
-  await chooseCategory(page, 'Friends')
-  await page
-    .getByRole('button', { name: 'Contact options for Nova', exact: true })
-    .click()
-  await expect(
-    page.getByRole('menuitem', { name: 'Remove friend' }),
-  ).toBeVisible()
-  await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Message Nova', exact: true }).click()
-  await expect(page.getByLabel('Message', { exact: true })).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Back to conversations', exact: true })
-    .click()
-  await chooseCategory(page, 'Circulars')
-  await page.getByLabel('Alliance announcement').fill('**Meet at the outpost**')
-  await page.getByRole('button', { name: 'Send circular', exact: true }).click()
-  await expect(
-    page.locator('strong', { hasText: 'Meet at the outpost' }),
-  ).toBeVisible()
-  await expect(page.getByRole('button', { name: /reply all/i })).toHaveCount(0)
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true)
-  await diagnosticScreenshot(page, {
-    path: 'test-results/social-mobile.png',
-    fullPage: true,
-  })
-})
-
 test('new messages arrive incrementally and hiding preserves history', async ({
   page,
 }) => {
   const f = await fixture(page)
   await withSocialResponse(page, 'Messages', () =>
-    page.goto(`/u/andromeda/messages?player=${peer}`),
+    page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
   )
   await expect(
     page.getByLabel('Message history').getByText('Message 65', { exact: true }),
@@ -336,7 +213,7 @@ test('new messages arrive incrementally and hiding preserves history', async ({
     .click()
   await expect(page.getByText(/No conversations yet/)).toBeVisible()
   await withSocialResponse(page, 'Messages', () =>
-    page.goto(`/u/andromeda/messages?player=${peer}`),
+    page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
   )
   await expect(
     page.getByLabel('Message history').getByText('Message 66', { exact: true }),
@@ -347,51 +224,28 @@ test('new messages arrive incrementally and hiding preserves history', async ({
   })
 })
 
-test('empty history stays loaded during polling and displays the first incoming message', async ({
-  page,
-}) => {
-  await page.clock.install()
-  await page.clock.pauseAt(new Date())
-  const f = await fixture(page, 0)
-  await withSocialResponse(page, 'Messages', () =>
-    page.goto(`/u/andromeda/messages?player=${peer}`),
-  )
-  await expect(page.getByText('Start your conversation.')).toBeVisible()
-  const composer = page.getByLabel('Message', { exact: true })
-  await composer.fill('First draft')
-  const before = await composer.boundingBox()
-  const release = f.holdHistory()
-  await page.clock.runFor(5000)
-  await expect
-    .poll(() => f.requests.filter((q) => q.type === 'Messages').length)
-    .toBe(2)
-  await expect(page.getByText('Loading messages…')).toHaveCount(0)
-  expect(await composer.boundingBox()).toEqual(before)
-  release()
-  await expect(page.getByText('Start your conversation.')).toBeVisible()
-  f.incoming()
-  await page.clock.runFor(5000)
-  await expect(
-    page.getByLabel('Message history').getByText('Message 1', { exact: true }),
-  ).toBeVisible()
-  await expect(composer).toHaveValue('First draft')
-  await expect(composer).toBeFocused()
-})
-
 test('initial and background history errors remain visible and Refresh retries', async ({
   page,
 }) => {
-  await page.clock.install()
-  await page.clock.pauseAt(new Date())
+  const now = new Date('2026-10-31T14:20:00Z')
+  await page.clock.install({ time: now })
+  await page.clock.pauseAt(now)
   const f = await fixture(page)
   f.failHistory()
-  await page.goto(`/u/andromeda/messages?player=${peer}`)
+  await withFixtureResponseStatus(
+    page,
+    (r) =>
+      r.url().endsWith('/social/query') &&
+      r.request().postDataJSON().query.type === 'Messages',
+    () => page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
+    503,
+  )
   await expect(page.getByRole('alert')).toBeVisible()
   await expect(page.getByText('Loading messages…')).toHaveCount(0)
   const release = f.holdHistory()
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await expect(page.getByText('Loading messages…')).toBeVisible()
-  release()
+  await withSocialResponse(page, 'Messages', async () => release())
   const history = page.getByLabel('Message history')
   await expect(history.getByText('Message 65', { exact: true })).toBeVisible()
   const composer = page.getByLabel('Message', { exact: true })
@@ -413,23 +267,26 @@ test('initial and background history errors remain visible and Refresh retries',
 
 // Application gate: command wiring plus the direct-message route and its return link.
 // Isolated components own layout, draft editing, menus and keyboard permutations.
-for (const width of [1440, 390]) {
-  test(`submits a direct message from its deep link and returns to the conversation list at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 900 })
+test(
+  'submits a direct message from its deep link and returns to the conversation list',
+  { tag: '@journey' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
     const f = await fixture(page, 1)
     await withSocialResponse(page, 'Messages', () =>
-      page.goto(`/u/andromeda/messages?player=${peer}`),
+      page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
     )
-    await expect(
-      page.getByRole('button', { name: 'Send message', exact: true }),
-    ).toBeInViewport()
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true)
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await expect(
+        page.getByRole('button', { name: 'Send message', exact: true }),
+      ).toBeInViewport()
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+    }
     await page
       .getByLabel('Message', { exact: true })
       .fill('Meet at the outpost.')
@@ -452,8 +309,8 @@ for (const width of [1440, 390]) {
     expect(
       f.commands.filter((command) => command.action.type === 'Send'),
     ).toHaveLength(1)
-  })
-}
+  },
+)
 
 // Controller tests cannot establish that the application installs its polling timer.
 test('application polls message history at five seconds without replacing the loaded thread', async ({
@@ -464,7 +321,7 @@ test('application polls message history at five seconds without replacing the lo
   await page.clock.pauseAt(now)
   const f = await fixture(page)
   const releaseInitial = f.holdHistory()
-  await page.goto(`/u/andromeda/messages?player=${peer}`)
+  await page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`)
   await expect(
     page.getByText('Loading messages…', { exact: true }),
   ).toBeVisible()
