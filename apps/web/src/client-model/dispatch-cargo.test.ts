@@ -171,3 +171,23 @@ it('rejects invalid or excessive existing cargo instead of silently overwriting 
     maxDispatchCargo(stocks, '50000000', '0', ['40', '20', '0'], 'deuterium'),
   ).toThrow('capacity')
 })
+
+it('preserves manually entered deuterium inside the review reserve and still rejects a real shortage', () => {
+  const reserve = 3000000n
+  expect(
+    allDispatchCargo(stocks, '200000000', '1000000', ['0', '0', '9'], reserve),
+  ).toEqual(['100', '40', '9'])
+  expect(() =>
+    allDispatchCargo(stocks, '200000000', '1000000', ['0', '0', '11'], reserve),
+  ).toThrow('available resources')
+  expect(
+    maxDispatchCargo(
+      stocks,
+      '200000000',
+      '1000000',
+      [],
+      'deuterium',
+      12000000n,
+    ),
+  ).toEqual(['0', '0', '0'])
+})

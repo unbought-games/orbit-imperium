@@ -5,6 +5,7 @@ import type { DispatchDraft } from './missions'
 import type { LocationKind } from '../shell/location-address'
 import {
   allDispatchCargo,
+  type dispatchCargoOrigin,
   maxDispatchCargo,
 } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
@@ -42,7 +43,7 @@ export type DispatchReviewInput = {
 }
 export type DispatchReviewPorts = {
   world: Coordinator['world']
-  origin: () => Pick<S['BodyV3'], 'amounts'> | undefined
+  origin: () => ReturnType<typeof dispatchCargoOrigin>
   quote: (terms: S['FleetTerms4']) => void
   cargo: (amounts: string[]) => void
   error: (message: string) => void
@@ -261,6 +262,7 @@ export class DispatchRequests {
                 terms.maximum_payload,
                 terms.fuel,
                 cargo,
+                origin.reviewReserve,
               )
             : maxDispatchCargo(
                 origin.amounts,
@@ -268,6 +270,7 @@ export class DispatchRequests {
                 terms.fuel,
                 cargo,
                 fillCargo,
+                origin.reviewReserve,
               ),
         )
       } else if ('terms_hash' in terms) ports.quote(terms)

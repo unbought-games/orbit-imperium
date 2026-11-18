@@ -4,6 +4,7 @@ import { DispatchTiming } from './dispatch-timing'
 import { InputWithAction, FillButton } from '../ui/input-with-action'
 import { NumberInput, RangeInput, Field } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
+import { Caption } from '../ui/typography'
 import { Button } from '../ui/button'
 import { resourceNames } from '../client-model/resources'
 import styles from './missions.module.css'
@@ -11,6 +12,7 @@ import styles from './missions.module.css'
 export function DispatchCargoControls({
   cargo,
   space,
+  reviewReserve,
   message,
   disabled,
   onNormalize,
@@ -20,6 +22,7 @@ export function DispatchCargoControls({
   cargo: string[]
   space: ComponentProps<typeof DispatchCargoCapacity>['space']
   message: string
+  reviewReserve: bigint
   disabled: boolean
   onNormalize: (cargo: string[]) => void
   onChange: (cargo: string[]) => void
@@ -68,6 +71,12 @@ export function DispatchCargoControls({
           Add all
         </Button>
       </div>
+      {reviewReserve > 0n && (
+        <Caption className={styles.cargoReserve}>
+          Deuterium is falling. Auto-fill allows for one minute of reactor
+          consumption while you review.
+        </Caption>
+      )}
     </fieldset>
   )
 }

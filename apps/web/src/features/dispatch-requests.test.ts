@@ -1,4 +1,8 @@
 import { expect, it, vi } from 'vitest'
+import { dispatchCargoOrigin } from '../client-model/dispatch-cargo'
+import { readyFixture } from '../test-support/bootstrap'
+import { body } from '../test-support/empire'
+import { productionFixture } from '../test-support/production'
 import type { components } from '../contracts'
 import {
   DispatchRequests,
@@ -68,7 +72,7 @@ function fixture() {
   })
   const ports = {
     world,
-    origin: () => ({ amounts }),
+    origin: () => ({ amounts, reviewReserve: 0n }),
     quote: vi.fn(),
     cargo: vi.fn(),
     error: vi.fn(),
@@ -242,6 +246,59 @@ it.each(['all', 'deuterium'] as const)(
       fill === 'all' ? ['6', '4', '2'] : ['2', '0', '2'],
     )
     expect(ports.quote).not.toHaveBeenCalled()
+  },
+)
+it.each(['all', 'deuterium'] as const)(
+  'fills %s with review time for a planet consuming deuterium',
+  async (fill) => {
+    const { requests, ports } = fixture()
+    const { view } = readyFixture(4).snapshot
+    if (view.protocol !== 4) throw Error('Expected world view')
+    const planet = {
+      ...body,
+      id: input.originId,
+      amounts: {
+        metal: '713000000',
+        crystal: '226694000000',
+        deuterium: '898485050000',
+      },
+    }
+    const production = productionFixture(planet)
+    production.net_deuterium_per_hour = {
+      sign: 'Negative',
+      magnitude: '409230591',
+    }
+    view.bodies = [planet]
+    view.progression.production = [production]
+    const origin = () => dispatchCargoOrigin(view, planet.id)
+    ports.world.mockImplementation(async (query) => {
+      if (query.type === 'ResolveDestination') return destination
+      if (query.type !== 'FleetEstimate')
+        throw Error('Expected a flight estimate')
+      return {
+        estimate: true,
+        intent: query.intent,
+        duration_ms: 3619000,
+        profile_hash: 'profile',
+        capacity: '1200000000000',
+        maximum_payload: '1192490000000',
+        fuel: '7510000000',
+      }
+    })
+    const fleet: DispatchReviewInput = {
+      ...input,
+      types: ['Recycler'],
+      ships: { Recycler: '60' },
+    }
+    await requests.review(fleet, { ...ports, origin }, fill)
+    expect(ports.cargo).toHaveBeenCalledWith(
+      fill === 'all' ? ['713', '226694', '890968'] : ['0', '0', '890968'],
+    )
+    production.net_deuterium_per_hour.sign = 'Nonnegative'
+    await requests.review(fleet, { ...ports, origin }, fill)
+    expect(ports.cargo).toHaveBeenLastCalledWith(
+      fill === 'all' ? ['713', '226694', '890975'] : ['0', '0', '890975'],
+    )
   },
 )
 it('preserves invalid cargo and surfaces the problem when Add all cannot fill it', async () => {

@@ -207,12 +207,13 @@ export function dispatchResourceProblem(
 ): string {
   if (BigInt(available.deuterium) < BigInt(fuel))
     return 'Not enough deuterium for fuel. Reduce the fleet or speed, or supply more deuterium at the origin.'
+  if (BigInt(cargo.deuterium) + BigInt(fuel) > BigInt(available.deuterium))
+    return 'Not enough deuterium for cargo and flight fuel. Use Max deuterium or enter a smaller deuterium cargo.'
   if (
     BigInt(cargo.metal) > BigInt(available.metal) ||
-    BigInt(cargo.crystal) > BigInt(available.crystal) ||
-    BigInt(cargo.deuterium) + BigInt(fuel) > BigInt(available.deuterium)
+    BigInt(cargo.crystal) > BigInt(available.crystal)
   )
-    return 'Not enough resources for the selected cargo after reserving deuterium for fuel. Reduce the cargo.'
+    return 'Not enough resources for the selected cargo. Reduce the metal or crystal cargo.'
   return ''
 }
 

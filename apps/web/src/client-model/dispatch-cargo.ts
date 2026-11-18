@@ -1,6 +1,18 @@
 import type { components } from '../contracts'
 import { dispatchQuantity } from './dispatch-validation'
+import { rawResourceRates } from './production-rates'
 import { resourceNames } from './resources'
+
+type S = components['schemas']
+
+export function dispatchCargoOrigin(view: S['BoundView4'], id: string) {
+  const body = view.bodies.find((body) => body.id === id)
+  if (!body) return
+  const rate = BigInt(rawResourceRates(view, body)?.deuterium ?? '0')
+  // Keep one minute of net consumption on the planet during review and launch.
+  const reviewReserve = rate < 0n ? (-rate + 59n) / 60n : 0n
+  return { amounts: body.amounts, reviewReserve }
+}
 
 type Resource = (typeof resourceNames)[number]
 
@@ -34,12 +46,13 @@ function cargoSpace(
   maximumPayload: string,
   fuel: string,
   current: string[],
+  reviewReserve: bigint,
 ) {
-  const amounts = resourceNames.map((resource) => {
+  const balances = resourceNames.map((resource) => {
     const balance =
       BigInt(available[resource]) -
       (resource === 'deuterium' ? BigInt(fuel) : 0n)
-    return balance > 0n ? balance / 1000000n : 0n
+    return balance > 0n ? balance : 0n
   })
   const loaded = resourceNames.map((_, i) =>
     BigInt(dispatchQuantity(current[i])),
@@ -47,12 +60,18 @@ function cargoSpace(
   const remaining =
     BigInt(maximumPayload) / 1000000n -
     loaded.reduce((sum, amount) => sum + amount, 0n)
-  if (loaded.some((amount, i) => amount > amounts[i]))
+  if (loaded.some((amount, i) => amount * 1000000n > balances[i]))
     throw Error(
       'Entered cargo exceeds available resources after reserving fuel.',
     )
   if (remaining < 0n)
     throw Error('Entered cargo exceeds this fleet’s capacity.')
+  const amounts = balances.map((balance, i) => {
+    if (resourceNames[i] !== 'deuterium') return balance / 1000000n
+    const afterReserve = (balance - reviewReserve) / 1000000n
+    // A manual entry may use the reserve. Auto-fill only adds to it.
+    return afterReserve > loaded[i] ? afterReserve : loaded[i]
+  })
   return { amounts, loaded, remaining }
 }
 
@@ -62,8 +81,15 @@ export function allDispatchCargo(
   maximumPayload: string,
   fuel: string,
   current: string[] = [],
+  reviewReserve = 0n,
 ): string[] {
-  const space = cargoSpace(available, maximumPayload, fuel, current)
+  const space = cargoSpace(
+    available,
+    maximumPayload,
+    fuel,
+    current,
+    reviewReserve,
+  )
   const { amounts, loaded } = space
   let { remaining } = space
   while (remaining > 0n) {
@@ -92,6 +118,7 @@ export function maxDispatchCargo(
   fuel: string,
   current: string[],
   resource: Resource,
+  reviewReserve = 0n,
 ): string[] {
   const index = resourceNames.indexOf(resource)
   const { amounts, loaded, remaining } = cargoSpace(
@@ -99,6 +126,7 @@ export function maxDispatchCargo(
     maximumPayload,
     fuel,
     resourceNames.map((_, i) => (i === index ? '0' : current[i])),
+    reviewReserve,
   )
   loaded[index] = amounts[index] < remaining ? amounts[index] : remaining
   return loaded.map(String)

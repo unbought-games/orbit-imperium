@@ -367,6 +367,7 @@ export function DispatchView({
           <DispatchCargoControls
             cargo={cargo}
             space={cargoCapacity}
+            reviewReserve={dispatch.reviewReserve}
             message={cargoCapacityMessage}
             disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
             onNormalize={setCargo}

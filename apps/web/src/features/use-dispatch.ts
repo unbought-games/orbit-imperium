@@ -18,7 +18,10 @@ import {
   currentServerTime,
   projectGameView,
 } from '../client-model/game-projection'
-import { dispatchCargoCapacity } from '../client-model/dispatch-cargo'
+import {
+  dispatchCargoCapacity,
+  dispatchCargoOrigin,
+} from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
 import { dispatchShips } from '../client-model/dispatch-timing'
 import { useDispatchTiming } from './use-dispatch-timing'
@@ -335,10 +338,12 @@ export function useDispatch({
       },
       {
         world: (query) => model.world(query),
-        origin: () =>
-          projectGameView(model.store.getState())?.bodies.find(
-            (candidate) => candidate.id === body.id,
-          ),
+        origin: () => {
+          const latest = projectGameView(model.store.getState())
+          return latest?.protocol === 4
+            ? dispatchCargoOrigin(latest, body.id)
+            : undefined
+        },
         quote: setQuote,
         cargo: setCargo,
         error: setError,
@@ -362,6 +367,7 @@ export function useDispatch({
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,
+    reviewReserve: dispatchCargoOrigin(view, body.id)?.reviewReserve ?? 0n,
     cargoCapacity: dispatchCargoCapacity(quote ?? timing?.terms, cargo),
     cargoCapacityMessage: invalidShips
       ? 'Enter valid ship counts to see capacity.'
