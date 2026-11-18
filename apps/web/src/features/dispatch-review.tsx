@@ -271,7 +271,11 @@ export function DispatchReview({
       {mission === 'Espionage' && (
         <Text className={styles.reviewNote}>Probes carry fuel only.</Text>
       )}
-      <QuoteAction disabled={disabled} onClick={onSend}>
+      <QuoteAction
+        className={styles.sendFleet}
+        disabled={disabled}
+        onClick={onSend}
+      >
         {dispatchSendLabel(quote.intent, destination)}
       </QuoteAction>
     </QuotePanel>
