@@ -620,3 +620,22 @@ it('failed preparation refresh leaves confirmation closed with an actionable err
   )
   expect(ports.busy).toHaveBeenLastCalledWith(false)
 })
+
+it('requires a Dreadnought in a destruction draft before requesting its binding launch quote', async () => {
+  const { requests, ports } = fixture()
+  ports.world.mockResolvedValueOnce({
+    ...destination,
+    expected_kind: 'Moon',
+    expected_owner: 'other',
+  })
+  await requests.review(
+    { ...input, targetKind: 'moon', mission: 'DestroyMoon' },
+    ports,
+  )
+  expect(ports.error).toHaveBeenLastCalledWith(
+    'Select at least one Dreadnought for moon destruction.',
+  )
+  expect(ports.world.mock.calls.map(([query]) => query.type)).toEqual([
+    'ResolveDestination',
+  ])
+})

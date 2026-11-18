@@ -28,7 +28,7 @@ export function useHudInbox(
     ...new Map(
       [
         ...incomingThreats(state)
-          .filter((fleet) => fleet.mission !== 'Attack')
+          .filter((fleet) => fleet.mission === 'Espionage')
           .map((fleet) => ({
             kind: 'incoming' as const,
             id: incomingKey(fleet),

@@ -219,7 +219,8 @@ export function DispatchView({
               }
               onChange={(nextMission) => {
                 setMission(nextMission)
-                if (nextMission === 'Harvest') setTargetKind('debris')
+                if (nextMission === 'DestroyMoon') setTargetKind('moon')
+                else if (nextMission === 'Harvest') setTargetKind('debris')
                 else if (targetKind === 'debris' || nextMission === 'Colonize')
                   setTargetKind('planet')
                 clear()

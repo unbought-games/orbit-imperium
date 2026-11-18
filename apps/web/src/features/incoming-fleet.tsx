@@ -1,3 +1,4 @@
+import { label } from '../ui/format'
 import { useId, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { components } from '../contracts'
@@ -38,15 +39,15 @@ export function IncomingFleet({
     <Container
       className={styles.card}
       data-flight-tone={hostile ? 'enemy' : 'peaceful'}
-      aria-label={`Incoming ${fleet.mission.toLowerCase()} fleet`}
+      aria-label={`Incoming ${label(fleet.mission).toLowerCase()} fleet`}
     >
       <header className={styles.heading}>
         <Heading
           level={3}
           className={styles.title}
-          aria-label={`Incoming ${fleet.mission.toLowerCase()}${hostile ? ' · Hostile' : ''}`}
+          aria-label={`Incoming ${label(fleet.mission).toLowerCase()}${hostile ? ' · Hostile' : ''}`}
         >
-          {fleet.attack_group ? 'Alliance attack' : fleet.mission}{' '}
+          {fleet.attack_group ? 'Alliance attack' : label(fleet.mission)}{' '}
           <span>Incoming{hostile ? ' · Hostile' : ''}</span>
         </Heading>
         <Button
@@ -55,7 +56,7 @@ export function IncomingFleet({
           className={styles.manifestToggle}
           aria-expanded={showShips}
           aria-controls={shipsId}
-          aria-label={`Incoming ${fleet.mission} ship composition: ${count === null ? 'unknown' : `${formatWholeNumber(count)} ${count === 1n ? 'ship' : 'ships'}`}`}
+          aria-label={`Incoming ${label(fleet.mission)} ship composition: ${count === null ? 'unknown' : `${formatWholeNumber(count)} ${count === 1n ? 'ship' : 'ships'}`}`}
           onClick={() => setShowShips(!showShips)}
         >
           {count === null ? (

@@ -20,6 +20,7 @@ declare module '@tanstack/react-router' {
     dispatchEditor?: string
     dispatchReview?: string
     dispatchExpired?: boolean
+    destroyedMoon?: string
     dispatchObservation?: Pick<
       DispatchDraft,
       'observedAt' | 'target' | 'ships' | 'speed'

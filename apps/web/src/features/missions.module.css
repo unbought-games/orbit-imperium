@@ -777,3 +777,12 @@
   margin-top: 0;
   font-size: inherit;
 }
+
+.reviewRisk {
+  padding: var(--space-3);
+  border-inline-start: 2px solid var(--warning);
+}
+
+.reviewRisk .reviewFacts > div {
+  grid-template-columns: minmax(0, 13rem) max-content;
+}

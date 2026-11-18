@@ -1,7 +1,11 @@
 import type { BoundView } from './commands'
 
+export function isAttackMission(mission: string): boolean {
+  return mission === 'Attack' || mission === 'DestroyMoon'
+}
+
 export function isHostileMission(mission: string): boolean {
-  return mission === 'Attack' || mission === 'Espionage'
+  return isAttackMission(mission) || mission === 'Espionage'
 }
 
 // Stay active until the server removes the threat, including while disconnected.

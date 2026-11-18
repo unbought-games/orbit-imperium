@@ -224,6 +224,13 @@ export class DispatchRequests {
         },
         speed_percent: speed as S['FleetIntent4']['speed_percent'],
       }
+      if (
+        mission === 'DestroyMoon' &&
+        !intent.ships.some((stack) => stack.ship_type === 'Dreadnought')
+      ) {
+        ports.error('Select at least one Dreadnought for moon destruction.')
+        return
+      }
       const terms = await ports
         .world({ type: fillCargo ? 'FleetEstimate' : 'FleetQuote', intent })
         .catch(async (failure: unknown) => {
