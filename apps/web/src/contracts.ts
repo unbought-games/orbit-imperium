@@ -3093,6 +3093,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: {
+                    "X-Orbit-Report-Arrivals"?: "1";
                     "X-Orbit-View-Metadata"?: "1";
                     "X-Orbit-Minimum-Revision"?: components["schemas"]["Decimal"];
                 };
@@ -7985,6 +7986,13 @@ export interface components {
             shared?: boolean;
         };
         ReportsPage4: {
+            /** @description Recipient report creation sequence at the cursor cut and for each returned report. Sent to clients requesting X-Orbit-Report-Arrivals: 1. */
+            arrivals?: {
+                through: components["schemas"]["Decimal"];
+                created: {
+                    [key: string]: components["schemas"]["Decimal"];
+                };
+            };
             items: components["schemas"]["ReportHeader4"][];
             next_cursor: string | null;
             has_more: boolean;

@@ -2,7 +2,10 @@ import { expect, it, vi } from 'vitest'
 import { createGameStore } from './game-store'
 import { ReportEngine, reportLoad, reportRequestScope } from './report-engine'
 import { projectedReportDetail, projectedReportInbox } from './report-state'
-import { unreadBadgeCount } from '../features/command-hud/model'
+import {
+  changedHudTargets,
+  unreadBadgeCount,
+} from '../features/command-hud/model'
 import { readyFixture } from '../test-support/bootstrap'
 import type { Attempt, BoundReport, BoundReports, Command } from './commands'
 
@@ -155,6 +158,116 @@ it('shares pagination, keeps earlier names, and deduplicates overlapping IDs', a
   })
   await h.engine.ensureInbox()
   expect(h.pages).toHaveLength(2)
+})
+
+it.each(['HUD first', 'list first'])(
+  'archiving backfills history silently while a real report arrives (%s)',
+  async (order) => {
+    const h = fixture()
+    const notices: string[] = []
+    const stop = h.store.subscribe((after, before) => {
+      notices.push(
+        ...changedHudTargets(before, after).map((target) => target.id),
+      )
+    })
+    const first = h.page(['a', 'b', 'c'], 'older')
+    first.data.arrivals = { through: '8', created: { a: '8', b: '7', c: '6' } }
+    first.data.unread_count = 8
+    const hydrate = h.engine.ensureInbox()
+    h.pages[0].resolve(first)
+    await hydrate
+    expect(notices).toEqual([])
+
+    // a and b were archived. Both replacement rows have the same observation
+    // time: one is a real delivery, the other predates the original page.
+    h.revise()
+    const next = h.page(['new', 'c', 'backfill'], 'older')
+    // A slow response in an uninterrupted foreground session still delivers the report.
+    next.sampled_at = 60_000
+    next.data.unread_count = 7
+    next.data.arrivals = {
+      through: '9',
+      created: { new: '9', c: '6', backfill: '5' },
+    }
+    const list = h.engine.forQuery({
+      kind: null,
+      filter: { hidden: false, sort: 'newest' },
+    })
+    const hudRead = h.engine.refreshInbox()
+    const listRead = list.ensureInbox()
+    if (order === 'list first') {
+      h.pages[2].resolve(next)
+      await listRead
+      expect(notices).toEqual([])
+    }
+    h.pages[1].resolve(next)
+    await hudRead
+    if (order === 'HUD first') {
+      h.pages[2].resolve(next)
+      await listRead
+    }
+    expect(
+      projectedReportInbox(h.store.getState())?.items.map((h) => h.id),
+    ).toEqual(['new', 'c', 'backfill'])
+    expect(unreadBadgeCount(h.store.getState())).toBe(7)
+    expect(notices).toEqual(['new'])
+
+    const more = h.engine.refreshInbox(true)
+    const older = h.page(['oldest'])
+    older.data.arrivals = { through: '9', created: { oldest: '1' } }
+    older.sampled_at += 60_000
+    h.pages[3].resolve(older)
+    await more
+    expect(notices).toEqual(['new'])
+    const repeat = h.engine.refreshInbox()
+    h.pages[4].resolve(next)
+    await repeat
+    expect(notices).toEqual(['new'])
+    stop()
+  },
+)
+
+it('catches up after a suspended tab or reconnect, keeping only live arrivals', async () => {
+  const h = fixture()
+  const events: string[] = []
+  const stop = h.store.subscribe((after, before) => {
+    events.push(...changedHudTargets(before, after).map((target) => target.id))
+  })
+  const initial = h.engine.ensureInbox()
+  const empty = h.page([])
+  empty.data.arrivals = { through: '0', created: {} }
+  h.pages[0].resolve(empty)
+  await initial
+  const suspended = h.engine.refreshInbox()
+  h.store.setState({ foreground: false, online: false, stale: true })
+  h.store.setState({
+    foreground: true,
+    online: true,
+    stale: false,
+    now: 3_600_000,
+    deliveryResumedAt: 3_599_000,
+  })
+  const wake = h.engine.refreshInbox()
+  const page = h.page(['live', 'away'])
+  page.sampled_at = 3_600_000
+  page.data.items[0].observed_at = page.sampled_at
+  page.data.items[1].observed_at = 1_000
+  page.data.arrivals = { through: '2', created: { live: '2', away: '1' } }
+  // The request predating the suspension completes first at the same viewer
+  // revision. It cannot establish the new activity baseline or consume arrivals.
+  h.pages[1].resolve(page)
+  await expect(suspended).rejects.toThrow('Unable to confirm your reports')
+  expect(unreadBadgeCount(h.store.getState())).toBe(0)
+  expect(events).toEqual([])
+  h.pages[2].resolve(page)
+  await wake
+  expect(unreadBadgeCount(h.store.getState())).toBe(2)
+  expect(events).toEqual(['live'])
+  const refresh = h.engine.refreshInbox()
+  h.pages[3].resolve(page)
+  await refresh
+  expect(events).toEqual(['live'])
+  stop()
 })
 
 it('reconciles external deletion for all surfaces, retaining cached details outside membership', async () => {

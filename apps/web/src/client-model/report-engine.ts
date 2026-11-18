@@ -26,6 +26,7 @@ export function reportRequestScope(state: GameState) {
   return JSON.stringify([
     state.binding && bindingKey(state.binding),
     state.ready,
+    state.deliveryResumedAt,
     reportRevision(state),
     pendingReportPreferences(state.attempts.values())
       .map((a) => a.envelope.command_id)
@@ -54,6 +55,7 @@ export class ReportEngine {
   constructor(
     private store: StoreApi<GameState>,
     private port: {
+      monotonicNow?: () => number
       page: (
         cursor: string | null,
         query: ReportQuery,
@@ -158,6 +160,8 @@ export class ReportEngine {
     const inbox = this.inbox(state)
     const minimumRevision = BigInt(reportRevision(state))
     const observed: BoundReports[] = []
+    let firstPage = inbox?.firstPage
+    const now = this.port.monotonicNow ?? (() => this.store.getState().now)
     const work: Work<void> = { scope, promise: Promise.resolve() }
     this.inboxWork = work
     const current = () =>
@@ -174,7 +178,15 @@ export class ReportEngine {
           (inbox && BigInt(response.viewer_revision) < BigInt(inbox.revision)))
       )
         throw new Error('Report response is out of date. Try again.')
-      if (response) observed.push(response)
+      if (response) {
+        observed.push(response)
+        if (cursor === null)
+          firstPage = {
+            resumedAt: state.deliveryResumedAt,
+            receivedAt: now(),
+            sampledAt: response.sampled_at,
+          }
+      }
       return response
     }
     const kind = more ? 'more' : 'refresh'
@@ -192,7 +204,7 @@ export class ReportEngine {
         if (!current()) return
         this.inboxWork = null
         this.publish({
-          reportInbox,
+          reportInbox: { ...reportInbox, firstPage },
           reportHeaders: observed.reduce(
             (headers, response) =>
               mergeReportHeaders(

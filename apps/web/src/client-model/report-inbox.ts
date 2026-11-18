@@ -2,7 +2,14 @@ import type { BoundReports } from './commands'
 import type { ReportPage } from './report-state'
 
 /** Query membership from one server revision. */
-export type ReportInbox = ReportPage & { revision: string }
+export type ReportInbox = ReportPage & {
+  revision: string
+  firstPage?: {
+    resumedAt: number | null
+    receivedAt: number
+    sampledAt: number
+  }
+}
 type Read = (cursor: string | null) => Promise<BoundReports | null>
 
 export function appendInboxPage(
@@ -12,6 +19,12 @@ export function appendInboxPage(
   const page = response.data
   return {
     ...page,
+    // A continuation describes the original cut, even when fetched much later.
+    as_of_ms: inbox?.as_of_ms ?? page.as_of_ms,
+    arrivals: page.arrivals && {
+      through: page.arrivals.through,
+      created: { ...inbox?.arrivals?.created, ...page.arrivals.created },
+    },
     revision: response.viewer_revision,
     player_names: { ...inbox?.player_names, ...page.player_names },
     items: [
