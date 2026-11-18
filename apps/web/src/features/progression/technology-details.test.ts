@@ -228,6 +228,11 @@ for (const example of examples) {
         createElement(RouterProvider, { router }),
       )
       const build = html.match(/<button[^>]*aria-label="Build"[^>]*>/)?.[0]
+      const max = html.match(
+        /<button[^>]*aria-label="Max [^"]+ quantity"[^>]*>/,
+      )?.[0]
+      expect(max).toBeDefined()
+      expect(max!.includes('disabled')).toBe(gate !== 'ready')
       expect(build).toBeDefined()
       if (gate === 'ready') expect(build).not.toContain('disabled')
       else expect(build).toContain('disabled')
