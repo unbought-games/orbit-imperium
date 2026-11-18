@@ -21,8 +21,8 @@ export function DispatchCargoControls({
   space: ComponentProps<typeof DispatchCargoCapacity>['space']
   message: string
   disabled: boolean
-  onNormalize: (cargo: string[]) => void
-  onChange: (cargo: string[]) => void
+  onNormalize: (index: number, value: string) => void
+  onChange: (index: number, value: string) => void
   onFill: (resource: 'all' | (typeof resourceNames)[number]) => void
 }) {
   return (
@@ -41,11 +41,10 @@ export function DispatchCargoControls({
                 value={cargo[i]}
                 placeholder="0"
                 onBlur={(e) => {
-                  if (!e.target.value.trim())
-                    onNormalize(cargo.map((n, j) => (i === j ? '0' : n)))
+                  if (!e.target.value.trim()) onNormalize(i, '0')
                 }}
                 onChange={(e) => {
-                  onChange(cargo.map((n, j) => (i === j ? e.target.value : n)))
+                  onChange(i, e.target.value)
                 }}
               />
             </Field>

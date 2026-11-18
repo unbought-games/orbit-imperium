@@ -8,6 +8,7 @@ fn player(n: u128) -> PlayerId {
 
 fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> MissionFleet {
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: BodyId(Uuid::from_u128(10)),

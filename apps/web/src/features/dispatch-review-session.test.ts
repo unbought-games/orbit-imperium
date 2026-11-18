@@ -140,3 +140,43 @@ it('requotes the exact hold manifest and rejects changed terms', async () => {
     intent: terms.intent,
   })
 })
+
+it('restores an auto-fill review with fresh cargo while retaining its original target and flight conditions', async () => {
+  const original = {
+    ...terms,
+    intent: {
+      ...terms.intent,
+      cargo_fill: { minimum: terms.intent.cargo, groups: [['Metal' as const]] },
+    },
+  }
+  const review = new DispatchReviewSession().open('edit', original, at)
+  const latest = {
+    ...original,
+    terms_hash: 'fresh',
+    intent: {
+      ...original.intent,
+      cargo: { ...original.intent.cargo, metal: '52000000' },
+    },
+  }
+  const reader = {
+    refresh: async () => {},
+    store: {
+      getState: () => ({
+        ready: true,
+        stale: false,
+        connectionInterrupted: false,
+      }),
+    },
+    world: vi.fn<Coordinator['world']>(),
+  }
+  reader.world
+    .mockResolvedValueOnce(original.intent.destination)
+    .mockResolvedValueOnce(latest)
+  await expect(revalidateReview(reader, review)).resolves.toEqual(latest)
+  reader.world
+    .mockResolvedValueOnce(original.intent.destination)
+    .mockResolvedValueOnce({ ...latest, fuel: '1000000' })
+  await expect(revalidateReview(reader, review)).rejects.toThrow(
+    'Fleet terms changed',
+  )
+})

@@ -2449,3 +2449,59 @@ test('holding duration has a visible field surface and supports keyboard selecti
   await review(page).click()
   expect((await lastQuote(page)).intent.hold_hours).toBe(4)
 })
+
+test('returning to Review refreshes Max cargo and confirms a material shipment against the original review', async ({
+  page,
+  mount,
+}) => {
+  await page.clock.install()
+  await setup(page, mount)
+  const stock = (amount: number) => ({
+    metal: '0',
+    crystal: '0',
+    deuterium: String(amount * 1000000),
+  })
+  await configure(page, {
+    liveQuote: { cargo: stock(3000), hash: 'a'.repeat(64) },
+  })
+  await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
+  await expect(page.getByLabel('Deuterium', { exact: true })).toHaveValue(
+    '3121',
+  )
+  await review(page).click()
+  const panel = page.getByRole('region', { name: 'Fleet quote' })
+  const cargo = panel.getByRole('region', { name: 'Fleet and cargo' })
+  await expect(cargo).toContainText('3,000')
+  await configure(page, {
+    liveQuote: { cargo: stock(3200), hash: 'c'.repeat(64) },
+  })
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(cargo).toContainText('3,200')
+  await expect(
+    panel.getByRole('button', { name: /^Transport to/ }),
+  ).toBeEnabled()
+  await configure(page, {
+    liveQuote: { cargo: stock(3240), hash: 'f'.repeat(64) },
+  })
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event('visibilitychange')),
+  )
+  await expect(cargo).toContainText('3,240')
+  await configure(page, {
+    liveQuote: { cargo: stock(3300), hash: 'd'.repeat(64) },
+  })
+  await page.clock.fastForward(15 * 60 * 1000)
+  await expect(panel.getByRole('status')).toContainText(/3,000.*3,300/)
+  expect((await counts(page)).launches).toBe(0)
+  await panel
+    .getByRole('button', { name: 'Confirm changes and launch' })
+    .click()
+  await expect(
+    page.getByRole('group', { name: 'Fleet dispatch result' }),
+  ).toContainText('Fleet sent.')
+  expect((await snapshot(page)).lastLaunch).toMatchObject({
+    type: 'LaunchFleet',
+    intent: { cargo: stock(3300) },
+    expected_terms_hash: 'd'.repeat(64),
+  })
+})

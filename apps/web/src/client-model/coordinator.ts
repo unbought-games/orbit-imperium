@@ -1,3 +1,4 @@
+import { matchesCargoInstruction } from './dispatch-cargo'
 import { TutorialEngine } from './tutorial-engine'
 import {
   readStableMailbox,
@@ -867,8 +868,15 @@ export class Coordinator {
                   : 0,
             ),
           })
+          const fill =
+            captured.type === 'FleetQuote' && captured.intent.cargo_fill
+          if (fill && !matchesCargoInstruction(fill, result.data.intent.cargo))
+            return null
+          const expected = fill
+            ? { ...captured.intent, cargo: result.data.intent.cargo }
+            : captured.intent
           if (
-            canonical(normalize(captured.intent)) !==
+            canonical(normalize(expected)) !==
               canonical(normalize(result.data.intent)) ||
             result.data.profile_hash !== this.view?.profile_hash
           )

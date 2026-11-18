@@ -280,6 +280,7 @@ mod tests {
         let fleet = Command::World {
             action: WorldAction::LaunchFleet {
                 intent: FleetIntent {
+                    cargo_fill: None,
                     attack_group: None,
                     hold_hours: None,
                     origin: body,
