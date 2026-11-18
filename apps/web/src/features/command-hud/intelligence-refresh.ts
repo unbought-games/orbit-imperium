@@ -1,3 +1,22 @@
+import type { StoreApi } from 'zustand/vanilla'
+import type { GameState } from '../../client-model/game-store'
+import { reportRequestScope } from '../../client-model/report-engine'
+
+export function watchIntelligenceScope(
+  store: StoreApi<GameState>,
+  refresh: () => void,
+) {
+  let scope = reportRequestScope(store.getState())
+  return store.subscribe((next, previous) => {
+    // Resume can publish the new revision before clearing the stale flag.
+    if (!next.ready || next.stale) return
+    const nextScope = reportRequestScope(next)
+    if (previous.ready && !previous.stale && scope === nextScope) return
+    scope = nextScope
+    refresh()
+  })
+}
+
 /** Coalesces wake/retry events; stale or disposed responses cannot update the HUD. */
 export function createIntelligenceRefresh(options: {
   available: () => boolean

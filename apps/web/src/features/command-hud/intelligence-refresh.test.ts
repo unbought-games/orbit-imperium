@@ -1,5 +1,10 @@
-import { expect, it } from 'vitest'
-import { createIntelligenceRefresh } from './intelligence-refresh'
+import { expect, it, vi } from 'vitest'
+import { createGameStore } from '../../client-model/game-store'
+import { readyFixture } from '../../test-support/bootstrap'
+import {
+  createIntelligenceRefresh,
+  watchIntelligenceScope,
+} from './intelligence-refresh'
 function deferred() {
   let resolve!: () => void
   let reject!: () => void
@@ -97,3 +102,38 @@ it('disposal fences outstanding responses and drops queued work', async () => {
   expect(calls).toBe(1)
   expect(errors).toEqual([])
 })
+
+it.each(['changed', 'unchanged'])(
+  'refreshes the inbox once when a resumed snapshot becomes fresh (%s revision)',
+  (revision) => {
+    const store = createGameStore()
+    const { snapshot } = readyFixture(4)
+    store.setState({
+      ready: true,
+      binding: snapshot.candidate.binding,
+      view: snapshot.view,
+    })
+    const readInbox = vi.fn()
+    const stop = watchIntelligenceScope(store, readInbox)
+    try {
+      store.setState({ foreground: false, stale: true })
+      store.setState({ foreground: true })
+      store.setState({
+        view: {
+          ...snapshot.view,
+          viewer_revision:
+            revision === 'changed'
+              ? String(BigInt(snapshot.view.viewer_revision) + 1n)
+              : snapshot.view.viewer_revision,
+        },
+      })
+      expect(readInbox).not.toHaveBeenCalled()
+
+      store.setState({ stale: false })
+      store.setState({ now: 250 })
+      expect(readInbox).toHaveBeenCalledTimes(1)
+    } finally {
+      stop()
+    }
+  },
+)
