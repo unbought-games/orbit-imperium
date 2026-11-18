@@ -46,6 +46,7 @@ pub struct PgStore {
     admission_limit: i64,
     legacy_universe_config: bool,
     scan_cursors: std::sync::Arc<scoped_ordering::ScanCursors>,
+    retention_positions: std::sync::Arc<retention::ScanPositions>,
     observer: std::sync::Arc<dyn orbit_application::RuntimeObserver>,
     update_hub: std::sync::Arc<update_signals::UpdateHub>,
     refresh_waiters: std::sync::Arc<oidc_wait::Waiters>,
@@ -73,6 +74,7 @@ impl PgStore {
             refresh_waiters: Default::default(),
             update_hub: Default::default(),
             scan_cursors: Default::default(),
+            retention_positions: Default::default(),
             observer: std::sync::Arc::new(orbit_application::NoopRuntimeObserver),
         })
     }

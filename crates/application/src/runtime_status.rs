@@ -100,7 +100,14 @@ impl RuntimeEvent {
 pub trait RuntimeObserver: Send + Sync {
     /// Eligible groups at the start of a committed batch (capped at batch size) and
     /// age in milliseconds since the oldest selected record’s creation, terminal or acknowledgement stamp.
-    fn retention(&self, _universe: Option<UniverseId>, _kind: &'static str, _sample: (i64, i64)) {}
+    fn retention(
+        &self,
+        _universe: Option<UniverseId>,
+        _kind: &'static str,
+        _sample: (i64, i64),
+        _scan_limited: bool,
+    ) {
+    }
 
     fn request(&self, _: crate::RequestObservation) {}
     fn admission(&self, _: crate::RequestAction, _: bool, _: crate::AdmissionOutcome, _: Duration) {

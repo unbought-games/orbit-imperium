@@ -395,6 +395,8 @@ async fn interrupted_batches_converge_under_new_load_and_keep_claims() {
         .bind(u.0)
         .bind(START)
         .bind(START - DAY)
+        .bind("-infinity")
+        .bind(Uuid::nil())
         .fetch_one(&mut interrupted)
         .await
         .unwrap();
@@ -456,6 +458,58 @@ async fn interrupted_batches_converge_under_new_load_and_keep_claims() {
         count(
             &pool,
             "SELECT count(*) FROM scheduled_events WHERE universe=$1",
+            u
+        )
+        .await,
+        0
+    );
+}
+
+#[tokio::test]
+async fn protected_oldest_window_cannot_hide_later_eligible_work() {
+    let (store, pool, b) = setup().await;
+    let u = b.universe;
+    add_history(&pool, b, 600).await;
+    sqlx::query("WITH pinned AS (UPDATE commands SET retention_since=to_timestamp(0)-interval '1 day' WHERE universe=$1 AND sequence<=512 RETURNING input_id)
+        INSERT INTO analytics_delivery(event_id,fact_key,payload,state) SELECT input_id,'activity:'||input_id,'{}','quarantined' FROM pinned")
+        .bind(u.0).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO execution_scopes(universe,key) VALUES($1,'declaration')")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("WITH pinned AS (UPDATE scheduled_events SET retention_since=to_timestamp(0)-interval '1 day' WHERE universe=$1 AND sequence<=512 RETURNING id)
+        INSERT INTO input_scopes(universe,input_id,scope_key) SELECT $1,id,'declaration' FROM pinned")
+        .bind(u.0).execute(&pool).await.unwrap();
+    for expected in [600, 512] {
+        store.prune_terminal_history().await.unwrap();
+        assert_eq!(
+            count(&pool, "SELECT count(*) FROM commands WHERE universe=$1", u).await,
+            expected
+        );
+        assert_eq!(
+            count(
+                &pool,
+                "SELECT count(*) FROM scheduled_events WHERE universe=$1",
+                u
+            )
+            .await,
+            expected
+        );
+    }
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM commands WHERE universe=$1 AND sequence>512",
+            u
+        )
+        .await,
+        0
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM scheduled_events WHERE universe=$1 AND sequence>512",
             u
         )
         .await,

@@ -5,6 +5,41 @@ use crate::{
     ordering::{Tx, now},
 };
 use orbit_application::{StoreError, UniverseId};
+use std::{collections::BTreeMap, sync::Mutex};
+use uuid::Uuid;
+
+type ScanKey = (UniverseId, &'static str);
+type Position = (String, Uuid);
+type Batch = (i64, i64, Option<String>, Option<Uuid>);
+
+/// A continuation only avoids revisiting a protected prefix. Losing it during
+/// restart repeats eligibility checks; it never establishes permission to delete.
+#[derive(Default)]
+pub(crate) struct ScanPositions(Mutex<BTreeMap<ScanKey, Position>>);
+
+impl ScanPositions {
+    fn start(&self, key: ScanKey) -> Position {
+        self.0
+            .lock()
+            .unwrap()
+            .get(&key)
+            .cloned()
+            .unwrap_or_else(|| ("-infinity".to_string(), Uuid::nil()))
+    }
+
+    fn completed(&self, key: ScanKey, batch: &Batch) {
+        // A full deletion batch can leave eligible rows inside this window.
+        if batch.0 == 128 {
+            return;
+        }
+        let mut positions = self.0.lock().unwrap();
+        if let (Some(stamp), Some(id)) = (&batch.2, batch.3) {
+            positions.insert(key, (stamp.clone(), id));
+        } else {
+            positions.remove(&key);
+        }
+    }
+}
 
 impl PgStore {
     pub(crate) async fn retention_transaction(&self) -> Result<Tx<'static>, StoreError> {
@@ -44,7 +79,8 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
             tx.commit().await.map_err(db_error)?;
-            self.observer.retention(None, "activity", sample);
+            self.observer
+                .retention(None, "activity", sample, sample.0 == 128);
         }
         Ok(())
     }
@@ -63,15 +99,25 @@ impl PgStore {
         if ready.is_some()
             && let Some((at, cutoff)) = retention_clock(&mut tx).await?
         {
-            let sample = sqlx::query_as(include_str!("retention/commands.sql"))
+            let key = (u, "commands");
+            let (stamp, id) = self.retention_positions.start(key);
+            let sample: Batch = sqlx::query_as(include_str!("retention/commands.sql"))
                 .bind(u.0)
                 .bind(at)
                 .bind(cutoff)
+                .bind(stamp)
+                .bind(id)
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
             tx.commit().await.map_err(db_error)?;
-            self.observer.retention(Some(u), "commands", sample);
+            self.retention_positions.completed(key, &sample);
+            self.observer.retention(
+                Some(u),
+                "commands",
+                (sample.0, sample.1),
+                sample.0 == 128 || sample.2.is_some(),
+            );
         }
         Ok(())
     }
@@ -79,14 +125,24 @@ impl PgStore {
     async fn prune_events(&self, u: UniverseId) -> Result<(), StoreError> {
         let mut tx = self.retention_transaction().await?;
         if let Some((at, _)) = retention_clock(&mut tx).await? {
-            let sample = sqlx::query_as(include_str!("retention/events.sql"))
+            let key = (u, "events");
+            let (stamp, id) = self.retention_positions.start(key);
+            let sample: Batch = sqlx::query_as(include_str!("retention/events.sql"))
                 .bind(u.0)
                 .bind(at)
+                .bind(stamp)
+                .bind(id)
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
             tx.commit().await.map_err(db_error)?;
-            self.observer.retention(Some(u), "events", sample);
+            self.retention_positions.completed(key, &sample);
+            self.observer.retention(
+                Some(u),
+                "events",
+                (sample.0, sample.1),
+                sample.0 == 128 || sample.2.is_some(),
+            );
         }
         Ok(())
     }

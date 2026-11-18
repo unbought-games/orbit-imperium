@@ -248,7 +248,8 @@ impl PgStore {
             .await
             .map_err(db_error)?;
         tx.commit().await.map_err(db_error)?;
-        self.observer.retention(None, "delivery", sample);
+        self.observer
+            .retention(None, "delivery", sample, sample.0 == 1000);
         Ok(sample.0 as u64)
     }
 }
