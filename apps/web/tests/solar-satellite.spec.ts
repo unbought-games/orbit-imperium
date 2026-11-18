@@ -357,7 +357,12 @@ test('satellite ordering updates across planets, zero stationed satellites and u
   const production = await setup(page, 1, { bodies: [{ ...body, inventories: [] }, second] })
   production.solar_satellite!.energy_supply = '0'
   production.settings.solar_satellite = 0
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`))
+  const unitInspection = (selectedBody: string) => (request: S['QuoteRequest3']) =>
+    request.type === 'Manufacture' && request.body === selectedBody &&
+    request.item.id === item.id && request.quantity === '1'
+  await withProgressionResponse(page, unitInspection(body.id), () =>
+    withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)),
+  )
   const order = page.getByRole('region', { name: 'New order', exact: true })
   await expect(order).toContainText('Energy per satellite · 100% production30')
   await expect(order).toContainText('Current satellite energy · 0% production0')
@@ -365,7 +370,7 @@ test('satellite ordering updates across planets, zero stationed satellites and u
   await expect(gain).toHaveText('0')
   await withProgressionResponse(
     page,
-    (request) => request.type === 'Manufacture' && request.body === second.id && request.item.id === item.id,
+    unitInspection(second.id),
     () => selectBody(page, second.id),
   )
   await expect(order).toContainText('Satellite energy data unavailable for this planet.')
