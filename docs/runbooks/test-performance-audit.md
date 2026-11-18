@@ -1,4 +1,18 @@
 # PR and main test performance audit
+## November 17, 2026 — Graviton research fixture
+
+Removed the new `satellite_power_starts_graviton_and_completion_survives_restart`
+PostgreSQL test before publication. Its direct inventory and building inserts
+omitted asset valuation records, so the quote load rejected the fixture with
+`CorruptData`. The repair used the world scenario editor, which accepts mobile
+ship IDs for ship grants and rejected `SolarSatellite` before the first quote.
+Neither failure reached a player command.
+
+The Graviton progression tests cover threshold boundaries, satellite inventory,
+fuel, local laboratories, stale commands, and exactly-once completion after
+power loss. The existing PostgreSQL standard-upgrade test now asserts the new
+research row and initial level. A live browser submission on a disposable
+standard world exercised the player command, worker completion and reload.
 
 ## November 12, 2026: simulator zero-default interaction update (PR402)
 

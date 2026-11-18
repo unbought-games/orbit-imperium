@@ -74,6 +74,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Research(ResearchId::PlasmaTechnology),
             CatalogKey::Research(ResearchId::HyperspaceTechnology),
             CatalogKey::Research(ResearchId::IntergalacticResearchNetwork),
+            CatalogKey::Research(ResearchId::GravitonTechnology),
         ] {
             assert!(
                 next.artifact

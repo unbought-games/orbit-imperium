@@ -506,6 +506,9 @@ pub fn inspect_progression(
     }
     if let ProgressionMaterial::Building {
         required_energy, ..
+    }
+    | ProgressionMaterial::Research {
+        required_energy, ..
     } = &terms
         && *required_energy > 0
     {

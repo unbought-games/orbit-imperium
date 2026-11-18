@@ -1,0 +1,6 @@
+{
+  "research": { "base": [0, 0, 0], "growth": [3, 1] },
+  "requirements": [
+    { "type": "BodyBuilding", "building": "ResearchLab", "level": 12 }
+  ]
+}

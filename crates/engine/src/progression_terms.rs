@@ -59,14 +59,16 @@ impl ProgressionRules {
                         | ResearchId::HyperspaceDrive
                         | ResearchId::Astrophysics
                         | ResearchId::IntergalacticResearchNetwork
+                        | ResearchId::GravitonTechnology
                 )
             {
                 return Err(RulesError::InvalidReference);
             }
-            let growth = if k == ResearchId::Astrophysics {
-                [7, 4]
-            } else {
-                [2, 1]
+            let growth = match k {
+                ResearchId::Astrophysics => [7, 4],
+                ResearchId::GravitonTechnology if r.base == [0; 3] => [GRAVITON_ENERGY_GROWTH, 1],
+                ResearchId::GravitonTechnology => return Err(RulesError::Range),
+                _ => [2, 1],
             };
             if r.base.iter().any(|v| *v < 0) || r.growth != growth {
                 return Err(RulesError::Range);
@@ -480,12 +482,23 @@ pub fn research_payment(
     research: ResearchId,
     rules: &Ruleset,
 ) -> Result<Resources, GameError> {
+    Ok(research_requirements(levels, research, rules)?.0)
+}
+
+fn research_requirements(
+    levels: &ResearchLevels,
+    research: ResearchId,
+    rules: &Ruleset,
+) -> Result<(Resources, i64), GameError> {
     enabled(rules, CatalogKey::Research(research))?;
     let source = *levels
         .levels
         .get(&research)
         .ok_or(GameError::InvalidInput)?;
     source.checked_add(1).ok_or(GameError::NumericRange)?;
+    if research == ResearchId::GravitonTechnology {
+        return Ok((Resources::default(), graviton_required_energy(source)?));
+    }
     let r = &rules
         .artifact
         .progression
@@ -494,11 +507,12 @@ pub fn research_payment(
         .research[&research];
     let growth = power(ratio(r.growth[0], r.growth[1])?, source)?;
     let raw = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
-    if research == ResearchId::Astrophysics {
-        astrophysics_payment(&raw)
+    let payment = if research == ResearchId::Astrophysics {
+        astrophysics_payment(&raw)?
     } else {
-        paid(&raw)
-    }
+        paid(&raw)?
+    };
+    Ok((payment, 0))
 }
 
 /// Single-lab formula primitive for legacy formula fixtures. Gameplay must select
@@ -528,7 +542,7 @@ pub fn research_terms_with_labs(
     rules: &Ruleset,
     labs: Vec<LabTerm>,
 ) -> Result<ProgressionMaterial, GameError> {
-    let cost = research_payment(levels, research, rules)?;
+    let (cost, required_energy) = research_requirements(levels, research, rules)?;
     let source = levels.levels[&research];
     let target = source.checked_add(1).ok_or(GameError::NumericRange)?;
     let effective_lab = labs
@@ -560,7 +574,7 @@ pub fn research_terms_with_labs(
         .into(),
         labs,
         effective_lab,
-        required_energy: 0,
+        required_energy,
     })
 }
 pub fn manufacture_terms(

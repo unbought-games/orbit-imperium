@@ -20,6 +20,16 @@ pub enum ResearchId {
     IntergalacticResearchNetwork,
     GravitonTechnology,
 }
+pub const GRAVITON_ENERGY_GROWTH: i64 = 3;
+
+/// Gross production at the initiating planet, in micro-energy, for the next level.
+pub fn graviton_required_energy(completed_level: u32) -> Result<i64, GameError> {
+    GRAVITON_ENERGY_GROWTH
+        .checked_pow(completed_level)
+        .and_then(|factor| factor.checked_mul(300_000 * SCALE))
+        .ok_or(GameError::NumericRange)
+}
+
 impl ResearchId {
     pub const MVP: [Self; 7] = [
         Self::CombustionDrive,
