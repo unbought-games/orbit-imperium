@@ -263,6 +263,11 @@ export function ImageTile({
               {countLabel} {level}
             </strong>
           )}
+          {compactCaption && (props.disabled || unaffordable) && (
+            <span className={hidden.hidden}>
+              {props.disabled ? disabledReason : 'Not enough resources'}
+            </span>
+          )}
           {inspectable && (props.disabled || locked) && (
             <small>
               {props.disabled
