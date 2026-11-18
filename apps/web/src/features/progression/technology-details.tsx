@@ -355,7 +355,6 @@ export function TechnologyDetails({
                   <InputWithAction>
                     {quantityField}
                     <FillButton
-                      label="Max"
                       aria-label={`Max ${title} quantity`}
                       disabled={maximum === 0n}
                       onClick={() => onQuantity(maximum.toString())}

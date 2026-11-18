@@ -16,24 +16,21 @@ export function InputWithAction({
 export function FillButton({
   className,
   title,
-  label,
-  padding = label ? 'compact' : undefined,
   ...props
 }: Omit<
   ComponentPropsWithRef<typeof Button>,
   'children' | 'type' | 'variant' | 'size'
-> & { 'aria-label': string; label?: string }) {
+> & { 'aria-label': string }) {
   return (
     <Button
       {...props}
       type="button"
-      variant={label ? 'secondary' : 'ghost'}
-      padding={padding}
-      size={label ? 'small' : 'icon-small'}
+      variant="ghost"
+      size="icon-small"
       className={classes(styles.action, className)}
       title={title ?? props['aria-label']}
     >
-      {label ?? <ArrowUp size={18} aria-hidden="true" />}
+      <ArrowUp size={18} aria-hidden="true" />
     </Button>
   )
 }

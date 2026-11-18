@@ -4,8 +4,8 @@ title: Max orders and satellite energy
 date: '2026-11-18'
 ---
 
-Choose Max beside the quantity to fill a ship or defense order with everything
-your selected body can build. You can adjust the quantity and review the cost
+Use the up arrow in the quantity field to fill a ship or defense order with
+the maximum your selected body can build. You can adjust the quantity and review the cost
 before placing the order. When ordering Solar Satellites, you can also see how
 much energy the batch will add at the current production setting.
 
