@@ -202,6 +202,31 @@ it.each([
     '[1:23:7]',
   ],
   [
+    { kind: 'MoonDestroyed', coordinates: away, diameter_km: 8000 },
+    'Moon destroyed',
+    '[1:23:7] · 8,000 km diameter',
+  ],
+  [
+    {
+      kind: 'MoonFleetRedirected',
+      mission: 'Transport',
+      coordinates: away,
+      due_at: 42,
+    },
+    'Fleet redirected to parent',
+    'Transport · [1:23:7]',
+  ],
+  [
+    {
+      kind: 'MoonTargetLost',
+      mission: 'DestroyMoon',
+      coordinates: away,
+      due_at: 42,
+    },
+    'Fleet target lost',
+    'Destroy Moon · moon [1:23:7]',
+  ],
+  [
     { kind: 'MoonCreated', coordinates: away, diameter_km: 8144 },
     'Moon formed',
     '[1:23:7] · 8,144 km diameter',
@@ -295,3 +320,34 @@ it('preserves historical header-only report titles and omits unknown locations',
   ])
     expect(orbReportGlance({ kind })).toMatchObject({ title, location: '' })
 })
+
+it.each([
+  [true, true, 'Moon destroyed · Attacking fleet lost'],
+  [true, false, 'Moon destroyed · Attacking fleet escaped'],
+  [false, true, 'Moon survived · Attacking fleet lost'],
+  [false, false, 'Moon survived · Attacking fleet escaped'],
+] as const)(
+  'preserves both destruction outcomes after a victorious battle',
+  (moon_destroyed, fleet_lost, title) => {
+    const preview: Preview = {
+      kind: 'Combat',
+      target: away,
+      target_name: 'Selene',
+      target_kind: 'Moon',
+      outcome: 'AttackerVictory',
+      moon_destruction: {
+        diameter_km: 8000,
+        surviving_dreadnoughts: '10',
+        moon_chance_ppm: 333850,
+        fleet_loss_ppm: 447213,
+        moon_destroyed,
+        fleet_lost,
+      },
+    }
+    expect(glance(preview)).toMatchObject({
+      title,
+      location: 'Selene (Moon) [1:23:7]',
+      tone: 'neutral',
+    })
+  },
+)
