@@ -1,3 +1,4 @@
+import { commandIdAt, pairedPresenceId } from './fixtures/command-ids.mjs'
 // Explicit-only real CLI/API/worker speed-cutover validation.
 import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
@@ -66,8 +67,8 @@ async function advance(time) {
   return fresh()
 }
 async function send(command, expected = 'Committed') {
-  const gameplay = { protocol: 4, binding, command_id: randomUUID(), command }
-  const pair = { gameplay, presence: { protocol: 4, binding, command_id: randomUUID(), command: { type: 'World', action: { type: 'RecordForegroundPresence', body, cause: 'GameplayGesture', paired_command_id: gameplay.command_id } } } }
+  const gameplay = { protocol: 4, binding, command_id: commandIdAt(at), command }
+  const pair = { gameplay, presence: { protocol: 4, binding, command_id: pairedPresenceId(gameplay.command_id), command: { type: 'World', action: { type: 'RecordForegroundPresence', body, cause: 'GameplayGesture', paired_command_id: gameplay.command_id } } } }
   const response = await post('commands', pair); assert.equal(response.status, 202, await response.clone().text())
   const receipt = await until(async () => { const r = await fetch(`${active.base}/api/v4/universes/${universe}/commands/${gameplay.command_id}?epoch=${binding.epoch}`, { headers: headers() }); assert.equal(r.status, 200); const x = await r.json(); return x.status !== 'Pending' && x }, 'command receipt')
   assert.equal(receipt.status, expected, JSON.stringify(receipt)); return pair

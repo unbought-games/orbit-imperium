@@ -152,8 +152,9 @@ async fn curated_history_survives_report_cleanup_empire_removal_closure_and_acco
     assert_eq!(public.entries.len(), 1);
     assert!(!public.owner);
     assert!(public.entries[0].facts.get("valuation_before").is_none());
+    let publish_id = command_id_at(1000);
     let q = || ProfileCommand {
-        command_id: Uuid::nil(),
+        command_id: publish_id,
         expected_revision: public.revision,
         action: ProfileAction::Publish { event },
     };

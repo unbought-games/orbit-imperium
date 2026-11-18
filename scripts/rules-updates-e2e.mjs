@@ -1,3 +1,4 @@
+import { commandIdAt, pairedPresenceId } from './fixtures/command-ids.mjs'
 // Actual old/new binaries, isolated PostgreSQL, real HTTP actions and browser refresh.
 import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
@@ -69,8 +70,8 @@ async function advance(time) {
   return fresh()
 }
 async function send(command, expected = 'Committed') {
-  const gameplay = { protocol: 4, binding, command_id: randomUUID(), command }
-  const pair = { gameplay, presence: { protocol: 4, binding, command_id: randomUUID(), command: { type: 'World', action: { type: 'RecordForegroundPresence', body, cause: 'GameplayGesture', paired_command_id: gameplay.command_id } } } }
+  const gameplay = { protocol: 4, binding, command_id: commandIdAt(at), command }
+  const pair = { gameplay, presence: { protocol: 4, binding, command_id: pairedPresenceId(gameplay.command_id), command: { type: 'World', action: { type: 'RecordForegroundPresence', body, cause: 'GameplayGesture', paired_command_id: gameplay.command_id } } } }
   const response = await post('commands', pair); assert.equal(response.status, 202, await response.clone().text())
   const receipt = await until(async () => { const r = await fetch(`${active.base}/api/v4/universes/${universe}/commands/${gameplay.command_id}?epoch=${binding.epoch}`, { headers: headers() }); assert.equal(r.status, 200); const x = await r.json(); return x.status !== 'Pending' && x }, 'command receipt')
   assert.equal(receipt.status, expected, JSON.stringify(receipt)); return pair
@@ -164,7 +165,7 @@ try {
   await until(async () => (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE a.datname=current_database() AND l.locktype='advisory' AND l.objid=901325 AND NOT l.granted) AS waiting")).rows[0].waiting, 'activation before commit')
   // API reads/admission continue while configuration effects are staged.
   assert.equal((await fresh()).profile_hash, initial.profile_hash)
-  const duringActivation={protocol:4,binding,command_id:randomUUID(),command:{type:'World',action:{type:'RecordForegroundPresence',body:null,cause:'AccountVisit',paired_command_id:null}}}
+  const duringActivation={protocol:4,binding,command_id:commandIdAt(at),command:{type:'World',action:{type:'RecordForegroundPresence',body:null,cause:'AccountVisit',paired_command_id:null}}}
   assert.equal((await post('presence',duringActivation)).status,202)
   // Any current worker may own the durable activation; kill all executing
   // attempts before releasing the database fault, keeping the queued boundary.

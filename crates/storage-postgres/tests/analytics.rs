@@ -290,7 +290,7 @@ async fn gameplay_activity_commits_once_without_remote_analytics_and_obeys_admis
         .await
         .unwrap();
     let envelope = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: orbit_application::command_id_at(1_000_000).into(),
         epoch: view.epoch,
         protocol: 2,
         command: Command::StartUpgrade {
