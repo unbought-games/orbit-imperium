@@ -114,6 +114,12 @@ export function routeTarget(
         search: {},
       })
     case 'dispatch':
+      if (item === 'review')
+        return linkOptions({
+          to: '/u/$universe/b/$body/dispatch/review',
+          params: planetParams(),
+          search: {},
+        })
       return linkOptions({
         to: '/u/$universe/b/$body/dispatch',
         params: planetParams(),

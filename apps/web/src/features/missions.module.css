@@ -271,6 +271,12 @@
   box-shadow: none;
   padding: 0;
 }
+@media (max-width: 599px) {
+  /* Leave room for the floating command orb beside the confirmation. */
+  .review .sendFleet {
+    max-width: calc(100% - 88px);
+  }
+}
 .review .actions {
   justify-content: space-between;
 }

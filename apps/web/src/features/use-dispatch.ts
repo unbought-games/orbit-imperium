@@ -3,6 +3,8 @@ import {
   type DispatchCargoFill,
   type DispatchSubmission,
 } from './dispatch-requests'
+import type { DispatchNavigation } from './routed-dispatch'
+import { revalidateReview } from './dispatch-review-session'
 import { siteContext } from './tutorial/model'
 import { observedBody } from './galaxy-body'
 import { useDispatchDestination } from './use-dispatch-destination'
@@ -35,19 +37,25 @@ export function useDispatch({
   view,
   body,
   draft,
+  navigation,
 }: {
   model: Coordinator
   view: S['BoundView4']
   body: S['BodyV3']
   draft: DispatchDraft | null
+  navigation?: DispatchNavigation
 }) {
+  const [initialReview] = useState(navigation?.restored)
+  const [checkingReview, setCheckingReview] = useState(!!initialReview)
   const tutorial = useStore(model.store, (s) => s.tutorial)
   const siteId =
     draft?.target?.type === 'Site' ? draft.target.selection.id : undefined
   const site = siteContext(tutorial.data, siteId)
   const siteSelection =
-    site?.site.destination.selection ??
-    (draft?.target?.type === 'Site' ? draft.target.selection : undefined)
+    initialReview?.terms.intent.destination.type === 'Site'
+      ? initialReview.terms.intent.destination.selection
+      : (site?.site.destination.selection ??
+        (draft?.target?.type === 'Site' ? draft.target.selection : undefined))
   const [mission, setMission] = useState<DispatchDraft['mission']>(
       draft?.attackGroup ? 'Attack' : (draft?.mission ?? 'Transport'),
     ),
@@ -62,13 +70,26 @@ export function useDispatch({
           ? 'moon'
           : 'planet'),
     ),
-    [holdHours, setHoldHours] =
-      useState<NonNullable<S['FleetIntent4']['hold_hours']>>(1),
+    [holdHours, setHoldHours] = useState<
+      NonNullable<S['FleetIntent4']['hold_hours']>
+    >(initialReview?.terms.intent.hold_hours ?? 1),
     [speed, setSpeed] = useState(draft?.speed ?? 100),
     [ships, setShips] = useState<Record<string, string>>(draft?.ships ?? {}),
-    [cargo, setCargo] = useState(['0', '0', '0']),
-    [quote, setQuote] = useState<S['FleetTerms4'] | null>(null),
-    [error, setError] = useState(''),
+    [cargo, setCargo] = useState(() =>
+      resourceNames.map((name) =>
+        initialReview
+          ? String(BigInt(initialReview.terms.intent.cargo[name]) / 1000000n)
+          : '0',
+      ),
+    ),
+    [quote, setQuote] = useState<S['FleetTerms4'] | null>(
+      initialReview?.terms ?? null,
+    ),
+    [error, setError] = useState(
+      navigation?.expired
+        ? 'This fleet review has ended. Prepare a new fleet.'
+        : '',
+    ),
     [busy, setBusy] = useState(false)
   const { galaxy, system, position } = coordinateFields(destinationText)
   const now = useStore(model.store, currentServerTime)
@@ -202,6 +223,33 @@ export function useDispatch({
     wasReviewing.current = !!quote
   }, [quote])
   const [requests] = useState(() => new DispatchRequests())
+  const closeReview = () => {
+    requests.invalidate()
+    setCheckingReview(false)
+    setQuote(null)
+    navigation?.close('edit')
+  }
+  useEffect(() => {
+    if (!initialReview) return
+    const generation = requests.invalidate()
+    void revalidateReview(model, initialReview).then(
+      () => {
+        if (requests.isCurrent(generation)) {
+          setCheckingReview(false)
+        }
+      },
+      (error: Error) => {
+        if (requests.isCurrent(generation)) {
+          closeReview()
+          setError(error.message)
+        }
+      },
+    )
+    return () => {
+      requests.invalidate()
+    }
+    // Revalidate on return to this entry. Ordinary view revisions keep live guards below.
+  }, [model, initialReview, requests])
   const [submitted, setSubmitted] = useState<DispatchSubmission | null>(null)
   const submittedAttempt = useStore(model.store, (state) =>
     submitted ? state.attempts.get(submitted.key) : undefined,
@@ -240,6 +288,7 @@ export function useDispatch({
   const [origin, setOrigin] = useState(body.id)
   if (origin !== body.id) {
     requests.invalidate()
+    setCheckingReview(false)
     setOrigin(body.id)
     setShips({})
     setCargo(['0', '0', '0'])
@@ -256,7 +305,7 @@ export function useDispatch({
       quote.intent.destination.selection.expected_revision !==
         site.site.destination.selection.expected_revision
     ) {
-      setQuote(null)
+      closeReview()
       setError(
         'This site changed. Check its current briefing and review your fleet again.',
       )
@@ -272,7 +321,7 @@ export function useDispatch({
         quotedGroup.revision !== quote.group_revision ||
         !quotedGroup.can_join)
     ) {
-      setQuote(null)
+      closeReview()
       setError(
         'The attack group changed. Review your fleet again for its current arrival and availability.',
       )
@@ -288,12 +337,14 @@ export function useDispatch({
   }
   async function send() {
     if (
+      checkingReview ||
       !command ||
       !quote ||
       quote.intent.origin !== body.id ||
       !canSubmitQuote(model.store.getState(), command, quote)
     )
       return
+    if (navigation && !navigation.close('send')) return
     await requests.submit(
       command,
       quote,
@@ -339,7 +390,14 @@ export function useDispatch({
           projectGameView(model.store.getState())?.bodies.find(
             (candidate) => candidate.id === body.id,
           ),
-        quote: setQuote,
+        quote: (terms) => {
+          setQuote(terms)
+          navigation?.open(terms, {
+            galaxy: Number(galaxy),
+            system: Number(system),
+            position: Number(position),
+          })
+        },
         cargo: setCargo,
         error: setError,
         busy: setBusy,
@@ -403,7 +461,9 @@ export function useDispatch({
     cargo,
     setCargo,
     quote,
-    setQuote,
+    closeReview,
+    checkingReview,
+    entryNotice: !!initialReview || !!navigation?.expired,
     error,
     busy,
     now,
