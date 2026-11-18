@@ -29,6 +29,7 @@ export function useShipDraft({
   const [edits, setEdits] = useState<ShipDraft | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const hiddenTreatment = useRef<'layers' | 'full'>('full')
   const running = useRef(false)
   const feedbackAction = useRef<symbol | null>(null)
   const saved = useRef<{
@@ -70,7 +71,25 @@ export function useShipDraft({
     setEdits({ ...draft, ...patch })
   }
 
+  function toggleEmblem() {
+    if (!draft) return
+    const { emblem } = draft.recipe
+    if (emblem.treatment !== 'none') hiddenTreatment.current = emblem.treatment
+    edit({
+      recipe: {
+        ...draft.recipe,
+        emblem: {
+          ...emblem,
+          treatment:
+            emblem.treatment === 'none' ? hiddenTreatment.current : 'none',
+        },
+      },
+    })
+  }
+
   function choose(design: ShipDesign) {
+    // A copy inherits the current draft. Selecting a library entry starts fresh.
+    if (design.id) hiddenTreatment.current = 'full'
     setEdits(design)
     setError('')
   }
@@ -122,6 +141,7 @@ export function useShipDraft({
     draft,
     equipment,
     edit,
+    toggleEmblem,
     choose,
     save,
     run,

@@ -2,27 +2,22 @@ import { Pencil } from 'lucide-react'
 import { Tooltip } from '@base-ui/react/tooltip'
 import { ButtonLinkAnchor } from '../../ui/button'
 import tooltipStyles from '../../ui/info-tooltip.module.css'
-import type {
-  ShipAppearanceState,
-  ShipPaintRecipe,
-} from '../../client-model/ship-appearance-types'
+import type { ShipAppearanceState } from '../../client-model/ship-appearance-types'
 import { EmpireInsignia } from '../empire-insignia'
 import styles from './ship-customizer.module.css'
 
 export function EmblemControls({
   emblem,
   editHref,
-  value,
-  enabledTreatment,
+  checked,
   disabled,
-  onChange,
+  onToggle,
 }: {
   emblem: ShipAppearanceState['emblem']
   editHref: string
-  value: ShipPaintRecipe['emblem']
-  enabledTreatment: Exclude<ShipPaintRecipe['emblem']['treatment'], 'none'>
+  checked: boolean
   disabled: boolean
-  onChange: (value: ShipPaintRecipe['emblem']) => void
+  onToggle: () => void
 }) {
   return (
     <section className={styles.emblem} aria-label="Empire emblem">
@@ -72,14 +67,9 @@ export function EmblemControls({
           type="button"
           role="switch"
           aria-label="Show empire emblem"
-          aria-checked={value.treatment !== 'none'}
+          aria-checked={checked}
           disabled={disabled}
-          onClick={() =>
-            onChange({
-              ...value,
-              treatment: value.treatment === 'none' ? enabledTreatment : 'none',
-            })
-          }
+          onClick={onToggle}
         />
       </div>
     </section>

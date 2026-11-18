@@ -44,6 +44,7 @@ function HangarSession({
     draft,
     equipment,
     edit,
+    toggleEmblem,
     choose,
     save,
     run,
@@ -61,13 +62,13 @@ function HangarSession({
   const closeButton = useRef<HTMLButtonElement>(null)
   const [refreshError, setRefreshError] = useState('')
   const problem = snapshot && draft ? draftProblem(snapshot, draft) : ''
-  const originalDesign = snapshot?.library.find(
-    (item) => item.id === draft?.id && item.revision === draft.revision,
+  const savedDesign = snapshot?.library.find(
+    (item) =>
+      draft &&
+      item.id === draft.id &&
+      item.revision === draft.revision &&
+      sameDesign(item, draft),
   )
-  const savedDesign =
-    originalDesign && draft && sameDesign(originalDesign, draft)
-      ? originalDesign
-      : undefined
   const isEquipped =
     savedDesign &&
     equipment?.design_id === savedDesign.id &&
@@ -199,16 +200,9 @@ function HangarSession({
                   <EmblemControls
                     editHref={emblemHref}
                     emblem={snapshot.emblem}
-                    value={draft.recipe.emblem}
-                    enabledTreatment={
-                      originalDesign?.recipe.emblem.treatment === 'layers'
-                        ? 'layers'
-                        : 'full'
-                    }
+                    checked={draft.recipe.emblem.treatment !== 'none'}
                     disabled={busy}
-                    onChange={(emblem) =>
-                      edit({ recipe: { ...draft.recipe, emblem } })
-                    }
+                    onToggle={toggleEmblem}
                   />
                   {problem && <p className={styles.warning}>{problem}</p>}
                   <div className={styles.saveActions}>

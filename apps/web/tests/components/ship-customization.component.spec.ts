@@ -447,6 +447,38 @@ test('hangar retains edits across emblem observations and allows another save wh
   })
 })
 
+// A copy has no library ID. Its emblem switch must restore the copied layers.
+test('copied layered design keeps its treatment after toggling the emblem', async ({
+  page,
+  mount,
+}) => {
+  const { dialog, canvas } = await openHangar(page, mount)
+  const options = await openDesignOptions(page, dialog)
+  await options
+    .getByRole('button', { name: 'Make a copy of this design' })
+    .click()
+  await options.getByLabel('Design name').press('Escape')
+  await expect(options).toHaveCount(0)
+  const original = await pixels(canvas)
+  const toggle = dialog.getByRole('switch', { name: 'Show empire emblem' })
+  await toggle.click()
+  await expect.poll(() => pixels(canvas)).not.toBe(original)
+  await toggle.click()
+  await expect.poll(() => pixels(canvas)).toBe(original)
+  await dialog
+    .getByRole('button', { name: 'Save and equip', exact: true })
+    .click()
+  await expect
+    .poll(() => page.evaluate(() => window.shipCustomizationScene!.pending()))
+    .toMatchObject({
+      type: 'Save',
+      design: {
+        revision: 0,
+        recipe: { emblem: { treatment: 'layers', placement: 'near-wing' } },
+      },
+    })
+})
+
 // Regression: the full-screen mobile takeover must scroll to final controls,
 // including nested confirmation, without forcing horizontal scrolling.
 test('mobile hangar keeps final controls reachable without horizontal overflow', async ({
