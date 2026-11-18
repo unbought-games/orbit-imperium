@@ -68,8 +68,19 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
     expect(deuterium.left).toBeCloseTo(metal.left, 0)
     expect(crystal.top).toBeGreaterThan(metal.bottom)
     expect(deuterium.top).toBeGreaterThan(crystal.bottom)
-    const details = panel.getByText(/^(Worlds|Capacity)$/).first()
-    expect((await details.boundingBox())!.x).toBeGreaterThan(metal.right)
+    const details = panel.getByText(/^(Worlds|Capacity)$/)
+    for (const [index, name] of ['Metal', 'Crystal', 'Deuterium'].entries()) {
+      const label = panel.getByText(new RegExp(`^${name}$`, 'i'))
+      await expect(label).toBeVisible()
+      const labelBox = (await label.boundingBox())!
+      const amount = rects[index]
+      expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(amount.top)
+      expect(labelBox.x).toBeLessThan(amount.left)
+      if (index > 0) expect(labelBox.y).toBeGreaterThan(rects[index - 1].bottom)
+      expect((await details.nth(index).boundingBox())!.x).toBeGreaterThan(
+        amount.right,
+      )
+    }
   }
 })
 

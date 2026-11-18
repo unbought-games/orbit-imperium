@@ -55,8 +55,10 @@
   margin: 13px 0 0;
   letter-spacing: 0.035em;
 }
-.empireLedger {
+.wealthRows {
   container-type: inline-size;
+}
+.empireLedger {
   border: 1px solid var(--hud-border);
   background: linear-gradient(110deg, #a4dbef08, #a4dbef02);
   margin-bottom: 18px;
@@ -755,6 +757,7 @@
 }
 .resources dd {
   margin: 0;
+  white-space: nowrap;
 }
 .balance {
   grid-area: 2/1;
@@ -762,9 +765,6 @@
 .balance strong {
   display: block;
   margin: 0.1rem 0 0.25rem;
-}
-.resources dd {
-  white-space: nowrap;
 }
 .utilization {
   display: flex;
