@@ -586,10 +586,11 @@ for (const width of [390, 1440]) {
       const ledger = page.getByLabel('Empire resource totals')
       const metal = ledger.getByRole('group', { name: 'metal wealth', exact: true })
       const deuterium = ledger.getByRole('group', { name: 'deuterium wealth', exact: true })
+      const onWorlds = metal.getByTitle('On planets and moons').locator('dd')
       const launching = metal.locator('dl > div').filter({ hasText: 'Launching' })
       await expect(launching.locator('dd')).toHaveText('42')
       await expect(metal.locator('strong')).toHaveText('13,323')
-      await expect(metal.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText('13,281')
+      await expect(onWorlds).toHaveText('13,281')
       await expect(deuterium.locator('strong')).toHaveText('6,243')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       for (const group of await ledger.getByRole('group').all()) {
@@ -603,7 +604,7 @@ for (const width of [390, 1440]) {
       release()
       await expect(launching).toHaveCount(0)
       await expect(metal.locator('strong')).toHaveText('13,323')
-      await expect(metal.locator('dl > div').filter({ hasText: 'On planets and moons' }).locator('dd')).toHaveText('13,323')
+      await expect(onWorlds).toHaveText('13,323')
       await expect(deuterium.locator('strong')).toHaveText('6,244')
       await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-rejected-${width}x1000.png` })
     } finally {
