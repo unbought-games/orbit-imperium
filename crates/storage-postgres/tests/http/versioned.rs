@@ -370,24 +370,42 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
         } else {
             gameplay
         };
-        let submit = || {
+        let submit = |body: &Value| {
             app.clone().oneshot(
                 Request::post(format!("{base}/commands"))
                     .header("content-type", "application/json")
                     .header("cookie", &cookie)
                     .header("origin", "https://game.test")
                     .header("x-csrf-token", &auth.session.csrf)
-                    .body(Body::from(envelope.to_string()))
+                    .body(Body::from(body.to_string()))
                     .unwrap(),
             )
         };
-        let admitted = private_json(submit().await.unwrap(), 202).await;
+        for (id, status, code) in [
+            ("invalid-command-id", 400, "Malformed"),
+            (
+                "00000000-0000-5000-8000-000000000001",
+                426,
+                "COMMAND_ID_UNSUPPORTED",
+            ),
+        ] {
+            let mut invalid = envelope.clone();
+            if protocol == 4 {
+                invalid["gameplay"]["command_id"] = json!(id);
+                invalid["presence"]["command"]["action"]["paired_command_id"] = json!(id);
+            } else {
+                invalid["command_id"] = json!(id);
+            }
+            let problem = private_json(submit(&invalid).await.unwrap(), status).await;
+            assert_eq!(problem["code"], code);
+        }
+        let admitted = private_json(submit(&envelope).await.unwrap(), 202).await;
         assert_eq!(admitted["command_id"], command_id.to_string());
         tokio::time::timeout(std::time::Duration::ZERO, wake.notified())
             .await
             .unwrap();
         store.set_test_time(1_900_000).await.unwrap();
-        let expired = private_json(submit().await.unwrap(), 409).await;
+        let expired = private_json(submit(&envelope).await.unwrap(), 409).await;
         assert_eq!(expired["code"], "COMMAND_EXPIRED");
         let missing = Request::get(format!(
             "{base}/commands/{command}?epoch={}",
