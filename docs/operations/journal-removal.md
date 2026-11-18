@@ -13,8 +13,9 @@ Deploy that removal release only after every writer is on the verified bridge.
 Fresh installations apply the published CREATE followed by the forward DROP and
 finish without the journal. There is no replacement full-state history.
 
-Request IDs, acceptance, receipts, scheduled events and cleanup are unchanged.
-There is no UUIDv7 requirement or 15-minute expiry in this bridge. Retained
+PR #451 and migration 0051 preserve the earlier command admission behavior.
+For installations running migration 0052 and the corresponding API, see the
+[command retry contract and writer cutover](command-retries.md). Retained
 terminal rows must not be purged until the separately reviewed request-window,
 delivery, analytics and cleanup contracts are active. Delivered human-action
 outbox retention is a separate cleanup workstream. Active growth reports remain

@@ -440,7 +440,7 @@ test('failed and uncertain deletion roll back and offer durable recovery', async
   expect(fixture.submitted()).toBe(2)
   await withReportListResponse(page, () => page.reload())
   await expect(row).toBeVisible()
-  await expect(page.getByRole('complementary', { name: 'Action needs attention' })).toHaveCount(0)
+  await expect(page.getByRole('complementary', { name: 'Action needs attention' })).toContainText('We’re checking whether this order went through.')
 })
 
 for (const activation of ['click', 'Enter'] as const) {
@@ -917,15 +917,15 @@ for (const width of [1280, 390]) {
 }
 
 for (const width of [1280, 390]) {
-  test(`immediate retry works and reload discards old order recovery at ${width}px`, async ({ page }, info) => {
+  test(`immediate retry and reload recover the original paired order at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.clock.install({ time: new Date('2026-10-29T14:00:00Z') })
     await page.clock.pauseAt(new Date('2026-10-29T14:00:00Z'))
     const fixture = await reportsFixture(page, true, 2, 50)
-    const ids: string[] = []
+    const envelopes: string[] = []
     await page.route('**/commands', async route => {
-      ids.push(route.request().postDataJSON().gameplay.command_id)
+      envelopes.push(route.request().postData()!)
       return route.fallback()
     })
     await page.evaluate(() => {
@@ -949,7 +949,7 @@ for (const width of [1280, 390]) {
       () => retry.click(),
       503,
     )
-    expect(ids).toEqual([ids[0], ids[0]])
+    expect(envelopes).toEqual([envelopes[0], envelopes[0]])
     await expect(retry).toBeVisible()
     const originalAnnouncement = (await page.getByTestId('order-announcement').elementHandle())!
     await page.getByTestId('command-orb').click()
@@ -973,11 +973,12 @@ for (const width of [1280, 390]) {
       await expect(page.getByRole('heading', { name: 'Reports', level: 1 })).toBeFocused()
     }
     await expect(notice).toHaveCount(0)
-    await withReportListResponse(page, () => page.reload())
-    await expect(page.getByRole('article')).toHaveCount(2)
+    fixture.setMode('success')
+    await withFixtureResponse(page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/commands'),
+      () => withReportListResponse(page, () => page.reload()))
+    await expect(page.getByRole('article')).toHaveCount(1)
     await expect(notice).toHaveCount(0)
-    await expect(page.getByTestId('order-announcement')).toBeEmpty()
-    expect(ids).toHaveLength(2)
+    expect(envelopes).toEqual([envelopes[0], envelopes[0], envelopes[0]])
     if (process.env.ORBIT_TEST_SCREENSHOTS === '1')
       await page.evaluate(() => window.scrollTo(0, 0))
     await diagnosticScreenshot(page, { path: info.outputPath(`order-notice-cleared-${width}x900.png`) })
@@ -992,6 +993,27 @@ for (const width of [1280, 390]) {
     ))).toEqual([])
     await diagnosticScreenshot(page, { path: info.outputPath(`game-settings-${width}x900.png`) })
     await expect(recovery).toHaveCount(0)
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`expired order prompts a state check at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    await reportsFixture(page, true, 2, 50)
+    let submissions = 0
+    await page.route('**/commands', route => {
+      submissions++
+      return route.fulfill({status: 409, json: {code: 'COMMAND_EXPIRED'}})
+    })
+    await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/overview'),
+      () => withFixtureResponseStatus(page, response => new URL(response.url()).pathname.endsWith('/commands'),
+        () => page.getByRole('article').first().getByRole('button', { name: 'Archive report', exact: true }).click(), 409))
+    const notice = page.getByRole('alert').filter({hasText: 'The retry window closed.'})
+    await expect(notice).toContainText('The earlier action may have completed.')
+    await expect(page.getByRole('button', {name: 'Retry order', exact: true})).toHaveCount(0)
+    await expect(page.getByRole('article')).toHaveCount(2)
+    expect(submissions).toBe(1)
+    await diagnosticScreenshot(page, {path: info.outputPath(`expired-order-${width}x900.png`)})
   })
 }
 

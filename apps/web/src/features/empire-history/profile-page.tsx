@@ -27,6 +27,7 @@ export function EmpireProfilePage({ player }: { player: string }) {
     busy,
     save,
     retry,
+    dismissReview,
   } = useArchive<EmpireProfile>(
     'EmpireProfile',
     `/api/v4/empire-profiles/${player}?${query}`,
@@ -48,6 +49,11 @@ export function EmpireProfilePage({ player }: { player: string }) {
       {error && (
         <div className={styles.error} role="alert">
           {error} <Button onClick={retry}>Refresh</Button>
+          {dismissReview && (
+            <Button onClick={dismissReview} disabled={busy || loading}>
+              Dismiss saved edit
+            </Button>
+          )}
           {!session && (
             <a
               href={`/login?${new URLSearchParams({ redirect: `/profiles/empire/${player}` })}`}

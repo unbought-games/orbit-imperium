@@ -1,3 +1,4 @@
+import { commandIdAt, pairedPresenceId } from './fixtures/command-ids.mjs'
 // Explicit-only S1 acceptance: actual CLI, HTTP server, worker and disposable DB.
 import {spawn,execFileSync,spawnSync} from 'node:child_process';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
@@ -79,13 +80,13 @@ try {
  assert.equal(profiles.players.find(p=>p.player===a.player).kind,'bot');assert.equal(profiles.players.find(p=>p.player===b.player).kind,'bot');
  const quote=async(auth,binding,body)=>json(await post(auth,'progression-options',{context:context(binding),request:{type:'Upgrade',body,building:'MetalMine'}}));
  const aq=await quote(ah,a,av.bodies[0].id),hq=await quote(hh,hb,hv.bodies[0].id);assert.deepEqual({...aq.terms,body:hq.terms.body},hq.terms);
- const envelope=(binding,body,q)=>({protocol:4,binding,command_id:randomUUID(),command:{type:'StartUpgrade',body,building:'MetalMine',expected_terms_hash:q.terms_hash}});
+ const envelope=(binding,body,q)=>({protocol:4,binding,command_id:commandIdAt(at),command:{type:'StartUpgrade',body,building:'MetalMine',expected_terms_hash:q.terms_hash}});
  const ae=envelope(a,av.bodies[0].id,aq);
  // Discard the response body after admission to simulate lost acknowledgement.
  const lost=await post(ah,'machine/commands',ae);assert.equal(lost.status,202);await lost.body.cancel();
  const recovered=await settled(ah,a,ae.command_id);assert.equal(recovered.status,'Committed',JSON.stringify(recovered));
  await json(await post(ah,'machine/commands',ae),202);assert.equal((await status(ah)).allowance_used,1);
- const he=envelope(hb,hv.bodies[0].id,hq);await json(await post(hh,'commands',{gameplay:he,presence:{protocol:4,binding:hb,command_id:randomUUID(),command:{type:'World',action:{type:'RecordForegroundPresence',body:hv.bodies[0].id,cause:'GameplayGesture',paired_command_id:he.command_id}}}}),202);assert.equal((await settled(hh,hb,he.command_id)).status,'Committed');
+ const he=envelope(hb,hv.bodies[0].id,hq);await json(await post(hh,'commands',{gameplay:he,presence:{protocol:4,binding:hb,command_id:pairedPresenceId(he.command_id),command:{type:'World',action:{type:'RecordForegroundPresence',body:hv.bodies[0].id,cause:'GameplayGesture',paired_command_id:he.command_id}}}}),202);assert.equal((await settled(hh,hb,he.command_id)).status,'Committed');
  const galaxy={context:context(a),type:'Galaxy',galaxy:1,system:1};const observed=await json(await post(ah,'world',galaxy));assert.deepEqual(await json(await post(ah,'world',galaxy)),observed);
  const occupied=av.bodies[0].coordinates;await json(await post(ah,'world',{context:context(a),type:'ResolveDestination',selection:{type:'BodyAt',coordinates:occupied,kind:'Planet'}}));
  assert.equal((await status(ah)).allowance_available,0);assert.equal((await json(await post(ah,'world',{...galaxy,context:context(a)}),403)).code,'BotBudgetExhausted');
@@ -97,7 +98,7 @@ try {
  assert.equal((await json(await post(bh,'overview',context(b)),403)).code,'BotRetired');assert.equal((await receipt(bh,b,be.command_id)).status,'Committed');
  assert.equal((await client.query("SELECT data->>'last_presence_at' AS at FROM player_policies WHERE id=$1",[b.player])).rows[0].at,presenceBefore);
  at=(epochDay+1)*86400000;await client.query('UPDATE orbit_test_clock SET at_ms=$1',[at]);
- assert.equal((await json(await post(ah,'overview',context(a)),403)).code,'BotSleeping');await json(await post(ah,'machine/commands',ae),202);
+ assert.equal((await json(await post(ah,'overview',context(a)),403)).code,'BotSleeping');assert.equal((await json(await post(ah,'machine/commands',ae),409)).code,'COMMAND_EXPIRED');assert.equal((await receipt(ah,a,ae.command_id)).status,'Committed');
  at+=8*3600000;await client.query('UPDATE orbit_test_clock SET at_ms=$1',[at]);await json(await post(ah,'overview',context(a)));assert.equal((await status(ah)).allowance_available,0);
  at=(epochDay+1)*86400000+12*3600000;await client.query('UPDATE orbit_test_clock SET at_ms=$1',[at]);assert.equal((await status(ah)).allowance_available,3);
  phase('growth-policy-and-retirement');

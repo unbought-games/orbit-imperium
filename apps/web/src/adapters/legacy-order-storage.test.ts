@@ -33,7 +33,7 @@ it('removes old orders, history and recovery markers from both stores without to
   }
 })
 
-it('blocked browser storage does not prevent initializing or submitting an action', async () => {
+it('blocked browser storage permits reading and explains why a recoverable command cannot be sent', async () => {
   const blocked = () => {
     throw Error('Storage blocked')
   }
@@ -58,6 +58,7 @@ it('blocked browser storage does not prevent initializing or submitting an actio
     type: 'CancelConstruction',
     operation: '00000000-0000-4000-8000-000000000076',
   })
-  expect(submit).toHaveBeenCalledOnce()
-  expect([...runtime.game.model.ledger.values()][0].status).toBe('uncertain')
+  expect(submit).not.toHaveBeenCalled()
+  expect(runtime.game.model.ledger.size).toBe(0)
+  expect(runtime.game.model.message).toContain('could not be saved for retry')
 })

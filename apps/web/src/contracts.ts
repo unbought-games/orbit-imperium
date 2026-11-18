@@ -897,6 +897,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["Problem"];
                     };
                 };
+                /** @description COMMAND_HISTORY_EXPIRED. No retained outcome for this expired identity. Refresh current state. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
                 /** @description Typed service problem */
                 413: {
                     headers: {
@@ -1685,6 +1694,15 @@ export interface paths {
                 };
                 /** @description Typed service problem */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem3"];
+                    };
+                };
+                /** @description COMMAND_HISTORY_EXPIRED. No retained outcome for this expired identity. Refresh current state. */
+                410: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2615,6 +2633,15 @@ export interface paths {
                 };
                 /** @description Typed service problem */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description COMMAND_HISTORY_EXPIRED. No retained outcome for this expired identity. Refresh current state. */
+                410: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5506,12 +5533,32 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Revision or retry conflict */
+                /** @description Typed service problem */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
                 409: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
+                };
+                /** @description Typed service problem */
+                426: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem4"];
+                    };
                 };
             };
         };
@@ -6670,8 +6717,7 @@ export interface components {
             /** @constant */
             protocol: 2;
             binding: components["schemas"]["Binding"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             command: components["schemas"]["Command"];
         };
         QuoteQuery: {
@@ -6729,7 +6775,7 @@ export interface components {
             type: "about:blank";
             status: number;
             /** @enum {unknown} */
-            code: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "RateLimited" | "Unavailable" | "BodyTooLarge" | "UniverseFull";
+            code: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "RateLimited" | "Unavailable" | "BodyTooLarge" | "UniverseFull" | "COMMAND_EXPIRED" | "COMMAND_HISTORY_EXPIRED" | "COMMAND_IN_FUTURE" | "COMMAND_ID_UNSUPPORTED";
         } | {
             /** @constant */
             type: "about:blank";
@@ -6983,8 +7029,7 @@ export interface components {
             /** @constant */
             protocol: 3;
             binding: components["schemas"]["Binding"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             command: components["schemas"]["Command3"];
         };
         FacilityTerm: {
@@ -7341,7 +7386,7 @@ export interface components {
             type: "about:blank";
             status: number;
             /** @enum {unknown} */
-            code: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "RateLimited" | "Unavailable" | "BodyTooLarge";
+            code: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "RateLimited" | "Unavailable" | "BodyTooLarge" | "COMMAND_EXPIRED" | "COMMAND_HISTORY_EXPIRED" | "COMMAND_IN_FUTURE" | "COMMAND_ID_UNSUPPORTED";
         } | {
             /** @constant */
             type: "about:blank";
@@ -7571,16 +7616,14 @@ export interface components {
             /** @constant */
             protocol: 4;
             binding: components["schemas"]["Binding"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             command: components["schemas"]["Command4"];
         };
         PairedEnvelope4: {
             /** @constant */
             protocol: 4;
             binding: components["schemas"]["Binding"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             command: components["schemas"]["Command4"];
             presence: components["schemas"]["CommandEnvelopeV4"] | null;
         };
@@ -8259,7 +8302,7 @@ export interface components {
             type: "about:blank";
             status: number;
             /** @enum {unknown} */
-            code: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "RateLimited" | "Unavailable" | "BodyTooLarge" | "InvalidCursor";
+            code: "Malformed" | "UnsupportedProtocol" | "Unauthenticated" | "Forbidden" | "NotFound" | "EpochChanged" | "Conflict" | "RateLimited" | "Unavailable" | "BodyTooLarge" | "InvalidCursor" | "COMMAND_EXPIRED" | "COMMAND_HISTORY_EXPIRED" | "COMMAND_IN_FUTURE" | "COMMAND_ID_UNSUPPORTED";
         } | {
             /** @constant */
             type: "about:blank";
@@ -9140,8 +9183,7 @@ export interface components {
         };
         AllianceCommandRequest: {
             context: components["schemas"]["QueryContext"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             expected_revision: number | null;
             action: components["schemas"]["AllianceAction"];
         };
@@ -9317,8 +9359,7 @@ export interface components {
         };
         SocialCommandRequest: {
             context: components["schemas"]["QueryContext"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             action: components["schemas"]["SocialAction"];
         };
         SocialCommandResult: {
@@ -9949,8 +9990,7 @@ export interface components {
             identity: components["schemas"]["EmpireIdentity"];
         };
         ProfileCommand: {
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             expected_revision: number;
             action: components["schemas"]["ProfileAction"];
         };
@@ -11172,6 +11212,11 @@ export interface components {
             context: components["schemas"]["QueryContext"];
             action: components["schemas"]["ShipAppearanceAction"];
         };
+        /**
+         * Format: uuid
+         * @description Generate UUIDv7 once from server wall time for a new intention. Submit the exact same envelope until its 15-minute deadline. UUIDv4 is accepted only during the finite legacy writer transition.
+         */
+        CommandSubmissionId: string;
     };
     responses: never;
     parameters: never;

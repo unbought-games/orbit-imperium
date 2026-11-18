@@ -3,8 +3,9 @@ import {test,expect} from './fixtures/test'
 import {execFileSync} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import {overview} from './v2'
+import {withFixtureResponseStatus} from './fixtures/responses'
 const sql=(query:string)=>execFileSync('docker',['compose','exec','-T','db','psql','-U','orbit','-d',process.env.TEST_DB_NAME!,'-c',query],{stdio:'pipe'})
-test('reload after a lost POST acknowledgement shows committed work without restoring retries',async({page})=>{
+test('reload after a lost POST acknowledgement restores the order and reads its committed result without a second POST',async({page})=>{
  // Isolate lost acknowledgments from the independent SSE outcome channel.
  await page.route('**/updates?epoch=*', route=>route.fulfill({status:503,body:''}));
  await page.goto('/login');await page.getByLabel('Account',{exact:true}).fill('alpha');await page.getByLabel('Password').fill(process.env.ALPHA_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click()
@@ -14,9 +15,11 @@ test('reload after a lost POST acknowledgement shows committed work without rest
  await page.route('**/commands',async route=>{ids.push(route.request().postDataJSON().command_id);await route.fetch();await route.abort('failed')})
  await page.route('**/commands/*?epoch=*',route=>route.fulfill({status:503,contentType:'application/problem+json',body:JSON.stringify({type:'about:blank',status:503,code:'Unavailable'})}))
  await page.getByRole('button',{name:'Upgrade Crystal Mine',exact:true}).click();await page.getByRole('button',{name:'Confirm upgrade'}).click();await expect(attention).toContainText('We’re checking whether this order went through.')
- await page.reload();await expect(construction).toContainText('Construction in progress');await expect(attention).toHaveCount(0)
+ await withFixtureResponseStatus(page, response=>response.url().includes('/commands/'+ids[0]+'?epoch='),()=>page.reload(),503)
+ await expect(construction).toContainText('Construction in progress');await expect(attention).toContainText('We’re checking whether this order went through.')
  expect(await page.evaluate(()=>Object.keys(sessionStorage).filter(key=>key.startsWith('orbit:attempts:')))).toEqual([])
  await page.unroute('**/commands/*?epoch=*')
+ await foreground(page)
  await expect(attention).toHaveCount(0);expect(ids).toHaveLength(1);expect(new Set(ids).size).toBe(1)
  const confirmed=await overview(page.request);expect(confirmed.constructions).toHaveLength(1);expect(confirmed.constructions[0].building).toBe('CrystalMine')
  await page.unroute('**/commands');await page.getByRole('button',{name:'Cancel construction · full refund',exact:true}).click()

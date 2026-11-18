@@ -1,4 +1,5 @@
-import { readyFixture } from '../test-support/bootstrap'
+import { PendingCommands } from './pending-commands'
+import { memoryStorage, readyFixture } from '../test-support/bootstrap'
 import { expect, it, vi } from 'vitest'
 import { Coordinator } from './coordinator'
 import type { Binding, Envelope, GamePort, ClientPlatform } from './commands'
@@ -87,7 +88,9 @@ it.each(['Production', 'Attack'] as const)(
       },
     }
     let timeout: (() => void) | undefined
+    const storage = memoryStorage()
     const platform: ClientPlatform = {
+      pendingCommands: new PendingCommands(() => storage),
       scheduleOnce: (callback) => {
         timeout = callback
         return () => {
@@ -164,11 +167,20 @@ it.each(['Production', 'Attack'] as const)(
     await first.retryOrder(envelope.command_id)
     expect(sent).toEqual([envelope, envelope])
     first.invalidate()
+    port.receipt = async () => ({
+      protocol: 4,
+      binding,
+      command_id: envelope.command_id,
+      admitted_at: 1000,
+      executed_at: null,
+      status: 'Pending',
+    })
     const restored = new Coordinator(port, platform)
     await restored.connect(binding.account, binding.universe)
     await restored.retryOrder(envelope.command_id)
-    expect(restored.ledger.size).toBe(0)
-    expect(sent).toHaveLength(2)
+    expect(restored.ledger.size).toBe(1)
+    expect([...restored.ledger.values()][0].status).toBe('pending')
+    expect(sent).toEqual([envelope, envelope])
     let readCalls = 0
     port.world = async (context) => {
       readCalls++
@@ -253,7 +265,7 @@ it.each(['Production', 'Attack'] as const)(
 )
 
 it.each([false, true])(
-  'checks in-memory presence without resending and drops it on reload (reload=%s)',
+  'recovers presence across reload with one exact resend after a confirmed missing receipt (reload=%s)',
   async (reload) => {
     vi.useFakeTimers()
     const { session, snapshot } = readyFixture(4)
@@ -304,7 +316,9 @@ it.each([false, true])(
         }
       },
     }
+    const storage = memoryStorage()
     const platform: ClientPlatform = {
+      pendingCommands: new PendingCommands(() => storage),
       newId: () => crypto.randomUUID(),
       monotonicNowMs: () => Date.now(),
       isOnline: () => true,
@@ -329,21 +343,21 @@ it.each([false, true])(
       stop = model.startDelivery()
       await vi.advanceTimersByTimeAsync(30000)
       expect(sent).toHaveLength(1)
-      expect(model.ledger.size).toBe(reload ? 0 : 1)
+      expect(model.ledger.size).toBe(1)
       available = true
       await vi.advanceTimersByTimeAsync(1000)
-      expect(sent).toEqual([envelope])
+      expect(sent).toEqual(reload ? [envelope, envelope] : [envelope])
       expect([...model.ledger.values()][0]?.status).toBe(
         reload ? undefined : 'uncertain',
       )
       // The original request can still be acknowledged after a missing receipt.
       receiptConfirmed = true
       await vi.advanceTimersByTimeAsync(1000)
-      expect(sent).toEqual([envelope])
+      expect(sent).toEqual(reload ? [envelope, envelope] : [envelope])
       expect(model.stale).toBe(false)
       expect(model.ledger.size).toBe(0)
       await vi.advanceTimersByTimeAsync(60000)
-      expect(sent).toHaveLength(1)
+      expect(sent).toHaveLength(reload ? 2 : 1)
     } finally {
       stop()
       model.invalidate()

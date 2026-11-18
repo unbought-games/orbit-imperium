@@ -4,7 +4,8 @@ import {
   loadInitialRuntime,
   type RuntimeDependencies,
 } from './runtime'
-import { bootstrapFixture, id } from '../test-support/bootstrap'
+import { PendingCommands } from '../client-model/pending-commands'
+import { bootstrapFixture, id, memoryStorage } from '../test-support/bootstrap'
 const dependencies = (): RuntimeDependencies => ({
   platform: {
     newId: () => id(90),
@@ -85,8 +86,10 @@ it('wrong-principal data is never activated', async () => {
   else throw Error('lost auth')
 })
 
-it('reload starts from the server snapshot without recovering or resending old actions', async () => {
+it('reload restores only the unresolved envelope alongside the authoritative server snapshot', async () => {
   const deps = dependencies()
+  const storage = memoryStorage()
+  deps.platform.pendingCommands = new PendingCommands(() => storage)
   const port = deps.createPort('csrf', {} as never)
   deps.createPort = () => port
   const payload = bootstrapFixture()
@@ -99,9 +102,11 @@ it('reload starts from the server snapshot without recovering or resending old a
   if (fresh.status !== 'authenticated' || fresh.game.status !== 'ready')
     throw Error('runtime')
   await fresh.game.model.reconcilePending()
-  expect(fresh.game.model.ledger.size).toBe(0)
+  expect([...fresh.game.model.ledger.values()][0].envelope).toEqual(
+    [...first.game.model.ledger.values()][0].envelope,
+  )
   expect(fresh.game.model.store.getState().intents.size).toBe(0)
   expect(fresh.game.model.ready).toBe(true)
-  expect(port.receipt).not.toHaveBeenCalled()
+  expect(port.receipt).toHaveBeenCalledOnce()
   expect(port.submit).toHaveBeenCalledOnce()
 })

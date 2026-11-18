@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
-import { commandId } from '../../adapters/command-id'
 import { SocialController } from '../../client-model/social'
 import { useGameSession } from '../../shell/session-context'
 export function useSocial(player: string | undefined) {
@@ -12,7 +11,7 @@ export function useSocial(player: string | undefined) {
         command: (q) => model.socialCommand(q),
         readAlliance: async () =>
           (await model.allianceQuery({ type: 'Mine' }))?.alliance ?? null,
-        newId: () => commandId(crypto),
+        newId: model.newCommandId,
       }),
   )
   const state = useStore(controller.store)

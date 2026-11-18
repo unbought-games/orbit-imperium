@@ -524,6 +524,14 @@ impl IntoResponse for Problem {
         let (status, code) = match self.0 {
             ServiceError::SessionRefreshing(_) => unreachable!(),
             ServiceError::BotDenied(_) => unreachable!(),
+            ServiceError::CommandTime(error) => match error {
+                CommandTimeError::Expired => (StatusCode::CONFLICT, "COMMAND_EXPIRED"),
+                CommandTimeError::HistoryExpired => (StatusCode::GONE, "COMMAND_HISTORY_EXPIRED"),
+                CommandTimeError::Future => (StatusCode::BAD_REQUEST, "COMMAND_IN_FUTURE"),
+                CommandTimeError::Unsupported => {
+                    (StatusCode::UPGRADE_REQUIRED, "COMMAND_ID_UNSUPPORTED")
+                }
+            },
             ServiceError::UniverseFull => (StatusCode::CONFLICT, "UniverseFull"),
             ServiceError::InvalidCursor => (StatusCode::BAD_REQUEST, "InvalidCursor"),
             ServiceError::EpochChanged => (StatusCode::CONFLICT, "EpochChanged"),

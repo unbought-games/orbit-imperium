@@ -1050,6 +1050,16 @@
               }
             }
           },
+          "410": {
+            "description": "COMMAND_HISTORY_EXPIRED. No retained outcome for this expired identity. Refresh current state.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "413": {
             "description": "Typed service problem",
             "content": {
@@ -2011,6 +2021,16 @@
           },
           "409": {
             "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem3"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "COMMAND_HISTORY_EXPIRED. No retained outcome for this expired identity. Refresh current state.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3153,6 +3173,16 @@
           },
           "409": {
             "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "COMMAND_HISTORY_EXPIRED. No retained outcome for this expired identity. Refresh current state.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -7911,7 +7941,34 @@
             "description": "Applied or exact retry"
           },
           "409": {
-            "description": "Revision or retry conflict"
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "Typed service problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem4"
+                }
+              }
+            }
           }
         }
       }
@@ -10276,8 +10333,7 @@
             "$ref": "#/components/schemas/Binding"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "command": {
             "$ref": "#/components/schemas/Command"
@@ -10538,7 +10594,11 @@
                   "RateLimited",
                   "Unavailable",
                   "BodyTooLarge",
-                  "UniverseFull"
+                  "UniverseFull",
+                  "COMMAND_EXPIRED",
+                  "COMMAND_HISTORY_EXPIRED",
+                  "COMMAND_IN_FUTURE",
+                  "COMMAND_ID_UNSUPPORTED"
                 ]
               }
             },
@@ -11629,8 +11689,7 @@
             "$ref": "#/components/schemas/Binding"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "command": {
             "$ref": "#/components/schemas/Command3"
@@ -13264,7 +13323,11 @@
                   "Conflict",
                   "RateLimited",
                   "Unavailable",
-                  "BodyTooLarge"
+                  "BodyTooLarge",
+                  "COMMAND_EXPIRED",
+                  "COMMAND_HISTORY_EXPIRED",
+                  "COMMAND_IN_FUTURE",
+                  "COMMAND_ID_UNSUPPORTED"
                 ]
               }
             },
@@ -13838,7 +13901,7 @@
               },
               "name": {
                 "type": "string",
-                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+                "description": "1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected."
               }
             },
             "required": [
@@ -14183,8 +14246,7 @@
             "$ref": "#/components/schemas/Binding"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "command": {
             "$ref": "#/components/schemas/Command4"
@@ -14208,8 +14270,7 @@
             "$ref": "#/components/schemas/Binding"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "command": {
             "$ref": "#/components/schemas/Command4"
@@ -17147,7 +17208,11 @@
                   "RateLimited",
                   "Unavailable",
                   "BodyTooLarge",
-                  "InvalidCursor"
+                  "InvalidCursor",
+                  "COMMAND_EXPIRED",
+                  "COMMAND_HISTORY_EXPIRED",
+                  "COMMAND_IN_FUTURE",
+                  "COMMAND_ID_UNSUPPORTED"
                 ]
               }
             },
@@ -20810,8 +20875,7 @@
             "$ref": "#/components/schemas/QueryContext"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "expected_revision": {
             "anyOf": [
@@ -21573,8 +21637,7 @@
             "$ref": "#/components/schemas/QueryContext"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "action": {
             "$ref": "#/components/schemas/SocialAction"
@@ -24252,8 +24315,7 @@
         "type": "object",
         "properties": {
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "expected_revision": {
             "type": "integer",
@@ -30123,6 +30185,12 @@
             "$ref": "#/components/schemas/ShipAppearanceAction"
           }
         }
+      },
+      "CommandSubmissionId": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[47][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$",
+        "description": "Generate UUIDv7 once from server wall time for a new intention. Submit the exact same envelope until its 15-minute deadline. UUIDv4 is accepted only during the finite legacy writer transition."
       }
     },
     "securitySchemes": {

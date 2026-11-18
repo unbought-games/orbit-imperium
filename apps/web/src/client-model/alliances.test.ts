@@ -436,3 +436,98 @@ it('retains the feed on an older-page transport failure but clears it on lost ac
   expect(controller.store.getState().view).toBeNull()
   expect(lost).toHaveBeenCalledOnce()
 })
+
+it('keeps a slow command allocation independent of view refreshes and refreshes the latest selection after acknowledgment', async () => {
+  const clock = deferred<string>(),
+    receipt = deferred<{
+      command_id: string
+      alliance: string
+      revision: number
+    }>()
+  const submitting = deferred<void>()
+  const command = vi.fn(async () => {
+    submitting.resolve()
+    return receipt.promise
+  })
+  const read = vi.fn().mockResolvedValue(view)
+  const controller = new AlliancesController({
+    newId: () => clock.promise,
+    command,
+    read,
+  })
+  const action = { type: 'Create' as const, name: 'Original', tag: 'ONE' }
+  const result = controller.run(action)
+  expect(controller.store.getState().busy).toBe(true)
+  const directory = { type: 'Directory' as const, search: 'next', offset: 0 }
+  await controller.refresh(directory)
+  expect(await controller.run(action)).toBe(false)
+  action.name = 'Changed'
+  clock.resolve('v7')
+  await submitting.promise
+  expect(command).toHaveBeenCalledExactlyOnceWith({
+    command_id: 'v7',
+    expected_revision: null,
+    action: { type: 'Create', name: 'Original', tag: 'ONE' },
+  })
+  await controller.refresh(directory)
+  receipt.resolve({ command_id: 'v7', alliance: 'a', revision: 1 })
+  expect(await result).toBe(true)
+  expect(controller.store.getState()).toMatchObject({
+    busy: false,
+    pending: null,
+    loading: false,
+  })
+  expect(read.mock.calls.slice(-2)).toEqual([[directory], [{ type: 'Mine' }]])
+})
+
+it('revoked access cancels an unregistered alliance action without releasing the next owner', async () => {
+  const old = deferred<string>(),
+    fresh = deferred<string>()
+  const newId = vi
+    .fn()
+    .mockReturnValueOnce(old.promise)
+    .mockReturnValueOnce(fresh.promise)
+  const command = vi
+    .fn()
+    .mockResolvedValue({ command_id: 'fresh', alliance: 'a', revision: 1 })
+  const read = vi
+    .fn()
+    .mockRejectedValueOnce({ status: 403 })
+    .mockResolvedValue(view)
+  const controller = new AlliancesController({ newId, command, read })
+  const action = { type: 'Join' as const, alliance: 'a' }
+  const first = controller.run(action)
+  expect(await controller.refresh()).toBe(false)
+  const second = controller.run(action)
+  old.resolve('old')
+  expect(await first).toBe(false)
+  expect(controller.store.getState().busy).toBe(true)
+  expect(command).not.toHaveBeenCalled()
+  fresh.resolve('fresh')
+  expect(await second).toBe(true)
+  expect(command).toHaveBeenCalledTimes(1)
+})
+
+it('a refused command cannot strand a refresh that began during ID allocation', async () => {
+  const clock = deferred<string>(),
+    reading = deferred<typeof view>()
+  const controller = new AlliancesController({
+    newId: () => clock.promise,
+    read: () => reading.promise,
+    command: async () => {
+      throw { status: 409 }
+    },
+  })
+  const send = controller.run({ type: 'Join', alliance: 'a' })
+  const refresh = controller.refresh()
+  clock.resolve('order')
+  expect(await send).toBe(false)
+  reading.resolve(view)
+  expect(await refresh).toBe(true)
+  expect(controller.store.getState()).toMatchObject({
+    busy: false,
+    loading: false,
+    pending: null,
+    view,
+  })
+})

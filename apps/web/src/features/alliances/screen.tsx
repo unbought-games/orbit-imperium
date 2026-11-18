@@ -20,7 +20,6 @@ import { trackRecruitment } from '../../adapters/optional-services'
 import { Recruit } from './recruit'
 import { RecruitmentDirectory } from './recruitment-directory'
 import { AllianceWelcome } from './welcome'
-import { commandId } from '../../adapters/command-id'
 import {
   useProfilePlayers,
   useRefreshPlayerProfiles,
@@ -131,7 +130,7 @@ function AllianceWorkspace({
       new AlliancesController({
         read: (query) => model.allianceQuery(query),
         command: (request) => model.allianceCommand(request),
-        newId: () => commandId(crypto),
+        newId: model.newCommandId,
         onAccessLost: drafts.clear,
       }),
   )

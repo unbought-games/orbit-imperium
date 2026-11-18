@@ -56,7 +56,6 @@ export type DispatchSubmission = {
   coordinates: S['Coordinates']
 }
 export type DispatchSubmitPorts = {
-  attempts: () => ReadonlyMap<string, unknown>
   send: Coordinator['send']
   submitted: (submission: DispatchSubmission | null) => void
   closeReview: () => void
@@ -111,15 +110,12 @@ export class DispatchRequests {
     ports: DispatchSubmitPorts,
   ) {
     const generation = this.invalidate()
+    const destination = { ...coordinates }
     ports.closeReview()
-    const previousAttempts = ports.attempts()
-    const sending = ports.send(command, quote)
-    // Coordinator registers before its first await. Never attach another invocation's receipt.
-    const key = [...ports.attempts().keys()].find(
-      (key) => !previousAttempts.has(key),
-    )
-    if (key) ports.submitted({ key, generation, coordinates })
-    const id = await sending
+    const id = await ports.send(command, quote, (key) => {
+      if (this.isCurrent(generation))
+        ports.submitted({ key, generation, coordinates: destination })
+    })
     if (!id && this.isCurrent(generation)) ports.submitted(null)
   }
 
