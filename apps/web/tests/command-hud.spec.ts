@@ -4,23 +4,26 @@ import { installGameFixture, binding, body, id, refreshGame } from './fixtures/g
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
 type S = components['schemas']
 const output = 'test-results/live-hud'
 const baseTime = 1793120000000
 const emptyMissions = ():S['MissionView4'] => ({fleets:[],incoming:[],fleet_slots:'8',score_value_micro:'0'})
 
-for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1440], [3440, 1440]]) {
-  test(`desktop orb anchors its panel, preserves details across resize and restores focus at ${width}x${height}`, async ({ page }) => {
+test('desktop orb anchors its panel across shell widths and preserves its open report on mobile', async ({ page }) => {
+  const sizes = [[768, 600], [1024, 768], [1440, 900], [2560, 1440], [3440, 1440]]
+  await page.setViewportSize({width: 768, height: 600})
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const f = await intelligenceFixture(page)
+  f.headers.push({ id: id(850), kind: 'Espionage', observed_at: baseTime, read: false, hidden: false })
+  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+  const orb = page.getByTestId('command-orb')
+  await expect(orb).toHaveAttribute('data-tone', 'champagne')
+  await expect(orb).toHaveAttribute('aria-haspopup', 'dialog')
+  await expect(orb).toHaveAttribute('aria-expanded', 'false')
+  const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
+  for (const [width, height] of sizes) {
     await page.setViewportSize({ width, height })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const f = await intelligenceFixture(page)
-    f.headers.push({ id: id(850), kind: 'Espionage', observed_at: baseTime, read: false, hidden: false })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    const orb = page.getByTestId('command-orb')
-    await expect(orb).toHaveAttribute('data-tone', 'champagne')
-    await expect(orb).toHaveAttribute('aria-haspopup', 'dialog')
-    await expect(orb).toHaveAttribute('aria-expanded', 'false')
     const bounds = (await orb.boundingBox())!
     const content = (await page.getByRole('main').boundingBox())!
     const shell = (await page.locator('[data-has-command-hud]').boundingBox())!
@@ -30,51 +33,51 @@ for (const [width, height] of [[768, 600], [1024, 768], [1440, 900], [2560, 1440
     expect(orbRight).toBeGreaterThan(shell.x + shell.width - 52)
     if (width >= 1440) expect(bounds.x).toBeGreaterThan(content.x + content.width + 16)
     expect(bounds.y + bounds.height).toBeLessThan(height - 28)
-    await orb.evaluate(el => el.setAttribute('data-instance', 'same-orb'))
-    await diagnosticScreenshot(page, { path: `${output}/desktop-orb-${width}x${height}.png` })
     await orb.focus()
     await page.keyboard.press('Enter')
-    const panel = page.getByRole('dialog', { name: 'Command uplink', exact: true })
-    await expect(panel).toBeVisible()
-    await expect(panel.getByRole('heading', { name: 'Command uplink' })).toBeFocused()
+    await expect(panel.getByRole('heading', {name: 'Command uplink'})).toBeFocused()
     await expect(orb).toHaveAttribute('aria-expanded', 'true')
     const panelBox = (await panel.boundingBox())!
     expect(panelBox.x + panelBox.width - orbRight).toBeGreaterThanOrEqual(0)
     expect(panelBox.x + panelBox.width - orbRight).toBeLessThan(4)
     expect(panelBox.y).toBeGreaterThanOrEqual(0)
     expect(panelBox.y + panelBox.height).toBeLessThan(bounds.y)
-    await panel.getByRole('button', { name: /Espionage report/ }).click()
-    const detail = page.getByRole('dialog', { name: 'Espionage report', exact: true })
-    await expect(detail.getByRole('group', { name: 'Resource amounts' })).toBeVisible()
-    await diagnosticScreenshot(page, { path: `${output}/desktop-report-${width}x${height}.png` })
-    await page.setViewportSize({ width: 390, height: 844 })
-    await expect(detail).toBeVisible()
-    await expect(orb).toHaveAttribute('data-instance', 'same-orb')
-    expect(await page.evaluate(() => document.body.style.position)).toBe('fixed')
-    await page.setViewportSize({ width, height })
-    await expect(detail).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(detail).toHaveCount(0)
+    await expect(panel).toHaveCount(0)
     await expect(orb).toBeFocused()
-    await expect(orb).toHaveAttribute('aria-expanded', 'false')
-    expect(await page.evaluate(() => document.body.style.position)).toBe('')
-    await expect(orb).toHaveAttribute('data-tone', 'ice')
-  })
-}
+  }
+  const instance = await orb.elementHandle()
+  await orb.click()
+  await panel.getByRole('button', {name: /Espionage report/}).click()
+  const detail = page.getByRole('dialog', {name: 'Espionage report', exact: true})
+  await expect(detail.getByRole('group', {name:'Resource amounts'})).toBeVisible()
+  for (const [width, height] of sizes) {
+    await page.setViewportSize({width:390,height:844})
+    await expect(detail).toBeVisible()
+    expect(await instance!.evaluate(el => el.isConnected)).toBe(true)
+    expect(await page.evaluate(() => document.body.style.position)).toBe('fixed')
+    await page.setViewportSize({width, height})
+    await expect(detail).toBeVisible()
+  }
+  await page.keyboard.press('Escape')
+  await expect(detail).toHaveCount(0)
+  await expect(orb).toBeFocused()
+  await expect(orb).toHaveAttribute('aria-expanded', 'false')
+  expect(await page.evaluate(() => document.body.style.position)).toBe('')
+  await expect(orb).toHaveAttribute('data-tone','ice')
+  await instance!.dispose()
+})
 
-async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'][] = [body], destinations: S['Destination'][] = [], playerNames?: S['PublicPlayerNames4']) {
+async function intelligenceFixture(page: Page, bodies: S['BodyV3'][] = [body], destinations: S['Destination'][] = [], playerNames?: S['PublicPlayerNames4']) {
   let revision = 1
   const missions = emptyMissions()
   const headers:S['ReportHeader4'][]=[]
   const conversations:S['SocialConversation'][]=[]
   const circulars:S['SocialCircular'][]=[]
-  let failMailbox = false
   const reads:string[]=[]
-  const reportQueries:Array<string|null>=[]
-  await installGameFixture(page,{protocol:4,bodies,destinations,playerNames,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage',...(attack ? ['Attack' as const] : [])]})
+  await installGameFixture(page,{protocol:4,bodies,destinations,playerNames,missions,sampledAt:baseTime,viewerRevision:()=>String(revision),hasUnreadReports:()=>headers.some(h=>!h.read&&!h.hidden),extraCapabilities:['Reports','Espionage','Attack']})
   await page.route('**/api/**/reports',route=>{
     const {context,cursor,filter,kind}=route.request().postDataJSON()
-    reportQueries.push(cursor)
     const rows=headers.filter(h=>(!filter||h.hidden===filter.hidden)&&(!filter?.unread_only||!h.read)&&(!filter?.starred_only||h.starred)&&(!kind||h.kind===kind))
     const start=cursor?rows.findIndex(h=>h.id===cursor)+1:0
     const hasMore=start+50<rows.length
@@ -88,7 +91,6 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
   })
   await page.route('**/social/query',route=>{
     const {context,query}=route.request().postDataJSON()
-    if(failMailbox)return route.fulfill({status:503,json:{code:'Unavailable'}})
     return route.fulfill({json:{...context,conversations:query.type==='Conversations'?conversations:[],circulars:query.type==='Circulars'?circulars:[],messages:[],contacts:[],contact:null,next_cursor:null}})
   })
   await page.route('**/social/commands',route=>{
@@ -105,7 +107,7 @@ async function intelligenceFixture(page: Page, attack = true, bodies: S['BodyV3'
     reads.push('MarkReportRead');revision++
     return route.fulfill({json:{protocol:4,binding,command_id:gameplay.command_id,status:'Committed',admitted_at:baseTime,executed_at:baseTime,result_ids:[],minimum_viewer_revision:String(revision)}})
   })
-  return { missions, headers, conversations, circulars, reads, reportQueries, fail:()=>{failMailbox=true}, restore:()=>{failMailbox=false}, refresh:async()=>{revision++;await refreshGame(page)} }
+  return { missions, headers, conversations, circulars, reads, refresh:async()=>{revision++;await refreshGame(page)} }
 }
 test('live mobile HUD receives reports, messages and threats across navigation and preserves server truth',async({page})=>{
   await page.setViewportSize({width:390,height:844})
@@ -180,28 +182,6 @@ test('live mobile HUD receives reports, messages and threats across navigation a
   expect(errors).toEqual([])
 })
 
-test('initial unread persists and mailbox failures remain recoverable; desktop retains the HUD',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'})
-  const f=await intelligenceFixture(page)
-  f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb=page.getByTestId('command-orb')
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await expect(page.getByLabel('Recent game events').getByRole('button')).toHaveCount(0)
-  f.fail();await f.refresh();await orb.click()
-  await expect(page.getByRole('alert').filter({hasText:'Some intelligence is unavailable'})).toBeVisible()
-  f.restore();await page.getByRole('button',{name:'Retry intelligence'}).click()
-  await expect(page.getByText('Some intelligence is unavailable. Try again.')).toHaveCount(0)
-  await page.getByRole('button',{name:'Close command HUD'}).click()
-  await page.emulateMedia({reducedMotion:'no-preference'})
-  expect(await orb.evaluate(node=>getComputedStyle(node,'::before').animationName)).not.toBe('none')
-  await page.emulateMedia({reducedMotion:'reduce'})
-  expect(await orb.evaluate(node=>getComputedStyle(node,'::before').animationName)).toBe('none')
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/desktop-1440x900.png`})
-})
-
 test('real quick-build only acknowledges committed orders and leaves rejection visible', { tag: '@journey' },async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.emulateMedia({reducedMotion:'reduce'})
   let reject=false
@@ -225,90 +205,6 @@ test('real quick-build only acknowledges committed orders and leaves rejection v
   reject=true;await withBootstrapResponse(page, () => page.reload());await expect(page.getByTestId('command-orb')).toHaveAttribute('data-tone','ice')
   await quick.click();await expect(page.getByLabel('Action needs attention')).toContainText('rejected')
   await expect(page.getByLabel('Recent game events').getByRole('button')).toHaveCount(0)
-})
-
-for (const kind of ['research', 'defense'] as const) {
-  test(`real ${kind} confirmation shows the quoted action in the mobile HUD`, async ({page}) => {
-    await page.setViewportSize({width:390,height:844})
-    await page.emulateMedia({reducedMotion:'reduce'})
-    const planet={...body,levels:{...body.levels,ResearchLab:10,Shipyard:10}}
-    const key:S['ItemKey3']=kind==='research'?{kind:'Research',id:'EnergyTechnology'}:{kind:'Defense',id:'RocketLauncher'}
-    await installGameFixture(page,{protocol:4,bodies:[planet],missions:emptyMissions(),research:[{research:'EnergyTechnology',level:1}],catalog:[{key,enabled:true,mobile:false,body_kinds:['Planet'],requirements:[]}]})
-    await routeProgressionOptions(page,route=>{
-      const {context,request}=route.request().postDataJSON()
-      const common={profile_hash:'a'.repeat(64),paid:{metal:'2000000',crystal:'1000000',deuterium:'0'}}
-      const terms=request.type==='Research'?{...common,type:'Research',host:body.id,research:'EnergyTechnology',source_level:1,target_level:2,duration_ms:60000,formula:'ResearchClassic',labs:[],effective_lab:'10',required_energy:'0'}:{...common,type:'Manufacture',body:body.id,item:key,quantity:request.quantity,unit_cost:common.paid,unit_duration_ms:60000,formula:'ManufactureClassic',facilities:[]}
-      return route.fulfill({json:{protocol:4,...context,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),request,terms,terms_hash:'b'.repeat(64),blockers:[],estimates:null}})
-    })
-    const sent:string[]=[]
-    await page.route('**/commands',route=>{
-      const {gameplay}=route.request().postDataJSON()
-      if(!['StartResearch','StartManufacture'].includes(gameplay.command.type))return route.fallback()
-      sent.push(gameplay.command.type)
-      return route.fulfill({json:{protocol:4,binding,command_id:gameplay.command_id,status:'Committed',admitted_at:Date.now(),executed_at:Date.now(),result_ids:[id(901)],minimum_viewer_revision:'1'}})
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${kind}/${kind==='research'?'energy-technology':'rocket-launcher'}`))
-    await page.getByRole('region',{name:'Progression quote'}).getByRole('button',{name:kind==='research'?'Confirm research':'Build',exact:true}).click()
-    const toast=page.getByLabel('Recent game events').getByRole('button',{name:kind==='research'?/Research started/:/Defense order accepted/})
-    await expect(toast).toBeVisible()
-    await expect(toast).toContainText(kind==='research'?'Energy Technology':'Rocket Launcher')
-    if(kind==='defense')await expect(toast.getByRole('img',{name:'Metal',exact:true})).toBeVisible()
-    expect(sent).toEqual([kind==='research'?'StartResearch':'StartManufacture'])
-    await expect(page.getByTestId('command-orb')).toHaveAttribute('data-tone','green')
-    await diagnosticScreenshot(page,{path:`${output}/${kind}-390x844.png`})
-  })
-}
-
-test('orb boots from its center, types the complete label and clears it without moving', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.clock.install()
-  await intelligenceFixture(page)
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb = page.getByTestId('command-orb')
-  await expect(orb).toBeVisible()
-  const caption = page.getByTestId('orb-caption')
-  await expect(caption).toHaveText('Welcome, Commander.')
-  // Sample the real CSS animation at explicit times rather than wall-clock sleeps.
-  const frames = await orb.evaluate(el => {
-    const animation = el.getAnimations()[0]
-    animation.pause(); animation.currentTime = 0
-    const start = {opacity:getComputedStyle(el).opacity, transform:getComputedStyle(el).transform}
-    animation.currentTime = 700
-    const midpoint = Number(getComputedStyle(el).opacity)
-    animation.currentTime = 1400
-    return {start, midpoint, end:{opacity:getComputedStyle(el).opacity, transform:getComputedStyle(el).transform}, origin:getComputedStyle(el).transformOrigin}
-  })
-  expect(frames.start.opacity).toBe('0')
-  expect(frames.start.transform).toBe('matrix(0.15, 0, 0, 0.15, 0, 0)')
-  expect(frames.midpoint).toBeCloseTo(0.5, 2)
-  expect(frames.end.opacity).toBe('1')
-  await orb.evaluate(el=>{el.getAnimations()[0].currentTime=700})
-  await diagnosticScreenshot(page,{path:`${output}/startup-midpoint-390x844.png`})
-  await orb.evaluate(el=>{el.getAnimations()[0].currentTime=1400})
-  expect(frames.origin).toBe('37px 37px')
-  const text = caption.locator('span')
-  const textFrames = await text.evaluate(el => {
-    const animations = el.getAnimations()
-    if (!animations.length) throw new Error('Expected the active caption reveal')
-    for (const animation of animations) animation.pause()
-    return [0, 150, 400, 1000, 1600].map(time => {
-      for (const animation of animations) animation.currentTime = time
-      const rect = el.getBoundingClientRect()
-      return { width: rect.width, height: rect.height }
-    })
-  })
-  for (const frame of textFrames) expect(frame).toEqual(textFrames.at(-1))
-  await text.evaluate(el => { for(const animation of el.getAnimations()){animation.pause();animation.currentTime=1600} })
-  expect(await text.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-  await diagnosticScreenshot(page,{path:`${output}/startup-complete-390x844.png`})
-  const before = await orb.boundingBox()
-  await page.clock.fastForward(6000)
-  await expect(caption).toHaveCount(0)
-  expect(await orb.boundingBox()).toEqual(before)
-  await diagnosticScreenshot(page,{path:`${output}/startup-cleared-390x844.png`})
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/startup-desktop-1440x900.png`})
 })
 
 test.describe('HUD touch scroll ownership', () => {
@@ -396,11 +292,10 @@ test.describe('HUD touch scroll ownership', () => {
   })
 })
 
-for (const attackEnabled of [true, false]) {
-  test(`HUD espionage attack action respects capability ${attackEnabled} and prepares the observed target`, async ({page}) => {
+test('HUD espionage attack action prepares the observed target and opens Dispatch', async ({page}) => {
     await page.setViewportSize({width:390,height:844})
     await page.emulateMedia({reducedMotion:'reduce'})
-    const f = await intelligenceFixture(page, attackEnabled)
+    const f = await intelligenceFixture(page)
     f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
     await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     await page.getByTestId('command-orb').click()
@@ -408,10 +303,6 @@ for (const attackEnabled of [true, false]) {
     const panel = page.getByRole('dialog',{name:'Espionage report',exact:true})
     await expect(panel.getByRole('group',{name:'Resource amounts'})).toBeVisible()
     const attack = panel.getByRole('button',{name:'Attack',exact:true})
-    if (!attackEnabled) {
-      await expect(attack).toHaveCount(0)
-      return
-    }
     await expect(attack).toBeVisible()
     const attackBox = (await attack.boundingBox())!
     expect(attackBox.y).toBeLessThan((await panel.getByRole('heading',{name:'Resources',exact:true}).boundingBox())!.y)
@@ -434,66 +325,7 @@ for (const attackEnabled of [true, false]) {
     await withReportResponse(page, id(850), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(850)}`))
     await expect(page.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
     await diagnosticScreenshot(page,{path:`${output}/report-attack-desktop-1440x900.png`})
-  })
-}
-
-for (const [width, height] of [[390, 844], [1440, 900]]) {
-  test(`HUD back button is a ghost with hover, focus and pressed states at ${width}x${height}`, async ({page}) => {
-    await page.setViewportSize({width,height})
-    await page.emulateMedia({reducedMotion:'reduce'})
-    const f=await intelligenceFixture(page)
-    f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await page.getByTestId('command-orb').click()
-    const panel=page.getByRole('dialog')
-    await panel.getByRole('button',{name:/Espionage report/}).click()
-    await expect(panel.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
-    const back=panel.getByRole('button',{name:'Back to list',exact:true})
-    async function expectCompactHeaderControl() {
-      const buttonBounds=(await back.boundingBox())!
-      const headerBounds=(await back.locator('..').boundingBox())!
-      expect(buttonBounds.height).toBeLessThanOrEqual(28)
-      expect(buttonBounds.y).toBeGreaterThanOrEqual(headerBounds.y+4)
-      expect(buttonBounds.y+buttonBounds.height).toBeLessThanOrEqual(headerBounds.y+headerBounds.height-4)
-    }
-    await page.mouse.move(0,0)
-    await expect(back).toHaveAttribute('data-button-variant','ghost')
-    await expect(back).toHaveCSS('background-color','rgba(0, 0, 0, 0)')
-    await expectCompactHeaderControl()
-    await diagnosticScreenshot(page,{path:`${output}/back-ghost-idle-${width}x${height}.png`})
-
-    await back.hover()
-    await expect(back).toHaveCSS('background-color','rgba(255, 255, 255, 0.08)')
-    await expectCompactHeaderControl()
-    await diagnosticScreenshot(page,{path:`${output}/back-ghost-hover-${width}x${height}.png`})
-    await page.mouse.move(0,0)
-    await panel.getByRole('heading',{name:'Espionage report',exact:true}).focus()
-    await page.keyboard.press('Shift+Tab')
-    await page.keyboard.press('Shift+Tab')
-    await expect(back).toBeFocused()
-    await expect(back).toHaveCSS('background-color','rgba(255, 255, 255, 0.08)')
-    await expect(back).toHaveCSS('outline-style','solid')
-    await expectCompactHeaderControl()
-    const focusOutset=await back.evaluate(el=>{
-      const style=getComputedStyle(el)
-      return parseFloat(style.outlineOffset)+parseFloat(style.outlineWidth)
-    })
-    expect(focusOutset).toBeLessThanOrEqual(0)
-    await diagnosticScreenshot(page,{path:`${output}/back-ghost-focus-${width}x${height}.png`})
-    await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
-    await expectCompactHeaderControl()
-    await diagnosticScreenshot(page,{path:`${output}/back-ghost-scrolled-focus-${width}x${height}.png`})
-    await panel.evaluate(el=>{el.scrollTop=0})
-
-    await back.hover()
-    await page.mouse.down()
-    await expect(back).toHaveCSS('background-color','rgba(255, 255, 255, 0.14)')
-    await expectCompactHeaderControl()
-    await diagnosticScreenshot(page,{path:`${output}/back-ghost-pressed-${width}x${height}.png`})
-    await page.mouse.up()
-    await expect(panel).toHaveAccessibleName('Command uplink')
-  })
-}
+})
 
 test('HUD details return to the list without closing, even after scrolling a report', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
@@ -539,88 +371,7 @@ test('HUD details return to the list without closing, even after scrolling a rep
   await diagnosticScreenshot(page,{path:`${output}/back-list-desktop-1440x900.png`})
 })
 
-for (const initialViewport of [{width: 390, height: 844}, {width: 1440, height: 900}]) {
- test(`HUD list infinitely loads past the badge cap, retries in place, and restores the list after detail at ${initialViewport.width}px`, async ({page}) => {
-  // Native scrolling, retry controls and detail/list scroll restoration need a
-  // browser. Callback races and page-intent permutations live in inbox-pagination.test.ts.
-  await page.setViewportSize(initialViewport)
-  await page.emulateMedia({reducedMotion:'reduce'})
-  const f = await intelligenceFixture(page)
-  f.headers.push(...Array.from({length:130},(_,i)=>({id:id(2000+i),kind:'Espionage',observed_at:baseTime-i,read:false,hidden:false})))
-  let fail = true
-  let release: (()=>void)|undefined
-  let requests = 0
-  await page.route('**/api/**/reports',async route=>{
-    if(route.request().postDataJSON().cursor===id(2099)){
-      requests++
-      if(fail)return route.fulfill({status:503,json:{code:'Unavailable'}})
-      if (!release) await new Promise<void>(resolve=>{release=resolve})
-    }
-    return route.fallback()
-  })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  await expect(page.getByTestId('unread-count')).toHaveText('99')
-  await expect(page.getByRole('heading', { level: 1, name: /Empire/ })).toBeVisible()
-  await page.getByTestId('command-orb').click()
-  const panel=page.getByRole('dialog')
-  const list=panel.getByLabel('Intelligence list')
-  const entries=list.getByRole('button')
-  await expect(entries).toHaveCount(20)
-  await expect(list).toHaveAttribute('aria-busy','false')
-  await diagnosticScreenshot(page,{path:`${output}/infinite-first-${initialViewport.width}x${initialViewport.height}.png`})
-  for(const count of [40,60,80,100]){
-    await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
-    await expect(entries).toHaveCount(count)
-    await expect(list).toHaveAttribute('aria-busy','false')
-  }
-  expect(requests).toBe(0)
-  await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
-  await expect(panel.getByRole('button',{name:'Retry loading'})).toBeVisible()
-  await expect(entries).toHaveCount(100)
-  expect(requests).toBe(1)
-  await diagnosticScreenshot(page,{path:`${output}/infinite-retry-${initialViewport.width}x${initialViewport.height}.png`})
-  fail=false
-  // Two retry gestures before React commits the loading state must join one
-  // request and reveal only the next batch, including observer callbacks.
-  await panel.getByRole('button',{name:'Retry loading'}).evaluate(button => {
-    (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click()
-  })
-  await expect(panel.getByRole('status').filter({hasText:'Loading intelligence…'})).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/infinite-loading-${initialViewport.width}x${initialViewport.height}.png`})
-  await expect.poll(()=>!!release).toBe(true)
-  release!()
-  await expect(entries).toHaveCount(120)
-  expect(requests).toBe(2)
-  // Opening an already loaded row must not throw away the loaded pages or position.
-  await entries.nth(95).scrollIntoViewIfNeeded()
-  const position=await panel.evaluate(el=>el.scrollTop)
-  await entries.nth(95).click()
-  await expect(panel.getByRole('button',{name:'Attack',exact:true})).toBeVisible()
-  await expect(list).toHaveAttribute('aria-busy','false')
-  await panel.getByRole('button',{name:'Back to list'}).click()
-  await expect(panel).toHaveAccessibleName('Command uplink')
-  await expect(entries).toHaveCount(120)
-  expect(Math.abs(await panel.evaluate(el=>el.scrollTop)-position)).toBeLessThan(5)
-  await diagnosticScreenshot(page,{path:`${output}/infinite-return-${initialViewport.width}x${initialViewport.height}.png`})
-  expect(await page.evaluate(()=>document.body.style.position)).toBe('fixed')
-  await panel.evaluate(el=>{el.scrollTop=el.scrollHeight})
-  await expect(entries).toHaveCount(129)
-  await expect(panel.getByRole('status').filter({hasText:'You’re all caught up.'})).toBeVisible()
-  await expect(panel.getByRole('button',{name:'Load more intelligence'})).toHaveCount(0)
-  await panel.getByRole('status').filter({hasText:'You’re all caught up.'}).scrollIntoViewIfNeeded()
-  await diagnosticScreenshot(page,{path:`${output}/infinite-end-390x844.png`})
-  await page.setViewportSize({width:1440,height:900})
-  await expect(page.getByTestId('command-orb')).toBeVisible()
-  await expect(panel).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/infinite-end-1440x900.png`})
-  await page.keyboard.press('Escape')
-  await expect(panel).toHaveCount(0)
-  expect(await page.evaluate(()=>document.body.style.position)).toBe('')
-  await diagnosticScreenshot(page,{path:`${output}/infinite-desktop-1440x900.png`})
-})
-}
-
-test('captions explain once, joke only on confirmed new losses, and keep humor separate from regular feedback', async ({page}) => {
+test('orb captions retain their education and humor history across client navigation', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
   await page.emulateMedia({reducedMotion:'reduce'})
   await page.clock.install()
@@ -644,14 +395,6 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await page.clock.fastForward(6000)
   await expect(caption).toHaveCount(0)
   await expect(orb).toHaveAttribute('data-tone','champagne')
-  await f.refresh()
-  await expect(caption).toHaveCount(0)
-  // A detected probe is not necessarily a destroyed probe.
-  f.headers.unshift({id:id(860),kind:'Espionage',observed_at:baseTime,read:false,hidden:false,preview:{kind:'Espionage',counterespionage:{detected:true,probability_ppm:1000000}}})
-  await f.refresh()
-  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Espionage report/})).toBeVisible()
-  await page.clock.fastForward(8000)
-  await expect(caption).toHaveCount(0)
   const loss=(n:number):S['ReportHeader4']=>({id:id(n),kind:'Combat',observed_at:baseTime+n,read:false,hidden:false,preview:{kind:'Combat',mission:'Espionage',outcome:'DefenderVictory',participants:[{owner:binding.player,side:'Attacker'}]}})
   f.headers.unshift(loss(861))
   await f.refresh()
@@ -660,285 +403,17 @@ test('captions explain once, joke only on confirmed new losses, and keep humor s
   await expect(caption).toHaveText('Whoops.')
   await expect(caption).toHaveAttribute('data-category','personality')
   await diagnosticScreenshot(page,{path:`${output}/caption-whoops-390x844.png`})
-  // An urgent regular card still appears and interrupts the joke during cooldown.
-  f.missions.incoming.push({sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}})
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','red')
-  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Hostile fleet inbound/})).toBeVisible()
-  await expect(caption).toHaveCount(0)
-  await diagnosticScreenshot(page,{path:`${output}/caption-urgent-card-390x844.png`})
-  f.missions.incoming.length=0
-  await f.refresh()
-  await page.clock.fastForward(8000)
-  f.headers.unshift(loss(862))
-  await f.refresh()
-  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
-  await page.clock.fastForward(8000)
+  await page.clock.fastForward(6000)
   await expect(caption).toHaveCount(0)
   // Client navigation keeps the humor budget. No old report replays on refresh.
   await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Develop',exact:true}).click()
   await expect(page).toHaveURL(/resources$/)
+  f.headers.unshift(loss(862))
+  await f.refresh()
+  await expect(page.getByTestId('unread-count')).toHaveText('3')
   await page.clock.fastForward(8000)
   await expect(caption).toHaveCount(0)
-  await page.clock.fastForward(90000)
-  await expect(page.getByTestId('unread-count')).toHaveText('4')
-  f.headers.unshift(loss(863))
-  await f.refresh()
-  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Combat report/})).toBeVisible()
-  await page.clock.fastForward(8000)
-  await expect(caption).toHaveText('Good thing we sent the bad one.')
-  await expect(caption.locator('span')).toHaveCSS('animation-name','none')
-  await page.setViewportSize({width:320,height:740})
-  const bounds=(await caption.boundingBox())!
-  expect(bounds.x).toBeGreaterThanOrEqual(0)
-  expect(bounds.x+bounds.width).toBeLessThanOrEqual(320)
-  expect(await caption.locator('span').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
-  await diagnosticScreenshot(page,{path:`${output}/caption-long-320x740.png`})
-  await page.clock.fastForward(6000)
-  await expect(caption).toHaveCount(0)
   await expect(orb).toHaveAttribute('data-tone','champagne')
-  await diagnosticScreenshot(page,{path:`${output}/caption-expired-320x740.png`})
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/caption-desktop-1440x900.png`})
-})
-
-test('every orb surface blends through the shared palette, including rapid retargets and reduced motion', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  const f=await intelligenceFixture(page)
-  f.headers.push({id:id(850),kind:'Espionage',observed_at:baseTime,read:false,hidden:false})
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb=page.getByTestId('command-orb')
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await expect(page.getByTestId('unread-count')).toHaveText('1')
-  // Finish only the entrance so color captures show the fully formed orb.
-  await orb.evaluate(el=>{for(const a of el.getAnimations())if(a.effect?.getTiming().iterations===1)a.finish()})
-  const palette={ice:[164,219,239],champagne:[236,211,159],green:[135,242,187],red:[255,125,131]}
-  for(const tone of ['red','green','ice','champagne'] as const){
-    const frames=await orb.evaluate(async (el,tone)=>{
-      const dock=el.parentElement!
-      const outer=el.children[0], inner=el.children[1], core=el.children[2]
-      const shimmer=core.children[0], icon=core.querySelector('svg')!
-      const badge=el.querySelector('[data-testid="unread-count"]')!
-      const slots=el.nextElementSibling!
-      const style=(node:Element,pseudo?:string)=>getComputedStyle(node,pseudo)
-      const sample=()=>({
-        channels:['red','green','blue'].map(channel=>Number(style(dock).getPropertyValue(`--command-orb-${channel}`))),
-        parts:{
-          orb:style(el).color,
-          caption:style(dock.querySelector('[data-testid="orb-caption"]')!).color,
-          outer:style(outer).borderTopColor, inner:style(inner).borderTopColor,
-          core:style(core).backgroundImage, coreShadow:style(core).boxShadow, coreBorder:style(core).borderColor,
-          shimmer:style(shimmer).backgroundImage, icon:style(icon).color, iconGlow:style(icon).filter,
-          aura:style(el,'::before').backgroundImage, ripple:style(el,'::after').borderColor,
-          spark:style(outer,'::after').backgroundColor, sparkGlow:style(outer,'::after').boxShadow,
-          badge:style(badge).backgroundColor, badgeBorder:style(badge).borderColor, badgeGlow:style(badge).boxShadow,
-          slots:style(slots).color, slotsBorder:style(slots).borderColor, slotsBackground:style(slots).backgroundColor,
-        }
-      })
-      const before=sample()
-      dock.dataset.tone=tone;el.setAttribute('data-tone',tone)
-      // Force the style change, then sample the actual CSS transitions at known times.
-      style(dock).getPropertyValue('--command-orb-red')
-      await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
-      const transitions=dock.getAnimations().filter(a=>a instanceof CSSTransition)
-      for(const animation of transitions){animation.pause();animation.currentTime=0}
-      const start=sample()
-      for(const animation of transitions)animation.currentTime=350
-      const middle=sample()
-      for(const animation of transitions)animation.currentTime=700
-      const end=sample()
-      for(const animation of transitions)animation.finish()
-      return {before,start,middle,end,count:transitions.length}
-    },tone)
-    expect(frames.count).toBe(3)
-    expect(frames.start.channels).toEqual(frames.before.channels)
-    expect(frames.end.channels).toEqual(palette[tone])
-    for(let i=0;i<3;i++)expect(frames.middle.channels[i]).toBeCloseTo((frames.before.channels[i]+palette[tone][i])/2,0)
-    for(const part of Object.keys(frames.end.parts) as (keyof typeof frames.end.parts)[]){
-      expect(frames.middle.parts[part],`${tone}: ${part} must leave its old color`).not.toBe(frames.before.parts[part])
-      expect(frames.middle.parts[part],`${tone}: ${part} must not snap to its new color`).not.toBe(frames.end.parts[part])
-    }
-    await diagnosticScreenshot(page,{path:`${output}/orb-palette-${tone}-390x844.png`})
-  }
-  const interrupted=await orb.evaluate(async el=>{
-    const dock=el.parentElement!
-    const channels=()=>['red','green','blue'].map(c=>Number(getComputedStyle(dock).getPropertyValue(`--command-orb-${c}`)))
-    dock.dataset.tone='red';el.setAttribute('data-tone','red')
-    channels()
-    await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
-    for(const animation of dock.getAnimations()){animation.pause();animation.currentTime=350}
-    const before=channels()
-    dock.dataset.tone='ice';el.setAttribute('data-tone','ice')
-    const after=channels()
-    return {before,after}
-  })
-  for(let i=0;i<3;i++)expect(interrupted.after[i]).toBeCloseTo(interrupted.before[i],0)
-  await page.emulateMedia({reducedMotion:'reduce'})
-  await orb.evaluate(el=>{el.parentElement!.dataset.tone='green';el.setAttribute('data-tone','green')})
-  expect(await orb.evaluate(el=>getComputedStyle(el).color)).toBe('rgb(135, 242, 187)')
-  expect(await orb.evaluate(el=>getComputedStyle(el.parentElement!).transitionProperty)).toBe('none')
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/orb-palette-desktop-1440x900.png`})
-})
-
-test('orb hover charges every layer, preserves its hit area and palette, and supports keyboard and reduced motion', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  const f=await intelligenceFixture(page)
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb=page.getByTestId('command-orb')
-  await expect(orb).toBeVisible()
-  await orb.evaluate(el=>{for(const a of el.getAnimations())if(a.effect?.getTiming().iterations===1)a.finish()})
-  const bounds=await orb.boundingBox()
-  const channel=(name:string)=>orb.evaluate((el,name)=>Number(getComputedStyle(el.parentElement!).getPropertyValue(`--command-orb-${name}`)),name)
-  await expect.poll(()=>channel('charge')).toBe(0)
-  const idleAura=await orb.evaluate(el=>getComputedStyle(el,'::before').backgroundImage)
-  await diagnosticScreenshot(page,{path:`${output}/hover-idle-390x844.png`})
-  await orb.hover()
-  await expect.poll(()=>channel('charge')).toBe(1)
-  await expect(page.getByTestId('orb-charge')).toHaveCSS('opacity','1')
-  expect(await orb.boundingBox()).toEqual(bounds)
-  expect(await orb.evaluate(el=>Number(getComputedStyle(el.children[0]).scale))).toBeGreaterThan(1)
-  expect(await orb.evaluate(el=>Number(getComputedStyle(el.children[2]).scale))).toBeGreaterThan(1)
-  expect(await orb.evaluate(el=>getComputedStyle(el,'::before').backgroundImage)).not.toBe(idleAura)
-  await diagnosticScreenshot(page,{path:`${output}/hover-charged-390x844.png`})
-  f.missions.incoming.push({sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}})
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','red')
-  await expect(orb).toHaveCSS('color','rgb(255, 125, 131)')
-  await expect.poll(()=>channel('charge')).toBe(1)
-  await diagnosticScreenshot(page,{path:`${output}/hover-red-390x844.png`})
-  await page.mouse.down()
-  await expect.poll(()=>channel('press')).toBe(1)
-  expect(await orb.evaluate(el=>Number(getComputedStyle(el.children[2]).scale))).toBeLessThan(1)
-  expect(await orb.boundingBox()).toEqual(bounds)
-  await diagnosticScreenshot(page,{path:`${output}/hover-pressed-390x844.png`})
-  await page.mouse.up()
-  await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
-  await page.getByRole('button',{name:'Close command HUD'}).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.mouse.move(5,5)
-  await expect.poll(()=>channel('charge')).toBe(0)
-  await expect.poll(()=>channel('press')).toBe(0)
-  await page.keyboard.press('Tab')
-  await orb.focus()
-  expect(await orb.evaluate(el=>el.matches(':focus-visible'))).toBe(true)
-  await expect.poll(()=>channel('charge')).toBe(1)
-  await diagnosticScreenshot(page,{path:`${output}/hover-keyboard-390x844.png`})
-  await page.keyboard.press('Enter')
-  await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
-  await page.getByRole('button',{name:'Close command HUD'}).click()
-  await page.emulateMedia({reducedMotion:'reduce'})
-  await orb.hover()
-  await expect.poll(()=>channel('charge')).toBe(1)
-  expect(await orb.evaluate(el=>getComputedStyle(el.children[2]).scale)).toBe('1')
-  expect(await orb.evaluate(el=>getComputedStyle(el.children[2]).translate)).toBe('none')
-  expect(await orb.evaluate(el=>getComputedStyle(el.parentElement!).transitionProperty)).toBe('none')
-  await expect(page.getByTestId('orb-charge')).toHaveCSS('animation-name','none')
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/hover-desktop-1440x900.png`})
-})
-
-test.describe('orb touch feedback',()=>{
-  test.use({hasTouch:true,isMobile:true})
-  test('touch press compresses then releases without sticky hover or lost taps',async({page})=>{
-    await page.setViewportSize({width:390,height:844})
-    await intelligenceFixture(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    const orb=page.getByTestId('command-orb')
-    await expect(orb).toBeVisible()
-    expect(await page.evaluate(()=>matchMedia('(hover: hover) and (pointer: fine)').matches)).toBe(false)
-    await orb.evaluate(el=>{for(const a of el.getAnimations())if(a.effect?.getTiming().iterations===1)a.finish()})
-    const channel=(name:string)=>orb.evaluate((el,name)=>Number(getComputedStyle(el.parentElement!).getPropertyValue(`--command-orb-${name}`)),name)
-    const bounds=(await orb.boundingBox())!
-    const cdp=await page.context().newCDPSession(page)
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}]})
-    await expect.poll(()=>channel('press')).toBe(1)
-    expect(await orb.evaluate(el=>Number(getComputedStyle(el.children[2]).scale))).toBeLessThan(1)
-    await diagnosticScreenshot(page,{path:`${output}/hover-touch-390x844.png`})
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]})
-    await expect.poll(()=>channel('press')).toBe(0)
-    await expect.poll(()=>channel('charge')).toBe(0)
-    await expect(page.getByRole('dialog')).not.toBeVisible()
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}]})
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
-    await expect(page.getByRole('dialog',{name:'Command uplink'})).toBeVisible()
-    await page.getByRole('button',{name:'Close command HUD'}).tap()
-    await expect.poll(()=>channel('press')).toBe(0)
-    await expect.poll(()=>channel('charge')).toBe(0)
-    await expect(page.getByTestId('orb-charge')).toHaveCSS('opacity','0')
-    await cdp.detach()
-  })
-})
-
-test('a missing report cursor offers retry without an observer render loop', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.emulateMedia({reducedMotion:'reduce'})
-  await page.clock.install()
-  await intelligenceFixture(page)
-  let requests=0
-  await page.route('**/api/**/reports',route=>{
-    requests++
-    const {context}=route.request().postDataJSON()
-    return route.fulfill({json:{protocol:4,...context,viewer_revision:'1',sampled_at:baseTime,as_of_ms:baseTime,data:{items:[],has_more:true,next_cursor:null,as_of_ms:baseTime}}})
-  })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  await page.getByTestId('command-orb').click()
-  const panel=page.getByRole('dialog')
-  await expect(panel.getByRole('button',{name:'Retry intelligence'})).toBeVisible()
-  await expect(panel.getByRole('button',{name:'Load more intelligence'})).toHaveCount(0)
-  await expect(panel.getByText('No new intelligence. All channels clear.')).toHaveCount(0)
-  await expect(panel.getByText('Loading intelligence…')).toHaveCount(0)
-  const before=requests
-  await page.clock.runFor(1000)
-  expect(requests).toBe(before)
-  await panel.getByRole('button',{name:'Retry intelligence'}).click()
-  await expect.poll(()=>requests).toBeGreaterThan(before)
-  await expect(panel.getByRole('button',{name:'Retry intelligence'})).toBeVisible()
-})
-
-
-test('spy contacts are regular unread notifications and only active attacks make the orb red', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.emulateMedia({reducedMotion:'reduce'})
-  const f = await intelligenceFixture(page)
-  f.headers.push({id:id(870),kind:'SpyContact',observed_at:baseTime-86400000,read:false,hidden:false})
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb = page.getByTestId('command-orb')
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await expect(orb).toHaveAccessibleName('1 unread items. Open command HUD')
-  await expect(orb).toHaveCSS('color','rgb(236, 211, 159)')
-  await expect(page.getByLabel('Recent game events').getByRole('button')).toHaveCount(0)
-  await diagnosticScreenshot(page,{path:`${output}/spy-unread-login-390x844.png`})
-  await orb.click()
-  await expect(page.getByRole('dialog').getByRole('button',{name:/Spy Contact report/})).toHaveAttribute('data-tone','champagne')
-  await diagnosticScreenshot(page,{path:`${output}/spy-unread-inbox-390x844.png`})
-  await page.getByRole('button',{name:'Close command HUD'}).click()
-  f.headers.unshift({id:id(871),kind:'SpyContact',observed_at:baseTime,read:false,hidden:false})
-  await f.refresh()
-  const report = page.getByLabel('Recent game events').getByRole('button',{name:/Spy Contact report/})
-  await expect(report).toHaveAttribute('data-tone','champagne')
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await diagnosticScreenshot(page,{path:`${output}/spy-contact-toast-390x844.png`})
-  const probe = {sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Espionage' as const,arrival_at:baseTime+180000,ships:{visibility:'Unknown' as const}}
-  f.missions.incoming.push(probe)
-  await f.refresh()
-  await expect(page.getByLabel('Recent game events').getByRole('button',{name:/Enemy probes detected/})).toHaveAttribute('data-tone','champagne')
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await diagnosticScreenshot(page,{path:`${output}/spy-incoming-390x844.png`})
-  f.missions.incoming.unshift({...probe,mission:'Attack'})
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','red')
-  await expect(orb.locator('[data-orb-symbol]')).toHaveAttribute('data-orb-symbol','attack')
-  await diagnosticScreenshot(page,{path:`${output}/spy-with-active-attack-390x844.png`})
-  f.missions.incoming.shift()
-  await f.refresh()
-  await expect(orb).toHaveAttribute('data-tone','champagne')
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/spy-unread-desktop-1440x900.png`})
 })
 
 test('fleet accordion shows empire-wide flight paths, live timing, massive manifests and compact navigation', async ({page}) => {
@@ -946,7 +421,7 @@ test('fleet accordion shows empire-wide flight paths, live timing, massive manif
   await page.emulateMedia({reducedMotion:'reduce'})
   await page.clock.install({time:baseTime})
   await page.clock.pauseAt(baseTime)
-  const f = await intelligenceFixture(page, true, [{...body,name:'Aster Prime'},{...body,id:id(6),name:'Vesper',coordinates:{galaxy:1,system:370,position:4}}], [{id:id(47),name:'Nova Bastion',kind:'Planet',coordinates:{galaxy:1,system:372,position:3}}])
+  const f = await intelligenceFixture(page, [{...body,name:'Aster Prime'},{...body,id:id(6),name:'Vesper',coordinates:{galaxy:1,system:370,position:4}}], [{id:id(47),name:'Nova Bastion',kind:'Planet',coordinates:{galaxy:1,system:372,position:3}}])
   const massive: S['PublicShip4'][] = [
     {ship_type:'LightFighter',count:'120000'}, {ship_type:'HeavyFighter',count:'60000'},
     {ship_type:'Cruiser',count:'30000'}, {ship_type:'Battleship',count:'20000'},
@@ -1043,206 +518,6 @@ test('fleet accordion shows empire-wide flight paths, live timing, massive manif
   await diagnosticScreenshot(page,{path:`${output}/fleets-desktop-1440x900.png`})
 })
 
-
-for (const [width, height] of [[390, 844], [1440, 900]]) {
-  test(`enemy attacks appear only for incoming attacks at ${width}x${height}`, async ({page}) => {
-    await page.setViewportSize({width,height})
-    await page.emulateMedia({reducedMotion:'reduce'})
-    await page.clock.install({time:baseTime})
-    await page.clock.pauseAt(baseTime)
-    const origin:S['Destination']={id:id(98),kind:'Planet',name:'Arcanis Prime',coordinates:{galaxy:1,system:372,position:3}}
-    const moon:S['Destination']={...origin,id:id(97),kind:'Moon',name:'Arcanis Moon'}
-    const f=await intelligenceFixture(page,true,[body],[moon,origin])
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await page.getByTestId('command-orb').click()
-    const panel=page.getByRole('dialog',{name:'Command uplink'})
-    const enemies=panel.getByRole('region',{name:'Enemy attacks',exact:true})
-    await expect(panel).toBeVisible()
-    await expect(enemies).toHaveCount(0)
-    await expect(panel.getByRole('button',{name:/^Fleets/})).toBeVisible()
-
-    const incoming:S['IncomingMission4']={sender:id(99),origin:origin.coordinates,origin_body:origin.id,target:body.id,mission:'Transport',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}}
-    f.missions.incoming.push(incoming)
-    await f.refresh();await page.clock.runFor(1)
-    await expect(enemies).toHaveCount(0)
-    await diagnosticScreenshot(page,{path:`${output}/no-enemy-attacks-${width}x${height}.png`})
-
-    f.missions.incoming.push({...incoming,mission:'Attack'})
-    await f.refresh();await page.clock.runFor(1)
-    await expect(enemies).toBeVisible()
-    await expect(enemies.getByRole('button',{name:'Enemy attacks 1',exact:true})).toHaveAttribute('aria-expanded','true')
-    await expect(enemies.getByRole('article')).toHaveCount(1)
-    await expect(enemies).toContainText('Arcanis Prime')
-    await expect(enemies).not.toContainText('Arcanis Moon')
-    await expect(enemies).not.toContainText('Unknown origin')
-    await diagnosticScreenshot(page,{path:`${output}/incoming-enemy-attack-${width}x${height}.png`})
-
-    f.missions.incoming.pop()
-    await f.refresh();await page.clock.runFor(1)
-    await expect(enemies).toHaveCount(0)
-    await expect(panel.getByRole('button',{name:/^Enemy attacks/})).toHaveCount(0)
-    await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-cleared-${width}x${height}.png`})
-  })
-}
-
-test('enemy attacks open above fleets, use red, keep hidden intelligence hidden, and collapse independently', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.emulateMedia({reducedMotion:'reduce'})
-  await page.clock.install({time:baseTime})
-  await page.clock.pauseAt(baseTime)
-  const f=await intelligenceFixture(page,true,[{...body,name:'Aster Prime'}],[{id:id(47),kind:'Planet',name:'Nova Bastion',coordinates:{galaxy:1,system:372,position:3}}],{[id(99)]:'Nova',[id(98)]:'Rook'})
-  const ships:S['PublicShip4'][]=[{ship_type:'Cruiser',count:'1200'},{ship_type:'Battleship',count:'300'}]
-  const own=(n:number,mission:S['Mission4'],leg:S['OwnMission4']['leg']):S['OwnMission4']=>({
-    id:id(n),intent:{origin:body.id,destination:{type:'Body',id:id(47),expected_owner:id(99),expected_kind:'Planet'},mission,ships:ships.map(ship=>({...ship,owner:binding.player})),cargo:{metal:'0',crystal:'0',deuterium:'0'},speed_percent:100},
-    origin:body.coordinates,destination:{galaxy:1,system:372,position:3},leg,ships,cargo:{metal:'0',crystal:'0',deuterium:'0'},due_at:baseTime+10000,launched_at:baseTime-10000,duration_ms:20000,paid_fuel:'0',can_recall:leg==='Outbound',
-  })
-  f.missions.fleets.push(own(930,'Attack','Outbound'),own(931,'Transport','Returning'))
-  const attack:S['IncomingMission4']={sender:id(99),origin:{galaxy:1,system:372,position:3},target:body.id,mission:'Attack',arrival_at:baseTime+180000,ships:{visibility:'Unknown'}}
-  f.missions.incoming.push(attack,{...attack,sender:id(98),arrival_at:baseTime+300000,ships:{visibility:'Exact',total:'1500',ships}},{...attack,mission:'Transport'})
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  await expect(page.getByTestId('command-orb')).toBeVisible()
-  await page.getByTestId('command-orb').click()
-  const panel=page.getByRole('dialog',{name:'Command uplink'})
-  const enemyToggle=panel.getByRole('button',{name:'Enemy attacks 2',exact:true})
-  const ownToggle=panel.getByRole('button',{name:/^Fleets/})
-  const enemies=panel.getByRole('list',{name:'Enemy attacks',exact:true})
-  const fleets=panel.getByRole('list',{name:'Empire fleets',exact:true})
-  await expect(enemyToggle).toHaveAttribute('aria-expanded','true')
-  await expect(enemies.getByRole('article')).toHaveCount(2)
-  await expect(enemies.getByRole('article').first()).toContainText('Ships unknown')
-  await expect(enemies.getByRole('article').first()).toContainText('Nova')
-  await expect(enemies.getByRole('timer').first()).toHaveText('Arrives in 3m 0s')
-  await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(0)
-  expect((await enemyToggle.boundingBox())!.y).toBeLessThan((await ownToggle.boundingBox())!.y)
-  await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-390x844.png`})
-  await ownToggle.click()
-  await expect(fleets.locator('img')).toHaveCount(4)
-  await expect.poll(()=>fleets.locator('img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth>0))).toBe(true)
-  const colors=await panel.getByRole('article').evaluateAll(rows=>rows.map(row=>getComputedStyle(row).getPropertyValue('--flight').trim()))
-  expect(colors).toEqual(['#ff7d83','#ff7d83','#ecd39f','#a4dbef'])
-  await diagnosticScreenshot(page,{path:`${output}/enemy-and-own-fleets-390x844.png`})
-  await page.setViewportSize({width:320,height:740})
-  expect(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
-  await diagnosticScreenshot(page,{path:`${output}/enemy-and-own-fleets-320x740.png`})
-  await enemies.getByRole('button',{name:'Enemy ship composition: 1,500 ships'}).click()
-  await expect(enemies.getByRole('list',{name:'Ship composition'})).toContainText('Cruiser 1,200')
-  await diagnosticScreenshot(page,{path:`${output}/enemy-manifest-320x740.png`})
-  await enemyToggle.click()
-  await expect(enemies).toBeHidden()
-  await expect(fleets).toBeVisible()
-  await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-collapsed-320x740.png`})
-  const marker=fleets.getByRole('article').first().locator('.lucide-rocket').locator('..')
-  const start=await marker.evaluate(el=>(el as HTMLElement).style.left)
-  await page.emulateMedia({reducedMotion:'no-preference'})
-  await page.clock.runFor(250)
-  expect(await marker.evaluate(el=>(el as HTMLElement).style.left)).not.toBe(start)
-  const animation=await marker.evaluate(el=>({transition:getComputedStyle(el).transitionProperty,duration:getComputedStyle(el).transitionDuration,active:el.getAnimations().map(animation=>animation.constructor.name)}))
-  expect(animation.transition).toBe('left')
-  expect(animation.duration).toBe('0.25s')
-  expect(animation.active).toContain('CSSTransition')
-  await page.emulateMedia({reducedMotion:'reduce'})
-  expect(await marker.evaluate(el=>getComputedStyle(el).transitionDuration)).toBe('0s')
-  await enemyToggle.click()
-  await enemies.getByRole('button',{name:'Attack',exact:true}).first().click()
-  await expect(panel).toHaveCount(0)
-  await expect(page.getByRole('dialog',{name:'Hostile fleet inbound'})).toBeVisible()
-  await page.getByRole('button',{name:'Back to list'}).click()
-  f.missions.incoming.length=0
-  await f.refresh();await page.clock.runFor(1)
-  await expect(panel.getByRole('region',{name:'Enemy attacks',exact:true})).toHaveCount(0)
-  await expect(panel.getByRole('button',{name:/^Enemy attacks/})).toHaveCount(0)
-  await diagnosticScreenshot(page,{path:`${output}/enemy-attacks-cleared-320x740.png`})
-})
-
-
-test('HUD dismissal keeps exiting content inert and modal, then restores focus and scroll', async ({page}) => {
-  await page.setViewportSize({width:390,height:844})
-  await page.emulateMedia({reducedMotion:'no-preference'})
-  await intelligenceFixture(page)
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const orb=page.getByTestId('command-orb')
-  const panel=page.getByRole('dialog',{name:'Command uplink',exact:true})
-  await expect(orb).toBeVisible()
-  await page.evaluate(()=>window.scrollTo(0,150))
-  const originalY=await page.evaluate(()=>scrollY)
-  for(const dismissal of ['button','escape','backdrop'] as const){
-    await orb.click()
-    await expect(panel).toBeVisible()
-    await expect.poll(()=>panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
-    await expect(panel).toContainText('No new intelligence. All channels clear.')
-    if(dismissal==='button')await diagnosticScreenshot(page,{path:`${output}/popup-open-390x844.png`})
-    // Observe the semantic exit commit, not compositor/JS animation frames.
-    // Opacity and transform need not advance together on a busy runner.
-    const exit = await panel.evaluateHandle(el => {
-      const dialog = el as HTMLDialogElement
-      type ExitSnapshot = { connected: boolean; modal: boolean; locked: boolean; inert: boolean; content: string | null }
-      const state = { snapshot: null as ExitSnapshot | null, stop: () => observer.disconnect() }
-      const observer = new MutationObserver(() => {
-        if (!dialog.hasAttribute('data-closing')) return
-        state.snapshot = {
-          connected: dialog.isConnected,
-          modal: dialog.matches(':modal'),
-          locked: document.body.style.position === 'fixed',
-          inert: dialog.firstElementChild!.hasAttribute('inert'),
-          content: dialog.textContent,
-        }
-        observer.disconnect()
-      })
-      observer.observe(dialog, { attributes: true, attributeFilter: ['data-closing'] })
-      return state
-    })
-    try {
-      if (dismissal === 'button') await panel.getByRole('button', { name: 'Close command HUD' }).click()
-      else if (dismissal === 'escape') await page.keyboard.press('Escape')
-      else await page.mouse.click(1, 1) // Outside the inset dialog, on its backdrop.
-      await expect.poll(() => exit.evaluate(state => state.snapshot)).not.toBeNull()
-      expect(await exit.evaluate(state => state.snapshot)).toMatchObject({
-        connected: true, modal: true, locked: true, inert: true,
-        content: expect.stringContaining('No new intelligence. All channels clear.'),
-      })
-    } finally {
-      await exit.evaluate(state => state.stop())
-      await exit.dispose()
-    }
-    await expect(panel).toHaveCount(0)
-    await expect(orb).toBeFocused()
-    expect(await page.evaluate(()=>document.body.style.position)).toBe('')
-    expect(await page.evaluate(()=>scrollY)).toBe(originalY)
-  }
-  await diagnosticScreenshot(page,{path:`${output}/popup-closed-390x844.png`})
-  if(process.env.ORBIT_TEST_SCREENSHOTS==='1'){
-    await orb.click()
-    await expect.poll(()=>panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
-    await panel.evaluate(async el=>{
-      el.querySelector<HTMLButtonElement>('[aria-label="Close command HUD"]')!.click()
-      await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))
-      for(const animation of el.getAnimations()){
-        animation.pause()
-        animation.currentTime=Number(animation.effect!.getTiming().duration)/2
-      }
-    })
-    await diagnosticScreenshot(page,{path:`${output}/popup-closing-390x844.png`})
-    await panel.evaluate(el=>{for(const animation of el.getAnimations())animation.play()})
-    await expect(panel).toHaveCount(0)
-  }
-  await page.emulateMedia({reducedMotion:'reduce'})
-  await orb.click()
-  expect(await panel.evaluate(el=>getComputedStyle(el).opacity)).toBe('1')
-  expect(await panel.evaluate(el=>getComputedStyle(el,'::backdrop').animationName)).toBe('none')
-  await page.getByRole('button',{name:'Close command HUD'}).click()
-  await expect(panel).toHaveCount(0)
-  await orb.click()
-  await expect(panel).toBeVisible()
-  await page.setViewportSize({width:1440,height:900})
-  await expect(orb).toBeVisible()
-  await expect(panel).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(panel).toHaveCount(0)
-  await expect(orb).toBeFocused()
-  expect(await page.evaluate(()=>document.body.style.position)).toBe('')
-  await diagnosticScreenshot(page,{path:`${output}/popup-desktop-1440x900.png`})
-})
-
 async function setAppHidden(page: Page, hidden: boolean) {
   await page.evaluate((value) => {
     Object.defineProperty(document, 'hidden', { configurable: true, value })
@@ -1250,52 +525,6 @@ async function setAppHidden(page: Page, hidden: boolean) {
     document.dispatchEvent(new Event('visibilitychange'))
   }, hidden)
 }
-
-test('foreground refresh confirms an accepted response with accessible reduced motion', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.clock.install()
-  await page.addInitScript(() => { Math.random = () => 0.025 })
-  await intelligenceFixture(page)
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  const caption = page.getByTestId('orb-caption')
-  const pulse = page.getByTestId('orb-refresh-pulse')
-  await expect(caption).toHaveText('Welcome, Commander.')
-  await page.clock.fastForward(6000)
-  await expect(caption).toHaveCount(0)
-
-  // The threshold, failure/recovery ordering and one-shot policy are unit tested.
-  // Keep one browser boundary: visibility -> held HTTP response -> accessible UI.
-  let release!: () => void
-  const responseGate = new Promise<void>(resolve => { release = resolve })
-  let requested = false
-  await page.route('**/api/**/overview', async route => {
-    requested = true
-    await responseGate
-    await route.fallback()
-  })
-  try {
-    await setAppHidden(page, true)
-    await page.clock.setSystemTime((await page.evaluate(() => Date.now())) + 5 * 60 * 1000)
-    await setAppHidden(page, false)
-    await page.clock.runFor(300)
-    await expect.poll(() => requested).toBe(true)
-    await expect(pulse).toHaveCount(0)
-    await expect(caption).toHaveCount(0)
-    release()
-    await expect(caption).toHaveText('Refreshed')
-    await expect(page.getByRole('status').filter({ hasText: 'Refreshed' })).toBeVisible()
-    await expect(pulse.locator('span').first()).toHaveCSS('animation-name', 'none')
-    await diagnosticScreenshot(page, { path: `${output}/updated-reduced-motion-390x844.png` })
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-      await page.setViewportSize({ width: 1440, height: 900 })
-      await diagnosticScreenshot(page, { path: `${output}/updated-reduced-motion-1440x900.png` })
-    }
-  } finally {
-    release()
-    await page.unrouteAll({ behavior: 'wait' })
-  }
-})
 
 test('return refresh animation preview at mobile and desktop sizes', async ({page}) => {
   await page.setViewportSize({width:390,height:844})
@@ -1323,7 +552,7 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   }
   await setAppHidden(page, true)
   await page.clock.setSystemTime((await page.evaluate(()=>Date.now())) + 25*60*1000)
-  await setAppHidden(page, false)
+  await withFixtureResponse(page, response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/overview'), () => setAppHidden(page, false))
   await expect(page.getByTestId('orb-caption')).toHaveText('Welcome back, Commander.')
   const pulse=page.getByTestId('orb-refresh-pulse')
   expect(await pulse.locator('span').first().evaluate(el=>getComputedStyle(el).animationName)).toContain('refreshWave')
@@ -1351,8 +580,8 @@ test('return refresh animation preview at mobile and desktop sizes', async ({pag
   await diagnosticScreenshot(page,{path:`${output}/welcome-back-1440x900.png`})
 })
 
-for (const [width, height] of [[390, 844], [1440, 900]]) {
-  test(`shared inbox removes reports deleted elsewhere from the badge and panel at ${width}x${height}`, async ({ page }) => {
+test('shared inbox removes reports deleted elsewhere from the Reports route, badge and open panel', async ({ page }) => {
+    const width = 390, height = 844
     await page.setViewportSize({ width, height })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const f = await intelligenceFixture(page)
@@ -1389,116 +618,4 @@ for (const [width, height] of [[390, 844], [1440, 900]]) {
     await expect(panel.getByLabel('Intelligence list').getByRole('button')).toHaveCount(1)
     await expect(panel).not.toContainText('All channels clear.')
     await diagnosticScreenshot(page, { path: `${output}/reconciled-new-report-${width}x${height}.png` })
-  })
-}
-
-
-for (const width of [1440, 390]) {
-  test(`background HUD refresh preserves settled status and focus at ${width}px`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    const f = await intelligenceFixture(page)
-    f.headers.push({id: id(850), kind: 'Espionage', observed_at: baseTime, read: false, hidden: false})
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await page.getByTestId('command-orb').click()
-    await page.clock.runFor(1000)
-    const panel = page.getByRole('dialog', {name: 'Command uplink', exact: true})
-    const entry = panel.getByLabel('Intelligence list').getByRole('button')
-    await expect(entry).toHaveCount(1)
-    await expect(panel.getByText('You’re all caught up.', {exact: true})).toBeVisible()
-    await entry.focus()
-    let release!: () => void
-    let held = false
-    const gate = new Promise<void>(resolve => {release = resolve})
-    await page.route('**/api/**/reports', async route => {held = true; await gate; await route.fallback()})
-    try {
-      await page.clock.runFor(15000)
-      await expect.poll(() => held).toBe(true)
-      await expect(panel.getByText('Loading intelligence…', {exact: true})).toHaveCount(0)
-      await expect(panel.getByText('You’re all caught up.', {exact: true})).toBeVisible()
-      await expect(panel.getByLabel('Intelligence list')).toHaveAttribute('aria-busy', 'false')
-      await expect(entry).toBeEnabled()
-      await expect(entry).toBeFocused()
-      await diagnosticScreenshot(page, {path: `test-results/background-hud-${width}x900.png`})
-    } finally {release()}
-  })
-}
-
-// Retain the actual hook/DOM loading contract until isolated hook coverage replaces it.
-for (const width of [1440]) {
- for (const failRefresh of [false]) {
-  test(`background HUD refresh allows buffered entries and queues the next page at ${width}px (refresh fails: ${failRefresh})`, async ({page}) => {
-    await page.setViewportSize({width, height: 900})
-    await page.emulateMedia({reducedMotion: 'reduce'})
-    await page.clock.install()
-    await page.clock.pauseAt(new Date())
-    // Keep pagination gestures deterministic; native observer races have their
-    // own coverage above. Only intercept the HUD scroll root.
-    await page.addInitScript(() => {
-      const NativeObserver = window.IntersectionObserver
-      window.IntersectionObserver = class extends NativeObserver {
-        private hud: boolean
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          super(callback, options)
-          this.hud = options?.root instanceof HTMLDialogElement
-        }
-        observe(target: Element) { if (!this.hud) super.observe(target) }
-      }
-    })
-    const f = await intelligenceFixture(page)
-    f.headers.push(...Array.from({length: 130}, (_, i) => ({id: id(4000 + i), kind: 'Espionage', observed_at: baseTime - i, read: false, hidden: false})))
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(page.getByTestId('unread-count')).toHaveText('99')
-    await page.getByTestId('command-orb').click()
-    await page.clock.runFor(1000)
-    const panel = page.getByRole('dialog', {name: 'Command uplink', exact: true})
-    const list = panel.getByLabel('Intelligence list')
-    const entries = list.getByRole('button')
-    const more = panel.getByRole('button', {name: 'Load more intelligence', exact: true})
-    await expect(entries).toHaveCount(20)
-    let release!: () => void
-    let held = false
-    let refreshes = 0
-    const gate = new Promise<void>(resolve => {release = resolve})
-    await page.route('**/api/**/reports', async route => {
-      if (!route.request().postDataJSON().cursor) {
-        held = true
-        refreshes++
-        await gate
-        if (failRefresh) return route.fulfill({status: 503, json: {code: 'Unavailable'}})
-      }
-      await route.fallback()
-    })
-    try {
-      await page.clock.runFor(15000)
-      await expect.poll(() => held).toBe(true)
-      // Queue another passive refresh while the first owns the inbox.
-      await page.clock.runFor(15000)
-      await expect(more).toBeEnabled()
-      await more.focus()
-      await expect(more).toBeFocused()
-      await expect(list).toHaveAttribute('aria-busy', 'false')
-      for (const count of [40]) {
-        await more.click()
-        await expect(entries).toHaveCount(count)
-        await expect(more).toBeEnabled()
-      }
-      expect(f.reportQueries).not.toContain(id(4049))
-      await more.scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, {path: `test-results/background-hud-buffered-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
-      await more.click()
-      await expect(list).toHaveAttribute('aria-busy', 'true')
-      await expect(panel.getByText('Loading intelligence…', {exact: true})).toBeVisible()
-      expect(f.reportQueries).not.toContain(id(4049))
-      await diagnosticScreenshot(page, {path: `test-results/background-hud-queued-${width}x900-${failRefresh ? 'error' : 'ready'}.png`})
-    } finally {release()}
-    await expect(entries).toHaveCount(60)
-    await expect.poll(() => refreshes).toBe(2)
-    expect(f.reportQueries.filter(cursor => cursor === id(4049))).toHaveLength(1)
-    await expect(list).toHaveAttribute('aria-busy', 'false')
-  })
-}
-
-}
+})

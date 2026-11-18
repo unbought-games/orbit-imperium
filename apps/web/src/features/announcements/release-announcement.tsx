@@ -7,6 +7,7 @@ import { classes } from '../../ui/classes'
 import linkStyles from '../../ui/link.module.css'
 import { useReleaseAnnouncement } from './use-release-announcement'
 import styles from './release-announcement.module.css'
+import type { Announcement } from './model'
 
 const AnnouncementBody = lazy(() => import('./announcement-body'))
 
@@ -29,7 +30,26 @@ export function ReleaseAnnouncement({
     account,
     view.protocol === 4 ? (view.joined_at_ms ?? undefined) : undefined,
   )
-  const open = !!announcement && !suspended
+  return (
+    <AnnouncementBubble
+      announcement={suspended ? null : announcement}
+      acknowledge={acknowledge}
+    >
+      {children}
+    </AnnouncementBubble>
+  )
+}
+
+export function AnnouncementBubble({
+  announcement,
+  acknowledge,
+  children,
+}: {
+  announcement: Announcement | null
+  acknowledge: () => void
+  children: BubbleTrigger
+}) {
+  const open = !!announcement
   const triggerRef = useRef<HTMLButtonElement>(null)
   const close = () => {
     // The bubble unmounts with focus inside it. Return focus to the orb.

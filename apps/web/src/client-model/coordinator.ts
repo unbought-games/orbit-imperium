@@ -675,7 +675,6 @@ export class Coordinator {
       if (next.progress) this.sampleCommandClock(next.progress.sampled_at)
       this.orderRefresh = null
       this.store.setState({ view: next, settings, receivedAt: now, now })
-      this.delivery?.pending()
       if (
         this.pendingMinimum !== undefined &&
         BigInt(next.viewer_revision) >= BigInt(this.pendingMinimum)
@@ -688,6 +687,8 @@ export class Coordinator {
         incompatibleSchema: null,
         ...(now >= this.retryAt ? { rateLimited: false } : {}),
       })
+      // Schedule against the accepted revision and connection state.
+      this.delivery?.pending()
       await this.reconcile()
     } catch (e) {
       if (q !== this.viewGeneration || !this.current(g, b)) return
