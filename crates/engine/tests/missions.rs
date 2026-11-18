@@ -3427,6 +3427,11 @@ mod empire_deletion;
 #[path = "missions/vacation.rs"]
 mod vacation;
 
+#[path = "missions/moon_removal.rs"]
+mod moon_removal;
+
+#[path = "missions/moon_destruction.rs"]
+mod moon_destruction;
 #[path = "missions/moons.rs"]
 mod moons;
 

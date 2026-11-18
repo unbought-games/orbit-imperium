@@ -25,6 +25,7 @@ pub struct ScopeReferences {
     pub empire: BTreeSet<ScopeKey>,
     pub attack_groups: BTreeSet<ScopeKey>,
     pub holding: BTreeSet<ScopeKey>,
+    pub moon_removal: BTreeSet<ScopeKey>,
     pub missiles: BTreeMap<OperationId, (PlayerId, PlayerId, Coordinates, Coordinates)>,
     pub bodies: BTreeMap<BodyId, (PlayerId, Coordinates)>,
     pub fleets: BTreeMap<FleetId, (PlayerId, Option<PlayerId>, Coordinates, Coordinates)>,
@@ -55,6 +56,7 @@ pub fn command_scopes(
 ) -> Result<BTreeSet<ScopeKey>, GameError> {
     let mut scopes = BTreeSet::from([ScopeKey::Player(actor)]);
     scopes.extend(refs.holding.iter().cloned());
+    scopes.extend(refs.moon_removal.iter().cloned());
     scopes.extend(refs.empire.iter().cloned());
     scopes.extend(refs.attack_groups.iter().cloned());
     match command {
@@ -204,6 +206,7 @@ pub fn event_scopes(
     let mut scopes =
         scopes.ok_or_else(|| InvariantError("missing immutable scheduling reference".into()))?;
     scopes.extend(refs.holding.iter().cloned());
+    scopes.extend(refs.moon_removal.iter().cloned());
     scopes.extend(refs.empire.iter().cloned());
     scopes.extend(refs.attack_groups.iter().cloned());
     Ok(scopes)

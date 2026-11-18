@@ -58,6 +58,76 @@ pub fn abandonment_release(at: Timestamp) -> Result<Timestamp, GameError> {
     let day = 86_400_000;
     deadline((at / day + 1) * day, day)
 }
+pub(crate) fn resident_losses<'a>(
+    s: &GameState,
+    body: &Body,
+    resources: Resources,
+    inventory: impl IntoIterator<Item = &'a InventoryStack>,
+) -> Result<AbandonmentLoss, GameError> {
+    let owner = body.owner;
+    if !s.coverage.construction_bodies.contains(&body.id)
+        || !s.coverage.manufacturing_bodies.contains(&body.id)
+        || !s.coverage.inventory_owners.contains(&(body.id, owner))
+    {
+        return Err(GameError::PolicyUnavailable);
+    }
+    Ok(AbandonmentLoss {
+        id: body.id,
+        name: body.name.clone(),
+        kind: body.kind,
+        coordinates: body.coordinates,
+        resources,
+        buildings: body.levels.clone(),
+        inventory: inventory
+            .into_iter()
+            .filter(|x| x.body == body.id && x.count > 0)
+            .map(|x| AbandonedInventory {
+                item: x.item,
+                count: x.count,
+            })
+            .collect(),
+        construction: s
+            .constructions
+            .values()
+            .filter(|x| x.body == body.id && x.status == ConstructionStatus::Active)
+            .map(|x| AbandonedWork {
+                id: x.id,
+                item: format!("{:?} level {}", x.building, x.target_level),
+                quantity: 1,
+                paid: x.paid,
+            })
+            .collect(),
+        manufacturing: s
+            .manufacturing_batches
+            .values()
+            .filter(|x| x.body == body.id && x.status == ManufacturingStatus::Active)
+            .map(|x| {
+                Ok(AbandonedWork {
+                    id: x.id,
+                    item: match x.item {
+                        ManufacturedItem::Ship(v) => format!("{v:?}"),
+                        ManufacturedItem::Defense(v) => format!("{v:?}"),
+                        ManufacturedItem::Missile(v) => format!("{v:?}"),
+                    },
+                    quantity: x.quantity - x.completed_prefix,
+                    paid: Resources::from_values(
+                        x.commitment
+                            .unit_cost
+                            .values()
+                            .map(|v| {
+                                v.checked_mul(x.quantity - x.completed_prefix)
+                                    .ok_or(GameError::NumericRange)
+                            })
+                            .into_iter()
+                            .collect::<Result<Vec<_>, _>>()?
+                            .try_into()
+                            .map_err(|_| GameError::NumericRange)?,
+                    ),
+                })
+            })
+            .collect::<Result<Vec<_>, GameError>>()?,
+    })
+}
 pub fn quote_abandonment(
     s: &GameState,
     owner: PlayerId,
@@ -116,6 +186,13 @@ pub fn quote_abandonment(
     if w.records.fleets.values().any(|f| f.intent.mission == Mission::Hold && matches!(f.leg, MissionLeg::Outbound | MissionLeg::Holding) && matches!(f.intent.destination, MissionDestination::Body { id, .. } if ids.contains(&id))) {
         blockers.push("Allied fleets are inbound or holding here.".into());
     }
+    if w.records.fleets.values().any(|f| {
+        matches!(f.leg, MissionLeg::Outbound | MissionLeg::Holding)
+            && f.intent.destination != f.terms.intent.destination
+            && matches!(f.intent.destination, MissionDestination::Body { id, .. } if ids.contains(&id))
+    }) {
+        blockers.push("An incoming fleet depends on this planet after losing its lunar destination.".into());
+    }
     // Retain the inventory guard for imported foreign stationed assets.
     if s.inventories
         .iter()
@@ -131,71 +208,10 @@ pub fn quote_abandonment(
     }
     let mut losses = Vec::new();
     for body in &bodies {
-        if !s.coverage.construction_bodies.contains(&body.id)
-            || !s.coverage.manufacturing_bodies.contains(&body.id)
-            || !s.coverage.inventory_owners.contains(&(body.id, owner))
-        {
-            return Err(GameError::PolicyUnavailable);
-        }
-        losses.push(AbandonmentLoss {
-            id: body.id,
-            name: body.name.clone(),
-            kind: body.kind,
-            coordinates: body.coordinates,
-            resources: settle_production(s, body, at, r)
-                .map_err(|_| GameError::PolicyUnavailable)?
-                .amounts,
-            buildings: body.levels.clone(),
-            inventory: s
-                .inventories
-                .iter()
-                .filter(|x| x.body == body.id && x.count > 0)
-                .map(|x| AbandonedInventory {
-                    item: x.item,
-                    count: x.count,
-                })
-                .collect(),
-            construction: s
-                .constructions
-                .values()
-                .filter(|x| x.body == body.id && x.status == ConstructionStatus::Active)
-                .map(|x| AbandonedWork {
-                    id: x.id,
-                    item: format!("{:?} level {}", x.building, x.target_level),
-                    quantity: 1,
-                    paid: x.paid,
-                })
-                .collect(),
-            manufacturing: s
-                .manufacturing_batches
-                .values()
-                .filter(|x| x.body == body.id && x.status == ManufacturingStatus::Active)
-                .map(|x| {
-                    Ok(AbandonedWork {
-                        id: x.id,
-                        item: match x.item {
-                            ManufacturedItem::Ship(v) => format!("{v:?}"),
-                            ManufacturedItem::Defense(v) => format!("{v:?}"),
-                            ManufacturedItem::Missile(v) => format!("{v:?}"),
-                        },
-                        quantity: x.quantity - x.completed_prefix,
-                        paid: Resources::from_values(
-                            x.commitment
-                                .unit_cost
-                                .values()
-                                .map(|v| {
-                                    v.checked_mul(x.quantity - x.completed_prefix)
-                                        .ok_or(GameError::NumericRange)
-                                })
-                                .into_iter()
-                                .collect::<Result<Vec<_>, _>>()?
-                                .try_into()
-                                .map_err(|_| GameError::NumericRange)?,
-                        ),
-                    })
-                })
-                .collect::<Result<Vec<_>, GameError>>()?,
-        });
+        let resources = settle_production(s, body, at, r)
+            .map_err(|_| GameError::PolicyUnavailable)?
+            .amounts;
+        losses.push(resident_losses(s, body, resources, &s.inventories)?);
     }
     // Passive production does not invalidate consent. A changed cleanup day,
     // inventory, building, queue or checkpoint requires a fresh review.
@@ -218,6 +234,36 @@ pub fn quote_abandonment(
         losses,
     })
 }
+pub(crate) fn terminate_jobs(
+    s: &GameState,
+    c: &mut ChangeSet,
+    loss: &AbandonmentLoss,
+    construction_status: ConstructionStatus,
+    manufacturing_status: ManufacturingStatus,
+) -> Result<(), GameError> {
+    for old in &loss.construction {
+        let mut op = s.constructions[&old.id].clone();
+        op.status = construction_status.clone();
+        op.revision = op.revision.checked_add(1).ok_or(GameError::NumericRange)?;
+        c.cancelled_events.push(ScheduledEvent::ConstructionDue {
+            operation: op.id,
+            generation: op.generation,
+        });
+        c.constructions.push(op);
+    }
+    for old in &loss.manufacturing {
+        let mut op = s.manufacturing_batches[&old.id].clone();
+        op.status = manufacturing_status.clone();
+        op.revision = op.revision.checked_add(1).ok_or(GameError::NumericRange)?;
+        c.cancelled_events.push(ScheduledEvent::ManufacturingDue {
+            operation: op.id,
+            generation: op.generation,
+            expected_prefix: op.completed_prefix,
+        });
+        c.manufacturing_batches.push(op);
+    }
+    Ok(())
+}
 pub(crate) fn abandon(
     s: &GameState,
     i: &OrderedInput,
@@ -238,27 +284,13 @@ pub(crate) fn abandon(
         return Err(GameError::QuoteChanged.into());
     }
     for loss in &q.losses {
-        for old in &loss.construction {
-            let mut op = s.constructions[&old.id].clone();
-            op.status = ConstructionStatus::BodyAbandoned;
-            op.revision = op.revision.checked_add(1).ok_or(GameError::NumericRange)?;
-            c.cancelled_events.push(ScheduledEvent::ConstructionDue {
-                operation: op.id,
-                generation: op.generation,
-            });
-            c.constructions.push(op);
-        }
-        for old in &loss.manufacturing {
-            let mut op = s.manufacturing_batches[&old.id].clone();
-            op.status = ManufacturingStatus::BodyAbandoned;
-            op.revision = op.revision.checked_add(1).ok_or(GameError::NumericRange)?;
-            c.cancelled_events.push(ScheduledEvent::ManufacturingDue {
-                operation: op.id,
-                generation: op.generation,
-                expected_prefix: op.completed_prefix,
-            });
-            c.manufacturing_batches.push(op);
-        }
+        terminate_jobs(
+            s,
+            c,
+            loss,
+            ConstructionStatus::BodyAbandoned,
+            ManufacturingStatus::BodyAbandoned,
+        )?;
         w.lots
             .retain(|lot| lot.location != AssetLocation::Body(loss.id));
         w.colonies.remove(&loss.id);

@@ -112,6 +112,18 @@ pub(super) fn world_projection(
         }
     }
     Ok(BoundView4 {
+        destroyed_moons: world
+            .records
+            .destroyed_moons
+            .values()
+            .filter(|loss| {
+                loss.owner == viewer && progression.bodies.iter().any(|b| b.id == loss.parent)
+            })
+            .map(|loss| DestroyedMoonRoute {
+                moon: loss.body,
+                parent: loss.parent,
+            })
+            .collect(),
         vacation: vacation_view(state, viewer).map_err(|_| ServiceError::InvariantFailure)?,
         empire_deletion: world
             .records
@@ -191,6 +203,9 @@ fn mission_projection(
             };
             fleets.push(own);
         } else if let Some(mut mission) = incoming_mission(fleet, research.owner, espionage)? {
+            if records.destroyed_moons.contains_key(&mission.target) {
+                continue;
+            }
             mission.arrival_at = effective_fleet_due(records, fleet);
             mission.attack_group = fleet_attack_group(records, fleet.id).map(|g| g.id);
             incoming.push(mission);
@@ -333,6 +348,13 @@ fn world_capabilities(
     if phalanx_enabled(rules) {
         capabilities.push(CapabilityState {
             capability: "ScanPlanet".into(),
+            enabled: true,
+            reason: "Available".into(),
+        });
+    }
+    if moon_destruction_enabled(rules) {
+        capabilities.push(CapabilityState {
+            capability: "DestroyMoon".into(),
             enabled: true,
             reason: "Available".into(),
         });

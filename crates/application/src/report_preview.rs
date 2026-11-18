@@ -33,7 +33,8 @@ pub fn report_preview(payload: &Value) -> Value {
         return serde_json::json!({"kind":"PlanetAbandoned", "coordinates":payload["abandonment"]["coordinates"], "release_at":payload["abandonment"]["release_at"]});
     }
     let fields: &[&str] = match payload["kind"].as_str() {
-        Some("MoonCreated") => &["coordinates", "diameter_km"],
+        Some("MoonFleetRedirected" | "MoonTargetLost") => &["mission", "coordinates", "due_at"],
+        Some("MoonCreated" | "MoonDestroyed") => &["coordinates", "diameter_km"],
         Some("MissileImpact") => &[
             "attacker",
             "origin",
@@ -87,6 +88,7 @@ pub fn report_preview(payload: &Value) -> Value {
             "loot",
             "debris",
             "mission",
+            "moon_destruction",
         ],
         Some("ContactLost") => &["target", "target_kind", "own_lost_ships", "own_cargo_loss"],
         Some("Colonized" | "ColonizationFailed") => &["destination_coordinates", "reason"],

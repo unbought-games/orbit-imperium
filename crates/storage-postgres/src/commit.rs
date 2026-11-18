@@ -438,14 +438,28 @@ pub(crate) async fn persist_changes(
                     .map(ToString::to_string),
             );
         }
-        for fleet in world.records.fleets.values().filter(|f| {
-            f.intent.mission == Mission::Hold
-                && !facts
-                    .world
-                    .as_ref()
-                    .is_some_and(|w| w.records.fleets.contains_key(&f.id))
-        }) {
-            crate::holding::extend_pending(tx, i, fleet).await?;
+        let previous = &facts
+            .world
+            .as_ref()
+            .ok_or(StoreError::CorruptData)?
+            .records
+            .fleets;
+        for fleet in world.records.fleets.values() {
+            let old = previous.get(&fleet.id);
+            if fleet.intent.mission == Mission::Hold
+                && old.is_none_or(|f| f.intent.destination != fleet.intent.destination)
+            {
+                crate::holding::extend_pending(tx, i, fleet).await?;
+            }
+            if old.is_none()
+                && let MissionDestination::Body {
+                    id,
+                    expected_kind: BodyKind::Moon,
+                    ..
+                } = fleet.intent.destination
+            {
+                crate::moon_removal::extend_pending(tx, i, id, fleet).await?;
+            }
         }
         result_ids.extend(
             world

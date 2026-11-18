@@ -15,6 +15,7 @@ mod colonization;
 mod empire_deletion;
 mod holding;
 mod insignias;
+mod moon_removal;
 mod moons;
 mod public_universe;
 pub use public_universe::PublicationClaim;

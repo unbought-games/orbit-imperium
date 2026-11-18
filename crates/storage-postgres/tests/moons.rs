@@ -1,7 +1,7 @@
 //! Regression: one lunar slot per parent and one body per coordinate/kind must
-//! survive failed inserts. Combat and lunar progression use deterministic engine
-//! coverage; this database test does not compose a full game journey.
-use orbit_application::{ScenarioMode, WorldScenario};
+//! survive failed inserts. Destruction must terminalize paid work atomically
+//! and prevent stale completion from restoring assets.
+use orbit_application::*;
 use orbit_engine::*;
 use orbit_storage_postgres::PgStore;
 use serde_json::json;
@@ -113,3 +113,8 @@ async fn lunar_slot_constraints_preserve_planets_and_rollback_partial_inserts() 
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].0, genesis);
 }
+
+#[path = "moons/destruction.rs"]
+mod destruction;
+#[path = "support/gameplay.rs"]
+mod gameplay;

@@ -24,6 +24,9 @@ pub(super) async fn command(store: &PgStore, binding: Binding, command: Command)
         | Command::SetProduction { body, .. }
         | Command::StartManufacture { body, .. } => *body,
         Command::StartResearch { host, .. } => *host,
+        Command::World {
+            action: WorldAction::LaunchFleet { intent, .. },
+        } => intent.origin,
         _ => panic!("fixture command body"),
     };
     let id = CommandId(Uuid::new_v4());

@@ -333,6 +333,13 @@ impl PgStore {
                     "cannot export active harvest/colonization mission; finish it first".into(),
                 );
             };
+            if f.intent != f.terms.intent
+                || !s.bodies.contains_key(&target)
+                || !s.bodies.contains_key(&f.intent.origin)
+                || f.intent.mission == Mission::DestroyMoon
+            {
+                return Err("cannot export a fleet bound to a destroyed moon or an active moon destruction mission; wait for its flight to finish".into());
+            }
             let mission = match f.intent.mission {
                 Mission::Attack => "attack",
                 Mission::Espionage => "spy",

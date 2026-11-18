@@ -366,6 +366,26 @@ fn quote_inner(
                 true,
             )?;
         }
+        (
+            Mission::DestroyMoon,
+            MissionDestination::Body {
+                id,
+                expected_kind: BodyKind::Moon,
+                ..
+            },
+        ) => {
+            if !intent
+                .ships
+                .iter()
+                .any(|ship| ship.ship_type == ShipType::Dreadnought && ship.count > 0)
+            {
+                return Err(GameError::InsufficientShips.into());
+            }
+            if !w.records.moons.contains_key(id) {
+                return Err(invariant("missing destruction target genesis"));
+            }
+        }
+        (Mission::DestroyMoon, _) => return Err(GameError::BodyKindNotAllowed.into()),
         (Mission::Attack, MissionDestination::Site { .. }) => {}
         (Mission::Harvest, MissionDestination::Debris { .. })
             if intent
@@ -1271,15 +1291,17 @@ pub(crate) fn resolve(
                             {
                                 crate::site_encounter::arrive(s, i, &mut f, r, &mut w)?
                             }
-                            Mission::Attack => crate::encounter::attack_encounter(
-                                s,
-                                i,
-                                &mut f,
-                                r,
-                                &mut c,
-                                &mut w,
-                                &mut audits,
-                            )?,
+                            Mission::Attack | Mission::DestroyMoon => {
+                                crate::encounter::attack_encounter(
+                                    s,
+                                    i,
+                                    &mut f,
+                                    r,
+                                    &mut c,
+                                    &mut w,
+                                    &mut audits,
+                                )?
+                            }
                             Mission::Espionage => crate::encounter::spy_encounter(
                                 s,
                                 i,
@@ -1290,7 +1312,9 @@ pub(crate) fn resolve(
                                 &mut audits,
                             )?,
                         }
-                        if let MissionDestination::Body { id, .. } = f.intent.destination {
+                        if let MissionDestination::Body { id, .. } = f.intent.destination
+                            && !w.destroyed_moons.contains_key(&id)
+                        {
                             signal(&mut w, id, i, ActivityCause::Contact);
                             if let Some(owner) = target_owner {
                                 c.affected_viewers.insert(owner);

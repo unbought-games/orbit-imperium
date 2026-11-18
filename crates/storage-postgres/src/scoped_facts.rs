@@ -37,6 +37,7 @@ impl PgStore {
 
 #[derive(Default)]
 pub(crate) struct Selection {
+    pub abandonment_target: Option<BodyId>,
     pub sites: BTreeSet<SiteId>,
     pub owners: BTreeSet<PlayerId>,
     pub coordinates: BTreeSet<Coordinates>,
@@ -174,8 +175,8 @@ pub(crate) async fn select_query(
     match query {
         WorldQueryKind::Tutorial
         | WorldQueryKind::MissionSites
-        | WorldQueryKind::ResolveMissionSite { .. }
-        | WorldQueryKind::AbandonmentQuote { .. } => {}
+        | WorldQueryKind::ResolveMissionSite { .. } => {}
+        WorldQueryKind::AbandonmentQuote { body } => selected.abandonment_target = Some(*body),
         WorldQueryKind::Galaxy { galaxy, system } => {
             let dimensions = rules
                 .artifact

@@ -244,8 +244,18 @@ pub(crate) async fn load_selected(
         .iter()
         .flat_map(|g| g.members.iter().map(|f| f.0))
         .collect();
+    // A redirected foreign transport keeps this parent in use until delivery.
+    // Read its bound flight under the parent location/owner scope for both
+    // the quote and the ordered rejection; no foreign economy is needed.
+    let abandonment_target = match input {
+        Input::Command(Command::World {
+            action: WorldAction::AbandonPlanet { body, .. },
+        }) => Some(*body),
+        _ => selected.abandonment_target,
+    };
     let mut fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>(
-        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->>'leg'='Holding' AND (data->'intent'->'destination'->>'expected_owner')::uuid=ANY($4)) OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
+        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->>'leg'='Holding' AND (data->'intent'->'destination'->>'expected_owner')::uuid=ANY($4)) OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)
+        OR (data->>'leg' IN ('Outbound','Holding') AND data->'intent'->'destination'->>'id'=$7 AND data->'terms'->'intent'->'destination'->>'id'<>$7)) ORDER BY id",
     )
     .bind(u.0)
     .bind(fleet_id)
@@ -253,6 +263,7 @@ pub(crate) async fn load_selected(
     .bind(&owners)
     .bind(selected.incoming_for.map(|p| p.to_string()))
     .bind(&coordinate_values)
+    .bind(abandonment_target.map(|id| id.to_string()))
     .fetch_all(&mut **tx)
     .await
     .map_err(db_error)?
@@ -337,6 +348,8 @@ pub(crate) async fn load_selected(
             s.coverage.bodies.insert(id);
         }
     }
+    crate::moon_removal::cover_arrival(tx, u, input, &fleets, &mut s).await?;
+    let destroyed_moons = crate::moon_removal::load(tx, u, &owners, &fleets, selected.all).await?;
     let missile_id = match input {
         Input::Event(ScheduledEvent::MissileImpact { flight, .. }) => Some(flight.0),
         _ => None,
@@ -664,6 +677,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            destroyed_moons,
             gate_uses: gate_uses.into_iter().map(|g| (g.body, g)).collect(),
             mission_sites,
             objective_runs,
@@ -776,6 +790,7 @@ pub(crate) async fn save(
     let u = i.universe;
     crate::objectives::save(tx, i, old, &c.records).await?;
     crate::tutorial::save(tx, i, old, &c.records).await?;
+    crate::moon_removal::save(tx, i, old, &c.records).await?;
     for (id, gate) in &c.records.gate_uses {
         if old.gate_uses.get(id) != Some(gate) {
             sqlx::query("INSERT INTO jump_gate_uses(universe,body,data) VALUES($1,$2,$3) ON CONFLICT(body) DO UPDATE SET data=excluded.data")
@@ -1128,6 +1143,20 @@ impl PgStore {
         ) {
             crate::phalanx::admit(&mut tx, b.universe, jump_gates_enabled).await?;
         }
+        if matches!(
+            &g,
+            Command::World {
+                action: WorldAction::LaunchFleet {
+                    intent: FleetIntent {
+                        mission: Mission::DestroyMoon,
+                        ..
+                    },
+                    ..
+                }
+            }
+        ) {
+            crate::phalanx::admit(&mut tx, b.universe, moon_destruction_enabled).await?;
+        }
         if machine {
             let body = crate::bots::participation_body(&mut tx, b, &g).await?;
             if let Command::World {
@@ -1462,7 +1491,7 @@ impl PgStore {
             )
             .await?;
         let (facts, _) = snapshot.facts;
-        let quote = quote_fleet(&facts.state, b.player, &intent, facts.at, &facts.rules)
+        let quote = quote_fleet_with_odds(&facts.state, b.player, &intent, facts.at, &facts.rules)
             .map_err(StoreError::GameRejected)?;
         tx.commit().await.map_err(db_error)?;
         serde_json::to_value(quote).map_err(|_| StoreError::CorruptData)
