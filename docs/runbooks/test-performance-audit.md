@@ -2455,3 +2455,11 @@ gameplay and did not exhibit these two failures in the recorded run.
 With the repository runner on the Mac validation machine, focused execution
 after the repair passed in 14.014 seconds for Nanite and 14.131 seconds for
 the invited group. GitHub checks exercise the default Linux stack.
+
+Both repaired cases passed on Linux at `e065ccf23d188907b0a0736b76db4953293c5117`
+in run `44397065241`. Its remaining PostgreSQL job `135129839678` subsequently
+failed in the player lookup plan test. PostgreSQL reported six bind parameters
+for the seven-parameter production fleet query. This was its only test-side
+call using the extracted SQL. Bind the optional parent ID and exercise both the
+ordinary lookup and parent lookup with the existing buffer bound. All 18
+migration tests passed locally in 10.472 seconds.

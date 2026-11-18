@@ -666,10 +666,11 @@ async fn player_lookups_are_selective_and_keep_explicit_terminal_operations() {
         .fetch_one(&pool)
         .await
         .unwrap();
-    let p: uuid::Uuid = sqlx::query_scalar("SELECT md5('p42')::uuid")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let (p, parent): (uuid::Uuid, String) =
+        sqlx::query_as("SELECT owner, id::text FROM bodies WHERE id=md5('b42')::uuid")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     let explicit: Vec<uuid::Uuid> = sqlx::query_scalar(
         "SELECT md5(x)::uuid FROM unnest(ARRAY['m10042','m42','m11042','absent']) x",
     )
@@ -747,18 +748,24 @@ async fn player_lookups_are_selective_and_keep_explicit_terminal_operations() {
                 world,
                 "SELECT data FROM mission_fleets WHERE universe=$1 AND ((",
             );
-            let plan: serde_json::Value =
-                sqlx::query_scalar(&format!("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) {q}"))
-                    .bind(u)
-                    .bind(None::<uuid::Uuid>)
-                    .bind(false)
-                    .bind(vec![p])
-                    .bind(p.to_string())
-                    .bind(&coordinates)
-                    .fetch_one(&mut *tx)
-                    .await
-                    .unwrap();
-            assert_selective(&plan, 100, "missions");
+            for (abandonment_target, label) in [
+                (None, "missions"),
+                (Some(parent.as_str()), "missions at a fallback parent"),
+            ] {
+                let plan: serde_json::Value =
+                    sqlx::query_scalar(&format!("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) {q}"))
+                        .bind(u)
+                        .bind(None::<uuid::Uuid>)
+                        .bind(false)
+                        .bind(vec![p])
+                        .bind(p.to_string())
+                        .bind(&coordinates)
+                        .bind(abandonment_target)
+                        .fetch_one(&mut *tx)
+                        .await
+                        .unwrap();
+                assert_selective(&plan, 100, label);
+            }
         }
     }
 }
