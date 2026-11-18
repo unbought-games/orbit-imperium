@@ -66,3 +66,23 @@ it('does not bring older hidden toasts back when one is dismissed', () => {
   state = hudReducer(state, { type: 'dismiss-toast', id: 4 })
   expect(hudView(state, 5).toasts.map((event) => event.id)).toEqual([3, 2])
 })
+
+it.each([
+  ['spy', 'ice'],
+  ['fleet', 'ice'],
+  ['report', 'champagne'],
+  ['message', 'champagne'],
+  ['building', 'green'],
+  ['research', 'green'],
+  ['shipyard', 'green'],
+  ['defense', 'green'],
+  ['attack', 'red'],
+  ['scan', 'red'],
+] as const)('a fresh %s event presents a %s orb after reset', (kind, tone) => {
+  const state = hudReducer(initialHud(0, false), {
+    type: 'trigger',
+    kind,
+    now: 100,
+  })
+  expect(hudView(state, 100).tone).toBe(tone)
+})

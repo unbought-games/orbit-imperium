@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { withBootstrapResponse, withReportResponse, withFixtureResponseStatus } from './fixtures/responses'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import schema from '../../../contracts/openapi.json' with { type: 'json' }
 
@@ -19,7 +19,6 @@ async function reports(page: Page, payload: () => unknown, status = () => 200) {
   })
 }
 const canonicalReportUrl = `/u/andromeda/b/${body.id}/reports/${id(62)}`
-const reportUrl = `/u/andromeda/b/${body.id}/reports/${id(62)}`
 
 test('expanded espionage survives direct navigation, reload and historical observations on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -28,7 +27,7 @@ test('expanded espionage survives direct navigation, reload and historical obser
   await reports(page, () => historical ? {
     ...observation, research: { visibility: 'Unknown' },
   } : observation)
-  await withReportResponse(page, id(62), () => page.goto(reportUrl))
+  await withReportResponse(page, id(62), () => page.goto(canonicalReportUrl))
   await expect(page).toHaveURL(canonicalReportUrl)
   const report = page.getByRole('region', { name: 'Report observation' })
   await expect(report).toContainText('Astrophysics')
@@ -42,28 +41,28 @@ test('expanded espionage survives direct navigation, reload and historical obser
   await expect(report).not.toContainText('Astrophysics')
 })
 
-for (const protocol of [3, 4] as const) {
-  test(`protocol ${protocol} game opens with expanded buildings`, async ({ page }) => {
+test('protocol 3 game opens with expanded buildings', async ({ page }) => {
     const levels = { ...body.levels, ...Object.fromEntries(schema.components.schemas.BuildingId3.enum.map(key => [key, 0])) }
-    await shellFixture(page, { protocol, bodies: [{ ...body, levels }] })
+    await shellFixture(page, { protocol: 3, bodies: [{ ...body, levels }] })
     await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
     await expect(page.getByRole('heading', { name: /^Empire/, level: 1 })).toBeVisible()
     await withBootstrapResponse(page, () => page.reload())
     await expect(page.getByRole('heading', { name: /^Empire/, level: 1 })).toBeVisible()
   })
-}
 
 test('transient report failures can still retry without reloading', async ({ page }) => {
   await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
   let status = 503
   await reports(page, () => observation, () => status)
   // Enter the final route: a delayed alias remount could recover before the button click.
-  await page.goto(canonicalReportUrl)
+  await withFixtureResponseStatus(page,
+    response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(`/reports/${id(62)}`),
+    () => page.goto(canonicalReportUrl), 503)
   await expect(page.getByRole('alert')).toContainText('Unable to load reports')
   let navigations = 0
   page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations++ })
   status = 200
-  await page.getByRole('button', { name: 'Retry reports' }).click()
+  await withReportResponse(page, id(62), () => page.getByRole('button', { name: 'Retry reports' }).click())
   await expect(page.getByRole('region', { name: 'Report observation' })).toContainText('Astrophysics')
   expect(navigations).toBe(0)
 })

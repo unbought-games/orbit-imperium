@@ -939,72 +939,96 @@ it('applies duplicate outcome updates once and coalesces invalidations at the la
   expect(revisions).toHaveLength(3)
 })
 
-it('does not start fast recovery while Login submission is still in flight', async () => {
-  const { vi } = await import('vitest')
-  vi.useFakeTimers()
-  const { readyFixture } = await import('../test-support/bootstrap')
-  const { session, snapshot } = readyFixture(4)
-  const { port } = setup()
-  let release!: (receipt: BoundReceipt) => void
-  port.submit = () =>
-    new Promise((resolve) => {
-      release = resolve
-    })
-  port.view = vi.fn(async (context) => ({
-    ...snapshot.view,
-    request_id: context.request_id,
-  }))
-  port.receipt = vi.fn(
-    async (): Promise<BoundReceipt> => ({
-      protocol: 4,
-      binding: snapshot.candidate.binding,
-      command_id: id(90),
-      admitted_at: 1000,
-      executed_at: null,
-      status: 'Pending',
-    }),
-  )
-  const model = new Coordinator(
-    port,
-    {
-      newId: () => id(90),
-      monotonicNowMs: () => Date.now(),
-      isOnline: () => true,
-      random: () => 0,
-      scheduleOnce(callback, delay) {
-        const timer = setTimeout(callback, delay)
-        return () => clearTimeout(timer)
+it.each(['pending', 'committed', 'disposed'] as const)(
+  'waits for the slow Login submission before polling or refreshing (%s)',
+  async (outcome) => {
+    const { vi } = await import('vitest')
+    vi.useFakeTimers()
+    const { readyFixture } = await import('../test-support/bootstrap')
+    const { session, snapshot } = readyFixture(4)
+    const { port } = setup()
+    let release!: (receipt: BoundReceipt) => void
+    port.submit = () =>
+      new Promise((resolve) => {
+        release = resolve
+      })
+    port.view = vi.fn(async (context) => ({
+      ...snapshot.view,
+      request_id: context.request_id,
+    }))
+    port.receipt = vi.fn(
+      async (): Promise<BoundReceipt> => ({
+        protocol: 4,
+        binding: snapshot.candidate.binding,
+        command_id: id(90),
+        admitted_at: 1000,
+        executed_at: null,
+        status: 'Pending',
+      }),
+    )
+    const model = new Coordinator(
+      port,
+      {
+        newId: () => id(90),
+        monotonicNowMs: () => Date.now(),
+        isOnline: () => true,
+        random: () => 0,
+        scheduleOnce(callback, delay) {
+          const timer = setTimeout(callback, delay)
+          return () => clearTimeout(timer)
+        },
       },
-    },
-    {
-      async subscribe() {
-        throw { status: 404 }
+      {
+        async subscribe() {
+          throw { status: 404 }
+        },
       },
-    },
-  )
-  await model.initialize(session, snapshot)
-  const stop = model.startDelivery()
-  try {
-    const login = model.recordLogin()
-    await vi.advanceTimersByTimeAsync(2000)
-    expect(port.receipt).not.toHaveBeenCalled()
-    expect(port.view).not.toHaveBeenCalled()
-    release({
-      protocol: 4,
-      binding: snapshot.candidate.binding,
-      command_id: id(90),
-      admitted_at: 1000,
-      executed_at: null,
-      status: 'Pending',
-    })
-    await login
-    await vi.advanceTimersByTimeAsync(1000)
-    expect(port.receipt).toHaveBeenCalledTimes(1)
-  } finally {
-    stop()
-    vi.useRealTimers()
-  }
-})
+    )
+    await model.initialize(session, snapshot)
+    const discover = vi.spyOn(port, 'currentBinding')
+    const submit = vi.spyOn(port, 'submit')
+    const stop = model.startDelivery()
+    try {
+      const login = model.recordLogin()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(port.receipt).not.toHaveBeenCalled()
+      expect(port.view).not.toHaveBeenCalled()
+      expect(discover).not.toHaveBeenCalled()
+      if (outcome === 'disposed') model.invalidate()
+      release(
+        outcome === 'pending'
+          ? {
+              protocol: 4,
+              binding: snapshot.candidate.binding,
+              command_id: id(90),
+              admitted_at: 1000,
+              executed_at: null,
+              status: 'Pending',
+            }
+          : {
+              protocol: 4,
+              binding: snapshot.candidate.binding,
+              command_id: id(90),
+              admitted_at: 1000,
+              executed_at: 1000,
+              status: 'Committed',
+              minimum_viewer_revision: '0',
+              result_ids: [],
+            },
+      )
+      await login
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(port.receipt).toHaveBeenCalledTimes(outcome === 'pending' ? 1 : 0)
+      if (outcome !== 'pending')
+        expect(port.view).toHaveBeenCalledTimes(outcome === 'committed' ? 1 : 0)
+      expect(submit).toHaveBeenCalledTimes(1)
+      expect(discover).not.toHaveBeenCalled()
+    } finally {
+      stop()
+      vi.useRealTimers()
+    }
+  },
+)
 
 it('retains a required revision across backoff and a still-behind snapshot', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')

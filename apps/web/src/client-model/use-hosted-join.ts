@@ -1,11 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { oidcHttp } from '../adapters/oidc'
+import { oidcHttp, type OidcConfig } from '../adapters/oidc'
 import { useOidcConfig } from './use-oidc'
 
 export function hostedJoinUniverse(pathname: string): string | undefined {
   return /^\/join\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(
     pathname,
   )?.[1]
+}
+
+/** The return URL can only select the universe enabled for hosted enrollment. */
+export function hostedEnrollmentTarget(
+  config: OidcConfig,
+  requested: string | undefined,
+): string | undefined {
+  const hosted = config.hosted_universe
+  if (
+    config.mode !== 'oidc' ||
+    !hosted ||
+    (requested !== undefined && requested !== hosted)
+  )
+    return undefined
+  return hosted
 }
 
 export function useHostedJoin(
@@ -19,13 +34,10 @@ export function useHostedJoin(
   const [error, setError] = useState('')
   const attempted = useRef(false)
   const target =
-    universe ??
-    (state.status === 'ready' ? state.config.hosted_universe : undefined)
-  const allowed =
-    state.status === 'ready' &&
-    state.config.mode === 'oidc' &&
-    !!target &&
-    state.config.hosted_universe === target
+    state.status === 'ready'
+      ? hostedEnrollmentTarget(state.config, universe)
+      : undefined
+  const allowed = !!target
 
   useEffect(() => {
     if (state.status === 'ready' && (!allowed || hasMembership))
@@ -37,7 +49,7 @@ export function useHostedJoin(
       retryConfig()
       return
     }
-    if (!allowed || !target || hasMembership || busy) return
+    if (!target || hasMembership || busy) return
     setBusy(true)
     setError('')
     try {
@@ -51,15 +63,7 @@ export function useHostedJoin(
       )
       setBusy(false)
     }
-  }, [
-    state.status,
-    retryConfig,
-    allowed,
-    target,
-    hasMembership,
-    busy,
-    destination,
-  ])
+  }, [state.status, retryConfig, target, hasMembership, busy, destination])
   useEffect(() => {
     if (automatic && allowed && !hasMembership && !attempted.current) {
       attempted.current = true

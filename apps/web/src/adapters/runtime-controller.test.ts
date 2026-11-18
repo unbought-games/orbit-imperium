@@ -215,6 +215,40 @@ function recoveryFixture() {
   }
 }
 
+it('starts the preparation backoff after a held bootstrap response settles', async () => {
+  vi.useFakeTimers()
+  const { owner, api } = recoveryFixture()
+  const held = deferred<Bootstrap>()
+  const preparation = bootstrapFixture(4)
+  if (preparation.result.status !== 'authenticated') throw Error('fixture')
+  preparation.result.game = { status: 'unavailable', code: 'Unavailable' }
+  api.bootstrap.mockReturnValueOnce(held.promise)
+  const recovery = owner.startRecovery()
+  try {
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    held.resolve(preparation)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(owner.store.getState().runtime).toMatchObject({
+      status: 'authenticated',
+      game: { status: 'unavailable' },
+    })
+    await vi.advanceTimersByTimeAsync(1999)
+    expect(api.bootstrap).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(api.bootstrap).toHaveBeenCalledTimes(2)
+    expect(owner.store.getState().runtime).toMatchObject({
+      status: 'authenticated',
+      game: { status: 'ready' },
+    })
+  } finally {
+    recovery.stop()
+    vi.useRealTimers()
+  }
+})
+
 it('recovers a temporary bootstrap outage with bounded backoff and stops after success', async () => {
   vi.useFakeTimers()
   const { owner, api } = recoveryFixture()

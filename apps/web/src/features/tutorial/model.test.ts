@@ -349,6 +349,15 @@ it('shows overview briefing progress only in the beginner interface', () => {
   const { data, view } = fixture()
   data.beginner = true
   expect(briefingProgress(data, view)).toMatchObject({ step: 1, total: 31 })
+  const solar = data.chapters[0].objectives.find((o) => o.id === 'solar-1')!
+  solar.completed = true
+  expect(briefingProgress(data, view)).toMatchObject({
+    step: 2,
+    completed: 1,
+    remaining: 30,
+    total: 31,
+  })
+  expect(briefingProgress({ ...data, completed: true }, view)).toBeNull()
   data.beginner = false
   expect(briefingProgress(data, view)).toBeNull()
 })
