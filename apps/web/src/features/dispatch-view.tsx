@@ -93,7 +93,9 @@ export function DispatchView({
     addAllCargo,
     maxCargo,
     quote,
-    setQuote,
+    closeReview,
+    checkingReview,
+    entryNotice,
     error,
     busy,
     now,
@@ -123,7 +125,7 @@ export function DispatchView({
               size="icon-small"
               aria-label="Back to edit mission"
               title="Back to edit mission"
-              onClick={() => setQuote(null)}
+              onClick={closeReview}
             >
               <ArrowLeft size={18} aria-hidden="true" />
             </Button>
@@ -146,6 +148,14 @@ export function DispatchView({
           <FleetSlots used={occupiedSlots} total={view.missions.fleet_slots} />
         </div>
       </header>
+      {entryNotice && error && (
+        <Text tone="danger" role="alert">
+          {error}
+        </Text>
+      )}
+      {checkingReview && (
+        <Text role="status">Checking fleet availability…</Text>
+      )}
       {!quote && (
         <>
           {draft?.attackGroup && (
@@ -405,7 +415,7 @@ export function DispatchView({
               message: timingMessage,
             }}
           />
-          {error && (
+          {!entryNotice && error && (
             <Text tone="danger" role="alert">
               {error}
             </Text>
@@ -493,7 +503,9 @@ export function DispatchView({
           panelRef={quoteRef}
           onSend={() => void send()}
           disabled={
-            !command || !canSubmitQuote(model.store.getState(), command, quote)
+            checkingReview ||
+            !command ||
+            !canSubmitQuote(model.store.getState(), command, quote)
           }
         />
       )}
