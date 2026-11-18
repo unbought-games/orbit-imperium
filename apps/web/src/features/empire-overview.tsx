@@ -557,43 +557,58 @@ function PlanetDossier({
         </p>
       )}
       <dl className={styles.resources} aria-label={`${body.kind} resources`}>
-        {resourceNames.map((name) => (
-          <div
-            key={name}
-            style={
-              { '--resource-color': `var(--resource-${name})` } as CSSProperties
-            }
-          >
-            <dt>{label(name)}</dt>
-            <dd>
-              <strong>
-                <ResourceQuantity resource={name} value={body.amounts[name]} />
-              </strong>
-              <meter
-                min={0}
-                max={100}
-                value={storagePercent(body.amounts[name], body.capacity[name])}
-                aria-label={`${name} storage utilization`}
-              />
-              <span>
-                {rates ? (
-                  <>
-                    <ResourceQuantity resource={name} value={rates[name]} /> /h
-                  </>
-                ) : (
-                  'Rate unavailable'
-                )}
-              </span>
-              <small>
-                Cap{' '}
-                <ResourceQuantity resource={name} value={body.capacity[name]} />
-              </small>
-              {BigInt(body.amounts[name]) >= BigInt(body.capacity[name]) && (
-                <b className={styles.storageFull}>Storage full</b>
-              )}
-            </dd>
-          </div>
-        ))}
+        {resourceNames.map((name) => {
+          const amount = body.amounts[name]
+          const capacity = body.capacity[name]
+          const percent = storagePercent(amount, capacity)
+          const full = BigInt(amount) >= BigInt(capacity)
+          return (
+            <div
+              key={name}
+              style={
+                {
+                  '--resource-color': `var(--resource-${name})`,
+                } as CSSProperties
+              }
+            >
+              <dt className={styles.resourceName}>{label(name)}</dt>
+              <dd className={styles.balance}>
+                <strong>
+                  <ResourceQuantity noWrap resource={name} value={amount} />
+                </strong>
+                <div className={styles.utilization}>
+                  <meter
+                    min={0}
+                    max={100}
+                    value={percent}
+                    aria-label={`${name} storage utilization`}
+                  />
+                  <span className={full ? styles.storageFull : undefined}>
+                    {full ? 'Storage full' : `${percent}% full`}
+                  </span>
+                </div>
+              </dd>
+              <dd className={styles.productionDetails}>
+                <div>
+                  <span>Capacity</span>
+                  <ResourceQuantity noWrap resource={name} value={capacity} />
+                </div>
+                <div>
+                  <span>Per hour</span>
+                  {rates ? (
+                    <ResourceQuantity
+                      noWrap
+                      resource={name}
+                      value={rates[name]}
+                    />
+                  ) : (
+                    'Rate unavailable'
+                  )}
+                </div>
+              </dd>
+            </div>
+          )
+        })}
       </dl>
       <div className={styles.energyLine}>
         <span className={energy < 0n ? styles.warning : ''}>

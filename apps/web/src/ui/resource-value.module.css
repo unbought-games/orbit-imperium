@@ -11,6 +11,9 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.value[data-nowrap] > span {
+  white-space: nowrap;
+}
 .value svg {
   flex: 0 0 auto;
 }
