@@ -68,7 +68,10 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
     expect(deuterium.left).toBeCloseTo(metal.left, 0)
     expect(crystal.top).toBeGreaterThan(metal.bottom)
     expect(deuterium.top).toBeGreaterThan(crystal.bottom)
-    const details = panel.getByText(/^(Worlds|Capacity)$/)
+    const detailGroups = [
+      panel.getByText(/^(Worlds|Capacity)$/),
+      panel.getByText(/^(In flight|Per hour)$/),
+    ]
     for (const [index, name] of ['Metal', 'Crystal', 'Deuterium'].entries()) {
       const label = panel.getByText(new RegExp(`^${name}$`, 'i'))
       await expect(label).toBeVisible()
@@ -77,9 +80,11 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
       expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(amount.top)
       expect(labelBox.x).toBeLessThan(amount.left)
       if (index > 0) expect(labelBox.y).toBeGreaterThan(rects[index - 1].bottom)
-      expect((await details.nth(index).boundingBox())!.x).toBeGreaterThan(
-        amount.right,
-      )
+      for (const group of detailGroups) {
+        const detail = group.nth(index)
+        await expect(detail).toBeVisible()
+        expect((await detail.boundingBox())!.x).toBeGreaterThan(amount.right)
+      }
     }
   }
 })
@@ -625,12 +630,9 @@ for (const width of [390, 1440]) {
     options.missions.fleets = []
     await deliverEmpire(page)
     await page.clock.runFor(1000)
-    for (const row of await ledger
-      .locator('dl > div')
-      .filter({ hasText: 'In flight' })
-      .all()) {
-      await expect(row.locator('dd')).toHaveText('0')
-    }
+    await expect(
+      ledger.locator('dl > div').filter({ hasText: 'In flight' }).locator('dd'),
+    ).toHaveText(['0', '0', '0'])
     await diagnosticScreenshot(ledger, {
       path: `test-results/empire-wealth-empty-${width}x1000.png`,
     })
