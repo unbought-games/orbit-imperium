@@ -92,6 +92,8 @@ export function DispatchView({
     addAllCargo,
     maxCargo,
     quote,
+    checkingReview,
+    entryNotice,
     error,
     busy,
     now,
@@ -144,6 +146,14 @@ export function DispatchView({
           <FleetSlots used={occupiedSlots} total={view.missions.fleet_slots} />
         </div>
       </header>
+      {entryNotice && error && (
+        <Text tone="danger" role="alert">
+          {error}
+        </Text>
+      )}
+      {checkingReview && (
+        <Text role="status">Checking fleet availability…</Text>
+      )}
       {!quote && (
         <>
           {draft?.attackGroup && (
@@ -403,7 +413,7 @@ export function DispatchView({
               message: timingMessage,
             }}
           />
-          {error && (
+          {!entryNotice && error && (
             <Text tone="danger" role="alert">
               {error}
             </Text>

@@ -269,6 +269,10 @@ pub enum WorldAction {
         reports: Vec<ReportId>,
         hidden: bool,
     },
+    ArchiveReport {
+        report: ReportId,
+        revoke_share: bool,
+    },
     SetReportHidden {
         report: ReportId,
         hidden: bool,
@@ -279,6 +283,7 @@ impl WorldAction {
     pub fn report_ids(&self) -> Vec<ReportId> {
         match self {
             Self::MarkReportRead { report }
+            | Self::ArchiveReport { report, .. }
             | Self::SetReportHidden { report, .. }
             | Self::SetReportStarred { report, .. } => vec![*report],
             Self::MarkReportsRead { reports } | Self::SetReportsHidden { reports, .. } => reports
@@ -309,6 +314,8 @@ pub struct RecipientReportState {
     pub hidden: bool,
     #[serde(default)]
     pub starred: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub shared: bool,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {

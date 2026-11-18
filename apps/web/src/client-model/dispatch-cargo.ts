@@ -184,3 +184,13 @@ export function matchesCargoInstruction(fill: Fill, loaded: S['Resources']) {
       : actual === fixed
   })
 }
+
+export function restoredCargoDraft(intent: S['FleetIntent4']): CargoDraft {
+  const amounts = intent.cargo_fill?.minimum ?? intent.cargo
+  return {
+    entered: resourceNames.map((name) =>
+      String(BigInt(amounts[name]) / 1000000n),
+    ),
+    groups: intent.cargo_fill?.groups ?? [],
+  }
+}

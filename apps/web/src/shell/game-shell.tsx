@@ -1,5 +1,6 @@
 import { SettingsNavigation } from './settings-navigation'
 import { useOidcConfig } from '../client-model/use-oidc'
+import { useDispatchSession } from './dispatch-session-context'
 import { GameShellFrame } from './game-shell-frame'
 import { ArrivalScene } from '../features/arrival/arrival-scene'
 import { TutorialExperienceAction } from '../features/tutorial/experience-action'
@@ -52,6 +53,7 @@ function GameShellContent() {
       : undefined
   const { commands, view, model, logout, universeName } = useGameSession()
   const unreadReports = useStore(model.store, hasUnreadReports)
+  const dispatchSession = useDispatchSession()
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
   const matches = useMatches()
@@ -140,9 +142,14 @@ function GameShellContent() {
       page === 'reports' &&
       /\/reports\/?$/.test(location.pathname) &&
       previousPathname.current?.startsWith(`${location.pathname}/`)
+    const withinDispatch =
+      page === 'dispatch' &&
+      previousPathname.current !== location.pathname &&
+      previousPathname.current.replace(/\/review\/?$/, '') ===
+        location.pathname.replace(/\/review\/?$/, '')
     previousPathname.current = location.pathname
     previousGalaxySite.current = location.search.site
-    if (browsingGalaxy) return
+    if (browsingGalaxy || withinDispatch) return
     // Fragment links own their scroll destination; do not pull an editor link
     // back to the page heading after the router has scrolled to its section.
     if (location.hash) {
@@ -177,8 +184,9 @@ function GameShellContent() {
       ...routeTarget(universeName, 'dispatch', origin),
       search: dispatchSearch(draft),
       state: {
+        dispatchEditor: dispatchSession.prepare(!!draft.reviewOnOpen),
+        dispatchSession: dispatchSession.id,
         dispatchObservation: {
-          reviewOnOpen: draft.reviewOnOpen,
           ships: draft.ships,
           speed: draft.speed,
           target: draft.target,
@@ -198,6 +206,14 @@ function GameShellContent() {
       ),
       ...(available
         ? {
+            ...(page === 'dispatch' && !location.state.dispatchReview
+              ? {
+                  state: {
+                    dispatchEditor:
+                      location.state.dispatchEditor ?? location.state.__TSR_key,
+                  },
+                }
+              : {}),
             search: withoutBodySearch(location.search),
             hash: location.hash,
           }

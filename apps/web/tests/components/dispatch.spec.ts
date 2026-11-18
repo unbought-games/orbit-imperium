@@ -2461,7 +2461,9 @@ test('returning to Review refreshes Max cargo and confirms a material shipment a
     crystal: '0',
     deuterium: String(amount * 1000000),
   })
-  await configure(page, { quotedCargo: stock(3000) })
+  await configure(page, {
+    liveQuote: { cargo: stock(3000), hash: 'a'.repeat(64) },
+  })
   await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
   await expect(page.getByLabel('Deuterium', { exact: true })).toHaveValue(
     '3121',
@@ -2470,13 +2472,24 @@ test('returning to Review refreshes Max cargo and confirms a material shipment a
   const panel = page.getByRole('region', { name: 'Fleet quote' })
   const cargo = panel.getByRole('region', { name: 'Fleet and cargo' })
   await expect(cargo).toContainText('3,000')
-  await configure(page, { quotedCargo: stock(3200) })
+  await configure(page, {
+    liveQuote: { cargo: stock(3200), hash: 'c'.repeat(64) },
+  })
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(cargo).toContainText('3,200')
   await expect(
     panel.getByRole('button', { name: /^Transport to/ }),
   ).toBeEnabled()
-  await configure(page, { quotedCargo: stock(3300) })
+  await configure(page, {
+    liveQuote: { cargo: stock(3240), hash: 'f'.repeat(64) },
+  })
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event('visibilitychange')),
+  )
+  await expect(cargo).toContainText('3,240')
+  await configure(page, {
+    liveQuote: { cargo: stock(3300), hash: 'd'.repeat(64) },
+  })
   await page.clock.fastForward(15 * 60 * 1000)
   await expect(panel.getByRole('status')).toContainText(/3,000.*3,300/)
   expect((await counts(page)).launches).toBe(0)
@@ -2486,7 +2499,11 @@ test('returning to Review refreshes Max cargo and confirms a material shipment a
   await expect(
     page.getByRole('group', { name: 'Fleet dispatch result' }),
   ).toContainText('Fleet sent.')
-  expect((await snapshot(page)).lastLaunch?.cargo).toEqual(stock(3300))
+  expect((await snapshot(page)).lastLaunch).toMatchObject({
+    type: 'LaunchFleet',
+    intent: { cargo: stock(3300) },
+    expected_terms_hash: 'd'.repeat(64),
+  })
 })
 
 test('a material spend at launch keeps Review open and lets the player replace Max with an exact amount', async ({
@@ -2499,7 +2516,9 @@ test('a material spend at launch keeps Review open and lets the player replace M
     crystal: '0',
     deuterium: String(amount * 1000000),
   })
-  await configure(page, { quotedCargo: stock(3000) })
+  await configure(page, {
+    liveQuote: { cargo: stock(3000), hash: 'a'.repeat(64) },
+  })
   await page.getByRole('button', { name: 'Max deuterium', exact: true }).click()
   await expect(page.getByLabel('Deuterium', { exact: true })).toHaveValue(
     '3121',
@@ -2509,7 +2528,7 @@ test('a material spend at launch keeps Review open and lets the player replace M
   const send = panel.getByRole('button', { name: /^Transport to/ })
   await expect(send).toBeEnabled()
   await configure(page, {
-    quotedCargo: stock(1500),
+    liveQuote: { cargo: stock(1500), hash: 'e'.repeat(64) },
     launchOutcome: 'Rejected',
     launchError: 'QuoteChanged',
   })

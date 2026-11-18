@@ -1,3 +1,5 @@
+import { canonical } from '../client-model/commands'
+import { materialCargoChanges } from '../client-model/dispatch-cargo'
 import type { components } from '../contracts'
 import { coordinateText } from '../shell/location-address'
 import { shipManifest } from './mission-presentation'
@@ -103,3 +105,30 @@ export const missionReturn = {
     note: 'Success consumes one Colony Ship. Escorts and extra Colony Ships return; a lone successful Colony Ship has no return leg. If colonization fails, the fleet returns.',
   },
 } satisfies Record<S['Mission4'], { label: string; note: string }>
+
+export function flightConditions(quote: S['FleetTerms4']) {
+  return {
+    ...quote,
+    terms_hash: undefined,
+    intent: { ...quote.intent, cargo: undefined },
+  }
+}
+
+export function reviewDifferences(
+  reviewed: S['FleetTerms4'],
+  latest: S['FleetTerms4'],
+) {
+  const resources = materialCargoChanges(
+    reviewed.intent.cargo,
+    latest.intent.cargo,
+  )
+  const flightChanged =
+    reviewed.terms_hash !== latest.terms_hash &&
+    canonical(flightConditions(reviewed)) !==
+      canonical(flightConditions(latest))
+  return {
+    resources,
+    flightChanged,
+    changed: !!resources.length || flightChanged,
+  }
+}

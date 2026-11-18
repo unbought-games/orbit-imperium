@@ -29,7 +29,8 @@ export async function createDispatchFixture() {
   }
   let sequence = 100
   let launches = 0
-  let lastLaunch: S['FleetIntent4'] | null = null
+  let lastLaunch: Extract<S['WorldAction4'], { type: 'LaunchFleet' }> | null =
+    null
   const port: GamePort = {
     currentBinding: async (_universe, request_id) => ({
       ...data.ready.snapshot.candidate,
@@ -95,7 +96,7 @@ export async function createDispatchFixture() {
         envelope.command.action.type !== 'LaunchFleet'
       )
         return fail('non-fleet command')
-      lastLaunch = structuredClone(envelope.command.action.intent)
+      lastLaunch = structuredClone(envelope.command.action)
       launches++
       const work = (async () => {
         await gates.get('LaunchFleet')?.promise
@@ -210,8 +211,8 @@ export async function createDispatchFixture() {
             intent:
               query.type === 'FleetQuote' &&
               query.intent.cargo_fill &&
-              options.quotedCargo
-                ? { ...query.intent, cargo: { ...options.quotedCargo } }
+              options.liveQuote
+                ? { ...query.intent, cargo: { ...options.liveQuote.cargo } }
                 : query.intent,
             profile_hash: source.profile_hash,
             ...(query.type === 'FleetEstimate'
@@ -220,7 +221,9 @@ export async function createDispatchFixture() {
                   distance: 1000,
                   speeds: [],
                   slot_limit: '5',
-                  terms_hash: 'b'.repeat(64),
+                  terms_hash:
+                    (query.intent.cargo_fill && options.liveQuote?.hash) ||
+                    'b'.repeat(64),
                 }),
             duration_ms: Math.floor(
               (options.duration * 100) / query.intent.speed_percent,

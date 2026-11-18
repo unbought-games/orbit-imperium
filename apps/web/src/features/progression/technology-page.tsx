@@ -15,6 +15,7 @@ import {
   visibleFacility,
 } from './building-availability'
 import { BuildingDetails } from './building-details'
+import { BuildingFieldSummary } from './building-field-summary'
 import { TechnologyDetails } from './technology-details'
 import { catalogContent, catalogGroup, facilityIds } from './catalog-content'
 import {
@@ -133,7 +134,15 @@ export function TechnologyPage(props: ProgressionProps) {
       />
       <div className={groups.length > 1 ? styles.groups : undefined}>
         {groups.map((group) => (
-          <CatalogSection title={group} key={group}>
+          <CatalogSection
+            title={group}
+            key={group}
+            description={
+              page === 'facilities' ? (
+                <BuildingFieldSummary body={body} />
+              ) : undefined
+            }
+          >
             <ImageCatalog
               columns={
                 group === 'Basic research' || group === 'Advanced research'

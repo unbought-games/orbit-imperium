@@ -126,6 +126,7 @@ export class DispatchRequests {
     if (key) ports.submitted({ key, generation, coordinates })
     const id = await sending
     if (!id && this.isCurrent(generation)) ports.submitted(null)
+    return id
   }
 
   async review(

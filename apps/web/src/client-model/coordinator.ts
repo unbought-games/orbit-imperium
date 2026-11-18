@@ -75,6 +75,7 @@ export class Coordinator {
   readonly store = createGameStore()
   readonly tutorial = new TutorialEngine(this.store, () => this.readTutorial())
   readonly reports = new ReportEngine(this.store, {
+    monotonicNow: () => this.platform.monotonicNowMs(),
     page: (cursor, query) => this.readReportPage(cursor, false, query),
     detail: (id) => this.readReportDetail(id),
   })
@@ -198,11 +199,19 @@ export class Coordinator {
       if (this.delivery === delivery) this.delivery = null
     }
   }
-  resumeDelivery() {
+  resumeDelivery(refocused = false) {
     const previous = this.store.getState()
     const foreground = this.platform.isVisible?.() ?? true
     const online = this.platform.isOnline()
-    this.store.setState({ foreground, online })
+    const resumed =
+      foreground &&
+      online &&
+      (refocused || !previous.foreground || !previous.online)
+    this.store.setState({
+      foreground,
+      online,
+      ...(resumed ? { deliveryResumedAt: this.platform.monotonicNowMs() } : {}),
+    })
     if (!foreground || !online) {
       // Fence requests started before suspension/handoff. Their failures say
       // nothing about service availability after the next foreground resume.
@@ -280,6 +289,7 @@ export class Coordinator {
       binding: null,
       view: null,
       settings: null,
+      deliveryResumedAt: null,
       reportQueries: new Map(),
       reportInbox: null,
       reportInboxLoad: null,
@@ -487,6 +497,9 @@ export class Coordinator {
     if (this.platform.isVisible?.() === false || !this.platform.isOnline())
       return
     if (this.platform.monotonicNowMs() < this.retryAt) return
+    const reconnectStartedAt = this.store.getState().connectionInterrupted
+      ? this.platform.monotonicNowMs()
+      : null
     const q = ++this.viewGeneration
     const request = this.captureRequest()
     if (!request) return
@@ -543,7 +556,15 @@ export class Coordinator {
           return
       }
       const now = this.platform.monotonicNowMs()
-      this.store.setState({ view: next, settings, receivedAt: now, now })
+      this.store.setState({
+        view: next,
+        settings,
+        receivedAt: now,
+        now,
+        ...(reconnectStartedAt !== null
+          ? { deliveryResumedAt: reconnectStartedAt }
+          : {}),
+      })
       if (
         this.pendingMinimum !== undefined &&
         BigInt(next.viewer_revision) >= BigInt(this.pendingMinimum)

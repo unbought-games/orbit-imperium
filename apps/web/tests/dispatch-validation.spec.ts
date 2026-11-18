@@ -611,3 +611,76 @@ for (const width of [390, 1440]) {
     }
   })
 }
+
+test(
+  'browser Back restores only the active review and waits for fresh fleet terms',
+  { tag: '@journey' },
+  async ({ page }) => {
+    const state = await setup(page)
+    const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
+    await metal.fill('42')
+    const fleetQuote = (response: import('@playwright/test').Response) =>
+      response.url().endsWith('/world') &&
+      response.request().postDataJSON().type === 'FleetQuote'
+    await withFixtureResponse(page, fleetQuote, () => review(page).click())
+    const reviewPath = `/u/andromeda/b/${body.id}/dispatch/review`
+    await expect(page).toHaveURL(reviewPath)
+    const quote = page.getByRole('region', { name: 'Fleet quote' })
+    const send = quote.getByRole('button', { name: /Transport to/ })
+    await expect(send).toBeEnabled()
+
+    const leave = () =>
+      page.getByRole('link', { name: 'Fleets', exact: true }).click()
+    await leave()
+    const newDispatch = page.getByRole('link', { name: 'Dispatch Fleet' })
+    await expect(newDispatch).toBeVisible()
+
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    state.hold = async (route) => {
+      if (route.request().postDataJSON().type === 'FleetQuote') await held
+    }
+    try {
+      const request = page.waitForRequest(
+        (r) =>
+          r.url().endsWith('/world') && r.postDataJSON().type === 'FleetQuote',
+      )
+      await page.goBack()
+      expect((await request).postDataJSON().intent).toMatchObject({
+        mission: 'Transport',
+        ships: [{ ship_type: 'SmallCargo', count: '1' }],
+        cargo: { metal: '42000000' },
+      })
+      await expect(send).toBeDisabled()
+      await expect(
+        quote.getByRole('list', { name: 'Ship composition' }),
+      ).toContainText('Small Cargo 1')
+      await expect(
+        quote.getByRole('region', { name: 'Fleet and cargo' }),
+      ).toContainText('42')
+      await withFixtureResponse(page, fleetQuote, async () => release())
+      await expect(send).toBeEnabled()
+      expect(state.launches).toBe(0)
+    } finally {
+      release()
+      state.hold = null
+    }
+
+    await leave()
+    await newDispatch.click()
+    await expect(metal).toHaveValue('0')
+    await page.goBack()
+    await expect(newDispatch).toBeVisible()
+    await page.goBack()
+    await expect(
+      page
+        .getByRole('alert')
+        .filter({ hasText: 'This fleet review has ended' }),
+    ).toBeVisible()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
+    await expect(quote).toHaveCount(0)
+  },
+)

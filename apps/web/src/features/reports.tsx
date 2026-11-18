@@ -301,7 +301,8 @@ export function Reports({
                 compact
                 disabled={false}
                 onCommitted={reportReturn.onCommitted}
-                archiveShortcut
+                key={detail.header.id}
+                detail={{ shared: !!detail.header.shared }}
               />
             </div>
           </div>

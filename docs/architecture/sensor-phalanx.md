@@ -155,8 +155,9 @@ this activation contract without requiring new operational infrastructure.
 For journals produced before causal returns, explicitly select
 `replay_legacy_mission_transition` by producing release. It reproduces the old
 outcome shape without rewriting the saved facts or outcome. The older debris
-replay adapter also strips these newly recorded causes. Supplied current-format snapshots replay
-with ordinary `transition`. New continuous full snapshots are not generated;
+replay adapter also strips these newly recorded causes. For later snapshots that
+include causal returns but predate silent manual recalls, use
+`replay_with_recall_reports`. Current snapshots replay with ordinary `transition`. New continuous full snapshots are not generated;
 ordinary diagnostics cannot reconstruct missing facts. See [journal removal](../operations/journal-removal.md). No-op/rejected outcomes must remain absent rather
 than acquire synthetic world fields.
 

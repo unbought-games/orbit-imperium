@@ -253,6 +253,8 @@ export function gamePort(
             include_hidden: includeHidden || query?.filter.hidden === true,
           },
           csrf,
+          10000,
+          query?.filter.unread_only ? { 'X-Orbit-Report-Arrivals': '1' } : {},
         ),
       )
     },

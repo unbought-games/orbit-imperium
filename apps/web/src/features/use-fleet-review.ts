@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import { canonical } from '../client-model/commands'
-import { materialCargoChanges } from '../client-model/dispatch-cargo'
+import { reviewDifferences } from './dispatch-review-model'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 
 type Terms = components['schemas']['FleetTerms4']
@@ -13,42 +12,28 @@ type Review = {
   problem: string
 }
 
-function flightConditions(quote: Terms) {
-  return {
-    ...quote,
-    terms_hash: undefined,
-    intent: { ...quote.intent, cargo: undefined },
-  }
-}
-
-export function reviewDifferences(reviewed: Terms, latest: Terms) {
-  const resources = materialCargoChanges(
-    reviewed.intent.cargo,
-    latest.intent.cargo,
+export function useFleetReview(
+  model: Coordinator,
+  revision: string,
+  initial?: Terms,
+  enabled = true,
+) {
+  const [state, setState] = useState<Review | null>(() =>
+    initial
+      ? { reviewed: initial, latest: initial, problem: '', refreshing: false }
+      : null,
   )
-  const flightChanged =
-    reviewed.terms_hash !== latest.terms_hash &&
-    canonical(flightConditions(reviewed)) !==
-      canonical(flightConditions(latest))
-  return {
-    resources,
-    flightChanged,
-    changed: !!resources.length || flightChanged,
-  }
-}
-
-export function useFleetReview(model: Coordinator, revision: string) {
-  const [state, setState] = useState<Review | null>(null)
   const generation = useRef(0)
-  const open = useCallback((quote: Terms | null) => {
+  const open = useCallback((quote: Terms | null, latest = quote) => {
     generation.current++
     setState(
-      quote && {
-        reviewed: quote,
-        latest: quote,
-        refreshing: false,
-        problem: '',
-      },
+      quote &&
+        latest && {
+          reviewed: quote,
+          latest,
+          refreshing: false,
+          problem: '',
+        },
     )
   }, [])
   const reviewed = state?.reviewed
@@ -83,7 +68,7 @@ export function useFleetReview(model: Coordinator, revision: string) {
   }, [model, reviewed])
 
   useEffect(() => {
-    if (!reviewed) return
+    if (!reviewed || !enabled) return
     const visible = () => {
       if (document.visibilityState !== 'hidden') void refresh()
     }
@@ -96,14 +81,14 @@ export function useFleetReview(model: Coordinator, revision: string) {
       document.removeEventListener('visibilitychange', visible)
       window.clearInterval(timer)
     }
-  }, [reviewed, refresh])
+  }, [reviewed, refresh, enabled])
   const lastRevision = useRef(revision)
   useEffect(() => {
     const changed = lastRevision.current !== revision
     lastRevision.current = revision
-    if (changed && reviewed && document.visibilityState !== 'hidden')
+    if (changed && enabled && reviewed && document.visibilityState !== 'hidden')
       void refresh()
-  }, [revision, reviewed, refresh])
+  }, [revision, reviewed, refresh, enabled])
   const latest = state?.latest
   const differences = useMemo(
     () => (reviewed && latest ? reviewDifferences(reviewed, latest) : null),

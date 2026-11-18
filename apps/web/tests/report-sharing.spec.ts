@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/test'
 import { shellFixture, refreshGame, binding, body, id } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { withReportResponse, withSharedReportResponse } from './fixtures/responses'
+import { withReportListResponse, withReportResponse, withSharedReportResponse } from './fixtures/responses'
 
 const reportId = id(70)
 const token = id(75)
@@ -242,7 +242,7 @@ for (const width of [390, 1440])
       name: 'Unstar this shared report?', exact: true,
     })
     await expect(unstarDialog).toContainText(
-      'Archiving keeps its shared link active.',
+      'Archiving from the list keeps its public link active.',
     )
     await diagnosticScreenshot(page, {
       path: `test-results/unstar-shared-${width}.png`,
@@ -263,8 +263,24 @@ for (const width of [390, 1440])
       page.getByRole('button', { name: 'Star report', exact: true }),
     ).toBeVisible()
     expect(starCommands).toEqual([false])
-    await page.getByRole('button', {name: 'Archive report', exact: true}).click()
-    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
+    // Row archiving still keeps an unstarred report's public link active.
+    await page.route('**/api/**/reports', route => {
+      const query = route.request().postDataJSON()
+      const items = !query.filter?.unread_only && !hidden ? [{
+        id: reportId, kind: 'Espionage', observed_at: payload.observed_at,
+        read: true, hidden, starred, shared: active,
+      }] : []
+      return route.fulfill({json: {
+        protocol: 4, binding, request_id: query.context.request_id,
+        viewer_revision: String(revision), sampled_at: Date.now(), as_of_ms: Date.now(),
+        data: { items, unread_count: 0, has_more: false, next_cursor: null, as_of_ms: Date.now() },
+      }})
+    })
+    await withReportListResponse(page, () => page.getByRole('link', {name: 'Back to reports'}).click())
+    const row = page.getByRole('article').filter({has: page.getByRole('link', {name: 'Espionage', exact: true})})
+    await row.getByRole('button', {name: 'Archive report', exact: true}).click()
+    await expect.poll(() => hidden).toBe(true)
+    await expect(row).toHaveCount(0)
     expect(active).toBe(true)
     expect(actions).not.toContain('Revoke')
     await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))

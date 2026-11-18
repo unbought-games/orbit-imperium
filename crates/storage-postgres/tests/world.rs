@@ -1552,8 +1552,29 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
                 world_facts(&snapshot.state).unwrap().records.fleets[&fleet.id].leg,
                 MissionLeg::Returning
             );
+            let inbox = ReportsQuery4 {
+                context: QueryContext {
+                    binding: b,
+                    request_id: Uuid::new_v4(),
+                },
+                cursor: None,
+                kind: None,
+                limit: 100,
+                include_hidden: false,
+                filter: Default::default(),
+            };
+            let before_return = game.reports4(principal, inbox.clone()).await.unwrap();
+            assert!(before_return.data.items.is_empty());
+            assert_eq!(before_return.data.unread_count, 0);
+            assert!(!unread_reports(&game, b).await);
+
             store.set_test_time(2000).await.unwrap();
             game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+            let after_return = game.reports4(principal, inbox).await.unwrap();
+            assert_eq!(after_return.data.items.len(), 1);
+            assert_eq!(after_return.data.items[0].kind, "Returned");
+            assert_eq!(after_return.data.unread_count, 1);
+            assert!(unread_reports(&game, b).await);
             let persisted: serde_json::Value =
                 sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
                     .bind(fleet.id.0)

@@ -56,7 +56,23 @@ pub(crate) fn resources(
     }
     Ok(Resources::from_values(out))
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum RecallReports {
+    Silent,
+    LegacyReplay,
+}
+
 pub fn transition(state: &GameState, input: &OrderedInput, rules: &Ruleset) -> TransitionResult {
+    transition_with_recall_reports(state, input, rules, RecallReports::Silent)
+}
+
+pub(crate) fn transition_with_recall_reports(
+    state: &GameState,
+    input: &OrderedInput,
+    rules: &Ruleset,
+    recall_reports: RecallReports,
+) -> TransitionResult {
     // Admission/scheduling provenance remains on the durable input. Ordered
     // execution uses the rules at this position; paid terms stay on operations
     // and quoted commands still validate the player's exact consent.
@@ -64,7 +80,7 @@ pub fn transition(state: &GameState, input: &OrderedInput, rules: &Ruleset) -> T
     if rules.progression() {
         execution.profile_hash = rules.hash.clone();
     }
-    match resolve(state, &execution, rules).and_then(|mut c| {
+    match resolve(state, &execution, rules, recall_reports).and_then(|mut c| {
         crate::objectives::apply_completion_objectives(state, &execution, rules, &mut c)?;
         crate::tutorial::apply_tutorial_progress(state, &execution, rules, &mut c)?;
         Ok(c)
@@ -79,9 +95,14 @@ pub fn transition(state: &GameState, input: &OrderedInput, rules: &Ruleset) -> T
         Err(Fault::Invariant(e)) => TransitionResult::InvalidState(e),
     }
 }
-fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fault> {
+fn resolve(
+    s: &GameState,
+    i: &OrderedInput,
+    r: &Ruleset,
+    recall_reports: RecallReports,
+) -> Result<ChangeSet, Fault> {
     if r.world() {
-        return crate::missions::resolve(s, i, r);
+        return crate::missions::resolve(s, i, r, recall_reports);
     }
     if r.progression() {
         return crate::progression::resolve(s, i, r);
@@ -133,7 +154,7 @@ fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fa
         Input::Command(Command::LaunchTransport { .. } | Command::RecallFleet { .. })
         | Input::Event(
             ScheduledEvent::TransportArrived { .. } | ScheduledEvent::FleetReturned { .. },
-        ) => crate::fleets::resolve_fleet(s, i, r, &mut change)?,
+        ) => crate::fleets::resolve_fleet(s, i, r, &mut change, recall_reports)?,
         Input::Command(Command::StartUpgrade {
             body,
             building,

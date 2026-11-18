@@ -51,7 +51,7 @@ export const originBody: S['BodyV3'] = {
 }
 export type DispatchFixtureOptions = {
   resourceVisibility?: 'Known' | 'Unknown' | 'Missing' | 'Error'
-  quotedCargo?: S['Resources']
+  liveQuote?: { cargo: S['Resources']; hash: string }
   launchError?: S['GameError4']
   launchOutcome?: 'Committed' | 'Pending' | 'Rejected'
   blocker: S['GameError4'] | null

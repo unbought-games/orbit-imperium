@@ -313,7 +313,11 @@ export function DispatchReview({
         </Text>
       )}
       <div className={styles.actions}>
-        <QuoteAction disabled={disabled} onClick={onSend}>
+        <QuoteAction
+          className={styles.sendFleet}
+          disabled={disabled}
+          onClick={onSend}
+        >
           {sending
             ? 'Sending fleet…'
             : reviewState.differences?.changed
