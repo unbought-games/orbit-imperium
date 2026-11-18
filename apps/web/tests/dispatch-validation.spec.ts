@@ -729,6 +729,13 @@ test('a launch-time cargo change preserves the routed review and Edit cargo reop
   await expect(page).toHaveURL(dispatchPath + '/review')
   expect(state.launches).toBe(1)
 
+  // Returning to this replacement entry retains the reviewed baseline.
+  await page.getByRole('link', {name:'Fleets',exact:true}).click()
+  await expect(page.getByRole('link', {name:'Dispatch Fleet'})).toBeVisible()
+  await withFixtureResponse(page, fleetQuote, () => page.goBack())
+  await expect(panel.getByRole('status')).toContainText(/3,000.*1,500/)
+  await expect(panel.getByRole('button',{name:'Confirm changes and launch'})).toBeEnabled()
+
   await panel.getByRole('button', {name:'Edit cargo'}).click()
   await expect(page).toHaveURL(dispatchPath)
   await field.fill('1000')

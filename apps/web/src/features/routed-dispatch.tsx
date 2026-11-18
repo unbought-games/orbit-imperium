@@ -120,7 +120,14 @@ export function RoutedDispatch({
     expired: !!dispatchExpired,
     open: (terms, coordinates) => {
       if (!current()) return
-      const review = session.open(editor, terms, coordinates, draft)
+      // A replaced review retains the editor it came from, including a manual
+      // entry with no prepared-source search parameters.
+      const review = session.open(
+        editor,
+        terms,
+        coordinates,
+        restored ? restored.source : draft,
+      )
       void navigate({
         ...routeTarget(universe, 'dispatch', body.id, 'review'),
         state: { dispatchReview: review.id, dispatchEditor: editor },
