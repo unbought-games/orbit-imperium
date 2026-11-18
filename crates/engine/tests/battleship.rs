@@ -123,7 +123,10 @@ fn battleship_combat_derives_stats_and_applies_only_its_two_rapid_fire_pairs() {
             .filter(|rf| rf.target == BATTLESHIP)
             .map(|rf| (rf.shooter, rf.factor))
             .collect::<Vec<_>>(),
-        vec![(ManufacturedItem::Ship(ShipType::Battlecruiser), 7)]
+        vec![
+            (ManufacturedItem::Ship(ShipType::Battlecruiser), 7),
+            (ManufacturedItem::Ship(ShipType::Dreadnought), 30)
+        ]
     );
 }
 
@@ -148,55 +151,14 @@ fn battleship_manufacturing_charges_and_times_metal_and_crystal_only() {
 #[test]
 fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
-    let mut previous = prior_content::without_battlecruiser(latest.artifact.clone());
-    let destroyer = ManufacturedItem::Ship(ShipType::Destroyer);
-    previous.ships.remove(&ShipType::Destroyer);
-    previous
-        .progression
-        .as_mut()
-        .unwrap()
-        .unit_costs
-        .retain(|u| u.item != destroyer);
-    let combat = &mut previous.world.as_mut().unwrap().combat;
-    combat.units.retain(|u| u.item != destroyer);
-    combat
-        .rapid_fire
-        .retain(|rf| rf.shooter != destroyer && rf.target != destroyer);
-    let entry = previous
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == destroyer.catalog_key())
-        .unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
-    entry.body_kinds = [BodyKind::Planet].into();
-
-    previous.ships.remove(&ShipType::Battleship);
-    previous
-        .progression
-        .as_mut()
-        .unwrap()
-        .unit_costs
-        .retain(|u| u.item != BATTLESHIP);
-    let combat = &mut previous.world.as_mut().unwrap().combat;
-    combat.units.retain(|u| u.item != BATTLESHIP);
-    combat
-        .rapid_fire
-        .retain(|rf| rf.shooter != BATTLESHIP && rf.target != BATTLESHIP);
-    let entry = previous
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == BATTLESHIP.catalog_key())
-        .unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
-    entry.body_kinds = [BodyKind::Planet].into();
+    let previous = prior_content::without_native_hyperspace_ships(latest.artifact.clone());
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);
     let mut retained = next.artifact.clone();
     retained.ships.remove(&ShipType::Battleship);
     retained.ships.remove(&ShipType::Destroyer);
+    retained.ships.remove(&ShipType::Dreadnought);
     retained.ships.remove(&ShipType::Battlecruiser);
     assert_eq!(retained.ships, previous.artifact.ships);
     assert_eq!(next.artifact.buildings, previous.artifact.buildings);
@@ -205,8 +167,7 @@ fn battleship_upgrade_is_complete_idempotent_and_preserves_existing_world_data()
         previous.artifact.progression.as_ref().unwrap().research
     );
     assert!(
-        !next
-            .artifact
+        next.artifact
             .catalog
             .iter()
             .any(|e| e.key == CatalogKey::Ship(ShipType::Dreadnought) && e.enabled)

@@ -160,27 +160,19 @@ async fn hyperspace_activates_researches_and_finishes_after_disable_and_restart_
             .find(|e| e.key == CatalogKey::Research(ResearchId::HyperspaceDrive))
             .unwrap()
             .enabled = false;
-        disabled
-            .artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == CatalogKey::Ship(ShipType::Destroyer))
-            .unwrap()
-            .enabled = false;
-        disabled
-            .artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == CatalogKey::Ship(ShipType::Battleship))
-            .unwrap()
-            .enabled = false;
-        disabled
-            .artifact
-            .catalog
-            .iter_mut()
-            .find(|e| e.key == CatalogKey::Ship(ShipType::Battlecruiser))
-            .unwrap()
-            .enabled = false;
+        for entry in &mut disabled.artifact.catalog {
+            if entry.requirements.iter().any(|r| {
+                matches!(
+                    r,
+                    Requirement::PlayerResearch {
+                        research: ResearchId::HyperspaceDrive,
+                        ..
+                    }
+                )
+            }) {
+                entry.enabled = false;
+            }
+        }
         disabled
             .artifact
             .catalog

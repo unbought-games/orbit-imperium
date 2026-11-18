@@ -126,12 +126,15 @@ fn hyperspace_rules_reject_incomplete_unsupported_and_invalid_switches() {
     a.catalog
         .iter_mut()
         .filter(|e| {
-            matches!(
-                e.key,
-                CatalogKey::Ship(
-                    ShipType::Battlecruiser | ShipType::Battleship | ShipType::Destroyer
+            e.requirements.iter().any(|r| {
+                matches!(
+                    r,
+                    Requirement::PlayerResearch {
+                        research: ResearchId::HyperspaceDrive,
+                        ..
+                    }
                 )
-            )
+            })
         })
         .for_each(|e| e.enabled = false);
     let disabled = Ruleset::from_artifact(a, latest.speed).unwrap();

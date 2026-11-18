@@ -125,6 +125,7 @@ impl ProgressionRules {
                     | ShipType::Battlecruiser
                     | ShipType::Battleship
                     | ShipType::Destroyer
+                    | ShipType::Dreadnought
                     | ShipType::Recycler
                     | ShipType::EspionageProbe
             ) {

@@ -44,7 +44,7 @@ Both execution modes retain their existing settlement and ordering behavior.
 
 `Deathstar` reads as the single `Dreadnought` ship identity. New typed output uses
 `Dreadnought`; saved rules and accepted terms keep their original spelling and hash.
-Aliases do not enable this disabled ship or change any gameplay. Ship maps reject
+Starting in standard bundle 0.18.0 the active catalog controls Dreadnought construction. Ship maps reject
 colliding spellings; catalog, cost, combat, inventory, and manifest checks reject
 duplicate logical entries. Inventory writes match either supported spelling while
 leaving the stored key untouched; revision checks and the exactly-one-row check

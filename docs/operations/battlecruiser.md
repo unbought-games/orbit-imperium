@@ -23,8 +23,7 @@ Battlecruiser values rather than its superseded beta statistics.
 | Rapid fire | Small Cargo and Large Cargo 3; Heavy Fighters and Cruisers 4; Battleships 7; Espionage Probes and Solar Satellites 5 |
 
 Battlecruisers have rapid fire 7 against Battleships. Destroyers have rapid fire 2
-against Battlecruisers. Relationships involving unsupported Dreadnoughts remain
-deferred.
+against Battlecruisers. Dreadnoughts have rapid fire 15 against Battlecruisers with the Dreadnought content active.
 
 ## Activation and retained work
 

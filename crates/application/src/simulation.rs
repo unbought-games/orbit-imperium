@@ -354,6 +354,112 @@ mod tests {
     }
 
     #[test]
+    fn dreadnought_losses_use_active_debris_rules_and_surviving_cargo_in_every_sample() {
+        let standard = orbit_engine::standard_signup_rules(
+            orbit_engine::UniverseProfile::signup(1, 5).unwrap(),
+            5,
+        )
+        .unwrap();
+        for deuterium in [false, true] {
+            let mut artifact = standard.artifact.clone();
+            artifact.world.as_mut().unwrap().combat.deuterium_in_debris = deuterium;
+            let rules = Ruleset::from_artifact(artifact, standard.speed).unwrap();
+            let mut inputs = inputs();
+            let item = ManufacturedItem::Ship(ShipType::Dreadnought);
+            inputs.attacker.units = vec![SimulationUnit { item, count: 10 }];
+            inputs.defender.units = vec![SimulationUnit { item, count: 1 }];
+            let response = SimulationJob {
+                context: context(),
+                rules,
+                inputs,
+            }
+            .run([13; 32])
+            .unwrap();
+            assert_eq!(response.samples.len(), SIMULATION_SAMPLES);
+            for sample in response.samples {
+                assert_eq!(sample.outcome, orbit_engine::BattleOutcome::AttackerVictory);
+                assert_eq!(sample.debris.metal, "1500000000000");
+                assert_eq!(sample.debris.crystal, "1200000000000");
+                assert_eq!(
+                    sample.debris.deuterium,
+                    if deuterium { "300000000000" } else { "0" }
+                );
+                assert_eq!(sample.moon_chance_percent, 20);
+                assert_eq!(sample.surviving_cargo_capacity, "10000000000000");
+            }
+        }
+    }
+
+    // Explicit release-build measurement for the most expensive standard rapid-fire pair.
+    #[test]
+    #[ignore = "exercises the full ten-sample simulator at the unit limit"]
+    fn measure_dreadnought_rapid_fire_at_simulation_limit() {
+        let rules = orbit_engine::standard_signup_rules(
+            orbit_engine::UniverseProfile::signup(1, 100).unwrap(),
+            5,
+        )
+        .unwrap();
+        let mut inputs = inputs();
+        inputs.attacker.units = vec![SimulationUnit {
+            item: ManufacturedItem::Ship(ShipType::Dreadnought),
+            count: 1900,
+        }];
+        inputs.defender.units = vec![SimulationUnit {
+            item: ManufacturedItem::Ship(ShipType::SolarSatellite),
+            count: 100,
+        }];
+        let world = rules.artifact.world.as_ref().unwrap();
+        validate_simulation(&inputs, &world.combat).unwrap();
+        let context = context();
+        let input = BattleInput {
+            encounter_id: InputId(context.request_id),
+            at: 0,
+            target: BodyId(uuid::Uuid::from_u128(2)),
+            rules_hash: rules.hash.clone(),
+            participants: simulation_participants(&inputs),
+        };
+        let seed = [42; 32];
+        let mut rng = RandomStream::new(
+            &seed,
+            context.binding.universe,
+            context.binding.epoch,
+            input.encounter_id,
+            "battle",
+        )
+        .unwrap();
+        let start = std::time::Instant::now();
+        let result = resolve_battle(&input, &world.combat, &mut rng).unwrap();
+        eprintln!(
+            "battle {:?}, shots {}, cursor {:?}",
+            start.elapsed(),
+            result.rounds[0].fire[0].shots,
+            rng.cursor()
+        );
+        assert_eq!(result.rounds[0].fire[0].shots, "2479284");
+        assert_eq!(result.rng_cursor, (255441, 27));
+        assert_eq!(result.rounds.len(), 1);
+        assert_eq!(result.outcome, orbit_engine::BattleOutcome::AttackerVictory);
+        let start = std::time::Instant::now();
+        let response = SimulationJob {
+            context,
+            rules,
+            inputs,
+        }
+        .run(seed)
+        .unwrap();
+        eprintln!("ten samples {:?}", start.elapsed());
+        assert_eq!(response.samples.len(), SIMULATION_SAMPLES);
+        for sample in response.samples {
+            assert_eq!(sample.attacker[0].count, 1900);
+            assert!(sample.defender.is_empty());
+            assert_eq!(
+                sample.debris.crystal,
+                (60_000 * orbit_engine::SCALE).to_string()
+            );
+        }
+    }
+
+    #[test]
     fn planning_metadata_uses_active_moon_and_harvest_rules() {
         for (moons, capacity, expected_capacity) in [
             (false, 50_000, "20000000000"),

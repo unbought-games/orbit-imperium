@@ -2,6 +2,9 @@ use orbit_engine::*;
 use uuid::Uuid;
 #[allow(dead_code)]
 mod common;
+#[allow(dead_code)]
+#[path = "common/prior_content.rs"]
+mod prior_content;
 
 const DESTROYER: ManufacturedItem = ManufacturedItem::Ship(ShipType::Destroyer);
 fn rules() -> Ruleset {
@@ -122,7 +125,15 @@ fn destroyer_combat_derives_stats_and_applies_only_its_four_rapid_fire_pairs() {
             assert!(shots.iter().any(|n| *n > 1));
         }
     }
-    assert!(combat.rapid_fire.iter().all(|rf| rf.target != DESTROYER));
+    assert_eq!(
+        combat
+            .rapid_fire
+            .iter()
+            .filter(|rf| rf.target == DESTROYER)
+            .map(|rf| (rf.shooter, rf.factor))
+            .collect::<Vec<_>>(),
+        vec![(ManufacturedItem::Ship(ShipType::Dreadnought), 5)]
+    );
 }
 
 #[test]
@@ -146,27 +157,10 @@ fn destroyer_manufacturing_charges_all_resources_but_times_only_metal_and_crysta
 #[test]
 fn destroyer_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
-    let mut previous = latest.artifact.clone();
-    previous.ships.remove(&ShipType::Destroyer);
-    previous
-        .progression
-        .as_mut()
-        .unwrap()
-        .unit_costs
-        .retain(|u| u.item != DESTROYER);
-    let combat = &mut previous.world.as_mut().unwrap().combat;
-    combat.units.retain(|u| u.item != DESTROYER);
-    combat
-        .rapid_fire
-        .retain(|rf| rf.shooter != DESTROYER && rf.target != DESTROYER);
-    let entry = previous
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == DESTROYER.catalog_key())
-        .unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
-    entry.body_kinds = [BodyKind::Planet].into();
+    let previous = prior_content::without_ship(
+        prior_content::without_ship(latest.artifact.clone(), ShipType::Dreadnought),
+        ShipType::Destroyer,
+    );
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);

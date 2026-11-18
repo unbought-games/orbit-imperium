@@ -102,7 +102,10 @@ async fn battleships_activate_build_and_finish_after_disable_and_restart_in_both
             ("100000000", "20000000", "600000000")
         );
         assert_eq!(stats.rapid_fire_against.len(), 2);
-        assert_eq!(stats.rapid_fire_from.len(), 1);
+        assert_eq!(stats.rapid_fire_from.len(), 2);
+        assert!(stats.rapid_fire_from.iter().any(|rf| rf.unit
+            == ManufacturedItem::Ship(ShipType::Dreadnought)
+            && rf.factor == "30"));
         assert_eq!(
             stats.rapid_fire_from[0].unit,
             ManufacturedItem::Ship(ShipType::Battlecruiser)

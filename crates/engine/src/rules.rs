@@ -294,7 +294,10 @@ impl Ruleset {
                             | ShipType::Bomber,
                         ResearchId::ImpulseDrive
                     ) | (
-                        ShipType::Battleship | ShipType::Battlecruiser | ShipType::Destroyer,
+                        ShipType::Battleship
+                            | ShipType::Battlecruiser
+                            | ShipType::Destroyer
+                            | ShipType::Dreadnought,
                         ResearchId::HyperspaceDrive
                     )
                 ) || artifact
