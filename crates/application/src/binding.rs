@@ -222,6 +222,15 @@ pub struct BoundSettings {
     pub galaxies: u32,
     pub systems_per_galaxy: u32,
     pub positions_per_system: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ship_debris: Option<ShipDebrisSettings>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ShipDebrisSettings {
+    pub basis_points: u32,
+    pub deuterium_in_debris: bool,
+    pub moons_enabled: bool,
 }
 impl<S: GameStore> GameService<S> {
     pub async fn bound_settings(
@@ -243,6 +252,16 @@ impl<S: GameStore> GameService<S> {
             galaxies: profile.map_or(9, |p| p.galaxies),
             systems_per_galaxy: profile.map_or(499, |p| p.systems_per_galaxy),
             positions_per_system: 15,
+            ship_debris: facts
+                .rules
+                .artifact
+                .world
+                .as_ref()
+                .map(|world| ShipDebrisSettings {
+                    basis_points: world.combat.ship_debris_bps,
+                    deuterium_in_debris: world.combat.deuterium_in_debris,
+                    moons_enabled: world.moons,
+                }),
         })
     }
 }

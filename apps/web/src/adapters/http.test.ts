@@ -94,7 +94,7 @@ it('requests snapshot metadata and a minimum revision while accepting an older r
 })
 
 it.each(['bootstrap', 'loginBootstrap', 'signupBootstrap'] as const)(
-  '%s opts into bootstrap progress while preserving old-server compatibility',
+  '%s requests progress and debris settings while accepting an older bootstrap',
   async (method) => {
     const { http } = await import('./http')
     const { bootstrapFixture } = await import('../test-support/bootstrap')
@@ -107,11 +107,39 @@ it.each(['bootstrap', 'loginBootstrap', 'signupBootstrap'] as const)(
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        headers: expect.objectContaining({ 'X-Orbit-View-Metadata': '1' }),
+        headers: expect.objectContaining({
+          'X-Orbit-View-Metadata': '1',
+          'X-Orbit-Debris-Settings': '1',
+        }),
       }),
     )
   },
 )
+
+it('requests and accepts the current debris rule on a world settings refresh', async () => {
+  const { session, snapshot } = readyFixture(4)
+  const settings = {
+    ...snapshot.settings,
+    ship_debris: {
+      basis_points: 4567,
+      deuterium_in_debris: true,
+      moons_enabled: false,
+    },
+  }
+  const fetch = vi.fn(async () => Response.json(settings))
+  vi.stubGlobal('fetch', fetch)
+  const result = await gamePort(session.csrf, snapshot.candidate).settings({
+    binding: settings.binding,
+    request_id: settings.request_id,
+  })
+  expect(result).toEqual(settings)
+  expect(fetch).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      headers: expect.objectContaining({ 'X-Orbit-Debris-Settings': '1' }),
+    }),
+  )
+})
 
 it.each([
   ['60', 60000],
