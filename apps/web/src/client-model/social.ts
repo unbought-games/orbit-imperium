@@ -1,4 +1,4 @@
-import { identityProblem } from './command-window'
+import { identityProblem, futureCommand } from './command-window'
 import { createStore } from 'zustand/vanilla'
 import type { components } from '../contracts'
 type S = components['schemas']
@@ -313,6 +313,10 @@ export class SocialController {
     } catch (e) {
       if (gen !== this.generation) return false
       const identityError = identityProblem(e)
+      if (futureCommand(e)) {
+        this.store.setState({ busy: false, error: identityError! })
+        return false
+      }
       if (identityError) {
         this.store.setState({ busy: false, pending: null })
         await this.list()

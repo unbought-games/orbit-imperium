@@ -7,6 +7,7 @@ import {
   commandWindowError,
   definiteMutationResponse,
   futureSkewMs,
+  futureCommand,
 } from '../client-model/command-window'
 import { PendingCommands } from '../client-model/pending-commands'
 import { request, HttpError } from './http'
@@ -65,6 +66,59 @@ export async function readArchive<T>(
   }
   return validate<T>(schema, await response.json())
 }
+export class ProfileEditPending extends Error {
+  constructor() {
+    super(
+      'An earlier profile change is still unconfirmed. Refresh to check it, then review and save your current edit.',
+    )
+  }
+}
+
+function sameField(a: ProfileAction, b: ProfileAction) {
+  return (
+    a.type === b.type &&
+    (!('event' in a) || ('event' in b && a.event === b.event))
+  )
+}
+function describeEdit(action: ProfileAction) {
+  switch (action.type) {
+    case 'Visibility':
+      return action.public
+        ? 'make the profile public'
+        : 'make the profile private'
+    case 'Publish':
+      return `publish history entry ${action.event}`
+    case 'Select':
+      return `${action.selected ? 'select' : 'deselect'} history entry ${action.event}${action.featured ? ' as featured' : ''} with caption “${action.caption}”`
+    case 'Identity':
+      return `set the empire name to “${action.identity.name}”, tagline to “${action.identity.tagline}” and title to “${action.identity.title_id}”`
+  }
+}
+export class ProfileEditReview extends Error {
+  constructor(
+    private readonly scope: string,
+    private readonly row: ProfileCommand,
+  ) {
+    super(
+      `The profile changed before this edit could be applied. Review the latest profile before saving again. Your edit was to ${describeEdit(row.action)}.`,
+    )
+  }
+  dismiss() {
+    pending.remove(
+      'ProfileCommand',
+      reviewScope(this.scope),
+      this.row.command_id,
+    )
+  }
+}
+const reviewScope = (scope: string) => scope + ':review'
+function refreshProfileClock(profile: EmpireProfile) {
+  return readArchive<EmpireProfile>(
+    'EmpireProfile',
+    `/api/v4/empire-profiles/${profile.player}?library=false`,
+    new AbortController().signal,
+  )
+}
 async function submitProfile(
   profile: EmpireProfile,
   account: string,
@@ -75,7 +129,9 @@ async function submitProfile(
   const scope = profileScope(profile, account)
   const code = commandWindowError(envelope.command_id, serverNow())
   if (code) {
-    pending.remove('ProfileCommand', scope, envelope.command_id)
+    if (code !== 'COMMAND_IN_FUTURE')
+      pending.remove('ProfileCommand', scope, envelope.command_id)
+    else await refreshProfileClock(profile)
     throw new HttpError(409, code)
   }
   try {
@@ -86,11 +142,37 @@ async function submitProfile(
       csrf,
     )
   } catch (error) {
+    if (futureCommand(error)) {
+      await refreshProfileClock(profile)
+      throw error
+    }
+    if (
+      recovering &&
+      error instanceof HttpError &&
+      error.status === 409 &&
+      error.code === 'Conflict'
+    ) {
+      // A concurrent accepted edit won this revision. Keep the submitted
+      // values for human review, outside automatic submission recovery.
+      pending.save('ProfileCommand', reviewScope(scope), envelope)
+      pending.remove('ProfileCommand', scope, envelope.command_id)
+      throw new ProfileEditReview(scope, envelope)
+    }
     if (definiteMutationResponse(error, recovering))
       pending.remove('ProfileCommand', scope, envelope.command_id)
     throw error
   }
   pending.remove('ProfileCommand', scope, envelope.command_id)
+  for (const old of pending.load<ProfileCommand>(
+    'ProfileCommand',
+    reviewScope(scope),
+  )) {
+    if (
+      old.expected_revision < envelope.expected_revision &&
+      sameField(old.action, envelope.action)
+    )
+      pending.remove('ProfileCommand', reviewScope(scope), old.command_id)
+  }
 }
 
 export async function recoverProfile(
@@ -102,9 +184,14 @@ export async function recoverProfile(
     'ProfileCommand',
     profileScope(profile, account),
   )
-  if (!rows.length) return false
   for (const row of rows) await submitProfile(profile, account, csrf, row, true)
-  return true
+  const [review] = pending.load<ProfileCommand>(
+    'ProfileCommand',
+    reviewScope(profileScope(profile, account)),
+  )
+  if (review)
+    throw new ProfileEditReview(profileScope(profile, account), review)
+  return rows.length > 0
 }
 
 export async function editProfile(
@@ -121,11 +208,7 @@ export async function editProfile(
         (performance.now() - serverClock.received),
     ) > futureSkewMs
   ) {
-    await readArchive<EmpireProfile>(
-      'EmpireProfile',
-      `/api/v4/empire-profiles/${profile.player}?library=false`,
-      new AbortController().signal,
-    )
+    await refreshProfileClock(profile)
   }
   const scope = profileScope(profile, account)
   const rows = pending.load<ProfileCommand>('ProfileCommand', scope)
@@ -135,6 +218,7 @@ export async function editProfile(
       row.expected_revision === profile.revision &&
       canonical(row.action) === canonical(action),
   )
+  if (!existing && rows.length) throw new ProfileEditPending()
   const envelope = existing ?? {
     command_id: timestampedCommandId(commandId(crypto), serverNow()),
     expected_revision: profile.revision,

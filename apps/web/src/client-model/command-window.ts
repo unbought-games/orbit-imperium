@@ -32,6 +32,24 @@ export function commandWindowError(id: string, now: number) {
   return now >= at + commandWindowMs ? 'COMMAND_EXPIRED' : null
 }
 
+export function futureCommand(error: unknown) {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    error.code === 'COMMAND_IN_FUTURE'
+  )
+}
+
+export function futureCheckDelay(id: string, serverNow: number) {
+  // A clock correction can bring a far-future ID back into range. Sample again
+  // periodically; a disagreeing replica must not cause an immediate retry loop.
+  return Math.max(
+    1000,
+    Math.min(30_000, (commandTime(id) ?? serverNow) - futureSkewMs - serverNow),
+  )
+}
+
 export function withinCommandWindow(id: string, now: number) {
   return commandWindowError(id, now) === null
 }
@@ -52,6 +70,7 @@ export function definiteMutationResponse(error: unknown, recovering = false) {
     status < 500 &&
     status !== 408 &&
     status !== 429 &&
+    !futureCommand(error) &&
     !(recovering && unavailableCommandAccess(error))
   )
 }
@@ -63,7 +82,7 @@ export function identityProblem(error: unknown) {
     case 'COMMAND_HISTORY_EXPIRED':
       return expiredOrderMessage
     case 'COMMAND_IN_FUTURE':
-      return 'This order is ahead of the server clock. Its earlier outcome is unknown. Check the current state before placing another order.'
+      return 'This order is ahead of the server clock. Its outcome is unknown. The original order can be checked again when the clock catches up.'
     case 'COMMAND_ID_UNSUPPORTED':
       return 'This order uses an unsupported ID. Its earlier outcome is unknown. Reload the app and check the current state.'
     default:

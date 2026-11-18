@@ -6,6 +6,8 @@ import {
   ArchiveReadError,
   editProfile,
   recoverProfile,
+  ProfileEditPending,
+  ProfileEditReview,
   type EmpireProfile,
   type ProfileAction,
 } from '../adapters/empire-history'
@@ -23,12 +25,14 @@ export function useArchive<T>(schema: string, path: string) {
       session: Session | null
       loading: boolean
       busy: boolean
+      review: ProfileEditReview | null
       error: string
     }>(() => ({
       data: null,
       session: null,
       loading: true,
       busy: false,
+      review: null,
       error: '',
     })),
   )
@@ -38,7 +42,7 @@ export function useArchive<T>(schema: string, path: string) {
   useEffect(() => {
     const current = ++generation.current
     const controller = new AbortController()
-    store.setState({ loading: true, error: '' })
+    store.setState({ loading: true, error: '', review: null })
     void Promise.all([
       readArchive<T>(schema, path, controller.signal),
       http.session().catch(() => null),
@@ -60,11 +64,15 @@ export function useArchive<T>(schema: string, path: string) {
             )
               data = await readArchive<T>(schema, path, controller.signal)
           } catch (error) {
-            const problem = identityProblem(error)
+            const problem =
+              error instanceof ProfileEditReview
+                ? error.message
+                : identityProblem(error)
             if (problem)
               data = await readArchive<T>(schema, path, controller.signal)
             if (!controller.signal.aborted && current === generation.current)
               store.setState({
+                review: error instanceof ProfileEditReview ? error : null,
                 error:
                   problem ??
                   (unavailableCommandAccess(error)
@@ -97,7 +105,7 @@ export function useArchive<T>(schema: string, path: string) {
     if (!state.session || store.getState().busy || store.getState().loading)
       return false
     const current = ++generation.current
-    store.setState({ busy: true, error: '' })
+    store.setState({ busy: true, error: '', review: null })
     let committed = false
     try {
       await editProfile(
@@ -116,9 +124,21 @@ export function useArchive<T>(schema: string, path: string) {
         store.setState({ data, loading: false })
       return true
     } catch (error) {
-      const problem = identityProblem(error)
+      if (error instanceof ProfileEditPending) {
+        if (current === generation.current)
+          store.setState({ error: error.message })
+        return false
+      }
+      const problem =
+        error instanceof ProfileEditReview
+          ? error.message
+          : identityProblem(error)
       if (problem) {
-        if (current === generation.current) store.setState({ error: problem })
+        if (current === generation.current)
+          store.setState({
+            error: problem,
+            review: error instanceof ProfileEditReview ? error : null,
+          })
         try {
           const data = await readArchive<T>(
             schema,
@@ -147,5 +167,11 @@ export function useArchive<T>(schema: string, path: string) {
       store.setState({ busy: false })
     }
   }
-  return { ...state, retry, save }
+  const dismissReview = state.review
+    ? () => {
+        state.review!.dismiss()
+        retry()
+      }
+    : null
+  return { ...state, retry, save, dismissReview }
 }

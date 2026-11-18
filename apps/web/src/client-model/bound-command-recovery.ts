@@ -9,6 +9,7 @@ import {
 import {
   commandWindowError,
   definiteMutationResponse,
+  futureCommand,
   withinCommandWindow,
 } from './command-window'
 import type { PendingCommands } from './pending-commands'
@@ -60,6 +61,7 @@ export class BoundCommandRecovery {
     } as Request<K>
     if (prior && canonical(prior) !== canonical(envelope))
       throw Error('A different order already uses this ID.')
+    if (!prior) this.storage?.save(kind, scope, envelope)
     if (
       prior ||
       (this.storage && !withinCommandWindow(envelope.command_id, estimatedNow))
@@ -69,16 +71,21 @@ export class BoundCommandRecovery {
       const now = await confirmClock()
       const code = commandWindowError(request.command_id, now)
       if (code) {
-        this.storage?.remove(kind, scope, request.command_id)
+        if (code !== 'COMMAND_IN_FUTURE')
+          this.storage?.remove(kind, scope, request.command_id)
         throw Object.assign(new Error(code), { code, status: 409 })
       }
     }
-    if (!prior) this.storage?.save(kind, scope, envelope)
     try {
       const result = await send(envelope)
       this.storage?.remove(kind, scope, envelope.command_id)
       return result
     } catch (error) {
+      if (futureCommand(error)) {
+        // The saved envelope remains eligible for a later same-ID retry.
+        await confirmClock()
+        throw error
+      }
       if (definiteMutationResponse(error, !!prior))
         this.storage?.remove(kind, scope, envelope.command_id)
       throw error

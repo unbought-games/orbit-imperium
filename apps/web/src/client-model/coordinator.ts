@@ -5,6 +5,8 @@ import {
   unavailableCommandAccess,
   unknownAccessMessage,
   futureSkewMs,
+  futureCommand,
+  futureCheckDelay,
   presenceCommandId,
   timestampedCommandId,
   identityProblem,
@@ -167,6 +169,7 @@ export class Coordinator {
   private needsClockRefresh = false
   private needsOrderRefresh = false
   private resumedOrders = new Set<string>()
+  private deferredUntil = new Map<string, number>()
   private get commandNow() {
     return (
       this.commandClock.server +
@@ -347,6 +350,7 @@ export class Coordinator {
     this.restoredMutations = []
     this.needsOrderRefresh = false
     this.resumedOrders.clear()
+    this.deferredUntil.clear()
     this.mailboxReads.clear()
     this.mailboxVersion++
     this.mailboxRequest = null
@@ -1162,7 +1166,13 @@ export class Coordinator {
       return
     }
     if (this.needsOrderRefresh) {
-      await this.refresh()
+      const captured = structuredClone(command)
+      const capturedQuote = structuredClone(quote)
+      await (this.refreshWork ?? this.refresh())
+      if (this.current(g, b) && !this.needsOrderRefresh)
+        return this.send(captured, capturedQuote)
+      if (this.current(g, b))
+        this.message = 'Refresh your empire before confirming this action.'
       return
     }
     this.message = ''
@@ -1290,7 +1300,10 @@ export class Coordinator {
       )
     } catch (e) {
       const rejected = failure(e)
-      if (failure(e).code === 'COMMAND_IN_FUTURE') this.needsClockRefresh = true
+      if (futureCommand(e)) {
+        await this.deferGameOrder(a, g, true)
+        return true
+      }
       const closed = identityProblem(e)
       if (closed) {
         this.retireOrder(a, g, closed)
@@ -1340,8 +1353,43 @@ export class Coordinator {
     }
     return true
   }
+  private clearClockWait(id: string) {
+    this.deferredUntil.delete(id)
+    if (
+      !this.deferredUntil.size &&
+      this.message === identityProblem({ code: 'COMMAND_IN_FUTURE' })
+    )
+      this.message = ''
+  }
+  private deferFuture(id: string) {
+    this.deferredUntil.set(
+      id,
+      this.platform.monotonicNowMs() + futureCheckDelay(id, this.commandNow),
+    )
+  }
+  private async deferGameOrder(a: Attempt, g: number, sampleClock: boolean) {
+    const { binding, command_id } = a.envelope
+    if (!this.current(g, binding)) return
+    this.resumedOrders.add(command_id)
+    this.deferFuture(command_id)
+    await this.uncertain(a, g)
+    if (sampleClock) {
+      this.needsClockRefresh = true
+      try {
+        await this.resampleClock()
+      } catch (error) {
+        await this.problem(error, g, binding)
+        return
+      }
+      if (!this.current(g, binding) || !this.resumedOrders.has(command_id))
+        return
+      this.deferFuture(command_id)
+    }
+    this.message = identityProblem({ code: 'COMMAND_IN_FUTURE' })!
+  }
   private forgetEnvelope(a: Attempt) {
     this.resumedOrders.delete(a.envelope.command_id)
+    this.deferredUntil.delete(a.envelope.command_id)
     this.platform.pendingCommands?.remove(
       'GameEnvelope',
       bindingKey(a.envelope.binding),
@@ -1415,6 +1463,8 @@ export class Coordinator {
       attempts: new Map(this.attempts).set(key, next),
       reportHeaders,
     })
+    this.clearClockWait(r.command_id)
+    this.resumedOrders.delete(r.command_id)
     if (r.status !== 'Pending') this.forgetEnvelope(a)
     if (r.status === 'Pending') this.delivery?.pending()
     if (
@@ -1451,7 +1501,9 @@ export class Coordinator {
     }
   }
   async recover(command_id: string, retry = false) {
-    if (this.platform.monotonicNowMs() < this.retryAt) return
+    const now = this.platform.monotonicNowMs()
+    if (now < this.retryAt || now < (this.deferredUntil.get(command_id) ?? 0))
+      return
     const b = this.binding,
       g = this.generation
     if (!b || !this.ready) return
@@ -1465,7 +1517,7 @@ export class Coordinator {
         terminal(this.attempts.get(attemptKey(b, command_id)) ?? a)
       )
         return
-      if (failure(e).code === 'COMMAND_IN_FUTURE') this.needsClockRefresh = true
+      if (futureCommand(e)) return this.deferGameOrder(a, g, true)
       const closed = identityProblem(e)
       if (closed) {
         this.retireOrder(a, g, closed, true)
@@ -1496,6 +1548,8 @@ export class Coordinator {
             candidate.protocol !== a.envelope.protocol
               ? 'COMMAND_ID_UNSUPPORTED'
               : commandWindowError(command_id, candidate.sampled_at)
+          if (code === 'COMMAND_IN_FUTURE')
+            return this.deferGameOrder(a, g, false)
           if (code) {
             this.retireOrder(a, g, identityProblem({ code })!, true)
             return
@@ -1517,12 +1571,20 @@ export class Coordinator {
   private async recoverBoundMutations(binding: Binding, generation: number) {
     for (const row of this.restoredMutations.slice()) {
       if (!this.current(generation, binding)) return
+      const id = row.envelope.command_id
+      if (this.platform.monotonicNowMs() < (this.deferredUntil.get(id) ?? 0))
+        continue
       try {
         if (row.kind === 'SocialCommandRequest')
           await this.socialCommand(row.envelope, true)
         else await this.allianceCommand(row.envelope, true)
       } catch (error) {
         if (!this.current(generation, binding)) return
+        if (futureCommand(error)) {
+          this.deferFuture(id)
+          this.message = identityProblem(error)!
+          continue
+        }
         if (!definiteMutationResponse(error)) {
           await this.problem(error, generation, binding)
           return
@@ -1540,6 +1602,7 @@ export class Coordinator {
           }
         }
       }
+      this.clearClockWait(id)
       this.restoredMutations = this.restoredMutations.filter(
         (saved) => saved !== row,
       )

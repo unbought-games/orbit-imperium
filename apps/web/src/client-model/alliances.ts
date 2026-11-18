@@ -1,4 +1,4 @@
-import { identityProblem } from './command-window'
+import { identityProblem, futureCommand } from './command-window'
 import { createStore } from 'zustand/vanilla'
 import type { components } from '../contracts'
 type S = components['schemas']
@@ -309,6 +309,10 @@ export class AlliancesController {
     } catch (error) {
       if (generation !== this.generation) return false
       const identityError = identityProblem(error)
+      if (futureCommand(error)) {
+        this.store.setState({ busy: false, error: identityError! })
+        return false
+      }
       if (identityError) {
         this.store.setState({ busy: false, pending: null })
         await this.load({ type: 'Mine' }, previousView?.alliance)

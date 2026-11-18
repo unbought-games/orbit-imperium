@@ -33,9 +33,10 @@ function recovery() {
   let seq = 42,
     online = true,
     visible = true
+  let mono = 50_000
   const platform = {
     newId: () => id(seq++),
-    monotonicNowMs: () => 50_000,
+    monotonicNowMs: () => mono,
     pendingCommands: new PendingCommands(() => storage),
     isOnline: () => online,
     isVisible: () => visible,
@@ -78,6 +79,9 @@ function recovery() {
     read,
     view,
     model: () => new Coordinator(port, platform),
+    advance: (ms: number) => {
+      mono += ms
+    },
     setTime: (ms: number) => {
       at = ms
     },
@@ -284,3 +288,115 @@ it('a changed alliance permission during recovery preserves the uncertain reques
   expect(run.mock.calls[2]).toEqual(run.mock.calls[0])
   expect(f.storage.length).toBe(0)
 })
+
+it('places the next distinct confirmed action after the expired order refresh lands', async () => {
+  const f = recovery()
+  const model = f.model()
+  await model.initialize(f.session, f.snapshot)
+  let release!: (value: Awaited<ReturnType<GamePort['view']>>) => void
+  f.view.mockImplementationOnce(
+    ({ request_id }) =>
+      new Promise((resolve) => {
+        release = (next) => resolve({ ...next, request_id })
+      }),
+  )
+  f.send.mockRejectedValueOnce({ status: 409, code: 'COMMAND_EXPIRED' })
+  expect(await model.send(order())).toBeUndefined()
+  const next = order()
+  next.action.name = 'Io'
+  const result = model.send(next)
+  next.action.name = 'Unconfirmed alteration'
+  expect(f.send).toHaveBeenCalledTimes(1)
+  release(f.snapshot.view)
+  expect(await result).toBeDefined()
+  expect(f.send.mock.calls[1][0].command).toMatchObject({
+    action: { name: 'Io' },
+  })
+  expect(f.send.mock.calls[1][0].command_id).not.toBe(
+    f.send.mock.calls[0][0].command_id,
+  )
+})
+
+it.each(['submit', 'receipt', 'legacy lookup'] as const)(
+  'waits after a future %s and resends the identical order once the server clock catches up',
+  async (source) => {
+    const f = recovery()
+    f.snapshot.candidate.sampled_at = 100_000
+    f.setTime(40_000)
+    const model = f.model()
+    await model.initialize(f.session, f.snapshot)
+    const future = { status: 400, code: 'COMMAND_IN_FUTURE' }
+    if (source === 'submit') f.send.mockRejectedValueOnce(future)
+    const id = (await model.send(order()))!
+    if (source === 'receipt') f.read.mockRejectedValueOnce(future)
+    if (source !== 'submit') await model.retryOrder(id)
+    expect(f.port.currentBinding).toHaveBeenCalledOnce()
+    const reads = f.read.mock.calls.length
+    await model.reconcilePending()
+    expect(f.read).toHaveBeenCalledTimes(reads)
+    expect(f.storage.length).toBe(1)
+    expect([...model.ledger.values()][0].status).toBe('uncertain')
+    f.advance(30_000)
+    f.setTime(70_000)
+    f.send.mockImplementationOnce(async (envelope) => ({
+      protocol: 4,
+      binding: envelope.binding,
+      command_id: envelope.command_id,
+      status: 'Committed',
+      admitted_at: 70_000,
+      executed_at: 70_000,
+      minimum_viewer_revision: '0',
+      result_ids: [],
+    }))
+    await model.reconcilePending()
+    expect(f.send.mock.calls.map(([e]) => e)).toEqual([
+      f.send.mock.calls[0][0],
+      f.send.mock.calls[0][0],
+    ])
+    expect(f.storage.length).toBe(0)
+  },
+)
+
+it.each(['social', 'alliance'] as const)(
+  'preserves a future %s envelope through a restarted local clock check',
+  async (kind) => {
+    const f = recovery()
+    f.snapshot.candidate.sampled_at = 100_000
+    f.setTime(40_000)
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce({ status: 400, code: 'COMMAND_IN_FUTURE' })
+      .mockResolvedValue({ status: 'ok' })
+    const port = { ...f.port, socialCommand: run, allianceCommand: run }
+    const first = new Coordinator(port, f.platform)
+    await first.initialize(f.session, f.snapshot)
+    const command_id = await first.newCommandId()
+    const submission =
+      kind === 'social'
+        ? first.socialCommand({
+            command_id,
+            action: { type: 'ReadCircular', circular: id(29) },
+          })
+        : first.allianceCommand({
+            command_id,
+            expected_revision: null,
+            action: { type: 'Join', alliance: id(30) },
+          })
+    await expect(submission).rejects.toMatchObject({
+      code: 'COMMAND_IN_FUTURE',
+    })
+    expect(f.port.currentBinding).toHaveBeenCalledOnce()
+    const restored = new Coordinator(port, f.platform)
+    await restored.initialize(f.session, f.snapshot)
+    await restored.reconcilePending()
+    await restored.reconcilePending()
+    expect(f.port.currentBinding).toHaveBeenCalledTimes(2)
+    expect(f.storage.length).toBe(1)
+    expect(run).toHaveBeenCalledTimes(1)
+    f.setTime(70_000)
+    f.advance(30_000)
+    await restored.reconcilePending()
+    expect(run.mock.calls).toEqual([run.mock.calls[0], run.mock.calls[0]])
+    expect(f.storage.length).toBe(0)
+  },
+)
