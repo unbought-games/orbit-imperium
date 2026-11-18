@@ -1,3 +1,4 @@
+import { SimulationDisclosure } from './simulation-disclosure'
 import {
   battleEstimates,
   planningSummary,
@@ -35,39 +36,60 @@ export function SimulationPlanning({
       <div className={styles.planningGrid}>
         <section aria-label="Cargo and loot">
           <h4>Cargo & loot</h4>
-          {summary.cargo && (
-            <p>
-              Surviving cargo capacity:{' '}
-              <strong>{amount(summary.cargo.average)}</strong> average
-            </p>
-          )}
-          {summary.total && summary.loot ? (
-            <>
-              <p>
-                Estimated loot: <strong>{amount(summary.total.average)}</strong>{' '}
-                average
-              </p>
-              <div className={styles.resourceLine}>
-                {summary.loot.map((row) => (
-                  <ResourceValue key={row.resource} resource={row.resource}>
-                    {amount(row.average)}
-                  </ResourceValue>
-                ))}
+          <dl className={styles.lootMetrics}>
+            {summary.potentialLoot !== null && (
+              <div>
+                <dt>Potential loot · unlimited cargo</dt>
+                <dd>{amount(summary.potentialLoot)}</dd>
               </div>
-              {estimates.cargoCovered !== null && (
-                <p>
-                  {estimates.victories
-                    ? `Cargo covers all available loot in ${estimates.cargoCovered} / ${estimates.victories} victories.`
-                    : 'No victorious samples to collect loot.'}
-                </p>
+            )}
+            {summary.cargo && (
+              <div>
+                <dt>Average surviving cargo capacity</dt>
+                <dd>{amount(summary.cargo.average)}</dd>
+              </div>
+            )}
+            {summary.total && summary.loot && (
+              <div>
+                <dt>Average gross haul</dt>
+                <dd>{amount(summary.total.average)}</dd>
+                <dd className={styles.haulBreakdown}>
+                  {summary.loot.map((row) => (
+                    <ResourceValue key={row.resource} resource={row.resource}>
+                      {amount(row.average)}
+                    </ResourceValue>
+                  ))}
+                </dd>
+              </div>
+            )}
+          </dl>
+          {summary.total ? (
+            <>
+              {summary.potentialLoot === 0n ? (
+                <p>The observed resources yield no raid loot.</p>
+              ) : estimates.victories === 0 ? (
+                <p>No attacker victories in this sample.</p>
+              ) : (
+                estimates.cargoCovered !== null && (
+                  <p>
+                    <strong>
+                      {estimates.cargoCovered} of {estimates.victories}
+                    </strong>{' '}
+                    attacker victories collected the full potential loot.
+                  </p>
+                )
               )}
-              <small>Observed resources; gross loot before fuel.</small>
+              <small>
+                Averages include every battle. Ships arrive empty, so launch
+                fuel uses no space at the target. Net haul after fuel is gross
+                haul minus the deuterium spent at launch.
+              </small>
             </>
           ) : (
             <p>
               {result.loot_rules_enabled
-                ? 'Estimated loot unavailable: resources were not observed. Unknown resources are not treated as zero.'
-                : 'Estimated loot unavailable: raiding is not enabled in this universe.'}
+                ? 'Loot is unknown because target resources were not observed.'
+                : 'Loot is unavailable because raiding is disabled in this universe.'}
             </p>
           )}
         </section>
@@ -119,8 +141,11 @@ export function SimulationPlanning({
           </p>
         </section>
       </div>
-      <details open className={styles.resultDetails}>
-        <summary>Estimate ranges and assumptions</summary>
+      <SimulationDisclosure
+        section="ranges"
+        className={styles.resultDetails}
+        summary="Estimate ranges and assumptions"
+      >
         <dl className={styles.survivors}>
           {summary.cargo && (
             <div>
@@ -132,7 +157,7 @@ export function SimulationPlanning({
           )}
           {summary.total && (
             <div>
-              <dt>Estimated total loot</dt>
+              <dt>Gross haul</dt>
               <dd>
                 {amount(summary.total.minimum)}–{amount(summary.total.maximum)}
               </dd>
@@ -150,7 +175,7 @@ export function SimulationPlanning({
           ))}
           {summary.loot?.map((row) => (
             <div key={row.resource}>
-              <dt>Estimated loot · {row.resource}</dt>
+              <dt>Gross haul · {row.resource}</dt>
               <dd>
                 <ResourceValue resource={row.resource}>
                   {amount(row.minimum)}–{amount(row.maximum)}
@@ -168,6 +193,15 @@ export function SimulationPlanning({
             </div>
           )}
         </dl>
+        {summary.potentialLoot !== null && summary.potentialLoot > 0n && (
+          <p>
+            Potential loot is the most a victory can take from the observed
+            resources under this universe’s raid rules. Each victory counts
+            toward full coverage only when it collects that amount of every
+            resource. Loading each resource in turn can leave cargo space
+            unused. Other outcomes contribute zero haul to the average.
+          </p>
+        )}
         {estimates.recyclers && (
           <p>
             Recycler count rounds up to whole ships using{' '}
@@ -182,7 +216,7 @@ export function SimulationPlanning({
           averaged. Outcomes are samples, not guarantees. A new moon requires a
           planet without an existing moon.
         </p>
-      </details>
+      </SimulationDisclosure>
     </>
   )
 }

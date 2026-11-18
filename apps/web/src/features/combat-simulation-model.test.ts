@@ -510,6 +510,25 @@ it('rounds recyclers up from the average harvestable field using supplied capaci
     battleEstimates({ ...response, samples: [] }, 'Unknown').recyclers,
   ).toBeNull()
 })
+it('sums the unlimited-cargo benchmark exactly and distinguishes zero from unavailable', () => {
+  expect(
+    planningSummary({
+      ...sampleResponse,
+      available_loot: {
+        metal: '9007199254740993000',
+        crystal: '97000000',
+        deuterium: '18000000',
+      },
+    }).potentialLoot,
+  ).toBe(9007199254855993000n)
+  expect(
+    planningSummary({
+      ...sampleResponse,
+      available_loot: { metal: '0', crystal: '0', deuterium: '0' },
+    }).potentialLoot,
+  ).toBe(0n)
+  expect(planningSummary(sampleResponse).potentialLoot).toBeNull()
+})
 it('compares cargo coverage for victorious samples against rule-calculated available loot', () => {
   expect(
     battleEstimates(

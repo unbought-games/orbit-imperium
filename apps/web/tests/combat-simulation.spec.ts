@@ -1,5 +1,5 @@
 import { routeWorld } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withFixtureResponseStatus } from './fixtures/responses'
 import { menuDestination } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
@@ -31,7 +31,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await page.route('**/combat-simulation', async route => {
     submitted = route.request().postDataJSON()
     if (hidden && attempts++ === 0) { await route.fulfill({ status: 503, json: { code: 'Unavailable' } }); return }
-    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, moons_enabled: true, recycler_capacity: '20000000000', available_loot: { metal: '133000000', crystal: '133000000', deuterium: '134000000' }, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, moon_chance_percent: hidden ? 20 : 0, debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity: '400000000', estimated_loot: hidden ? null : { metal: '133000000', crystal: '133000000', deuterium: '134000000' }, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
+    const observed = submitted.inputs.observed_resources !== undefined
+    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, moons_enabled: true, recycler_capacity: '20000000000', available_loot: observed ? { metal: '5000000000', crystal: '5000000000', deuterium: '5000000000' } : null, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, moon_chance_percent: hidden ? 20 : 0, debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity: '400000000', estimated_loot: observed ? { metal: '133000000', crystal: '133000000', deuterium: '134000000' } : null, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
   })
   await withFixtureResponse(page, r => r.url().endsWith(`/reports/${header.id}`), () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
   const trigger = page.getByRole('button', { name: 'Simulate combat', exact: true })
@@ -112,20 +113,31 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await expect(dialog.getByRole('button', { name: 'Review attack' })).toBeDisabled()
     await diagnosticScreenshot(page, { path: `test-results/simulation-unavailable-${width}.png`, fullPage: false })
   }
-  await dialog.getByRole('button', { name: 'Run 10 battles' }).click()
+  const run = () => dialog.getByRole('button', { name: 'Run 10 battles' }).click()
+  const simulationResponse = (response: import('@playwright/test').Response) =>
+    response.request().method() === 'POST' && response.url().endsWith('/combat-simulation')
   if (hidden) {
+    await withFixtureResponseStatus(page, simulationResponse, run, 503)
     await expect(dialog.getByRole('alert')).toContainText('Simulation failed')
-    await dialog.getByRole('button', { name: 'Run 10 battles' }).click()
   }
+  await withFixtureResponse(page, simulationResponse, run)
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toBeVisible()
   const results = dialog.getByRole('region', { name: 'Simulation results' })
   expect(await results.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('[aria-label="Attack planning"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
   await expect(results).toContainText('Light Fighter2 lost · 8 surviving')
   await expect(results).toContainText('Bomber2 lost · 0 surviving')
-  await expect(results).toContainText('Surviving cargo capacity: 400 average')
+  const cargo = results.getByRole('region', { name: 'Cargo and loot' })
+  await expect(cargo.getByText('Average surviving cargo capacity', { exact: true }).locator('..').getByRole('definition')).toHaveText('400')
   await expect(results).toContainText('1 average battle round')
   await expect(results.getByRole('region', { name: 'Moon creation chance' })).toContainText('0%')
-  await expect(results).toContainText(hidden ? 'resources were not observed' : 'Estimated loot: 400 average')
+  if (hidden) {
+    await expect(cargo).toContainText('resources were not observed')
+    await expect(cargo.getByText('Potential loot', { exact: false })).toHaveCount(0)
+  } else {
+    await expect(cargo.getByText('Potential loot · unlimited cargo', { exact: true }).locator('..').getByRole('definition')).toHaveText('15,000')
+    await expect(cargo.getByText('Average gross haul', { exact: true }).locator('..').getByRole('definition').first()).toHaveText('400')
+    await expect(cargo).toContainText('0 of 10 attacker victories collected the full potential loot')
+  }
   if (!hidden) {
     for (const name of ['Metal', 'Crystal', 'Deuterium']) await expect(results.getByRole('img', { name, exact: true }).first()).toBeVisible()
     expect(submitted.inputs.observed_resources).toEqual(observation.resources.value)
@@ -155,6 +167,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: 1 }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: 3 }])
   expect(submitted.inputs.attacker.units).toEqual([{ item: { kind: 'Ship', id: 'Bomber' }, count: 2 }, { item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }])
   expect(Object.keys(submitted).sort()).toEqual(['context', 'inputs'])
+  const survivors = results.locator('details').filter({ has: results.getByText('Losses and survivors', { exact: true }) })
+  if (!hidden) await survivors.locator('summary').press('Space')
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('20')
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toHaveCount(0)
   await dialog.getByText('Use my planet as defender', { exact: true }).click()
@@ -170,6 +184,10 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await withFixtureResponse(page, r => r.url().endsWith('/combat-simulation'), () => dialog.getByRole('button', { name: 'Run 10 battles' }).click())
   await expect(results).toBeVisible()
   expect(submitted.inputs.observed_resources).toBeUndefined()
+  if (!hidden) {
+    await expect(survivors).toHaveJSProperty('open', false)
+    await expect(results.getByText('resources were not observed', { exact: false })).toBeVisible()
+  }
   if (!hidden && process.env.ORBIT_TEST_SCREENSHOTS === '1') {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 1000 })
@@ -200,6 +218,14 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(trigger).toBeFocused()
+  if (!hidden) {
+    await trigger.press('Enter')
+    await expect(dialog).toBeVisible()
+    await expect(defenderShips.locator('details')).toHaveJSProperty('open', false)
+    await expect(dialog.getByRole('button', { name: 'Replace defender from current planet' })).toBeVisible()
+    await expect(dialog.getByLabel('Attacker Light Fighter', { exact: true })).toHaveValue('0')
+    await expect(results).toHaveCount(0)
+  }
 })
 
 test('prepares an editable observed-planet attack with advisory hypothetical estimates and authoritative launch validation', async ({ page }) => {
@@ -248,6 +274,11 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
   await expect(plan.locator('details')).toHaveJSProperty('open', true)
   const prepare = plan.getByRole('button', { name: 'Review attack' })
   await expect(prepare).toBeDisabled()
+  const planToggle = plan.locator('summary').filter({ hasText: 'Plan attack' })
+  await planToggle.press('Enter')
+  await expect(prepare).toBeVisible()
+  await expect(prepare).toBeDisabled()
+  await planToggle.press('Enter')
   await ship.fill('4')
   await expect(plan).not.toContainText('4 selected, 3 stationed')
   await expect(prepare).toBeDisabled()
@@ -318,7 +349,13 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
     }))).toBe(true)
     await diagnosticScreenshot(page, { path: `test-results/simulation-planning-${width}.png`, fullPage: false })
   }
-  await withFixtureResponse(page, r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'FleetQuote', () => prepare.click())
+  await planToggle.press('Enter')
+  await expect(plan.locator('details')).toHaveJSProperty('open', false)
+  await expect(timing).not.toBeVisible()
+  await expect(prepare).toBeEnabled()
+  await page.keyboard.press('Tab')
+  await expect(prepare).toBeFocused()
+  await withFixtureResponse(page, r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'FleetQuote', () => page.keyboard.press('Enter'))
   const reviewPanel = page.getByRole('region', { name: 'Fleet quote', exact: true })
   await expect(reviewPanel).toBeFocused()
   expect(quotes.at(-1)).toMatchObject({origin: body.id, mission:'Attack', destination, speed_percent:60, ships:[{owner:binding.player, ship_type:'LightFighter',count:'3'}]})

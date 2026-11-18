@@ -1,4 +1,5 @@
-import { Fragment, useState } from 'react'
+import { SimulationDisclosure } from './simulation-disclosure'
+import { Fragment } from 'react'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { VisuallyHidden } from '../ui/visually-hidden'
@@ -13,6 +14,7 @@ import styles from './combat-simulation.module.css'
 import type { SimulationUnitOutcomes } from './simulation-unit-outcomes'
 
 type Props = {
+  allySlot?: number
   fields: SimulationField[]
   edits: Record<string, string>
   edit: (values: Record<string, string>) => void
@@ -42,10 +44,10 @@ function FieldGroup({
   edit,
   outcomes,
   group,
+  allySlot,
 }: Props & { group: string }) {
   const defender = fields[0].side === 'defender'
   const collapsible = defender && group !== 'Technologies'
-  const [expanded, setExpanded] = useState(true)
   const summary = simulationGroupSummary(fields, edits)
   const groups =
     group === 'Ships'
@@ -91,29 +93,38 @@ function FieldGroup({
       aria-label={`${defender ? 'Defender' : 'Attacker'} ${group.toLowerCase()}`}
     >
       {collapsible ? (
-        <details
-          open={expanded}
-          onToggle={(event) => setExpanded(event.currentTarget.open)}
+        <SimulationDisclosure
+          key={allySlot}
+          section={
+            allySlot
+              ? `allied-fleet-${allySlot}-ships`
+              : group === 'Ships'
+                ? 'defender-ships'
+                : 'defender-defenses'
+          }
           className={styles.fieldGroup}
+          summaryClassName={styles.groupHeading}
+          summary={
+            <>
+              {group}
+              <span className={styles.groupSummary}>
+                {formatWholeNumber(summary.total)} units · {summary.types}{' '}
+                {summary.types === 1 ? 'type' : 'types'}
+                {summary.unknown > 0 && (
+                  <span> · {summary.unknown} not observed; assumed zero</span>
+                )}
+                {summary.invalid > 0 && (
+                  <strong role="alert">
+                    {' '}
+                    · {summary.invalid} invalid values — expand to edit
+                  </strong>
+                )}
+              </span>
+            </>
+          }
         >
-          <summary className={styles.groupHeading}>
-            {group}
-            <span className={styles.groupSummary}>
-              {formatWholeNumber(summary.total)} units · {summary.types}{' '}
-              {summary.types === 1 ? 'type' : 'types'}
-              {summary.unknown > 0 && (
-                <span> · {summary.unknown} not observed; assumed zero</span>
-              )}
-              {summary.invalid > 0 && (
-                <strong role="alert">
-                  {' '}
-                  · {summary.invalid} invalid values — expand to edit
-                </strong>
-              )}
-            </span>
-          </summary>
           {contents}
-        </details>
+        </SimulationDisclosure>
       ) : (
         <>
           <h3 className={styles.groupHeading}>{group}</h3>
