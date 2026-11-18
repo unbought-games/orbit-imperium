@@ -245,7 +245,15 @@ pub struct ReportDetail4 {
     pub payload: serde_json::Value,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReportArrivals4 {
+    /// Recipient creation sequence fixed by the first page's cursor.
+    pub through: String,
+    pub created: std::collections::BTreeMap<ReportId, String>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportsPage4 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arrivals: Option<ReportArrivals4>,
     /// Unread Inbox count, capped at the badge limit, independent of this page.
     #[serde(default)]
     pub unread_count: u32,

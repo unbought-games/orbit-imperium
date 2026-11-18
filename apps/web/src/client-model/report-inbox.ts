@@ -2,7 +2,45 @@ import type { BoundReports } from './commands'
 import type { ReportPage } from './report-state'
 
 /** Query membership from one server revision. */
-export type ReportInbox = ReportPage & { revision: string }
+export type ReportInbox = ReportPage & {
+  revision: string
+  firstPage?: {
+    resumedAt: number | null
+    requestedAt: number
+    receivedAt: number
+    sampledAt: number
+  }
+}
+/** Suppress reports only when they demonstrably predate the return. The HTTP
+ * server sampled its clock between request and receipt. If the intervals
+ * overlap, both samples constrain the earliest possible return. If the
+ * monotonic clock stopped during sleep, use the new sample alone. */
+export function reportResumeCutoff(
+  previous: ReportInbox,
+  current: ReportInbox,
+) {
+  const before = previous.firstPage
+  const after = current.firstPage
+  if (
+    !before ||
+    !after ||
+    after.resumedAt === null ||
+    before.resumedAt === after.resumedAt
+  )
+    return null
+  const priorLower = before.sampledAt - before.receivedAt
+  // The actual server sample lies in [sampledAt, sampledAt + 1) milliseconds.
+  const priorUpper = before.sampledAt + 1 - before.requestedAt
+  const lower = after.sampledAt - after.receivedAt
+  const upper = after.sampledAt + 1 - after.requestedAt
+  const compatible = priorLower < upper && lower < priorUpper
+  // Server observations have whole-millisecond precision. A report sharing the
+  // return millisecond may have arrived after the player returned.
+  return Math.floor(
+    after.resumedAt + (compatible ? Math.max(priorLower, lower) : lower),
+  )
+}
+
 type Read = (cursor: string | null) => Promise<BoundReports | null>
 
 export function appendInboxPage(
@@ -12,6 +50,12 @@ export function appendInboxPage(
   const page = response.data
   return {
     ...page,
+    // A continuation describes the original cut, even when fetched much later.
+    as_of_ms: inbox?.as_of_ms ?? page.as_of_ms,
+    arrivals: page.arrivals && {
+      through: page.arrivals.through,
+      created: { ...inbox?.arrivals?.created, ...page.arrivals.created },
+    },
     revision: response.viewer_revision,
     player_names: { ...inbox?.player_names, ...page.player_names },
     items: [

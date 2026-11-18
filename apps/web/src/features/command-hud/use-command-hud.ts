@@ -51,13 +51,15 @@ export function useCommandHud(model: Coordinator) {
     refresh.current = load
     load()
     let scope = reportRequestScope(model.store.getState())
+    let stale = model.stale
     const stop = model.subscribe((next) => {
-      if (reportRequestScope(next) !== scope) {
+      if (reportRequestScope(next) !== scope || stale !== next.stale) {
+        stale = next.stale
         scope = reportRequestScope(next)
         void load()
       }
     })
-    const timer = window.setInterval(() => void load(), 15000)
+    const timer = window.setInterval(() => void load(), 15_000)
     const wake = () => void load()
     window.addEventListener('focus', wake)
     document.addEventListener('visibilitychange', wake)

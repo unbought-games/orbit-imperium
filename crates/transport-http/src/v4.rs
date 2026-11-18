@@ -183,10 +183,11 @@ pub(super) async fn reports<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, q.context.binding)?;
-    Ok(super::snapshot_response(
-        &h,
-        s.game.reports4(principal(&session, u)?, q).await?,
-    ))
+    let mut snapshot = s.game.reports4(principal(&session, u)?, q).await?;
+    if h.get("x-orbit-report-arrivals").is_none_or(|v| v != "1") {
+        snapshot.facts.data.arrivals = None;
+    }
+    Ok(super::snapshot_response(&h, snapshot))
 }
 pub(super) async fn report<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,

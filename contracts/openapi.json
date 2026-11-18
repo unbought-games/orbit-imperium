@@ -3737,6 +3737,15 @@
             }
           },
           {
+            "name": "X-Orbit-Report-Arrivals",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          },
+          {
             "name": "X-Orbit-View-Metadata",
             "in": "header",
             "required": false,
@@ -15936,6 +15945,19 @@
       "ReportsPage4": {
         "type": "object",
         "properties": {
+          "arrivals": {
+            "description": "Recipient report creation sequence at the cursor cut and for each returned report. Sent to clients requesting X-Orbit-Report-Arrivals: 1.",
+            "type": "object",
+            "properties": {
+              "through": { "$ref": "#/components/schemas/Decimal" },
+              "created": {
+                "type": "object",
+                "additionalProperties": { "$ref": "#/components/schemas/Decimal" }
+              }
+            },
+            "additionalProperties": false,
+            "required": ["through", "created"]
+          },
           "items": {
             "type": "array",
             "items": {
