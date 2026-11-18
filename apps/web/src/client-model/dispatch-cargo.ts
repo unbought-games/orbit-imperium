@@ -66,12 +66,7 @@ export function selectDispatchCargo(
       : draft
   }
   const index = resourceNames.indexOf(fill)
-  // An already-maximized resource keeps its place in the player's allocation.
-  if (
-    draft.groups.some((group) => group.includes(kinds[index])) &&
-    dispatchQuantity(draft.entered[index]) === '0'
-  )
-    return draft
+  if (draft.groups.some((group) => group.includes(kinds[index]))) return draft
   const next = editDispatchCargo(draft, index, '0')
   return { ...next, groups: [...next.groups, [kinds[index]]] }
 }
@@ -127,6 +122,29 @@ export function projectDispatchCargo(
     }
   }
   return loaded.map(String)
+}
+
+/** Repeating Max preserves the other loaded cargo. If a prior manual floor is
+ * now unaffordable, Max on that field releases the floor so it can be refilled. */
+export function prepareCargoFill(
+  draft: CargoDraft,
+  fill: Resource | 'all',
+  available: S['Resources'],
+  terms: Space,
+) {
+  let next = selectDispatchCargo(draft, fill)
+  try {
+    projectDispatchCargo(next, available, terms)
+  } catch (error) {
+    if (next !== draft || fill === 'all') throw error
+    const index = resourceNames.indexOf(fill)
+    next = {
+      ...draft,
+      entered: draft.entered.map((v, i) => (i === index ? '0' : v)),
+    }
+    projectDispatchCargo(next, available, terms)
+  }
+  return next
 }
 
 // Preserve unfinished text even when it prevents projecting the other fields.

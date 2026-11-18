@@ -6,6 +6,7 @@ import {
   materialCargoChanges,
   selectDispatchCargo,
   projectDispatchCargo,
+  prepareCargoFill,
   dispatchCargoCapacity,
   type CargoDraft,
 } from './dispatch-cargo'
@@ -246,4 +247,17 @@ it('clicking Max again preserves a full shared load', () => {
   expect(
     projectDispatchCargo(selectDispatchCargo(all, 'deuterium'), stocks, terms),
   ).toEqual(['3', '3', '3'])
+})
+
+it('repeated Max keeps a valid entered floor and recovers when that stock is spent', () => {
+  const all = selectDispatchCargo(
+    { entered: ['0', '0', '7'], groups: [] },
+    'all',
+  )
+  const terms = { maximum_payload: '10000000', fuel: '1000000' }
+  const selected = prepareCargoFill(all, 'deuterium', stocks, terms)
+  expect(projectDispatchCargo(selected, stocks, terms)).toEqual(['1', '1', '8'])
+  const spent = { ...stocks, deuterium: '4000000' }
+  const recovered = prepareCargoFill(all, 'deuterium', spent, terms)
+  expect(projectDispatchCargo(recovered, spent, terms)).toEqual(['4', '3', '3'])
 })

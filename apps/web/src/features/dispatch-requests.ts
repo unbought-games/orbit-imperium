@@ -6,8 +6,7 @@ import type { LocationKind } from '../shell/location-address'
 import {
   cargoAmounts,
   cargoInstruction,
-  projectDispatchCargo,
-  selectDispatchCargo,
+  prepareCargoFill,
   type CargoDraft,
 } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
@@ -256,8 +255,7 @@ export class DispatchRequests {
       if (fillCargo) {
         const origin = ports.origin()
         if (!origin) return
-        const next = selectDispatchCargo(editor, fillCargo)
-        projectDispatchCargo(next, origin.amounts, terms)
+        const next = prepareCargoFill(editor, fillCargo, origin.amounts, terms)
         ports.cargo(next, terms)
       } else if ('terms_hash' in terms) ports.quote(terms)
       else throw Error('Unable to confirm this fleet quote. Review it again.')
