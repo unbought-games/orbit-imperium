@@ -29,11 +29,16 @@ export function reportResumeCutoff(
   )
     return null
   const priorLower = before.sampledAt - before.receivedAt
-  const priorUpper = before.sampledAt - before.requestedAt
+  // The actual server sample lies in [sampledAt, sampledAt + 1) milliseconds.
+  const priorUpper = before.sampledAt + 1 - before.requestedAt
   const lower = after.sampledAt - after.receivedAt
-  const upper = after.sampledAt - after.requestedAt
-  const compatible = priorLower <= upper && lower <= priorUpper
-  return after.resumedAt + (compatible ? Math.max(priorLower, lower) : lower)
+  const upper = after.sampledAt + 1 - after.requestedAt
+  const compatible = priorLower < upper && lower < priorUpper
+  // Server observations have whole-millisecond precision. A report sharing the
+  // return millisecond may have arrived after the player returned.
+  return Math.floor(
+    after.resumedAt + (compatible ? Math.max(priorLower, lower) : lower),
+  )
 }
 
 type Read = (cursor: string | null) => Promise<BoundReports | null>

@@ -241,12 +241,12 @@ it.each([
         ...changedHudTargets(before, after).map((target) => target.id),
       )
     })
-    h.store.setState({ now: 100 })
+    h.store.setState({ now: 100.1 })
     const initial = h.engine.ensureInbox()
     const empty = h.page([])
     empty.sampled_at = 110
     empty.data.arrivals = { through: '0', created: {} }
-    h.store.setState({ now: 120 })
+    h.store.setState({ now: 110.1 })
     h.pages[0].resolve(empty)
     await initial
     const suspended = h.engine.refreshInbox()
@@ -255,14 +255,15 @@ it.each([
       foreground: true,
       online: true,
       stale: false,
-      now: 100_010,
-      deliveryResumedAt: 100_000,
+      now: 100_010.4,
+      deliveryResumedAt: 100_000.4,
     })
     const wake = h.engine.refreshInbox()
     const page = h.page(['live', 'away'])
     page.sampled_at = sampledAt
-    page.data.items[0].observed_at = 100_005
-    page.data.items[1].observed_at = 99_000
+    // A post-return observation within the same server millisecond.
+    page.data.items[0].observed_at = 100_000
+    page.data.items[1].observed_at = 99_999
     page.data.arrivals = { through: '2', created: { live: '2', away: '1' } }
     // The request predating the suspension completes first at the same viewer
     // revision. It cannot establish the new activity baseline or consume arrivals.
