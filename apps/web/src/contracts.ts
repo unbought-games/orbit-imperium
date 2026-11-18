@@ -11087,6 +11087,8 @@ export interface components {
             color: string;
             palette_id?: string;
             /** @enum {string} */
+            access?: "free" | "membership" | "earned";
+            /** @enum {string} */
             availability: "available" | "locked" | "unavailable";
         };
         ShipDesign: {

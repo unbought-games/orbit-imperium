@@ -121,6 +121,9 @@ test('hangar traps keyboard focus, preserves dirty edits on cancel, and restores
     await Promise.all(
       node
         .getAnimations({ subtree: true })
+        .filter(
+          (animation) => animation.effect?.getTiming().iterations !== Infinity,
+        )
         .map((animation) => animation.finished),
     )
   })
@@ -199,6 +202,7 @@ test('retry and cancel render do not submit the design form', async ({
     await scene.observe(snapshot)
   })
   const retry = dialog.getByRole('button', { name: 'Retry render' })
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Failed')
   await expect(retry).toBeEnabled()
   await retry.scrollIntoViewIfNeeded()
   await diagnosticScreenshot(page, {
@@ -244,6 +248,7 @@ test('retry and cancel render do not submit the design form', async ({
     scene.accept(snapshot)
   })
   await expect(cancel).toHaveCount(0)
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Canceled')
 })
 
 // Regression: newer observations must repaint the current emblem without
@@ -254,20 +259,46 @@ test('hangar retains edits across emblem observations and allows another save wh
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   const { dialog, canvas } = await openHangar(page, mount)
+  const editEmblem = dialog.getByRole('link', {
+    name: 'Edit empire emblem (opens in a new tab)',
+  })
+  await expect(editEmblem).toHaveAttribute(
+    'href',
+    '/u/demo/b/forge/settings/identity#empire-insignia',
+  )
+  await expect(editEmblem).toHaveAttribute('target', '_blank')
   const initialPixels = await pixels(canvas)
   await dialog
     .getByRole('button', { name: 'Primary: Copper', exact: true })
     .click()
   await expect.poll(() => pixels(canvas)).not.toBe(initialPixels)
   await renameDraft(page, dialog, 'Copper wings')
-  const beforeTreatment = await pixels(canvas)
-  await dialog.getByLabel('Appearance', { exact: true }).selectOption('layers')
-  await expect.poll(() => pixels(canvas)).not.toBe(beforeTreatment)
-  const beforePlacement = await pixels(canvas)
-  await dialog
-    .getByLabel('Placement', { exact: true })
-    .selectOption('near-wing')
-  await expect.poll(() => pixels(canvas)).not.toBe(beforePlacement)
+  const selectedGlow = dialog
+    .getByRole('button', { name: 'Primary: Copper', exact: true })
+    .locator('span[aria-hidden="true"]')
+  await expect(selectedGlow).toHaveCSS('transition-duration', '0.42s')
+  expect(
+    await selectedGlow.evaluate((node) =>
+      ['::before', '::after'].map((pseudo) => {
+        const style = getComputedStyle(node, pseudo)
+        return [style.animationDuration, style.animationPlayState]
+      }),
+    ),
+  ).toEqual([
+    ['3.8s', 'running'],
+    ['5.6s', 'running'],
+  ])
+  const withEmblem = await pixels(canvas)
+  const emblemSwitch = dialog.getByRole('switch', {
+    name: 'Show empire emblem',
+  })
+  await expect(emblemSwitch).toBeChecked()
+  await emblemSwitch.click()
+  await expect(emblemSwitch).not.toBeChecked()
+  await expect.poll(() => pixels(canvas)).not.toBe(withEmblem)
+  await emblemSwitch.press('Space')
+  await expect(emblemSwitch).toBeChecked()
+  await expect.poll(() => pixels(canvas)).toBe(withEmblem)
   // Await the preceding input's render before delivering another scenario.
   const beforeEmblem = await pixels(canvas)
   const options = await openDesignOptions(page, dialog)
@@ -302,12 +333,7 @@ test('hangar retains edits across emblem observations and allows another save wh
   await expect(
     dialog.getByRole('button', { name: 'Primary: Copper', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect(dialog.getByLabel('Appearance', { exact: true })).toHaveValue(
-    'layers',
-  )
-  await expect(dialog.getByLabel('Placement', { exact: true })).toHaveValue(
-    'near-wing',
-  )
+  await expect(emblemSwitch).toBeChecked()
   await expect.poll(() => pixels(canvas)).not.toBe(beforeEmblem)
   await diagnosticScreenshot(page, {
     path: testInfo.outputPath('hangar-live-emblem-desktop-1280x900.png'),
@@ -317,7 +343,7 @@ test('hangar retains edits across emblem observations and allows another save wh
     .getByRole('button', { name: 'Save and equip', exact: true })
     .click()
   await expect(
-    dialog.getByRole('button', { name: 'Saving changes…' }),
+    dialog.getByRole('button', { name: 'Save and equip', exact: true }),
   ).toBeDisabled()
   const submitted = await page.evaluate(() =>
     window.shipCustomizationScene!.pending(),
@@ -355,7 +381,12 @@ test('hangar retains edits across emblem observations and allows another save wh
     (snapshot) => window.shipCustomizationScene!.accept(snapshot),
     accepted,
   )
-  await expect(dialog.getByText('Queued', { exact: true })).toBeVisible()
+  const currentStep = dialog.locator('li[aria-current="step"]')
+  await expect(currentStep).toHaveText('Queued')
+  await expect(dialog.getByRole('status')).toHaveText('Queued')
+  await diagnosticScreenshot(page, {
+    path: testInfo.outputPath('command-strip-queued-1280x900.png'),
+  })
   await expect(
     dialog.getByRole('button', { name: 'Save and equip', exact: true }),
   ).toBeEnabled()
@@ -364,13 +395,13 @@ test('hangar retains edits across emblem observations and allows another save wh
     (snapshot) => window.shipCustomizationScene!.observe(snapshot),
     accepted,
   )
-  await expect(dialog.getByText('Rendering', { exact: true })).toBeVisible()
+  await expect(currentStep).toHaveText('Rendering')
   await renameDraft(page, dialog, 'Second flight')
   await dialog
     .getByRole('button', { name: 'Save and equip', exact: true })
     .click()
   await expect(
-    dialog.getByRole('button', { name: 'Saving changes…' }),
+    dialog.getByRole('button', { name: 'Save and equip', exact: true }),
   ).toBeDisabled()
   expect(
     await page.evaluate(() => window.shipCustomizationScene!.pending()),
@@ -399,7 +430,7 @@ test('hangar retains edits across emblem observations and allows another save wh
     (snapshot) => window.shipCustomizationScene!.accept(snapshot),
     accepted,
   )
-  await expect(dialog.getByText('Preparing', { exact: true })).toBeVisible()
+  await expect(currentStep).toHaveText('Rendering')
   accepted.equipment[0].render = {
     ...accepted.equipment[0].render!,
     stage: 'ready',
@@ -409,9 +440,7 @@ test('hangar retains edits across emblem observations and allows another save wh
     (snapshot) => window.shipCustomizationScene!.observe(snapshot),
     accepted,
   )
-  await expect(
-    dialog.getByRole('region', { name: 'Fleet appearance status' }),
-  ).toHaveCount(0)
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Saved')
   await expectDraftName(page, dialog, 'Second flight')
   await diagnosticScreenshot(page, {
     path: testInfo.outputPath('hangar-saved-desktop-1280x900.png'),
@@ -443,9 +472,7 @@ test('mobile hangar keeps final controls reachable without horizontal overflow',
   await expect(
     dialog.getByRole('button', { name: 'Reload choices' }),
   ).toHaveCount(0)
-  await expect(
-    dialog.getByRole('region', { name: 'Fleet appearance status' }),
-  ).toHaveCount(0)
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Saved')
   await diagnosticScreenshot(page, {
     path: testInfo.outputPath('hangar-controls-mobile-390x844.png'),
   })
@@ -479,7 +506,7 @@ test('reload confirms a lost save response without losing edits or clearing a la
   await renameDraft(page, dialog, 'Recovered original')
   await save.click()
   await expect(
-    dialog.getByRole('button', { name: 'Saving changes…' }),
+    dialog.getByRole('button', { name: 'Save and equip', exact: true }),
   ).toBeDisabled()
   const committed = await page.evaluate(() => {
     const scene = window.shipCustomizationScene!
@@ -503,10 +530,17 @@ test('reload confirms a lost save response without losing edits or clearing a la
     .click()
   await dialog.getByRole('button', { name: 'Reload choices' }).click()
   await expect(alert).toHaveCount(0)
-  await expect(
-    dialog.getByText('“Recovered original” is saved.', { exact: false }),
-  ).toBeVisible()
-  await expectDraftName(page, dialog, 'Unsaved next flight')
+  // The recovered save advanced the library selection, but the newer draft
+  // must not inherit that design's completed check.
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveCount(0)
+  const recoveredOptions = await openDesignOptions(page, dialog)
+  await expect(recoveredOptions.getByLabel('Saved designs')).toHaveValue(
+    `${committed.equipment[0].design_id}:2`,
+  )
+  const recoveredName = recoveredOptions.getByLabel('Design name')
+  await expect(recoveredName).toHaveValue('Unsaved next flight')
+  await recoveredName.press('Escape')
+  await expect(recoveredOptions).toHaveCount(0)
   await expect(
     dialog.getByRole('button', { name: 'Primary: Copper', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
@@ -518,7 +552,7 @@ test('reload confirms a lost save response without losing edits or clearing a la
   // the intervening Reset error. The observation still advances the draft token.
   await save.click()
   await expect(
-    dialog.getByRole('button', { name: 'Saving changes…' }),
+    dialog.getByRole('button', { name: 'Save and equip', exact: true }),
   ).toBeDisabled()
   const next = await page.evaluate(() =>
     window.shipCustomizationScene!.pending(),
@@ -564,9 +598,7 @@ test('reload confirms a lost save response without losing edits or clearing a la
     `${next.design.id}:3`,
   )
   await expect(alert).toContainText('We could not confirm the change.')
-  await expect(
-    dialog.getByText('“Unsaved next flight” is saved.', { exact: false }),
-  ).toHaveCount(0)
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveCount(0)
 })
 
 // A rejected command must expose its actionable controller error, including after
@@ -601,4 +633,48 @@ test('hangar preserves specific conflict, access and validation rejection messag
     await expect(dialog.getByRole('alert')).toHaveText(message)
     await expectDraftName(page, dialog, `Draft ${status}`)
   }
+})
+
+// A locked paint chip must still explain its unlock on hover and tap without changing the ship.
+test('locked dyes explain reward and membership access without changing the selected paint', async ({
+  page,
+  mount,
+}) => {
+  const { dialog } = await openHangar(page, mount)
+  const earned = dialog.getByRole('button', {
+    name: 'Primary: Reward umber (locked)',
+  })
+  await earned.hover()
+  const tooltip = page.getByRole('dialog', {
+    name: 'Reward umber',
+    exact: true,
+  })
+  await expect(tooltip).toContainText('Claim it permanently')
+  expect(await earned.getAttribute('title')).toBeNull()
+  const member = dialog.getByRole('button', {
+    name: 'Primary: Member pearl (locked)',
+  })
+  await member.click()
+  const memberDetails = page.getByRole('dialog', {
+    name: 'Member pearl',
+    exact: true,
+  })
+  await expect(memberDetails).toContainText('Activate membership')
+  await expect(
+    dialog.getByRole('button', { name: 'Primary: Porcelain' }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  const guide = memberDetails.getByRole('link', { name: 'How to unlock dyes' })
+  await expect(guide).toHaveAttribute(
+    'href',
+    '/u/demo/b/forge/rewards#dye-unlocks',
+  )
+  await expect(guide).toHaveAttribute('target', '_blank')
+  await member.focus()
+  await page.keyboard.press('Tab')
+  await expect(guide).toBeFocused()
+  const opened = page.waitForEvent('popup')
+  await page.keyboard.press('Enter')
+  const guideTab = await opened
+  await expect(guideTab).toHaveURL(/\/u\/demo\/b\/forge\/rewards#dye-unlocks$/)
+  await guideTab.close()
 })

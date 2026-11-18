@@ -85,7 +85,7 @@ export function ShipyardPage(props: ProgressionProps) {
                   }
                   customize={
                     canCustomizeShip(appearance, selected.key.id)
-                      ? () => open(selected.key.id)
+                      ? () => open(selected.key.id, body.id)
                       : undefined
                   }
                 />

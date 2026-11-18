@@ -1,19 +1,26 @@
+import { Pencil } from 'lucide-react'
+import { Tooltip } from '@base-ui/react/tooltip'
+import { ButtonLinkAnchor } from '../../ui/button'
+import tooltipStyles from '../../ui/info-tooltip.module.css'
 import type {
   ShipAppearanceState,
   ShipPaintRecipe,
 } from '../../client-model/ship-appearance-types'
 import { EmpireInsignia } from '../empire-insignia'
-import { Field, Select } from '../../ui/form'
 import styles from './ship-customizer.module.css'
 
 export function EmblemControls({
   emblem,
+  editHref,
   value,
+  enabledTreatment,
   disabled,
   onChange,
 }: {
   emblem: ShipAppearanceState['emblem']
+  editHref: string
   value: ShipPaintRecipe['emblem']
+  enabledTreatment: Exclude<ShipPaintRecipe['emblem']['treatment'], 'none'>
   disabled: boolean
   onChange: (value: ShipPaintRecipe['emblem']) => void
 }) {
@@ -28,50 +35,52 @@ export function EmblemControls({
           />
         )}
         <div>
-          <h3>Empire emblem</h3>
-          <p>
-            {emblem
-              ? 'Follows this empire’s emblem automatically.'
-              : 'No empire emblem is currently available.'}
-          </p>
+          <div className={styles.emblemTitle}>
+            <h3>Empire emblem</h3>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={
+                  <ButtonLinkAnchor
+                    variant="ghost"
+                    size="icon-touch"
+                    href={editHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Edit empire emblem (opens in a new tab)"
+                  />
+                }
+              >
+                <Pencil size={16} aria-hidden="true" />
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Positioner
+                  className={styles.dyeTooltipPositioner}
+                  side="top"
+                  sideOffset={6}
+                >
+                  <Tooltip.Popup role="tooltip" className={tooltipStyles.popup}>
+                    Edit empire emblem
+                  </Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </div>
+          {!emblem && <p>No empire emblem is currently available.</p>}
         </div>
-      </div>
-      <div className={styles.emblemOptions}>
-        <Field>
-          Appearance
-          <Select
-            aria-label="Appearance"
-            value={value.treatment}
-            disabled={disabled}
-            onChange={(event) =>
-              onChange({
-                ...value,
-                treatment: event.target.value as typeof value.treatment,
-              })
-            }
-          >
-            <option value="none">None</option>
-            <option value="full">Full emblem</option>
-            <option value="layers">Emblem layers</option>
-          </Select>
-        </Field>
-        <Field>
-          Placement
-          <Select
-            aria-label="Placement"
-            value={value.placement}
-            disabled={disabled || value.treatment === 'none'}
-            onChange={(event) =>
-              onChange({
-                ...value,
-                placement: event.target.value as typeof value.placement,
-              })
-            }
-          >
-            <option value="near-wing">Near wing</option>
-            <option value="paired">Paired wings</option>
-          </Select>
-        </Field>
+        <button
+          className={styles.emblemSwitch}
+          type="button"
+          role="switch"
+          aria-label="Show empire emblem"
+          aria-checked={value.treatment !== 'none'}
+          disabled={disabled}
+          onClick={() =>
+            onChange({
+              ...value,
+              treatment: value.treatment === 'none' ? enabledTreatment : 'none',
+            })
+          }
+        />
       </div>
     </section>
   )

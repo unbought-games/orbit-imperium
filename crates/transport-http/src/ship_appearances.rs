@@ -65,7 +65,9 @@ pub async fn ship_render_environment<S: IdentityStore>(
     let mut choices = Vec::new();
     for &(id, name, color) in FREE_SHIP_DYES {
         dyes.insert(id.into(), color.into());
-        choices.push(json!({"id":id,"name":name,"color":color,"availability":"available"}));
+        choices.push(
+            json!({"id":id,"name":name,"color":color,"access":"free","availability":"available"}),
+        );
     }
     for dye in catalog.dyes() {
         // Built-in IDs are reserved, so a separately installed catalog cannot remove the free set.
@@ -84,7 +86,7 @@ pub async fn ship_render_environment<S: IdentityStore>(
         if access == InsigniaAccess::Available {
             dyes.insert(dye.id.clone(), dye.color.clone());
         }
-        let mut item = json!({"id":dye.id,"name":dye.name,"color":dye.color,"availability":match access{InsigniaAccess::Available=>"available",InsigniaAccess::Unavailable|InsigniaAccess::NotInstalled=>"unavailable",_=>"locked"}});
+        let mut item = json!({"id":dye.id,"name":dye.name,"color":dye.color,"access":dye.access,"availability":match access{InsigniaAccess::Available=>"available",InsigniaAccess::Unavailable|InsigniaAccess::NotInstalled=>"unavailable",_=>"locked"}});
         if let Some(id) = &dye.palette_id {
             item["palette_id"] = json!(id);
         }

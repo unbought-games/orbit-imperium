@@ -708,13 +708,12 @@ async fn lost_dye_access_refreshes_to_free_paint_without_mutating_revision() {
     let (expired, choices) = ship_render_environment(&f.store, f.b, &restricted, None)
         .await
         .unwrap();
-    assert_eq!(
-        choices
-            .iter()
-            .find(|d| d["id"] == "fixture-copper")
-            .unwrap()["availability"],
-        "unavailable"
-    );
+    let copper = choices
+        .iter()
+        .find(|d| d["id"] == "fixture-copper")
+        .unwrap();
+    assert_eq!(copper["availability"], "unavailable");
+    assert_eq!(copper["access"], "membership");
     f.store
         .change_ship_appearance(f.b, Uuid::new_v4(), ShipAppearanceAction::Load, expired)
         .await

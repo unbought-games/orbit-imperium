@@ -5,6 +5,7 @@ import type {
 } from '../../client-model/ship-appearance-types'
 import {
   acknowledgeSave,
+  groupDyesByPalette,
   hasUnsavedDraft,
   draftProblem,
   initialDraft,
@@ -60,6 +61,23 @@ function state(): ShipAppearanceState {
     emblem_revision: 0,
   }
 }
+
+it('groups interleaved dyes by palette in catalog order, preserving locked and ungrouped choices', () => {
+  const [navy, gold] = state().dyes
+  const copper = { ...gold, id: 'copper', palette_id: 'red-earth' }
+  const iron = {
+    ...navy,
+    id: 'iron',
+    palette_id: 'red-earth',
+    availability: 'locked' as const,
+  }
+  const blue = { ...navy, id: 'blue', palette_id: 'sky' }
+  expect(groupDyesByPalette([navy, copper, blue, gold, iron])).toEqual([
+    { id: undefined, title: 'Standard dyes', dyes: [navy, gold] },
+    { id: 'red-earth', title: 'Red Earth', dyes: [copper, iron] },
+    { id: 'sky', title: 'Sky', dyes: [blue] },
+  ])
+})
 
 describe('ship customization drafts', () => {
   it('starts from the equipped immutable revision, not a newer revision used elsewhere', () => {
