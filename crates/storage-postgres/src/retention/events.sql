@@ -2,7 +2,7 @@ WITH candidates AS MATERIALIZED (
     SELECT e.id, e.retention_since
     FROM scheduled_events e
     WHERE e.universe=$1 AND (e.done OR e.cancelled)
-      AND e.retention_since <= to_timestamp($2::bigint/1000.0)-interval '7 days'
+      AND e.retention_since <= to_timestamp($5::bigint/1000.0)-interval '7 days'
       AND (e.retention_since,e.id) > ($3::text::timestamptz,$4)
     ORDER BY e.retention_since,e.id LIMIT 512
 ), picked AS MATERIALIZED (

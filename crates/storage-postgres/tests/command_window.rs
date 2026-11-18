@@ -482,18 +482,35 @@ async fn whole_pair_lost_ack_old_machine_recovery_and_expiry_while_waiting_for_a
         .await
         .unwrap();
     store.prune_game_updates().await.unwrap();
-    // Interrupt the atomic deletion after selecting its gameplay root. A
-    // concurrent evidence reader holds the partner through the bounded lock wait.
+    // A reader holding the partner skips the entire group.
     let mut holder = pool.begin().await.unwrap();
     sqlx::query("SELECT input_id FROM commands WHERE command_id=$1 FOR KEY SHARE")
         .bind(old.presence.command_id.0)
         .fetch_one(&mut *holder)
         .await
         .unwrap();
-    assert!(store.prune_terminal_history().await.is_err());
+    store.prune_terminal_history().await.unwrap();
     assert_eq!(sqlx::query_scalar::<_,i64>("SELECT (SELECT count(*) FROM commands WHERE universe=$1)+(SELECT count(*) FROM presence_pairs WHERE universe=$1)")
         .bind(u.0).fetch_one(&pool).await.unwrap(),3);
     holder.commit().await.unwrap();
+    // Even interruption after executing both deletes preserves the entire
+    // group on rollback. The next ordinary pass removes it.
+    let mut aborted = pool.begin().await.unwrap();
+    let (groups, _): (i64, i64) = sqlx::query_as(include_str!("../src/retention/commands.sql"))
+        .bind(u.0)
+        .bind(START + 8 * 86_400_000)
+        .bind(0_i64)
+        .bind("-infinity")
+        .bind(Uuid::nil())
+        .bind(START + 8 * 86_400_000)
+        .fetch_one(&mut *aborted)
+        .await
+        .unwrap();
+    assert_eq!(groups, 1);
+    aborted.rollback().await.unwrap();
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT (SELECT count(*) FROM commands WHERE universe=$1)+(SELECT count(*) FROM presence_pairs WHERE universe=$1)")
+        .bind(u.0).fetch_one(&pool).await.unwrap(),3);
+
     store.prune_terminal_history().await.unwrap();
     assert_eq!(sqlx::query_scalar::<_,i64>("SELECT (SELECT count(*) FROM commands WHERE universe=$1)+(SELECT count(*) FROM presence_pairs WHERE universe=$1)")
         .bind(u.0).fetch_one(&pool).await.unwrap(),0);

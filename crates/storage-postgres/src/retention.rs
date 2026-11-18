@@ -9,7 +9,14 @@ use std::{collections::BTreeMap, sync::Mutex};
 use uuid::Uuid;
 
 type ScanKey = (UniverseId, &'static str);
-type Position = (String, Uuid);
+#[derive(Clone)]
+struct Position {
+    stamp: String,
+    id: Uuid,
+    // Freeze the upper age boundary when skipping a protected window. Newly
+    // aging input cannot extend this sweep indefinitely and strand its prefix.
+    sweep_at: i64,
+}
 type Batch = (i64, i64, Option<String>, Option<Uuid>);
 
 /// A continuation only avoids revisiting a protected prefix. Losing it during
@@ -18,23 +25,34 @@ type Batch = (i64, i64, Option<String>, Option<Uuid>);
 pub(crate) struct ScanPositions(Mutex<BTreeMap<ScanKey, Position>>);
 
 impl ScanPositions {
-    fn start(&self, key: ScanKey) -> Position {
+    fn start(&self, key: ScanKey, now: i64) -> Position {
         self.0
             .lock()
             .unwrap()
             .get(&key)
             .cloned()
-            .unwrap_or_else(|| ("-infinity".to_string(), Uuid::nil()))
+            .unwrap_or_else(|| Position {
+                stamp: "-infinity".to_string(),
+                id: Uuid::nil(),
+                sweep_at: now,
+            })
     }
 
-    fn completed(&self, key: ScanKey, batch: &Batch) {
+    fn completed(&self, key: ScanKey, batch: &Batch, sweep_at: i64) {
         // A full deletion batch can leave eligible rows inside this window.
         if batch.0 == 128 {
             return;
         }
         let mut positions = self.0.lock().unwrap();
         if let (Some(stamp), Some(id)) = (&batch.2, batch.3) {
-            positions.insert(key, (stamp.clone(), id));
+            positions.insert(
+                key,
+                Position {
+                    stamp: stamp.clone(),
+                    id,
+                    sweep_at,
+                },
+            );
         } else {
             positions.remove(&key);
         }
@@ -100,18 +118,20 @@ impl PgStore {
             && let Some((at, cutoff)) = retention_clock(&mut tx).await?
         {
             let key = (u, "commands");
-            let (stamp, id) = self.retention_positions.start(key);
+            let position = self.retention_positions.start(key, at);
             let sample: Batch = sqlx::query_as(include_str!("retention/commands.sql"))
                 .bind(u.0)
                 .bind(at)
                 .bind(cutoff)
-                .bind(stamp)
-                .bind(id)
+                .bind(position.stamp)
+                .bind(position.id)
+                .bind(position.sweep_at.min(at))
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
             tx.commit().await.map_err(db_error)?;
-            self.retention_positions.completed(key, &sample);
+            self.retention_positions
+                .completed(key, &sample, position.sweep_at);
             self.observer.retention(
                 Some(u),
                 "commands",
@@ -126,17 +146,19 @@ impl PgStore {
         let mut tx = self.retention_transaction().await?;
         if let Some((at, _)) = retention_clock(&mut tx).await? {
             let key = (u, "events");
-            let (stamp, id) = self.retention_positions.start(key);
+            let position = self.retention_positions.start(key, at);
             let sample: Batch = sqlx::query_as(include_str!("retention/events.sql"))
                 .bind(u.0)
                 .bind(at)
-                .bind(stamp)
-                .bind(id)
+                .bind(position.stamp)
+                .bind(position.id)
+                .bind(position.sweep_at.min(at))
                 .fetch_one(&mut *tx)
                 .await
                 .map_err(db_error)?;
             tx.commit().await.map_err(db_error)?;
-            self.retention_positions.completed(key, &sample);
+            self.retention_positions
+                .completed(key, &sample, position.sweep_at);
             self.observer.retention(
                 Some(u),
                 "events",

@@ -397,6 +397,7 @@ async fn interrupted_batches_converge_under_new_load_and_keep_claims() {
         .bind(START - DAY)
         .bind("-infinity")
         .bind(Uuid::nil())
+        .bind(START)
         .fetch_one(&mut interrupted)
         .await
         .unwrap();
@@ -481,26 +482,32 @@ async fn protected_oldest_window_cannot_hide_later_eligible_work() {
     sqlx::query("WITH pinned AS (UPDATE scheduled_events SET retention_since=to_timestamp(0)-interval '1 day' WHERE universe=$1 AND sequence<=512 RETURNING id)
         INSERT INTO input_scopes(universe,input_id,scope_key) SELECT $1,id,'declaration' FROM pinned")
         .bind(u.0).execute(&pool).await.unwrap();
-    for expected in [600, 512] {
-        store.prune_terminal_history().await.unwrap();
-        assert_eq!(
-            count(&pool, "SELECT count(*) FROM commands WHERE universe=$1", u).await,
-            expected
-        );
-        assert_eq!(
-            count(
-                &pool,
-                "SELECT count(*) FROM scheduled_events WHERE universe=$1",
-                u
-            )
-            .await,
-            expected
-        );
-    }
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM commands WHERE universe=$1", u).await,
+        600
+    );
     assert_eq!(
         count(
             &pool,
-            "SELECT count(*) FROM commands WHERE universe=$1 AND sequence>512",
+            "SELECT count(*) FROM scheduled_events WHERE universe=$1",
+            u
+        )
+        .await,
+        600
+    );
+    // These become age-eligible after the continuation has skipped the 512
+    // pinned roots. A continuous tail must not prevent revisiting released pins.
+    let newly_old = START - 7 * DAY + 1;
+    sqlx::query("INSERT INTO commands(universe,epoch,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt,done,retention_since)
+        SELECT $1,$2,$3,gen_random_uuid(),gen_random_uuid(),'tail',0,1000+n,'{}','{}',true,to_timestamp($4::bigint/1000.0) FROM generate_series(1,256) n")
+        .bind(u.0).bind(b.epoch.0).bind(b.player.0).bind(newly_old).execute(&pool).await.unwrap();
+    store.set_test_time(START + DAY).await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM commands WHERE universe=$1 AND sequence BETWEEN 513 AND 600",
             u
         )
         .await,
@@ -514,5 +521,27 @@ async fn protected_oldest_window_cannot_hide_later_eligible_work() {
         )
         .await,
         0
+    );
+    // The first sweep ended after 88 original candidates. Its 256 newer roots
+    // are still waiting. Release the skipped pins: the next pass starts there.
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM commands WHERE universe=$1 AND intent_hash='tail'",
+            u
+        )
+        .await,
+        256
+    );
+    sqlx::query("UPDATE analytics_delivery d SET state='delivered',acknowledged_at=now() FROM commands c WHERE c.universe=$1 AND d.event_id=c.input_id").bind(u.0).execute(&pool).await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM commands WHERE universe=$1 AND sequence<=512",
+            u
+        )
+        .await,
+        384
     );
 }
