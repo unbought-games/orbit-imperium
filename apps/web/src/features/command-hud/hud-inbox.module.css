@@ -21,3 +21,111 @@
   flex-shrink: 0;
   gap: 4px;
 }
+
+.list {
+  container-type: inline-size;
+}
+
+.report {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) max-content;
+  gap: 3px 9px;
+  align-items: baseline;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid #ffffff15;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1.35;
+  cursor: pointer;
+  text-align: left;
+}
+.report[data-report-tone='win'] {
+  color: var(--report-win);
+}
+.report[data-report-tone='loss'] {
+  color: var(--report-loss);
+}
+.report[data-report-tone='neutral'] {
+  color: var(--report-neutral);
+}
+.report[data-report-tone='spy'] {
+  color: var(--report-espionage);
+}
+.report > svg {
+  grid-area: 1/1;
+  align-self: center;
+}
+.headline {
+  grid-area: 1/2;
+  font-size: var(--font-size-sm);
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.age,
+.location {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+.age {
+  grid-area: 1/3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.location {
+  grid-area: 2/2/3/4;
+  overflow-wrap: anywhere;
+}
+.report:focus-visible {
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  .report:hover {
+    background: var(--surface-navigation-hover);
+  }
+}
+.yield {
+  white-space: nowrap;
+  margin-inline-start: 0.38em;
+}
+.yield > span + span {
+  margin-inline-start: 0.48em;
+}
+@container (max-width: 365px) {
+  .report:is([data-amounts='3'], [data-kind='Combat']):has(.location) {
+    .headline {
+      grid-column-end: -1;
+    }
+    .age {
+      grid-row: 2;
+    }
+    .location {
+      grid-column-end: 3;
+    }
+  }
+}
+@container (max-width: 290px) {
+  .report[data-amounts] {
+    .headline {
+      grid-column-end: -1;
+    }
+    .age {
+      grid-row: 2;
+    }
+    .location {
+      grid-column-end: 3;
+    }
+  }
+  .report[data-amounts='3'] {
+    .headline {
+      grid-column-start: 1;
+    }
+    > svg {
+      grid-row: 2;
+    }
+  }
+}

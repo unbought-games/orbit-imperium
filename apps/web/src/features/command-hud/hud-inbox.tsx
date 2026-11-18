@@ -3,6 +3,8 @@ import { ExternalLink, MailCheck, MessageSquare } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
 import { Button, ButtonLink } from '../../ui/button'
 import { routeTarget } from '../../shell/route-target'
+import { currentServerTime } from '../../client-model/game-projection'
+import { HudReportRow } from './hud-report-row'
 import { HudIconMark } from './hud-controls'
 import { HudFleets } from './hud-fleets'
 import { HudEnemyAttacks } from './hud-enemy-attacks'
@@ -39,9 +41,7 @@ export function HudInbox({
   const inbox = useHudInbox(model, hud.state, visible, scrollRoot)
   const markAll = useMarkShownReportsRead(
     model,
-    inbox.targets
-      .filter((target) => target.kind === 'report')
-      .map((target) => target.id),
+    inbox.rows.flatMap(({ report }) => (report ? [report.header.id] : [])),
   )
   return (
     <div hidden={!visible}>
@@ -114,8 +114,23 @@ export function HudInbox({
           Receiving intelligence…
         </p>
       )}
-      <div aria-label="Intelligence list" aria-busy={inbox.loading}>
-        {inbox.targets.map((target) => {
+      <div
+        className={inboxStyles.list}
+        aria-label="Intelligence list"
+        aria-busy={inbox.loading}
+      >
+        {inbox.rows.map(({ target, report }) => {
+          if (report) {
+            return (
+              <HudReportRow
+                key={noticeKey(target)}
+                {...report}
+                names={hud.state.reportInbox?.player_names}
+                now={currentServerTime(hud.state)}
+                onOpen={() => onSelect(target)}
+              />
+            )
+          }
           const entry = noticeContent(hud.state, target)
           return (
             entry && (
@@ -153,7 +168,7 @@ export function HudInbox({
         </div>
       ) : hud.inboxError || hud.state.mailbox === null ? null : (
         <p role="status" className={styles.noticeText}>
-          {inbox.targets.length
+          {inbox.rows.length
             ? 'You’re all caught up.'
             : incomingAttacks(hud.state).length
               ? 'No unread intelligence.'

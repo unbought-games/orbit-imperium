@@ -158,6 +158,8 @@ export const http = {
   },
 }
 
+const reportPreviewHeaders = { 'X-Orbit-Report-Preview': '1' }
+
 export function gamePort(
   csrf: string,
   initial?: Pick<BindingCandidate, 'binding' | 'protocol'>,
@@ -259,7 +261,12 @@ export function gamePort(
           },
           csrf,
           10000,
-          query?.filter.unread_only ? { 'X-Orbit-Report-Arrivals': '1' } : {},
+          {
+            ...reportPreviewHeaders,
+            ...(query?.filter.unread_only
+              ? { 'X-Orbit-Report-Arrivals': '1' }
+              : {}),
+          },
         ),
       )
     },
@@ -271,6 +278,8 @@ export function gamePort(
           'POST',
           { context, reports },
           csrf,
+          10000,
+          reportPreviewHeaders,
         ),
       )
     },
@@ -282,6 +291,8 @@ export function gamePort(
           'POST',
           context,
           csrf,
+          10000,
+          reportPreviewHeaders,
         ),
       )
     },

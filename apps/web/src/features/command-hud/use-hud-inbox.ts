@@ -5,6 +5,8 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from 'react'
+import { useProfilePlayers } from '../../shell/player-profiles-context'
+import { orbReportGlance } from './report-glance'
 import { reportLoad } from '../../client-model/report-engine'
 import type { Coordinator } from '../../client-model/coordinator'
 import type { GameState } from '../../client-model/game-store'
@@ -102,8 +104,25 @@ export function useHudInbox(
     scrollRoot,
     pagination,
   ])
+  const rows = targets.slice(0, limit).map((target) => {
+    const header =
+      target.kind === 'report' && state.reportHeaders.get(target.id)?.header
+    return {
+      target,
+      report: header
+        ? { header, glance: orbReportGlance(header, model.binding?.player) }
+        : undefined,
+    }
+  })
+  useProfilePlayers(
+    visible
+      ? rows.flatMap(({ report }) =>
+          report?.glance.player ? [report.glance.player] : [],
+        )
+      : [],
+  )
   return {
-    targets: targets.slice(0, limit),
+    rows,
     more,
     loading,
     failed,

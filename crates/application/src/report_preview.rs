@@ -100,6 +100,13 @@ pub fn report_preview(payload: &Value) -> Value {
             preview.insert((*key).to_owned(), value.clone());
         }
     }
+    if payload["kind"] == "SpyContact"
+        && let Some(sender) = payload["sender"]
+            .as_str()
+            .and_then(|value| uuid::Uuid::parse_str(value).ok())
+    {
+        preview.insert("sender".into(), Value::String(sender.to_string()));
+    }
     // Historical payloads predate the current schema. Never expose malformed
     // Known resources to consumers that parse fixed-point values for display or
     // sorting; match the database's unknown-last metric semantics.
@@ -149,6 +156,28 @@ pub fn report_preview(payload: &Value) -> Value {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn spy_preview_only_identifies_the_sender_recorded_in_the_recipient_observation() {
+        let sender = uuid::Uuid::from_u128(42);
+        for detected in [true, false] {
+            let payload = json!({"kind":"SpyContact", "detected":detected, "sender":sender, "probability_ppm":1000});
+            assert_eq!(
+                report_preview(&payload),
+                json!({"kind":"SpyContact", "detected":detected, "sender":sender})
+            );
+        }
+        for sender in [Value::Null, json!("unknown")] {
+            assert_eq!(
+                report_preview(&json!({"kind":"SpyContact", "sender":sender})),
+                json!({"kind":"SpyContact"})
+            );
+        }
+        assert_eq!(
+            report_preview(&json!({"kind":"ContactLost", "sender":sender})),
+            json!({"kind":"ContactLost"})
+        );
+    }
 
     #[test]
     fn delivered_preview_preserves_recorded_names_and_legacy_coordinates() {
