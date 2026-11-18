@@ -1163,15 +1163,22 @@ export class Coordinator {
   ): Promise<string | undefined> {
     const b = this.binding,
       g = this.generation
-    if (!b || !this.ready || !this.platform.isOnline()) {
-      this.message = 'Connect before confirming an action.'
+    const reconnect = 'Connect before confirming an action.'
+    if (!b || !this.ready) {
+      this.message = reconnect
       return
+    }
+    const canContinue = () => {
+      if (!this.current(g, b)) return false
+      if (this.platform.isOnline()) return true
+      this.message = reconnect
+      return false
     }
     // Capture the complete confirmed intent before any async prerequisite.
     const command = structuredClone(input),
       quote = structuredClone(proposal)
     for (;;) {
-      if (!this.current(g, b) || !this.platform.isOnline()) return
+      if (!canContinue()) return
       this.tick()
       if (this.platform.monotonicNowMs() < this.retryAt) {
         this.explainUnsentDuringRecovery(command)
@@ -1181,13 +1188,14 @@ export class Coordinator {
         try {
           await this.resampleClock()
         } catch (error) {
-          await this.problem(error, g, b)
+          if (canContinue()) await this.problem(error, g, b)
           return
         }
       } else if (this.orderRefresh) {
         const retirement: OrderRefresh = this.orderRefresh
         await this.refresh()
-        if (this.current(g, b) && this.orderRefresh === retirement) {
+        if (!canContinue()) return
+        if (this.orderRefresh === retirement) {
           this.message = 'Refresh your empire before confirming this action.'
           return
         }

@@ -217,6 +217,27 @@ it('samples database time again when a sleeping device paused its monotonic cloc
   }
 })
 
+it.each(['sample returned', 'sample failed'])(
+  'explains an unsent action when the connection drops during a clock check (%s)',
+  async (result) => {
+    const f = recovery()
+    const model = f.model()
+    await model.initialize(f.session, f.snapshot)
+    f.advance(60_000)
+    f.port.currentBinding.mockImplementationOnce(async (_, request_id) => {
+      f.suspend()
+      if (result === 'sample failed') throw Error('offline')
+      return { ...f.snapshot.candidate, request_id }
+    })
+    expect(await model.send(order())).toBeUndefined()
+    expect(model.store.getState().message).toBe(
+      'Connect before confirming an action.',
+    )
+    expect(f.send).not.toHaveBeenCalled()
+    expect(model.ledger.size).toBe(0)
+  },
+)
+
 it.each(['social', 'alliance'] as const)(
   'restores the complete scoped %s request including its request correlation',
   async (kind) => {
