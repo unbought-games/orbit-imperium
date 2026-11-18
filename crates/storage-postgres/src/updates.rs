@@ -49,8 +49,8 @@ impl UpdateStore for PgStore {
         }
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
-        let head: Option<i64> = sqlx::query_scalar(
-            "SELECT position FROM game_update_heads WHERE universe=$1 AND epoch=$2 AND player=$3",
+        let head: Option<(i64, i64)> = sqlx::query_as(
+            "SELECT position,retired_through FROM game_update_heads WHERE universe=$1 AND epoch=$2 AND player=$3",
         )
         .bind(b.universe.0)
         .bind(b.epoch.0)
@@ -58,27 +58,30 @@ impl UpdateStore for PgStore {
         .fetch_optional(&mut *tx)
         .await
         .map_err(db_error)?;
-        let head = head.unwrap_or(0);
+        let (head, retired_through) = head.unwrap_or_default();
         let Some(after) = after
             .and_then(|value| position(b, value))
-            .filter(|value| *value <= head)
+            .filter(|value| (retired_through..=head).contains(value))
         else {
             return Ok(reset(b, head));
         };
-        let oldest: Option<i64> = sqlx::query_scalar(
-            "SELECT min(position) FROM game_updates WHERE universe=$1 AND epoch=$2 AND player=$3",
-        )
-        .bind(b.universe.0)
-        .bind(b.epoch.0)
-        .bind(b.player.0)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(db_error)?;
-        if after < head && oldest.is_none_or(|oldest| after < oldest - 1) {
+        let mut rows=sqlx::query("SELECT d.position,d.kind,d.minimum_revision,(d.kind='outcome' AND c.input_id IS NULL) AS missing_receipt,greatest(0,floor(extract(epoch FROM (clock_timestamp()-d.created_at))*1000000))::bigint AS delivery_us,c.receipt,c.input->>'protocol' AS protocol FROM game_updates d LEFT JOIN commands c ON d.kind='outcome' AND c.universe=d.universe AND c.epoch=d.epoch AND c.actor=d.player AND c.input_id=d.input_id WHERE d.universe=$1 AND d.epoch=$2 AND d.player=$3 AND d.position>$4 ORDER BY d.position LIMIT $5")
+            .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(after).bind(i64::from(limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        // This also detects interior/tail holes left by pre-floor workers, and
+        // a missing outcome receipt. Validate before coalescing invalidations.
+        let expected = (head - after).min(i64::from(limit) + 1);
+        if rows.len() as i64 != expected {
             return Ok(reset(b, head));
         }
-        let mut rows=sqlx::query("SELECT d.position,d.kind,d.minimum_revision,greatest(0,floor(extract(epoch FROM (clock_timestamp()-d.created_at))*1000000))::bigint AS delivery_us,c.receipt,c.input->>'protocol' AS protocol FROM game_updates d LEFT JOIN commands c ON d.kind='outcome' AND c.universe=d.universe AND c.epoch=d.epoch AND c.actor=d.player AND c.input_id=d.input_id WHERE d.universe=$1 AND d.epoch=$2 AND d.player=$3 AND d.position>$4 ORDER BY d.position LIMIT $5")
-            .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(after).bind(i64::from(limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
+        for (offset, row) in rows.iter().enumerate() {
+            if row.try_get::<i64, _>("position").map_err(db_error)? != after + offset as i64 + 1
+                || row
+                    .try_get::<bool, _>("missing_receipt")
+                    .map_err(db_error)?
+            {
+                return Ok(reset(b, head));
+            }
+        }
         let has_more = rows.len() > limit as usize;
         rows.truncate(limit as usize);
         let mut items = Vec::new();
@@ -236,9 +239,16 @@ pub(crate) async fn append_configuration_updates(
     Ok(())
 }
 impl PgStore {
-    /// Retention does not affect receipts or idempotency. Readers detect a gap and reset.
+    /// Publish the greatest retired position and delete its delivery rows in
+    /// the same transaction. Readers take a repeatable-read snapshot of both.
     pub async fn prune_game_updates(&self) -> Result<u64, StoreError> {
-        Ok(sqlx::query("DELETE FROM game_updates WHERE ctid IN (SELECT ctid FROM game_updates WHERE created_at<clock_timestamp()-interval '7 days' ORDER BY created_at LIMIT 1000 FOR UPDATE SKIP LOCKED)")
-            .execute(self.worker_pool()?).await.map_err(db_error)?.rows_affected())
+        let mut tx = self.retention_transaction().await?;
+        let sample: (i64, i64) = sqlx::query_as(include_str!("retention/updates.sql"))
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db_error)?;
+        tx.commit().await.map_err(db_error)?;
+        self.observer.retention(None, "delivery", sample);
+        Ok(sample.0 as u64)
     }
 }

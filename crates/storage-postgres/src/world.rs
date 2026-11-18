@@ -1140,15 +1140,11 @@ impl PgStore {
         // Presence is admitted alongside gameplay and is revalidated by the
         // same selector; enrolled players require their homeworld here too.
         crate::admission::expand_player_scopes(&mut tx, b.universe, &mut presence_scopes).await?;
-        let inherited = if indexed {
-            let (command, scopes) =
-                crate::scope_references::resolve_command(&mut tx, b.universe, b.epoch, b.player, g)
-                    .await?;
-            g = command;
-            scopes
-        } else {
-            Default::default()
-        };
+        let (command, inherited) = crate::scope_references::resolve_command(
+            &mut tx, b.universe, b.epoch, b.player, g, indexed,
+        )
+        .await?;
+        g = command;
         let mut gameplay_scopes = if indexed {
             crate::scoped_facts::select(
                 &mut tx,

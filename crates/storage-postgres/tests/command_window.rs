@@ -426,4 +426,75 @@ async fn whole_pair_lost_ack_old_machine_recovery_and_expiry_while_waiting_for_a
         .await,
         Err(ServiceError::NotFound)
     ));
+    // The pre-bridge high-bit presence identity still belongs to the stored
+    // gameplay link. With a pending gameplay half even a retired presence is pinned.
+    let worker = Uuid::new_v4().into();
+    assert!(matches!(
+        game.step(u, worker).await.unwrap(),
+        StepOutcome::Committed { .. }
+    ));
+    sqlx::query("UPDATE command_admission_cutover SET legacy_until_ms=0")
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.set_test_time(START + 8 * 86_400_000).await.unwrap();
+    sqlx::query("UPDATE commands SET retention_since=to_timestamp(0) WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE game_updates SET created_at=now()-interval '8 days' WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.prune_game_updates().await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    let statuses: Vec<bool> =
+        sqlx::query_scalar("SELECT done FROM commands WHERE universe=$1 ORDER BY sequence")
+            .bind(u.0)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(statuses, vec![true, false]);
+    assert!(matches!(
+        game.step(u, worker).await.unwrap(),
+        StepOutcome::Committed { .. }
+    ));
+    sqlx::query("UPDATE commands SET retention_since=to_timestamp(0) WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM commands WHERE universe=$1")
+            .bind(u.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        2,
+        "one retained outcome pins both halves"
+    );
+    sqlx::query("UPDATE game_updates SET created_at=now()-interval '8 days' WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.prune_game_updates().await.unwrap();
+    // Interrupt the atomic deletion after selecting its gameplay root. A
+    // concurrent evidence reader holds the partner through the bounded lock wait.
+    let mut holder = pool.begin().await.unwrap();
+    sqlx::query("SELECT input_id FROM commands WHERE command_id=$1 FOR KEY SHARE")
+        .bind(old.presence.command_id.0)
+        .fetch_one(&mut *holder)
+        .await
+        .unwrap();
+    assert!(store.prune_terminal_history().await.is_err());
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT (SELECT count(*) FROM commands WHERE universe=$1)+(SELECT count(*) FROM presence_pairs WHERE universe=$1)")
+        .bind(u.0).fetch_one(&pool).await.unwrap(),3);
+    holder.commit().await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(sqlx::query_scalar::<_,i64>("SELECT (SELECT count(*) FROM commands WHERE universe=$1)+(SELECT count(*) FROM presence_pairs WHERE universe=$1)")
+        .bind(u.0).fetch_one(&pool).await.unwrap(),0);
 }

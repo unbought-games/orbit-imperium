@@ -49,7 +49,10 @@ struct PublicationMetrics {
     duration_micros: u128,
     duration_count: u64,
 }
+type RetentionSamples =
+    std::collections::BTreeMap<(Option<orbit_application::UniverseId>, &'static str), (i64, i64)>;
 pub struct RuntimeMetrics {
+    retention: std::sync::Mutex<RetentionSamples>,
     publications: std::sync::Mutex<
         std::collections::BTreeMap<
             (orbit_application::UniverseId, &'static str),
@@ -68,6 +71,7 @@ impl RuntimeMetrics {
     pub fn new() -> Self {
         Self {
             publications: Default::default(),
+            retention: Default::default(),
             requests: Default::default(),
             publication_scan_failures: AtomicU64::new(0),
             durations: std::array::from_fn(|_| Histogram::default()),
@@ -192,11 +196,27 @@ impl RuntimeMetrics {
             writeln!(text, "orbit_public_feed_duration_seconds_sum{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_micros as f64 / 1_000_000.0).unwrap();
             writeln!(text, "orbit_public_feed_duration_seconds_count{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_count).unwrap();
         }
+        for ((universe, kind), (count, age)) in self.retention.lock().unwrap().iter() {
+            let scope = universe.map_or_else(|| "all".into(), |u| u.to_string());
+            writeln!(text, "orbit_retention_eligible_groups_capped{{universe=\"{scope}\",kind=\"{kind}\"}} {count}").unwrap();
+            writeln!(text, "orbit_retention_oldest_eligible_record_age_seconds{{universe=\"{scope}\",kind=\"{kind}\"}} {}", *age as f64/1000.0).unwrap();
+        }
         self.requests.render(&mut text);
         text
     }
 }
 impl RuntimeObserver for RuntimeMetrics {
+    fn retention(
+        &self,
+        universe: Option<orbit_application::UniverseId>,
+        kind: &'static str,
+        sample: (i64, i64),
+    ) {
+        self.retention
+            .lock()
+            .unwrap()
+            .insert((universe, kind), sample);
+    }
     fn request(&self, sample: orbit_application::RequestObservation) {
         self.requests.observe(sample);
     }

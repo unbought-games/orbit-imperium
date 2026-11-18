@@ -173,6 +173,24 @@ async fn explicit_deletion_cancellation_restart_and_account_preservation() {
     let reopened = PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
         .await
         .unwrap();
+    // Historical cancelled generations may go; the due replacement must
+    // survive both retention and startup adoption and remove this empire once.
+    let cutoff: i64 = sqlx::query_scalar("SELECT legacy_until_ms FROM command_admission_cutover")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE command_admission_cutover SET legacy_until_ms=0")
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE scheduled_events SET retention_since=to_timestamp(0)-interval '8 days' WHERE universe=$1")
+        .bind(b.universe.0).execute(&f.pool).await.unwrap();
+    reopened.prune_terminal_history().await.unwrap();
+    sqlx::query("UPDATE command_admission_cutover SET legacy_until_ms=$1")
+        .bind(cutoff)
+        .execute(&f.pool)
+        .await
+        .unwrap();
     reopened.ensure_empire_cleanup().await.unwrap();
     GameService::new(reopened)
         .step_scoped(b.universe, WorkerId(Uuid::new_v4()), &InlineEngine)

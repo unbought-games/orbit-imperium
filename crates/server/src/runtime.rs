@@ -256,10 +256,18 @@ async fn complete(
 // Retention uses at most one worker-pool connection and never occupies a claim
 // or CPU slot. A busy single-slot engine therefore cannot be starved by cleanup.
 fn start_retention(store: PgStore, mut drain: watch::Receiver<bool>) -> RenewalGuard {
+    let prune_history = std::env::var("ORBIT_PRUNE_TERMINAL_HISTORY").as_deref() == Ok("1");
     RenewalGuard(tokio::spawn(async move {
         loop {
             tokio::select! {_=tokio::time::sleep(Duration::from_secs(60))=>{},_=drain.changed()=>return}
-            loop {
+            if prune_history {
+                let result = tokio::select! {result=store.prune_terminal_history()=>result,_=drain.changed()=>return};
+                if let Err(error) = result {
+                    orbit_application::orbit_log!(WARN, event = "history_retention_failed", error_code = %error);
+                    store.observe_event(orbit_application::RuntimeEvent::StorageRetry);
+                }
+            }
+            for _ in 0..4 {
                 let result = tokio::select! {result=store.prune_game_updates()=>result,_=drain.changed()=>return};
                 match result {
                     Ok(1000) => {}
