@@ -1061,7 +1061,8 @@ impl PgStore {
         // V7 has one deadline for both halves. Legacy browser pairs used independent
         // v4 IDs and legacy machine pairs used their original, stable transform.
         crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
-        let presence = CommandIdentity::parse(pair.presence.command_id.0)?;
+        let presence =
+            CommandIdentity::parse(pair.presence.command_id.0).map_err(StoreError::CommandTime)?;
         let same_pair = match presence {
             CommandIdentity::LegacyV4 => pair.gameplay.command_id.0.get_version_num() == 4,
             CommandIdentity::V7 { .. } => {

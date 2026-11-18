@@ -57,7 +57,7 @@ pub use session::*;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error(transparent)]
-    CommandTime(#[from] CommandTimeError),
+    CommandTime(CommandTimeError),
     #[error("cosmetic access denied")]
     CosmeticDenied,
     #[error("session refresh in progress")]
@@ -100,7 +100,7 @@ pub enum StoreError {
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
     #[error(transparent)]
-    CommandTime(#[from] CommandTimeError),
+    CommandTime(CommandTimeError),
     #[error("session refresh in progress")]
     SessionRefreshing(u64),
     #[error(transparent)]
