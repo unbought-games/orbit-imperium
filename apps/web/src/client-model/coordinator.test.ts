@@ -8,6 +8,8 @@ import {
 } from './game-projection'
 import type { Binding, BoundReceipt, BoundView, GamePort } from './commands'
 import { attemptKey } from './commands'
+import { memoryStorage } from '../test-support/bootstrap'
+import { PendingCommands } from './pending-commands'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${n.toString().padStart(12, '0')}`
 const binding: Binding = {
@@ -83,7 +85,9 @@ function setup(
     },
   }
   let n = 10
+  const storage = memoryStorage()
   const c = new Coordinator(port, {
+    pendingCommands: new PendingCommands(() => storage),
     newId: () => id(n++),
     monotonicNowMs: clock,
     isOnline: () => true,
@@ -408,7 +412,11 @@ describe('R1 attempt coordinator', () => {
     stop()
   })
   it('keeps independent immutable A/B envelopes and retries only the same ID after 404', async () => {
-    const { c, sent } = setup()
+    const { c, sent, port } = setup()
+    port.submit = async (envelope) => {
+      sent.push(envelope.command_id)
+      throw Error('lost acknowledgement')
+    }
     await c.connect(binding.account, binding.universe)
     await c.send({ type: 'CancelConstruction', operation: id(40) })
     await c.send({ type: 'CancelConstruction', operation: id(41) })
@@ -440,13 +448,15 @@ describe('R1 attempt coordinator', () => {
     expect([...c.ledger.values()][0].reconciled).toBe(true)
   })
 })
-it('reconnecting drops earlier commands and never retries them', async () => {
-  const { c, sent } = setup()
+it('reconnecting restores unresolved commands and reads accepted receipts without another submission', async () => {
+  const { c, sent, receipts } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
   await c.send({ type: 'CancelConstruction', operation: id(41) })
+  for (const attempt of c.ledger.values())
+    receipts.set(attempt.envelope.command_id, attempt.receipt!)
   await c.connect(binding.account, binding.universe)
-  expect(c.ledger.size).toBe(0)
+  expect(c.ledger.size).toBe(2)
   expect(sent).toHaveLength(2)
   await c.poll()
   expect(sent).toHaveLength(2)
@@ -454,7 +464,7 @@ it('reconnecting drops earlier commands and never retries them', async () => {
     await c.retryOrder(attempt.envelope.command_id)
   expect(sent).toHaveLength(2)
 })
-it('dismisses an uncertain order during retry and drops it on reconnect', async () => {
+it('dismisses an uncertain order during retry and restores the unresolved order on reconnect', async () => {
   const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   port.submit = async (envelope) => {
@@ -479,7 +489,9 @@ it('dismisses an uncertain order during retry and drops it on reconnect', async 
   expect(c.ledger.get(attemptKey(binding, commandId))?.status).toBe('uncertain')
   await c.connect(binding.account, binding.universe)
   expect(c.store.getState().hiddenOrderNotices.size).toBe(0)
-  expect(c.ledger.size).toBe(0)
+  expect([...c.ledger.values()].map((a) => a.envelope.command_id)).toEqual([
+    commandId,
+  ])
   expect(sent).toEqual([commandId])
   await c.send({ type: 'CancelConstruction', operation: id(41) })
   expect(c.store.getState().hiddenOrderNotices.size).toBe(0)
@@ -827,7 +839,7 @@ it('shares the in-flight Login request across repeated lifecycle starts', async 
   release({
     protocol: 4,
     binding: snapshot.candidate.binding,
-    command_id: id(90),
+    command_id: submitted[0].command_id,
     admitted_at: 1000,
     executed_at: null,
     status: 'Pending',
@@ -946,8 +958,10 @@ it('does not start fast recovery while Login submission is still in flight', asy
   const { session, snapshot } = readyFixture(4)
   const { port } = setup()
   let release!: (receipt: BoundReceipt) => void
-  port.submit = () =>
+  let sentId: string
+  port.submit = (envelope) =>
     new Promise((resolve) => {
+      sentId = envelope.command_id
       release = resolve
     })
   port.view = vi.fn(async (context) => ({
@@ -958,7 +972,7 @@ it('does not start fast recovery while Login submission is still in flight', asy
     async (): Promise<BoundReceipt> => ({
       protocol: 4,
       binding: snapshot.candidate.binding,
-      command_id: id(90),
+      command_id: sentId!,
       admitted_at: 1000,
       executed_at: null,
       status: 'Pending',
@@ -992,7 +1006,7 @@ it('does not start fast recovery while Login submission is still in flight', asy
     release({
       protocol: 4,
       binding: snapshot.candidate.binding,
-      command_id: id(90),
+      command_id: sentId!,
       admitted_at: 1000,
       executed_at: null,
       status: 'Pending',
@@ -1232,7 +1246,7 @@ it('alliance not-found and permission errors stay local to the screen', async ()
     }
     await expect(
       c.allianceCommand({
-        command_id: id(998),
+        command_id: await c.newCommandId(),
         expected_revision: 1,
         action: { type: 'Leave', alliance: id(999) },
       }),
@@ -1526,6 +1540,10 @@ it('retains an uncertain deletion ID when a retry needs recent authentication', 
   const { readyFixture } = await import('../test-support/bootstrap')
   const { c, port, sent } = setup()
   const fixture = readyFixture(4)
+  port.currentBinding = async (_, request_id) => ({
+    ...fixture.snapshot.candidate,
+    request_id,
+  })
   await c.initialize(fixture.session, fixture.snapshot)
   port.submit = async (envelope) => {
     sent.push(envelope.command_id)

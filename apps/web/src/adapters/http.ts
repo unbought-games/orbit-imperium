@@ -197,11 +197,11 @@ export function gamePort(
     socialQuery: (context, query) =>
       socialQuery(context.binding, csrf, query, context.request_id),
     socialCommand: (context, command) =>
-      socialCommand(context.binding, csrf, command),
+      socialCommand(context.binding, csrf, command, context.request_id),
     allianceQuery: (context, query) =>
       allianceQuery(context.binding, csrf, query, context.request_id),
     allianceCommand: (context, command) =>
-      allianceCommand(context.binding, csrf, command),
+      allianceCommand(context.binding, csrf, command, context.request_id),
     async rankings(context) {
       return validate(
         'Rankings',

@@ -1,3 +1,4 @@
+import { identityProblem } from './command-window'
 import { createStore } from 'zustand/vanilla'
 import type { components } from '../contracts'
 type S = components['schemas']
@@ -84,7 +85,7 @@ export class AlliancesController {
       command: (
         request: AllianceRequest,
       ) => Promise<S['AllianceCommandResult'] | null>
-      newId: () => string
+      newId: () => string | Promise<string>
       onAccessLost?: () => void
     },
   ) {}
@@ -248,10 +249,27 @@ export class AlliancesController {
       : (expectedRevision ??
         this.store.getState().view?.alliance?.revision ??
         null)
+    const captured = structuredClone(action)
+    const generation = this.generation
+    let commandId: string
+    const id = this.ports.newId()
+    if (typeof id === 'string') commandId = id
+    else {
+      this.store.setState({ busy: true })
+      try {
+        commandId = await id
+      } catch (error) {
+        if (generation === this.generation)
+          this.store.setState({ busy: false, error: errorMessage(error) })
+        return false
+      }
+      if (generation !== this.generation) return false
+      this.store.setState({ busy: false })
+    }
     const pending = {
-      command_id: this.ports.newId(),
+      command_id: commandId,
       expected_revision: revision,
-      action: structuredClone(action),
+      action: captured,
     }
     this.store.setState({ pending })
     return this.retry()
@@ -290,6 +308,13 @@ export class AlliancesController {
       return true
     } catch (error) {
       if (generation !== this.generation) return false
+      const identityError = identityProblem(error)
+      if (identityError) {
+        this.store.setState({ busy: false, pending: null })
+        await this.load({ type: 'Mine' }, previousView?.alliance)
+        this.store.setState({ error: identityError })
+        return false
+      }
       const status = statusCode(error)
       const rejected =
         status >= 400 && status < 500 && status !== 408 && status !== 429

@@ -5,11 +5,16 @@ import {
   readArchive,
   ArchiveReadError,
   editProfile,
+  recoverProfile,
   type EmpireProfile,
   type ProfileAction,
 } from '../adapters/empire-history'
 import { http, HttpError, type Session } from '../adapters/http'
-import { commandId } from '../adapters/command-id'
+import {
+  identityProblem,
+  unavailableCommandAccess,
+  unknownAccessMessage,
+} from './command-window'
 
 export function useArchive<T>(schema: string, path: string) {
   const [store] = useState(() =>
@@ -38,7 +43,36 @@ export function useArchive<T>(schema: string, path: string) {
       readArchive<T>(schema, path, controller.signal),
       http.session().catch(() => null),
     ])
-      .then(([data, session]) => {
+      .then(async ([data, session]) => {
+        if (
+          !controller.signal.aborted &&
+          current === generation.current &&
+          session &&
+          schema === 'EmpireProfile'
+        ) {
+          try {
+            if (
+              await recoverProfile(
+                data as EmpireProfile,
+                session.account,
+                session.csrf,
+              )
+            )
+              data = await readArchive<T>(schema, path, controller.signal)
+          } catch (error) {
+            const problem = identityProblem(error)
+            if (problem)
+              data = await readArchive<T>(schema, path, controller.signal)
+            if (!controller.signal.aborted && current === generation.current)
+              store.setState({
+                error:
+                  problem ??
+                  (unavailableCommandAccess(error)
+                    ? unknownAccessMessage
+                    : 'The earlier profile change is still unconfirmed. Refresh to check again.'),
+              })
+          }
+        }
         if (!controller.signal.aborted && current === generation.current)
           store.setState({ data, session, loading: false })
       })
@@ -66,7 +100,12 @@ export function useArchive<T>(schema: string, path: string) {
     store.setState({ busy: true, error: '' })
     let committed = false
     try {
-      await editProfile(profile, state.session.csrf, action, commandId(crypto))
+      await editProfile(
+        profile,
+        state.session.account,
+        state.session.csrf,
+        action,
+      )
       committed = true
       const data = await readArchive<T>(
         schema,
@@ -77,6 +116,21 @@ export function useArchive<T>(schema: string, path: string) {
         store.setState({ data, loading: false })
       return true
     } catch (error) {
+      const problem = identityProblem(error)
+      if (problem) {
+        if (current === generation.current) store.setState({ error: problem })
+        try {
+          const data = await readArchive<T>(
+            schema,
+            path,
+            new AbortController().signal,
+          )
+          if (current === generation.current) store.setState({ data })
+        } catch {
+          /* The uncertainty notice remains visible until Refresh succeeds. */
+        }
+        return false
+      }
       store.setState({
         error: committed
           ? 'Your change was saved, but the profile could not be refreshed. Refresh to see the saved version.'
@@ -86,7 +140,7 @@ export function useArchive<T>(schema: string, path: string) {
             ? 'This identity or selected title is no longer available. Refresh to check your choices.'
             : error instanceof HttpError && error.status === 409
               ? 'This profile changed in another window. Refresh before saving again.'
-              : 'Your change could not be saved. Refresh and try again.',
+              : 'Your change is unconfirmed. Refresh to check the current profile.',
       })
       return false
     } finally {

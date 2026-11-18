@@ -12,6 +12,7 @@ import { clearLegacyOrderStorage } from './legacy-order-storage'
 import { gamePort, http } from './http'
 import { readEmbeddedBootstrap } from './bootstrap'
 import { createGameUpdatesPort } from './updates'
+import { PendingCommands } from '../client-model/pending-commands'
 import { commandId } from './command-id'
 export type BootstrapSource = 'document' | 'retry' | 'login' | 'signup'
 type GameIssue =
@@ -50,6 +51,7 @@ export function browserDependencies(): RuntimeDependencies {
   clearLegacyOrderStorage(() => localStorage)
   return {
     platform: {
+      pendingCommands: new PendingCommands(() => localStorage),
       scheduleOnce: (callback, delay) => {
         const timer = setTimeout(callback, delay)
         return () => clearTimeout(timer)

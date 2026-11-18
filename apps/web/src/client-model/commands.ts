@@ -74,6 +74,7 @@ export interface GamePort {
   receipt(binding: Binding, command_id: string): Promise<BoundReceipt>
 }
 export interface ClientPlatform {
+  pendingCommands?: import('./pending-commands').PendingCommands
   random?(): number
   scheduleOnce?(callback: () => void, delayMs: number): () => void
   newId(): string

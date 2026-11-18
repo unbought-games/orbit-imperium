@@ -4,7 +4,6 @@ import { AlliancesController } from '../../client-model/alliances'
 import { usePublicAlliance } from '../../client-model/use-public-alliance'
 import { useGameSession } from '../../shell/session-context'
 import { useRefreshPlayerProfiles } from '../../shell/player-profiles-context'
-import { commandId } from '../../adapters/command-id'
 import { trackRecruitment } from '../../adapters/optional-services'
 import { Button } from '../../ui/button'
 import { Field, Textarea } from '../../ui/form'
@@ -35,7 +34,7 @@ export function AllianceArrival({
       new AlliancesController({
         read: (q) => model.allianceQuery(q),
         command: (r) => model.allianceCommand(r),
-        newId: () => commandId(crypto),
+        newId: model.newCommandId,
       }),
   )
   const state = useStore(controller.store)
