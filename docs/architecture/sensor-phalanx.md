@@ -45,7 +45,7 @@ and impact deadline; no invented ship/return/cargo fields or interception data.
 | --- | --- | --- |
 | Outbound Attack, Transport, Espionage, Hold | Expected return | Arrival |
 | Outbound Deploy | Hidden | Arrival |
-| Outbound Harvest, Colonize | Expected return | Hidden |
+| Outbound Harvest, Colonize, DestroyMoon | Expected return | Hidden |
 | Returning non-deploy | Committed return | Hidden |
 | Voluntarily recalled Deploy | Hidden | Hidden |
 | Invalid-target Deploy return | Committed return | Hidden |
@@ -224,6 +224,6 @@ immutable report rendering and desktop/mobile visual validation. The backend
 activation path is usable now through normal custom-rules apply. Use the
 receipt's report ID directly; do not race an inbox refresh or turn route loading
 into a command. Retry uncertain delivery on the original ID; another observation
-is an explicit new paid action. Moon removal/fallback, jump gates, expeditions
-and sharing remain separate work. No production acceptance/deployment claim is
+is an explicit new paid action. See the [moon destruction guide](../operations/moon-destruction.md) for
+changes to effective endpoints after a moon is lost. No production acceptance/deployment claim is
 made by this increment.
