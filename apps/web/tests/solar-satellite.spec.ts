@@ -336,18 +336,14 @@ test('satellite production link opens the selected body’s settings and Back sh
     response.request().postDataJSON().gameplay?.command?.type === 'SetProduction',
     () => slider.press('End'),
   )
+  expect(sent).toMatchObject({
+    type: 'SetProduction',
+    body: body.id,
+    settings: { solar_satellite: 100 },
+  })
   await expect(slider).toHaveValue('100')
-  await expect
-    .poll(() => sent)
-    .toMatchObject({
-      type: 'SetProduction',
-      body: body.id,
-      settings: { solar_satellite: 100 },
-    })
-  await expect.poll(() => production.settings.solar_satellite).toBe(100)
-  await withBootstrapResponse(page, () => page.reload())
-  await expect(row.getByRole('slider')).toHaveValue('100')
-  await expect(row).toContainText('30')
+  await expect(row).toContainText('60 supplied')
+  await expect(page.getByRole('region', { name: 'Production controls' }).getByRole('status')).toHaveText('All changes saved automatically.')
   await withProgressionResponse(page, unitInspection(body.id), () => page.goBack())
   await expect(page).toHaveURL(url => url.pathname === orderPath)
   await expect(order.getByText('Energy added', { exact: true }).locator('..').locator('dd')).toHaveText('30')
