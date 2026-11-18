@@ -704,9 +704,18 @@ test('locked dyes explain reward and membership access without changing the sele
   await member.focus()
   await page.keyboard.press('Tab')
   await expect(guide).toBeFocused()
+  await page.context().route('**/u/demo/b/forge/rewards', (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: '<h1 id="dye-unlocks">Rewards destination</h1>',
+    }),
+  )
   const opened = page.waitForEvent('popup')
   await page.keyboard.press('Enter')
   const guideTab = await opened
   await expect(guideTab).toHaveURL(/\/u\/demo\/b\/forge\/rewards#dye-unlocks$/)
+  await expect(
+    guideTab.getByRole('heading', { name: 'Rewards destination' }),
+  ).toBeVisible()
   await guideTab.close()
 })

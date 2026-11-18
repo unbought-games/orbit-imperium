@@ -2405,3 +2405,14 @@ so a receipt cannot reconcile against the pre-commit snapshot. The fixture's
 optional revision callback is used only by this scenario; other callers retain
 their existing behavior. This is part of the same fixture audit/repair, not a
 changed runtime ordering guarantee. The focused retained browser case passes.
+
+### Hangar reward-link popup fixture
+
+PR #457's first queue run (44223130409, integration commit `30c313af`)
+failed the locked-dye keyboard navigation case. The popup navigated to the
+correct Rewards URL, but the component gallery served its own entry point and
+threw “Unknown component scenario” before the test closed the tab. The first
+fixture repair serves a document at the exact destination path and waits for
+its heading. The test still verifies source focus, native new-tab navigation
+and the body-scoped URL including its fragment. The other component popup
+journey, for the account link, already supplies its destination this way.
