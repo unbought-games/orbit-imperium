@@ -2,6 +2,7 @@ import type { components } from '../../contracts'
 import type { Attempt } from '../../client-model/commands'
 import type { GameState } from '../../client-model/game-store'
 import { acceptedEntityReference } from '../../client-model/game-projection'
+import { reportResumeCutoff } from '../../client-model/report-inbox'
 import { isHostileMission } from '../../client-model/hostile-fleets'
 import {
   projectedReportHeader,
@@ -104,6 +105,48 @@ export function isHudCommand(attempt: Attempt) {
     (command.type === 'World' && command.action.type === 'LaunchFleet')
   )
 }
+/** Compare recipient creation sequences across HUD snapshots. Other queries
+ * can cache an arriving header before the HUD gets its own response. */
+function arrivingReports(before: GameState, after: GameState): HudTarget[] {
+  const previous = before.reportInbox
+  const current = after.reportInbox
+  if (
+    !previous ||
+    !current ||
+    previous === current ||
+    !after.foreground ||
+    !after.online
+  )
+    return []
+  if (
+    current.arrivals &&
+    current.arrivals.through === previous.arrivals?.through
+  )
+    return []
+  const resumeServerTime = reportResumeCutoff(previous, current)
+  const reports = unreadReports(after).filter((report) => {
+    if (resumeServerTime !== null && report.observed_at < resumeServerTime)
+      return false
+    if (previous.arrivals && current.arrivals) {
+      const created = current.arrivals.created[report.id]
+      return (
+        created !== undefined &&
+        BigInt(created) > BigInt(previous.arrivals.through)
+      )
+    }
+    // Older servers have no creation sequence. Use the previous first-page
+    // snapshot time. At its exact boundary an incomplete page is ambiguous.
+    if (previous.items.includes(report.id)) return false
+    return (
+      report.observed_at > previous.as_of_ms ||
+      (report.observed_at === previous.as_of_ms &&
+        !previous.has_more &&
+        !before.reportHeaders.has(report.id))
+    )
+  })
+  // Notification history puts the last arrival on top.
+  return reports.reverse().map((report) => ({ kind: 'report', id: report.id }))
+}
 /** Capture transitions, never replay the saved command ledger when entering the game. */
 export function changedHudTargets(
   before: GameState,
@@ -123,14 +166,7 @@ export function changedHudTargets(
   for (const threat of incomingThreats(after))
     if (!oldThreats.has(incomingKey(threat)))
       changes.push({ kind: 'incoming', id: incomingKey(threat) })
-  // First inbox hydration supplies the persistent orb; only subsequent arrivals toast.
-  if (before.reportInbox && before.reportInbox !== after.reportInbox)
-    for (const report of unreadReports(after))
-      if (
-        after.reportInbox?.items.includes(report.id) &&
-        !before.reportHeaders.has(report.id)
-      )
-        changes.push({ kind: 'report', id: report.id })
+  changes.push(...arrivingReports(before, after))
   if (before.mailbox && before.mailbox !== after.mailbox) {
     const oldMessages = new Set(
       before.mailbox.conversations.map((c) => c.latest.id),

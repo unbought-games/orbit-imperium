@@ -116,8 +116,8 @@ function ShareSettings({
         Names and coordinates are hidden by default. Readers may still recognize
         a battle from its numbers. Revoking the link stops future access, but
         cannot remove copies or link previews already cached by chat services.
-        Sharing automatically stars the report to protect it from archiving;
-        stopping sharing keeps it starred. Archiving preserves the link.
+        Sharing stars the report. Stopping sharing keeps the star. Archiving
+        from report details stops sharing.
       </Text>
       {error && (
         <Text role="alert" tone="danger">

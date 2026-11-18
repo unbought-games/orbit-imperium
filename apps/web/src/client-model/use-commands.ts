@@ -16,16 +16,29 @@ export function useCommands(runtime: AuthenticatedRuntime | null) {
   useEffect(() => {
     if (!model || !state.ready) return
     const stop = model.startDelivery()
-    const wake = () => model.resumeDelivery()
+    let blurred = false
+    const wake = () => {
+      blurred = false
+      model.resumeDelivery()
+    }
+    const blur = () => {
+      blurred = true
+    }
+    const focus = () => {
+      model.resumeDelivery(blurred)
+      blurred = false
+    }
+    window.addEventListener('blur', blur)
     window.addEventListener('online', wake)
     window.addEventListener('offline', wake)
-    window.addEventListener('focus', wake)
+    window.addEventListener('focus', focus)
     document.addEventListener('visibilitychange', wake)
     return () => {
       stop()
       window.removeEventListener('online', wake)
       window.removeEventListener('offline', wake)
-      window.removeEventListener('focus', wake)
+      window.removeEventListener('blur', blur)
+      window.removeEventListener('focus', focus)
       document.removeEventListener('visibilitychange', wake)
     }
   }, [model, state.ready, state.binding?.epoch])

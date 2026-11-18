@@ -438,3 +438,31 @@ it('derives optimistic and confirmed removals from the unread page without chang
   state.reportInbox.unread_count = 99
   expect(unreadReportCount(state)).toBe(99)
 })
+
+it('applies detail archive and revocation together at the receipt revision', () => {
+  const shared = mergeReportHeaders(
+    headers,
+    [{ ...header, shared: true, starred: true }],
+    '1',
+  )
+  const archive = attempt('committed')
+  archive.envelope.command = {
+    type: 'World',
+    action: { type: 'ArchiveReport', report: header.id, revoke_share: true },
+  }
+  const result = acceptReportVisibility(shared, archive, receipt)
+  expect(result.get(header.id)?.header).toEqual({
+    ...header,
+    shared: false,
+    starred: true,
+    hidden: true,
+  })
+  const republished = mergeReportHeaders(
+    result,
+    [{ ...header, shared: true, starred: true }],
+    '3',
+  )
+  expect(
+    acceptReportVisibility(republished, archive, receipt).get(header.id),
+  ).toEqual(republished.get(header.id))
+})

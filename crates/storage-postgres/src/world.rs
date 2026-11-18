@@ -375,10 +375,14 @@ pub(crate) async fn load_selected(
             reports.insert(r.id, r);
         }
         for row in sqlx::query(
-            "SELECT report,recipient,read,hidden,starred FROM mission_report_recipients WHERE report=ANY($1) AND recipient=ANY($2) ORDER BY report,recipient",
+            "SELECT p.report,p.recipient,p.read,p.hidden,p.starred,
+                    ($3 AND EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=p.report AND s.recipient=p.recipient AND s.epoch=$4)) AS shared
+             FROM mission_report_recipients p WHERE p.report=ANY($1) AND p.recipient=ANY($2) ORDER BY p.report,p.recipient",
         )
         .bind(&ids)
         .bind(&owners)
+        .bind(matches!(input, Input::Command(Command::World { action: WorldAction::ArchiveReport { .. } })))
+        .bind(epoch.0)
         .fetch_all(&mut **tx)
         .await
         .map_err(db_error)?
@@ -389,6 +393,7 @@ pub(crate) async fn load_selected(
                 read: row.try_get("read").map_err(db_error)?,
                 hidden: row.try_get("hidden").map_err(db_error)?,
                 starred: row.try_get("starred").map_err(db_error)?,
+                shared: row.try_get("shared").map_err(db_error)?,
             });
         }
     }
@@ -985,6 +990,27 @@ pub(crate) async fn save(
         .any(|state| !covered.contains(&state.recipient))
     {
         return Err(StoreError::CorruptData);
+    }
+    // The command commit already holds this recipient's lock. Revocation and
+    // the visibility update below become observable with the same receipt.
+    if let Input::Command(Command::World {
+        action:
+            WorldAction::ArchiveReport {
+                report,
+                revoke_share: true,
+            },
+    }) = &i.payload
+        && let Actor::Player(recipient) = i.actor
+    {
+        sqlx::query(
+            "DELETE FROM mission_report_shares WHERE report=$1 AND recipient=$2 AND epoch=$3",
+        )
+        .bind(report.0)
+        .bind(recipient.0)
+        .bind(i.epoch.0)
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
     }
     if !changed.is_empty() {
         let reports: Vec<_> = changed.iter().map(|state| state.report.0).collect();

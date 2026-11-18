@@ -26,9 +26,10 @@ export function observeReportVisibilityCommit(
         !commandId &&
         !initial.attempts.has(key) &&
         command.type === 'World' &&
-        command.action.type === 'SetReportHidden' &&
-        command.action.report === report &&
-        command.action.hidden === hidden
+        ((command.action.type === 'SetReportHidden' &&
+          command.action.hidden === hidden) ||
+          (command.action.type === 'ArchiveReport' && hidden)) &&
+        command.action.report === report
       ) {
         commandId = attempt.envelope.command_id
       }

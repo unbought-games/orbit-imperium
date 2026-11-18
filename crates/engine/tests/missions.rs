@@ -227,6 +227,7 @@ fn run(
                             | WorldAction::CreateAttackGroup { .. }
                             | WorldAction::InviteAttackGroup { .. }
                             | WorldAction::RevokeAttackGroupInvitation { .. }
+                            | WorldAction::ArchiveReport { .. }
                             | WorldAction::SetReportHidden { .. }
                             | WorldAction::SetReportsHidden { .. }
                             | WorldAction::MarkReportRead { .. }
@@ -3468,6 +3469,7 @@ fn bulk_report_reads_are_atomic_recipient_scoped_and_idempotent() {
             read: false,
             hidden: true,
             starred: true,
+            shared: false,
         });
     let evidence = s.world.as_ref().unwrap().records.reports.clone();
     let action = |reports| {
