@@ -35,8 +35,8 @@ test('public forms reflow with short phone viewports and unavailable artwork', a
   for (const width of [320, 360, 390, 430, 768]) {
     await page.setViewportSize({ width, height: 480 })
     await page.goto('/?scenario=public-entry&mode=signup')
-    await expect(page.locator('img[src^="/art/atlas/"]:visible')).toHaveCount(0)
     await page.getByLabel('Account', { exact: true }).fill('still-usable')
+    await expect(page.locator('img[src^="/art/atlas/"]:visible')).toHaveCount(0)
     await page.getByLabel('Password', { exact: true }).fill('password')
     const action = page.getByRole('button', {
       name: 'Create account',
