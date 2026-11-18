@@ -390,7 +390,7 @@ function SimulationForm({
               imported.
             </p>
             <SimulationFields
-              allySlot={index + 1}
+              allySlot={ally.slot}
               fields={allyFields(fields, ally)}
               edits={edits}
               edit={edit}

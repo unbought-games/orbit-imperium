@@ -94,7 +94,6 @@ function FieldGroup({
     >
       {collapsible ? (
         <SimulationDisclosure
-          key={allySlot}
           section={
             allySlot
               ? `allied-fleet-${allySlot}-ships`
