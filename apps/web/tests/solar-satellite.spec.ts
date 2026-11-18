@@ -184,6 +184,10 @@ async function setup(
   return production
 }
 
+const unitInspection = (selectedBody: string) => (request: S['QuoteRequest3']) =>
+  request.type === 'Manufacture' && request.body === selectedBody &&
+  request.item.id === item.id && request.quantity === '1'
+
 test('satellites require Shipyard 1 and show stationary statistics and local energy', async ({
   page,
 }) => {
@@ -202,7 +206,7 @@ test('satellites require Shipyard 1 and show stationary statistics and local ene
   await expect(pane).toContainText('Shipyard')
   await pane.getByText('Technical data', { exact: true }).click()
   await expect(pane).toContainText('Cannot fly or carry cargo')
-  await expect(pane).toContainText('Energy per satellite · 100% production')
+  await expect(pane).toContainText('Planet energy per satellite')
   await expect(pane).toContainText('30')
   await expect(pane).not.toContainText('Propulsion statistics are unavailable')
 })
@@ -242,7 +246,7 @@ test('satellites manufacture by quantity but never appear in fleet selection', a
   await expect(
     pane.getByRole('button', { name: 'Deuterium details' }),
   ).toContainText('1,000')
-  const gain = pane.getByText('Energy added by this order', { exact: true }).locator('..').locator('dd')
+  const gain = pane.getByText('Energy added', { exact: true }).locator('..').locator('dd')
   await expect(gain).toHaveText('60')
   await pane.getByRole('button', { name: 'Max Solar Satellite quantity' }).click()
   await expect(page.getByLabel('Shipyard quantity')).toHaveValue('10')
@@ -336,17 +340,20 @@ for (const width of [320]) {
   test(`satellite ordering shows authoritative planet output without technical expansion at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     const production = await setup(page)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`))
+    await withProgressionResponse(page, unitInspection(body.id), () =>
+      withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)),
+    )
     const order = page.getByRole('region', { name: 'New order', exact: true })
-    const perUnit = order.locator('dl > div').filter({ has: page.getByText('Energy per satellite · 100% production', { exact: true }) })
+    const perUnit = order.locator('dl > div').filter({ has: page.getByText('Planet energy per satellite', { exact: true }) })
     await expect(perUnit).toContainText('30')
-    await expect(order.getByText('Current satellite energy · 100% production', { exact: true })).toBeVisible()
+    const gain = order.getByText('Energy added', { exact: true }).locator('..').locator('dd')
+    await expect(gain).toHaveText('30')
     await expect(page.locator('details').filter({ has: page.getByText('Technical data', { exact: true }) })).not.toHaveAttribute('open', '')
     production.settings.solar_satellite = 50
     production.solar_satellite!.energy_supply = '30000000'
     production.settings_revision = '1'
-    await refreshGame(page)
-    await expect(order.getByText('Current satellite energy · 50% production', { exact: true })).toBeVisible()
+    await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/overview'), () => refreshGame(page))
+    await expect(gain).toHaveText('(50% production) 15')
     await expect(perUnit).toContainText('30')
     await diagnosticScreenshot(order, { path: `test-results/satellite-order-${width}.png` })
   })
@@ -357,31 +364,27 @@ test('satellite ordering updates across planets, zero stationed satellites and u
   const production = await setup(page, 1, { bodies: [{ ...body, inventories: [] }, second] })
   production.solar_satellite!.energy_supply = '0'
   production.settings.solar_satellite = 0
-  const unitInspection = (selectedBody: string) => (request: S['QuoteRequest3']) =>
-    request.type === 'Manufacture' && request.body === selectedBody &&
-    request.item.id === item.id && request.quantity === '1'
   await withProgressionResponse(page, unitInspection(body.id), () =>
     withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/shipyard/solar-satellite`)),
   )
   const order = page.getByRole('region', { name: 'New order', exact: true })
-  await expect(order).toContainText('Energy per satellite · 100% production30')
-  await expect(order).toContainText('Current satellite energy · 0% production0')
-  const gain = order.getByText('Energy added by this order', { exact: true }).locator('..').locator('dd')
-  await expect(gain).toHaveText('0')
+  await expect(order).toContainText('Planet energy per satellite30')
+  const gain = order.getByText('Energy added', { exact: true }).locator('..').locator('dd')
+  await expect(gain).toHaveText('(0% production) 0')
   await withProgressionResponse(
     page,
     unitInspection(second.id),
     () => selectBody(page, second.id),
   )
   await expect(order).toContainText('Satellite energy data unavailable for this planet.')
-  await expect(order).not.toContainText('100% production30')
+  await expect(order.getByText('Planet energy per satellite', { exact: true })).toHaveCount(0)
   production.body = second.id
   production.solar_satellite = { unit_energy: '47000000', energy_supply: '0' }
   production.settings.solar_satellite = 50
   production.settings_revision = '1'
   await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/overview'), () => refreshGame(page))
-  await expect(order).toContainText('Energy per satellite · 100% production47')
-  await expect(gain).toHaveText('23.5')
+  await expect(order).toContainText('Planet energy per satellite47')
+  await expect(gain).toHaveText('(50% production) 23.5')
   delete production.solar_satellite
   production.settings_revision = '2'
   await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/overview'), () => refreshGame(page))

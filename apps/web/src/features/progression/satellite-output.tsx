@@ -20,15 +20,9 @@ export function SatelliteOutput({
 }) {
   if (body.kind === 'Moon')
     return (
-      <>
-        <p className={styles.note}>
-          Solar Satellites produce no energy on moons. They remain stationary
-          and can be destroyed in combat.
-        </p>
-        <dl className={styles.compare}>
-          <OrderEnergy gain={quantity ? 0n : null} />
-        </dl>
-      </>
+      <p className={styles.note}>
+        Solar Satellites produce no energy on moons.
+      </p>
     )
   const production = view.progression.production.find((p) => p.body === body.id)
   const output = production?.solar_satellite
@@ -50,30 +44,21 @@ export function SatelliteOutput({
     : null
   return (
     <dl className={styles.compare}>
-      <DetailRow
-        label="Energy per satellite · 100% production"
-        hint="Based on this planet’s maximum temperature."
-      >
+      <DetailRow label="Planet energy per satellite">
         <ResourceQuantity resource="energy" value={output.unit_energy} />
       </DetailRow>
-      <DetailRow label={`Current satellite energy · ${percent}% production`}>
-        <ResourceQuantity resource="energy" value={output.energy_supply} />
+      <DetailRow label="Energy added">
+        {gain === null ? (
+          '—'
+        ) : (
+          <>
+            {percent < 100 && <small>({percent}% production) </small>}
+            <ResourceValue resource="energy">
+              {formatEnergyGain(gain)}
+            </ResourceValue>
+          </>
+        )}
       </DetailRow>
-      <OrderEnergy gain={gain} />
     </dl>
-  )
-}
-
-function OrderEnergy({ gain }: { gain: bigint | null }) {
-  return (
-    <DetailRow label="Energy added by this order">
-      {gain === null ? (
-        '—'
-      ) : (
-        <ResourceValue resource="energy">
-          {formatEnergyGain(gain)}
-        </ResourceValue>
-      )}
-    </DetailRow>
   )
 }
