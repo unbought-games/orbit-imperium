@@ -65,6 +65,12 @@ export function reportPreview(preview: Preview | undefined): {
         label: 'Scan cost',
       })
       break
+    case 'MoonFleetRedirected':
+    case 'MoonTargetLost':
+      at = preview.coordinates
+      facts.push(label(preview.mission))
+      break
+    case 'MoonDestroyed':
     case 'MoonCreated':
       at = preview.coordinates
       identity = 'Moon'
@@ -131,6 +137,18 @@ export function reportPreview(preview: Preview | undefined): {
     case 'Combat':
       at = preview.target
       identity = bodyIdentityLabel(preview.target_name, preview.target_kind)
+      if (preview.moon_destruction) {
+        facts.push(
+          preview.moon_destruction.moon_destroyed
+            ? 'Moon destroyed'
+            : 'Moon survived',
+        )
+        facts.push(
+          preview.moon_destruction.fleet_lost
+            ? 'Attacking fleet lost'
+            : 'Attacking fleet escaped',
+        )
+      }
       if (preview.loot && hasCombatLoot(preview.outcome, preview.loot))
         facts.push({ resources: preview.loot, label: 'Loot' })
       if (
@@ -174,6 +192,9 @@ export function reportPreview(preview: Preview | undefined): {
       : identity,
     coordinates: at,
     ...(preview.kind === 'MoonCreated' ||
+    preview.kind === 'MoonDestroyed' ||
+    preview.kind === 'MoonFleetRedirected' ||
+    preview.kind === 'MoonTargetLost' ||
     (preview.kind === 'Returned' || preview.kind === 'Recalled'
       ? preview.origin_kind === 'Moon'
       : 'target_kind' in preview && preview.target_kind === 'Moon') ||

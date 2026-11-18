@@ -197,7 +197,7 @@ function FlightList({
             </span>
             <div className={styles.flightCopy}>
               <div className={styles.flightHeading}>
-                <strong>{flight.mission}</strong>
+                <strong>{label(flight.mission)}</strong>
                 <span className={styles.leg}>{flight.leg}</span>
                 <time
                   dateTime={new Date(flight.due).toISOString()}
@@ -226,7 +226,7 @@ function FlightList({
                 data-touch-control=""
                 className={styles.flightLink}
                 {...routeTarget(universeName, 'fleets', body, flight.item)}
-                aria-label={`View ${flight.mission} ${flight.leg.toLowerCase()} fleet`}
+                aria-label={`View ${label(flight.mission)} ${flight.leg.toLowerCase()} fleet`}
               >
                 <ArrowRight size={16} />
               </Link>

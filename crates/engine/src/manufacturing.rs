@@ -46,6 +46,7 @@ pub struct BatchCommitment {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ManufacturingStatus {
     BodyAbandoned,
+    BodyDestroyed,
     Active,
     Completed,
     Cancelled,

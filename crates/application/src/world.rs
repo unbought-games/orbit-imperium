@@ -165,7 +165,15 @@ pub struct AttackGroupView {
     pub invitations: Option<Vec<PlayerId>>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DestroyedMoonRoute {
+    pub moon: BodyId,
+    pub parent: BodyId,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub destroyed_moons: Vec<DestroyedMoonRoute>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empire_deletion: Option<EmpireDeletionStatus>,
     #[serde(default)]
@@ -515,7 +523,7 @@ impl<S: GameStore> GameService<S> {
                     .map_err(ServiceError::GameRejected)?,
             ),
             WorldQueryKind::FleetQuote { intent } => serde_json::to_value(
-                quote_fleet(&facts.state, p.player, &intent, facts.at, &facts.rules)
+                quote_fleet_with_odds(&facts.state, p.player, &intent, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
         }

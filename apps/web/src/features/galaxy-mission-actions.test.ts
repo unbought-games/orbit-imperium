@@ -26,7 +26,13 @@ const options = {
   position,
   player: 'you',
   origin: 'home',
-  missions: { transport: true, attack: true, harvest: true, deploy: true },
+  missions: {
+    transport: true,
+    attack: true,
+    destroyMoon: false,
+    harvest: true,
+    deploy: true,
+  },
   colony: colonizationStatus(null, 1),
 }
 const debris = { field_identity: 'field', metal: '300', crystal: '0' }
@@ -112,7 +118,13 @@ it('derives mission availability from enabled universe capabilities', () => {
         { capability: 'Harvest', enabled: false, reason: 'UnavailableContent' },
       ],
     }),
-  ).toEqual({ transport: true, harvest: false, attack: false, deploy: false })
+  ).toEqual({
+    transport: true,
+    harvest: false,
+    attack: false,
+    destroyMoon: false,
+    deploy: false,
+  })
 })
 
 it.each(['Planet', 'Moon'] as const)(
@@ -153,3 +165,35 @@ it.each(['Planet', 'Moon'] as const)(
     ).toContainEqual({ mission: 'Espionage', reason: 'Espionage unavailable' })
   },
 )
+
+it('offers destruction only for a foreign moon under enabled rules and preserves its hostile blocker', () => {
+  const optionsFor = (kind: 'Planet' | 'Moon', owner: string) => ({
+    ...options,
+    origin: 'departure',
+    position: {
+      ...position,
+      body: {
+        ...body,
+        owner,
+        kind,
+        attack_blocker: 'BeginnerProtected' as const,
+      },
+    },
+    missions: { ...options.missions, destroyMoon: true },
+  })
+  const hostileMoon = optionsFor('Moon', 'them')
+  expect(galaxyMissionActions(hostileMoon)).toContainEqual({
+    mission: 'DestroyMoon',
+    reason: protectionExplanation,
+  })
+  for (const target of [
+    optionsFor('Planet', 'them'),
+    optionsFor('Moon', 'you'),
+    { ...hostileMoon, missions: options.missions },
+  ])
+    expect(
+      galaxyMissionActions(target).some(
+        (action) => action.mission === 'DestroyMoon',
+      ),
+    ).toBe(false)
+})

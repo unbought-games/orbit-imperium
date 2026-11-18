@@ -64,6 +64,10 @@ fn unit(out: &mut Vec<Patch>, kind: &str, id: &str, content: &Value) {
 pub(super) fn patches() -> Vec<Patch> {
     let mut out = Vec::new();
     out.push(Patch::field("/world/moons", json!(true)));
+    out.push(Patch::field(
+        "/world/moon_destruction",
+        json!(crate::MOON_DESTRUCTION_PROFILE),
+    ));
     // Base facilities and units predate the release content files. Reuse their
     // exact released prerequisites; do not infer them from customized live rules.
     let baseline = read(include_bytes!("../../../../rules/mvp-v1-slice-5.json"));

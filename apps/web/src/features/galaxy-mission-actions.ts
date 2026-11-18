@@ -5,6 +5,7 @@ import { dispatchFailure } from '../client-model/dispatch-validation'
 
 export type GalaxyMissionCapabilities = {
   transport: boolean
+  destroyMoon: boolean
   attack: boolean
   harvest: boolean
   deploy: boolean
@@ -17,6 +18,7 @@ export function galaxyMissionCapabilities(
     view?.capabilities.some((c) => c.capability === name && c.enabled) ?? false
   return {
     transport: enabled('Transport'),
+    destroyMoon: enabled('DestroyMoon'),
     attack: enabled('Attack'),
     harvest: enabled('Harvest'),
     deploy: enabled('Deploy'),
@@ -31,6 +33,7 @@ type MissionAction = {
     | 'Transport'
     | 'Deploy'
     | 'Attack'
+    | 'DestroyMoon'
     | 'Espionage'
     | 'Colonize'
     | 'Harvest'
@@ -61,16 +64,17 @@ export function galaxyMissionActions({
       actions.push({ mission: 'Transport', reason: vacation })
     if (body.owner === player) {
       if (missions.deploy) actions.push({ mission: 'Deploy', reason: vacation })
-    } else if (missions.attack) {
-      actions.push({
-        mission: 'Attack',
-        reason:
-          body.attack_blocker === 'BeginnerProtected'
-            ? protectionExplanation
-            : body.attack_blocker
-              ? dispatchFailure(body.attack_blocker)
-              : vacation,
-      })
+    } else {
+      const hostileReason =
+        body.attack_blocker === 'BeginnerProtected'
+          ? protectionExplanation
+          : body.attack_blocker
+            ? dispatchFailure(body.attack_blocker)
+            : vacation
+      if (missions.attack)
+        actions.push({ mission: 'Attack', reason: hostileReason })
+      if (missions.destroyMoon && body.kind === 'Moon')
+        actions.push({ mission: 'DestroyMoon', reason: hostileReason })
     }
     if (body.owner !== player) {
       actions.push({

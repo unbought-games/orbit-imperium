@@ -66,15 +66,30 @@ function GameShellContent() {
     invitation?: string
     player?: string
   }
-  const { route, body, canonicalPage, canonicalizing } = resolveShellRoute(
-    leaf.staticData.page ?? null,
-    params,
-    search,
-    view,
-    universeName,
-  )
+  const { route, body, canonicalPage, canonicalizing, parentAfterDestruction } =
+    resolveShellRoute(
+      leaf.staticData.page ?? null,
+      params,
+      search,
+      view,
+      universeName,
+    )
   const { page, available } = route
   const requestedBody = params.body ?? search.body
+  useEffect(() => {
+    if (parentAfterDestruction)
+      void navigate({
+        ...routeTarget(universeName, 'overview', parentAfterDestruction),
+        state: { destroyedMoon: params.body },
+        replace: true,
+      })
+  }, [navigate, parentAfterDestruction, params.body, universeName])
+  const showMoonLoss =
+    view.protocol === 4 &&
+    view.destroyed_moons?.some(
+      (lost) =>
+        lost.moon === location.state.destroyedMoon && lost.parent === body?.id,
+    )
   const abandonment = useStore(model.store, (state) =>
     [...state.attempts.values()].some((attempt) => {
       const command = attempt.envelope.command
@@ -303,6 +318,11 @@ function GameShellContent() {
         className={styles['work-area']}
       >
         <ErrorBannerSlot model={model} />
+        {showMoonLoss && (
+          <Text role="status">
+            Your moon was destroyed. You are viewing its parent planet.
+          </Text>
+        )}
         {view.protocol === 4 && (
           <EmpireDeletionNotice
             deletion={view.empire_deletion}

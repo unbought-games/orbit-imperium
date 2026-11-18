@@ -1,3 +1,4 @@
+import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { siteContext } from './tutorial/model'
 import { CheckCircle2, Clock3 } from 'lucide-react'
@@ -52,7 +53,7 @@ export function DispatchFeedback({
       <Icon size={18} aria-hidden="true" />
       <div>
         <strong>
-          {command.action.intent.mission} to{' '}
+          {label(command.action.intent.mission)} to{' '}
           {command.action.intent.destination.type === 'Site' ? (
             <span>
               {siteContext(

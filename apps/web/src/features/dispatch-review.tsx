@@ -5,7 +5,7 @@ import { missionOptions } from './mission-options'
 import type { Ref, ReactNode } from 'react'
 import type { components } from '../contracts'
 import { flightDuration, flightSchedule } from '../client-model/dispatch-timing'
-import { bodyName } from '../ui/format'
+import { bodyName, label } from '../ui/format'
 import { Heading, Text } from '../ui/typography'
 import {
   NumberValue,
@@ -24,6 +24,7 @@ import {
   type DispatchTarget,
 } from './dispatch-review-model'
 import { FleetRouteTrack } from './fleet-flight-route'
+import { destructionChance } from './moon-destruction'
 import { fleetShipCount } from './command-hud/fleet-summary'
 import { ShipComposition } from './ship-composition'
 import styles from './missions.module.css'
@@ -120,7 +121,7 @@ export function DispatchReview({
         <Heading level={2} className={styles.reviewHeading}>
           <strong data-mission={mission}>
             <Icon aria-hidden="true" />
-            {mission}
+            {label(mission)}
           </strong>
         </Heading>
         <span>
@@ -195,6 +196,39 @@ export function DispatchReview({
           </div>
         </div>
       </div>
+      {quote.moon_destruction && (
+        <section
+          className={styles.reviewRisk}
+          aria-label="Moon destruction odds"
+        >
+          <Heading level={3} className={styles.reviewGroupHeading}>
+            Moon destruction odds
+          </Heading>
+          <dl className={styles.reviewFacts}>
+            <div>
+              <dt>
+                Destroy the{' '}
+                {quote.moon_destruction.diameter_km.toLocaleString()} km moon
+              </dt>
+              <dd>
+                {destructionChance(quote.moon_destruction.moon_chance_ppm)}
+              </dd>
+            </div>
+            <div>
+              <dt>Lose the entire fleet</dt>
+              <dd>
+                {destructionChance(quote.moon_destruction.fleet_loss_ppm)}
+              </dd>
+            </div>
+          </dl>
+          <Text className={styles.reviewNote}>
+            These odds assume victory with every selected Dreadnought surviving
+            combat. Fewer survivors reduce the chance to destroy the moon. The
+            entire fleet, including escorts and cargo, can be lost whether the
+            moon survives or falls.
+          </Text>
+        </section>
+      )}
       <div className={styles.reviewGroups}>
         <section aria-label="Fleet and cargo">
           <Heading level={3} className={styles.reviewGroupHeading}>

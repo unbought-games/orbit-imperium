@@ -8,6 +8,7 @@ pub enum Mission {
     Harvest,
     Espionage,
     Attack,
+    DestroyMoon,
     Deploy,
     Colonize,
     Hold,
@@ -320,6 +321,8 @@ pub struct RecipientReportState {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub destroyed_moons: BTreeMap<BodyId, DestroyedMoon>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub gate_uses: BTreeMap<BodyId, GateUse>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub tutorial_preferences: BTreeMap<PlayerId, TutorialPreference>,
@@ -393,6 +396,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moon_destruction: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jump_gates: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phalanx: Option<String>,
@@ -421,6 +426,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .moon_destruction
+            .as_deref()
+            .is_some_and(|id| id != MOON_DESTRUCTION_PROFILE)
+        {
+            return Err(RulesError::Unsupported);
+        }
         if self
             .jump_gates
             .as_deref()

@@ -1,3 +1,4 @@
+import { label } from '../../ui/format'
 import { useId, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Link } from '../../ui/link'
@@ -38,7 +39,7 @@ export function HudFleetRow({
       {...rowProps}
       className={`${styles.fleetRow} ${rowLinkStyles.row}`}
       data-flight-tone={ownFleetTone(row.mission)}
-      aria-label={`${row.mission} fleet`}
+      aria-label={`${label(row.mission)} fleet`}
     >
       <header className={styles.fleetHeading}>
         <div>
@@ -48,12 +49,14 @@ export function HudFleetRow({
               {...routeTarget(universe, 'fleets', row.origin, row.id)}
               onClick={close}
               className={`${styles.fleetMission} ${rowLinkStyles.link}`}
-              aria-label={`${row.mission} fleet details`}
+              aria-label={`${label(row.mission)} fleet details`}
             >
-              {row.mission}
+              {label(row.mission)}
             </Link>
           ) : (
-            <strong className={styles.fleetMission}>{row.mission}</strong>
+            <strong className={styles.fleetMission}>
+              {label(row.mission)}
+            </strong>
           )}
           <span className={styles.fleetLeg}>{row.leg}</span>
         </div>
@@ -62,7 +65,7 @@ export function HudFleetRow({
           className={styles.fleetManifestToggle}
           aria-expanded={showShips}
           aria-controls={shipsId}
-          aria-label={`${row.mission} ship composition: ${formatWholeNumber(count)} ${count === 1n ? 'ship' : 'ships'}`}
+          aria-label={`${label(row.mission)} ship composition: ${formatWholeNumber(count)} ${count === 1n ? 'ship' : 'ships'}`}
           onClick={() => setShowShips(!showShips)}
         >
           <span>

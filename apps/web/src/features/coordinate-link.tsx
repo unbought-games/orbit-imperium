@@ -14,7 +14,7 @@ import { ScreenContext } from '../shell/screen-context'
 import { SessionContext } from '../shell/session-context'
 import { galaxyTarget, readCoordinates } from '../shell/galaxy-location'
 import { locationPath, type LocationKind } from '../shell/location-address'
-import { coordinates } from '../ui/format'
+import { coordinates, label as missionLabel } from '../ui/format'
 import { Link } from '../ui/link'
 import { copiedLocationAtom } from './coordinate-memory'
 import { coordinateMissions } from './coordinate-actions'
@@ -167,7 +167,7 @@ export function CoordinateLink({
                 />
               }
             >
-              Prepare {mission.toLowerCase()}
+              Prepare {missionLabel(mission).toLowerCase()}
             </Menu.LinkItem>
           ),
         )}

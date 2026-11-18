@@ -3,7 +3,10 @@ import type { Attempt } from '../../client-model/commands'
 import type { GameState } from '../../client-model/game-store'
 import { acceptedEntityReference } from '../../client-model/game-projection'
 import { reportResumeCutoff } from '../../client-model/report-inbox'
-import { isHostileMission } from '../../client-model/hostile-fleets'
+import {
+  isHostileMission,
+  isAttackMission,
+} from '../../client-model/hostile-fleets'
 import {
   projectedReportHeader,
   hasUnreadReports,
@@ -57,7 +60,9 @@ export function incomingThreats(state: GameState) {
     : []
 }
 export function incomingAttacks(state: GameState) {
-  return incomingThreats(state).filter((fleet) => fleet.mission === 'Attack')
+  return incomingThreats(state).filter((fleet) =>
+    isAttackMission(fleet.mission),
+  )
 }
 export function unreadReports(state: GameState) {
   return (projectedReportInbox(state)?.items ?? [])
@@ -308,18 +313,20 @@ export function noticeContent(
   const body = state.view.bodies.find((b) => b.id === fleet.target)
   return {
     title:
-      fleet.mission === 'Attack'
-        ? 'Hostile fleet inbound'
-        : 'Enemy probes detected',
+      fleet.mission === 'DestroyMoon'
+        ? 'Moon destruction fleet inbound'
+        : isAttackMission(fleet.mission)
+          ? 'Hostile fleet inbound'
+          : 'Enemy probes detected',
     detail: `${incomingManifest(fleet.ships)} → ${body ? missionLocation(state.view, body.id, body.coordinates) : 'Unrevealed location'}`,
-    tone: fleet.mission === 'Attack' ? 'red' : 'champagne',
-    icon: fleet.mission === 'Attack' ? 'attack' : 'scan',
+    tone: isAttackMission(fleet.mission) ? 'red' : 'champagne',
+    icon: isAttackMission(fleet.mission) ? 'attack' : 'scan',
     deadline: fleet.arrival_at,
     body: fleet.target,
   }
 }
 export function orbAppearance(state: GameState, notices: HudNotice[]) {
-  const attack = incomingThreats(state).some((f) => f.mission === 'Attack')
+  const attack = incomingAttacks(state).length > 0
   if (attack)
     return {
       tone: 'red' as HudTone,

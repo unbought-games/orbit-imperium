@@ -206,6 +206,7 @@ export function GalaxyPositionScenario({
                       transport: true,
                       attack: true,
                       deploy: true,
+                      destroyMoon: false,
                       harvest: !unavailable,
                     }}
                     colony={colonizationStatus(view, item.coordinates.position)}

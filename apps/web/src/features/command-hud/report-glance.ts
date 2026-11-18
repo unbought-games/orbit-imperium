@@ -1,6 +1,7 @@
 import {
   CornerDownLeft,
   Crosshair,
+  Eclipse,
   Flag,
   Globe,
   MapPinOff,
@@ -94,6 +95,18 @@ function outcomeLabel(outcome: string, side?: string) {
 }
 
 function combatGlance(p: Combat, viewer?: string) {
+  if (p.moon_destruction) {
+    const { moon_destroyed, fleet_lost } = p.moon_destruction
+    return glance(
+      facts(
+        moon_destroyed ? 'Moon destroyed' : 'Moon survived',
+        fleet_lost ? 'Attacking fleet lost' : 'Attacking fleet escaped',
+      ),
+      endpoint(p.target, p.target_kind, p.target_name),
+      Eclipse,
+      'neutral',
+    )
+  }
   const { side } = combatPerspective(p.participants, viewer)
   const role =
     side === 'Attacker' ? 'Attack' : side === 'Defender' ? 'Defense' : 'Battle'
@@ -276,6 +289,28 @@ export function orbReportGlance(
       )
     case 'PlanetAbandoned':
       return glance('Planet abandoned', at(p.coordinates), MapPinOff)
+    case 'MoonDestroyed':
+      return glance(
+        'Moon destroyed',
+        facts(
+          at(p.coordinates),
+          `${formatWholeNumber(p.diameter_km)} km diameter`,
+        ),
+        Eclipse,
+        'loss',
+      )
+    case 'MoonFleetRedirected':
+      return glance(
+        'Fleet redirected to parent',
+        facts(label(p.mission), at(p.coordinates)),
+        CornerDownLeft,
+      )
+    case 'MoonTargetLost':
+      return glance(
+        'Fleet target lost',
+        facts(label(p.mission), endpoint(p.coordinates, 'Moon')),
+        MapPinOff,
+      )
     case 'MoonCreated':
       return glance(
         'Moon formed',

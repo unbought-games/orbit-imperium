@@ -62,6 +62,9 @@ export function dispatchSendLabel(
     return `${intent.mission} to ${destination.name} [${coordinateText(destination.coordinates)}]`
   if (intent.attack_group)
     return `Join attack with ${shipManifest(intent.ships)}`
+  const count = intent.ships.reduce((sum, ship) => sum + BigInt(ship.count), 0n)
+  if (intent.mission === 'DestroyMoon')
+    return `Attempt moon destruction with ${count} ${count === 1n ? 'ship' : 'ships'}`
   const verb = {
     Hold: 'Defend',
     Attack: 'Attack',
@@ -69,7 +72,6 @@ export function dispatchSendLabel(
     Harvest: 'Harvest',
     Colonize: 'Colonize',
   }[intent.mission]
-  const count = intent.ships.reduce((sum, ship) => sum + BigInt(ship.count), 0n)
   const manifest =
     intent.ships.length === 1 ? shipManifest(intent.ships) : `${count} ships`
   return `${verb} with ${manifest}`
@@ -91,6 +93,10 @@ export const missionReturn = {
   Attack: {
     label: 'Return if surviving',
     note: 'Combat may destroy ships. Only surviving ships return.',
+  },
+  DestroyMoon: {
+    label: 'Return if surviving',
+    note: 'Surviving ships return with their cargo and loot if the fleet escapes destruction.',
   },
   Espionage: {
     label: 'Return if surviving',

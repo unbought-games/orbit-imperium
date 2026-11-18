@@ -211,6 +211,7 @@ export function SupporterPreview() {
                       transport: true,
                       harvest: true,
                       deploy: false,
+                      destroyMoon: false,
                     }}
                     playerIdentity={
                       <SupporterIdentity

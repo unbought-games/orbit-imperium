@@ -234,6 +234,19 @@ pub fn project_shared_report_with_identity(
     let mut payload = fields(source, &["kind", "at", "observed_at"]);
     match kind {
         "Combat" => {
+            if let Some(outcome) = source.get("moon_destruction") {
+                payload["moon_destruction"] = fields(
+                    outcome,
+                    &[
+                        "diameter_km",
+                        "surviving_dreadnoughts",
+                        "moon_chance_ppm",
+                        "fleet_loss_ppm",
+                        "moon_destroyed",
+                        "fleet_lost",
+                    ],
+                );
+            }
             if let Some(creation) = source.get("moon_creation") {
                 // Public outcome only: never share the internal body ID or random evidence.
                 payload["moon_creation"] = fields(creation, &["chance_percent", "diameter_km"]);

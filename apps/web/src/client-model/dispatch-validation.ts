@@ -101,6 +101,13 @@ export function destinationError(
   player: string,
   origin: string,
 ): string {
+  if (
+    mission === 'DestroyMoon' &&
+    (destination.type !== 'Body' ||
+      destination.expected_kind !== 'Moon' ||
+      destination.expected_owner === player)
+  )
+    return 'Choose another player’s moon for destruction.'
   if (destination.type !== 'Body') return ''
   if (mission === 'Colonize')
     return 'This position is occupied. Choose an empty position.'
@@ -236,7 +243,10 @@ export function observedMissionWarning(
   mission: S['Mission4'],
   target?: Pick<S['PublicBody4'], 'attack_blocker' | 'espionage_eligible'>,
 ): string {
-  if (mission === 'Attack' && target?.attack_blocker)
+  if (
+    (mission === 'Attack' || mission === 'DestroyMoon') &&
+    target?.attack_blocker
+  )
     return dispatchFailure(target.attack_blocker)
   if (mission === 'Espionage' && target && !target.espionage_eligible) {
     return target.attack_blocker &&

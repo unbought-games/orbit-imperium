@@ -165,7 +165,7 @@ EXPLICIT_SUITES = core mvp progression missions raiding recovery migrations sign
 .PHONY: test-explicit test-acceptance test-container _container test-runtime prepare-explicit prepare-migrations prepare-signup _acceptance $(addprefix run-,$(EXPLICIT_SUITES)) $(addprefix test-,$(EXPLICIT_SUITES)) test-e2e
 
 test-explicit:
-	@case "$(SUITE)" in all) $(MAKE) test-acceptance && $(MAKE) test-container ;; acceptance|container|core|mvp|progression|missions|raiding|recovery|migrations|signup|rules-updates|speed-updates) $(MAKE) test-$(SUITE) ;; *) echo 'Unknown explicit suite' >&2; exit 2 ;; esac
+	@case "$(SUITE)" in all) $(MAKE) test-acceptance && $(MAKE) test-container ;; acceptance|container|core|mvp|progression|missions|raiding|recovery|migrations|signup|rules-updates|speed-updates|moon-destruction) $(MAKE) test-$(SUITE) ;; *) echo 'Unknown explicit suite' >&2; exit 2 ;; esac
 
 test-runtime:
 	$(TIMEOUT) compile cargo build -p orbit-server --features orbit-server/test-support
@@ -191,6 +191,14 @@ _acceptance: $(addprefix run-,$(EXPLICIT_SUITES))
 
 test-core test-mvp test-progression test-missions test-raiding test-recovery: test-runtime
 	$(TIMEOUT) full-system $(MAKE) run-$(patsubst test-%,%,$@)
+
+.PHONY: test-moon-destruction run-moon-destruction
+test-moon-destruction:
+	$(TIMEOUT) compile cargo build -p orbit-server --features orbit-server/test-support
+	$(MAKE) run-moon-destruction
+
+run-moon-destruction:
+	$(TIMEOUT) moon-destruction node scripts/moon-destruction-e2e.mjs
 
 test-e2e: test-core
 

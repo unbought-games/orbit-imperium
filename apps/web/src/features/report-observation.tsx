@@ -1,3 +1,4 @@
+import { MoonLossReport } from './moon-destruction'
 import { PhalanxReport } from './phalanx-report'
 import { debrisResourceKinds, resourceKinds } from './debris-resources'
 import { AbandonmentLosses } from './abandonment-losses'
@@ -217,6 +218,21 @@ function ReportObservationContent({
   shared = false,
 }: ObservationProps) {
   const kind = payload.kind
+  if (
+    kind === 'MoonDestroyed' ||
+    kind === 'MoonFleetRedirected' ||
+    kind === 'MoonTargetLost'
+  )
+    return (
+      <MoonLossReport
+        notice={
+          payload as
+            | components['schemas']['MoonDestroyedPayload4']
+            | components['schemas']['MoonFleetRedirectedPayload4']
+            | components['schemas']['MoonTargetLostPayload4']
+        }
+      />
+    )
   if (kind === 'Phalanx')
     return (
       <PhalanxReport

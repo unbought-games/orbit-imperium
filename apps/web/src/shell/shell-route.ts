@@ -1,4 +1,5 @@
 import type { BoundView } from '../client-model/commands'
+import { universeSlug } from '../client-model/universe-name'
 import { bodyPages, resolveNamedDestination, type Page } from './routes'
 
 export type ShellParams = {
@@ -44,5 +45,23 @@ export function resolveShellRoute(
     !params.coordinates &&
     !!body &&
     (!params.body || search.body !== undefined || canonicalPage !== route.page)
-  return { route, body, canonicalPage, canonicalizing }
+  const lostMoon =
+    params.body &&
+    view.protocol === 4 &&
+    params.universe === universeSlug(universeName) &&
+    !route.available
+      ? view.destroyed_moons?.find(({ moon }) => moon === params.body)
+      : undefined
+  const parent =
+    lostMoon &&
+    view.bodies.find(
+      ({ id, kind }) => id === lostMoon.parent && kind === 'Planet',
+    )
+  return {
+    route,
+    body,
+    canonicalPage,
+    canonicalizing,
+    parentAfterDestruction: parent?.id,
+  }
 }

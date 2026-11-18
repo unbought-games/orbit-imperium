@@ -506,6 +506,7 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
         let at = 1_790_000_000_000;
         store.set_test_time(at).await.unwrap();
         let u = UniverseId(Uuid::new_v4());
+        let (a,b,h,guard,bodies) = Box::pin(async {
         let mut edits = vec![];
         for (name, coords) in [
             ("lead", "1:50:8"),
@@ -548,172 +549,186 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
             store.prepare_scoped_runtime(u, 100).await.unwrap();
             store.activate_scoped_runtime(u).await.unwrap();
         }
-        let first = launch(&store, a, bodies[0], (h, bodies[2]), None, 10, scoped).await;
-        order(
-            &store,
-            a,
-            None,
-            WorldAction::CreateAttackGroup { fleet: first.id },
-            scoped,
-        )
-        .await;
-        let group = *store
-            .bound_world(a)
-            .await
-            .unwrap()
-            .facts
-            .0
-            .state
-            .world
-            .unwrap()
-            .records
-            .attack_groups
-            .keys()
-            .next()
-            .unwrap();
-        order(
-            &store,
-            a,
-            None,
-            WorldAction::InviteAttackGroup {
-                group,
-                player: b.player,
-            },
-            scoped,
-        )
-        .await;
-        store.set_test_time(at + 1000).await.unwrap();
-        let second = launch(
-            &store,
-            b,
-            bodies[1],
-            (h, bodies[2]),
-            Some(group),
-            100,
-            scoped,
-        )
-        .await;
-        assert!(second.due_at < first.due_at);
-        // Revoking the invitation stops future joins but preserves committed membership.
-        order(
-            &store,
-            a,
-            None,
-            WorldAction::RevokeAttackGroupInvitation {
-                group,
-                player: b.player,
-            },
-            scoped,
-        )
-        .await;
-        // A later allied defender extends the already scheduled group's scopes.
-        let social = |binding, action| SocialCommandRequest {
-            context: QueryContext {
-                binding,
-                request_id: Uuid::new_v4(),
-            },
-            command_id: Uuid::new_v4(),
-            action,
-        };
-        store
-            .social_command(social(
-                guard,
-                SocialAction::RequestFriend { player: h.player },
-            ))
-            .await
-            .unwrap();
-        let request = store
-            .social_query(SocialQueryRequest {
-                context: QueryContext {
-                    binding: h,
-                    request_id: Uuid::new_v4(),
-                },
-                query: SocialQuery::Contacts {
-                    kind: ContactKind::Requests,
-                    cursor: None,
-                    limit: 20,
-                },
-            })
-            .await
-            .unwrap()
-            .contacts[0]
-            .request
-            .unwrap();
-        store
-            .social_command(social(
-                h,
-                SocialAction::AcceptFriend {
-                    player: guard.player,
-                    request,
-                },
-            ))
-            .await
-            .unwrap();
-        let hold = FleetIntent {
-            cargo_fill: None,
-            attack_group: None,
-            hold_hours: Some(16),
-            origin: bodies[3],
-            destination: MissionDestination::Body {
-                id: bodies[2],
-                expected_kind: BodyKind::Planet,
-                expected_owner: h.player,
-            },
-            mission: Mission::Hold,
-            // One defender is defeated in the first round and cannot damage an
-            // attacker enough to trigger an explosion. Keep the exact pooled
-            // cargo assertion below independent of random target selection.
-            ships: vec![ManifestStack {
-                owner: guard.player,
-                ship_type: ShipType::Cruiser,
-                count: 1,
-            }],
-            cargo: Resources::default(),
-            speed_percent: 100,
-        };
-        let (snap, _) = store
-            .bound_world_query(
-                guard,
-                WorldQueryKind::FleetQuote {
-                    intent: hold.clone(),
-                },
+        (a,b,h,guard,bodies)
+        }).await;
+        let (first, second, group) = Box::pin(async {
+            let first = launch(&store, a, bodies[0], (h, bodies[2]), None, 10, scoped).await;
+            order(
+                &store,
+                a,
+                None,
+                WorldAction::CreateAttackGroup { fleet: first.id },
+                scoped,
             )
-            .await
-            .unwrap()
-            .facts;
-        let q = quote_fleet(&snap.state, guard.player, &hold, snap.at, &snap.rules).unwrap();
-        order(
-            &store,
-            guard,
-            Some(bodies[3]),
-            WorldAction::LaunchFleet {
-                intent: hold,
-                expected_terms_hash: q.terms_hash.clone(),
-            },
-            scoped,
-        )
-        .await;
-        store.audit_universe(u).await.unwrap();
-        let reopened = PgStore::connect(&url).await.unwrap();
-        let snapshot = reopened.bound_world(a).await.unwrap().facts.0;
-        let g = &snapshot.state.world.as_ref().unwrap().records.attack_groups[&group];
-        assert_eq!(g.members.len(), 2);
-        let due = g.arrival_at;
-        reopened.set_test_time(due).await.unwrap();
-        drain(&reopened, u, scoped).await;
-        let snapshot = reopened.bound_world(a).await.unwrap().facts.0;
-        assert_eq!(
-            snapshot
+            .await;
+            let group = *store
+                .bound_world(a)
+                .await
+                .unwrap()
+                .facts
+                .0
                 .state
                 .world
-                .as_ref()
                 .unwrap()
                 .records
                 .attack_groups
-                .get(&group),
-            None,
-            "resolved groups leave live projections"
-        );
+                .keys()
+                .next()
+                .unwrap();
+            order(
+                &store,
+                a,
+                None,
+                WorldAction::InviteAttackGroup {
+                    group,
+                    player: b.player,
+                },
+                scoped,
+            )
+            .await;
+            store.set_test_time(at + 1000).await.unwrap();
+            let second = launch(
+                &store,
+                b,
+                bodies[1],
+                (h, bodies[2]),
+                Some(group),
+                100,
+                scoped,
+            )
+            .await;
+            assert!(second.due_at < first.due_at);
+            // Revoking the invitation stops future joins but preserves committed membership.
+            order(
+                &store,
+                a,
+                None,
+                WorldAction::RevokeAttackGroupInvitation {
+                    group,
+                    player: b.player,
+                },
+                scoped,
+            )
+            .await;
+            (first, second, group)
+        })
+        .await;
+        Box::pin(async {
+            // A later allied defender extends the already scheduled group's scopes.
+            let social = |binding, action| SocialCommandRequest {
+                context: QueryContext {
+                    binding,
+                    request_id: Uuid::new_v4(),
+                },
+                command_id: Uuid::new_v4(),
+                action,
+            };
+            store
+                .social_command(social(
+                    guard,
+                    SocialAction::RequestFriend { player: h.player },
+                ))
+                .await
+                .unwrap();
+            let request = store
+                .social_query(SocialQueryRequest {
+                    context: QueryContext {
+                        binding: h,
+                        request_id: Uuid::new_v4(),
+                    },
+                    query: SocialQuery::Contacts {
+                        kind: ContactKind::Requests,
+                        cursor: None,
+                        limit: 20,
+                    },
+                })
+                .await
+                .unwrap()
+                .contacts[0]
+                .request
+                .unwrap();
+            store
+                .social_command(social(
+                    h,
+                    SocialAction::AcceptFriend {
+                        player: guard.player,
+                        request,
+                    },
+                ))
+                .await
+                .unwrap();
+            let hold = FleetIntent {
+                cargo_fill: None,
+                attack_group: None,
+                hold_hours: Some(16),
+                origin: bodies[3],
+                destination: MissionDestination::Body {
+                    id: bodies[2],
+                    expected_kind: BodyKind::Planet,
+                    expected_owner: h.player,
+                },
+                mission: Mission::Hold,
+                // One defender is defeated in the first round and cannot damage an
+                // attacker enough to trigger an explosion. Keep the exact pooled
+                // cargo assertion below independent of random target selection.
+                ships: vec![ManifestStack {
+                    owner: guard.player,
+                    ship_type: ShipType::Cruiser,
+                    count: 1,
+                }],
+                cargo: Resources::default(),
+                speed_percent: 100,
+            };
+            let (snap, _) = store
+                .bound_world_query(
+                    guard,
+                    WorldQueryKind::FleetQuote {
+                        intent: hold.clone(),
+                    },
+                )
+                .await
+                .unwrap()
+                .facts;
+            let q = quote_fleet(&snap.state, guard.player, &hold, snap.at, &snap.rules).unwrap();
+            order(
+                &store,
+                guard,
+                Some(bodies[3]),
+                WorldAction::LaunchFleet {
+                    intent: hold,
+                    expected_terms_hash: q.terms_hash.clone(),
+                },
+                scoped,
+            )
+            .await;
+            store.audit_universe(u).await.unwrap();
+        })
+        .await;
+        let reopened = PgStore::connect(&url).await.unwrap();
+        let due = Box::pin(async {
+            let snapshot = reopened.bound_world(a).await.unwrap().facts.0;
+            let g = &snapshot.state.world.as_ref().unwrap().records.attack_groups[&group];
+            assert_eq!(g.members.len(), 2);
+            let due = g.arrival_at;
+            reopened.set_test_time(due).await.unwrap();
+            drain(&reopened, u, scoped).await;
+            let snapshot = reopened.bound_world(a).await.unwrap().facts.0;
+            assert_eq!(
+                snapshot
+                    .state
+                    .world
+                    .as_ref()
+                    .unwrap()
+                    .records
+                    .attack_groups
+                    .get(&group),
+                None,
+                "resolved groups leave live projections"
+            );
+            due
+        })
+        .await;
+        Box::pin(async {
         let reports: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM mission_reports WHERE universe=$1 AND kind='Combat'",
         )
@@ -818,6 +833,7 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
         drain(&reopened, u, scoped).await;
         let active:i64=sqlx::query_scalar("SELECT count(*) FROM mission_fleets WHERE universe=$1 AND data->>'leg' IN ('Outbound','Returning')").bind(u.0).fetch_one(&pool).await.unwrap();
         assert_eq!(active, 0);
+        }).await;
         drop(reopened);
         drop(store);
         pool.close().await;

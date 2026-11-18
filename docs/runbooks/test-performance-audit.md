@@ -2430,3 +2430,36 @@ fixture repair serves a document at the exact destination path and waits for
 its heading. The test still verifies source focus, native new-tab navigation
 and the body-scoped URL including its fragment. The other component popup
 journey, for the account link, already supplies its destination this way.
+
+## November 18, 2026 — Linux database test stack exhaustion
+
+PR #483 head `c9a5b400a64dd64fc3140b99cc68334cd7ae9386`, run
+`44394859906`, aborted two PostgreSQL tests on the default Linux test thread.
+Job `135122051963` aborted the Nanite activation, restart and acceleration
+scenario in 0.612 seconds. Job `135122052097` aborted the invited attack
+group, late join, defense, battle and returns scenario in 4.351 seconds.
+Both reported SIGABRT from stack overflow. The other rules tests that ran
+before the Nanite case passed.
+
+First repair for these two cases: split each long async journey into
+heap-pinned phases. Each phase releases its local snapshots and query futures
+before the next starts. Keep the real commands, both runtime modes, restart
+and every original assertion. Compiler layout diagnostics measured the Nanite
+test future at 63,480 bytes before the change. A reduced-stack diagnostic
+localized the original Nanite overflow to its outer poll frame. A 1 MiB stress
+probe can still exhaust the stack deeper in bootstrap/deserialization, so it
+is unsuitable as a test gate. The normal runners keep their existing thread
+stack settings. Other tests using the same command helper exercise independent
+gameplay and did not exhibit these two failures in the recorded run.
+
+With the repository runner on the Mac validation machine, focused execution
+after the repair passed in 14.014 seconds for Nanite and 14.131 seconds for
+the invited group. GitHub checks exercise the default Linux stack.
+
+Both repaired cases passed on Linux at `e065ccf23d188907b0a0736b76db4953293c5117`
+in run `44397065241`. Its remaining PostgreSQL job `135129839678` subsequently
+failed in the player lookup plan test. PostgreSQL reported six bind parameters
+for the seven-parameter production fleet query. This was its only test-side
+call using the extracted SQL. Bind the optional parent ID and exercise both the
+ordinary lookup and parent lookup with the existing buffer bound. All 18
+migration tests passed locally in 10.472 seconds.

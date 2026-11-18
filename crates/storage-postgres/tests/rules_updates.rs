@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 #[path = "rules_updates/fusion.rs"]
 mod fusion;
-#[path = "rules_updates/gameplay.rs"]
+#[path = "support/gameplay.rs"]
 mod gameplay;
 #[path = "rules_updates/hyperspace.rs"]
 mod hyperspace;

@@ -151,6 +151,10 @@ export function useDispatch({
                 body.id,
               )
             : ''
+  const destructionTargetProblem =
+    mission === 'DestroyMoon' && targetKind !== 'moon'
+      ? 'Choose another player’s moon for destruction.'
+      : ''
   const targetProblem = siteId
     ? !site
       ? tutorial.loading
@@ -161,7 +165,7 @@ export function useDispatch({
         : site.busy
           ? 'An operation is already in flight. Follow it in Fleets.'
           : ''
-    : localTargetProblem || destination.problem
+    : destructionTargetProblem || localTargetProblem || destination.problem
   const attackWarning =
     mission === 'Attack'
       ? ''

@@ -3748,7 +3748,9 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["1"]
+              "enum": [
+                "1"
+              ]
             }
           },
           {
@@ -13333,7 +13335,8 @@
           "Attack",
           "Deploy",
           "Colonize",
-          "Hold"
+          "Hold",
+          "DestroyMoon"
         ]
       },
       "MissionLeg4": {
@@ -13663,6 +13666,9 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "moon_destruction": {
+            "$ref": "#/components/schemas/MoonDestructionOdds4"
           }
         },
         "required": [
@@ -13883,7 +13889,7 @@
               },
               "name": {
                 "type": "string",
-                "description": "1\u201340 Unicode characters after trimming surrounding whitespace; control characters are rejected."
+                "description": "1–40 Unicode characters after trimming surrounding whitespace; control characters are rejected."
               }
             },
             "required": [
@@ -15156,6 +15162,27 @@
           },
           "body_appearances": {
             "$ref": "#/components/schemas/BodyAppearances"
+          },
+          "destroyed_moons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "moon": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "parent": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "moon",
+                "parent"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -15207,7 +15234,8 @@
                   "Hold",
                   "AllianceAttacks",
                   "ScanPlanet",
-                  "JumpShips"
+                  "JumpShips",
+                  "DestroyMoon"
                 ]
               },
               "enabled": {
@@ -15247,7 +15275,8 @@
                   "Hold",
                   "AllianceAttacks",
                   "ScanPlanet",
-                  "JumpShips"
+                  "JumpShips",
+                  "DestroyMoon"
                 ]
               },
               "enabled": {
@@ -16008,14 +16037,21 @@
             "description": "Recipient report creation sequence at the cursor cut and for each returned report. Sent to clients requesting X-Orbit-Report-Arrivals: 1.",
             "type": "object",
             "properties": {
-              "through": { "$ref": "#/components/schemas/Decimal" },
+              "through": {
+                "$ref": "#/components/schemas/Decimal"
+              },
               "created": {
                 "type": "object",
-                "additionalProperties": { "$ref": "#/components/schemas/Decimal" }
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/Decimal"
+                }
               }
             },
             "additionalProperties": false,
-            "required": ["through", "created"]
+            "required": [
+              "through",
+              "created"
+            ]
           },
           "items": {
             "type": "array",
@@ -17055,7 +17091,8 @@
           "mission": {
             "enum": [
               "Attack",
-              "Espionage"
+              "Espionage",
+              "DestroyMoon"
             ]
           },
           "target_name": {
@@ -17103,6 +17140,9 @@
           },
           "moon_creation": {
             "$ref": "#/components/schemas/MoonCreation4"
+          },
+          "moon_destruction": {
+            "$ref": "#/components/schemas/MoonDestructionResult4"
           }
         },
         "required": [
@@ -17200,6 +17240,15 @@
           },
           {
             "$ref": "#/components/schemas/SiteEncounterPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/MoonDestroyedPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/MoonFleetRedirectedPayload4"
+          },
+          {
+            "$ref": "#/components/schemas/MoonTargetLostPayload4"
           }
         ]
       },
@@ -18631,7 +18680,8 @@
               "mission": {
                 "enum": [
                   "Attack",
-                  "Espionage"
+                  "Espionage",
+                  "DestroyMoon"
                 ]
               },
               "participants": {
@@ -18672,6 +18722,9 @@
                   "Moon"
                 ],
                 "description": "Body kind observed at combat time. Older reports may omit it."
+              },
+              "moon_destruction": {
+                "$ref": "#/components/schemas/MoonDestructionResult4"
               }
             },
             "required": [
@@ -18922,6 +18975,80 @@
             },
             "required": [
               "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "MoonDestroyed"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "diameter_km": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "kind",
+              "coordinates",
+              "diameter_km"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "MoonFleetRedirected"
+              },
+              "mission": {
+                "$ref": "#/components/schemas/Mission4"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "due_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "mission",
+              "coordinates",
+              "due_at"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "MoonTargetLost"
+              },
+              "mission": {
+                "$ref": "#/components/schemas/Mission4"
+              },
+              "coordinates": {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              "due_at": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "mission",
+              "coordinates",
+              "due_at"
             ],
             "additionalProperties": false
           }
@@ -23763,15 +23890,7 @@
                 "$ref": "#/components/schemas/PhalanxOwner4"
               },
               "mission": {
-                "enum": [
-                  "Transport",
-                  "Harvest",
-                  "Espionage",
-                  "Attack",
-                  "Deploy",
-                  "Colonize",
-                  "Hold"
-                ]
+                "$ref": "#/components/schemas/Mission4"
               },
               "phase": {
                 "enum": [
@@ -30218,6 +30337,245 @@
             "$ref": "#/components/schemas/ShipAppearanceAction"
           }
         }
+      },
+      "MoonDestructionOdds4": {
+        "type": "object",
+        "properties": {
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "moon_chance_ppm": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "fleet_loss_ppm": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "diameter_km",
+          "moon_chance_ppm",
+          "fleet_loss_ppm"
+        ],
+        "additionalProperties": false
+      },
+      "MoonDestructionResult4": {
+        "type": "object",
+        "properties": {
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "moon_chance_ppm": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "fleet_loss_ppm": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "surviving_dreadnoughts": {
+            "$ref": "#/components/schemas/Decimal"
+          },
+          "moon_destroyed": {
+            "type": "boolean"
+          },
+          "fleet_lost": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "diameter_km",
+          "moon_chance_ppm",
+          "fleet_loss_ppm",
+          "surviving_dreadnoughts",
+          "moon_destroyed",
+          "fleet_lost"
+        ],
+        "additionalProperties": false
+      },
+      "MoonDestroyedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "MoonDestroyed"
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "diameter_km": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "losses": {
+            "$ref": "#/components/schemas/AbandonmentLoss4"
+          }
+        },
+        "required": [
+          "kind",
+          "at",
+          "body",
+          "parent",
+          "coordinates",
+          "diameter_km",
+          "name",
+          "losses"
+        ],
+        "additionalProperties": false
+      },
+      "MoonFleetRedirectedPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "MoonFleetRedirected"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission4"
+          },
+          "leg": {
+            "enum": [
+              "Outbound",
+              "Holding",
+              "Returning"
+            ]
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "home_redirected": {
+            "type": "boolean"
+          },
+          "destination_redirected": {
+            "type": "boolean"
+          },
+          "due_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "mission",
+          "leg",
+          "fleet",
+          "body",
+          "parent",
+          "coordinates",
+          "home_redirected",
+          "destination_redirected",
+          "due_at",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "MoonTargetLostPayload4": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "MoonTargetLost"
+          },
+          "mission": {
+            "$ref": "#/components/schemas/Mission4"
+          },
+          "leg": {
+            "enum": [
+              "Outbound",
+              "Holding",
+              "Returning"
+            ]
+          },
+          "fleet": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "body": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "home_redirected": {
+            "type": "boolean"
+          },
+          "destination_redirected": {
+            "type": "boolean"
+          },
+          "due_at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "at": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "mission",
+          "leg",
+          "fleet",
+          "body",
+          "parent",
+          "coordinates",
+          "home_redirected",
+          "destination_redirected",
+          "due_at",
+          "at"
+        ],
+        "additionalProperties": false
       },
       "FleetCargoFill4": {
         "type": "object",

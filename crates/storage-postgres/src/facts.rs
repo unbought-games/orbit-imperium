@@ -251,6 +251,7 @@ pub(crate) async fn load(
         fleets,
         reports: BTreeMap::new(),
         coverage: FactCoverage {
+            moon_removal_bodies: Default::default(),
             production_bodies: Default::default(),
             research_operation_ids: Default::default(),
             research_slot_players: Default::default(),

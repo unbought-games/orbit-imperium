@@ -588,8 +588,10 @@ fn combat_encounters(
     }
     let mut loot = Resources::default();
     let mut shares = BTreeMap::new();
-    if attackers[0].intent.mission == Mission::Attack
-        && result.battle.outcome == BattleOutcome::AttackerVictory
+    if matches!(
+        attackers[0].intent.mission,
+        Mission::Attack | Mission::DestroyMoon
+    ) && result.battle.outcome == BattleOutcome::AttackerVictory
     {
         let settled = c
             .bodies
@@ -616,7 +618,6 @@ fn combat_encounters(
             });
         }
     }
-    let f = &attackers[0];
     let debris = result.debris;
     if debris.metal > 0 || debris.crystal > 0 || debris.deuterium > 0 {
         let coords = target.coordinates;
@@ -674,6 +675,40 @@ fn combat_encounters(
 
     let moon_creation = create_moon(s, i, target, debris, r, c, w, audits)?;
 
+    // Preserve the ordinary battle observation. A loss in the independent
+    // destruction roll is reported to its attacker even in a one-round battle.
+    let contact_lost =
+        attackers.iter().all(|f| f.ships.is_empty()) && result.battle.rounds.len() == 1;
+    let destruction = if attackers[0].intent.mission == Mission::DestroyMoon
+        && result.battle.outcome == BattleOutcome::AttackerVictory
+    {
+        let f = &mut attackers[0];
+        let attempt = crate::moon_destruction::resolve(s, i, id, f, audits)?;
+        if let Some(attempt) = &attempt {
+            if attempt.fleet_lost {
+                add_cargo_loss(cargo_losses.entry(f.owner).or_default(), f.cargo);
+                for ship in &f.ships {
+                    take_asset_lots(
+                        &mut w.lots,
+                        f.owner,
+                        CatalogKey::Ship(ship.ship_type),
+                        &AssetLocation::Fleet(f.id),
+                        ship.count,
+                        None,
+                    )?;
+                }
+                f.ships.clear();
+                f.cargo = Resources::default();
+            }
+            if attempt.moon_destroyed {
+                crate::moon_removal::destroy(s, i, id, c, w)?;
+            }
+        }
+        attempt
+    } else {
+        None
+    };
+    let f = &attackers[0];
     let permanent: Vec<_> = result
         .battle
         .destroyed
@@ -698,14 +733,15 @@ fn combat_encounters(
     if let Some(outcome) = moon_creation {
         full["moon_creation"] = json!(outcome);
     }
+    if let Some(attempt) = destruction {
+        full["moon_destruction"] = json!(attempt);
+    }
     full["target_name"] = json!(target.name);
     full["target_kind"] = json!(target.kind);
     if r.attacks() {
         full["mission"] = json!(f.intent.mission);
     }
     let mut recipients = BTreeMap::new();
-    let contact_lost =
-        attackers.iter().all(|f| f.ships.is_empty()) && result.battle.rounds.len() == 1;
     let owners: std::collections::BTreeSet<_> = attackers
         .iter()
         .map(|f| f.owner)
@@ -751,17 +787,18 @@ fn combat_encounters(
         recipients.insert(owner, payload);
     }
     for f in attackers.iter() {
-        if f.intent.mission == Mission::Attack {
+        if matches!(f.intent.mission, Mission::Attack | Mission::DestroyMoon) {
             let policy = w
                 .policies
                 .get(&expected_owner)
                 .ok_or_else(|| invariant("missing target presence"))?;
             let presence = inactivity(policy.last_presence_at, i.at)?;
             if presence == Inactivity::Active
-                && matches!(
-                    result.battle.outcome,
-                    BattleOutcome::AttackerVictory | BattleOutcome::Draw
-                )
+                && (f.intent.mission == Mission::DestroyMoon
+                    || matches!(
+                        result.battle.outcome,
+                        BattleOutcome::AttackerVictory | BattleOutcome::Draw
+                    ))
             {
                 let report = ReportId(derived_id(
                     i.id,
