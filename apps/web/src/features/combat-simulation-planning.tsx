@@ -1,3 +1,5 @@
+import { AverageGrossHaul } from './average-gross-haul'
+import { SimulationDisclosure } from './simulation-disclosure'
 import {
   battleEstimates,
   planningSummary,
@@ -35,40 +37,28 @@ export function SimulationPlanning({
       <div className={styles.planningGrid}>
         <section aria-label="Cargo and loot">
           <h4>Cargo & loot</h4>
-          {summary.cargo && (
-            <p>
-              Surviving cargo capacity:{' '}
-              <strong>{amount(summary.cargo.average)}</strong> average
-            </p>
-          )}
-          {summary.total && summary.loot ? (
-            <>
-              <p>
-                Estimated loot: <strong>{amount(summary.total.average)}</strong>{' '}
-                average
-              </p>
-              <div className={styles.resourceLine}>
-                {summary.loot.map((row) => (
-                  <ResourceValue key={row.resource} resource={row.resource}>
-                    {amount(row.average)}
-                  </ResourceValue>
-                ))}
+          <dl className={styles.lootMetrics}>
+            {summary.potentialLoot !== null && (
+              <div>
+                <dt>Potential loot</dt>
+                <dd>{amount(summary.potentialLoot)}</dd>
               </div>
-              {estimates.cargoCovered !== null && (
-                <p>
-                  {estimates.victories
-                    ? `Cargo covers all available loot in ${estimates.cargoCovered} / ${estimates.victories} victories.`
-                    : 'No victorious samples to collect loot.'}
-                </p>
-              )}
-              <small>Observed resources; gross loot before fuel.</small>
-            </>
-          ) : (
-            <p>
-              {result.loot_rules_enabled
-                ? 'Estimated loot unavailable: resources were not observed. Unknown resources are not treated as zero.'
-                : 'Estimated loot unavailable: raiding is not enabled in this universe.'}
-            </p>
+            )}
+            {summary.cargo && (
+              <div>
+                <dt>Average surviving cargo capacity</dt>
+                <dd>{amount(summary.cargo.average)}</dd>
+              </div>
+            )}
+          </dl>
+          {summary.loot && summary.total && (
+            <AverageGrossHaul
+              loot={summary.loot}
+              total={summary.total.average}
+            />
+          )}
+          {!result.loot_rules_enabled && (
+            <p>Raiding disabled in this universe.</p>
           )}
         </section>
         <section aria-label="New debris field">
@@ -119,8 +109,11 @@ export function SimulationPlanning({
           </p>
         </section>
       </div>
-      <details open className={styles.resultDetails}>
-        <summary>Estimate ranges and assumptions</summary>
+      <SimulationDisclosure
+        section="ranges"
+        className={styles.resultDetails}
+        summary="Estimate ranges and assumptions"
+      >
         <dl className={styles.survivors}>
           {summary.cargo && (
             <div>
@@ -132,7 +125,7 @@ export function SimulationPlanning({
           )}
           {summary.total && (
             <div>
-              <dt>Estimated total loot</dt>
+              <dt>Gross haul</dt>
               <dd>
                 {amount(summary.total.minimum)}–{amount(summary.total.maximum)}
               </dd>
@@ -150,7 +143,7 @@ export function SimulationPlanning({
           ))}
           {summary.loot?.map((row) => (
             <div key={row.resource}>
-              <dt>Estimated loot · {row.resource}</dt>
+              <dt>Gross haul · {row.resource}</dt>
               <dd>
                 <ResourceValue resource={row.resource}>
                   {amount(row.minimum)}–{amount(row.maximum)}
@@ -182,7 +175,7 @@ export function SimulationPlanning({
           averaged. Outcomes are samples, not guarantees. A new moon requires a
           planet without an existing moon.
         </p>
-      </details>
+      </SimulationDisclosure>
     </>
   )
 }

@@ -207,11 +207,18 @@ export function sampledAmounts(values: string[]) {
     maximum: amounts.reduce((a, b) => (a > b ? a : b)),
   }
 }
+function totalResources(resources: S['Resources']) {
+  return resourceNames.reduce((sum, name) => sum + BigInt(resources[name]), 0n)
+}
+
 export function planningSummary(response: SimulationResponse) {
   const known =
     response.samples.length > 0 &&
     response.samples.every((s) => s.estimated_loot !== null)
   return {
+    potentialLoot: response.available_loot
+      ? totalResources(response.available_loot)
+      : null,
     debris: response.samples.length
       ? resourceNames.map((resource) => ({
           resource,
@@ -232,9 +239,7 @@ export function planningSummary(response: SimulationResponse) {
     total: known
       ? sampledAmounts(
           response.samples.map((s) =>
-            resourceNames
-              .reduce((sum, r) => sum + BigInt(s.estimated_loot![r]), 0n)
-              .toString(),
+            totalResources(s.estimated_loot!).toString(),
           ),
         )
       : null,
@@ -318,21 +323,5 @@ export function battleEstimates(
           capacity: wholeCapacity,
         }
       : null
-  const victories = samples.filter((s) => s.outcome === 'AttackerVictory')
-  const available = response.available_loot
-  const cargoCovered =
-    available && victories.every((s) => s.estimated_loot)
-      ? victories.filter((s) =>
-          resourceNames.every(
-            (r) => BigInt(s.estimated_loot![r]) >= BigInt(available[r]),
-          ),
-        ).length
-      : null
-  return {
-    averageRounds,
-    moon,
-    recyclers,
-    cargoCovered,
-    victories: victories.length,
-  }
+  return { averageRounds, moon, recyclers }
 }

@@ -510,26 +510,24 @@ it('rounds recyclers up from the average harvestable field using supplied capaci
     battleEstimates({ ...response, samples: [] }, 'Unknown').recyclers,
   ).toBeNull()
 })
-it('compares cargo coverage for victorious samples against rule-calculated available loot', () => {
+it('sums the unlimited-cargo benchmark exactly and distinguishes zero from unavailable', () => {
   expect(
-    battleEstimates(
-      {
-        ...sampleResponse,
-        available_loot: { metal: '99000000', crystal: '0', deuterium: '0' },
+    planningSummary({
+      ...sampleResponse,
+      available_loot: {
+        metal: '9007199254740993000',
+        crystal: '97000000',
+        deuterium: '18000000',
       },
-      'Unknown',
-    ),
-  ).toMatchObject({ cargoCovered: 1, victories: 1 })
+    }).potentialLoot,
+  ).toBe(9007199254855993000n)
   expect(
-    battleEstimates(
-      {
-        ...sampleResponse,
-        available_loot: { metal: '100000000', crystal: '0', deuterium: '0' },
-      },
-      'Unknown',
-    ).cargoCovered,
-  ).toBe(0)
-  expect(battleEstimates(sampleResponse, 'Unknown').cargoCovered).toBeNull()
+    planningSummary({
+      ...sampleResponse,
+      available_loot: { metal: '0', crystal: '0', deuterium: '0' },
+    }).potentialLoot,
+  ).toBe(0n)
+  expect(planningSummary(sampleResponse).potentialLoot).toBeNull()
 })
 it('keeps unknown and invalid force values discoverable in collapsed summaries', () => {
   const fields = simulationFields(

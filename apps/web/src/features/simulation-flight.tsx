@@ -1,3 +1,4 @@
+import { SimulationDisclosure } from './simulation-disclosure'
 import type { components } from '../contracts'
 import { useState } from 'react'
 import { useStore } from 'zustand'
@@ -71,8 +72,11 @@ export function SimulationFlight({
   )
   return (
     <section aria-label="Attack planning">
-      <details open className={styles.attackPlanning}>
-        <summary>Plan attack</summary>
+      <SimulationDisclosure
+        section="plan-attack"
+        className={styles.attackPlanning}
+        summary="Plan attack"
+      >
         <div className={styles.flightLocations}>
           {body && (
             <SimulationLocation
@@ -108,22 +112,22 @@ export function SimulationFlight({
                 : '',
           }}
         />
-        {onClose && (
-          <Button
-            type="button"
-            disabled={!draft || !!attackProblem || stale}
-            onClick={() => {
-              if (draft && !attackProblem) {
-                onClose()
-                const preparedDraft = { ...draft, reviewOnOpen: true }
-                prepareDispatch(preparedDraft)
-              }
-            }}
-          >
-            Review attack
-          </Button>
-        )}
-      </details>
+      </SimulationDisclosure>
+      {onClose && (
+        <Button
+          type="button"
+          disabled={!draft || !!attackProblem || stale}
+          onClick={() => {
+            if (draft && !attackProblem) {
+              onClose()
+              const preparedDraft = { ...draft, reviewOnOpen: true }
+              prepareDispatch(preparedDraft)
+            }
+          }}
+        >
+          Review attack
+        </Button>
+      )}
     </section>
   )
 }

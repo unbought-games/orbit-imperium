@@ -1,3 +1,4 @@
+import { SimulationDisclosure } from './simulation-disclosure'
 import {
   allyFields,
   withSimulationAllies,
@@ -288,10 +289,12 @@ function SimulationForm({
               label="Origin"
             />
           )}
-          <details className={styles.importDisclosure}>
-            <summary>
-              Use my {body?.kind === 'Moon' ? 'moon' : 'planet'} as defender
-            </summary>
+          <SimulationDisclosure
+            section="import-defender"
+            initiallyOpen={false}
+            className={styles.importDisclosure}
+            summary={`Use my ${body?.kind === 'Moon' ? 'moon' : 'planet'} as defender`}
+          >
             <div className={styles.importControls}>
               <p>
                 Load{' '}
@@ -349,7 +352,7 @@ function SimulationForm({
                 </Button>
               )}
             </div>
-          </details>
+          </SimulationDisclosure>
         </div>
         <div className={styles.sides}>
           {(['attacker', 'defender'] as const).map((side) => (
@@ -387,6 +390,7 @@ function SimulationForm({
               imported.
             </p>
             <SimulationFields
+              allySlot={ally.slot}
               fields={allyFields(fields, ally)}
               edits={edits}
               edit={edit}
@@ -468,8 +472,11 @@ function SimulationForm({
             ))}
           </div>
           <SimulationPlanning result={result} moonTarget={moonTarget} />
-          <details open className={styles.resultDetails}>
-            <summary>Losses and survivors</summary>
+          <SimulationDisclosure
+            section="survivors"
+            className={styles.resultDetails}
+            summary="Losses and survivors"
+          >
             {(['attacker', 'defender'] as const).map((side) => (
               <div key={side}>
                 <h4>
@@ -507,7 +514,7 @@ function SimulationForm({
                 </dl>
               </div>
             ))}
-          </details>
+          </SimulationDisclosure>
         </section>
       )}
       {activeReport && (

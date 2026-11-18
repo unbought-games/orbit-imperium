@@ -3,7 +3,25 @@ import type {
   SimulationInputs,
 } from './combat-simulation-model'
 import { simulationInputs } from './combat-simulation-model'
-export type SimulationAlly = { id: string; side: 'attacker' | 'defender' }
+export type SimulationAlly = {
+  id: string
+  side: 'attacker' | 'defender'
+  slot: number
+}
+
+// Slots identify disclosure preferences across sessions. An ally keeps its slot
+// when another fleet leaves, while its unique draft ID keeps edits isolated.
+export function nextAllySlot(
+  allies: SimulationAlly[],
+  side: SimulationAlly['side'],
+) {
+  const taken = new Set(
+    allies.filter((ally) => ally.side === side).map((ally) => ally.slot),
+  )
+  let slot = 1
+  while (taken.has(slot)) slot++
+  return slot
+}
 export function allyFields(
   base: SimulationField[],
   ally: SimulationAlly,
