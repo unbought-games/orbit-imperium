@@ -80,6 +80,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
     estimateError: null as S['GameError4'] | null,
     debris: true,
     quoteError: null as S['GameError4'] | null,
+    liveQuote: null as { cargo: S['Resources']; hash: string } | null,
     launchError: 'BeginnerProtected' as S['GameError4'] | null,
     destination: null as S['MissionDestination4'] | null,
     observationAvailable: true,
@@ -160,10 +161,11 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
           status: 422,
           json: { code: 'GameRejected', game_code: query.type === 'FleetEstimate' ? state.estimateError : state.quoteError },
         })
+      const live = query.type === 'FleetQuote' && query.intent.cargo_fill ? state.liveQuote : null
       data = {
-        intent: query.intent,
+        intent: live ? { ...query.intent, cargo: live.cargo } : query.intent,
         profile_hash: 'a'.repeat(64),
-        ...(query.type === 'FleetEstimate' ? { estimate: true } : { distance: 1000, speeds: [], slot_limit: '1', terms_hash: 'b'.repeat(64) }),
+        ...(query.type === 'FleetEstimate' ? { estimate: true } : { distance: 1000, speeds: [], slot_limit: '1', terms_hash: live?.hash ?? 'b'.repeat(64) }),
         duration_ms: Math.floor((state.duration * 100) / query.intent.speed_percent),
         fuel: state.fuel,
         capacity: state.capacity,
@@ -684,3 +686,61 @@ test(
     await expect(quote).toHaveCount(0)
   },
 )
+
+
+test('a launch-time cargo change preserves the routed review and Edit cargo reopens its dispatch', { tag: '@journey' }, async ({ page }) => {
+  const state = await setup(page)
+  const dispatchPath = `/u/andromeda/b/${body.id}/dispatch`
+  const terms = (units: number, hash: string) => ({
+    cargo: { metal: '0', crystal: '0', deuterium: String(units * 1000000) },
+    hash: hash.repeat(64),
+  })
+  const fleetQuote = (response: import('@playwright/test').Response) => {
+    if (!response.url().endsWith('/world')) return false
+    const request = response.request().postDataJSON()
+    return request.type === 'FleetQuote' && request.intent.origin === body.id && request.intent.mission === 'Deploy'
+  }
+  await page.getByRole('radio', {name:'Deploy',exact:true}).check()
+  await selectDestinationPlanet(page, id(6))
+  await page.getByRole('button', {name:'Max deuterium', exact:true}).click()
+  const field = page.getByRole('textbox', {name:'Deuterium', exact:true})
+  await expect(field).toHaveValue('3121')
+  const original = terms(3000, 'a')
+  state.liveQuote = original
+  await withFixtureResponse(page, fleetQuote, () => review(page).click())
+  const panel = page.getByRole('region', {name:'Fleet quote'})
+  const cargo = panel.getByRole('region', {name:'Fleet and cargo'})
+  await expect(page).toHaveURL(dispatchPath + '/review')
+  await expect(cargo).toContainText('3,000')
+
+  state.liveQuote = terms(3200, 'c')
+  await withFixtureResponse(page, fleetQuote, () => page.evaluate(() => window.dispatchEvent(new Event('focus'))))
+  await expect(cargo).toContainText('3,200')
+  // A minor background refresh must not replace the player's consent baseline.
+  state.liveQuote = terms(1500, 'e')
+  state.launchError = 'QuoteChanged'
+  const command = page.waitForRequest(r => r.url().endsWith('/commands') && r.postDataJSON()?.gameplay?.command?.action?.type === 'LaunchFleet')
+  await withFixtureResponse(page, fleetQuote, () => panel.getByRole('button', {name:/^Deploy to/}).click())
+  expect((await command).postDataJSON().gameplay.command.action).toMatchObject({
+    intent: {cargo: original.cargo}, expected_terms_hash: original.hash,
+  })
+  await expect(panel.getByRole('status')).toContainText(/3,000.*1,500/)
+  await expect(panel.getByRole('button',{name:'Confirm changes and launch'})).toBeEnabled()
+  await expect(page).toHaveURL(dispatchPath + '/review')
+  expect(state.launches).toBe(1)
+
+  await panel.getByRole('button', {name:'Edit cargo'}).click()
+  await expect(page).toHaveURL(dispatchPath)
+  await field.fill('1000')
+  await withFixtureResponse(page, fleetQuote, () => review(page).click())
+  await expect(page).toHaveURL(dispatchPath + '/review')
+  await expect(cargo).toContainText('1,000')
+  state.launchError = null
+  const exact = page.waitForRequest(r => r.url().endsWith('/commands') && r.postDataJSON()?.gameplay?.command?.action?.type === 'LaunchFleet')
+  await panel.getByRole('button', {name:/^Deploy to/}).click()
+  const intent = (await exact).postDataJSON().gameplay.command.action.intent
+  expect(intent.cargo.deuterium).toBe('1000000000')
+  expect(intent.cargo_fill).toBeUndefined()
+  await expect(dispatchResult(page)).toContainText('Fleet sent.')
+  await expect(page).toHaveURL(dispatchPath)
+})

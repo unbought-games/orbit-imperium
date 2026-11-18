@@ -109,7 +109,7 @@ export async function createDispatchFixture() {
           ...(options.launchOutcome === 'Rejected'
             ? {
                 status: 'Rejected' as const,
-                code: options.launchError ?? ('BeginnerProtected' as const),
+                code: 'BeginnerProtected' as const,
               }
             : options.launchOutcome === 'Pending'
               ? { status: 'Pending' as const, executed_at: null }
