@@ -501,6 +501,13 @@ fn same_time_group_recall_returns_inline_and_cancels_its_only_event() {
     );
     assert!(change.events.is_empty());
     let w = &s.world.as_ref().unwrap().records;
+    assert_eq!(
+        w.reports
+            .values()
+            .map(|r| r.kind.as_str())
+            .collect::<Vec<_>>(),
+        ["Returned"]
+    );
     assert_eq!(w.fleets[&fleet].leg, MissionLeg::Returned);
     assert_eq!(
         w.attack_groups.values().next().unwrap().resolved_at,

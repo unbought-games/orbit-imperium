@@ -645,7 +645,12 @@ fn terminal_return(
     }
     Ok(())
 }
-pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fault> {
+pub(crate) fn resolve(
+    s: &GameState,
+    i: &OrderedInput,
+    r: &Ruleset,
+    recall_reports: RecallReports,
+) -> Result<ChangeSet, Fault> {
     if i.schema_version != 4
         || i.protocol != 4
         || s.universe != i.universe
@@ -1078,12 +1083,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             f.return_reason = Some(MissionReturnReason::VoluntaryRecall);
             if return_duration == 0 {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
-                if is_probe_only_espionage(&f) {
-                    own_report(s, &mut w, i, &f, "Recalled");
-                }
             } else {
                 f.due_at = deadline(i.at, return_duration)?;
                 schedule(&mut c, i, &f);
+            }
+            if recall_reports == RecallReports::LegacyReplay
+                && (return_duration != 0 || is_probe_only_espionage(&f))
+            {
                 own_report(s, &mut w, i, &f, "Recalled");
             }
             c.affected_viewers.insert(f.owner);
