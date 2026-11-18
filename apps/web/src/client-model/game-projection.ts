@@ -369,7 +369,20 @@ export function canSubmitIntent(
   }
   if (cost && !cost.refund) {
     const body = view.bodies.find((body) => body.id === cost.body)
-    if (!body || !canAfford(cost.delta, body.amounts)) return false
+    const fill =
+      command.type === 'World' && command.action.type === 'LaunchFleet'
+        ? command.action.intent.cargo_fill
+        : undefined
+    const required =
+      fill && intent.quote && 'fuel' in intent.quote
+        ? {
+            ...fill.minimum,
+            deuterium: String(
+              BigInt(fill.minimum.deuterium) + BigInt(intent.quote.fuel),
+            ),
+          }
+        : cost.delta
+    if (!body || !canAfford(required, body.amounts)) return false
   }
   const fleet =
     command.type === 'World' && command.action.type === 'LaunchFleet'

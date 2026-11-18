@@ -367,7 +367,7 @@ it('explains missing fuel separately from cargo resource shortages', async () =>
       { metal: '0', crystal: '0', deuterium: '6' },
       '5',
     ),
-  ).toContain('selected cargo')
+  ).toContain('Use Max deuterium')
   expect(
     dispatchResourceProblem(
       available,

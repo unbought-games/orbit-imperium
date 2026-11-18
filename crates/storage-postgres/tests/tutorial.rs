@@ -528,6 +528,7 @@ async fn run_signup_economy_case(speed: i32, guided: bool, early_storage: bool) 
                 });
             }
             let intent = FleetIntent {
+                cargo_fill: None,
                 origin: home,
                 destination,
                 mission: Mission::Attack,

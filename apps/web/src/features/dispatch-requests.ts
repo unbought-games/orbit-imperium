@@ -4,8 +4,10 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
 import type { LocationKind } from '../shell/location-address'
 import {
-  allDispatchCargo,
-  maxDispatchCargo,
+  cargoAmounts,
+  cargoInstruction,
+  prepareCargoFill,
+  type CargoDraft,
 } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
 import {
@@ -16,7 +18,6 @@ import {
   destinationError,
   dispatchFailure,
   dispatchObservationError,
-  dispatchQuantity,
   dispatchResourceProblem,
 } from '../client-model/dispatch-validation'
 type S = components['schemas']
@@ -33,6 +34,7 @@ export type DispatchReviewInput = {
   types: S['FleetIntent4']['ships'][number]['ship_type'][]
   ships: Record<string, string>
   cargo: string[]
+  cargoDraft?: CargoDraft
   player: string
   originId: string
   draft: DispatchDraft | null
@@ -44,7 +46,10 @@ export type DispatchReviewPorts = {
   world: Coordinator['world']
   origin: () => Pick<S['BodyV3'], 'amounts'> | undefined
   quote: (terms: S['FleetTerms4']) => void
-  cargo: (amounts: string[]) => void
+  cargo: (
+    draft: CargoDraft,
+    terms: Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>,
+  ) => void
   error: (message: string) => void
   busy: (busy: boolean) => void
   clear: () => void
@@ -121,6 +126,7 @@ export class DispatchRequests {
     if (key) ports.submitted({ key, generation, coordinates })
     const id = await sending
     if (!id && this.isCurrent(generation)) ports.submitted(null)
+    return id
   }
 
   async review(
@@ -207,21 +213,17 @@ export class DispatchRequests {
         destination,
       )
       if (observationProblem) throw Error(observationProblem)
-      const cargoAmounts = fillCargo
-        ? ['0', '0', '0']
-        : cargo.map(dispatchQuantity)
+      const editor = input.cargoDraft ?? { entered: cargo, groups: [] }
+      const instruction = fillCargo ? undefined : cargoInstruction(editor)
       const intent: S['FleetIntent4'] = {
+        ...(instruction ? { cargo_fill: instruction } : {}),
         origin: originId,
         ...(draft?.attackGroup ? { attack_group: draft.attackGroup } : {}),
         destination,
         mission,
         ...(mission === 'Hold' ? { hold_hours: holdHours } : {}),
         ships: dispatchShips(types, ships, player),
-        cargo: {
-          metal: (BigInt(cargoAmounts[0]) * 1000000n).toString(),
-          crystal: (BigInt(cargoAmounts[1]) * 1000000n).toString(),
-          deuterium: (BigInt(cargoAmounts[2]) * 1000000n).toString(),
-        },
+        cargo: cargoAmounts(fillCargo ? [] : cargo),
         speed_percent: speed as S['FleetIntent4']['speed_percent'],
       }
       if (
@@ -261,22 +263,8 @@ export class DispatchRequests {
       if (fillCargo) {
         const origin = ports.origin()
         if (!origin) return
-        ports.cargo(
-          fillCargo === 'all'
-            ? allDispatchCargo(
-                origin.amounts,
-                terms.maximum_payload,
-                terms.fuel,
-                cargo,
-              )
-            : maxDispatchCargo(
-                origin.amounts,
-                terms.maximum_payload,
-                terms.fuel,
-                cargo,
-                fillCargo,
-              ),
-        )
+        const next = prepareCargoFill(editor, fillCargo, origin.amounts, terms)
+        ports.cargo(next, terms)
       } else if ('terms_hash' in terms) ports.quote(terms)
       else throw Error('Unable to confirm this fleet quote. Review it again.')
     } catch (e) {

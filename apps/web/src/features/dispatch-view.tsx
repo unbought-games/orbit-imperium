@@ -22,7 +22,6 @@ import { coordinateText, type LocationKind } from '../shell/location-address'
 import { DispatchReview } from './dispatch-review'
 import type { useDispatch } from './use-dispatch'
 import type { DispatchDraft } from './missions'
-import { canSubmitQuote } from '../client-model/game-projection'
 import { Button, ButtonLink } from '../ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { FleetSlots } from './fleet-slots'
@@ -89,11 +88,10 @@ export function DispatchView({
     cargo,
     cargoCapacity,
     cargoCapacityMessage,
-    setCargo,
+    editCargo,
     addAllCargo,
     maxCargo,
     quote,
-    closeReview,
     checkingReview,
     entryNotice,
     error,
@@ -103,7 +101,6 @@ export function DispatchView({
     hasShips,
     quoteRef,
     reviewButtonRef,
-    command,
     send,
     clear,
     review,
@@ -125,7 +122,8 @@ export function DispatchView({
               size="icon-small"
               aria-label="Back to edit mission"
               title="Back to edit mission"
-              onClick={closeReview}
+              disabled={dispatch.sending}
+              onClick={dispatch.editReview}
             >
               <ArrowLeft size={18} aria-hidden="true" />
             </Button>
@@ -380,9 +378,9 @@ export function DispatchView({
             space={cargoCapacity}
             message={cargoCapacityMessage}
             disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
-            onNormalize={setCargo}
-            onChange={(cargo) => {
-              setCargo(cargo)
+            onNormalize={editCargo}
+            onChange={(index, value) => {
+              editCargo(index, value)
               clear()
             }}
             onFill={(resource) => {
@@ -503,11 +501,10 @@ export function DispatchView({
           }
           panelRef={quoteRef}
           onSend={() => void send()}
-          disabled={
-            checkingReview ||
-            !command ||
-            !canSubmitQuote(model.store.getState(), command, quote)
-          }
+          reviewState={dispatch.reviewPanel}
+          onEdit={dispatch.editReview}
+          sending={dispatch.sending}
+          disabled={!dispatch.canSend}
         />
       )}
     </Section>

@@ -19,6 +19,8 @@ export type DispatchNavigation = {
   restored?: ReviewedFleet
   expired: boolean
   open: (terms: S['FleetTerms4'], coordinates: S['Coordinates']) => void
+  claimSend: () => boolean
+  finishSend: () => void
   close: (action: 'edit' | 'send') => boolean
 }
 
@@ -86,42 +88,59 @@ export function RoutedDispatch({
       />
     )
   const current = () => router.history.location.state.__TSR_key === entry
+  const claimSend = () => {
+    if (!restored || !current() || !session.match(restored.id, body.id))
+      return false
+    session.retire(restored.id)
+    return true
+  }
+  const returnToEditor = (source: ReviewedFleet['source']) => {
+    void navigate({
+      ...routeTarget(universe, 'dispatch', body.id),
+      search: source ? dispatchSearch(source) : {},
+      state: {
+        dispatchEditor: editor,
+        ...(source
+          ? {
+              dispatchSession: session.id,
+              dispatchObservation: {
+                target: source.target,
+                observedAt: source.observedAt,
+                ships: source.ships,
+                speed: source.speed,
+              },
+            }
+          : {}),
+      },
+      replace: true,
+    })
+  }
   const navigation: DispatchNavigation = {
     restored,
     expired: !!dispatchExpired,
     open: (terms, coordinates) => {
       if (!current()) return
-      const review = session.open(editor, terms, coordinates, draft)
+      // A replaced review retains the editor it came from, including a manual
+      // entry with no prepared-source search parameters.
+      const review = session.open(
+        editor,
+        terms,
+        coordinates,
+        restored ? restored.source : draft,
+      )
       void navigate({
         ...routeTarget(universe, 'dispatch', body.id, 'review'),
         state: { dispatchReview: review.id, dispatchEditor: editor },
         replace: true,
       })
     },
+    claimSend,
+    finishSend: () => {
+      if (current()) returnToEditor(null)
+    },
     close: (action) => {
-      if (!restored || !current() || !session.match(restored.id, body.id))
-        return false
-      const source = action === 'send' ? null : restored.source
-      session.retire(restored.id)
-      void navigate({
-        ...routeTarget(universe, 'dispatch', body.id),
-        search: source ? dispatchSearch(source) : {},
-        state: {
-          dispatchEditor: editor,
-          ...(source
-            ? {
-                dispatchSession: session.id,
-                dispatchObservation: {
-                  target: source.target,
-                  observedAt: source.observedAt,
-                  ships: source.ships,
-                  speed: source.speed,
-                },
-              }
-            : {}),
-        },
-        replace: true,
-      })
+      if (!claimSend()) return false
+      returnToEditor(action === 'send' ? null : (restored?.source ?? null))
       return true
     },
   }

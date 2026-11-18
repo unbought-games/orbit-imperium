@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest'
 import {
   allyFields,
+  nextAllySlot,
   withSimulationAllies,
   combinedSimulationUnits,
 } from './simulation-allies'
@@ -26,7 +27,7 @@ const fields: SimulationField[] = [
     source: 'Plan',
   },
 ]
-const ally = { id: 'one', side: 'attacker' as const }
+const ally = { id: 'one', side: 'attacker' as const, slot: 1 }
 const inputs: SimulationInputs = {
   attacker: {
     technology: [1, 2, 3],
@@ -34,6 +35,16 @@ const inputs: SimulationInputs = {
   },
   defender: { technology: [0, 0, 0], units: [] },
 }
+it('reuses a free disclosure slot without renumbering another defending fleet', () => {
+  const defender = { id: 'two', side: 'defender' as const, slot: 2 }
+  expect(nextAllySlot([ally, defender], 'defender')).toBe(1)
+  expect(
+    nextAllySlot(
+      [ally, defender, { ...defender, id: 'three', slot: 1 }],
+      'defender',
+    ),
+  ).toBe(3)
+})
 it('keeps allied technology provenance and combines result counts only', () => {
   expect(allyFields(fields, ally)[0].value).toBeNull()
   expect(

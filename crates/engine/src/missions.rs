@@ -290,7 +290,7 @@ pub fn quote_fleet(
     r: &Ruleset,
 ) -> Result<FleetTerms, GameError> {
     match quote_inner(s, owner, intent, at, r) {
-        Ok(q) => Ok(q),
+        Ok(q) => Ok(q.seal()),
         Err(Fault::Game(e)) => Err(e),
         Err(Fault::Invariant(_)) => Err(GameError::PolicyUnavailable),
     }
@@ -301,7 +301,7 @@ fn quote_inner(
     intent: &FleetIntent,
     at: Timestamp,
     r: &Ruleset,
-) -> Result<FleetTerms, Fault> {
+) -> Result<FleetTermsData, Fault> {
     let b = body(s, intent.origin, r)?;
     if b.owner != owner {
         return Err(GameError::NotOwned.into());
@@ -360,11 +360,6 @@ fn quote_inner(
             {
                 return Err(GameError::InsufficientShips.into());
             }
-            resources(
-                intent.cargo,
-                Resources::from_values([500 * SCALE, 500 * SCALE, 0]),
-                true,
-            )?;
         }
         (
             Mission::DestroyMoon,
@@ -408,7 +403,12 @@ fn quote_inner(
         .get(&owner)
         .ok_or_else(|| invariant("missing research"))?;
     validate_research_catalog(research, r)?;
-    let mut q = fleet_terms(intent, b.coordinates, coords, research, r)?;
+    // Validate capacity against the fixed minimum before allocating variable cargo.
+    let mut manifest = intent.clone();
+    if let Some(fill) = &intent.cargo_fill {
+        manifest.cargo = fill.minimum;
+    }
+    let mut q = fleet_terms(&manifest, b.coordinates, coords, research, r)?;
     q.slot_limit = fleet_slot_limit(
         *research
             .levels
@@ -439,15 +439,26 @@ fn quote_inner(
             return Err(GameError::InsufficientShips.into());
         }
     }
+    let available = settle_production(s, b, at, r)?.amounts;
+    if let Some(fill) = &intent.cargo_fill {
+        q.intent.cargo = crate::fleet_cargo::load(fill, available, q.fuel, q.maximum_payload)?;
+    }
+    if intent.mission == Mission::Colonize {
+        resources(
+            q.intent.cargo,
+            Resources::from_values([500 * SCALE, 500 * SCALE, 0]),
+            true,
+        )?;
+    }
     let cost = resources(
-        intent.cargo,
+        q.intent.cargo,
         Resources {
             deuterium: q.fuel,
             ..Resources::default()
         },
         true,
     )?;
-    resources(settle_production(s, b, at, r)?.amounts, cost, false)?;
+    resources(available, cost, false)?;
     let arrival = deadline(at, q.duration_ms)?;
     let departure = match q.holding.as_ref().filter(|h| h.duration_ms > 0) {
         Some(h) => deadline(arrival, h.duration_ms)?,
@@ -455,7 +466,7 @@ fn quote_inner(
     };
     deadline(departure, q.duration_ms)?;
     q.group_revision = crate::attack_groups::validate_join(s, owner, intent, at, q.duration_ms, r)?;
-    Ok(q.seal())
+    Ok(q)
 }
 pub(crate) fn inventory(
     c: &mut ChangeSet,
@@ -981,9 +992,8 @@ pub(crate) fn resolve(
                 return Err(GameError::PresenceUnavailable.into());
             }
             let q = quote_inner(s, owner, intent, i.at, r)?;
-            if &q.terms_hash != expected_terms_hash {
-                return Err(GameError::QuoteChanged.into());
-            }
+            let q = crate::fleet_cargo::authorize(q, intent, expected_terms_hash)?;
+            let intent = &q.intent;
             let origin = body(s, intent.origin, r)?;
             let (coords, target_owner) = target(s, &intent.destination, r)?;
             let id = FleetId(derived_id(i.id, "mission:0"));

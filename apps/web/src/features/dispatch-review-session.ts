@@ -1,6 +1,7 @@
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { commandId } from '../adapters/command-id'
+import { flightConditions } from './dispatch-review-model'
 import { canonical } from '../client-model/commands'
 import { dispatchSelection } from '../client-model/dispatch-timing'
 import { dispatchFailure } from '../client-model/dispatch-validation'
@@ -130,8 +131,12 @@ export async function revalidateReview(
     !terms ||
     !('terms_hash' in terms) ||
     !('slot_limit' in terms) ||
-    terms.terms_hash !== review.terms.terms_hash ||
+    (terms.terms_hash !== review.terms.terms_hash &&
+      (!intent.cargo_fill ||
+        canonical(flightConditions(terms)) !==
+          canonical(flightConditions(review.terms)))) ||
     terms.profile_hash !== review.terms.profile_hash
   )
     throw Error('Fleet terms changed. Review your selections again.')
+  return terms
 }

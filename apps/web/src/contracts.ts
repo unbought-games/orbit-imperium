@@ -7429,6 +7429,7 @@ export interface components {
             hold_hours?: 0 | 1 | 2 | 4 | 8 | 16 | 32;
             /** Format: uuid */
             attack_group?: string;
+            cargo_fill?: components["schemas"]["FleetCargoFill4"];
         };
         FleetTerms4: {
             intent: components["schemas"]["FleetIntent4"];
@@ -11291,6 +11292,10 @@ export interface components {
             destination_redirected: boolean;
             due_at: number;
             at: number;
+        };
+        FleetCargoFill4: {
+            minimum: components["schemas"]["WholeResources"];
+            groups: ("Metal" | "Crystal" | "Deuterium")[][];
         };
     };
     responses: never;

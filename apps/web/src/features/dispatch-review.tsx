@@ -1,3 +1,4 @@
+import { Button } from '../ui/button'
 import { groupFlightSchedule } from './attack-group-model'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { missionOptions } from './mission-options'
@@ -41,6 +42,9 @@ export function DispatchReview({
   raidPlanning,
   colonyWarning,
   disabled,
+  reviewState,
+  sending,
+  onEdit,
   panelRef,
   onSend,
 }: {
@@ -55,6 +59,9 @@ export function DispatchReview({
   raidPlanning?: ReactNode
   colonyWarning?: string | null
   disabled: boolean
+  sending: boolean
+  onEdit: () => void
+  reviewState: ReturnType<typeof import('./use-fleet-review').useFleetReview>
   panelRef: Ref<HTMLElement>
   onSend: () => void
 }) {
@@ -305,13 +312,63 @@ export function DispatchReview({
       {mission === 'Espionage' && (
         <Text className={styles.reviewNote}>Probes carry fuel only.</Text>
       )}
-      <QuoteAction
-        className={styles.sendFleet}
-        disabled={disabled}
-        onClick={onSend}
-      >
-        {dispatchSendLabel(quote.intent, destination)}
-      </QuoteAction>
+      {reviewState.differences?.changed && reviewState.state && (
+        <div role="status">
+          {reviewState.differences.resources.map((resource) => (
+            <Text key={resource}>
+              {resource[0].toUpperCase() + resource.slice(1)} cargo changed from{' '}
+              <ResourceQuantity
+                resource={resource}
+                value={reviewState.state!.reviewed.intent.cargo[resource]}
+              />{' '}
+              to{' '}
+              <ResourceQuantity
+                resource={resource}
+                value={quote.intent.cargo[resource]}
+              />
+              .
+            </Text>
+          ))}
+          {reviewState.differences.flightChanged && (
+            <Text>Flight terms changed. Review the updated flight.</Text>
+          )}
+        </div>
+      )}
+      {reviewState.state?.problem && (
+        <Text role="alert" tone="danger">
+          {reviewState.state.problem}{' '}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void reviewState.refresh()}
+          >
+            Refresh review
+          </Button>
+        </Text>
+      )}
+      <div className={styles.actions}>
+        <QuoteAction
+          className={styles.sendFleet}
+          disabled={disabled}
+          onClick={onSend}
+        >
+          {sending
+            ? 'Sending fleet…'
+            : reviewState.differences?.changed
+              ? 'Confirm changes and launch'
+              : dispatchSendLabel(quote.intent, destination)}
+        </QuoteAction>
+        {reviewState.differences?.changed && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={sending}
+            onClick={onEdit}
+          >
+            Edit cargo
+          </Button>
+        )}
+      </div>
     </QuotePanel>
   )
 }

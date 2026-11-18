@@ -1,3 +1,7 @@
+import {
+  projectDispatchCargo,
+  type CargoDraft,
+} from '../client-model/dispatch-cargo'
 import { expect, it, vi } from 'vitest'
 import type { components } from '../contracts'
 import {
@@ -70,7 +74,13 @@ function fixture() {
     world,
     origin: () => ({ amounts }),
     quote: vi.fn(),
-    cargo: vi.fn(),
+    cargo:
+      vi.fn<
+        (
+          draft: CargoDraft,
+          terms: Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>,
+        ) => void
+      >(),
     error: vi.fn(),
     busy: vi.fn(),
     clear: vi.fn(),
@@ -79,6 +89,7 @@ function fixture() {
   return {
     requests,
     ports,
+    amounts: () => amounts,
     setAmounts: (next: typeof amounts) => {
       amounts = next
     },
@@ -212,7 +223,7 @@ it.each([
 it.each(['all', 'deuterium'] as const)(
   'fills %s using current stocks, reserves fuel, and never opens review',
   async (fill) => {
-    const { requests, ports, setAmounts } = fixture()
+    const { requests, ports, setAmounts, amounts } = fixture()
     const held = deferred<Awaited<ReturnType<DispatchReviewPorts['world']>>>()
     const entered = deferred<void>()
     ports.world
@@ -238,7 +249,8 @@ it.each(['all', 'deuterium'] as const)(
     }
     held.resolve(terms(intent))
     await result
-    expect(ports.cargo).toHaveBeenLastCalledWith(
+    const [draft, estimate] = ports.cargo.mock.lastCall!
+    expect(projectDispatchCargo(draft, amounts(), estimate)).toEqual(
       fill === 'all' ? ['6', '4', '2'] : ['2', '0', '2'],
     )
     expect(ports.quote).not.toHaveBeenCalled()
@@ -554,7 +566,7 @@ it('occupied colony resolution stops before quote and reports an actionable erro
 it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
   'fills %s from an estimate with no fleet slot, while review still rejects',
   async (fill) => {
-    const { requests, ports } = fixture()
+    const { requests, ports, amounts } = fixture()
     ports.world.mockImplementation(async (query) => {
       if (query.type === 'ResolveDestination') return destination
       if (query.type === 'FleetQuote') throw Error('NoFleetSlot')
@@ -575,12 +587,12 @@ it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
     await requests.review(input, ports, fill)
     expect(ports.cargo).toHaveBeenCalledOnce()
     expect(ports.quote).not.toHaveBeenCalled()
+    const [draft, estimate] = ports.cargo.mock.lastCall!
+    const cargo = projectDispatchCargo(draft, amounts(), estimate)
     expect(
-      ports.cargo.mock.calls[0][0]
-        .map(BigInt)
-        .reduce((sum: bigint, n: bigint) => sum + n, 0n),
+      cargo.map(BigInt).reduce((sum: bigint, n: bigint) => sum + n, 0n),
     ).toBeLessThanOrEqual(50n)
-    expect(BigInt(ports.cargo.mock.calls[0][0][2])).toBeLessThanOrEqual(10n)
+    expect(BigInt(cargo[2])).toBeLessThanOrEqual(10n)
     await requests.review(input, ports)
     expect(ports.quote).not.toHaveBeenCalled()
     expect(ports.error).toHaveBeenLastCalledWith(

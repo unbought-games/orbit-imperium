@@ -161,6 +161,7 @@ async fn destruction_retires_paid_lunar_jobs_before_their_deadlines_without_touc
     .unwrap();
     assert_eq!(parent_ships, 101);
     let intent = FleetIntent {
+        cargo_fill: None,
         origin,
         mission: Mission::DestroyMoon,
         destination: MissionDestination::Body {

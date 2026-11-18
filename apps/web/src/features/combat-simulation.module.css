@@ -270,6 +270,54 @@
   flex-wrap: wrap;
   gap: 8px 16px;
 }
+.lootMetrics {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.lootMetrics > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.lootMetrics dt {
+  color: var(--text-muted);
+}
+.lootMetrics dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.haulTable {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.haulTable caption {
+  margin-bottom: 4px;
+  text-align: left;
+  font-weight: 600;
+}
+.haulTable th,
+.haulTable td {
+  padding: 2px 0;
+}
+.haulTable th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--text-muted);
+}
+.haulTable td {
+  text-align: right;
+}
+.haulTable tfoot :is(th, td) {
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+  font-weight: 600;
+  color: var(--text);
+}
 .resultDetails {
   border-top: 1px solid var(--border);
 }

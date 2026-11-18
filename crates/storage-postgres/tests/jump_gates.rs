@@ -438,6 +438,7 @@ async fn jump_and_launch_use_one_inventory_and_never_commit_partial_cooldowns() 
         let jump = action(&f, q.clone());
         let mut launch = action(&f, q);
         let fleet = FleetIntent {
+            cargo_fill: None,
             origin: f.moons[0],
             destination: MissionDestination::Body {
                 id: f.moons[1],
