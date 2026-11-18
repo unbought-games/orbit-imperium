@@ -153,7 +153,8 @@
 .caption small {
   font-size: 0.75rem;
 }
-.caption > span:first-child {
+.tileHeading,
+.inlineHeading > span {
   font:
     400 1.1rem Georgia,
     serif;
@@ -241,7 +242,8 @@
     gap: 2px;
     padding: 4px 10px;
   }
-  .caption > span:first-child {
+  .tileHeading,
+  .inlineHeading > span {
     font-size: 1rem;
   }
   .caption strong {

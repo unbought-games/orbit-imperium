@@ -225,7 +225,11 @@ export function ImageTile({
           className={styles.caption}
           id={compactCaption ? progressId : undefined}
         >
-          <span className={compactCaption ? styles.inlineHeading : undefined}>
+          <span
+            className={
+              compactCaption ? styles.inlineHeading : styles.tileHeading
+            }
+          >
             <span>{title}</span>
             {compactCaption && (
               <strong>
