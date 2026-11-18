@@ -42,8 +42,11 @@ export function HudMessage({
     setBusy(true)
     setError('')
     try {
+      const binding = model.binding
+      const command_id = await model.newCommandId()
+      if (!binding || model.binding !== binding) return
       const result = await model.socialCommand({
-        command_id: await model.newCommandId(),
+        command_id,
         action: conversation
           ? {
               type: 'Read',

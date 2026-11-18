@@ -303,8 +303,7 @@ export function useDispatch({
         position: Number(position),
       },
       {
-        attempts: () => model.store.getState().attempts,
-        send: (command, quote) => model.send(command, quote),
+        send: model.send.bind(model),
         submitted: setSubmitted,
         closeReview: () => setQuote(null),
       },

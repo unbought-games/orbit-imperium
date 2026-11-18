@@ -340,3 +340,35 @@ it('a hidden conversation leaves the inbox but opening it again reads retained h
     { type: 'Hide', player: 'peer', message: 'm2' },
   ])
 })
+
+it('disposal fences a deferred social read and send without clearing a newer allocation', async () => {
+  const before = defer<string>(),
+    after = defer<string>()
+  const requests: SocialRequest[] = []
+  let clock = before.promise
+  const c = new SocialController({
+    newId: () => clock,
+    read: async () => view(),
+    command: async (request) => {
+      requests.push(request)
+      return { command_id: request.command_id, message: null }
+    },
+  })
+  const read = c.markRead('peer', 'm1')
+  const first = c.run({ type: 'Send', player: 'peer', body: 'earlier' })
+  c.clear()
+  clock = after.promise
+  const second = c.run({ type: 'Send', player: 'peer', body: 'current' })
+  before.resolve('old')
+  expect(await read).toBe(false)
+  expect(await first).toBe(false)
+  expect(c.store.getState().busy).toBe(true)
+  after.resolve('new')
+  expect(await second).toBe(true)
+  expect(requests).toEqual([
+    {
+      command_id: 'new',
+      action: { type: 'Send', player: 'peer', body: 'current' },
+    },
+  ])
+})

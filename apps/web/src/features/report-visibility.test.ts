@@ -125,7 +125,9 @@ it('notifies exactly once on the matching authoritative receipt, before pruning'
   const { store, attempt, put } = commitFixture()
   put(attempt('old', 'committed'))
   const committed = vi.fn()
-  observeReportVisibilityCommit(store, 'report', true, committed)
+  put(attempt('archive'))
+  observeReportVisibilityCommit(store, 'archive', committed)
+  put(attempt('another-archive', 'committed'))
   put(attempt('other-report', 'committed', 'other'))
   put(attempt('restore', 'committed', 'report', false))
   put(attempt('archive'))
@@ -142,7 +144,8 @@ it('notifies exactly once on the matching authoritative receipt, before pruning'
 it('does not accept a projected hidden flag as a committed gesture', () => {
   const { store, attempt, put } = commitFixture()
   const committed = vi.fn()
-  observeReportVisibilityCommit(store, 'report', true, committed)
+  put(attempt('archive'))
+  observeReportVisibilityCommit(store, 'archive', committed)
   put(attempt('archive', 'pending'))
   store.setState({
     reportHeaders: new Map([
@@ -167,7 +170,8 @@ it('does not accept a projected hidden flag as a committed gesture', () => {
 it('stops observing a rejected gesture', () => {
   const { store, attempt, put } = commitFixture()
   const committed = vi.fn()
-  observeReportVisibilityCommit(store, 'report', true, committed)
+  put(attempt('archive'))
+  observeReportVisibilityCommit(store, 'archive', committed)
   put(attempt('archive', 'rejected'))
   put(attempt('archive', 'committed'))
   expect(committed).not.toHaveBeenCalled()
@@ -177,8 +181,8 @@ it('stops on disposal or a changed session, even if the original binding returns
   for (const changeSession of [false, true]) {
     const { store, attempt, put } = commitFixture()
     const committed = vi.fn()
-    const stop = observeReportVisibilityCommit(store, 'report', true, committed)
     put(attempt('archive'))
+    const stop = observeReportVisibilityCommit(store, 'archive', committed)
     if (changeSession) {
       const binding = store.getState().binding
       store.setState({ binding: null })

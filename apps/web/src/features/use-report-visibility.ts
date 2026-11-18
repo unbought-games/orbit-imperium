@@ -20,21 +20,31 @@ export function useReportVisibility(
     change: async (hidden: boolean) => {
       if (!state.ready || pending) return
       observation.current?.()
-      const stop = onCommitted
-        ? observeReportVisibilityCommit(model.store, report, hidden, () =>
-            onCommitted(hidden),
-          )
-        : undefined
-      observation.current = stop
+      let active = true
+      let stop: (() => void) | undefined
+      const cancel = () => {
+        active = false
+        stop?.()
+      }
+      observation.current = cancel
       try {
-        const submitted = await model.send({
-          type: 'World',
-          action: { type: 'SetReportHidden', report, hidden },
-        })
-        if (!submitted) stop?.()
+        const submitted = await model.send(
+          {
+            type: 'World',
+            action: { type: 'SetReportHidden', report, hidden },
+          },
+          undefined,
+          (key) => {
+            if (active && onCommitted)
+              stop = observeReportVisibilityCommit(model.store, key, () =>
+                onCommitted(hidden),
+              )
+          },
+        )
+        if (!submitted) cancel()
       } catch {
         // The command ledger/banner owns failure and durable recovery.
-        stop?.()
+        cancel()
       }
     },
   }

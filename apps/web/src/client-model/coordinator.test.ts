@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { connectionStatus } from './connection-status'
 import { Coordinator } from './coordinator'
 import {
@@ -199,6 +199,51 @@ it('a view that retires an order during receipt reconciliation cannot release th
     { type: 'CancelConstruction', operation: id(79) },
   ])
   expect(reads).toBe(2)
+})
+
+it('registers the captured command and quote under their own key after a slow clock sample', async () => {
+  const wall = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+  try {
+    const { c, port } = setup()
+    await c.connect(binding.account, binding.universe)
+    const intent = quotedUpgrade(c)
+    const command = { ...intent.command },
+      quote = intent.quote
+    wall.mockReturnValue(1_100_000)
+    const releases: Array<() => void> = []
+    const discover = port.currentBinding.bind(port)
+    port.currentBinding = async (...args) => {
+      await new Promise<void>((resolve) => releases.push(resolve))
+      return discover(...args)
+    }
+    const approved = structuredClone({ command, quote })
+    const upgrade = vi.fn(),
+      recall = vi.fn()
+    const first = c.send(command, quote, upgrade)
+    const second = c.send(
+      { type: 'RecallFleet', fleet: id(41) },
+      undefined,
+      recall,
+    )
+    quote.terms_hash = 'c'.repeat(64)
+    quote.cost.metal = '100000'
+    command.body = id(99)
+    expect(upgrade).not.toHaveBeenCalled()
+    releases[1]()
+    const secondId = (await second)!
+    expect(recall).toHaveBeenCalledExactlyOnceWith(
+      attemptKey(binding, secondId),
+    )
+    releases[0]()
+    const firstId = (await first)!
+    const key = attemptKey(binding, firstId)
+    expect(upgrade).toHaveBeenCalledExactlyOnceWith(key)
+    expect(c.ledger.get(key)?.envelope.command).toEqual(approved.command)
+    expect(c.store.getState().intents.get(key)?.quote).toEqual(approved.quote)
+    expect(firstId).not.toBe(secondId)
+  } finally {
+    wall.mockRestore()
+  }
 })
 
 it('reserves payment before awaiting the server and blocks repeat or competing spending until reconciliation', async () => {

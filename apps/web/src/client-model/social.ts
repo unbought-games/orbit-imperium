@@ -247,8 +247,10 @@ export class SocialController {
       .getState()
       .history?.messages.find((m) => m.id === message)?.sequence
     try {
+      const command_id = await this.ports.newId()
+      if (gen !== this.generation) return false
       const result = await this.ports.command({
-        command_id: await this.ports.newId(),
+        command_id,
         action: { type: 'Read', player, message },
       })
       if (gen !== this.generation || result === null) return false
@@ -285,9 +287,9 @@ export class SocialController {
         return false
       }
       if (generation !== this.generation) return false
-      this.store.setState({ busy: false })
     }
     this.store.setState({
+      busy: false,
       pending: {
         command_id: commandId,
         action: captured,

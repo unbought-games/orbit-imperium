@@ -1157,8 +1157,9 @@ export class Coordinator {
     return this.responseMatches(pending, result) ? result : null
   }
   async send(
-    command: Command,
-    quote?: SubmittedQuote,
+    input: Command,
+    proposal?: SubmittedQuote,
+    onRegistered?: (key: string) => void,
   ): Promise<string | undefined> {
     const b = this.binding,
       g = this.generation
@@ -1166,35 +1167,31 @@ export class Coordinator {
       this.message = 'Connect before confirming an action.'
       return
     }
-    if (this.clockNeedsSample) {
-      const captured = structuredClone(command)
-      try {
-        await this.resampleClock()
-      } catch (error) {
-        await this.problem(error, g, b)
+    // Capture the complete confirmed intent before any async prerequisite.
+    const command = structuredClone(input),
+      quote = structuredClone(proposal)
+    for (;;) {
+      if (!this.current(g, b) || !this.platform.isOnline()) return
+      this.tick()
+      if (this.platform.monotonicNowMs() < this.retryAt) {
+        this.explainUnsentDuringRecovery(command)
         return
       }
-      if (!this.current(g, b)) return
-      return this.send(captured, quote)
-    }
-    this.tick()
-    if (this.platform.monotonicNowMs() < this.retryAt) {
-      this.explainUnsentDuringRecovery(command)
-      return
-    }
-    if (this.orderRefresh) {
-      const captured = structuredClone(command)
-      const capturedQuote = structuredClone(quote)
-      while (this.orderRefresh) {
+      if (this.clockNeedsSample) {
+        try {
+          await this.resampleClock()
+        } catch (error) {
+          await this.problem(error, g, b)
+          return
+        }
+      } else if (this.orderRefresh) {
         const retirement: OrderRefresh = this.orderRefresh
         await this.refresh()
-        if (!this.current(g, b)) return
-        if (this.orderRefresh === retirement) {
+        if (this.current(g, b) && this.orderRefresh === retirement) {
           this.message = 'Refresh your empire before confirming this action.'
           return
         }
-      }
-      return this.send(captured, capturedQuote)
+      } else break
     }
     this.message = ''
     const state = this.store.getState()
@@ -1206,7 +1203,7 @@ export class Coordinator {
     const parent = commandParent(state, command)
     if (parent && !acceptedEntityReference(state, parent)) return
     const intent: SubmittedIntent = {
-      quote: quote ? structuredClone(quote) : undefined,
+      quote,
       submittedAt: Math.floor(currentServerTime(state)),
       ...(parent ? { dependsOn: parent.envelope.command_id } : {}),
       baseRevision: state.view?.viewer_revision ?? '0',
@@ -1280,6 +1277,8 @@ export class Coordinator {
       attempts: new Map(this.attempts).set(key, a),
       intents: new Map(state.intents).set(key, structuredClone(intent)),
     })
+    if (!this.current(g, b)) return
+    onRegistered?.(key)
     if (!this.current(g, b)) return
     if (!(await this.deliver(a, g, true))) return
     return commandId
