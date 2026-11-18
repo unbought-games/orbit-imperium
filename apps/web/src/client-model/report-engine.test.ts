@@ -228,6 +228,7 @@ it.each(['HUD first', 'list first'])(
 )
 
 it.each([
+  { sampledAt: 100_020, receivedAt: 100_030 }, // symmetric 10 ms transit
   { sampledAt: 100_010, receivedAt: 102_010 }, // delayed response body
   { sampledAt: 102_010, receivedAt: 102_010 }, // delayed server sampling
 ])(
@@ -240,10 +241,12 @@ it.each([
         ...changedHudTargets(before, after).map((target) => target.id),
       )
     })
-    h.store.setState({ now: 1 })
+    h.store.setState({ now: 100 })
     const initial = h.engine.ensureInbox()
     const empty = h.page([])
+    empty.sampled_at = 110
     empty.data.arrivals = { through: '0', created: {} }
+    h.store.setState({ now: 120 })
     h.pages[0].resolve(empty)
     await initial
     const suspended = h.engine.refreshInbox()
