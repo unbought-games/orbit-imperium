@@ -83,6 +83,8 @@ type Failure = {
   retryAfterMs?: number
 }
 const failure = (e: unknown): Failure => (e && typeof e === 'object' ? e : {})
+type OrderRefresh = { work?: Promise<void> }
+
 export class Coordinator {
   private mailboxReads = new Map<string, import('./social').SocialAction>()
   private mailboxVersion = 0
@@ -167,7 +169,7 @@ export class Coordinator {
   private restoredMutations: ReturnType<BoundCommandRecovery['restore']> = []
   private commandClock = { server: 0, received: 0, local: 0 }
   private needsClockRefresh = false
-  private orderRefresh: { work?: Promise<void> } | null = null
+  private orderRefresh: OrderRefresh | null = null
   private resumedOrders = new Set<string>()
   private deferredUntil = new Map<string, number>()
   private get commandNow() {
@@ -1183,7 +1185,7 @@ export class Coordinator {
       const captured = structuredClone(command)
       const capturedQuote = structuredClone(quote)
       while (this.orderRefresh) {
-        const retirement = this.orderRefresh
+        const retirement: OrderRefresh = this.orderRefresh
         await this.refresh()
         if (!this.current(g, b)) return
         if (this.orderRefresh === retirement) {
