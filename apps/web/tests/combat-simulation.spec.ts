@@ -21,7 +21,7 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
 ]
 for (const hidden of [false, true]) test(`prefills report simulation with ${hidden ? 'unknown' : 'observed'} intelligence`, async ({ page }) => {
   await installGameFixture(page, { protocol: 4, catalog, bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }, { ...body, id: id(6), inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '99' }] }, { ...body, id: id(7), kind: 'Moon' }], extraCapabilities: ['Reports'] })
-  const observedResources = { metal: '29800000000', crystal: '100000000', deuterium: '100000000' }
+  const observedResources = { metal: '29800000000', crystal: '110000000', deuterium: '90000000' }
   const header = { id: id(63), kind: 'Espionage', observed_at: 6000, read: true, hidden: false }
   await page.route('**/api/**/reports/**', async route => {
     const context = route.request().postDataJSON()
@@ -33,7 +33,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     submitted = route.request().postDataJSON()
     if (hidden && attempts++ === 0) { await route.fulfill({ status: 503, json: { code: 'Unavailable' } }); return }
     const observed = submitted.inputs.observed_resources !== undefined
-    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, moons_enabled: true, recycler_capacity: '20000000000', available_loot: observed ? { metal: '14900000000', crystal: '50000000', deuterium: '50000000' } : null, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, moon_chance_percent: hidden ? 20 : 0, debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity: '400000000', estimated_loot: observed ? { metal: '216000000', crystal: '50000000', deuterium: '50000000' } : null, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
+    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, moons_enabled: true, recycler_capacity: '20000000000', available_loot: observed ? { metal: '14900000000', crystal: '55000000', deuterium: '45000000' } : null, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, moon_chance_percent: hidden ? 20 : 0, debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity: '400000000', estimated_loot: observed ? { metal: '216000000', crystal: '55000000', deuterium: '45000000' } : null, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
   })
   await withFixtureResponse(page, r => r.url().endsWith(`/reports/${header.id}`), () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
   const trigger = page.getByRole('button', { name: 'Simulate combat', exact: true })
@@ -132,11 +132,14 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   await expect(results).toContainText('1 average battle round')
   await expect(results.getByRole('region', { name: 'Moon creation chance' })).toContainText('0%')
   if (hidden) {
-    await expect(cargo).toContainText('resources were not observed')
+    await expect(cargo).not.toContainText(/unknown|not observed/i)
+    await expect(cargo.getByRole('table', { name: 'Average gross haul' })).toHaveCount(0)
     await expect(cargo.getByText('Potential loot', { exact: false })).toHaveCount(0)
   } else {
-    await expect(cargo.getByText('Potential loot · unlimited cargo', { exact: true }).locator('..').getByRole('definition')).toHaveText('15,000')
-    await expect(cargo.getByText('Average gross haul', { exact: true }).locator('..').getByRole('definition').first()).toHaveText('316')
+    await expect(cargo.getByText('Potential loot', { exact: true }).locator('..').getByRole('definition')).toHaveText('15,000')
+    const haul = cargo.getByRole('table', { name: 'Average gross haul' })
+    await expect(haul.getByRole('rowheader')).toHaveText(['Metal', 'Crystal', 'Deuterium', 'Total'])
+    await expect(haul.getByRole('cell')).toHaveText(['216', '55', '45', '316'])
     await expect(cargo).toContainText('0 of 10 attacker victories collected the full potential loot')
   }
   if (!hidden) {
@@ -187,7 +190,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
   expect(submitted.inputs.observed_resources).toBeUndefined()
   if (!hidden) {
     await expect(survivors).toHaveJSProperty('open', false)
-    await expect(results.getByText('resources were not observed', { exact: false })).toBeVisible()
+    await expect(cargo.getByRole('table', { name: 'Average gross haul' })).toHaveCount(0)
+    await expect(cargo.getByText('Potential loot', { exact: true })).toHaveCount(0)
   }
   if (!hidden && process.env.ORBIT_TEST_SCREENSHOTS === '1') {
     for (const width of [1440, 390]) {
@@ -486,7 +490,9 @@ for (const width of [1440, 390]) test(`opens standalone simulation without repor
     await diagnosticScreenshot(page, { path: `test-results/simulation-filled-blanks-${width}x1000.png` })
   }
   const results = page.getByRole('region', { name: 'Simulation results' })
-  await expect(results).toContainText('resources were not observed')
+  const cargo = results.getByRole('region', { name: 'Cargo and loot' })
+  await expect(cargo.getByText('Average surviving cargo capacity', { exact: true })).toBeVisible()
+  await expect(cargo.getByRole('table', { name: 'Average gross haul' })).toHaveCount(0)
   expect(submitted.inputs.defender).toEqual({ technology: [7, 0, 0], units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }] })
   expect(submitted.inputs.observed_resources).toBeUndefined()
   await expect(page.getByRole('button', { name: 'Review attack' })).toHaveCount(0)

@@ -1,3 +1,4 @@
+import { AverageGrossHaul } from './average-gross-haul'
 import { SimulationDisclosure } from './simulation-disclosure'
 import {
   battleEstimates,
@@ -39,7 +40,7 @@ export function SimulationPlanning({
           <dl className={styles.lootMetrics}>
             {summary.potentialLoot !== null && (
               <div>
-                <dt>Potential loot · unlimited cargo</dt>
+                <dt>Potential loot</dt>
                 <dd>{amount(summary.potentialLoot)}</dd>
               </div>
             )}
@@ -49,48 +50,29 @@ export function SimulationPlanning({
                 <dd>{amount(summary.cargo.average)}</dd>
               </div>
             )}
-            {summary.total && summary.loot && (
-              <div>
-                <dt>Average gross haul</dt>
-                <dd>{amount(summary.total.average)}</dd>
-                <dd className={styles.haulBreakdown}>
-                  {summary.loot.map((row) => (
-                    <ResourceValue key={row.resource} resource={row.resource}>
-                      {amount(row.average)}
-                    </ResourceValue>
-                  ))}
-                </dd>
-              </div>
-            )}
           </dl>
-          {summary.total ? (
-            <>
-              {summary.potentialLoot === 0n ? (
-                <p>The observed resources yield no raid loot.</p>
-              ) : estimates.victories === 0 ? (
-                <p>No attacker victories in this sample.</p>
-              ) : (
-                estimates.cargoCovered !== null && (
-                  <p>
-                    <strong>
-                      {estimates.cargoCovered} of {estimates.victories}
-                    </strong>{' '}
-                    attacker victories collected the full potential loot.
-                  </p>
-                )
-              )}
-              <small>
-                Averages include every battle. Ships arrive empty, so launch
-                fuel uses no space at the target. Net haul after fuel is gross
-                haul minus the deuterium spent at launch.
-              </small>
-            </>
-          ) : (
-            <p>
-              {result.loot_rules_enabled
-                ? 'Loot is unknown because target resources were not observed.'
-                : 'Loot is unavailable because raiding is disabled in this universe.'}
-            </p>
+          {summary.loot && summary.total && (
+            <AverageGrossHaul
+              loot={summary.loot}
+              total={summary.total.average}
+            />
+          )}
+          {summary.total &&
+            summary.potentialLoot !== 0n &&
+            (estimates.victories === 0 ? (
+              <p>No attacker victories in this sample.</p>
+            ) : (
+              estimates.cargoCovered !== null && (
+                <p>
+                  <strong>
+                    {estimates.cargoCovered} of {estimates.victories}
+                  </strong>{' '}
+                  attacker victories collected the full potential loot.
+                </p>
+              )
+            ))}
+          {!result.loot_rules_enabled && (
+            <p>Raiding disabled in this universe.</p>
           )}
         </section>
         <section aria-label="New debris field">
@@ -193,15 +175,6 @@ export function SimulationPlanning({
             </div>
           )}
         </dl>
-        {summary.potentialLoot !== null && summary.potentialLoot > 0n && (
-          <p>
-            Potential loot is the most a victory can take from the observed
-            resources under this universe’s raid rules. Each victory counts
-            toward full coverage only when it collects that amount of every
-            resource. Loading each resource in turn can leave cargo space
-            unused. Other outcomes contribute zero haul to the average.
-          </p>
-        )}
         {estimates.recyclers && (
           <p>
             Recycler count rounds up to whole ships using{' '}

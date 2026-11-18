@@ -4,8 +4,8 @@ title: See how much loot your fleet can bring home
 date: '2026-11-18'
 ---
 
-The combat simulator now shows how much you could raid with unlimited cargo
-alongside your fleet’s average surviving capacity and average gross haul.
+The combat simulator now shows potential loot and your fleet’s average surviving
+cargo capacity. Average gross haul lists metal, crystal and deuterium with a total.
 You can also see how many simulated victories brought home the full amount.
 Launch fuel is paid separately.
 
