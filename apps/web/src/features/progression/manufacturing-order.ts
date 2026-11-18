@@ -45,6 +45,19 @@ export function manufacturingOrderIdentity(
   }
 }
 
+export function manufacturingOrderAvailable(
+  model: Model,
+  body: string,
+  busy: boolean,
+) {
+  return (
+    !busy &&
+    model.ready &&
+    !model.stale &&
+    !manufacturingPending(model.store.getState(), body)
+  )
+}
+
 export function canBuildManufacturingOrder(
   model: Model,
   preview: Preview,
@@ -53,10 +66,7 @@ export function canBuildManufacturingOrder(
   return (
     !!preview &&
     !preview.blockers.length &&
-    !busy &&
-    model.ready &&
-    !model.stale &&
-    !manufacturingPending(model.store.getState(), preview.request.body)
+    manufacturingOrderAvailable(model, preview.request.body, busy)
   )
 }
 

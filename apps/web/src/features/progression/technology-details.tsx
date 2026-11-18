@@ -7,6 +7,7 @@ import {
 import { progressionCommand, technologyRequest } from './options'
 import { useId, type ReactNode } from 'react'
 import { InputWithAction, FillButton } from '../../ui/input-with-action'
+import { manufacturingOrderAvailable } from './manufacturing-order'
 import { maximumManufacturingQuantity } from './manufacturing-preview'
 import { SatelliteOutput } from './satellite-output'
 import { ManufacturingOrderSummary } from './manufacturing-order-summary'
@@ -137,7 +138,9 @@ export function TechnologyDetails({
       : []
   const supportsMax = entry.key.kind === 'Ship' || entry.key.kind === 'Defense'
   const maximum =
-    supportsMax && !unavailable && model.ready && !model.stale && !order.busy
+    supportsMax &&
+    !unavailable &&
+    manufacturingOrderAvailable(model, body.id, order.busy)
       ? maximumManufacturingQuantity(proposal, body, view)
       : 0n
   const quantityField = (
