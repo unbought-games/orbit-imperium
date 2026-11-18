@@ -2,11 +2,30 @@ import type {
   ShipAppearanceAction,
   ShipAppearanceState,
   ShipDesign,
+  ShipDye,
   ShipPaintRecipe,
-  ShipRenderStage,
 } from '../../client-model/ship-appearance-types'
 
 export type ShipDraft = ShipDesign
+
+export function groupDyesByPalette(dyes: ShipDye[]) {
+  const groups = new Map<string | undefined, ShipDye[]>()
+  for (const dye of dyes) {
+    const group = groups.get(dye.palette_id)
+    if (group) group.push(dye)
+    else groups.set(dye.palette_id, [dye])
+  }
+  return Array.from(groups, ([id, dyes]) => ({
+    id,
+    title: id
+      ? id
+          .split(/[-_]+/)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+      : 'Standard dyes',
+    dyes,
+  }))
+}
 
 export function initialDraft(
   state: ShipAppearanceState,
@@ -89,41 +108,6 @@ export function sameRecipe(a: ShipPaintRecipe, b: ShipPaintRecipe): boolean {
     a.emblem.treatment === b.emblem.treatment &&
     a.emblem.placement === b.emblem.placement
   )
-}
-
-export const renderStatus: Record<
-  ShipRenderStage,
-  { title: string; detail: string }
-> = {
-  queued: {
-    title: 'Queued',
-    detail: 'Your design is saved and waiting for the hangar.',
-  },
-  rendering: {
-    title: 'Rendering',
-    detail: 'Your ship artwork is being rendered. You can keep designing.',
-  },
-  preparing: {
-    title: 'Preparing',
-    detail: 'Preparing your ship artwork for the fleet.',
-  },
-  ready: {
-    title: 'Ready',
-    detail: 'Your ship appearance is equipped in this empire.',
-  },
-  failed: {
-    title: 'Render failed',
-    detail: 'Your design is saved. Retry to finish preparing its artwork.',
-  },
-  superseded: {
-    title: 'Replaced',
-    detail: 'A newer appearance request has replaced this one.',
-  },
-  canceled: {
-    title: 'Canceled',
-    detail:
-      'This render was canceled. Your saved design remains in your library.',
-  },
 }
 
 /** Save the selected recipe against the latest observed account design head. */

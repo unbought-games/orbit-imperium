@@ -14,14 +14,24 @@ import { draftProblem, sameDesign, targetLabel } from './model'
 import { useShipDraft } from './use-ship-draft'
 import styles from './ship-customizer.module.css'
 
-export type ShipCustomizerProps = { target: string; onClose: () => void }
+export type ShipCustomizerProps = {
+  target: string
+  emblemHref: string
+  guideHref: string
+  onClose: () => void
+}
 
 /** The launch seam/provider own DEV gating. A target change starts a fresh editing session. */
 export function ShipCustomizer(props: ShipCustomizerProps) {
   return <HangarSession key={props.target} {...props} />
 }
 
-function HangarSession({ target, onClose }: ShipCustomizerProps) {
+function HangarSession({
+  target,
+  guideHref,
+  emblemHref,
+  onClose,
+}: ShipCustomizerProps) {
   const {
     snapshot,
     loading,
@@ -34,11 +44,11 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
     draft,
     equipment,
     edit,
+    toggleEmblem,
     choose,
     save,
     run,
     busy,
-    notice,
     error,
     hasUnsavedChanges,
   } = useShipDraft({ state: snapshot, target, perform, errorMessage })
@@ -73,28 +83,23 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
       )
     }
   }
-  const feedback =
-    notice || error || providerError || refreshError ? (
-      <div className={styles.feedback}>
-        {notice && <p role="status">{notice}</p>}
-        {(error || providerError || refreshError) && (
-          <>
-            <p role="alert" className={styles.warning}>
-              {error || providerError || refreshError}
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="small"
-              disabled={busy || loading}
-              onClick={() => void refresh()}
-            >
-              Reload choices
-            </Button>
-          </>
-        )}
-      </div>
-    ) : null
+  const failure = error || providerError || refreshError
+  const feedback = failure ? (
+    <div className={styles.feedback}>
+      <p role="alert" className={styles.warning}>
+        {failure}
+      </p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="small"
+        disabled={busy || loading}
+        onClick={() => void refresh()}
+      >
+        Reload choices
+      </Button>
+    </div>
+  ) : null
   return (
     <Dialog.Root
       open={open}
@@ -173,20 +178,17 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                       onReset={
                         equipment?.design_id
                           ? () =>
-                              void run(
-                                {
-                                  type: 'Reset',
-                                  target,
-                                  expected_equipment_revision:
-                                    equipment.revision,
-                                },
-                                'Standard appearance restored.',
-                              )
+                              void run({
+                                type: 'Reset',
+                                target,
+                                expected_equipment_revision: equipment.revision,
+                              })
                           : undefined
                       }
                     />
                   </div>
                   <PaintControls
+                    guideHref={guideHref}
                     recipe={draft.recipe}
                     skins={snapshot.catalog.filter(
                       (item) => item.target === target,
@@ -196,17 +198,16 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                     onChange={(recipe) => edit({ recipe })}
                   />
                   <EmblemControls
+                    editHref={emblemHref}
                     emblem={snapshot.emblem}
-                    value={draft.recipe.emblem}
+                    checked={draft.recipe.emblem.treatment !== 'none'}
                     disabled={busy}
-                    onChange={(emblem) =>
-                      edit({ recipe: { ...draft.recipe, emblem } })
-                    }
+                    onToggle={toggleEmblem}
                   />
                   {problem && <p className={styles.warning}>{problem}</p>}
                   <div className={styles.saveActions}>
                     <Button type="submit" disabled={busy || !!problem}>
-                      {busy ? 'Saving changes…' : 'Save and equip'}
+                      Save and equip
                     </Button>
                     {savedDesign && !isEquipped && (
                       <Button
@@ -214,34 +215,27 @@ function HangarSession({ target, onClose }: ShipCustomizerProps) {
                         variant="secondary"
                         disabled={busy || !!problem}
                         onClick={() =>
-                          void run(
-                            {
-                              type: 'Equip',
-                              target,
-                              design_id: savedDesign.id,
-                              design_revision: savedDesign.revision,
-                              expected_equipment_revision:
-                                equipment?.revision ?? 0,
-                            },
-                            'Saved design selected. Your fleet artwork is being prepared.',
-                          )
+                          void run({
+                            type: 'Equip',
+                            target,
+                            design_id: savedDesign.id,
+                            design_revision: savedDesign.revision,
+                            expected_equipment_revision:
+                              equipment?.revision ?? 0,
+                          })
                         }
                       >
                         Use saved design
                       </Button>
                     )}
-                    {isEquipped && (
-                      <span className={styles.muted}>
-                        Selected for this empire
-                      </span>
-                    )}
+                    <RenderProgress
+                      equipment={equipment}
+                      showSaved={!!isEquipped && !busy && !failure}
+                      busy={busy}
+                      run={run}
+                      feedback={feedback}
+                    />
                   </div>
-                  <p className={styles.help}>
-                    Saved designs are reusable. Changes here leave ships in
-                    other empires as they are.
-                  </p>
-                  <RenderProgress equipment={equipment} busy={busy} run={run} />
-                  {feedback}
                 </form>
               </>
             ) : (

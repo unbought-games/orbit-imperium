@@ -47,6 +47,20 @@ function initialState(): ShipAppearanceState {
         color: '#b66f42',
         availability: 'available',
       },
+      {
+        id: 'reward-umber',
+        name: 'Reward umber',
+        color: '#694833',
+        access: 'earned',
+        availability: 'locked',
+      },
+      {
+        id: 'member-pearl',
+        name: 'Member pearl',
+        color: '#ddd9cc',
+        access: 'membership',
+        availability: 'locked',
+      },
     ],
     library: [
       {
@@ -60,7 +74,7 @@ function initialState(): ShipAppearanceState {
           package_revision: 'concord-v1',
           primary: 'porcelain',
           accent: 'navy',
-          emblem: { treatment: 'full', placement: 'paired' },
+          emblem: { treatment: 'layers', placement: 'near-wing' },
         },
       },
     ],
@@ -206,6 +220,8 @@ export function ShipCustomizationScenario() {
         {open && (
           <ShipCustomizer
             target="LightFighter"
+            emblemHref="/u/demo/b/forge/settings/identity#empire-insignia"
+            guideHref="/u/demo/b/forge/rewards#dye-unlocks"
             onClose={() => setOpen(false)}
           />
         )}

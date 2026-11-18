@@ -28,8 +28,8 @@ export function useShipDraft({
   // Only explicit selections and edits are local; fresh observations never replace them.
   const [edits, setEdits] = useState<ShipDraft | null>(null)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+  const hiddenTreatment = useRef<'layers' | 'full'>('full')
   const running = useRef(false)
   const feedbackAction = useRef<symbol | null>(null)
   const saved = useRef<{
@@ -54,7 +54,6 @@ export function useShipDraft({
     saved.current = null
     if (feedbackAction.current === pending.feedbackAction) {
       setError('')
-      setNotice(`“${submitted.name}” is saved.`)
     }
     // Advance only our successful save's revision token, preserving subsequent edits.
     setEdits((current) =>
@@ -70,18 +69,33 @@ export function useShipDraft({
   function edit(patch: Partial<ShipDraft>) {
     if (!draft) return
     setEdits({ ...draft, ...patch })
-    setNotice('')
+  }
+
+  function toggleEmblem() {
+    if (!draft) return
+    const { emblem } = draft.recipe
+    if (emblem.treatment !== 'none') hiddenTreatment.current = emblem.treatment
+    edit({
+      recipe: {
+        ...draft.recipe,
+        emblem: {
+          ...emblem,
+          treatment:
+            emblem.treatment === 'none' ? hiddenTreatment.current : 'none',
+        },
+      },
+    })
   }
 
   function choose(design: ShipDesign) {
+    // A copy inherits the current draft. Selecting a library entry starts fresh.
+    if (design.id) hiddenTreatment.current = 'full'
     setEdits(design)
-    setNotice('')
     setError('')
   }
 
   async function run(
     action: ShipAppearanceAction,
-    success: string,
     submission?: { design: ShipDesign; selectedRevision: number },
   ): Promise<boolean> {
     if (running.current) return false
@@ -92,11 +106,9 @@ export function useShipDraft({
       saved.current = { ...submission, feedbackAction: actionIdentity }
     setBusy(true)
     setError('')
-    setNotice('')
     try {
       const ok = await perform(action)
-      if (ok) setNotice(success)
-      else
+      if (!ok)
         setError(
           errorMessage() ||
             'The change could not be confirmed. Your edits are still here. Refresh the status before trying again.',
@@ -118,7 +130,7 @@ export function useShipDraft({
     const action = savePayload(draft, state, draft.id || commandId(crypto))
     // The selected revision describes this empire's recipe, not the account head.
     setEdits({ ...action.design, revision: draft.revision })
-    await run(action, 'Design saved.', {
+    await run(action, {
       design: action.design,
       selectedRevision: draft.revision,
     })
@@ -129,11 +141,11 @@ export function useShipDraft({
     draft,
     equipment,
     edit,
+    toggleEmblem,
     choose,
     save,
     run,
     busy,
-    notice,
     error,
     hasUnsavedChanges: hasUnsavedDraft(state, edits),
   }

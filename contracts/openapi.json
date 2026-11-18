@@ -29732,6 +29732,14 @@
           "palette_id": {
             "type": "string"
           },
+          "access": {
+            "type": "string",
+            "enum": [
+              "free",
+              "membership",
+              "earned"
+            ]
+          },
           "availability": {
             "type": "string",
             "enum": [

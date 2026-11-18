@@ -24,6 +24,7 @@ export function Popover({
   children,
   className,
   link,
+  button,
   surfaceClassName,
   showTitle = true,
   placement = 'bottom',
@@ -40,6 +41,7 @@ export function Popover({
   showTitle?: boolean
   placement?: Placement
   link?: ReactElement<ComponentPropsWithRef<'a'>>
+  button?: ReactElement<ComponentPropsWithRef<'button'>>
 }) {
   const id = useId()
   const descriptionId = useId()
@@ -81,7 +83,9 @@ export function Popover({
         delay={150}
         className={className}
         aria-label={
-          link ? (link.props['aria-label'] ?? label) : `${label} details`
+          link
+            ? (link.props['aria-label'] ?? label)
+            : (button?.props['aria-label'] ?? `${label} details`)
         }
         aria-describedby={
           [
@@ -94,7 +98,7 @@ export function Popover({
         aria-haspopup={link ? undefined : 'dialog'}
         aria-expanded={link ? undefined : open}
         role={link ? 'link' : undefined}
-        render={link ?? <Button variant="ghost" type="button" />}
+        render={link ?? button ?? <Button variant="ghost" type="button" />}
         onFocus={(event) => {
           if (
             !suppressRestoredFocus.current &&
@@ -134,7 +138,9 @@ export function Popover({
           aria-label={label}
           role={link ? 'tooltip' : 'dialog'}
           portalProps={{
-            container: anchor.current?.closest('dialog') ?? undefined,
+            container:
+              anchor.current?.closest<HTMLElement>('dialog, [role="dialog"]') ??
+              undefined,
           }}
           positionerProps={{ side, align }}
           className={classes(styles.popover, surfaceClassName)}

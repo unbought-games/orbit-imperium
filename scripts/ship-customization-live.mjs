@@ -299,10 +299,13 @@ try {
   await dialog
     .getByRole('button', { name: 'Primary: Graphite', exact: true })
     .click()
+  await dialog.getByRole('button', { name: 'Accent', exact: true }).click()
   await dialog
     .getByRole('button', { name: 'Accent: Gold', exact: true })
     .click()
-  await dialog.getByLabel('Appearance', { exact: true }).selectOption('layers')
+  await expect(
+    dialog.getByRole('switch', { name: 'Show empire emblem' }),
+  ).toBeChecked()
   const saved = page.waitForResponse(
     (r) =>
       r.url() === endpoint &&
@@ -324,9 +327,7 @@ try {
       { timeout: 60_000 },
     )
     .toBe('ready')
-  await expect(
-    dialog.getByRole('region', { name: 'Fleet appearance status' }),
-  ).toHaveCount(0)
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Saved')
   const firstAsset = state.equipment[0].artwork.id
   for (const variant of state.equipment[0].artwork.variants) {
     const media = await page.request.get(origin + variant.url)
