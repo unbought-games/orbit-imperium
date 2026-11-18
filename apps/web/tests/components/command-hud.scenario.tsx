@@ -27,6 +27,7 @@ import observation from '../../../../contracts/fixtures/espionage-expanded.json'
 
 type S = components['schemas']
 export type HudInput = {
+  headers?: S['ReportHeader4'][]
   reports?: number
   invalidCursor?: boolean
   missions?: S['MissionView4']
@@ -48,16 +49,15 @@ async function prepareHud(input: HudInput = {}) {
   const { session, snapshot } = readyFixture(4)
   const view = snapshot.view
   if (view.protocol !== 4) throw Error('Expected protocol 4')
-  const headers: S['ReportHeader4'][] = Array.from(
-    { length: input.reports ?? 0 },
-    (_, index) => ({
+  const headers: S['ReportHeader4'][] =
+    input.headers ??
+    Array.from({ length: input.reports ?? 0 }, (_, index) => ({
       id: id(4000 + index),
       kind: input.kind ?? 'Espionage',
       read: false,
       hidden: false,
       observed_at: time - index,
-    }),
-  )
+    }))
   view.bodies = [{ ...body, name: input.homeName }]
   if (input.missions) view.missions = input.missions
   if (input.playerNames) view.player_names = input.playerNames

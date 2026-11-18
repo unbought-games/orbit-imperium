@@ -9,9 +9,11 @@ export function ResourceValue({
   resource,
   children,
   noWrap = false,
+  inline = false,
 }: {
   resource: ResourceKind
   noWrap?: boolean
+  inline?: boolean
   children: ReactNode
 }) {
   const title = resource[0].toUpperCase() + resource.slice(1)
@@ -19,6 +21,7 @@ export function ResourceValue({
     <span
       className={styles.value}
       data-nowrap={noWrap || undefined}
+      data-inline={inline || undefined}
       title={title}
     >
       <ResourceMark
