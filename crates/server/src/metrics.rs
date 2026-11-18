@@ -443,6 +443,21 @@ mod tests {
         );
     }
     #[test]
+    fn serving_observer_exposes_worker_retention_samples() {
+        let metrics = Arc::new(RuntimeMetrics::new());
+        let serving = orbit_transport_http::RequestTimingObserver(metrics.clone());
+        serving.retention(None, "activity", (128, 720_000_000), true);
+        let rendered = metrics.render();
+        assert!(rendered.contains(
+            "orbit_retention_eligible_groups_capped{universe=\"all\",kind=\"activity\"} 128\n"
+        ));
+        assert!(rendered.contains("orbit_retention_oldest_eligible_record_age_seconds{universe=\"all\",kind=\"activity\"} 720000\n"));
+        assert!(
+            rendered
+                .contains("orbit_retention_scan_limited{universe=\"all\",kind=\"activity\"} 1\n")
+        );
+    }
+    #[test]
     fn exposition_has_bounded_labels_and_cumulative_duration_buckets() {
         let metrics = RuntimeMetrics::new();
         metrics.duration(
