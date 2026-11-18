@@ -1,18 +1,6 @@
 import type { components } from '../contracts'
 import { dispatchQuantity } from './dispatch-validation'
-import { rawResourceRates } from './production-rates'
 import { resourceNames } from './resources'
-
-type S = components['schemas']
-
-export function dispatchCargoOrigin(view: S['BoundView4'], id: string) {
-  const body = view.bodies.find((body) => body.id === id)
-  if (!body) return
-  const rate = BigInt(rawResourceRates(view, body)?.deuterium ?? '0')
-  // Keep one minute of net consumption on the planet during review and launch.
-  const reviewReserve = rate < 0n ? (-rate + 59n) / 60n : 0n
-  return { amounts: body.amounts, reviewReserve }
-}
 
 type Resource = (typeof resourceNames)[number]
 
@@ -41,93 +29,140 @@ export function dispatchCargoCapacity(
   return { capacity, payload, loaded, remaining: payload - loaded }
 }
 
-function cargoSpace(
-  available: components['schemas']['Resources'],
-  maximumPayload: string,
-  fuel: string,
-  current: string[],
-  reviewReserve: bigint,
-) {
-  const balances = resourceNames.map((resource) => {
+type S = components['schemas']
+type Fill = S['FleetCargoFill4']
+type Space = Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>
+const kinds = ['Metal', 'Crystal', 'Deuterium'] as const
+
+export type CargoDraft = { entered: string[]; groups: Fill['groups'] }
+export const emptyCargoDraft = (): CargoDraft => ({
+  entered: ['0', '0', '0'],
+  groups: [],
+})
+
+export function editDispatchCargo(
+  draft: CargoDraft,
+  index: number,
+  value: string,
+): CargoDraft {
+  return {
+    entered: draft.entered.map((old, i) => (i === index ? value : old)),
+    groups: draft.groups
+      .map((group) => group.filter((kind) => kind !== kinds[index]))
+      .filter((group) => group.length),
+  }
+}
+
+export function selectDispatchCargo(
+  draft: CargoDraft,
+  fill: Resource | 'all',
+): CargoDraft {
+  if (fill === 'all') {
+    const remaining = kinds.filter(
+      (kind) => !draft.groups.some((group) => group.includes(kind)),
+    )
+    return remaining.length
+      ? { ...draft, groups: [...draft.groups, remaining] }
+      : draft
+  }
+  const index = resourceNames.indexOf(fill)
+  // An already-maximized resource keeps its place in the player's allocation.
+  if (
+    draft.groups.some((group) => group.includes(kinds[index])) &&
+    dispatchQuantity(draft.entered[index]) === '0'
+  )
+    return draft
+  const next = editDispatchCargo(draft, index, '0')
+  return { ...next, groups: [...next.groups, [kinds[index]]] }
+}
+
+export function cargoAmounts(values: string[]): S['Resources'] {
+  const micro = (i: number) =>
+    String(BigInt(dispatchQuantity(values[i])) * 1000000n)
+  return { metal: micro(0), crystal: micro(1), deuterium: micro(2) }
+}
+
+export function cargoInstruction(draft: CargoDraft): Fill | undefined {
+  return draft.groups.length
+    ? { minimum: cargoAmounts(draft.entered), groups: draft.groups }
+    : undefined
+}
+
+export function projectDispatchCargo(
+  draft: CargoDraft,
+  available: S['Resources'],
+  terms: Space,
+): string[] {
+  const amounts = resourceNames.map((resource) => {
     const balance =
       BigInt(available[resource]) -
-      (resource === 'deuterium' ? BigInt(fuel) : 0n)
-    return balance > 0n ? balance : 0n
+      (resource === 'deuterium' ? BigInt(terms.fuel) : 0n)
+    return balance > 0n ? balance / 1000000n : 0n
   })
   const loaded = resourceNames.map((_, i) =>
-    BigInt(dispatchQuantity(current[i])),
+    BigInt(dispatchQuantity(draft.entered[i])),
   )
-  const remaining =
-    BigInt(maximumPayload) / 1000000n -
-    loaded.reduce((sum, amount) => sum + amount, 0n)
-  if (loaded.some((amount, i) => amount * 1000000n > balances[i]))
+  if (loaded.some((n, i) => n > amounts[i]))
     throw Error(
       'Entered cargo exceeds available resources after reserving fuel.',
     )
+  let remaining =
+    BigInt(terms.maximum_payload) / 1000000n -
+    loaded.reduce((a, b) => a + b, 0n)
   if (remaining < 0n)
     throw Error('Entered cargo exceeds this fleet’s capacity.')
-  const amounts = balances.map((balance, i) => {
-    if (resourceNames[i] !== 'deuterium') return balance / 1000000n
-    const afterReserve = (balance - reviewReserve) / 1000000n
-    // A manual entry may use the reserve. Auto-fill only adds to it.
-    return afterReserve > loaded[i] ? afterReserve : loaded[i]
-  })
-  return { amounts, loaded, remaining }
-}
-
-/** Preserve entered cargo and share spare space equally, redistributing shortages. */
-export function allDispatchCargo(
-  available: components['schemas']['Resources'],
-  maximumPayload: string,
-  fuel: string,
-  current: string[] = [],
-  reviewReserve = 0n,
-): string[] {
-  const space = cargoSpace(
-    available,
-    maximumPayload,
-    fuel,
-    current,
-    reviewReserve,
-  )
-  const { amounts, loaded } = space
-  let { remaining } = space
-  while (remaining > 0n) {
-    const candidates = loaded.flatMap((amount, i) =>
-      amount < amounts[i] ? [i] : [],
-    )
-    if (!candidates.length) break
-    const share = remaining / BigInt(candidates.length)
-    // Whole-unit remainders use the stable metal/crystal/deuterium order.
-    for (const i of candidates) {
-      const room = amounts[i] - loaded[i]
-      const portion = share > 0n ? share : 1n
-      const added = room < portion ? room : portion
-      loaded[i] += added
-      remaining -= added
-      if (remaining === 0n) break
+  for (const group of draft.groups) {
+    const indices = group.map((kind) => kinds.indexOf(kind))
+    while (remaining > 0n) {
+      const candidates = indices.filter((i) => loaded[i] < amounts[i])
+      if (!candidates.length) break
+      const share = remaining / BigInt(candidates.length) || 1n
+      for (const i of candidates) {
+        const room = amounts[i] - loaded[i]
+        const added = room < share ? room : share
+        loaded[i] += added
+        remaining -= added
+        if (remaining === 0n) break
+      }
     }
   }
   return loaded.map(String)
 }
 
-/** Max one resource without changing other cargo or spending reserved fuel. */
-export function maxDispatchCargo(
-  available: components['schemas']['Resources'],
-  maximumPayload: string,
-  fuel: string,
-  current: string[],
-  resource: Resource,
-  reviewReserve = 0n,
-): string[] {
-  const index = resourceNames.indexOf(resource)
-  const { amounts, loaded, remaining } = cargoSpace(
-    available,
-    maximumPayload,
-    fuel,
-    resourceNames.map((_, i) => (i === index ? '0' : current[i])),
-    reviewReserve,
-  )
-  loaded[index] = amounts[index] < remaining ? amounts[index] : remaining
-  return loaded.map(String)
+// Preserve unfinished text even when it prevents projecting the other fields.
+export function displayedCargo(
+  draft: CargoDraft,
+  available: S['Resources'],
+  terms?: Space,
+) {
+  if (!draft.groups.length || !terms) return draft.entered
+  try {
+    const filled = projectDispatchCargo(draft, available, terms)
+    return draft.entered.map((text, i) =>
+      draft.groups.some((group) => group.includes(kinds[i])) ? filled[i] : text,
+    )
+  } catch {
+    return draft.entered
+  }
+}
+
+export function materialCargoChanges(
+  before: S['Resources'],
+  after: S['Resources'],
+) {
+  return resourceNames.filter((resource) => {
+    const old = BigInt(before[resource]),
+      next = BigInt(after[resource])
+    return old !== next && (old > next ? old - next : next - old) * 10n >= old
+  })
+}
+
+export function matchesCargoInstruction(fill: Fill, loaded: S['Resources']) {
+  return resourceNames.every((name, i) => {
+    const fixed = BigInt(fill.minimum[name]),
+      actual = BigInt(loaded[name])
+    return fill.groups.some((group) => group.includes(kinds[i]))
+      ? actual >= fixed
+      : actual === fixed
+  })
 }

@@ -1,8 +1,8 @@
+import {
+  projectDispatchCargo,
+  type CargoDraft,
+} from '../client-model/dispatch-cargo'
 import { expect, it, vi } from 'vitest'
-import { dispatchCargoOrigin } from '../client-model/dispatch-cargo'
-import { readyFixture } from '../test-support/bootstrap'
-import { body } from '../test-support/empire'
-import { productionFixture } from '../test-support/production'
 import type { components } from '../contracts'
 import {
   DispatchRequests,
@@ -72,9 +72,15 @@ function fixture() {
   })
   const ports = {
     world,
-    origin: () => ({ amounts, reviewReserve: 0n }),
+    origin: () => ({ amounts }),
     quote: vi.fn(),
-    cargo: vi.fn(),
+    cargo:
+      vi.fn<
+        (
+          draft: CargoDraft,
+          terms: Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>,
+        ) => void
+      >(),
     error: vi.fn(),
     busy: vi.fn(),
     clear: vi.fn(),
@@ -83,6 +89,7 @@ function fixture() {
   return {
     requests,
     ports,
+    amounts: () => amounts,
     setAmounts: (next: typeof amounts) => {
       amounts = next
     },
@@ -216,7 +223,7 @@ it.each([
 it.each(['all', 'deuterium'] as const)(
   'fills %s using current stocks, reserves fuel, and never opens review',
   async (fill) => {
-    const { requests, ports, setAmounts } = fixture()
+    const { requests, ports, setAmounts, amounts } = fixture()
     const held = deferred<Awaited<ReturnType<DispatchReviewPorts['world']>>>()
     const entered = deferred<void>()
     ports.world
@@ -242,63 +249,11 @@ it.each(['all', 'deuterium'] as const)(
     }
     held.resolve(terms(intent))
     await result
-    expect(ports.cargo).toHaveBeenLastCalledWith(
+    const [draft, estimate] = ports.cargo.mock.lastCall!
+    expect(projectDispatchCargo(draft, amounts(), estimate)).toEqual(
       fill === 'all' ? ['6', '4', '2'] : ['2', '0', '2'],
     )
     expect(ports.quote).not.toHaveBeenCalled()
-  },
-)
-it.each(['all', 'deuterium'] as const)(
-  'fills %s with review time for a planet consuming deuterium',
-  async (fill) => {
-    const { requests, ports } = fixture()
-    const { view } = readyFixture(4).snapshot
-    if (view.protocol !== 4) throw Error('Expected world view')
-    const planet = {
-      ...body,
-      id: input.originId,
-      amounts: {
-        metal: '713000000',
-        crystal: '226694000000',
-        deuterium: '898485050000',
-      },
-    }
-    const production = productionFixture(planet)
-    production.net_deuterium_per_hour = {
-      sign: 'Negative',
-      magnitude: '409230591',
-    }
-    view.bodies = [planet]
-    view.progression.production = [production]
-    const origin = () => dispatchCargoOrigin(view, planet.id)
-    ports.world.mockImplementation(async (query) => {
-      if (query.type === 'ResolveDestination') return destination
-      if (query.type !== 'FleetEstimate')
-        throw Error('Expected a flight estimate')
-      return {
-        estimate: true,
-        intent: query.intent,
-        duration_ms: 3619000,
-        profile_hash: 'profile',
-        capacity: '1200000000000',
-        maximum_payload: '1192490000000',
-        fuel: '7510000000',
-      }
-    })
-    const fleet: DispatchReviewInput = {
-      ...input,
-      types: ['Recycler'],
-      ships: { Recycler: '60' },
-    }
-    await requests.review(fleet, { ...ports, origin }, fill)
-    expect(ports.cargo).toHaveBeenCalledWith(
-      fill === 'all' ? ['713', '226694', '890968'] : ['0', '0', '890968'],
-    )
-    production.net_deuterium_per_hour.sign = 'Nonnegative'
-    await requests.review(fleet, { ...ports, origin }, fill)
-    expect(ports.cargo).toHaveBeenLastCalledWith(
-      fill === 'all' ? ['713', '226694', '890975'] : ['0', '0', '890975'],
-    )
   },
 )
 it('preserves invalid cargo and surfaces the problem when Add all cannot fill it', async () => {
@@ -611,7 +566,7 @@ it('occupied colony resolution stops before quote and reports an actionable erro
 it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
   'fills %s from an estimate with no fleet slot, while review still rejects',
   async (fill) => {
-    const { requests, ports } = fixture()
+    const { requests, ports, amounts } = fixture()
     ports.world.mockImplementation(async (query) => {
       if (query.type === 'ResolveDestination') return destination
       if (query.type === 'FleetQuote') throw Error('NoFleetSlot')
@@ -632,12 +587,12 @@ it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
     await requests.review(input, ports, fill)
     expect(ports.cargo).toHaveBeenCalledOnce()
     expect(ports.quote).not.toHaveBeenCalled()
+    const [draft, estimate] = ports.cargo.mock.lastCall!
+    const cargo = projectDispatchCargo(draft, amounts(), estimate)
     expect(
-      ports.cargo.mock.calls[0][0]
-        .map(BigInt)
-        .reduce((sum: bigint, n: bigint) => sum + n, 0n),
+      cargo.map(BigInt).reduce((sum: bigint, n: bigint) => sum + n, 0n),
     ).toBeLessThanOrEqual(50n)
-    expect(BigInt(ports.cargo.mock.calls[0][0][2])).toBeLessThanOrEqual(10n)
+    expect(BigInt(cargo[2])).toBeLessThanOrEqual(10n)
     await requests.review(input, ports)
     expect(ports.quote).not.toHaveBeenCalled()
     expect(ports.error).toHaveBeenLastCalledWith(

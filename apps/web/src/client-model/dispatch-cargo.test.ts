@@ -1,9 +1,44 @@
 import { expect, it } from 'vitest'
 import {
-  allDispatchCargo,
+  emptyCargoDraft,
+  cargoInstruction,
+  editDispatchCargo,
+  materialCargoChanges,
+  selectDispatchCargo,
+  projectDispatchCargo,
   dispatchCargoCapacity,
-  maxDispatchCargo,
+  type CargoDraft,
 } from './dispatch-cargo'
+
+type Available = Parameters<typeof projectDispatchCargo>[1]
+function allDispatchCargo(
+  available: Available,
+  maximum_payload: string,
+  fuel: string,
+  entered: string[] = [],
+) {
+  return projectDispatchCargo(
+    selectDispatchCargo({ entered, groups: [] }, 'all'),
+    available,
+    { maximum_payload, fuel },
+  )
+}
+function maxDispatchCargo(
+  available: Available,
+  maximum_payload: string,
+  fuel: string,
+  entered: string[],
+  resource: 'metal' | 'crystal' | 'deuterium',
+) {
+  const draft: CargoDraft = {
+    entered: ['0', '0', '0'].map((v, i) => entered[i] ?? v),
+    groups: [],
+  }
+  return projectDispatchCargo(selectDispatchCargo(draft, resource), available, {
+    maximum_payload,
+    fuel,
+  })
+}
 
 it('derives empty, loaded, full and excessive cargo space from server terms', () => {
   const terms = { capacity: '5000000000', maximum_payload: '4998500000' }
@@ -172,22 +207,43 @@ it('rejects invalid or excessive existing cargo instead of silently overwriting 
   ).toThrow('capacity')
 })
 
-it('preserves manually entered deuterium inside the review reserve and still rejects a real shortage', () => {
-  const reserve = 3000000n
+it('keeps a Max selection first when Add all follows, and a manual edit fixes only its resource', () => {
+  const max = selectDispatchCargo(emptyCargoDraft(), 'deuterium')
+  const all = selectDispatchCargo(max, 'all')
+  const edited = editDispatchCargo(all, 0, '5')
+  expect(cargoInstruction(edited)).toEqual({
+    minimum: { metal: '5000000', crystal: '0', deuterium: '0' },
+    groups: [['Deuterium'], ['Crystal']],
+  })
   expect(
-    allDispatchCargo(stocks, '200000000', '1000000', ['0', '0', '9'], reserve),
-  ).toEqual(['100', '40', '9'])
-  expect(() =>
-    allDispatchCargo(stocks, '200000000', '1000000', ['0', '0', '11'], reserve),
-  ).toThrow('available resources')
+    projectDispatchCargo(edited, stocks, {
+      maximum_payload: '25000000',
+      fuel: '1000000',
+    }),
+  ).toEqual(['5', '10', '10'])
+})
+it('asks again at a 10% change in either direction per resource, including a newly available resource', () => {
+  const before = { metal: '100000000', crystal: '0', deuterium: '10000000' }
   expect(
-    maxDispatchCargo(
-      stocks,
-      '200000000',
-      '1000000',
-      [],
-      'deuterium',
-      12000000n,
-    ),
-  ).toEqual(['0', '0', '0'])
+    materialCargoChanges(before, {
+      metal: '109999999',
+      crystal: '0',
+      deuterium: '9000001',
+    }),
+  ).toEqual([])
+  expect(
+    materialCargoChanges(before, {
+      metal: '110000000',
+      crystal: '1000000',
+      deuterium: '9000000',
+    }),
+  ).toEqual(['metal', 'crystal', 'deuterium'])
+})
+
+it('clicking Max again preserves a full shared load', () => {
+  const all = selectDispatchCargo(emptyCargoDraft(), 'all')
+  const terms = { maximum_payload: '9000000', fuel: '1000000' }
+  expect(
+    projectDispatchCargo(selectDispatchCargo(all, 'deuterium'), stocks, terms),
+  ).toEqual(['3', '3', '3'])
 })

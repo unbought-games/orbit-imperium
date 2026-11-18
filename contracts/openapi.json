@@ -13569,6 +13569,9 @@
           "attack_group": {
             "type": "string",
             "format": "uuid"
+          },
+          "cargo_fill": {
+            "$ref": "#/components/schemas/FleetCargoFill4"
           }
         },
         "required": [
@@ -30129,6 +30132,38 @@
           },
           "action": {
             "$ref": "#/components/schemas/ShipAppearanceAction"
+          }
+        }
+      },
+      "FleetCargoFill4": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "minimum",
+          "groups"
+        ],
+        "properties": {
+          "minimum": {
+            "$ref": "#/components/schemas/WholeResources"
+          },
+          "groups": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 3,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "Metal",
+                  "Crystal",
+                  "Deuterium"
+                ]
+              }
+            }
           }
         }
       }

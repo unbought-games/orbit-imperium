@@ -271,6 +271,7 @@ impl Fixture {
     }
     async fn intent(&self) -> FleetIntent {
         FleetIntent {
+            cargo_fill: None,
             attack_group: None,
             hold_hours: None,
             origin: self.body,

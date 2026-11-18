@@ -165,6 +165,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
 }
 fn intent(s: &GameState, p: PlayerId, b: BodyId, t: BodyId) -> FleetIntent {
     FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: b,
@@ -516,6 +517,7 @@ fn harvest_reports(lunar: bool) {
         let loaded = Resources::from_values(loaded.map(|n| n * SCALE));
         let collected = Resources::from_values(expected.map(|n| n * SCALE));
         let intent = FleetIntent {
+            cargo_fill: None,
             attack_group: None,
             hold_hours: None,
             origin: b,
@@ -631,6 +633,7 @@ fn harvest_reference_survives_return_and_cleanup_records_loss() {
         },
     );
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: b,
@@ -764,6 +767,7 @@ fn equal_time_collectors_serialize_and_empty_marker_remains_eligible() {
         },
     );
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: b,
@@ -3531,3 +3535,79 @@ mod site_execution;
 
 #[path = "missions/jump_gates.rs"]
 mod jump_gates;
+
+#[test]
+fn maximum_cargo_launch_checks_each_reviewed_amount_and_debits_the_actual_load() {
+    let (mut state, rules, player, origin, target) = fixture();
+    let mut request = intent(&state, player, origin, target);
+    request.cargo = Resources::default();
+    request.cargo_fill = Some(FleetCargoFill {
+        minimum: Resources::from_values([10 * SCALE, 0, 0]),
+        groups: vec![vec![ResourceKind::Deuterium]],
+    });
+    let estimate = estimate_fleet(&state, player, &request, &rules).unwrap();
+    let stock =
+        |units| Resources::from_values([100 * SCALE, 0, estimate.fuel + units * SCALE + SCALE / 2]);
+    state.bodies.get_mut(&origin).unwrap().checkpoint.amounts = stock(100);
+    let reviewed = quote_fleet(&state, player, &request, 0, &rules).unwrap();
+    assert_eq!(
+        reviewed.intent.cargo,
+        Resources::from_values([10 * SCALE, 0, 100 * SCALE])
+    );
+    for (units, material) in [
+        (109, false),
+        (91, false),
+        (110, true),
+        (90, true),
+        (150, true),
+        (50, true),
+    ] {
+        let mut current = state.clone();
+        current.bodies.get_mut(&origin).unwrap().checkpoint.amounts = stock(units);
+        let launch = |s: &mut GameState, quote: &FleetTerms| {
+            run(
+                s,
+                &rules,
+                player,
+                origin,
+                0,
+                97000,
+                Input::Command(Command::World {
+                    action: WorldAction::LaunchFleet {
+                        intent: quote.intent.clone(),
+                        expected_terms_hash: quote.terms_hash.clone(),
+                    },
+                }),
+            )
+        };
+        let mut result = launch(&mut current, &reviewed);
+        if material {
+            assert_eq!(result, TransitionResult::Rejected(GameError::QuoteChanged));
+            assert!(current.world.as_ref().unwrap().records.fleets.is_empty());
+            assert_eq!(current.bodies[&origin].checkpoint.amounts, stock(units));
+            let refreshed = quote_fleet(&current, player, &reviewed.intent, 0, &rules).unwrap();
+            assert_eq!(refreshed.intent.cargo.deuterium, units * SCALE);
+            result = launch(&mut current, &refreshed);
+        }
+        apply(&mut current, result);
+        let fleet = current
+            .world
+            .as_ref()
+            .unwrap()
+            .records
+            .fleets
+            .values()
+            .next()
+            .unwrap();
+        assert_eq!(
+            fleet.cargo,
+            Resources::from_values([10 * SCALE, 0, units * SCALE])
+        );
+        assert_eq!(fleet.cargo, fleet.terms.intent.cargo);
+        assert!(fleet.intent.cargo_fill.is_none());
+        assert_eq!(
+            current.bodies[&origin].checkpoint.amounts.deuterium,
+            SCALE / 2
+        );
+    }
+}

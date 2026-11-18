@@ -84,6 +84,7 @@ async fn launch(
 ) -> MissionFleet {
     let (host, target) = destination;
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: group,
         hold_hours: None,
         origin,
@@ -649,6 +650,7 @@ async fn invited_group_join_restart_battle_reports_and_returns_in_both_runtimes(
             .await
             .unwrap();
         let hold = FleetIntent {
+            cargo_fill: None,
             attack_group: None,
             hold_hours: Some(16),
             origin: bodies[3],

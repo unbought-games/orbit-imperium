@@ -55,9 +55,19 @@ pub struct ManifestStack {
     #[serde(with = "decimal_wire")]
     pub count: i64,
 }
+/// Fixed whole-unit cargo (in micro-units), followed by ordered groups to fill.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FleetCargoFill {
+    #[serde(with = "resource_strings")]
+    pub minimum: Resources,
+    pub groups: Vec<Vec<ResourceKind>>,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FleetIntent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cargo_fill: Option<FleetCargoFill>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_group: Option<OperationId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -4,7 +4,6 @@ import { DispatchTiming } from './dispatch-timing'
 import { InputWithAction, FillButton } from '../ui/input-with-action'
 import { NumberInput, RangeInput, Field } from '../ui/form'
 import { ResourceMark } from '../ui/resource-mark'
-import { Caption } from '../ui/typography'
 import { Button } from '../ui/button'
 import { resourceNames } from '../client-model/resources'
 import styles from './missions.module.css'
@@ -12,7 +11,6 @@ import styles from './missions.module.css'
 export function DispatchCargoControls({
   cargo,
   space,
-  reviewReserve,
   message,
   disabled,
   onNormalize,
@@ -22,10 +20,9 @@ export function DispatchCargoControls({
   cargo: string[]
   space: ComponentProps<typeof DispatchCargoCapacity>['space']
   message: string
-  reviewReserve: bigint
   disabled: boolean
-  onNormalize: (cargo: string[]) => void
-  onChange: (cargo: string[]) => void
+  onNormalize: (index: number, value: string) => void
+  onChange: (index: number, value: string) => void
   onFill: (resource: 'all' | (typeof resourceNames)[number]) => void
 }) {
   return (
@@ -44,11 +41,10 @@ export function DispatchCargoControls({
                 value={cargo[i]}
                 placeholder="0"
                 onBlur={(e) => {
-                  if (!e.target.value.trim())
-                    onNormalize(cargo.map((n, j) => (i === j ? '0' : n)))
+                  if (!e.target.value.trim()) onNormalize(i, '0')
                 }}
                 onChange={(e) => {
-                  onChange(cargo.map((n, j) => (i === j ? e.target.value : n)))
+                  onChange(i, e.target.value)
                 }}
               />
             </Field>
@@ -71,12 +67,6 @@ export function DispatchCargoControls({
           Add all
         </Button>
       </div>
-      {reviewReserve > 0n && (
-        <Caption className={styles.cargoReserve}>
-          Deuterium is falling. Auto-fill allows for one minute of reactor
-          consumption while you review.
-        </Caption>
-      )}
     </fieldset>
   )
 }

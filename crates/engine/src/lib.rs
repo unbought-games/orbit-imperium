@@ -81,6 +81,7 @@ mod galaxy;
 pub use galaxy::*;
 mod missiles;
 pub use missiles::*;
+mod fleet_cargo;
 mod missions;
 pub use missions::*;
 mod encounter;
