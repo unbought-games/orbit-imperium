@@ -333,6 +333,7 @@ try {
   for (const [name, position, dreadnoughts] of [
     ['attacker', 8, 402],
     ['defender', 9, 200],
+    ['courier', 10, 1],
   ]) {
     const planet = '1:1:' + position
     edits.push(
@@ -360,6 +361,8 @@ try {
   await start()
   const attacker = await login('attacker', password),
     defender = await login('defender', password)
+  const courier = await login('courier', password)
+  const portOfDeparture = (await courier.view()).bodies[0]
   const a = (await attacker.view()).bodies[0],
     b = (await defender.view()).bodies[0]
   const dest = (body, owner, kind = 'Planet') => ({
@@ -428,8 +431,8 @@ try {
     { ...zero, metal: '111000000' },
   )
   const delivery = await launch(
-    attacker,
-    a.id,
+    courier,
+    portOfDeparture.id,
     moon,
     'Transport',
     { SmallCargo: 1 },
@@ -479,7 +482,7 @@ try {
   assert.equal(returning.intent.origin, b.id)
   assert.equal(returning.due_at, returnDue)
   assert.equal(returning.cargo.metal, '111000000')
-  const friendly = (await attacker.view()).missions.fleets.find(
+  const friendly = (await courier.view()).missions.fleets.find(
     (f) => f.id === delivery.fleet.id,
   )
   assert.equal(friendly.intent.destination.id, b.id)
@@ -495,7 +498,7 @@ try {
   )
   assert.equal(
     (
-      await attacker.report(
+      await courier.report(
         await reportId('MoonFleetRedirected', delivery.fleet.id),
       )
     ).destination_redirected,
@@ -572,7 +575,9 @@ try {
     afterReplay.bodies[0].inventories,
     finalView.bodies[0].inventories,
   )
-  assert.equal(cargoShips(afterReplay.bodies[0]), 3)
+  const courierHome = await courier.view()
+  assert.equal(courierHome.missions.fleets.length, 0)
+  assert.equal(cargoShips(courierHome.bodies[0]), 3)
   assert.deepEqual(
     await attacker.report(await reportId('Combat', wave.fleet.id)),
     combat,
