@@ -722,7 +722,11 @@ test('a launch-time cargo change preserves the routed review and Edit cargo reop
   const command = page.waitForRequest(r => r.url().endsWith('/commands') && r.postDataJSON()?.gameplay?.command?.action?.type === 'LaunchFleet')
   await withFixtureResponse(page, fleetQuote, () => panel.getByRole('button', {name:/^Deploy to/}).click())
   expect((await command).postDataJSON().gameplay.command.action).toMatchObject({
-    intent: {cargo: original.cargo}, expected_terms_hash: original.hash,
+    intent: {
+      cargo: original.cargo,
+      cargo_fill: { minimum: {metal:'0', crystal:'0', deuterium:'0'}, groups:[['Deuterium']] },
+    },
+    expected_terms_hash: original.hash,
   })
   await expect(panel.getByRole('status')).toContainText(/3,000.*1,500/)
   await expect(panel.getByRole('button',{name:'Confirm changes and launch'})).toBeEnabled()

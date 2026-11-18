@@ -3613,3 +3613,77 @@ fn maximum_cargo_launch_checks_each_reviewed_amount_and_debits_the_actual_load()
         );
     }
 }
+
+#[test]
+fn reactor_consumption_between_review_and_departure_loads_every_remaining_whole_unit() {
+    let rules = standard_signup_rules(UniverseProfile::signup(2, 100).unwrap(), 3).unwrap();
+    let (mut state, rules, player, origin, target) = fixture_with_rules(rules);
+    for body in state.bodies.values_mut() {
+        body.levels = rules
+            .building_keys()
+            .into_iter()
+            .map(|key| (key, 0))
+            .collect();
+    }
+    for research in state.research.values_mut() {
+        research.levels = rules
+            .research_keys()
+            .into_iter()
+            .map(|key| (key, 0))
+            .collect();
+    }
+    fixture_building(&mut state, &rules, origin, Building::FusionReactor, 7);
+    fixture_research(&mut state, &rules, player, ResearchId::CombustionDrive, 9);
+    set_units(
+        &mut state,
+        &rules,
+        origin,
+        ManufacturedItem::Ship(ShipType::Recycler),
+        61,
+    );
+    state.bodies.get_mut(&target).unwrap().coordinates.system = 11;
+    state.bodies.get_mut(&origin).unwrap().checkpoint.amounts =
+        Resources::from_values([713 * SCALE, 226694 * SCALE, 898485 * SCALE + 50000]);
+
+    let mut fleet = intent(&state, player, origin, target);
+    fleet.ships[0].ship_type = ShipType::Recycler;
+    fleet.ships[0].count = 60;
+    fleet.cargo_fill = Some(FleetCargoFill {
+        minimum: Resources::default(),
+        groups: vec![vec![
+            ResourceKind::Metal,
+            ResourceKind::Crystal,
+            ResourceKind::Deuterium,
+        ]],
+    });
+    let reviewed = quote_fleet(&state, player, &fleet, 1000, &rules).unwrap();
+    assert_eq!(reviewed.fuel, 7510 * SCALE);
+    assert_eq!(reviewed.intent.cargo.deuterium, 890974 * SCALE);
+
+    let result = run(
+        &mut state,
+        &rules,
+        player,
+        origin,
+        30000,
+        97001,
+        Input::Command(Command::World {
+            action: WorldAction::LaunchFleet {
+                intent: reviewed.intent.clone(),
+                expected_terms_hash: reviewed.terms_hash.clone(),
+            },
+        }),
+    );
+    apply(&mut state, result);
+    let departed = state
+        .world
+        .as_ref()
+        .unwrap()
+        .records
+        .fleets
+        .values()
+        .next()
+        .unwrap();
+    assert_eq!(departed.cargo.deuterium, 890971 * SCALE);
+    assert_eq!(state.bodies[&origin].checkpoint.amounts.deuterium, 639745);
+}
