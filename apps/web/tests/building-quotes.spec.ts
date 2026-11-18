@@ -460,11 +460,20 @@ test(`quick build follows live affordability without requerying and confirmed co
 // This journey owns selected-body routing and the submitted command identity.
 test('quick build submits for the selected planet after catalog navigation', async ({ page }) => {
   const fixture = await quickBuildFixture(page)
+  const [home, colony] = fixture.planets
+  home.fields_reserved = 0
+  colony.levels.CrystalMine = 2
+  colony.fields_used = 4
+  colony.fields = 218
+  colony.fields_reserved = 0
   await openQuickBuildCatalog(page)
+  const catalog = page.getByRole('region', { name: 'Resource buildings' })
+  await expect(catalog.getByText('3 of 163 fields used', { exact: true })).toBeVisible()
   await withProgressionResponse(page,
     request => 'body' in request && request.body === id(6) && 'building' in request && request.building === 'MetalMine',
     () => selectBody(page, id(6)),
   )
+  await expect(catalog.getByText('4 of 218 fields used', { exact: true })).toBeVisible()
   const build = page.getByRole('button', { name: 'Build Metal Mine level 2', exact: true })
   await expect(build).toBeEnabled()
   await build.click()

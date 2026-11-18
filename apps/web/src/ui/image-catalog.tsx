@@ -77,19 +77,26 @@ export function CatalogImage({
 
 export function CatalogSection({
   title,
+  description,
   actions,
   children,
 }: {
   title: string
+  description?: string
   actions?: ReactNode
   children: ReactNode
 }) {
   return (
     <section className={styles.frame} aria-label={title}>
-      {actions ? (
+      {actions || description ? (
         <div className={styles.header}>
-          <h2>{title}</h2>
-          <div className={styles.headerActions}>{actions}</div>
+          <div className={styles.headingGroup}>
+            <h2>{title}</h2>
+            {description && (
+              <span className={styles.description}>{description}</span>
+            )}
+          </div>
+          {actions && <div className={styles.headerActions}>{actions}</div>}
         </div>
       ) : (
         <h2>{title}</h2>
