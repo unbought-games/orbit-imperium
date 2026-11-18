@@ -977,11 +977,10 @@ test('quick build reserves competing rows and renders acknowledgment, countdown 
     exact: true,
   })
   const target = row.getByLabel('Target level 2')
-  await expect(target).toHaveText('Level 2')
+  await expect(row.getByText('Lvl 1', { exact: true })).toBeVisible()
+  await expect(target).toHaveText('Lvl 2')
   await expect(target).toHaveCSS('font-weight', '700')
-  await expect(row.getByLabel('Construction progress')).toContainText(
-    'Level 1 → Level 2',
-  )
+  await expect(row.getByLabel('Construction progress')).toContainText('→ Lvl 2')
   const titleBox = (await row
     .getByText('Solar Plant', { exact: true })
     .boundingBox())!

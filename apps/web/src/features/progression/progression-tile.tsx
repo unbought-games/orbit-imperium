@@ -37,6 +37,7 @@ export function ProgressionTile({
         view={view}
         request={request}
         tile={props}
+        cost={cost}
         unavailable={
           tile.disabled ? (tile.disabledReason ?? 'Unavailable') : ''
         }

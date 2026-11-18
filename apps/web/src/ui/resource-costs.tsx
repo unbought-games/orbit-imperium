@@ -9,12 +9,39 @@ import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
 import { resourceDecision } from './resource-cost-values'
 import { formatWholeNumber } from './whole-number'
+import { formatCompactCost } from './compact-resource'
+import hidden from './visually-hidden.module.css'
 import styles from './resource-costs.module.css'
 const materials = [
   { name: 'metal', title: 'Metal' },
   { name: 'crystal', title: 'Crystal' },
   { name: 'deuterium', title: 'Deuterium' },
 ] as const
+/** A noninteractive preview inside a link; full prices remain available to assistive technology. */
+export function ResourceCostPreview({
+  cost,
+}: {
+  cost: components['schemas']['Resources']
+}) {
+  const priced = materials.filter(({ name }) => BigInt(cost[name]) > 0n)
+  if (!priced.length) return null
+  return (
+    <span className={styles.preview}>
+      <span className={hidden.hidden}>Next level costs </span>
+      {priced.map(({ name, title }) => {
+        const exact = formatWholeNumber(cost[name], 1_000_000) + ' ' + title
+        return (
+          <span key={name} className={styles.previewAmount} title={exact}>
+            <ResourceMark resource={name} width={16} height={16} />
+            <span aria-hidden="true">{formatCompactCost(cost[name])}</span>
+            <span className={hidden.hidden}>{exact} </span>
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
 export function ResourceCosts({
   cost,
   available,
