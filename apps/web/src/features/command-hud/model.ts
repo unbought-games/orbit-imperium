@@ -2,6 +2,7 @@ import type { components } from '../../contracts'
 import type { Attempt } from '../../client-model/commands'
 import type { GameState } from '../../client-model/game-store'
 import { acceptedEntityReference } from '../../client-model/game-projection'
+import { reportResumeCutoff } from '../../client-model/report-inbox'
 import { isHostileMission } from '../../client-model/hostile-fleets'
 import {
   projectedReportHeader,
@@ -122,17 +123,7 @@ function arrivingReports(before: GameState, after: GameState): HudTarget[] {
     current.arrivals.through === previous.arrivals?.through
   )
     return []
-  // On the first refresh after returning, compare observation times with the
-  // return instant in server time. A slow foreground read is still live.
-  const resume = after.deliveryResumedAt
-  const resumeServerTime =
-    resume !== null &&
-    previous.firstPage &&
-    previous.firstPage.resumedAt !== resume &&
-    current.firstPage
-      ? current.firstPage.sampledAt -
-        Math.max(0, current.firstPage.receivedAt - resume)
-      : null
+  const resumeServerTime = reportResumeCutoff(previous, current)
   const reports = unreadReports(after).filter((report) => {
     if (resumeServerTime !== null && report.observed_at < resumeServerTime)
       return false

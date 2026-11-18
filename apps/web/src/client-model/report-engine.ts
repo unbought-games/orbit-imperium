@@ -168,6 +168,7 @@ export class ReportEngine {
       this.inboxWork === work &&
       reportRequestScope(this.store.getState()) === scope
     const read = async (cursor: string | null) => {
+      const requestedAt = now()
       const response = current()
         ? await this.port.page(cursor, this.query ?? unreadReportQuery)
         : null
@@ -183,6 +184,7 @@ export class ReportEngine {
         if (cursor === null)
           firstPage = {
             resumedAt: state.deliveryResumedAt,
+            requestedAt,
             receivedAt: now(),
             sampledAt: response.sampled_at,
           }

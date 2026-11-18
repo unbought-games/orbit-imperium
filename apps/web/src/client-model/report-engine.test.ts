@@ -227,48 +227,58 @@ it.each(['HUD first', 'list first'])(
   },
 )
 
-it('catches up after a suspended tab or reconnect, keeping only live arrivals', async () => {
-  const h = fixture()
-  const events: string[] = []
-  const stop = h.store.subscribe((after, before) => {
-    events.push(...changedHudTargets(before, after).map((target) => target.id))
-  })
-  const initial = h.engine.ensureInbox()
-  const empty = h.page([])
-  empty.data.arrivals = { through: '0', created: {} }
-  h.pages[0].resolve(empty)
-  await initial
-  const suspended = h.engine.refreshInbox()
-  h.store.setState({ foreground: false, online: false, stale: true })
-  h.store.setState({
-    foreground: true,
-    online: true,
-    stale: false,
-    now: 3_600_000,
-    deliveryResumedAt: 3_599_000,
-  })
-  const wake = h.engine.refreshInbox()
-  const page = h.page(['live', 'away'])
-  page.sampled_at = 3_600_000
-  page.data.items[0].observed_at = page.sampled_at
-  page.data.items[1].observed_at = 1_000
-  page.data.arrivals = { through: '2', created: { live: '2', away: '1' } }
-  // The request predating the suspension completes first at the same viewer
-  // revision. It cannot establish the new activity baseline or consume arrivals.
-  h.pages[1].resolve(page)
-  await expect(suspended).rejects.toThrow('Unable to confirm your reports')
-  expect(unreadBadgeCount(h.store.getState())).toBe(0)
-  expect(events).toEqual([])
-  h.pages[2].resolve(page)
-  await wake
-  expect(unreadBadgeCount(h.store.getState())).toBe(2)
-  expect(events).toEqual(['live'])
-  const refresh = h.engine.refreshInbox()
-  h.pages[3].resolve(page)
-  await refresh
-  expect(events).toEqual(['live'])
-  stop()
-})
+it.each([
+  { sampledAt: 100_010, receivedAt: 102_010 }, // delayed response body
+  { sampledAt: 102_010, receivedAt: 102_010 }, // delayed server sampling
+])(
+  'keeps only post-return arrivals when the server samples at $sampledAt',
+  async ({ sampledAt, receivedAt }) => {
+    const h = fixture()
+    const events: string[] = []
+    const stop = h.store.subscribe((after, before) => {
+      events.push(
+        ...changedHudTargets(before, after).map((target) => target.id),
+      )
+    })
+    h.store.setState({ now: 1 })
+    const initial = h.engine.ensureInbox()
+    const empty = h.page([])
+    empty.data.arrivals = { through: '0', created: {} }
+    h.pages[0].resolve(empty)
+    await initial
+    const suspended = h.engine.refreshInbox()
+    h.store.setState({ foreground: false, online: false, stale: true })
+    h.store.setState({
+      foreground: true,
+      online: true,
+      stale: false,
+      now: 100_010,
+      deliveryResumedAt: 100_000,
+    })
+    const wake = h.engine.refreshInbox()
+    const page = h.page(['live', 'away'])
+    page.sampled_at = sampledAt
+    page.data.items[0].observed_at = 100_005
+    page.data.items[1].observed_at = 99_000
+    page.data.arrivals = { through: '2', created: { live: '2', away: '1' } }
+    // The request predating the suspension completes first at the same viewer
+    // revision. It cannot establish the new activity baseline or consume arrivals.
+    h.pages[1].resolve(page)
+    await expect(suspended).rejects.toThrow('Unable to confirm your reports')
+    expect(unreadBadgeCount(h.store.getState())).toBe(0)
+    expect(events).toEqual([])
+    h.store.setState({ now: receivedAt })
+    h.pages[2].resolve(page)
+    await wake
+    expect(unreadBadgeCount(h.store.getState())).toBe(2)
+    expect(events).toEqual(['live'])
+    const refresh = h.engine.refreshInbox()
+    h.pages[3].resolve(page)
+    await refresh
+    expect(events).toEqual(['live'])
+    stop()
+  },
+)
 
 it('reconciles external deletion for all surfaces, retaining cached details outside membership', async () => {
   const h = fixture()

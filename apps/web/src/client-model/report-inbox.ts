@@ -6,10 +6,37 @@ export type ReportInbox = ReportPage & {
   revision: string
   firstPage?: {
     resumedAt: number | null
+    requestedAt: number
     receivedAt: number
     sampledAt: number
   }
 }
+/** Map the local resume instant into server time. The server sampled each page
+ * between the request and response. Intersect those clock-offset bounds so a
+ * delayed response cannot move the cutoff back, and a delayed request can use
+ * the previous sample. After sleep the monotonic clock may have stopped. */
+export function reportResumeCutoff(
+  previous: ReportInbox,
+  current: ReportInbox,
+) {
+  const before = previous.firstPage
+  const after = current.firstPage
+  if (
+    !before ||
+    !after ||
+    after.resumedAt === null ||
+    before.resumedAt === after.resumedAt
+  )
+    return null
+  const priorUpper = before.sampledAt - before.requestedAt
+  const upper = after.sampledAt - after.requestedAt
+  const lower = after.sampledAt - after.receivedAt
+  return (
+    after.resumedAt +
+    (priorUpper >= lower ? Math.min(priorUpper, upper) : upper)
+  )
+}
+
 type Read = (cursor: string | null) => Promise<BoundReports | null>
 
 export function appendInboxPage(
