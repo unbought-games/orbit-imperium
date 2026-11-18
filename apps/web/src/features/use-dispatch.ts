@@ -227,7 +227,7 @@ export function useDispatch({
     requests.invalidate()
     setCheckingReview(false)
     setQuote(null)
-    navigation?.close()
+    navigation?.close('edit')
   }
   useEffect(() => {
     if (!initialReview) return
@@ -344,6 +344,7 @@ export function useDispatch({
       !canSubmitQuote(model.store.getState(), command, quote)
     )
       return
+    if (navigation && !navigation.close('send')) return
     await requests.submit(
       command,
       quote,
@@ -356,10 +357,7 @@ export function useDispatch({
         attempts: () => model.store.getState().attempts,
         send: (command, quote) => model.send(command, quote),
         submitted: setSubmitted,
-        closeReview: () => {
-          setQuote(null)
-          navigation?.close(true)
-        },
+        closeReview: () => setQuote(null),
       },
     )
   }
@@ -394,15 +392,11 @@ export function useDispatch({
           ),
         quote: (terms) => {
           setQuote(terms)
-          navigation?.open(
-            terms,
-            {
-              galaxy: Number(galaxy),
-              system: Number(system),
-              position: Number(position),
-            },
-            draft?.observedAt,
-          )
+          navigation?.open(terms, {
+            galaxy: Number(galaxy),
+            system: Number(system),
+            position: Number(position),
+          })
         },
         cargo: setCargo,
         error: setError,

@@ -18,12 +18,8 @@ type S = components['schemas']
 export type DispatchNavigation = {
   restored?: ReviewedFleet
   expired: boolean
-  open: (
-    terms: S['FleetTerms4'],
-    coordinates: S['Coordinates'],
-    observedAt?: number,
-  ) => void
-  close: (sent?: boolean) => void
+  open: (terms: S['FleetTerms4'], coordinates: S['Coordinates']) => void
+  close: (action: 'edit' | 'send') => boolean
 }
 
 export function RoutedDispatch({
@@ -93,35 +89,40 @@ export function RoutedDispatch({
   const navigation: DispatchNavigation = {
     restored,
     expired: !!dispatchExpired,
-    open: (terms, coordinates, observedAt) => {
+    open: (terms, coordinates) => {
       if (!current()) return
-      const review = session.open(editor, terms, coordinates, observedAt)
+      const review = session.open(editor, terms, coordinates, draft)
       void navigate({
         ...routeTarget(universe, 'dispatch', body.id, 'review'),
         state: { dispatchReview: review.id, dispatchEditor: editor },
         replace: true,
       })
     },
-    close: (sent) => {
-      if (!restored || !current()) return
+    close: (action) => {
+      if (!restored || !current() || !session.match(restored.id, body.id))
+        return false
+      const source = action === 'send' ? null : restored.source
       session.retire(restored.id)
       void navigate({
         ...routeTarget(universe, 'dispatch', body.id),
-        search: sent ? {} : dispatchSearch(reviewedDraft(restored)),
+        search: source ? dispatchSearch(source) : {},
         state: {
           dispatchEditor: editor,
-          ...(sent
-            ? {}
-            : {
+          ...(source
+            ? {
                 dispatchSession: session.id,
                 dispatchObservation: {
-                  target: restored.terms.intent.destination,
-                  observedAt: restored.observedAt,
+                  target: source.target,
+                  observedAt: source.observedAt,
+                  ships: source.ships,
+                  speed: source.speed,
                 },
-              }),
+              }
+            : {}),
         },
         replace: true,
       })
+      return true
     },
   }
   return (

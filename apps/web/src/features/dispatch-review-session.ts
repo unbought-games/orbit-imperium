@@ -1,5 +1,6 @@
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
+import { commandId } from '../adapters/command-id'
 import { canonical } from '../client-model/commands'
 import { dispatchSelection } from '../client-model/dispatch-timing'
 import { dispatchFailure } from '../client-model/dispatch-validation'
@@ -11,17 +12,17 @@ export type ReviewedFleet = {
   editor: string
   terms: S['FleetTerms4']
   coordinates: S['Coordinates']
-  observedAt?: number
+  source: DispatchDraft | null
 }
 
 export class DispatchReviewSession {
-  readonly id = crypto.randomUUID()
+  readonly id = commandId(crypto)
   private active?: ReviewedFleet
   private preparation?: string
 
   prepare(autoReview: boolean) {
     this.active = undefined
-    const id = crypto.randomUUID()
+    const id = commandId(crypto)
     this.preparation = autoReview ? id : undefined
     return id
   }
@@ -36,14 +37,14 @@ export class DispatchReviewSession {
     editor: string,
     terms: S['FleetTerms4'],
     coordinates: S['Coordinates'],
-    observedAt?: number,
+    source: DispatchDraft | null = null,
   ) {
     this.active = {
-      id: crypto.randomUUID(),
+      id: commandId(crypto),
       editor,
       terms,
       coordinates,
-      observedAt,
+      source,
     }
     return this.active
   }
@@ -63,7 +64,7 @@ export function reviewedDraft(review: ReviewedFleet): DispatchDraft {
     mission: intent.mission,
     coordinates: review.coordinates,
     target: intent.destination,
-    observedAt: review.observedAt,
+    observedAt: review.source?.observedAt,
     targetKind:
       intent.destination.type === 'Debris'
         ? 'debris'
