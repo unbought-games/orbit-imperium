@@ -72,7 +72,7 @@ pub(super) async fn commands<S: GameStore + IdentityStore>(
 pub(super) async fn receipt<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
-    Path((id, command)): Path<(uuid::Uuid, uuid::Uuid)>,
+    Path((id, command)): Path<(uuid::Uuid, String)>,
     q: Result<Query<ReceiptQuery>, axum::extract::rejection::QueryRejection>,
 ) -> Result<Response, Problem> {
     let session = authenticate(&s, &h, false).await?;
@@ -91,7 +91,7 @@ pub(super) async fn receipt<S: GameStore + IdentityStore>(
                     universe: p.universe,
                     epoch: q.epoch,
                 },
-                CommandId(command),
+                CommandId(command.parse().map_err(|_| ServiceError::Malformed)?),
             )
             .await?,
     ))

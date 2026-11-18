@@ -1058,8 +1058,21 @@ impl PgStore {
             crate::holding::lock(&mut tx, b.universe, b.epoch).await?;
         }
         crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
+        // V7 has one deadline for both halves. Legacy browser pairs used independent
+        // v4 IDs and legacy machine pairs used their original, stable transform.
+        crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
+        let presence = CommandIdentity::parse(pair.presence.command_id.0)?;
+        let same_pair = match presence {
+            CommandIdentity::LegacyV4 => pair.gameplay.command_id.0.get_version_num() == 4,
+            CommandIdentity::V7 { .. } => {
+                paired_presence_id(pair.gameplay.command_id.0) == pair.presence.command_id.0
+            }
+        };
+        if !same_pair {
+            return Err(StoreError::Conflict);
+        }
         let pair_hash = hash(&pair);
-        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
+        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await? {
             timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
@@ -1157,7 +1170,8 @@ impl PgStore {
                 self.timer(RuntimeStage::OrderingHold),
             )
         };
-        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
+        crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
+        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await? {
             timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
@@ -1241,6 +1255,7 @@ impl PgStore {
         }
         #[cfg(feature = "test-support")]
         self.test_fault("before_pair_admission").await?;
+        crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
         let commit_timing = self.timer(RuntimeStage::AdmissionCommit);
         tx.commit().await.map_err(db_error)?;
         drop(commit_timing);

@@ -92,6 +92,29 @@ pub(crate) async fn existing_command(
 pub(crate) async fn existing_pair(
     tx: &mut Tx<'_>,
     pair: &ForegroundAction,
+    machine: bool,
+) -> Result<Option<BoundReceipt>, StoreError> {
+    match lookup_pair(tx, pair).await {
+        // A pre-bridge server accepted any UUID and flipped the high bit for
+        // machine presence. Only recognize that format against *both* retained
+        // receipts and the exact original intent. New admissions never write it.
+        Err(StoreError::Conflict)
+            if machine && pair.gameplay.command_id.0.get_version_num() == 7 =>
+        {
+            let mut legacy = pair.clone();
+            let gameplay = legacy.gameplay.command_id.0.as_u128();
+            legacy.presence.command_id = uuid::Uuid::from_u128(gameplay ^ (1 << 127)).into();
+            lookup_pair(tx, &legacy)
+                .await?
+                .ok_or(StoreError::Conflict)
+                .map(Some)
+        }
+        result => result,
+    }
+}
+async fn lookup_pair(
+    tx: &mut Tx<'_>,
+    pair: &ForegroundAction,
 ) -> Result<Option<BoundReceipt>, StoreError> {
     let b = pair.gameplay.binding;
     let rows=sqlx::query("SELECT command_id,intent_hash,receipt FROM commands WHERE universe=$1 AND epoch=$2 AND actor=$3 AND command_id=ANY($4)")

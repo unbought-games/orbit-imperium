@@ -253,6 +253,7 @@ impl PgStore {
             .map_err(db_error)?
             .ok_or(StoreError::NotFound)?;
         let profile = identity(&mut tx, Some(account), player).await?;
+        crate::command_window::check(&mut tx, q.command_id).await?;
         let intent =
             orbit_engine::hash(&json!({"action":q.action,"revision":q.expected_revision})).0;
         if let Some((old, actor)) = sqlx::query_as::<_, (String, Uuid)>(
@@ -359,6 +360,7 @@ impl PgStore {
             .map_err(db_error)?;
         sqlx::query("INSERT INTO empire_profile_receipts(player,command,account,intent) VALUES($1,$2,$3,$4)")
             .bind(player).bind(q.command_id).bind(account.0).bind(intent).execute(&mut *tx).await.map_err(db_error)?;
+        crate::command_window::check(&mut tx, q.command_id).await?;
         tx.commit().await.map_err(db_error)
     }
 }
