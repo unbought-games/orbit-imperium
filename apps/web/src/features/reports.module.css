@@ -92,14 +92,14 @@
 }
 .reportType[data-kind='Combat'],
 .reportType[data-kind='ContactLost'] {
-  color: #e39885;
+  color: var(--report-loss);
 }
 .reportType[data-kind='Delivered'] {
-  color: #91c9ac;
+  color: var(--report-win);
 }
 .reportType[data-kind='Espionage'],
 .reportType[data-kind='SpyContact'] {
-  color: #94bfe5;
+  color: var(--report-espionage);
 }
 @media (hover: hover) {
   .reportRow:hover {
@@ -235,13 +235,13 @@
 }
 
 .win {
-  color: #91c9ac;
+  color: var(--report-win);
 }
 .loss {
-  color: #e39885;
+  color: var(--report-loss);
 }
 .neutral {
-  color: #cbb68d;
+  color: var(--report-neutral);
 }
 
 .reportRow > .location {

@@ -18474,6 +18474,11 @@
               "kind": {
                 "const": "SpyContact"
               },
+              "sender": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Sender recorded in the recipient's spy contact. Sent to clients requesting X-Orbit-Report-Preview: 1."
+              },
               "origin": {
                 "$ref": "#/components/schemas/Coordinates"
               },
@@ -18907,6 +18912,7 @@
                 "enum": [
                   "AttackerVictory",
                   "DefenderVictory",
+                  "MutualDestruction",
                   "Draw"
                 ]
               }

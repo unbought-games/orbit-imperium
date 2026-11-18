@@ -8587,6 +8587,11 @@ export interface components {
         } | {
             /** @constant */
             kind: "SpyContact";
+            /**
+             * Format: uuid
+             * @description Sender recorded in the recipient's spy contact. Sent to clients requesting X-Orbit-Report-Preview: 1.
+             */
+            sender?: string;
             origin?: components["schemas"]["Coordinates"];
             target?: components["schemas"]["Coordinates"];
             detected?: boolean;
@@ -8712,7 +8717,7 @@ export interface components {
             cargo?: components["schemas"]["Resources"];
             at?: number;
             /** @enum {string} */
-            outcome?: "AttackerVictory" | "DefenderVictory" | "Draw";
+            outcome?: "AttackerVictory" | "DefenderVictory" | "MutualDestruction" | "Draw";
         };
         RankingPlayer: {
             /** Format: uuid */

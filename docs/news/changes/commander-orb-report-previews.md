@@ -1,0 +1,1 @@
+The commander orb now shows what happened, where, and how recently. Combat headlines distinguish attacking from defending, harvests show the resources collected, and spy contacts identify the sender when available. Thanks to Churak for requesting report ages in the commander view.

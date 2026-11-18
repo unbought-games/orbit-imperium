@@ -177,3 +177,46 @@ it('classifies malformed successful JSON as unreadable data rather than a networ
     schemaName: 'JSON',
   })
 })
+
+it('negotiates spy identity while accepting older inbox rows and mutual destruction at an NPC site', async () => {
+  const { session, snapshot } = readyFixture(4)
+  const context = {
+    binding: snapshot.candidate.binding,
+    request_id: snapshot.request_id,
+  }
+  const sender = '00000000-0000-4000-8000-000000000099'
+  const items = [
+    { kind: 'SpyContact', sender },
+    { kind: 'SpyContact' },
+    { kind: 'SiteEncounter', outcome: 'MutualDestruction' },
+  ].map((preview, i) => ({
+    id: `00000000-0000-4000-8000-00000000000${i}`,
+    kind: preview.kind,
+    preview,
+    read: false,
+    hidden: false,
+    observed_at: 1000,
+  }))
+  const fetch = vi.fn(async () =>
+    Response.json({
+      ...context,
+      protocol: 4,
+      viewer_revision: '1',
+      sampled_at: 1000,
+      as_of_ms: 1000,
+      data: { items, has_more: false, next_cursor: null, as_of_ms: 1000 },
+    }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const result = await gamePort(session.csrf, snapshot.candidate).reports!(
+    context,
+    null,
+  )
+  expect(result.data.items).toEqual(items)
+  expect(fetch).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      headers: expect.objectContaining({ 'X-Orbit-Report-Preview': '1' }),
+    }),
+  )
+})
