@@ -25,7 +25,7 @@ import { CancellationReview } from './progression/active-work-details'
 import type { View } from '../adapters/http'
 import type { Quote, QuoteRequest } from '../client-model/commands'
 import { buildingProgress } from '../client-model/building-progress'
-import { buildingFieldSummary } from './progression/building-field-summary'
+import { BuildingFieldSummary } from './progression/building-field-summary'
 import { ConstructionDetails } from './progression/construction-details'
 type UpgradeRequest = Extract<QuoteRequest, { type: 'Upgrade' }>
 export function Economy({
@@ -221,7 +221,7 @@ export function Economy({
         ) : (
           <CatalogSection
             title="Resource buildings"
-            description={buildingFieldSummary(body)}
+            description={<BuildingFieldSummary body={body} />}
           >
             <ImageCatalog>
               {resourceBuildings.map((building) => (

@@ -468,12 +468,12 @@ test('quick build submits for the selected planet after catalog navigation', asy
   colony.fields_reserved = 0
   await openQuickBuildCatalog(page)
   const catalog = page.getByRole('region', { name: 'Resource buildings' })
-  await expect(catalog.getByText('3 of 163 fields used', { exact: true })).toBeVisible()
+  await expect(catalog.getByRole('button', { name: '3 of 163 fields used', exact: true })).toHaveText('3/163')
   await withProgressionResponse(page,
     request => 'body' in request && request.body === id(6) && 'building' in request && request.building === 'MetalMine',
     () => selectBody(page, id(6)),
   )
-  await expect(catalog.getByText('4 of 218 fields used', { exact: true })).toBeVisible()
+  await expect(catalog.getByRole('button', { name: '4 of 218 fields used', exact: true })).toHaveText('4/218')
   const build = page.getByRole('button', { name: 'Build Metal Mine level 2', exact: true })
   await expect(build).toBeEnabled()
   await build.click()

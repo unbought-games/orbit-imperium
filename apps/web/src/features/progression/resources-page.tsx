@@ -15,7 +15,7 @@ import {
 } from './building-availability'
 import { requirementKey, technologyLevel } from './technology-dialog'
 import { BuildingDetails } from './building-details'
-import { buildingFieldSummary } from './building-field-summary'
+import { BuildingFieldSummary } from './building-field-summary'
 import { WorkSummaries } from '../work-summaries'
 import { useProgressionOptions } from './use-progression-options'
 import { buildingProgress } from '../../client-model/building-progress'
@@ -55,7 +55,7 @@ export function ResourcesPage(props: ProgressionProps) {
       />
       <CatalogSection
         title="Resource buildings"
-        description={buildingFieldSummary(body)}
+        description={<BuildingFieldSummary body={body} />}
         actions={
           body.kind === 'Planet' && (
             <ButtonLink

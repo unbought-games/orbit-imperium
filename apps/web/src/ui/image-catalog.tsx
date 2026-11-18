@@ -82,7 +82,7 @@ export function CatalogSection({
   children,
 }: {
   title: string
-  description?: string
+  description?: ReactNode
   actions?: ReactNode
   children: ReactNode
 }) {
