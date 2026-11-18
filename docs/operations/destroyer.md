@@ -28,9 +28,7 @@ crystal cost; Weapons, Shielding and Armour apply the usual combat bonuses.
 At Shipyard 9, no Nanite Factory and economy speed 5, one Destroyer takes 3,168
 seconds. Deuterium is charged but does not add manufacturing time.
 
-The reference's Destroyer → Battlecruiser factor 2 is active. Dreadnought →
-Destroyer factor 5 remains deferred until Dreadnoughts are supported. No unrelated ships,
-missions or combat bonuses are enabled by this addition.
+The reference's Destroyer → Battlecruiser factor 2 is active. Dreadnoughts have rapid fire 5 against Destroyers with the Dreadnought content active.
 
 ## Activation and retained work
 

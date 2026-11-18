@@ -1,0 +1,241 @@
+{
+  "requirements": [
+    {
+      "type": "BodyBuilding",
+      "building": "Shipyard",
+      "level": 12
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceTechnology",
+      "level": 6
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "HyperspaceDrive",
+      "level": 7
+    },
+    {
+      "type": "PlayerResearch",
+      "research": "GravitonTechnology",
+      "level": 1
+    }
+  ],
+  "ship": {
+    "drive": "HyperspaceDrive",
+    "base_speed": 100,
+    "drive_coefficient": [
+      3,
+      10
+    ],
+    "fuel": 1,
+    "capacity": 1000000
+  },
+  "cost": {
+    "metal": 5000000,
+    "crystal": 4000000,
+    "deuterium": 1000000
+  },
+  "combat": {
+    "item": {
+      "kind": "Ship",
+      "id": "Dreadnought"
+    },
+    "cost": [
+      5000000,
+      4000000,
+      1000000
+    ],
+    "attack_hundredths": 20000000,
+    "shield_hundredths": 5000000
+  },
+  "rapid_fire": [
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "EspionageProbe"
+      },
+      "factor": 1250
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "SmallCargo"
+      },
+      "factor": 250
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "LargeCargo"
+      },
+      "factor": 250
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "ColonyShip"
+      },
+      "factor": 250
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Recycler"
+      },
+      "factor": 250
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "LightFighter"
+      },
+      "factor": 200
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "HeavyFighter"
+      },
+      "factor": 100
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Cruiser"
+      },
+      "factor": 33
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Battleship"
+      },
+      "factor": 30
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Battlecruiser"
+      },
+      "factor": 15
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Bomber"
+      },
+      "factor": 25
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Ship",
+        "id": "Destroyer"
+      },
+      "factor": 5
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "RocketLauncher"
+      },
+      "factor": 200
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "LightLaser"
+      },
+      "factor": 200
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "HeavyLaser"
+      },
+      "factor": 100
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "IonCannon"
+      },
+      "factor": 100
+    },
+    {
+      "shooter": {
+        "kind": "Ship",
+        "id": "Dreadnought"
+      },
+      "target": {
+        "kind": "Defense",
+        "id": "GaussCannon"
+      },
+      "factor": 50
+    }
+  ]
+}

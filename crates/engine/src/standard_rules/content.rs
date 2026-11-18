@@ -348,6 +348,17 @@ pub(super) fn patches() -> Vec<Patch> {
         "Destroyer",
         &read(include_bytes!("../../../../rules/content/destroyer.json")),
     );
+    unit(
+        &mut out,
+        "Ship",
+        "Dreadnought",
+        &read(include_bytes!("../../../../rules/content/dreadnought.json")),
+    );
+    out.push(Patch::rapid_fire(json!({
+        "shooter": {"kind":"Ship","id":"Dreadnought"},
+        "target": {"kind":"Ship","id":"SolarSatellite"},
+        "factor": satellite["rapid_fire_from"]["Dreadnought"],
+    })));
     let depot = read(include_bytes!(
         "../../../../rules/content/alliance-depot.json"
     ));

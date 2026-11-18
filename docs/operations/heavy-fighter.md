@@ -27,10 +27,7 @@ minimum Armour 2 / Impulse 2, hull is 1,200 and speed is 14,000. The existing
 manufacturing formula applies: at Shipyard 3, one ship takes 3,600 seconds at
 1× economy speed or 360 seconds at 10×.
 
-The historical matrix also contains relationships involving Solar Satellites,
-Battlecruisers, and Dreadnoughts. Those ships remain unsupported; their eventual
-content additions must add the corresponding relationships. References to
-undefined combat units are rejected by the rules validator.
+With current standard content, Heavy Fighters also have rapid fire 5 against Solar Satellites. Battlecruisers have rapid fire 4 and Dreadnoughts have rapid fire 100 against Heavy Fighters.
 
 ## Activate an existing universe
 

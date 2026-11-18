@@ -26,7 +26,7 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.17.0** and includes [Graviton Technology](#graviton-technology). This is the content bundle's
+The bundled content release is currently **0.18.0** and includes the [Dreadnought](dreadnought.md) and [Graviton Technology](#graviton-technology). This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 [Terraformer](terraformer.md) adds planetary fields and requires Nanite Factory 1,
 Energy Technology 12 and a start-time gross-energy threshold.

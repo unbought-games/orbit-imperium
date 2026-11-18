@@ -199,6 +199,7 @@ pub struct BattleResult<I = PlayerId> {
     pub rng_cursor: (u64, u8),
 }
 struct Unit {
+    rule_index: usize,
     instance: usize,
     participant: usize,
     item: ManufacturedItem,
@@ -364,10 +365,11 @@ pub fn resolve_battle<I: Copy + Ord, T>(
             {
                 return Err(bad("invalid combat stack"));
             }
-            let rule = r
+            let (rule_index, rule) = r
                 .units
                 .iter()
-                .find(|u| u.item == item)
+                .enumerate()
+                .find(|(_, u)| u.item == item)
                 .ok_or_else(|| bad("unsupported combat unit"))?;
             let (a, s, h) = combat_unit_stats(rule, participant.technology, r)?;
             let n = usize::try_from(n).map_err(|_| bad("combat instance range"))?;
@@ -376,6 +378,7 @@ pub fn resolve_battle<I: Copy + Ord, T>(
                 .map_err(|_| bad("combat allocation unavailable"))?;
             for instance in 0..n {
                 units.push(Unit {
+                    rule_index,
                     instance,
                     participant: index,
                     item,
@@ -388,7 +391,20 @@ pub fn resolve_battle<I: Copy + Ord, T>(
             }
         }
     }
+    // The sparse rules are convenient to author. Index the validated pairs once
+    // so a long firing sequence never scans the catalog for its next shot.
+    let indices: BTreeMap<_, _> = r
+        .units
+        .iter()
+        .enumerate()
+        .map(|(i, u)| (u.item, i))
+        .collect();
+    let mut factors = vec![vec![1; indices.len()]; indices.len()];
+    for pair in &r.rapid_fire {
+        factors[indices[&pair.shooter]][indices[&pair.target]] = pair.factor;
+    }
     let mut tentative = rng.clone();
+    let mut draws = crate::random::BattleDraws::new(&mut tentative);
     let mut rounds = vec![];
     for number in 1..=r.max_rounds {
         let attackers: Vec<_> = units
@@ -417,38 +433,33 @@ pub fn resolve_battle<I: Copy + Ord, T>(
             } else {
                 &attackers
             };
+            let attack = units[shooter].attack;
+            let factors = &factors[units[shooter].rule_index];
+            let counters = &mut fire[units[shooter].participant];
+            let mut shots = BigUint::default();
             loop {
-                let idx = tentative.uniform_u64(targets.len() as u64)? as usize;
-                let target = targets[idx];
-                let attack = units[shooter].attack;
-                let shooter_item = units[shooter].item;
-                let counters = &mut fire[units[shooter].participant];
+                let target = targets[draws.uniform_u64(targets.len() as u64)? as usize];
+                shots += 1u32;
                 let u = &mut units[target];
-                add_total(&mut counters.shots, 1u32)?;
-                add_total(&mut counters.raw, attack)?;
-                let hit = apply_combat_hit(attack, u.shield_max, u.shield, u.hull, u.hull_max, r)?;
-                u.shield -= hit.shield_removed;
-                u.hull -= hit.hull_removed;
-                add_total(&mut counters.shields, hit.shield_removed)?;
-                add_total(&mut counters.hulls, hit.hull_removed)?;
-                if hit.explosion
-                    && tentative.bernoulli(
-                        &BigUint::from(u.hull_max - u.hull),
-                        &BigUint::from(u.hull_max),
-                    )?
-                {
-                    u.hull = 0;
-                    add_total(&mut counters.explosions, 1u32)?;
+                if u.hull > 0 {
+                    let hit =
+                        apply_combat_hit(attack, u.shield_max, u.shield, u.hull, u.hull_max, r)?;
+                    u.shield -= hit.shield_removed;
+                    u.hull -= hit.hull_removed;
+                    add_total(&mut counters.shields, hit.shield_removed)?;
+                    add_total(&mut counters.hulls, hit.hull_removed)?;
+                    if hit.explosion && draws.bernoulli(u.hull_max - u.hull, u.hull_max)? {
+                        u.hull = 0;
+                        add_total(&mut counters.explosions, 1u32)?;
+                    }
                 }
-                let rf = r
-                    .rapid_fire
-                    .iter()
-                    .find(|rf| rf.shooter == shooter_item && rf.target == u.item)
-                    .map_or(1, |r| r.factor);
-                if rf == 1 || tentative.uniform_u64(rf)? == 0 {
+                let factor = factors[u.rule_index];
+                if factor == 1 || draws.uniform_u64(factor)? == 0 {
                     break;
                 }
             }
+            add_total(&mut counters.raw, &shots * attack)?;
+            add_total(&mut counters.shots, shots)?;
         }
         units.retain(|u| u.hull > 0);
         let end = counts(&units, &p);

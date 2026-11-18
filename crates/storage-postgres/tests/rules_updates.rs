@@ -2136,3 +2136,6 @@ mod destroyer;
 
 #[path = "rules_updates/compatibility.rs"]
 mod compatibility;
+
+#[path = "rules_updates/dreadnought.rs"]
+mod dreadnought;

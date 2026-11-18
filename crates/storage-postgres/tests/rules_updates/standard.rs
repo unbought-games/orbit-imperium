@@ -91,7 +91,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             .await
             .unwrap();
     let plan = service.prepare_upgrade(universe).await.unwrap();
-    assert_eq!(plan.release, "0.17.0");
+    assert_eq!(plan.release, "0.18.0");
     assert!(
         before
             .rules

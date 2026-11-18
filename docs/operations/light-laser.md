@@ -35,8 +35,7 @@ crystal; the combat artifact records attack 10,000 and shield 2,500 in hundredth
 Existing Armour, Weapons and Shielding bonuses apply. Lasers have no outgoing
 rapid fire. The [Bomber bundle](bomber.md) supplies rapid fire 20 against them.
 The [Destroyer bundle](destroyer.md) supplies rapid fire 10 against them.
-The reference's Dreadnought 200 pair belongs with that future
-ship. Existing defense recovery (default independent 70% per destroyed
+Dreadnoughts have rapid fire 200 against Light Lasers with the Dreadnought content active. Existing defense recovery (default independent 70% per destroyed
 unit), no defense debris, report and valuation behavior apply unchanged.
 
 ## Prepare and activate
