@@ -19,7 +19,7 @@ import {
 import type { components } from '../../contracts'
 import { coordinates, label } from '../../ui/format'
 import { formatWholeNumber } from '../../ui/whole-number'
-import { combatOutcome } from '../combat-report-model'
+import { combatOutcome, combatPerspective } from '../combat-report-model'
 
 type S = components['schemas']
 type Preview = S['ReportPreview4']
@@ -94,12 +94,7 @@ function outcomeLabel(outcome: string, side?: string) {
 }
 
 function combatGlance(p: Combat, viewer?: string) {
-  const sides = new Set(
-    p.participants
-      ?.filter((participant) => participant.owner === viewer)
-      .map((participant) => participant.side),
-  )
-  const side = sides.size === 1 ? [...sides][0] : undefined
+  const { side } = combatPerspective(p.participants, viewer)
   const role =
     side === 'Attacker' ? 'Attack' : side === 'Defender' ? 'Defense' : 'Battle'
   const preposition =
