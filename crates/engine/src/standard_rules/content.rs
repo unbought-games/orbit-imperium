@@ -272,6 +272,15 @@ pub(super) fn patches() -> Vec<Patch> {
         network["research"].clone(),
         network["requirements"].clone(),
     );
+    let graviton = read(include_bytes!(
+        "../../../../rules/content/graviton-technology.json"
+    ));
+    research(
+        &mut out,
+        "GravitonTechnology",
+        graviton["research"].clone(),
+        graviton["requirements"].clone(),
+    );
     let drive = read(include_bytes!(
         "../../../../rules/content/hyperspace-drive.json"
     ));

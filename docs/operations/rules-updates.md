@@ -344,3 +344,19 @@ supporting code to all processes before activation. Existing players receive
 level 0; accepted research retains its payment, lab snapshot and deadline.
 See the [network activation guide](intergalactic-research-network.md) for selection,
 locks, customization conflicts and disabling future upgrades.
+
+## Graviton Technology
+
+Standard bundle 0.17.0 adds planetary Graviton research. Fresh worlds include
+it. For retained worlds, deploy the compatible API, workers, operator and web
+client, then preview and apply the standard upgrade. Activation initializes
+existing players at level zero and preserves committed research. A forward
+rules update can disable new starts while retaining the definition and earned
+levels. The existing research storage and protocol support this addition.
+
+Level 1 requires Research Lab 12 and 300,000 gross energy at the initiating
+planet. Each subsequent level triples the power requirement. The check uses
+saved production settings, stationed satellites and fuel-supported fusion
+output before mine demand. A successful start spends zero resources and takes
+one second at every universe speed. Subsequent power loss leaves the project
+and the earned level intact.

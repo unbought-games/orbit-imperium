@@ -262,13 +262,13 @@ export function TechnologyDetails({
                     {material.type === 'Research' &&
                       BigInt(material.required_energy) > 0n && (
                         <>
-                          <DetailRow label="Required energy">
+                          <DetailRow label="Gross energy required to start">
                             <ResourceQuantity
                               resource="energy"
                               value={material.required_energy}
                             />
                           </DetailRow>
-                          <DetailRow label="Available energy">
+                          <DetailRow label="This planet’s gross production">
                             <ResourceQuantity
                               resource="energy"
                               value={body.energy.supply}
@@ -291,12 +291,18 @@ export function TechnologyDetails({
                         ))}
                       </DetailRow>
                     )}
-                    <DecisionCosts
-                      title="Research cost"
-                      cost={material.paid}
-                      available={body.amounts}
-                      forecast={forecast!}
-                    />
+                    {material.paid.metal === '0' &&
+                    material.paid.crystal === '0' &&
+                    material.paid.deuterium === '0' ? (
+                      <DetailRow label="Research cost">No materials</DetailRow>
+                    ) : (
+                      <DecisionCosts
+                        title="Research cost"
+                        cost={material.paid}
+                        available={body.amounts}
+                        forecast={forecast!}
+                      />
+                    )}
                   </dl>
                   <ResearchLabs
                     labs={material.labs}

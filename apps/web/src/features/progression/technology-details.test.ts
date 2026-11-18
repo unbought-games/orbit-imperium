@@ -315,6 +315,22 @@ for (const example of [
     ],
   },
   {
+    id: 'GravitonTechnology',
+    definition: 'graviton-technology',
+    source: 0,
+    lab: 12,
+    gates: {},
+    paid: ['0', '0', '0'],
+    duration: 1000,
+    formula: 'ResearchClassic',
+    notes: [
+      'Gross energy required to start',
+      'This planet’s gross production',
+      'No materials',
+      '>300,000<',
+    ],
+  },
+  {
     id: 'LaserTechnology',
     definition: 'light-laser',
     source: 0,
@@ -378,7 +394,8 @@ for (const example of [
         formula: example.formula,
         labs: [{ body: body.id, level: example.lab }],
         effective_lab: String(example.lab),
-        required_energy: '0',
+        required_energy:
+          example.id === 'GravitonTechnology' ? '300000000000' : '0',
       },
     }
     const store = createGameStore()
