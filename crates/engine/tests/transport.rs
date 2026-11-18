@@ -138,8 +138,14 @@ fn recall_returns_payload_and_invalidates_arrival() {
         103,
         Input::Command(Command::RecallFleet { fleet }),
     );
+    let TransitionResult::Applied(archived) = replay_with_recall_reports(&s, &recall, &r) else {
+        panic!("archived recall must apply");
+    };
+    assert_eq!(archived.reports.len(), 1);
+    assert_eq!(archived.reports[0].kind, ReportKind::Recalled);
     let result = transition(&s, &recall, &r);
     let recalled = applied(&mut s, result);
+    assert!(recalled.reports.is_empty());
     assert_eq!(recalled.events[0].at, 3000000);
     let returning = input(
         &s,
@@ -183,6 +189,7 @@ fn same_time_recall_completes_inline_and_absent_target_returns_intact() {
     let result = transition(&s, &recall, &r);
     let result = applied(&mut s, result);
     assert!(result.events.is_empty());
+    assert!(result.reports.is_empty());
     assert_eq!(s.inventories[0].count, 2);
     let (mut s, r, p, b, t) = fleet_fixture();
     launch(&mut s, &r, p, b, t, 0);

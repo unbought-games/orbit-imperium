@@ -1200,10 +1200,22 @@ fn deployment_return_causes_survive_restart_and_legacy_journal_replay_without_re
             expected_legacy["Applied"]["expected_facts_hash"],
             serde_json::to_value(hash(&facts)).unwrap()
         );
-        assert_eq!(
-            replay_legacy_mission_transition(&facts, &input, &r).unwrap(),
-            expected_legacy
-        );
+        let mut replay = replay_legacy_mission_transition(&facts, &input, &r).unwrap();
+        if mode == 1 {
+            // The old executor also wrote a report when it scheduled the recall.
+            let id = derived_id(input.id, &format!("report:Recalled:{}", launched.id));
+            let report = replay["Applied"]["world"]["records"]["reports"]
+                .as_object_mut()
+                .unwrap()
+                .remove(&id.to_string())
+                .unwrap();
+            assert_eq!(report["kind"], "Recalled");
+            assert_eq!(
+                report["payloads"][p.to_string()]["fleet"],
+                launched.id.to_string()
+            );
+        }
+        assert_eq!(replay, expected_legacy);
         let c = apply(&mut s, outcome);
         s = serde_json::from_value(serde_json::to_value(&s).unwrap()).unwrap();
         let f = s.world.as_ref().unwrap().records.fleets[&launched.id].clone();
