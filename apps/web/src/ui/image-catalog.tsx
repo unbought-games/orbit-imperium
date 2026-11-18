@@ -7,6 +7,7 @@ import type {
 import { useId } from 'react'
 import { classes } from './classes'
 import { VisuallyHidden } from './visually-hidden'
+import hidden from './visually-hidden.module.css'
 import styles from './image-catalog.module.css'
 export type CatalogSprite = {
   columns: number
@@ -137,6 +138,15 @@ export function CatalogCountdown({
   )
 }
 
+function ShortLevel({ level }: { level: number | string }) {
+  return (
+    <>
+      <span aria-hidden="true">Lvl {level}</span>
+      <span className={hidden.hidden}>Level {level}</span>
+    </>
+  )
+}
+
 export function ImageTile({
   href,
   title,
@@ -146,6 +156,7 @@ export function ImageTile({
   locked,
   unaffordable,
   countLabel = 'Level',
+  compactCaption,
   inspectable = false,
   disabledReason = 'unavailable',
   className,
@@ -163,6 +174,7 @@ export function ImageTile({
   locked?: boolean
   unaffordable?: boolean
   countLabel?: string
+  compactCaption?: { summary: ReactNode }
   inspectable?: boolean
   disabledReason?: string
   action?: ReactNode
@@ -183,6 +195,7 @@ export function ImageTile({
         type={href ? undefined : 'button'}
         className={classes(
           styles.tile,
+          compactCaption && styles.compactTile,
           selected && styles.selected,
           locked && styles.locked,
           props.disabled && styles.unavailable,
@@ -192,7 +205,7 @@ export function ImageTile({
         )}
         aria-pressed={href ? undefined : selected}
         aria-current={href && selected ? 'page' : undefined}
-        aria-describedby={progress ? progressId : undefined}
+        aria-describedby={progress || compactCaption ? progressId : undefined}
         title={
           props.disabled
             ? `${title} · ${disabledReason}`
@@ -208,11 +221,25 @@ export function ImageTile({
             loading="lazy"
           />
         </span>
-        <span className={styles.caption}>
-          <span>{title}</span>
+        <span
+          className={styles.caption}
+          id={compactCaption ? progressId : undefined}
+        >
+          <span
+            className={
+              compactCaption ? styles.inlineHeading : styles.tileHeading
+            }
+          >
+            <span>{title}</span>
+            {compactCaption && (
+              <strong>
+                <ShortLevel level={level} />
+              </strong>
+            )}
+          </span>
           {progress ? (
             <strong
-              id={progressId}
+              id={compactCaption ? undefined : progressId}
               role="group"
               aria-label={
                 progress.kind === 'research'
@@ -220,19 +247,26 @@ export function ImageTile({
                   : 'Construction progress'
               }
             >
-              {countLabel} {level} →{' '}
+              {compactCaption ? '→ ' : `${countLabel} ${level} → `}
               <b aria-label={`Target level ${progress.targetLevel}`}>
-                {countLabel} {progress.targetLevel}
+                {compactCaption ? 'Lvl' : countLabel} {progress.targetLevel}
               </b>
               <VisuallyHidden>
                 {' '}
                 · {progress.status} · {progress.countdown}
               </VisuallyHidden>
             </strong>
+          ) : compactCaption ? (
+            compactCaption.summary
           ) : (
             <strong>
               {countLabel} {level}
             </strong>
+          )}
+          {compactCaption && (props.disabled || unaffordable) && (
+            <span className={hidden.hidden}>
+              {props.disabled ? disabledReason : 'Not enough resources'}
+            </span>
           )}
           {inspectable && (props.disabled || locked) && (
             <small>
