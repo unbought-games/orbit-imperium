@@ -239,7 +239,7 @@ async function order(player, body, action) {
     return r.status !== 'Pending' && r
   })
   assert.equal(receipt.status, 'Committed', JSON.stringify(receipt))
-  return pair
+  return { pair, receipt: valid('BoundReceipt4', receipt) }
 }
 async function launch(
   player,
@@ -262,7 +262,7 @@ async function launch(
     })),
   }
   const quote = await player.world({ type: 'FleetQuote', intent })
-  const pair = await order(player, origin, {
+  const { pair, receipt } = await order(player, origin, {
     type: 'LaunchFleet',
     intent,
     expected_terms_hash: quote.terms_hash,
@@ -275,7 +275,7 @@ async function launch(
       f.intent.ships.some((s) => s.count === intent.ships[0].count),
   )
   assert.ok(fleet)
-  return { fleet, quote, pair }
+  return { fleet, quote, pair, receipt }
 }
 async function reportId(kind, fleet) {
   const result = await sql.query(
@@ -380,7 +380,7 @@ try {
     b.id,
     dest(a.id, attacker),
     'Transport',
-    { SmallCargo: 1 },
+    { SmallCargo: 3 },
   )
   await advance(shot.fleet.due_at)
   const created = await defender.report(await reportId('MoonCreated'))
@@ -390,14 +390,14 @@ try {
     await attacker.world({ type: 'Galaxy', galaxy: 1, system: 1 })
   ).positions.find((p) => p.moon?.id === moon.id).debris
   assert.ok(BigInt(debrisBefore.metal) > 0n)
-  // Supply the moon using real deployment; the cargo ship will be in space at impact.
+  // Deploy two ships. One fights at the moon while the other is returning.
   await advance(evacuation.fleet.due_at + evacuation.fleet.duration_ms)
   const local = await launch(
     defender,
     b.id,
     moon,
     'Deploy',
-    { SmallCargo: 1 },
+    { SmallCargo: 2 },
     { ...zero, metal: '500000000', deuterium: '4000000000' },
   )
   await advance(local.fleet.due_at)
@@ -447,6 +447,15 @@ try {
   await crashAtDestruction(impact, moon.id)
   const battleId = await reportId('Combat', wave.fleet.id)
   const combat = await attacker.report(battleId)
+  assert.equal(combat.outcome, 'AttackerVictory')
+  const defenders = combat.gross_losses.find(
+    (participant) =>
+      participant.side === 'Defender' &&
+      participant.owner === defender.binding.player,
+  )
+  assert.deepEqual(defenders.units, [
+    { item: { kind: 'Ship', id: 'SmallCargo' }, count: '1' },
+  ])
   assert.equal(combat.moon_destruction.moon_destroyed, true)
   assert.equal(combat.moon_destruction.surviving_dreadnoughts, '400')
   const lost = await defender.report(await reportId('MoonDestroyed'))
@@ -496,24 +505,49 @@ try {
     await attacker.world({ type: 'Galaxy', galaxy: 1, system: 1 })
   ).positions.find((p) => p.body?.id === b.id)
   assert.ok(!galaxy.moon)
-  assert.deepEqual(galaxy.debris, debrisBefore)
+  for (const resource of ['metal', 'crystal', 'deuterium']) {
+    const ordinaryDebris = BigInt(combat.debris[resource]) / 1_000_000n
+    assert.equal(
+      BigInt(galaxy.debris[resource] ?? 0),
+      BigInt(debrisBefore[resource] ?? 0) + ordinaryDebris,
+    )
+  }
   await advance(next.fleet.due_at)
   const missed = (await attacker.view()).missions.fleets.find(
     (f) => f.id === next.fleet.id,
   )
   assert.equal(missed.leg, 'Returning')
   assert.equal(missed.due_at, next.fleet.due_at + next.fleet.duration_ms)
+  const parent = async () =>
+    (await defender.view()).bodies.find((body) => body.id === b.id)
+  const cargoShips = (body) =>
+    Number(
+      body.inventories.find((stock) => stock.item.id === 'SmallCargo')?.count ??
+        0,
+    )
+  const beforeReturn = await parent()
   await advance(returnDue)
+  const afterReturn = await parent()
+  assert.equal(cargoShips(afterReturn), cargoShips(beforeReturn) + 1)
+  // Parent resources started above storage capacity, so passive production adds zero.
+  assert.equal(
+    BigInt(afterReturn.amounts.metal),
+    BigInt(beforeReturn.amounts.metal) + 111_000_000n,
+  )
   const home = await defender.report(
     await reportId('Returned', recalled.fleet.id),
   )
   assert.equal(home.origin, b.id)
   assert.equal(home.cargo.metal, '111000000')
   await advance(delivery.fleet.due_at)
+  assert.equal(
+    BigInt((await parent()).amounts.crystal),
+    BigInt(afterReturn.amounts.crystal) + 123_000_000n,
+  )
   const delivered = await defender.report(
     await reportId('Delivered', delivery.fleet.id),
   )
-  assert.equal(delivered.target_kind ?? 'Planet', 'Planet')
+  assert.deepEqual(delivered.target, b.coordinates)
   assert.equal(delivered.cargo.crystal, '123000000')
   const last = Math.max(
     missed.due_at,
@@ -531,7 +565,14 @@ try {
   )
   assert.equal((await defender.view()).missions.fleets.length, 0)
   const replay = await attacker.post('commands', wave.pair)
-  assert.equal(replay.status, 'Committed')
+  assert.deepEqual(replay, wave.receipt)
+  const afterReplay = await attacker.view()
+  assert.equal(afterReplay.missions.fleets.length, 0)
+  assert.deepEqual(
+    afterReplay.bodies[0].inventories,
+    finalView.bodies[0].inventories,
+  )
+  assert.equal(cargoShips(afterReplay.bodies[0]), 3)
   assert.deepEqual(
     await attacker.report(await reportId('Combat', wave.fleet.id)),
     combat,
