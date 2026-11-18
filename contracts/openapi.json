@@ -14270,8 +14270,7 @@
             "$ref": "#/components/schemas/Binding"
           },
           "command_id": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/CommandSubmissionId"
           },
           "command": {
             "$ref": "#/components/schemas/Command4"

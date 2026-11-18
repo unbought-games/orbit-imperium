@@ -7623,8 +7623,7 @@ export interface components {
             /** @constant */
             protocol: 4;
             binding: components["schemas"]["Binding"];
-            /** Format: uuid */
-            command_id: string;
+            command_id: components["schemas"]["CommandSubmissionId"];
             command: components["schemas"]["Command4"];
             presence: components["schemas"]["CommandEnvelopeV4"] | null;
         };
