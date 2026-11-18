@@ -507,3 +507,27 @@ it('revoked access cancels an unregistered alliance action without releasing the
   expect(await second).toBe(true)
   expect(command).toHaveBeenCalledTimes(1)
 })
+
+it('a refused command cannot strand a refresh that began during ID allocation', async () => {
+  const clock = deferred<string>(),
+    reading = deferred<typeof view>()
+  const controller = new AlliancesController({
+    newId: () => clock.promise,
+    read: () => reading.promise,
+    command: async () => {
+      throw { status: 409 }
+    },
+  })
+  const send = controller.run({ type: 'Join', alliance: 'a' })
+  const refresh = controller.refresh()
+  clock.resolve('order')
+  expect(await send).toBe(false)
+  reading.resolve(view)
+  expect(await refresh).toBe(true)
+  expect(controller.store.getState()).toMatchObject({
+    busy: false,
+    loading: false,
+    pending: null,
+    view,
+  })
+})

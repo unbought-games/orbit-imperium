@@ -287,7 +287,7 @@ export class AlliancesController {
     if (!pending || busy) return false
     const generation = ++this.commandGeneration
     const newerRead = gestureRead !== this.readGeneration
-    const readGeneration = ++this.readGeneration
+    const readGeneration = this.readGeneration
     this.store.setState({ busy: true, error: '', notice: '' })
     try {
       const result = await this.ports.command(pending)
