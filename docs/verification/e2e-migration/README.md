@@ -6,6 +6,10 @@ PR #385. Audited **2026-11-10**, against merged revision
 proposal for two large implementation chats. **No implementation stream has
 started as part of this audit.**
 
+A [light CI stability report](RELIABILITY-2026-11-18.md) records the November 18
+retrospective. Guidance/reconciliation and a mandatory adversarial reviewer are
+now assigned early; final cutover still waits for the remaining coverage.
+
 Start with [STATUS.md](STATUS.md), then read only the selected brief and its
 inventory. The [audit](AUDIT.md) records shared findings, retirement gaps,
 server/acceptance obligations and validation evidence. [FILES.md](FILES.md)

@@ -1,6 +1,6 @@
 # 10 — Final journey gate, CI cutover and agent guidance
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **guidance/reconciliation portion delegated** to chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba`; final selection cutover remains pending. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -66,3 +66,13 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 10 in `docs/verification/e2e-migration/workstreams/10-cutover-and-reliability.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Accelerated scope — November 18
+
+The owner brought skill lessons/examples, current journey/ledger reconciliation
+and a mandatory fresh-context adversarial test-review agent forward. See the
+[assignment](../STATUS.md#2026-11-18-accelerate-guidance-and-adversarial-review).
+The parent completed the requested [light retrospective](../RELIABILITY-2026-11-18.md).
+Do not repeat a deep CI analysis, add scheduling or remove unfinished required
+coverage. The final cohort cutover and broader performance/acceptance work remain
+separate; advancing guidance does not mark all of stream 10 complete.

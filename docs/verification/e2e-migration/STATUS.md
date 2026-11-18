@@ -15,7 +15,7 @@ replacement-equivalence validation and final CI cutover remain open.
 | 07 Social/identity | Delegated | — | Whole stream through merge; reconcile alliance/identity main deltas | Chat `01a1ef30-f8b3-7a63-8fd3-ca561afc616f` |
 | 08 Reports | Not started | — | Independent rollback/archive outcomes | — |
 | 09 Harness/acceptance | Not started | — | Unexpected-operation diagnostics | — |
-| 10 Cutover/reliability | Waiting for implementation evidence | — | Candidate journey contract matrix | — |
+| 10 Cutover/reliability | Guidance/reconciliation portion delegated; final cutover pending | Light retrospective recorded | Adversarial reviewer, skill examples and journey reconciliation | Chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba` |
 
 ## Slice record template
 
@@ -196,3 +196,21 @@ invitations, deep links, uploads/greeting, emblem caching/ownership and Empire
 identity against frozen inputs. Use canonical routeTarget paths, current Base UI
 overlays and in-memory retries. Paid/private cosmetic originals and deployment
 details remain excluded from public fixtures and documentation.
+
+## 2026-11-18: accelerate guidance and adversarial review
+
+The owner requested a separate chat for skill lessons/examples, journey-tag and
+coverage-ledger reconciliation, and a reusable adversarial subagent. Assigned to
+`01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba` (Harden test guidance and add an adversarial
+test reviewer). The skill must mandate fresh-context independent review after
+new/materially changed browser e2e tests; rigorous evidence-based findings must
+challenge minimality, critical-path value, placement, actual behavior and races.
+The child must verify a supported agent configuration/invocation and behaviorally
+validate the reviewer, not merely add a passive checklist.
+
+This is an early bounded portion of stream 10, not completion of the final gate.
+Do not remove unfinished feature coverage, start the broad measurement project
+or duplicate the active social/identity stream. The parent recorded a light
+[retrospective](RELIABILITY-2026-11-18.md): 61/62 main workflows passed, all on
+attempt 1; the latest 40 consecutive runs passed. The one historical failed
+workflow and report limitations remain explicit. No scheduled monitoring added.
