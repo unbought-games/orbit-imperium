@@ -8,13 +8,19 @@ export type ResourceKind = 'metal' | 'crystal' | 'deuterium' | 'energy'
 export function ResourceValue({
   resource,
   children,
+  noWrap = false,
 }: {
   resource: ResourceKind
+  noWrap?: boolean
   children: ReactNode
 }) {
   const title = resource[0].toUpperCase() + resource.slice(1)
   return (
-    <span className={styles.value} title={title}>
+    <span
+      className={styles.value}
+      data-nowrap={noWrap || undefined}
+      title={title}
+    >
       <ResourceMark
         resource={resource}
         width={18}

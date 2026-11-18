@@ -26,6 +26,97 @@ async function deliverEmpire(page: Page) {
     await window.empireScene.refresh()
   }, input)
 }
+test('phone balance rows keep a billion and small amounts intact in both resource panels', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const options = empireFixture()
+  const amounts = {
+    metal: '1000234567000000',
+    crystal: '45000000',
+    deuterium: '127000000',
+  }
+  await mountEmpire(page, {
+    bodies: [{ ...options.bodies[0], amounts }],
+    missions: { ...options.missions, fleets: [] },
+  })
+  const totals = ['1,000,234,567', '45', '127']
+  for (const [name, details] of [
+    [
+      'Empire resource totals',
+      [
+        ['Worlds', totals],
+        ['In flight', ['0', '0', '0']],
+      ],
+    ],
+    [
+      'Planet resources',
+      [
+        ['Capacity', ['40,000', '30,000', '15,000']],
+        ['Per hour', ['0', '37', '0']],
+      ],
+    ],
+  ] as const) {
+    const panel = page.getByLabel(name)
+    const panelBox = (await panel.boundingBox())!
+    const balances = panel.locator('strong')
+    await expect(balances).toHaveText(totals)
+    const rects = await balances.evaluateAll((balances) =>
+      balances.map((balance) => {
+        const walker = document.createTreeWalker(balance, NodeFilter.SHOW_TEXT)
+        const range = document.createRange()
+        range.selectNodeContents(walker.nextNode()!)
+        const lines = range.getClientRects()
+        const rect = range.getBoundingClientRect()
+        return {
+          lines: lines.length,
+          left: rect.left,
+          top: rect.top,
+          bottom: rect.bottom,
+          right: rect.right,
+        }
+      }),
+    )
+    const [metal, crystal, deuterium] = rects
+    expect(rects.map((r) => r.lines)).toEqual([1, 1, 1])
+    expect(crystal.left).toBeCloseTo(metal.left, 0)
+    expect(deuterium.left).toBeCloseTo(metal.left, 0)
+    expect(crystal.top).toBeGreaterThan(metal.bottom)
+    expect(deuterium.top).toBeGreaterThan(crystal.bottom)
+    for (const [index, name] of ['Metal', 'Crystal', 'Deuterium'].entries()) {
+      const label = panel.getByText(new RegExp(`^${name}$`, 'i'))
+      await expect(label).toBeVisible()
+      const labelBox = (await label.boundingBox())!
+      const amount = rects[index]
+      expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(amount.top)
+      expect(labelBox.x).toBeLessThan(amount.left)
+      if (index > 0) expect(labelBox.y).toBeGreaterThan(rects[index - 1].bottom)
+      const detailBoxes = await Promise.all(
+        details.map(async ([caption, values]) => {
+          const detail = panel.getByText(caption, { exact: true }).nth(index)
+          await expect(detail).toBeVisible()
+          const value = detail
+            .locator('..')
+            .getByText(values[index], { exact: true })
+          await expect(value).toBeVisible()
+          const box = (await value.boundingBox())!
+          expect(box.x).toBeGreaterThan(amount.right)
+          expect(box.x + box.width).toBeLessThanOrEqual(
+            panelBox.x + panelBox.width + 1,
+          )
+          return (await detail.boundingBox())!
+        }),
+      )
+      const [firstDetail, lastDetail] = detailBoxes
+      expect(Math.min(firstDetail.x, lastDetail.x)).toBeGreaterThan(
+        amount.right,
+      )
+      expect(firstDetail.y).toBeLessThan(amount.bottom)
+      expect(lastDetail.y + lastDetail.height).toBeGreaterThan(labelBox.y)
+    }
+  }
+})
+
 test('each empire card centers idle construction beside Resources and Facilities', async ({
   page,
 }) => {
@@ -414,10 +505,7 @@ for (const width of [390, 1440]) {
       await expect(group.locator('svg[data-resource]')).toHaveCount(1)
       await expect(group.locator('dl svg[data-resource]')).toHaveCount(0)
       await expect(group.locator('dt > svg')).toHaveCount(2)
-      await expect(group.getByRole('term')).toHaveText([
-        'On planets and moons',
-        'On active fleets',
-      ])
+      await expect(group.getByRole('term')).toHaveText(['Worlds', 'In flight'])
       await expect(
         group.locator('[title="On planets and moons"]'),
       ).toBeVisible()
@@ -459,15 +547,12 @@ for (const width of [390, 1440]) {
         ((onWorlds + inTransit) / 1000000n).toLocaleString('en-US'),
       )
       await expect(
-        group
-          .locator('dl > div')
-          .filter({ hasText: 'On planets and moons' })
-          .locator('dd'),
+        group.locator('dl > div').filter({ hasText: 'Worlds' }).locator('dd'),
       ).toHaveText((onWorlds / 1000000n).toLocaleString('en-US'))
       await expect(
         group
           .locator('dl > div')
-          .filter({ hasText: 'On active fleets' })
+          .filter({ hasText: 'In flight' })
           .locator('dd'),
       ).toHaveText((inTransit / 1000000n).toLocaleString('en-US'))
     }
@@ -573,12 +658,9 @@ for (const width of [390, 1440]) {
     options.missions.fleets = []
     await deliverEmpire(page)
     await page.clock.runFor(1000)
-    for (const row of await ledger
-      .locator('dl > div')
-      .filter({ hasText: 'On active fleets' })
-      .all()) {
-      await expect(row.locator('dd')).toHaveText('0')
-    }
+    await expect(
+      ledger.locator('dl > div').filter({ hasText: 'In flight' }).locator('dd'),
+    ).toHaveText(['0', '0', '0'])
     await diagnosticScreenshot(ledger, {
       path: `test-results/empire-wealth-empty-${width}x1000.png`,
     })

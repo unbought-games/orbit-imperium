@@ -23,12 +23,14 @@ export function ResourceNumber({ value }: { value: string | bigint }) {
 export function ResourceQuantity({
   resource,
   value,
+  noWrap,
 }: {
+  noWrap?: boolean
   resource: ResourceKind
   value: string | bigint | null
 }) {
   return (
-    <ResourceValue resource={resource}>
+    <ResourceValue resource={resource} noWrap={noWrap}>
       {value === null ? 'Unknown' : <ResourceNumber value={value} />}
     </ResourceValue>
   )
