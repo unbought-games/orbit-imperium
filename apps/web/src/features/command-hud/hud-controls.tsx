@@ -87,7 +87,10 @@ export function CommandOrb({
   triggerProps,
   showCaption = true,
 }: {
-  hud: CommandHudState
+  hud: Pick<
+    CommandHudState,
+    'state' | 'recent' | 'caption' | 'selection' | 'select'
+  >
   address?: string
   triggerProps?: ComponentPropsWithRef<'button'>
   showCaption?: boolean

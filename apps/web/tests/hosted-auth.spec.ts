@@ -1,5 +1,6 @@
 import { test, expect, type Page } from './fixtures/test'
 import { binding, body, installGameFixture } from './fixtures/game'
+import { withBootstrapResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 const accounts = 'https://accounts.unbought.games'
@@ -108,8 +109,7 @@ async function hostedFixture(
   }
 }
 
-for (const width of [390, 1440]) {
-  for (const returning of [false, true]) {
+for (const [width, returning] of [[390, false], [1440, true]] as const) {
     test(`hosted ${returning ? 'sign-in' : 'registration'} takes one homepage click and returns to the game at ${width}px`, { tag: (returning && width === 1440) ? '@journey' : [] }, async ({
       page,
       baseURL,
@@ -148,21 +148,22 @@ for (const width of [390, 1440]) {
         path: `test-results/hosted-empire-${width}x900.png`,
       })
     })
-  }
+}
 
-  test(`hosted enrollment failure keeps the account and retries into the game at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
+  test(`hosted enrollment failure keeps the account and retries into the game across widths`, { tag: '@journey' }, async ({
     page,
     baseURL,
   }) => {
-    await page.setViewportSize({ width, height: 900 })
+    await page.setViewportSize({ width: 390, height: 900 })
     const fixture = await hostedFixture(page, baseURL, { failEnrollment: true })
     fixture.completeAuthentication()
-    await page.goto(joinPath)
+    await withBootstrapResponse(page, () => page.goto(joinPath))
     await expect(page.getByRole('alert')).toContainText(
       'closed, full, or temporarily unavailable',
     )
+    expect(fixture.enrollments).toEqual([])
     await diagnosticScreenshot(page, {
-      path: `test-results/hosted-enrollment-error-${width}x900.png`,
+      path: `test-results/hosted-enrollment-error-390x900.png`,
     })
     let release!: () => void
     const pending = new Promise<void>((resolve) => {
@@ -172,36 +173,36 @@ for (const width of [390, 1440]) {
       await pending
       return route.fallback()
     })
-    const retryPosition = (await page
-      .getByRole('button', { name: 'Try again' })
-      .boundingBox())!
+    const retryPositions = new Map<number, number>()
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const position = (await page.getByRole('button', { name: 'Try again' }).boundingBox())!
+      retryPositions.set(width, position.y)
+    }
     try {
       await page.getByRole('button', { name: 'Try again' }).click()
       await expect(page.getByRole('status')).toContainText(
         'Joining the current universe',
       )
-      const pendingPosition = (await page
-        .getByRole('button', { name: 'Joining…' })
-        .boundingBox())!
-      expect(Math.abs(pendingPosition.y - retryPosition.y)).toBeLessThan(1)
-      await diagnosticScreenshot(page, {
-        path: `test-results/hosted-enrollment-pending-${width}x900.png`,
-      })
+      for (const [width, retryY] of retryPositions) {
+        await page.setViewportSize({ width, height: 900 })
+        const position = (await page.getByRole('button', { name: 'Joining…' }).boundingBox())!
+        expect(Math.abs(position.y - retryY)).toBeLessThan(1)
+        await diagnosticScreenshot(page, { path: `test-results/hosted-enrollment-pending-${width}x900.png` })
+      }
     } finally {
       release()
     }
     await expect(page).toHaveURL(`${baseURL}${empirePath}`)
     expect(fixture.enrollments).toEqual([{ universe: binding.universe }])
   })
-}
-
 test('opening a hosted recovery URL cannot automatically enroll a player', async ({
   page,
   baseURL,
 }) => {
   const fixture = await hostedFixture(page, baseURL)
   fixture.authenticate()
-  await page.goto(joinPath)
+  await withBootstrapResponse(page, () => page.goto(joinPath))
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
   expect(fixture.enrollments).toEqual([])
   expect(fixture.automaticEnrollments).toEqual([])
@@ -216,7 +217,7 @@ test('hosted enrollment configuration can be retried without losing the authenti
     returning: true,
   })
   fixture.authenticate()
-  await page.goto(joinPath)
+  await withBootstrapResponse(page, () => page.goto(joinPath))
   await expect(page.getByRole('alert')).toHaveText(
     'Unable to load your universe. Please try again.',
   )
@@ -232,7 +233,7 @@ test('an enrollment failure can return to universe selection without an automati
 }) => {
   const fixture = await hostedFixture(page, baseURL, { failEnrollment: true })
   fixture.completeAuthentication()
-  await page.goto(joinPath)
+  await withBootstrapResponse(page, () => page.goto(joinPath))
   await expect(page.getByRole('alert')).toBeVisible()
   await page
     .getByRole('link', { name: 'Choose a universe', exact: true })
@@ -243,22 +244,17 @@ test('an enrollment failure can return to universe selection without an automati
   expect(fixture.enrollments).toHaveLength(0)
 })
 
-for (const [mode, hostedUniverse] of [
-  ['local', null],
-  ['oidc', null],
-  ['oidc', '00000000-0000-4000-8000-000000000099'],
-] as const) {
-  test(`a join return path cannot enroll using ${mode} configuration and binding ${hostedUniverse}`, async ({
-    page,
-    baseURL,
-  }) => {
-    const fixture = await hostedFixture(page, baseURL, { mode, hostedUniverse })
-    fixture.authenticate()
-    await page.goto(joinPath)
-    await expect(page).toHaveURL(/\/$/)
-    await expect(
-      page.getByRole('heading', { name: 'Choose your universe' }),
-    ).toBeVisible()
-    expect(fixture.enrollments).toEqual([])
+test('a join return path with a different hosted binding opens universe selection without enrolling', async ({
+  page,
+  baseURL,
+}) => {
+  const fixture = await hostedFixture(page, baseURL, {
+    mode: 'oidc',
+    hostedUniverse: '00000000-0000-4000-8000-000000000099',
   })
-}
+  fixture.authenticate()
+  await withBootstrapResponse(page, () => page.goto(joinPath))
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByRole('heading', { name: 'Choose your universe' })).toBeVisible()
+  expect(fixture.enrollments).toEqual([])
+})

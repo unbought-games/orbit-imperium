@@ -1,25 +1,31 @@
 import { useEffect, useState } from 'react'
 import { oidcHttp, type OidcConfig } from '../adapters/oidc'
 export type { OidcConfig } from '../adapters/oidc'
+type ConfigState =
+  | { status: 'loading' }
+  | { status: 'ready'; config: OidcConfig }
+  | { status: 'error' }
+
+export function requestOidcConfig(
+  publish: (state: ConfigState) => void,
+  read = oidcHttp.config,
+) {
+  const controller = new AbortController()
+  void read(controller.signal).then(
+    (config) => {
+      if (!controller.signal.aborted) publish({ status: 'ready', config })
+    },
+    () => {
+      if (!controller.signal.aborted) publish({ status: 'error' })
+    },
+  )
+  return () => controller.abort()
+}
+
 export function useOidcConfig() {
-  const [state, setState] = useState<
-    | { status: 'loading' }
-    | { status: 'ready'; config: OidcConfig }
-    | { status: 'error' }
-  >({ status: 'loading' })
+  const [state, setState] = useState<ConfigState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  useEffect(() => {
-    const controller = new AbortController()
-    void oidcHttp
-      .config(controller.signal)
-      .then((config) => {
-        if (!controller.signal.aborted) setState({ status: 'ready', config })
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ status: 'error' })
-      })
-    return () => controller.abort()
-  }, [attempt])
+  useEffect(() => requestOidcConfig(setState), [attempt])
   const retry = () => {
     setState({ status: 'loading' })
     setAttempt((value) => value + 1)

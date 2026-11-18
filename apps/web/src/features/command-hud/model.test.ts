@@ -1,3 +1,5 @@
+import { progressionFixture } from '../progression/progression-test-fixture'
+import { hudToastViews } from './notification-history'
 import { describe, expect, it } from 'vitest'
 import { bootstrapFixture } from '../../test-support/bootstrap'
 import { createGameStore } from '../../client-model/game-store'
@@ -398,3 +400,87 @@ it('retargets the orb from attack to success to unread to idle using current fac
   expect(orbAppearance(state, [])).toEqual({ tone: 'ice', icon: null })
   expect(orbAppearance(state, [])).toEqual({ tone: 'ice', icon: null })
 })
+
+it.each(['research', 'defense'] as const)(
+  'a committed %s order publishes the named action and submitted quote to the HUD',
+  (kind) => {
+    const state = fixture()
+    const target = { kind: 'command' as const, id: 'order' }
+    const recent = [{ ...target, shownAt: 0 }]
+    const { source } = progressionFixture()
+    const termsHash = source.terms_hash!
+    const item = { kind: 'Defense', id: 'RocketLauncher' } as const
+    const paid = { metal: '2000000', crystal: '1000000', deuterium: '0' }
+    let command: Command
+    if (kind === 'research') {
+      source.request = {
+        type: 'Research',
+        host: 'planet',
+        research: 'EnergyTechnology',
+      }
+      source.terms = {
+        ...source.request,
+        profile_hash: state.view.profile_hash,
+        paid,
+        duration_ms: 60000,
+        source_level: 1,
+        target_level: 2,
+        formula: 'ResearchClassic',
+        labs: [],
+        effective_lab: '10',
+        required_energy: '0',
+      }
+      command = {
+        ...source.request,
+        type: 'StartResearch',
+        expected_terms_hash: termsHash,
+      }
+    } else {
+      source.request = {
+        type: 'Manufacture',
+        body: 'planet',
+        item,
+        quantity: '1',
+      }
+      source.terms = {
+        ...source.request,
+        profile_hash: state.view.profile_hash,
+        paid,
+        unit_cost: paid,
+        unit_duration_ms: 60000,
+        formula: 'ManufactureClassic',
+        facilities: [],
+      }
+      command = {
+        ...source.request,
+        type: 'StartManufacture',
+        expected_terms_hash: termsHash,
+      }
+    }
+    state.attempts.set('order', attempt(command, 'submitting'))
+    state.intents.set('order', {
+      quote: source,
+      baseRevision: '1',
+      submittedAt: 0,
+    })
+    const committed = {
+      ...state,
+      attempts: new Map([['order', attempt(command)]]),
+    }
+    expect(changedHudTargets(state, committed)).toEqual([target])
+    const [toast] = hudToastViews(committed, recent)
+    expect(orbAppearance(committed, recent).tone).toBe('green')
+    if (kind === 'research') {
+      expect(toast.content).toMatchObject({
+        title: 'Research started',
+        detail: 'Energy Technology → level 2 · 1m',
+      })
+    } else {
+      expect(toast.content).toMatchObject({
+        title: 'Defense order accepted',
+        detail: '1 Rocket Launcher · 1m each',
+        costs: paid,
+      })
+    }
+  },
+)

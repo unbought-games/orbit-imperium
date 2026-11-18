@@ -38,11 +38,14 @@ it('deduplicates consumers and rejects a superseded revision response without er
     receivedAt: 20,
   }))
   const latest = h.engine.ensure()
-  h.reads[1](h.response('2'))
+  const delivered = tutorialFixture(true)
+  h.reads[1]({ ...h.response('2'), data: delivered })
   await latest
   h.reads[0](h.response())
   await old
   expect(h.store.getState().tutorial.revision).toBe('2')
+  expect(h.store.getState().tutorial.data?.completed).toBe(true)
+  expect(h.store.getState().tutorial.data?.receipts).toEqual(delivered.receipts)
   expect(h.reads).toHaveLength(2)
 })
 it('clears source data at logout and ignores an earlier account response', async () => {

@@ -60,6 +60,19 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  'orb-personality': async () =>
+    (await import('./orb-editorial.scenarios')).PersonalityCaptionScene,
+  'orb-refresh': async () =>
+    (await import('./orb-editorial.scenarios')).RefreshCaptionScene,
+  'orb-announcement': async () =>
+    (await import('./orb-editorial.scenarios')).AnnouncementScene,
+  'public-entry': async () => (await import('./public-entry')).PublicEntry,
+  'command-hud': async () =>
+    (await import('./command-hud.scenario')).CommandHudScenario,
+  'hud-playground': async () =>
+    (await import('../../src/dev/hud/hud-playground')).HudPlayground,
+  'tutorial-briefing': async () =>
+    (await import('./tutorial-briefing.scenario')).TutorialBriefingScenario,
   'ship-customization': async () =>
     (await import('./ship-customization.scenarios')).ShipCustomizationScenario,
   shipyard: async () => (await import('./shipyard.scenarios')).ShipyardScenario,
