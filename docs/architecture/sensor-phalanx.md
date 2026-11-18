@@ -64,10 +64,10 @@ while outbound/holding; returning uses the return deadline once.
 `phalanx_endpoints` resolves today's stable body bindings and preserves empty
 colonization destinations even if a colony later occupies the coordinate. Moons
 and debris never substitute their parents. Missing origin bindings fail explicitly.
-Future moon destruction must supply authoritative original/effective endpoints
-and fallback IDs to this interface. It must not change the return reason; a
-voluntarily recalled deployment remains hidden after home fallback. This increment
-does not implement destruction, abandonment redirects or any other lifecycle.
+Destruction redirects the operational home and eligible destinations to the bound
+parent. Signed launch terms preserve original endpoints. Projection reports both
+and retains the return reason, so recalled deployments remain hidden. A hostile
+wave bound to a destroyed moon has no target-side planetary observation.
 
 Before accepting a scan, part 2 must settle earlier ordered events, load complete
 relevant fleet/group/hold/missile membership and absence under stable snapshot

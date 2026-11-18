@@ -27,7 +27,7 @@ A Dreadnought on allied hold consumes 0.1 deuterium per hour before fleet roundi
 
 Shots against Plasma Turrets, both shield domes and other Dreadnoughts end the
 firing sequence. Ordinary battles on moons can destroy stationed units. The moon
-survives. The combat simulator uses the same rules and shot resolution as a raid.
+survives. Use a [moon destruction mission](moon-destruction.md) to attempt body removal. The combat simulator uses the same rules and shot resolution as a raid.
 
 ## Activation
 
