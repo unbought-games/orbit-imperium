@@ -25,7 +25,7 @@ test('reports show historical alliance tags even when current player profiles ha
   await expect(observation).toContainText('Commander Vega')
 })
 
-test('legacy reports and redacted shares never fill affiliation from live profiles', async ({page})=>{
+test('redacted public report entry renders the anonymous participant without alliance links', async ({page})=>{
   const token=id(86)
   await page.route(`**/api/v4/shared-reports/${token}`,route=>route.fulfill({json:{report:reportId,observed_at:payload.observed_at,options:{include_identity:false,include_coordinates:false},player_names:{'participant-1':'Player 1'},player_alliances:{},payload:{...payload,target:{owner:'participant-1',kind:'Planet'}}}}))
   await withSharedReportResponse(page, token, () => page.goto(`/reports/shared/${token}`))

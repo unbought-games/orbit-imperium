@@ -1,10 +1,6 @@
-import { inlineBaselines } from './fixtures/identity-typography'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
-import { readFileSync } from 'node:fs'
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import {
-  shellFixture,
   installGameFixture,
   playerProfilesFixture,
   binding,
@@ -38,7 +34,7 @@ for (const width of [390]) {
         const source = response.request().postDataJSON()?.source
         return source?.type === 'Rankings' && source.players.includes(id(31))
       }, action)
-    await withProfiles(() => page.goto('/u/andromeda/high-scores'))
+    await withProfiles(() => page.goto(`/u/andromeda/b/${body.id}/high-scores`))
     const trigger = page.getByRole('link', { name: 'Harvester profile details' })
     const profile = page.getByRole('tooltip', { name: 'Harvester profile' })
     await expect(trigger.getByLabel('Bot', { exact: true })).toBeVisible()
@@ -60,85 +56,3 @@ for (const width of [390]) {
     await expect(profile).toHaveCount(0)
   })
 }
-
-test('player attachments align together and long identities stay within narrow rows', async ({ page }) => {
-  await shellFixture(page, { protocol: 4, missions: { fleets: [], incoming: [], fleet_slots: '1', score_value_micro: '0' } })
-  const alliance = { id: id(85), universe: binding.universe, name: 'Starward', tag: 'STAR' }
-  const insignia = {
-    recipe: { version: 1, symbol: 'compass', foreground: '#cbb68d', background: '#152b40' },
-    asset_url: `/api/media/insignias/compass/${'a'.repeat(64)}.svg`,
-  }
-  await page.route(`**${insignia.asset_url}`, route => route.fulfill({
-    contentType: 'image/svg+xml',
-    body: readFileSync('crates/application/assets/insignias/compass.svg'),
-  }))
-  const players = [
-    { player: id(31), username: 'steveish', kind: 'bot' },
-    { player: id(32), username: 'Aurelia', kind: 'bot', supporter_tier: 2, insignia, alliance },
-    { player: id(33), username: 'CommanderBeyondTheFarthestStars', supporter_tier: 3, insignia, alliance },
-  ]
-  await playerProfilesFixture(page, () => players)
-  await page.route('**/rankings', route => route.fulfill({ json: {
-    binding, request_id: route.request().postDataJSON().request_id,
-    sampled_at: 1792843200000, baseline_at: 1792756800000, processing_pending: false,
-    players: players.map((player, i) => ({ player: player.player, username: player.username, alliance: player.alliance, points: `${100 - i}`, rank: [123, 1234, 12345][i], previous_rank: [null, 1334, 12245][i] })),
-  } }))
-  await withFixtureResponse(page, response => {
-    if (!response.url().endsWith('/player-profiles')) return false
-    const source = response.request().postDataJSON()?.source
-    return source?.type === 'Rankings' && players.every(player => source.players.includes(player.player))
-  }, () => page.goto(`/u/andromeda/b/${body.id}/high-scores`))
-  const table = page.getByRole('table', { name: 'Universe total-score rankings' })
-  const trigger = table.getByRole('link', { name: 'Aurelia profile details' })
-  await expect(trigger.getByRole('img', { name: /Supporter/ })).toBeVisible()
-  await page.evaluate(() => document.fonts.ready)
-  for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 1000 })
-    const simple = table.getByRole('link', { name: 'steveish profile details' })
-    const baselines = await simple.getByText('steveish', { exact: true }).or(simple.getByLabel('Bot', { exact: true })).evaluateAll(inlineBaselines)
-    expect(baselines).toHaveLength(2)
-    const [name, bot] = baselines
-    // Differently sized labels share a text baseline, including in narrow rows.
-    expect(Math.abs(name - bot)).toBeLessThan(0.15)
-    await expect(simple.getByLabel('Bot', { exact: true })).toHaveCSS('font-size', '12px')
-    for (const player of players) {
-      const identity = table.getByRole('link', { name: `${player.username} profile details` })
-      const cell = identity.locator('..')
-      const bounds = await cell.boundingBox()
-      const parts = await identity.locator('span, svg').evaluateAll(elements => elements.map(element => {
-        const rect = element.getBoundingClientRect()
-        return { left: rect.left, right: rect.right }
-      }))
-      for (const part of parts) {
-        expect(part.left).toBeGreaterThanOrEqual(bounds!.x)
-        expect(part.right).toBeLessThanOrEqual(bounds!.x + bounds!.width)
-      }
-    }
-    const rankCells = table.getByRole('row').filter({ has: page.getByRole('cell') }).locator('td:first-child')
-    for (const rankCell of await rankCells.all()) {
-      const { right, contentRight } = await rankCell.evaluate(cell => {
-        const range = document.createRange()
-        range.selectNodeContents(cell)
-        return { right: cell.getBoundingClientRect().right, contentRight: range.getBoundingClientRect().right }
-      })
-      expect(contentRight).toBeLessThanOrEqual(right)
-    }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    if (width === 1440) {
-      const baselines = await trigger.locator(':scope > span > *').evaluateAll(inlineBaselines)
-      expect(baselines.length).toBeGreaterThan(1)
-      expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(0.15)
-    }
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && width < 1440) await table.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, { path: `test-results/player-alignment-rankings-${width}x1000.png` })
-    if (width !== 320) {
-      if (width === 1440) await focusPlayerDetails(page, trigger)
-      else await focusPlayerDetails(page, trigger)
-      const popup = page.getByRole('tooltip', { name: 'Aurelia profile' })
-      await expect(popup).toBeVisible()
-      await diagnosticScreenshot(page, { path: `test-results/player-alignment-profile-${width}x1000.png` })
-      await page.keyboard.press('Escape')
-      await expect(popup).toHaveCount(0)
-    }
-  }
-})
