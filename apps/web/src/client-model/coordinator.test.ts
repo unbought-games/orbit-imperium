@@ -139,6 +139,68 @@ function quotedUpgrade(c: Coordinator) {
     },
   }
 }
+it('a view that retires an order during receipt reconciliation cannot release the next confirmed action', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const { command, quote } = quotedUpgrade(c)
+  const original = structuredClone(c.view!)
+  const sent: import('./commands').Envelope[] = []
+  const submit = port.submit
+  port.submit = async (envelope) => {
+    sent.push(envelope)
+    return submit(envelope)
+  }
+  await c.send(command, quote)
+
+  let releaseOld!: () => void,
+    releaseFresh!: () => void,
+    rejectReceipt!: (error: unknown) => void
+  let sawRead!: () => void, sawFresh!: () => void
+  const readingReceipt = new Promise<void>((resolve) => {
+    sawRead = resolve
+  })
+  const requestedFresh = new Promise<void>((resolve) => {
+    sawFresh = resolve
+  })
+  let reads = 0
+  port.view = async ({ request_id }) => {
+    const revision = String(++reads)
+    await new Promise<void>((resolve) => {
+      if (revision === '1') releaseOld = resolve
+      else {
+        releaseFresh = resolve
+        sawFresh()
+      }
+    })
+    return { ...original, request_id, viewer_revision: revision }
+  }
+  port.receipt = () =>
+    new Promise((_, reject) => {
+      rejectReceipt = reject
+      sawRead()
+    })
+  const oldRefresh = c.refresh()
+  releaseOld()
+  await readingReceipt
+  rejectReceipt({ status: 410, code: 'COMMAND_HISTORY_EXPIRED' })
+  await requestedFresh
+
+  const next = { type: 'CancelConstruction' as const, operation: id(79) }
+  const explicit = c.send(next)
+  next.operation = id(80)
+  await oldRefresh
+  expect(c.view?.viewer_revision).toBe('0')
+  expect(sent).toHaveLength(1)
+  releaseFresh()
+  expect(await explicit).toBeDefined()
+  expect(c.view?.viewer_revision).toBe('2')
+  expect(sent.map((e) => e.command)).toEqual([
+    command,
+    { type: 'CancelConstruction', operation: id(79) },
+  ])
+  expect(reads).toBe(2)
+})
+
 it('reserves payment before awaiting the server and blocks repeat or competing spending until reconciliation', async () => {
   const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)

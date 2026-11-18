@@ -167,7 +167,7 @@ export class Coordinator {
   private restoredMutations: ReturnType<BoundCommandRecovery['restore']> = []
   private commandClock = { server: 0, received: 0, local: 0 }
   private needsClockRefresh = false
-  private needsOrderRefresh = false
+  private orderRefresh: { work?: Promise<void> } | null = null
   private resumedOrders = new Set<string>()
   private deferredUntil = new Map<string, number>()
   private get commandNow() {
@@ -348,7 +348,7 @@ export class Coordinator {
     this.tutorial.invalidate()
     this.reports.invalidate()
     this.restoredMutations = []
-    this.needsOrderRefresh = false
+    this.orderRefresh = null
     this.resumedOrders.clear()
     this.deferredUntil.clear()
     this.mailboxReads.clear()
@@ -565,6 +565,16 @@ export class Coordinator {
   }
   async refresh(minimumViewerRevision?: string): Promise<void> {
     this.requestMinimum(minimumViewerRevision)
+    const retirement = this.orderRefresh
+    if (retirement) {
+      // Each retirement needs a view requested afterwards. All readers for
+      // that retirement share its request, even if an older one is in flight.
+      retirement.work ??= this.refreshOnce(this.pendingMinimum).finally(() => {
+        delete retirement.work
+        if (this.pendingMinimum !== undefined) this.delivery?.pending()
+      })
+      return retirement.work
+    }
     if (this.refreshWork) {
       // Revision invalidations coalesce; an explicit refresh may supersede a
       // stalled request and retains the existing request-generation fence.
@@ -584,6 +594,7 @@ export class Coordinator {
       } while (
         this.pendingMinimum !== undefined &&
         this.pendingMinimum !== minimum &&
+        !this.orderRefresh &&
         this.ready &&
         this.platform.monotonicNowMs() >= this.retryAt
       )
@@ -601,6 +612,7 @@ export class Coordinator {
       return
     if (this.platform.monotonicNowMs() < this.retryAt) return
     const q = ++this.viewGeneration
+    const retirement = this.orderRefresh
     const request = this.captureRequest()
     if (!request) return
     const { context, generation: g } = request
@@ -655,9 +667,11 @@ export class Coordinator {
         )
           return
       }
+      // Receipt reconciliation above can itself retire a command.
+      if (retirement !== this.orderRefresh || q !== this.viewGeneration) return
       const now = this.platform.monotonicNowMs()
       if (next.progress) this.sampleCommandClock(next.progress.sampled_at)
-      this.needsOrderRefresh = false
+      this.orderRefresh = null
       this.store.setState({ view: next, settings, receivedAt: now, now })
       this.delivery?.pending()
       if (
@@ -1165,15 +1179,19 @@ export class Coordinator {
       this.explainUnsentDuringRecovery(command)
       return
     }
-    if (this.needsOrderRefresh) {
+    if (this.orderRefresh) {
       const captured = structuredClone(command)
       const capturedQuote = structuredClone(quote)
-      await (this.refreshWork ?? this.refresh())
-      if (this.current(g, b) && !this.needsOrderRefresh)
-        return this.send(captured, capturedQuote)
-      if (this.current(g, b))
-        this.message = 'Refresh your empire before confirming this action.'
-      return
+      while (this.orderRefresh) {
+        const retirement = this.orderRefresh
+        await this.refresh()
+        if (!this.current(g, b)) return
+        if (this.orderRefresh === retirement) {
+          this.message = 'Refresh your empire before confirming this action.'
+          return
+        }
+      }
+      return this.send(captured, capturedQuote)
     }
     this.message = ''
     const state = this.store.getState()
@@ -1411,9 +1429,10 @@ export class Coordinator {
         !(missingReceipt && current === a && !terminal(current)))
     )
       return
+    this.orderRefresh = {}
+    this.viewGeneration++
     this.forgetEnvelope(a)
     this.removeAttempt(key)
-    this.needsOrderRefresh = true
     this.stale = true
     this.message = message
     // A refresh can itself be reconciling this receipt. Queue a snapshot without

@@ -10,6 +10,7 @@ import {
   editProfile,
   readArchive,
   recoverProfile,
+  profileEditReview,
   type EmpireProfile,
 } from './empire-history'
 
@@ -156,5 +157,65 @@ it('preserves a conflicting edit from two tabs for explicit review against the l
   await editProfile(latest, id(5), 'csrf', intents[1].action)
   expect(posted[2].expected_revision).toBe(profile.revision + 1)
   expect(posted[2].command_id).not.toBe(intents[1].command_id)
+  expect(storage.length).toBe(0)
+})
+
+it('drains independently stale revisions and keeps each draft available through a blocked or unrelated save', async () => {
+  const storage = memoryStorage()
+  vi.stubGlobal('localStorage', storage)
+  const pending = new PendingCommands(() => storage),
+    account = id(5)
+  const scope = bindingKey({
+    account,
+    player: profile.player,
+    universe: profile.universe,
+    epoch: profile.epoch,
+  })
+  const before = profile.revision - 1
+  const intents = [true, false].map((value, index) => ({
+    command_id: timestampedCommandId(id(index + 10), 100_000),
+    expected_revision: before,
+    action: { type: 'Visibility' as const, public: value },
+  }))
+  for (const envelope of intents)
+    pending.save('ProfileCommand', scope, envelope)
+  const posted: string[] = []
+  vi.stubGlobal('fetch', async (_: string, init?: RequestInit) => {
+    if (init?.method !== 'POST')
+      return Response.json(profile, {
+        headers: { Date: new Date(100_000).toUTCString() },
+      })
+    const row = JSON.parse(String(init.body))
+    posted.push(row.command_id)
+    return row.expected_revision === before
+      ? Response.json({ code: 'Conflict' }, { status: 409 })
+      : new Response(null, { status: 204 })
+  })
+  await readArchive('EmpireProfile', '/profile', new AbortController().signal)
+  await expect(recoverProfile(profile, account, 'csrf')).rejects.toThrow(
+    'make the profile public',
+  )
+  expect(posted).toEqual(intents.map((row) => row.command_id))
+  expect(pending.load('ProfileCommand', scope)).toHaveLength(0)
+  const blocker = {
+    ...intents[0],
+    command_id: timestampedCommandId(id(77), 100_000),
+    expected_revision: profile.revision,
+  }
+  pending.save('ProfileCommand', scope, blocker)
+  await expect(
+    editProfile(profile, account, 'csrf', intents[1].action),
+  ).rejects.toThrow('An earlier profile change is still unconfirmed')
+  expect(profileEditReview(profile, account)?.message).toContain(
+    'make the profile public',
+  )
+  // Finishing the public visibility edit satisfies just that draft.
+  await editProfile(profile, account, 'csrf', intents[0].action)
+  expect(profileEditReview(profile, account)?.message).toContain(
+    'make the profile private',
+  )
+  expect(posted).toHaveLength(3)
+  profileEditReview(profile, account)!.dismiss()
+  expect(profileEditReview(profile, account)).toBeNull()
   expect(storage.length).toBe(0)
 })

@@ -6,6 +6,7 @@ import {
   ArchiveReadError,
   editProfile,
   recoverProfile,
+  profileEditReview,
   ProfileEditPending,
   ProfileEditReview,
   type EmpireProfile,
@@ -25,14 +26,12 @@ export function useArchive<T>(schema: string, path: string) {
       session: Session | null
       loading: boolean
       busy: boolean
-      review: ProfileEditReview | null
       error: string
     }>(() => ({
       data: null,
       session: null,
       loading: true,
       busy: false,
-      review: null,
       error: '',
     })),
   )
@@ -42,7 +41,7 @@ export function useArchive<T>(schema: string, path: string) {
   useEffect(() => {
     const current = ++generation.current
     const controller = new AbortController()
-    store.setState({ loading: true, error: '', review: null })
+    store.setState({ loading: true, error: '' })
     void Promise.all([
       readArchive<T>(schema, path, controller.signal),
       http.session().catch(() => null),
@@ -72,12 +71,13 @@ export function useArchive<T>(schema: string, path: string) {
               data = await readArchive<T>(schema, path, controller.signal)
             if (!controller.signal.aborted && current === generation.current)
               store.setState({
-                review: error instanceof ProfileEditReview ? error : null,
                 error:
-                  problem ??
-                  (unavailableCommandAccess(error)
-                    ? unknownAccessMessage
-                    : 'The earlier profile change is still unconfirmed. Refresh to check again.'),
+                  error instanceof ProfileEditReview
+                    ? ''
+                    : (problem ??
+                      (unavailableCommandAccess(error)
+                        ? unknownAccessMessage
+                        : 'The earlier profile change is still unconfirmed. Refresh to check again.')),
               })
           }
         }
@@ -105,7 +105,7 @@ export function useArchive<T>(schema: string, path: string) {
     if (!state.session || store.getState().busy || store.getState().loading)
       return false
     const current = ++generation.current
-    store.setState({ busy: true, error: '', review: null })
+    store.setState({ busy: true, error: '' })
     let committed = false
     try {
       await editProfile(
@@ -136,8 +136,7 @@ export function useArchive<T>(schema: string, path: string) {
       if (problem) {
         if (current === generation.current)
           store.setState({
-            error: problem,
-            review: error instanceof ProfileEditReview ? error : null,
+            error: error instanceof ProfileEditReview ? '' : problem,
           })
         try {
           const data = await readArchive<T>(
@@ -167,11 +166,22 @@ export function useArchive<T>(schema: string, path: string) {
       store.setState({ busy: false })
     }
   }
-  const dismissReview = state.review
+  // A blocked save, failed refetch or another tab can change the pending queue
+  // independently of review drafts. Derive the current review from its scope.
+  const profile =
+    schema === 'EmpireProfile' ? (state.data as EmpireProfile | null) : null
+  const review =
+    profile &&
+    state.session &&
+    path.split('?')[0] === `/api/v4/empire-profiles/${profile.player}`
+      ? profileEditReview(profile, state.session.account)
+      : null
+  const dismissReview = review
     ? () => {
-        state.review!.dismiss()
+        review.dismiss()
         retry()
       }
     : null
-  return { ...state, retry, save, dismissReview }
+  const error = [state.error, review?.message].filter(Boolean).join(' ')
+  return { ...state, error, retry, save, dismissReview }
 }

@@ -74,12 +74,6 @@ export class ProfileEditPending extends Error {
   }
 }
 
-function sameField(a: ProfileAction, b: ProfileAction) {
-  return (
-    a.type === b.type &&
-    (!('event' in a) || ('event' in b && a.event === b.event))
-  )
-}
 function describeEdit(action: ProfileAction) {
   switch (action.type) {
     case 'Visibility':
@@ -169,10 +163,19 @@ async function submitProfile(
   )) {
     if (
       old.expected_revision < envelope.expected_revision &&
-      sameField(old.action, envelope.action)
+      canonical(old.action) === canonical(envelope.action)
     )
       pending.remove('ProfileCommand', reviewScope(scope), old.command_id)
   }
+}
+
+export function profileEditReview(profile: EmpireProfile, account: string) {
+  const scope = profileScope(profile, account)
+  const [row] = pending.load<ProfileCommand>(
+    'ProfileCommand',
+    reviewScope(scope),
+  )
+  return row ? new ProfileEditReview(scope, row) : null
 }
 
 export async function recoverProfile(
@@ -184,13 +187,22 @@ export async function recoverProfile(
     'ProfileCommand',
     profileScope(profile, account),
   )
-  for (const row of rows) await submitProfile(profile, account, csrf, row, true)
-  const [review] = pending.load<ProfileCommand>(
-    'ProfileCommand',
-    reviewScope(profileScope(profile, account)),
-  )
-  if (review)
-    throw new ProfileEditReview(profileScope(profile, account), review)
+  let refusal: unknown
+  for (const row of rows) {
+    try {
+      await submitProfile(profile, account, csrf, row, true)
+    } catch (error) {
+      // Each revision conflict is now a review draft. Settle the next row,
+      // while preserving session, connectivity and rate-limit backoff.
+      if (error instanceof ProfileEditReview) continue
+      if (!futureCommand(error) && !definiteMutationResponse(error, true))
+        throw error
+      refusal ??= error
+    }
+  }
+  if (refusal) throw refusal
+  const review = profileEditReview(profile, account)
+  if (review) throw review
   return rows.length > 0
 }
 
