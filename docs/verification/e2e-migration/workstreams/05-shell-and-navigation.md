@@ -1,6 +1,6 @@
 # 05 — Shell, navigation, public layout and primitives
 
-Status: **delegated** to chat `01a1e9c6-d23e-7fe2-8118-f85d3787a333` for the whole stream through confirmed merge; see the [November 17 assignment](../STATUS.md#2026-11-17-rebase-and-stream-05-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **merged in PR #448** (`32922403`); implementation by chat `01a1e9c6-d23e-7fe2-8118-f85d3787a333` for the whole stream through confirmed merge; see the [November 17 assignment](../STATUS.md#2026-11-17-rebase-and-stream-05-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 

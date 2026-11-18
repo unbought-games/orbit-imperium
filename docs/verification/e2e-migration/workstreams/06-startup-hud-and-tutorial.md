@@ -1,6 +1,6 @@
 # 06 — Startup, authentication, recovery, HUD and tutorial
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1ec36-06a1-71f1-843d-e11abfdced0e` for the whole stream through confirmed merge; see the [November 17 assignment](../STATUS.md#2026-11-17-rebase-and-stream-06-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -94,3 +94,12 @@ reduced motion` did not expose its caption after the overview response was
 released. The mechanism was unconfirmed and stream 02 applied no repair. Read
 PR #406's evidence and current source/history; do not count a later green retry
 as resolution or infer that this remains broken after subsequent main changes.
+
+## Current-main contracts for this assignment
+
+Reuse stream 05's shell-route model and prepared public/menu/primitive surfaces
+from test-migration-shell-navigation.md. Preserve #445 in-memory-only retries,
+#452 removal of report-read confirmation messages, and #451/#454 removal of the
+retired transition journal. The frozen snapshot does not override these changes.
+Preserve required native observer, loading/live-region, focus and subscribed HUD
+contracts; deterministic schedules alone do not prove those browser bindings.

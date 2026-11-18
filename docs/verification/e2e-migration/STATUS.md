@@ -10,8 +10,8 @@ replacement-equivalence validation and final CI cutover remain open.
 | 02 Catalog/progression | Merged | PR #406 | Owned migration complete; post-merge failures assigned to 03/06 below | `7b2fa0612740ca40ad579a02e460a912f0e9da03` |
 | 03 Dispatch/fleets | Merged | PR #417 | Complete handoff in test-migration-dispatch-fleets.md | `7d57e0532827fffe2bde0da65f03e8045b460dda` |
 | 04 Empire/settings | Merged | PR #446 | Complete handoff in test-migration-empire-settings.md; retained layout gaps remain explicit | `3e5540e1d9834ca45ecd007f853b3f793720431b` |
-| 05 Shell/navigation | Delegated | — | Whole stream through merge; preserve cross-domain coverage and repair history | Chat `01a1e9c6-d23e-7fe2-8118-f85d3787a333` |
-| 06 Startup/HUD/tutorial | Not started | — | Buffered pagination/refresh | — |
+| 05 Shell/navigation | Merged | PR #448 | Complete handoff in test-migration-shell-navigation.md | `3292240300c4addd3a499a69622f2cb6af41e7c9` |
+| 06 Startup/HUD/tutorial | Delegated | — | Whole stream through merge; reconcile caption failure and current recovery contracts | Chat `01a1ec36-06a1-71f1-843d-e11abfdced0e` |
 | 07 Social/identity | Not started | — | Directory filters/compact controls | — |
 | 08 Reports | Not started | — | Independent rollback/archive outcomes | — |
 | 09 Harness/acceptance | Not started | — | Unexpected-operation diagnostics | — |
@@ -151,3 +151,25 @@ reconciliation of canonical routeTarget paths, Base UI overlays, account-link
 new-tab behavior, fixed resource-header overscroll, personalized Empire identity
 and in-memory-only retries. Other streams' unfinished domain coverage must not
 be silently removed while splitting mixed shell cases.
+
+## 2026-11-17: rebase and stream 06 assignment
+
+Fetched main `73e865124518c02fb69a10f476e816d1f9b419a1` and rebased/published
+the audit branch cleanly. Confirmed stream 05 merged in PR #448 at
+`3292240300c4addd3a499a69622f2cb6af41e7c9`. Its source handoff and current/
+historical/delta ledgers are on main; the originating chat reports 137 application
+and 89 component cases validated, with make check, PR, queue and main CI passing.
+Its two geometry-measurement repairs retain their documented allowances.
+
+Assigned the full Startup, authentication, recovery, HUD and tutorial stream to
+chat `01a1ec36-06a1-71f1-843d-e11abfdced0e` (Complete startup HUD and tutorial
+test migration), explicitly authorized to use /pr and /finish-pr through a
+confirmed merge. No implementation or validation success is claimed by this
+delegation record. The child owns reconciliation of the historical HUD-caption
+failure recorded above; no green retry or previous stream completion closes it.
+
+The handoff emphasizes current canonical routeTarget paths, Base UI overlays,
+in-memory retries (#445), removed report-read confirmation messaging (#452),
+and removal of the retired transition journal (#451/#454). Historical fixtures
+must not reinstate intentionally removed product behavior. Frozen inventories
+remain unchanged; current-main deltas belong in the stream-06 ledger.
