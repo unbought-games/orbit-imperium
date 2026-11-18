@@ -46,6 +46,9 @@
               "default": false
             },
             "description": "Return Bootstrap on success when true; otherwise retain Session."
+          },
+          {
+            "$ref": "#/components/parameters/DebrisSettings"
           }
         ]
       },
@@ -3235,6 +3238,9 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "$ref": "#/components/parameters/DebrisSettings"
           }
         ],
         "responses": {
@@ -4348,6 +4354,9 @@
               "default": false
             },
             "description": "Return Bootstrap on success when true; otherwise retain Session."
+          },
+          {
+            "$ref": "#/components/parameters/DebrisSettings"
           }
         ]
       }
@@ -4378,6 +4387,9 @@
                 "1"
               ]
             }
+          },
+          {
+            "$ref": "#/components/parameters/DebrisSettings"
           }
         ]
       }
@@ -14528,6 +14540,29 @@
           },
           "positions_per_system": {
             "const": 15
+          },
+          "ship_debris": {
+            "type": "object",
+            "description": "Active ship-loss rules. Included in embedded bootstrap and on JSON reads that request debris settings. Older servers omit this field.",
+            "properties": {
+              "basis_points": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "deuterium_in_debris": {
+                "type": "boolean"
+              },
+              "moons_enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "basis_points",
+              "deuterium_in_debris",
+              "moons_enabled"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -30187,6 +30222,18 @@
         "in": "cookie",
         "name": "orbit_session",
         "description": "Browser mutations also require same-origin and X-CSRF-Token."
+      }
+    },
+    "parameters": {
+      "DebrisSettings": {
+        "name": "X-Orbit-Debris-Settings",
+        "in": "header",
+        "required": false,
+        "description": "Set to 1 to include active ship debris rules in returned world settings.",
+        "schema": {
+          "type": "string",
+          "const": "1"
+        }
       }
     }
   }

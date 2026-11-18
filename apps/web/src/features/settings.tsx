@@ -18,6 +18,7 @@ import {
 } from '../shell/settings-navigation-model'
 import { SettingsIdentity } from './settings-identity'
 import { SupportLinks } from './support-links'
+import { shipDebrisRule } from './ship-debris-rule'
 
 export function SettingsScreen() {
   const { route } = useGameScreen()
@@ -99,6 +100,7 @@ function SettingsPane({
 function UniverseSettings() {
   const { view, model } = useGameScreen()
   const settings = model.settings
+  const debrisRule = shipDebrisRule(settings)
   return (
     <>
       <Heading level={2}>Universe settings</Heading>
@@ -111,6 +113,7 @@ function UniverseSettings() {
       ) : (
         <Text>Universe settings unavailable. Reconnect to try again.</Text>
       )}
+      {debrisRule && <Text>{debrisRule}</Text>}
       {view.capabilities.some(
         (c) => c.capability === 'Attack' && c.enabled,
       ) && (

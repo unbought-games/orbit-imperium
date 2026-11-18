@@ -38,7 +38,10 @@ export interface paths {
                     /** @description Return Bootstrap on success when true; otherwise retain Session. */
                     bootstrap?: boolean;
                 };
-                header?: never;
+                header?: {
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -2690,7 +2693,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
+                };
                 path: {
                     universe: string;
                 };
@@ -3516,7 +3522,10 @@ export interface paths {
                     /** @description Return Bootstrap on success when true; otherwise retain Session. */
                     bootstrap?: boolean;
                 };
-                header?: never;
+                header?: {
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3610,6 +3619,8 @@ export interface paths {
                 header?: {
                     /** @description Opt in to nonsecret identity expiry and refresh generation for the authenticated OIDC cookie session. */
                     "X-Orbit-Auth-Metadata"?: "1";
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
                 };
                 path?: never;
                 cookie?: never;
@@ -7653,6 +7664,12 @@ export interface components {
             systems_per_galaxy: number;
             /** @constant */
             positions_per_system: 15;
+            /** @description Active ship-loss rules. Included in embedded bootstrap and on JSON reads that request debris settings. Older servers omit this field. */
+            ship_debris?: {
+                basis_points: number;
+                deuterium_in_debris: boolean;
+                moons_enabled: boolean;
+            };
         };
         BoundQuote4: {
             /** @constant */
@@ -11190,7 +11207,10 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Set to 1 to include active ship debris rules in returned world settings. */
+        DebrisSettings: "1";
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;

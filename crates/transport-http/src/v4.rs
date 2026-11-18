@@ -133,9 +133,11 @@ pub(super) async fn settings<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, c.binding)?;
-    Ok(no_store_json(
-        s.game.bound_settings(principal(&session, u)?, c).await?,
-    ))
+    let mut settings = s.game.bound_settings(principal(&session, u)?, c).await?;
+    if !super::bootstrap::wants_debris_settings(&h) {
+        settings.ship_debris = None;
+    }
+    Ok(no_store_json(settings))
 }
 pub(super) async fn options<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,

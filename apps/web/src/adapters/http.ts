@@ -78,6 +78,11 @@ export async function request(
     throw error
   }
 }
+const bootstrapHeaders = {
+  'X-Orbit-View-Metadata': '1',
+  'X-Orbit-Debris-Settings': '1',
+}
+
 export const http = {
   async bootstrap() {
     const target =
@@ -87,7 +92,7 @@ export const http = {
     return validate<Bootstrap>(
       'Bootstrap',
       await request('/api/v1/bootstrap', 'GET', undefined, undefined, 10000, {
-        'X-Orbit-View-Metadata': '1',
+        ...bootstrapHeaders,
         ...(target ? { 'X-Orbit-Universe': target } : {}),
       }),
     )
@@ -102,7 +107,7 @@ export const http = {
         { name, password },
         undefined,
         20000,
-        { 'X-Orbit-View-Metadata': '1' },
+        bootstrapHeaders,
       ),
     )
   },
@@ -119,7 +124,7 @@ export const http = {
         { name, password, ...(recruitment ? { recruitment } : {}) },
         undefined,
         20000,
-        { 'X-Orbit-View-Metadata': '1' },
+        bootstrapHeaders,
       ),
     )
   },
@@ -324,6 +329,8 @@ export function gamePort(
           'POST',
           context,
           csrf,
+          10000,
+          { 'X-Orbit-Debris-Settings': '1' },
         ),
       )
     },

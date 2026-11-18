@@ -247,11 +247,31 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
 fn initial_game_supports_each_protocol() {
     futures::executor::block_on(async {
         for protocol in [2, 3, 4] {
-            let (s, session) = setup(protocol);
+            let (mut s, session) = setup(protocol);
+            if protocol == 4 {
+                let mut artifact = s.facts.rules.artifact.clone();
+                let world = artifact.world.as_mut().unwrap();
+                world.combat.ship_debris_bps = 4567;
+                world.combat.deuterium_in_debris = true;
+                s.facts.rules = Ruleset::from_artifact(artifact, s.facts.rules.speed).unwrap();
+            }
             let game = GameService::new(s);
             let id = Uuid::from_u128(10);
             let result = game.initial_game(&session, id).await.unwrap().unwrap();
             let json = serde_json::to_value(result).unwrap();
+            let debris = json["settings"].get("ship_debris");
+            if protocol == 4 {
+                assert_eq!(
+                    debris.unwrap(),
+                    &serde_json::json!({
+                        "basis_points": 4567,
+                        "deuterium_in_debris": true,
+                        "moons_enabled": false
+                    })
+                );
+            } else {
+                assert!(debris.is_none());
+            }
             assert_eq!(json["view"]["progress"]["sampled_at"], 1000);
             assert_eq!(json["view"]["progress"]["command_references"], true);
             for key in ["candidate", "view", "settings"] {
