@@ -1,3 +1,6 @@
+import { routeTarget } from '../../shell/route-target'
+import { useUniverseName } from '../../shell/session-context'
+import { Link } from '../../ui/link'
 import { ResourceQuantity } from '../../ui/number-value'
 import { ResourceValue } from '../../ui/resource-value'
 import {
@@ -52,7 +55,14 @@ export function SatelliteOutput({
           '—'
         ) : (
           <>
-            {percent < 100 && <small>({percent}% production) </small>}
+            {percent < 100 && (
+              <small>
+                <SatelliteProductionLink
+                  body={body.id}
+                  percent={percent}
+                />{' '}
+              </small>
+            )}
             <ResourceValue resource="energy">
               {formatEnergyGain(gain)}
             </ResourceValue>
@@ -60,5 +70,24 @@ export function SatelliteOutput({
         )}
       </DetailRow>
     </dl>
+  )
+}
+
+function SatelliteProductionLink({
+  body,
+  percent,
+}: {
+  body: string
+  percent: number
+}) {
+  const universe = useUniverseName()
+  return (
+    <Link
+      {...routeTarget(universe, 'resource-settings', body)}
+      className={styles.inlineLink}
+      aria-label={`${percent}% production. Open Resource settings`}
+    >
+      ({percent}% production)
+    </Link>
   )
 }

@@ -1,7 +1,6 @@
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { selectBody } from './fixtures/body-selector'
-import { openProductionSettings } from './fixtures/production-settings'
 import { test, expect } from './fixtures/test'
 import { shellFixture, body, binding, id, refreshGame } from './fixtures/game'
 import { readFileSync } from 'node:fs'
@@ -275,10 +274,13 @@ test('satellites manufacture by quantity but never appear in fleet selection', a
   ).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Add all ships', exact: true })).toBeDisabled()
 })
-test('production controls show satellite quantity and submit group throttling', async ({
+test('satellite production link opens the selected body’s settings and Back shows the saved output', async ({
   page,
 }) => {
   const production = await setup(page)
+  production.settings.solar_satellite = 90
+  production.solar_satellite!.energy_supply = '54000000'
+  production.energy_supply = '54000000'
   let sent: unknown = null
   await page.route('**/commands', async (route) => {
     const pair = route.request().postDataJSON()
@@ -307,8 +309,16 @@ test('production controls show satellite quantity and submit group throttling', 
       },
     })
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
-  await openProductionSettings(page)
+  const bodyPath = `/u/andromeda/b/${body.id}`
+  const orderPath = `${bodyPath}/shipyard/solar-satellite`
+  await withProgressionResponse(page, unitInspection(body.id), () =>
+    withBootstrapResponse(page, () => page.goto(orderPath)),
+  )
+  const order = page.getByRole('region', { name: 'New order', exact: true })
+  const link = order.getByRole('link', { name: '90% production. Open Resource settings' })
+  await expect(link).toHaveAttribute('href', `${bodyPath}/resource-settings`)
+  await link.click()
+  await expect(page).toHaveURL(url => url.pathname === `${bodyPath}/resource-settings`)
   const row = page.getByRole('row').filter({
     has: page.getByRole('rowheader', {
       name: 'Solar Satellite',
@@ -316,24 +326,32 @@ test('production controls show satellite quantity and submit group throttling', 
     }),
   })
   await expect(row).toContainText('2')
-  await expect(row).toContainText('60')
+  await expect(row).toContainText('54')
   await expect(row).toContainText('30')
   const slider = row.getByRole('slider')
   await slider.focus()
-  await slider.press('Home')
-  for (let i = 0; i < 5; i++) await slider.press('ArrowRight')
-  await expect(slider).toHaveValue('50')
+  await expect(slider).toHaveValue('90')
+  await withFixtureResponse(page, response =>
+    new URL(response.url()).pathname.endsWith('/commands') &&
+    response.request().postDataJSON().gameplay?.command?.type === 'SetProduction',
+    () => slider.press('End'),
+  )
+  await expect(slider).toHaveValue('100')
   await expect
     .poll(() => sent)
     .toMatchObject({
       type: 'SetProduction',
       body: body.id,
-      settings: { solar_satellite: 50 },
+      settings: { solar_satellite: 100 },
     })
-  await expect.poll(() => production.settings.solar_satellite).toBe(50)
+  await expect.poll(() => production.settings.solar_satellite).toBe(100)
   await withBootstrapResponse(page, () => page.reload())
-  await expect(row.getByRole('slider')).toHaveValue('50')
+  await expect(row.getByRole('slider')).toHaveValue('100')
   await expect(row).toContainText('30')
+  await withProgressionResponse(page, unitInspection(body.id), () => page.goBack())
+  await expect(page).toHaveURL(url => url.pathname === orderPath)
+  await expect(order.getByText('Energy added', { exact: true }).locator('..').locator('dd')).toHaveText('30')
+  await expect(order.getByRole('link', { name: /production/i })).toHaveCount(0)
 })
 
 for (const width of [320]) {
@@ -385,6 +403,7 @@ test('satellite ordering updates across planets, zero stationed satellites and u
   await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/overview'), () => refreshGame(page))
   await expect(order).toContainText('Planet energy per satellite47')
   await expect(gain).toHaveText('(50% production) 23.5')
+  await expect(gain.getByRole('link')).toHaveAttribute('href', `/u/andromeda/b/${second.id}/resource-settings`)
   delete production.solar_satellite
   production.settings_revision = '2'
   await withFixtureResponse(page, response => new URL(response.url()).pathname.endsWith('/overview'), () => refreshGame(page))
