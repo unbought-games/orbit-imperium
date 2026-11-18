@@ -975,7 +975,7 @@ test('quick build reserves competing rows and renders acknowledgment, countdown 
     await expect(part).toBeVisible()
   // Read all rectangles together so a later layout cannot change the comparison.
   const [nameBox, levelBox, metalBox, crystalBox] = await page.evaluate(
-    (parts) => parts.map((part) => part.getBoundingClientRect().toJSON()),
+    (parts) => parts.map((part) => part!.getBoundingClientRect().toJSON()),
     await Promise.all(
       [title, level, metal, crystal].map((part) => part.elementHandle()),
     ),
