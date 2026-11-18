@@ -93,6 +93,12 @@ deliberate browser merge gate and put most behavior at deterministic or isolated
 component boundaries. The strategy records migration status; do not assume the
 existing broad browser suite has already been replaced.
 
+- After writing or materially changing browser/e2e tests, the implementer MUST
+  launch the independent `browser_test_reviewer` in fresh context before
+  declaring completion or publishing the final PR revision. Follow the
+  [invocation and disposition procedure](.agents/skills/test-design/references/browser-review.md),
+  including fresh focused review after material fixes. Record a concrete blocker
+  if independent review is unavailable.
 - Add meaningful coverage for changed behavior at the cheapest useful layer. Prefer deterministic fixtures and controlled clocks. Do not omit tests or weaken assertions to obtain a passing run.
 - Every expensive test must name the regression it catches. Delete obsolete or redundant tests with a recorded rationale; replace worthwhile coverage at a cheaper layer. Test count is not the goal.
 - Keep arithmetic, authorization, replay, idempotency, state permutations and race schedules in deterministic unit/HTTP/database tests. Browser tests earn their cost through navigation, focus, submission, responsive layout or essential browser wiring.

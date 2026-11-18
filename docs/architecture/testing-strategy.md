@@ -15,6 +15,9 @@ replacements exist. This is not permission to quarantine valuable assertions.
 See [current runner behavior](../runbooks/ci-runners.md) and the individual
 `docs/verification/test-migration-*.md` coverage maps.
 
+The [interim journey reconciliation](../verification/test-migration-journey-review.md)
+connects the current shortlist to landed coverage and the remaining domain owners.
+
 ## Coverage boundaries
 
 | Layer | Responsibility | Execution policy |

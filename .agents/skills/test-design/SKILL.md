@@ -56,6 +56,14 @@ the coverage-preserving migration in the strategy.
   against known broken behavior or make a narrow temporary fault locally, then
   restore it. Do not add mutation infrastructure for a routine change.
 
+## Require an independent adversarial review
+
+After writing or materially changing browser/e2e tests, you MUST launch a fresh
+`browser_test_reviewer` before declaring completion or publishing the final PR
+revision. Use the [launch recipe, evidence standard and migration examples](references/browser-review.md).
+Record the actual result and disposition, then repeat the fresh focused review
+after material test fixes. If the review is blocked, record why.
+
 ## Diagnose before repairing or rerunning
 
 Read [failure classification](references/failures.md) when investigating a
