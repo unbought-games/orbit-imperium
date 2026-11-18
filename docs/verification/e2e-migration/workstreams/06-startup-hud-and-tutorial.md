@@ -1,6 +1,6 @@
 # 06 — Startup, authentication, recovery, HUD and tutorial
 
-Status: **delegated** to chat `01a1ec36-06a1-71f1-843d-e11abfdced0e` for the whole stream through confirmed merge; see the [November 17 assignment](../STATUS.md#2026-11-17-rebase-and-stream-06-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **merged in PR #456** (`150db24f`); implementation by chat `01a1ec36-06a1-71f1-843d-e11abfdced0e` for the whole stream through confirmed merge; see the [November 17 assignment](../STATUS.md#2026-11-17-rebase-and-stream-06-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -103,3 +103,12 @@ from test-migration-shell-navigation.md. Preserve #445 in-memory-only retries,
 retired transition journal. The frozen snapshot does not override these changes.
 Preserve required native observer, loading/live-region, focus and subscribed HUD
 contracts; deterministic schedules alone do not prove those browser bindings.
+
+## Resolution of the recorded caption failure
+
+Stream 06 reconciled the original run/artifact in
+`docs/verification/test-migration-startup-hud-tutorial.md`. The evidence did not
+establish its mechanism, so the exact combined held-response/reduced-motion
+case was retired under policy. Accepted refresh state, foreground delivery, live
+announcements and reduced-motion rendering have separate passing protection.
+The combined sequence remains an explicit gap, not a repaired browser case.

@@ -1,6 +1,6 @@
 # 07 — Social, alliances, recruitment and identity
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1ef30-f8b3-7a63-8fd3-ca561afc616f` for the whole stream through confirmed merge; see the [November 18 assignment](../STATUS.md#2026-11-18-rebase-and-stream-07-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -85,3 +85,12 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 07 in `docs/verification/e2e-migration/workstreams/07-social-and-identity.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Landed handoffs and current-main deltas
+
+Read test-migration-startup-hud-tutorial.md: the expired alliance noticeboard
+cursor's live recovery region remains an actual running-screen contract for 07.
+Reconcile #386/#390/#394/#414/#416/#432 alliance management, recruitment,
+invitations, sections and feedback, plus #436/#444/#447/#457 emblem ownership/
+cache and identity behavior. Preserve current semantics and public/private
+content boundaries; frozen inventory counts are historical, not expected results.

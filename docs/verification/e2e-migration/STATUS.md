@@ -11,8 +11,8 @@ replacement-equivalence validation and final CI cutover remain open.
 | 03 Dispatch/fleets | Merged | PR #417 | Complete handoff in test-migration-dispatch-fleets.md | `7d57e0532827fffe2bde0da65f03e8045b460dda` |
 | 04 Empire/settings | Merged | PR #446 | Complete handoff in test-migration-empire-settings.md; retained layout gaps remain explicit | `3e5540e1d9834ca45ecd007f853b3f793720431b` |
 | 05 Shell/navigation | Merged | PR #448 | Complete handoff in test-migration-shell-navigation.md | `3292240300c4addd3a499a69622f2cb6af41e7c9` |
-| 06 Startup/HUD/tutorial | Delegated | — | Whole stream through merge; reconcile caption failure and current recovery contracts | Chat `01a1ec36-06a1-71f1-843d-e11abfdced0e` |
-| 07 Social/identity | Not started | — | Directory filters/compact controls | — |
+| 06 Startup/HUD/tutorial | Merged | PR #456 | Complete handoff in test-migration-startup-hud-tutorial.md; combined caption-sequence gap explicit | `150db24f196c01fabcc7181b6f4f10ffa454ddb0` |
+| 07 Social/identity | Delegated | — | Whole stream through merge; reconcile alliance/identity main deltas | Chat `01a1ef30-f8b3-7a63-8fd3-ca561afc616f` |
 | 08 Reports | Not started | — | Independent rollback/archive outcomes | — |
 | 09 Harness/acceptance | Not started | — | Unexpected-operation diagnostics | — |
 | 10 Cutover/reliability | Waiting for implementation evidence | — | Candidate journey contract matrix | — |
@@ -173,3 +173,26 @@ in-memory retries (#445), removed report-read confirmation messaging (#452),
 and removal of the retired transition journal (#451/#454). Historical fixtures
 must not reinstate intentionally removed product behavior. Frozen inventories
 remain unchanged; current-main deltas belong in the stream-06 ledger.
+
+## 2026-11-18: rebase and stream 07 assignment
+
+Fetched main `03fd2a622acec3a99eda582c959d7783f274b87f` and rebased/published
+the audit branch cleanly. Confirmed stream 06 merged in PR #456 at
+`150db24f196c01fabcc7181b6f4f10ffa454ddb0`. Its originating chat reports all
+115 final browser cases, PR, queue and main CI passed, with no queue removals
+or actionable review findings. The combined held-HTTP/reduced-motion caption
+case was retired under the unexplained-failure rule; its exact browser-sequence
+gap and separate passing contracts remain documented in the focused handoff.
+
+Assigned the full Social, alliances, recruitment and identity stream to chat
+`01a1ef30-f8b3-7a63-8fd3-ca561afc616f` (Complete social alliances and identity
+test migration), explicitly authorized to use /pr and /finish-pr through
+confirmed merge. No implementation or validation success is claimed here.
+
+The child must preserve the expired-cursor live recovery region and mounted
+bot-to-human identity refresh until observable replacement coverage passes.
+Reconcile newer alliance management, recruitment templates, universe-bound
+invitations, deep links, uploads/greeting, emblem caching/ownership and Empire
+identity against frozen inputs. Use canonical routeTarget paths, current Base UI
+overlays and in-memory retries. Paid/private cosmetic originals and deployment
+details remain excluded from public fixtures and documentation.
