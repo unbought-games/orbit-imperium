@@ -545,3 +545,49 @@ async fn protected_oldest_window_cannot_hide_later_eligible_work() {
         384
     );
 }
+
+#[tokio::test]
+async fn a_busy_presence_partner_does_not_spend_a_batch_slot() {
+    let (store, pool, b) = setup().await;
+    let u = b.universe;
+    add_history(&pool, b, 513).await;
+    let members:Vec<Uuid>=sqlx::query_scalar("UPDATE commands SET retention_since=to_timestamp(0)-interval '1 day' WHERE universe=$1 AND sequence<=2 RETURNING input_id")
+        .bind(u.0).fetch_all(&pool).await.unwrap();
+    sqlx::query("INSERT INTO presence_pairs(universe,presence_input,gameplay_input,data) VALUES($1,$2,$3,'{}')")
+        .bind(u.0).bind(members[0]).bind(members[1]).execute(&pool).await.unwrap();
+    let mut reader = pool.begin().await.unwrap();
+    sqlx::query("SELECT input_id FROM commands WHERE input_id=$1 FOR KEY SHARE")
+        .bind(members[0])
+        .fetch_one(&mut *reader)
+        .await
+        .unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM commands WHERE universe=$1", u).await,
+        385
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM presence_pairs WHERE universe=$1",
+            u
+        )
+        .await,
+        1
+    );
+    reader.commit().await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        count(&pool, "SELECT count(*) FROM commands WHERE universe=$1", u).await,
+        256
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM presence_pairs WHERE universe=$1",
+            u
+        )
+        .await,
+        0
+    );
+}

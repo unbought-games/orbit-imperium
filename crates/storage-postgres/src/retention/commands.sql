@@ -7,7 +7,7 @@ WITH candidates AS MATERIALIZED (
       AND c.retention_since <= to_timestamp($6::bigint/1000.0)-interval '7 days'
       AND (c.retention_since,c.input_id) > ($4::text::timestamptz,$5)
     ORDER BY c.retention_since,c.input_id LIMIT 512
-), roots AS MATERIALIZED (
+), eligible AS MATERIALIZED (
     SELECT c.input_id, pair.presence_input, c.retention_since AS since
     FROM candidates k JOIN commands c ON c.input_id=k.input_id
     LEFT JOIN presence_pairs pair ON pair.gameplay_input=c.input_id
@@ -31,13 +31,14 @@ WITH candidates AS MATERIALIZED (
              OR EXISTS (SELECT FROM universe_runtime r WHERE r.universe=c.universe AND r.claim_input=member.id)
              OR EXISTS (SELECT FROM analytics_delivery d WHERE d.event_id=member.id AND d.state<>'delivered')
       )
-    ORDER BY k.retention_since,k.input_id LIMIT 128 FOR UPDATE OF c SKIP LOCKED
 ), picked AS MATERIALIZED (
-    -- The other half can also be locked by a result reader or late worker.
-    -- Skip that whole group without rolling back unrelated eligible groups.
-    SELECT r.* FROM roots r WHERE r.presence_input IS NULL OR EXISTS (
-        SELECT FROM commands p WHERE p.input_id=r.presence_input FOR UPDATE SKIP LOCKED
+    -- Apply both lock checks before the group limit. One busy partner cannot
+    -- consume a place in a full window that still has other eligible groups.
+    SELECT e.* FROM eligible e JOIN commands root ON root.input_id=e.input_id
+    WHERE e.presence_input IS NULL OR EXISTS (
+        SELECT FROM commands p WHERE p.input_id=e.presence_input FOR UPDATE SKIP LOCKED
     )
+    ORDER BY e.since,e.input_id LIMIT 128 FOR UPDATE OF root SKIP LOCKED
 ), links AS (
     DELETE FROM presence_pairs l USING picked k WHERE l.gameplay_input=k.input_id
 ), removed AS (
