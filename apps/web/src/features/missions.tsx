@@ -19,14 +19,7 @@ export type DispatchDraft = {
   origin?: string
   targetKind?: LocationKind
   coordinates: S['Coordinates']
-  mission:
-    | 'Transport'
-    | 'Espionage'
-    | 'Harvest'
-    | 'Attack'
-    | 'Colonize'
-    | 'Deploy'
-    | 'Hold'
+  mission: S['Mission4']
   observedAt?: number
   target?: S['MissionDestination4']
 }
