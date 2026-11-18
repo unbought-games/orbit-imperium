@@ -6,6 +6,8 @@ import {
 } from '../../ui/number-value'
 import { progressionCommand, technologyRequest } from './options'
 import { useId, type ReactNode } from 'react'
+import { InputWithAction, FillButton } from '../../ui/input-with-action'
+import { maximumManufacturingQuantity } from './manufacturing-preview'
 import { SatelliteOutput } from './satellite-output'
 import { ManufacturingOrderSummary } from './manufacturing-order-summary'
 import { Network } from 'lucide-react'
@@ -133,6 +135,24 @@ export function TechnologyDetails({
           material.target_level,
         )
       : []
+  const supportsMax = entry.key.kind === 'Ship' || entry.key.kind === 'Defense'
+  const maximum =
+    supportsMax && !unavailable && model.ready && !model.stale && !order.busy
+      ? maximumManufacturingQuantity(proposal, body, view)
+      : 0n
+  const quantityField = (
+    <Field className={styles.quantity}>
+      <span className={styles.quantityLabel}>Qty</span>
+      <NumberInput
+        aria-label={`${orderTitle} quantity`}
+        aria-invalid={!!quantityError}
+        aria-describedby={quantityError ? quantityErrorId : undefined}
+        value={quantity}
+        onChange={(e) => onQuantity(e.target.value)}
+        required
+      />
+    </Field>
+  )
   return renderLayout({
     content: catalogContent(entry.key),
     back: props.selection.back,
@@ -233,7 +253,12 @@ export function TechnologyDetails({
               </div>
             )}
             {entry.key.kind === 'Ship' && entry.key.id === 'SolarSatellite' && (
-              <SatelliteOutput view={view} body={body} />
+              <SatelliteOutput
+                view={view}
+                body={body}
+                inventory={inventory}
+                quantity={order.preview?.terms.quantity}
+              />
             )}
             {manufacture && (
               <ManufacturingOrderSummary
@@ -322,21 +347,20 @@ export function TechnologyDetails({
               className={manufacture ? styles.orderAction : undefined}
               data-order-layout={manufacture ? orderLayout : undefined}
             >
-              {manufacture && (
-                <Field className={styles.quantity}>
-                  <span className={styles.quantityLabel}>Qty</span>
-                  <NumberInput
-                    aria-label={`${orderTitle} quantity`}
-                    aria-invalid={!!quantityError}
-                    aria-describedby={
-                      quantityError ? quantityErrorId : undefined
-                    }
-                    value={quantity}
-                    onChange={(e) => onQuantity(e.target.value)}
-                    required
-                  />
-                </Field>
-              )}
+              {manufacture &&
+                (supportsMax ? (
+                  <InputWithAction>
+                    {quantityField}
+                    <FillButton
+                      label="Max"
+                      aria-label={`Max ${title} quantity`}
+                      disabled={maximum === 0n}
+                      onClick={() => onQuantity(maximum.toString())}
+                    />
+                  </InputWithAction>
+                ) : (
+                  quantityField
+                ))}
               <Button
                 data-analytics="confirm_technology_action"
                 className={styles.action}
