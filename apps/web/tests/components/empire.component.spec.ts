@@ -80,11 +80,19 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
       expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(amount.top)
       expect(labelBox.x).toBeLessThan(amount.left)
       if (index > 0) expect(labelBox.y).toBeGreaterThan(rects[index - 1].bottom)
-      for (const group of detailGroups) {
-        const detail = group.nth(index)
-        await expect(detail).toBeVisible()
-        expect((await detail.boundingBox())!.x).toBeGreaterThan(amount.right)
-      }
+      const detailBoxes = await Promise.all(
+        detailGroups.map(async (group) => {
+          const detail = group.nth(index)
+          await expect(detail).toBeVisible()
+          return (await detail.boundingBox())!
+        }),
+      )
+      const [firstDetail, lastDetail] = detailBoxes
+      expect(Math.min(firstDetail.x, lastDetail.x)).toBeGreaterThan(
+        amount.right,
+      )
+      expect(firstDetail.y).toBeLessThan(amount.bottom)
+      expect(lastDetail.y + lastDetail.height).toBeGreaterThan(labelBox.y)
     }
   }
 })
