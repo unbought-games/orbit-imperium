@@ -207,7 +207,6 @@ impl PgStore {
         }
         crate::bots::lock_bot(&mut tx, u, player).await?;
         let intent = binding.map(|(_, h)| h).unwrap_or_else(|| hash(&envelope));
-        crate::command_window::check(&mut tx, envelope.command_id.0).await?;
         if let Some(receipt) = crate::admission::existing_command(
             &mut tx,
             u,
@@ -265,7 +264,6 @@ impl PgStore {
             )
         };
         // Another replica may have admitted this ID while we waited for the scopes.
-        crate::command_window::check(&mut tx, envelope.command_id.0).await?;
         if let Some(receipt) = crate::admission::existing_command(
             &mut tx,
             u,

@@ -26,6 +26,37 @@ fn assert_time_error<T: std::fmt::Debug>(
     );
 }
 
+/// Release a real PostgreSQL lock only after the specified SQL statement is
+/// blocked on our backend, advancing wall time in the releasing transaction.
+async fn expire_blocked_submission<T: std::fmt::Debug>(
+    pool: &PgPool,
+    mut holder: sqlx::Transaction<'_, sqlx::Postgres>,
+    mut submission: tokio::task::JoinHandle<Result<T, ServiceError>>,
+    statement: &str,
+) {
+    let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *holder)
+        .await
+        .unwrap();
+    loop {
+        tokio::select! {
+            result = &mut submission => panic!("submission returned before the held lock: {result:?}"),
+            waiting = sqlx::query_scalar::<_,bool>(
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE starts_with(query,$2) AND $1=ANY(pg_blocking_pids(pid)))"
+            ).bind(pid).bind(statement).fetch_one(pool) => {
+                if waiting.unwrap() { break; }
+            }
+        }
+    }
+    sqlx::query("UPDATE orbit_test_clock SET at_ms=$1")
+        .bind(START + COMMAND_WINDOW_MS)
+        .execute(&mut *holder)
+        .await
+        .unwrap();
+    holder.commit().await.unwrap();
+    assert_time_error(submission.await.unwrap(), CommandTimeError::Expired);
+}
+
 #[tokio::test]
 async fn submission_expires_while_pending_and_execution_survives_cutover() {
     let (store, pool) = database().await;
@@ -122,10 +153,23 @@ async fn submission_expires_while_pending_and_execution_survives_cutover() {
         game.receipt(actor, u, missing).await,
         Err(ServiceError::NotFound)
     ));
-    store
-        .set_test_time(START + COMMAND_WINDOW_MS)
+    // A duplicate already in storage can wait on its receipt read just like a new
+    // admission can wait on a write. The post-read wall sample decides the retry.
+    let mut holder = pool.begin().await.unwrap();
+    sqlx::query("LOCK TABLE commands IN ACCESS EXCLUSIVE MODE")
+        .execute(&mut *holder)
         .await
         .unwrap();
+    let worker = game.clone();
+    let retry = order.clone();
+    let duplicate = tokio::spawn(async move { worker.submit(actor, u, retry).await });
+    expire_blocked_submission(
+        &pool,
+        holder,
+        duplicate,
+        "SELECT intent_hash,receipt FROM commands",
+    )
+    .await;
     assert_time_error(
         game.submit(actor, u, order.clone()).await,
         CommandTimeError::Expired,
@@ -278,27 +322,9 @@ async fn whole_pair_lost_ack_old_machine_recovery_and_expiry_while_waiting_for_a
         .execute(&mut *holder)
         .await
         .unwrap();
-    let holder_pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
-        .fetch_one(&mut *holder)
-        .await
-        .unwrap();
     let worker = GameService::new(store.clone());
-    let mut submission = tokio::spawn(async move { worker.world_submit(actor, racing).await });
-    loop {
-        tokio::select! {
-            result = &mut submission => panic!("pair returned before reaching the held write lock: {result:?}"),
-            waiting = sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)))").bind(holder_pid).fetch_one(&pool) => {
-                if waiting.unwrap() { break; }
-            }
-        }
-    }
-    sqlx::query("UPDATE orbit_test_clock SET at_ms=$1")
-        .bind(START + COMMAND_WINDOW_MS)
-        .execute(&mut *holder)
-        .await
-        .unwrap();
-    holder.commit().await.unwrap();
-    assert_time_error(submission.await.unwrap(), CommandTimeError::Expired);
+    let submission = tokio::spawn(async move { worker.world_submit(actor, racing).await });
+    expire_blocked_submission(&pool, holder, submission, "INSERT INTO presence_pairs").await;
     let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM commands WHERE universe=$1")
         .bind(u.0)
         .fetch_one(&pool)

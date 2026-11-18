@@ -81,6 +81,7 @@ pub(crate) async fn existing_command(
 ) -> Result<Option<Receipt>, StoreError> {
     let row = sqlx::query("SELECT intent_hash,receipt FROM commands WHERE universe=$1 AND actor=$2 AND command_id=$3 AND epoch=$4")
         .bind(u.0).bind(player.0).bind(id.0).bind(epoch.0).fetch_optional(&mut **tx).await.map_err(db_error)?;
+    crate::command_window::check(tx, id.0).await?;
     row.map(|row| {
         if row.try_get::<String, _>("intent_hash").map_err(db_error)? != intent.0 {
             return Err(StoreError::Conflict);
@@ -119,6 +120,7 @@ async fn lookup_pair(
     let b = pair.gameplay.binding;
     let rows=sqlx::query("SELECT command_id,intent_hash,receipt FROM commands WHERE universe=$1 AND epoch=$2 AND actor=$3 AND command_id=ANY($4)")
         .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(vec![pair.presence.command_id.0,pair.gameplay.command_id.0]).fetch_all(&mut **tx).await.map_err(db_error)?;
+    crate::command_window::check(tx, pair.gameplay.command_id.0).await?;
     if rows.is_empty() {
         return Ok(None);
     }

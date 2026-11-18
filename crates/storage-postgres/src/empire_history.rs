@@ -253,18 +253,18 @@ impl PgStore {
             .map_err(db_error)?
             .ok_or(StoreError::NotFound)?;
         let profile = identity(&mut tx, Some(account), player).await?;
-        crate::command_window::check(&mut tx, q.command_id).await?;
         let intent =
             orbit_engine::hash(&json!({"action":q.action,"revision":q.expected_revision})).0;
-        if let Some((old, actor)) = sqlx::query_as::<_, (String, Uuid)>(
+        let existing = sqlx::query_as::<_, (String, Uuid)>(
             "SELECT intent,account FROM empire_profile_receipts WHERE player=$1 AND command=$2",
         )
         .bind(player)
         .bind(q.command_id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(db_error)?
-        {
+        .map_err(db_error)?;
+        crate::command_window::check(&mut tx, q.command_id).await?;
+        if let Some((old, actor)) = existing {
             return if old == intent && actor == account.0 {
                 Ok(())
             } else {

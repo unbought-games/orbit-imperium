@@ -1060,16 +1060,18 @@ impl PgStore {
         crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         // V7 has one deadline for both halves. Legacy browser pairs used independent
         // v4 IDs and legacy machine pairs used their original, stable transform.
-        crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
+        let gameplay =
+            CommandIdentity::parse(pair.gameplay.command_id.0).map_err(StoreError::CommandTime)?;
         let presence =
             CommandIdentity::parse(pair.presence.command_id.0).map_err(StoreError::CommandTime)?;
         let same_pair = match presence {
-            CommandIdentity::LegacyV4 => pair.gameplay.command_id.0.get_version_num() == 4,
+            CommandIdentity::LegacyV4 => gameplay == CommandIdentity::LegacyV4,
             CommandIdentity::V7 { .. } => {
                 paired_presence_id(pair.gameplay.command_id.0) == pair.presence.command_id.0
             }
         };
         if !same_pair {
+            crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
             return Err(StoreError::Conflict);
         }
         let pair_hash = hash(&pair);
@@ -1171,7 +1173,6 @@ impl PgStore {
                 self.timer(RuntimeStage::OrderingHold),
             )
         };
-        crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await? {
             timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
