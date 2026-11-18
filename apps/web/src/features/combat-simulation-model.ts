@@ -323,21 +323,5 @@ export function battleEstimates(
           capacity: wholeCapacity,
         }
       : null
-  const victories = samples.filter((s) => s.outcome === 'AttackerVictory')
-  const available = response.available_loot
-  const cargoCovered =
-    available && victories.every((s) => s.estimated_loot)
-      ? victories.filter((s) =>
-          resourceNames.every(
-            (r) => BigInt(s.estimated_loot![r]) >= BigInt(available[r]),
-          ),
-        ).length
-      : null
-  return {
-    averageRounds,
-    moon,
-    recyclers,
-    cargoCovered,
-    victories: victories.length,
-  }
+  return { averageRounds, moon, recyclers }
 }

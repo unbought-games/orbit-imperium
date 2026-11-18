@@ -57,20 +57,6 @@ export function SimulationPlanning({
               total={summary.total.average}
             />
           )}
-          {summary.total &&
-            summary.potentialLoot !== 0n &&
-            (estimates.victories === 0 ? (
-              <p>No attacker victories in this sample.</p>
-            ) : (
-              estimates.cargoCovered !== null && (
-                <p>
-                  <strong>
-                    {estimates.cargoCovered} of {estimates.victories}
-                  </strong>{' '}
-                  attacker victories collected the full potential loot.
-                </p>
-              )
-            ))}
           {!result.loot_rules_enabled && (
             <p>Raiding disabled in this universe.</p>
           )}

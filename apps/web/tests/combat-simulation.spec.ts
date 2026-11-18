@@ -140,7 +140,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     const haul = cargo.getByRole('table', { name: 'Average gross haul' })
     await expect(haul.getByRole('rowheader')).toHaveText(['Metal', 'Crystal', 'Deuterium', 'Total'])
     await expect(haul.getByRole('cell')).toHaveText(['216', '55', '45', '316'])
-    await expect(cargo).toContainText('0 of 10 attacker victories collected the full potential loot')
+    await expect(cargo).not.toContainText('attacker victories')
   }
   if (!hidden) {
     for (const name of ['Metal', 'Crystal', 'Deuterium']) await expect(results.getByRole('img', { name, exact: true }).first()).toBeVisible()
