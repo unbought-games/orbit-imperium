@@ -21,10 +21,11 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
 ]
 for (const hidden of [false, true]) test(`prefills report simulation with ${hidden ? 'unknown' : 'observed'} intelligence`, async ({ page }) => {
   await installGameFixture(page, { protocol: 4, catalog, bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }, { ...body, id: id(6), inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '99' }] }, { ...body, id: id(7), kind: 'Moon' }], extraCapabilities: ['Reports'] })
+  const observedResources = { metal: '29800000000', crystal: '100000000', deuterium: '100000000' }
   const header = { id: id(63), kind: 'Espionage', observed_at: 6000, read: true, hidden: false }
   await page.route('**/api/**/reports/**', async route => {
     const context = route.request().postDataJSON()
-    await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { header, payload: { ...observation, observed_at: Date.now() - 7200000, resources: hidden ? { visibility: 'Unknown' } : observation.resources, defenses: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: '1' }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: '3' }] }, fleet: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '12' }] }, research: hidden ? { visibility: 'Unknown' } : observation.research } } } })
+    await route.fulfill({ json: { protocol: 4, binding, request_id: context.request_id, viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(), data: { header, payload: { ...observation, observed_at: Date.now() - 7200000, resources: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: observedResources }, defenses: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Defense', id: 'HeavyLaser' }, count: '7' }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: '1' }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: '3' }] }, fleet: hidden ? { visibility: 'Unknown' } : { visibility: 'Known', value: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '12' }] }, research: hidden ? { visibility: 'Unknown' } : observation.research } } } })
   })
   let submitted: any = null
   let attempts = 0
@@ -32,7 +33,7 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     submitted = route.request().postDataJSON()
     if (hidden && attempts++ === 0) { await route.fulfill({ status: 503, json: { code: 'Unavailable' } }); return }
     const observed = submitted.inputs.observed_resources !== undefined
-    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, moons_enabled: true, recycler_capacity: '20000000000', available_loot: observed ? { metal: '5000000000', crystal: '5000000000', deuterium: '5000000000' } : null, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, moon_chance_percent: hidden ? 20 : 0, debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity: '400000000', estimated_loot: observed ? { metal: '133000000', crystal: '133000000', deuterium: '134000000' } : null, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
+    await route.fulfill({ json: { ...submitted.context, profile_hash: 'a'.repeat(64), loot_rules_enabled: true, moons_enabled: true, recycler_capacity: '20000000000', available_loot: observed ? { metal: '14900000000', crystal: '50000000', deuterium: '50000000' } : null, samples: Array.from({ length: 10 }, () => ({ outcome: 'AttackerVictory', rounds: 1, moon_chance_percent: hidden ? 20 : 0, debris: { metal: '18000000', crystal: '6000000', deuterium: '0' }, surviving_cargo_capacity: '400000000', estimated_loot: observed ? { metal: '216000000', crystal: '50000000', deuterium: '50000000' } : null, attacker: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 8 }, { item: { kind: 'Ship', id: 'Bomber' }, count: 0 }], defender: [] })) } })
   })
   await withFixtureResponse(page, r => r.url().endsWith(`/reports/${header.id}`), () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
   const trigger = page.getByRole('button', { name: 'Simulate combat', exact: true })
@@ -135,12 +136,12 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await expect(cargo.getByText('Potential loot', { exact: false })).toHaveCount(0)
   } else {
     await expect(cargo.getByText('Potential loot · unlimited cargo', { exact: true }).locator('..').getByRole('definition')).toHaveText('15,000')
-    await expect(cargo.getByText('Average gross haul', { exact: true }).locator('..').getByRole('definition').first()).toHaveText('400')
+    await expect(cargo.getByText('Average gross haul', { exact: true }).locator('..').getByRole('definition').first()).toHaveText('316')
     await expect(cargo).toContainText('0 of 10 attacker victories collected the full potential loot')
   }
   if (!hidden) {
     for (const name of ['Metal', 'Crystal', 'Deuterium']) await expect(results.getByRole('img', { name, exact: true }).first()).toBeVisible()
-    expect(submitted.inputs.observed_resources).toEqual(observation.resources.value)
+    expect(submitted.inputs.observed_resources).toEqual(observedResources)
   } else expect(submitted.inputs.observed_resources).toBeUndefined()
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
@@ -162,12 +163,12 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await results.getByText('Estimate ranges and assumptions', { exact: true }).scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, { path: `test-results/simulation-result-details-${hidden}-${width}.png` })
   }
-  await expect(results.getByText('Victory', { exact: false })).toHaveCSS('color', 'rgb(145, 201, 172)')
-  await expect(results.getByText('Defeat', { exact: false })).toHaveCSS('color', 'rgb(227, 152, 133)')
+  await expect(results.getByText('10 / 10 Victory', { exact: true })).toHaveCSS('color', 'rgb(145, 201, 172)')
+  await expect(results.getByText('0 / 10 Defeat', { exact: true })).toHaveCSS('color', 'rgb(227, 152, 133)')
   expect(submitted.inputs.defender.units).toEqual(hidden ? [] : [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 12 }, { item: { kind: 'Defense', id: 'HeavyLaser' }, count: 7 }, { item: { kind: 'Defense', id: 'LargeShieldDome' }, count: 1 }, { item: { kind: 'Defense', id: 'PlasmaTurret' }, count: 3 }])
   expect(submitted.inputs.attacker.units).toEqual([{ item: { kind: 'Ship', id: 'Bomber' }, count: 2 }, { item: { kind: 'Ship', id: 'LightFighter' }, count: 10 }])
   expect(Object.keys(submitted).sort()).toEqual(['context', 'inputs'])
-  const survivors = results.locator('details').filter({ has: results.getByText('Losses and survivors', { exact: true }) })
+  const survivors = results.locator('details').filter({ has: page.locator('summary', { hasText: 'Losses and survivors' }) })
   if (!hidden) await survivors.locator('summary').press('Space')
   await dialog.getByLabel('Attacker Light Fighter', { exact: true }).fill('20')
   await expect(dialog.getByRole('region', { name: 'Simulation results' })).toHaveCount(0)
@@ -209,7 +210,8 @@ for (const hidden of [false, true]) test(`prefills report simulation with ${hidd
     await diagnosticScreenshot(page, {path:`test-results/simulation-detached-${width}.png`})
   }
 
-  await expect(dialog.getByLabel('Defender Light Fighter', {exact:true})).toBeVisible()
+  await expect(defenderShips.locator('details')).toHaveJSProperty('open', hidden)
+  if (hidden) await expect(dialog.getByLabel('Defender Light Fighter', {exact:true})).toBeVisible()
   await expect(dialog.getByLabel('Defender Light Fighter', {exact:true})).toHaveValue(hidden ? '0' : '12')
   await expect(dialog.getByLabel('Attacker Light Fighter', {exact:true})).toHaveValue('20')
   await withFixtureResponse(page, r => r.url().endsWith('/combat-simulation'), () => dialog.getByRole('button', {name:'Run 10 battles'}).click())
