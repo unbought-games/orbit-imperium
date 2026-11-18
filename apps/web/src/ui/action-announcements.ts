@@ -9,7 +9,8 @@ export function visibleAction(a: Attempt): boolean {
   const command = a.envelope.command
   if (
     command.type === 'World' &&
-    (command.action.type === 'SetReportHidden' ||
+    (command.action.type === 'ArchiveReport' ||
+      command.action.type === 'SetReportHidden' ||
       command.action.type === 'SetReportsHidden' ||
       command.action.type === 'SetReportStarred')
   )
@@ -21,6 +22,8 @@ export function visibleAction(a: Attempt): boolean {
   )
 }
 export function actionLabel(command: Command): string {
+  if (command.type === 'World' && command.action.type === 'ArchiveReport')
+    return 'Archive report'
   if (command.type === 'World' && command.action.type === 'SetReportStarred')
     return command.action.starred ? 'Star report' : 'Unstar report'
   if (command.type === 'World' && command.action.type === 'SetReportsHidden')

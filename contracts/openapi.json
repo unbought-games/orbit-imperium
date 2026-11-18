@@ -13784,6 +13784,27 @@
             "type": "object",
             "properties": {
               "type": {
+                "const": "ArchiveReport"
+              },
+              "report": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revoke_share": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "report",
+              "revoke_share"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
                 "const": "SetReportHidden"
               },
               "report": {

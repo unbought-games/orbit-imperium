@@ -14,14 +14,13 @@ current account's recipient binding, same-origin request, and CSRF token. Each
 recipient has an independent random link. Repeated creation returns the existing
 link and disclosure options; changing options requires revocation and a new link.
 Creation (including a retry of an active link) stars the recipient's report in the
-same transaction. Revocation leaves the star intact. Unstarring a shared report
-warns that later deletion, including bulk cleanup, permanently removes its links.
+same transaction. Revocation leaves the star intact. Unstarring allows archiving from the list. Row and bulk archive actions preserve active links.
 Sharing status in report headers is derived from active publication records.
 Sharing responses return the complete header and its viewer revision together.
 Publication and revocation advance the viewer revision and publish durable
 refresh events to other open tabs; report command commits
 lock recipient rows before revalidating their facts to prevent lost updates.
-Deletion revokes sharing permanently, including after restoring a report.
+Archiving from report details uses the ArchiveReport command. A shared report requires explicit confirmation to revoke the link in the archive transaction. The star is preserved. Moving the report to the inbox leaves the revoked link unavailable.
 
 `GET /api/v4/shared-reports/{token}` reads only the publishing recipient's stored
 observation. A recursive allowlist removes internal fields, substitutes local
@@ -50,7 +49,6 @@ HTML tests, `make _db-report_sharing` with a disposable database, and the fixtur
 browser suite `npm run test:ui -- report-sharing.spec.ts`.
 
 Commemorative publication is a separate action with a separate lasting URL.
-Inbox deletion continues to revoke these unlisted report shares; it does not
-erase a battle referenced by profile history. See [Empire profiles and lasting
+Archiving from details revokes the unlisted report share and preserves battles referenced by profile history. See [Empire profiles and lasting
 history](../features/empire-profiles.md) for selection, publication and withdrawal
 semantics. Existing unlisted sharing never opts an event into a public profile.

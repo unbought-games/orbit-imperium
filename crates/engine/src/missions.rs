@@ -748,6 +748,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 Command::World {
                     action: WorldAction::MarkReportRead { .. }
                         | WorldAction::MarkReportsRead { .. }
+                        | WorldAction::ArchiveReport { .. }
                         | WorldAction::SetReportHidden { .. }
                         | WorldAction::SetReportsHidden { .. }
                         | WorldAction::SetReportStarred { .. }
@@ -1350,6 +1351,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             action:
                 action @ (WorldAction::MarkReportRead { .. }
                 | WorldAction::MarkReportsRead { .. }
+                | WorldAction::ArchiveReport { .. }
                 | WorldAction::SetReportHidden { .. }
                 | WorldAction::SetReportsHidden { .. }
                 | WorldAction::SetReportStarred { .. }),
@@ -1394,10 +1396,19 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         read: false,
                         hidden: false,
                         starred: false,
+                        shared: false,
                     });
                     w.report_states.len() - 1
                 };
                 match action {
+                    WorldAction::ArchiveReport { revoke_share, .. } => {
+                        let state = &mut w.report_states[idx];
+                        if state.shared && (!revoke_share || state.hidden) {
+                            return Err(GameError::InvalidInput.into());
+                        }
+                        state.hidden = true;
+                        state.shared = false;
+                    }
                     WorldAction::SetReportHidden { hidden, .. }
                     | WorldAction::SetReportsHidden { hidden, .. } => {
                         w.report_states[idx].hidden = *hidden

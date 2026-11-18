@@ -153,7 +153,7 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
         result_ids: [], minimum_viewer_revision: String(revision),
       } })
     }
-    expect(['SetReportHidden', 'SetReportsHidden']).toContain(envelope.command.action.type)
+    expect(['ArchiveReport', 'SetReportHidden', 'SetReportsHidden']).toContain(envelope.command.action.type)
     submitted++
     await pause
     if (mode === 'uncertain')
@@ -161,8 +161,14 @@ async function reportsFixture(page: Page, quiet = false, count = 2, pageSize = 1
     if (mode === 'success') {
       const reports = envelope.command.action.type === 'SetReportsHidden'
         ? envelope.command.action.reports : [envelope.command.action.report]
-      for (const report of reports)
-        headers.find((r) => r.id === report)!.hidden = envelope.command.action.hidden
+      for (const report of reports) {
+        const row = headers.find(r => r.id === report)!
+        if (envelope.command.action.type === 'ArchiveReport') {
+          expect(envelope.command.action.revoke_share).toBe(!!row.shared)
+          row.hidden = true
+          row.shared = false
+        } else row.hidden = envelope.command.action.hidden
+      }
       revision++
     }
     await route.fulfill({
@@ -234,21 +240,32 @@ for (const width of [1440, 390]) {
     expect(fixture.headers.map(row => row.hidden)).toEqual([true, true, false])
     expect(fixture.submitted()).toBe(1)
 
+    fixture.headers[2].starred = true
+    fixture.headers[2].shared = true
+    fixture.bumpRevision()
     await withReportResponse(page, id(72), () => rows.getByRole('link', { name: 'Espionage', exact: true }).click())
     await expect(page.getByRole('region', { name: 'Report observation' })).toBeVisible()
-    await page.getByRole('button', { name: 'Star report', exact: true }).click()
     const archive = page.getByRole('button', { name: 'Archive report', exact: true })
-    await expect(archive).toBeDisabled()
-    await page.keyboard.press('e')
-    expect(fixture.submitted()).toBe(1)
-    await page.getByRole('button', { name: 'Unstar report', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Unstar report' })).toHaveAttribute('aria-pressed', 'true')
     await expect(archive).toBeEnabled()
     await expect(archive).toHaveAttribute('aria-keyshortcuts', 'e')
-    await diagnosticScreenshot(page, { path: `test-results/archive-shortcut-detail-${width}x900.png` })
+    await diagnosticScreenshot(page, { path: `test-results/archive-shared-detail-${width}x900.png` })
+    await archive.click()
+    const dialog = page.getByRole('dialog', { name: 'Archive this shared report?' })
+    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+    await expect(dialog).toHaveAccessibleDescription(/public link will stop working/)
+    await expect(cancel).toBeFocused()
+    await diagnosticScreenshot(page, { path: `test-results/archive-shared-confirm-${width}x900.png` })
+    await cancel.click()
+    await expect(dialog).toBeHidden()
+    await expect(archive).toBeFocused()
+    expect(fixture.submitted()).toBe(1)
+    expect(fixture.headers[2]).toMatchObject({ hidden: false, shared: true, starred: true })
     let release!: () => void
     fixture.pause(new Promise<void>(resolve => { release = resolve }))
     try {
       await page.keyboard.press('e')
+      await dialog.getByRole('button', { name: 'Archive and stop sharing', exact: true }).click()
       await expect.poll(fixture.submitted).toBe(2)
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${id(72)}`)
       await expect(page.getByRole('button', { name: 'Move to inbox', exact: true })).toBeDisabled()
@@ -265,8 +282,14 @@ for (const width of [1440, 390]) {
     await page.keyboard.press('e')
     expect(fixture.submitted()).toBe(2)
     await diagnosticScreenshot(page, { path: `test-results/archive-shortcut-archived-${width}x900.png` })
-    await withReportResponse(page, id(70), () => rows.nth(0).getByRole('link', { name: 'Espionage', exact: true }).click())
+    expect(fixture.headers[2]).toMatchObject({ hidden: true, shared: false, starred: true })
+    // Reopening this detail can use its cached observation. Reload to verify the
+    // persisted header at the server boundary as well as the archived route.
+    await rows.locator(`a[href$="/${id(72)}"]`).click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports/${id(72)}`)
+    await withReportResponse(page, id(72), () => page.reload())
     await expect(page.getByRole('button', { name: 'Move to inbox', exact: true })).toBeEnabled()
+    await diagnosticScreenshot(page, { path: `test-results/archive-shared-archived-${width}x900.png` })
     await page.keyboard.press('e')
     expect(fixture.submitted()).toBe(2)
     expect(fixture.headers.every(row => row.hidden)).toBe(true)
@@ -1244,7 +1267,7 @@ for (const width of [1440, 390]) {
     const detailUrl = page.url()
     let throttled = true
     await page.route('**/commands', async route => {
-      if (throttled && route.request().postDataJSON().gameplay?.command.action.type === 'SetReportHidden')
+      if (throttled && route.request().postDataJSON().gameplay?.command.action.type === 'ArchiveReport')
         return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'RateLimited' } })
       return route.fallback()
     })
