@@ -40,12 +40,27 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
     bodies: [{ ...options.bodies[0], amounts }],
     missions: { ...options.missions, fleets: [] },
   })
-  for (const panel of [
-    page.getByLabel('Empire resource totals'),
-    page.getByLabel('Planet resources'),
-  ]) {
+  const totals = ['1,000,234,567', '45', '127']
+  for (const [name, details] of [
+    [
+      'Empire resource totals',
+      [
+        ['Worlds', totals],
+        ['In flight', ['0', '0', '0']],
+      ],
+    ],
+    [
+      'Planet resources',
+      [
+        ['Capacity', ['40,000', '30,000', '15,000']],
+        ['Per hour', ['0', '37', '0']],
+      ],
+    ],
+  ] as const) {
+    const panel = page.getByLabel(name)
+    const panelBox = (await panel.boundingBox())!
     const balances = panel.locator('strong')
-    await expect(balances).toHaveText(['1,000,234,567', '45', '127'])
+    await expect(balances).toHaveText(totals)
     const rects = await balances.evaluateAll((balances) =>
       balances.map((balance) => {
         const walker = document.createTreeWalker(balance, NodeFilter.SHOW_TEXT)
@@ -68,10 +83,6 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
     expect(deuterium.left).toBeCloseTo(metal.left, 0)
     expect(crystal.top).toBeGreaterThan(metal.bottom)
     expect(deuterium.top).toBeGreaterThan(crystal.bottom)
-    const detailGroups = [
-      panel.getByText(/^(Worlds|Capacity)$/),
-      panel.getByText(/^(In flight|Per hour)$/),
-    ]
     for (const [index, name] of ['Metal', 'Crystal', 'Deuterium'].entries()) {
       const label = panel.getByText(new RegExp(`^${name}$`, 'i'))
       await expect(label).toBeVisible()
@@ -81,9 +92,18 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
       expect(labelBox.x).toBeLessThan(amount.left)
       if (index > 0) expect(labelBox.y).toBeGreaterThan(rects[index - 1].bottom)
       const detailBoxes = await Promise.all(
-        detailGroups.map(async (group) => {
-          const detail = group.nth(index)
+        details.map(async ([caption, values]) => {
+          const detail = panel.getByText(caption, { exact: true }).nth(index)
           await expect(detail).toBeVisible()
+          const value = detail
+            .locator('..')
+            .getByText(values[index], { exact: true })
+          await expect(value).toBeVisible()
+          const box = (await value.boundingBox())!
+          expect(box.x).toBeGreaterThan(amount.right)
+          expect(box.x + box.width).toBeLessThanOrEqual(
+            panelBox.x + panelBox.width + 1,
+          )
           return (await detail.boundingBox())!
         }),
       )
