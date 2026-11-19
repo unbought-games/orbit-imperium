@@ -117,6 +117,107 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
   }
 })
 
+test('resource columns respond to changing balances and panel width at a fixed viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1000, height: 900 })
+  const fixture = empireFixture()
+  const planet = fixture.bodies[0]
+  const input = {
+    bodies: [planet],
+    missions: { ...fixture.missions, fleets: [] },
+  }
+  await mountEmpire(page, input)
+  const wealth = page.getByLabel('Empire resource totals')
+  const groups = [
+    wealth.getByRole('group'),
+    page.getByLabel('Planet resources').locator(':scope > div'),
+  ]
+  type Layout = 'columns' | 'rows'
+  async function expectLayout(
+    wealthLayout: Layout,
+    planetLayout = wealthLayout,
+  ) {
+    for (const [index, resources] of groups.entries()) {
+      await expect
+        .poll(() =>
+          resources.evaluateAll((cells) => {
+            if (cells.length !== 3) return 'missing'
+            const panel = cells[0].parentElement!.getBoundingClientRect()
+            const boxes = cells.map((cell) => cell.getBoundingClientRect())
+            for (const [i, cell] of cells.entries()) {
+              const box = boxes[i]
+              const range = document.createRange()
+              range.selectNodeContents(cell)
+              if (
+                box.left < panel.left ||
+                box.right > panel.right ||
+                [...range.getClientRects()].some(
+                  (rect) =>
+                    rect.left < box.left - 1 || rect.right > box.right + 1,
+                )
+              )
+                return 'overflow'
+            }
+            const [a, b, c] = boxes
+            if (
+              a.top === b.top &&
+              b.top === c.top &&
+              a.right <= b.left &&
+              b.right <= c.left
+            )
+              return 'columns'
+            if (
+              a.left === b.left &&
+              b.left === c.left &&
+              a.bottom <= b.top &&
+              b.bottom <= c.top
+            )
+              return 'rows'
+            return 'mixed'
+          }),
+        )
+        .toBe([wealthLayout, planetLayout][index])
+    }
+  }
+  const area = page.getByRole('main')
+  await area.evaluate((el) => {
+    el.style.maxWidth = '580px'
+  })
+  await expectLayout('columns')
+
+  const original = planet.amounts
+  planet.amounts = {
+    metal: '9000000000000000000',
+    crystal: '9000000000000000000',
+    deuterium: '9000000000000000000',
+  }
+  await deliverEmpire(page)
+  await expect(wealth.locator('strong').first()).toHaveText('9,000,000,000,000')
+  await expectLayout('rows')
+  await area.evaluate((el) => {
+    el.style.maxWidth = '1000px'
+  })
+  await expectLayout('columns')
+  await area.evaluate((el) => {
+    el.style.maxWidth = '580px'
+  })
+  await expectLayout('rows')
+
+  planet.amounts = original
+  const capacity = planet.capacity
+  planet.capacity = {
+    metal: '9000000000000000000',
+    crystal: '9000000000000000000',
+    deuterium: '9000000000000000000',
+  }
+  await deliverEmpire(page)
+  await expectLayout('columns', 'rows')
+  planet.capacity = capacity
+  await deliverEmpire(page)
+  await expectLayout('columns')
+})
+
 test('each empire card centers idle construction beside Resources and Facilities', async ({
   page,
 }) => {
