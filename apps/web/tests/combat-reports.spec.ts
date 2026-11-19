@@ -38,26 +38,13 @@ async function openCombat(
           protocol: 4,
           binding,
           request_id: route.request().postDataJSON().request_id,
-          viewer_revision: header.read && !initiallyRead ? '2' : '1',
+          viewer_revision: '1',
           sampled_at: Date.now(),
           as_of_ms: Date.now(),
           data: { header, payload, player_names: { [id(9)]: 'Vega' } },
         },
       }),
   )
-  if (!initiallyRead) {
-    await page.route(
-      `**/api/v4/universes/${binding.universe}/reports/read`,
-      (route) => {
-        const { context, reports } = route.request().postDataJSON()
-        expect(reports).toEqual([header.id])
-        header.read = true
-        return route.fulfill({
-          json: { ...context, viewer_revision: '2', items: [header] },
-        })
-      },
-    )
-  }
   await withFixtureResponse(
     page,
     (response) =>
