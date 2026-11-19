@@ -1,7 +1,11 @@
+import { selectBody } from './fixtures/body-selector'
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { expect, test, type Page } from './fixtures/test'
 import {
   installGameFixture,
+  matchesFixtureGameplay,
+  fixtureReportContext,
+  fixtureReportPath,
   binding,
   body,
   id,
@@ -15,6 +19,7 @@ import {
   withFixtureResponse,
   withReportListResponse,
   withReportResponse,
+  withProgressionResponse,
 } from './fixtures/responses'
 type S = components['schemas']
 const output = 'test-results/live-hud'
@@ -113,109 +118,81 @@ test('desktop orb anchors its panel across shell widths and preserves its open r
   await instance!.dispose()
 })
 
-async function intelligenceFixture(
-  page: Page,
-  bodies: S['BodyV3'][] = [body],
-  destinations: S['Destination'][] = [],
-  playerNames?: S['PublicPlayerNames4'],
-) {
+async function intelligenceFixture(page: Page) {
   let revision = 1
   const missions = emptyMissions()
   const headers: S['ReportHeader4'][] = []
-  const conversations: S['SocialConversation'][] = []
-  const circulars: S['SocialCircular'][] = []
-  const reads: string[] = []
   await installGameFixture(page, {
     protocol: 4,
-    bodies,
-    destinations,
-    playerNames,
     missions,
     sampledAt: baseTime,
     viewerRevision: () => String(revision),
     hasUnreadReports: () => headers.some((h) => !h.read && !h.hidden),
     extraCapabilities: ['Reports', 'Espionage', 'Attack'],
   })
-  await page.route('**/api/**/reports', (route) => {
-    const { context, cursor, filter, kind } = route.request().postDataJSON()
-    const rows = headers.filter(
-      (h) =>
-        (!filter || h.hidden === filter.hidden) &&
-        (!filter?.unread_only || !h.read) &&
-        (!filter?.starred_only || h.starred) &&
-        (!kind || h.kind === kind),
-    )
-    const start = cursor ? rows.findIndex((h) => h.id === cursor) + 1 : 0
-    const hasMore = start + 50 < rows.length
-    return route.fulfill({
-      json: {
-        protocol: 4,
-        ...context,
-        viewer_revision: String(revision),
-        sampled_at: baseTime,
-        as_of_ms: baseTime,
-        data: {
-          items: rows.slice(start, start + 50),
-          unread_count: Math.min(
-            99,
-            headers.filter((h) => !h.hidden && !h.read).length,
-          ),
-          has_more: hasMore,
-          next_cursor: hasMore ? rows[start + 49].id : null,
+  await page.route(
+    (url) => url.pathname === fixtureReportPath(),
+    (route) => {
+      const context = fixtureReportContext(route)
+      const { cursor, filter, kind } = route.request().postDataJSON()
+      const rows = headers.filter(
+        (h) =>
+          (!filter || h.hidden === filter.hidden) &&
+          (!filter?.unread_only || !h.read) &&
+          (!filter?.starred_only || h.starred) &&
+          (!kind || h.kind === kind),
+      )
+      const start = cursor ? rows.findIndex((h) => h.id === cursor) + 1 : 0
+      const hasMore = start + 50 < rows.length
+      return route.fulfill({
+        json: {
+          protocol: 4,
+          ...context,
+          viewer_revision: String(revision),
+          sampled_at: baseTime,
           as_of_ms: baseTime,
+          data: {
+            items: rows.slice(start, start + 50),
+            unread_count: Math.min(
+              99,
+              headers.filter((h) => !h.hidden && !h.read).length,
+            ),
+            has_more: hasMore,
+            next_cursor: hasMore ? rows[start + 49].id : null,
+            as_of_ms: baseTime,
+          },
         },
-      },
-    })
-  })
-  await page.route('**/api/**/reports/*', (route) => {
-    const context = route.request().postDataJSON()
-    const report = route.request().url().split('/').at(-1)!
-    const header = headers.find((h) => h.id === report)
-    return route.fulfill({
-      json: {
-        protocol: 4,
-        ...context,
-        viewer_revision: String(revision),
-        sampled_at: baseTime,
-        as_of_ms: baseTime,
-        data: { header, payload: observation },
-      },
-    })
-  })
-  await page.route('**/social/query', (route) => {
-    const { context, query } = route.request().postDataJSON()
-    return route.fulfill({
-      json: {
-        ...context,
-        conversations: query.type === 'Conversations' ? conversations : [],
-        circulars: query.type === 'Circulars' ? circulars : [],
-        messages: [],
-        contacts: [],
-        contact: null,
-        next_cursor: null,
-      },
-    })
-  })
-  await page.route('**/social/commands', (route) => {
-    const { command_id, action } = route.request().postDataJSON()
-    reads.push(action.type)
-    if (action.type === 'Read') {
-      const c = conversations.find((c) => c.latest.id === action.message)
-      if (c) c.unread = false
-    }
-    if (action.type === 'ReadCircular') {
-      const c = circulars.find((c) => c.id === action.circular)
-      if (c) c.read = true
-    }
-    return route.fulfill({ json: { command_id, message: null } })
-  })
+      })
+    },
+  )
+  await page.route(
+    (url) => headers.some((h) => url.pathname === fixtureReportPath(h.id)),
+    (route) => {
+      const report = new URL(route.request().url()).pathname.split('/').at(-1)!
+      const context = fixtureReportContext(route, report)
+      const header = headers.find((h) => h.id === report)!
+      return route.fulfill({
+        json: {
+          protocol: 4,
+          ...context,
+          viewer_revision: String(revision),
+          sampled_at: baseTime,
+          as_of_ms: baseTime,
+          data: { header, payload: observation },
+        },
+      })
+    },
+  )
   await page.route('**/commands', (route) => {
-    const { gameplay } = route.request().postDataJSON()
-    if (gameplay?.command?.action?.type !== 'MarkReportRead')
-      return route.fallback()
-    const header = headers.find((h) => h.id === gameplay.command.action.report)
-    if (header) header.read = true
-    reads.push('MarkReportRead')
+    const pair = route.request().postDataJSON()
+    if (!matchesFixtureGameplay(pair)) return route.fallback()
+    const { gameplay } = pair
+    const action =
+      gameplay.command.type === 'World' ? gameplay.command.action : null
+    if (action?.type !== 'MarkReportRead') return route.fallback()
+    const header = headers.find((h) => h.id === action.report)
+    if (!header) return route.fallback()
+    header.read = true
     revision++
     return route.fulfill({
       json: {
@@ -233,9 +210,6 @@ async function intelligenceFixture(
   return {
     missions,
     headers,
-    conversations,
-    circulars,
-    reads,
     refresh: async () => {
       revision++
       await refreshGame(page)
@@ -301,9 +275,20 @@ test(
   async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
+    const home = { ...structuredClone(body), fields_reserved: 0 }
+    const colony = {
+      ...structuredClone(body),
+      id: id(6),
+      coordinates: { galaxy: 1, system: 2, position: 3 },
+      fields_used: 4,
+      fields: 218,
+      fields_reserved: 0,
+    }
+    colony.levels.CrystalMine = 2
     let reject = false
     await installGameFixture(page, {
       protocol: 4,
+      bodies: [home, colony],
       missions: emptyMissions(),
       catalog: [
         {
@@ -317,6 +302,15 @@ test(
     })
     await routeProgressionOptions(page, (route) => {
       const { context, request } = route.request().postDataJSON()
+      const planet = [home, colony].find((b) => b.id === request.body)
+      if (
+        !planet ||
+        request.type !== 'Upgrade' ||
+        !Object.hasOwn(planet.levels, request.building)
+      )
+        return route.fallback()
+      const current =
+        planet.levels[request.building as keyof typeof planet.levels]!
       return route.fulfill({
         json: {
           protocol: 4,
@@ -331,11 +325,11 @@ test(
           terms: {
             type: 'Building',
             profile_hash: 'a'.repeat(64),
-            body: body.id,
-            building: 'MetalMine',
+            body: planet.id,
+            building: request.building,
             action: 'Upgrade',
-            source_level: 1,
-            target_level: 2,
+            source_level: current,
+            target_level: current + 1,
             paid: { metal: '1000000', crystal: '1000000', deuterium: '0' },
             duration_ms: 60000,
             formula: 'BuildingRedesign2011',
@@ -347,8 +341,17 @@ test(
       })
     })
     await page.route('**/commands', (route) => {
-      const { gameplay } = route.request().postDataJSON()
+      const data = route.request().postDataJSON()
+      if (!matchesFixtureGameplay(data)) return route.fallback()
+      const { gameplay } = data
       if (gameplay.command.type !== 'StartUpgrade') return route.fallback()
+      expect(gameplay.command.building).toBe('MetalMine')
+      expect(data.presence.command).toMatchObject({
+        type: 'World',
+        action: { type: 'RecordForegroundPresence', body: colony.id },
+      })
+      expect(gameplay.command.body).toBe(colony.id)
+      expect(gameplay.command.expected_terms_hash).toBe('b'.repeat(64))
       return route.fulfill({
         json: {
           protocol: 4,
@@ -366,9 +369,24 @@ test(
         },
       })
     })
-    await withBootstrapResponse(page, () =>
-      page.goto(`/u/andromeda/b/${body.id}/resources`),
+    const quoteFor = (planet: string) => (request: S['QuoteRequest3']) =>
+      request.type === 'Upgrade' &&
+      request.body === planet &&
+      request.building === 'MetalMine'
+    await withProgressionResponse(page, quoteFor(home.id), () =>
+      page.goto(`/u/andromeda/b/${home.id}/resources`),
     )
+    const rows = page.getByRole('region', { name: 'Resource buildings' })
+    await expect(
+      rows.getByRole('button', { name: '3 of 163 fields used', exact: true }),
+    ).toHaveText('3/163')
+    await withProgressionResponse(page, quoteFor(colony.id), () =>
+      selectBody(page, colony.id),
+    )
+    await expect(
+      rows.getByRole('button', { name: '4 of 218 fields used', exact: true }),
+    ).toHaveText('4/218')
+    await expect(page).toHaveURL(`/u/andromeda/b/${colony.id}/resources`)
     const quick = page
       .getByRole('button', { name: /Upgrade Metal Mine|Build Metal Mine/ })
       .first()
@@ -386,7 +404,9 @@ test(
     await diagnosticScreenshot(page, { path: `${output}/building-390x844.png` })
     // Reload intentionally removes ephemeral acknowledgments and restored success history is silent.
     reject = true
-    await withBootstrapResponse(page, () => page.reload())
+    await withProgressionResponse(page, quoteFor(colony.id), () =>
+      page.reload(),
+    )
     await expect(page.getByTestId('command-orb')).toHaveAttribute(
       'data-tone',
       'ice',

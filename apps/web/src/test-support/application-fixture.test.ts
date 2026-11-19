@@ -390,9 +390,12 @@ it('the installed document handler retries a reset GET, strips embedded observat
       '<script id="orbit-bootstrap" type="application/json">{"server":"observation"}</script><h1>Fixture document</h1>',
     )
   })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const api = await request.newContext()
   try {
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject)
+      server.listen(0, '127.0.0.1', resolve)
+    })
     const address = server.address()
     if (!address || typeof address === 'string')
       throw Error('Expected a loopback server')
@@ -422,10 +425,15 @@ it('the installed document handler retries a reset GET, strips embedded observat
       )
     }
   } finally {
-    await api.dispose()
-    server.closeAllConnections()
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    )
+    try {
+      if (server.listening) {
+        server.closeAllConnections()
+        await new Promise<void>((resolve, reject) =>
+          server.close((error) => (error ? reject(error) : resolve())),
+        )
+      }
+    } finally {
+      await api.dispose()
+    }
   }
 })

@@ -1,3 +1,4 @@
+import { installEmptyMessageMembership } from './fixtures/message-membership'
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
@@ -99,8 +100,8 @@ test('content blockers cannot prevent startup, navigation, or logout (scripts)',
 test('login and signup preserve the requested game destination', async ({
   page,
 }) => {
-  refuseFixtureReads(page, { progression: ['Upgrade'] })
-  await shellFixture(page, { csrf: 'csrf' })
+  await shellFixture(page, { protocol: 4, csrf: 'csrf' })
+  await installEmptyMessageMembership(page)
   for (const path of ['/login', '/signup']) {
     await withBootstrapResponse(page, () => page.goto(path))
     await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
@@ -119,7 +120,7 @@ test('login and signup preserve the requested game destination', async ({
       },
     }),
   )
-  const payload = bootstrapFixture(3)
+  const payload = bootstrapFixture(4)
   if (
     payload.result.status !== 'authenticated' ||
     payload.result.game.status !== 'ready'
@@ -133,7 +134,8 @@ test('login and signup preserve the requested game destination', async ({
   await page.route('**/api/v1/session?bootstrap=true', (route) =>
     route.fulfill({ json: payload }),
   )
-  const destination = `/u/andromeda/b/${body.id}/resources/metal-mine`
+  const peer = '00000000-0000-4000-8000-000000000800'
+  const destination = `/u/andromeda/b/${body.id}/messages?player=${peer}#details`
   await withBootstrapResponse(page, () => page.goto(destination))
   await expect(page).toHaveURL(/\/login\?/)
   await expect(
@@ -156,11 +158,23 @@ test('login and signup preserve the requested game destination', async ({
   )
   await page.getByLabel('Account', { exact: true }).fill('player')
   await page.getByLabel('Password').fill('password')
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await withFixtureResponse(
+    page,
+    (response) => {
+      if (
+        response.request().method() !== 'POST' ||
+        !new URL(response.url()).pathname.endsWith('/social/query')
+      )
+        return false
+      const query = response.request().postDataJSON().query
+      return query?.type === 'Messages' && query.player === peer
+    },
+    () => page.getByRole('button', { name: 'Sign in', exact: true }).click(),
+  )
   await expect(
-    page.getByRole('heading', { name: 'Resources', level: 1, exact: true }),
+    page.getByRole('heading', { name: 'Messages', level: 1, exact: true }),
   ).toBeVisible()
-  expect(new URL(page.url()).pathname).toBe(destination)
+  await expect(page).toHaveURL(destination)
 })
 
 test(
@@ -322,7 +336,6 @@ test('mobile startup automatically recovers from a transient restart without sig
   // Allow cold route compilation while other validation runs share the host.
   const ready = expect.configure({ timeout: 30000 })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.clock.install()
   await page.clock.pauseAt(new Date())
   const payload = bootstrapFixture(4)
   if (
@@ -403,7 +416,6 @@ test('automatic outage retries preserve Retry and Sign out focus without manual-
   page,
 }) => {
   const ready = expect.configure({ timeout: 30000 })
-  await page.clock.install()
   await page.clock.pauseAt(new Date())
   const payload = bootstrapFixture(4)
   if (payload.result.status !== 'authenticated') throw Error('fixture')
