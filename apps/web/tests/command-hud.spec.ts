@@ -1,10 +1,10 @@
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { expect, test, type Page } from './fixtures/test'
-import { refuseFixtureReads, installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
+import { fixtureApiPath, refuseFixtureReads, installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withFixtureResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse, withFixtureResponseStatus, withReportListResponse, withReportResponse } from './fixtures/responses'
 type S = components['schemas']
 const output = 'test-results/live-hud'
 const baseTime = 1793120000000
@@ -312,7 +312,14 @@ test('HUD espionage attack action prepares the observed target and opens Dispatc
     expect(await panel.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
     await expect(attack).toBeVisible()
     await diagnosticScreenshot(page,{path:`${output}/report-attack-320x740.png`})
-    await attack.click()
+    // Dispatch opens from the historical observation even if a fresh system read is unavailable.
+    refuseFixtureReads(page, { world: ['Galaxy'] })
+    await withFixtureResponseStatus(page, response => {
+      const request = response.request()
+      if (request.method() !== 'POST' || new URL(response.url()).pathname !== fixtureApiPath(page, 'world')) return false
+      const query = request.postDataJSON()
+      return query.type === 'Galaxy' && query.galaxy === 1 && query.system === 1
+    }, () => attack.click(), 404)
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
     const url = new URL(page.url())
     expect(Object.fromEntries(url.searchParams)).toMatchObject({mission:'Attack',galaxy:'1',system:'1',position:'9',target:'planet'})
