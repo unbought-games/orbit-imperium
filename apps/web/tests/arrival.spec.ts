@@ -1,3 +1,5 @@
+import type { Response } from '@playwright/test'
+import type { components } from '../src/contracts'
 import { recruitmentFixture, alliance } from './fixtures/recruitment'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { withFixtureResponse } from './fixtures/responses'
@@ -8,6 +10,7 @@ import {
   installGameFixture,
   matchesFixtureContext,
   matchesFixtureGameplay,
+  refreshGame,
   refuseFixtureReads,
 } from './fixtures/game'
 
@@ -104,12 +107,9 @@ test('a new empire chooses its title, look and name, then lands in Briefing at 1
   const chosenName = 'Vesper Reach'
   let revision = 1
   const renamed: string[] = []
-  const renameReads = new Set<string>()
-  let releaseRenameView!: () => void
-  let released = false
-  const gate = new Promise<void>((resolve) => {
-    releaseRenameView = resolve
-  })
+  let renameReceipt: components['schemas']['BoundReceipt4'] | undefined
+  let confirmedRead = false
+  const overviewNames = new Map<string, string>()
   await installGameFixture(page, {
     protocol: 4,
     bodies: [home],
@@ -134,32 +134,81 @@ test('a new empire chooses its title, look and name, then lands in Briefing at 1
       name: chosenName,
     })
     renamed.push(pair.gameplay.command_id)
-    home.name = action.name
-    revision++
-    const at = Date.now()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        command_id: pair.gameplay.command_id,
-        admitted_at: at,
-        executed_at: at,
-        status: 'Committed',
-        result_ids: [],
-        minimum_viewer_revision: String(revision),
-      },
-    })
-  })
-  await page.route(`**${api}/overview`, async (route) => {
-    const req = route.request()
-    if (req.method() === 'POST' && renamed.length && !released) {
-      const context = req.postDataJSON()
-      if (!matchesFixtureContext(context)) return route.fallback()
-      renameReads.add(context.request_id)
-      await gate
+    renameReceipt = {
+      protocol: 4,
+      binding,
+      command_id: pair.gameplay.command_id,
+      admitted_at: Date.now(),
+      executed_at: null,
+      status: 'Pending',
     }
-    return route.fallback()
+    await route.fulfill({ json: renameReceipt })
   })
+  const receiptPath = () => api + '/commands/' + renameReceipt?.command_id
+  await page.route(
+    (url) => url.pathname === receiptPath(),
+    async (route) => {
+      if (
+        !renameReceipt ||
+        route.request().method() !== 'GET' ||
+        new URL(route.request().url()).searchParams.get('epoch') !==
+          binding.epoch
+      )
+        return route.fallback()
+      if (renameReceipt.status === 'Committed') {
+        home.name = chosenName
+        revision = 2
+      }
+      confirmedRead = true
+      await route.fulfill({ json: renameReceipt })
+    },
+  )
+  await page.route(
+    (url) => url.pathname === api + '/overview',
+    async (route) => {
+      const request = route.request()
+      if (confirmedRead && request.method() === 'POST') {
+        const context = request.postDataJSON()
+        if (matchesFixtureContext(context))
+          overviewNames.set(context.request_id, home.name)
+      }
+      return route.fallback()
+    },
+  )
+  async function refreshRename(expectedName: string) {
+    let delivered!: Response
+    await withFixtureResponse(
+      page,
+      (response) => {
+        if (
+          new URL(response.url()).pathname !== api + '/overview' ||
+          response.request().method() !== 'POST' ||
+          overviewNames.get(response.request().postDataJSON().request_id) !==
+            expectedName
+        )
+          return false
+        delivered = response
+        return true
+      },
+      () =>
+        withFixtureResponse(
+          page,
+          (response) => {
+            const url = new URL(response.url())
+            return (
+              url.pathname === receiptPath() &&
+              url.searchParams.get('epoch') === binding.epoch &&
+              response.request().method() === 'GET'
+            )
+          },
+          () => refreshGame(page),
+        ),
+    )
+    const snapshot = await delivered.json()
+    expect(snapshot.bodies).toContainEqual(
+      expect.objectContaining({ id: home.id, name: expectedName }),
+    )
+  }
   await page.route(
     (url) => url.pathname === `/api/v4/empire-profiles/${binding.player}`,
     (route) => {
@@ -220,10 +269,8 @@ test('a new empire chooses its title, look and name, then lands in Briefing at 1
         return route.fallback()
       if (action.type !== 'Load') arrival.push(action)
       if (action.type === 'Complete') {
-        expect(
-          released,
-          'arrival cannot complete while the renamed view is held',
-        ).toBe(true)
+        expect(renameReceipt?.status).toBe('Committed')
+        expect([...overviewNames.values()]).toContain(chosenName)
         expect(renamed).toHaveLength(1)
         pending = false
       }
@@ -289,37 +336,34 @@ test('a new empire chooses its title, look and name, then lands in Briefing at 1
   await scene.getByRole('button', { name: 'Name it' }).click()
 
   await expect(scene).toContainText(`${chosenName}. It suits it.`)
-  try {
-    await withFixtureResponse(
-      page,
-      (r) =>
-        new URL(r.url()).pathname === api + '/overview' &&
-        r.request().method() === 'POST' &&
-        renameReads.has(r.request().postDataJSON()?.request_id),
-      async () => {
-        await withFixtureResponse(
-          page,
-          (r) =>
-            new URL(r.url()).pathname === api + '/commands' &&
-            r.request().method() === 'POST' &&
-            r.request().postDataJSON()?.gameplay?.command?.action?.type ===
-              'RenamePlanet',
-          () => scene.getByRole('button', { name: 'Begin' }).click(),
-        )
-        await expect.poll(() => renameReads.size).toBeGreaterThan(0)
-        expect(renamed).toHaveLength(1)
-        expect(arrival).not.toContainEqual({ type: 'Complete' })
-        await expect(scene).toBeVisible()
-        released = true
-        releaseRenameView()
-      },
-    )
-  } finally {
-    released = true
-    releaseRenameView()
+  await withFixtureResponse(
+    page,
+    (response) =>
+      new URL(response.url()).pathname === api + '/commands' &&
+      response.request().method() === 'POST' &&
+      response.request().postDataJSON()?.gameplay?.command?.action?.type ===
+        'RenamePlanet',
+    () => scene.getByRole('button', { name: 'Begin' }).click(),
+  )
+  expect(renamed).toHaveLength(1)
+  await refreshRename('Terra')
+  expect(arrival).toEqual([{ type: 'SetAppearance', body: home.id, slot: 11 }])
+  await expect(scene).toBeVisible()
+  expect(renameReceipt?.status).toBe('Pending')
+  renameReceipt = {
+    ...renameReceipt!,
+    status: 'Committed',
+    executed_at: Date.now(),
+    result_ids: [],
+    minimum_viewer_revision: '2',
   }
+  confirmedRead = false
+  await refreshRename(chosenName)
   await expect(scene).toBeHidden()
   await expect(page).toHaveURL(new RegExp(`/b/${body.id}/briefing$`))
+  await expect(
+    page.getByRole('region', { name: 'Briefing', exact: true }),
+  ).toBeVisible()
   expect(renamed).toHaveLength(1)
   expect(profileWrites.map((w) => w.action.identity.title_id)).toEqual([
     'captain',

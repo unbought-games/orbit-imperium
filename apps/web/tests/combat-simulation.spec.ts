@@ -1,13 +1,17 @@
-import { routeWorld } from './fixtures/game'
 import type { Response } from '@playwright/test'
+import type { components } from '../src/contracts'
 import {
   withFixtureResponse,
   withFixtureResponseStatus,
+  withReportResponse,
 } from './fixtures/responses'
 
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import {
+  fixtureReportContext,
+  fixtureReportPath,
+  routeWorld,
   installGameFixture,
   refreshGame,
   binding,
@@ -18,6 +22,8 @@ import {
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 
 import { catalog } from './fixtures/simulation-observation-catalog'
+
+type S = components['schemas']
 
 function estimateGate(speed: number, duration?: number) {
   let release!: () => void
@@ -77,36 +83,39 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
     read: true,
     hidden: false,
   }
-  await page.route('**/api/**/reports/**', async (route) => {
-    const context = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: String(revision),
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: { header, payload: report },
-      },
-    })
-  })
-  const quotes: any[] = []
+  await page.route(
+    (url) => url.pathname === fixtureReportPath(header.id),
+    async (route) => {
+      const context = fixtureReportContext(route, header.id)
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          request_id: context.request_id,
+          viewer_revision: String(revision),
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          data: { header, payload: report },
+        },
+      })
+    },
+  )
+  const quotes: S['FleetIntent4'][] = []
   let launches = 0
   let held: ReturnType<typeof estimateGate> | undefined
   let changedTarget = false
-  const destination = {
+  const destination: S['MissionDestination4'] = {
     type: 'Body',
     id: report.target.body,
     expected_kind: 'Planet',
     expected_owner: report.target.owner,
   }
   await routeWorld(page, async (route) => {
-    const request = route.request().postDataJSON()
+    const request: S['WorldQuery4'] = route.request().postDataJSON()
     const responseRevision = String(revision)
-    let data: any
+    let data: S['BoundWorld4']['data']
     if (request.type === 'ResolveDestination') {
-      expect(request.selection.kind).toBe('Planet')
+      expect(request.selection).toMatchObject({ type: 'BodyAt', kind: 'Planet' })
       data = { ...destination, id: changedTarget ? id(91) : destination.id }
     } else if (request.type === 'Galaxy') {
       data = {
@@ -120,8 +129,10 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
           debris: null,
         })),
       }
-    } else {
-      expect(['FleetQuote', 'FleetEstimate']).toContain(request.type)
+    } else if (
+      request.type === 'FleetQuote' ||
+      request.type === 'FleetEstimate'
+    ) {
       quotes.push(request.intent)
       const speed = request.intent.speed_percent
       const gate =
@@ -145,18 +156,26 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
           status: 422,
           json: { code: 'GameRejected', game_code: rejection },
         })
-      data = {
+      const flight = {
         intent: request.intent,
         profile_hash: 'a'.repeat(64),
-        distance: 1000,
-        speeds: [],
         duration_ms: gate?.duration ?? Math.ceil((100000 * 100) / speed),
         fuel: '2000000',
         capacity: '5000000000',
         maximum_payload: '4998000000',
-        slot_limit: '1',
-        terms_hash: 'b'.repeat(64),
       }
+      data =
+        request.type === 'FleetEstimate'
+          ? ({ ...flight, estimate: true } satisfies S['FleetEstimate4'])
+          : ({
+              ...flight,
+              distance: 1000,
+              speeds: [],
+              slot_limit: '1',
+              terms_hash: 'b'.repeat(64),
+            } satisfies S['FleetTerms4'])
+    } else {
+      throw new Error('Unexpected world query: ' + request.type)
     }
     await route.fulfill({
       json: {
@@ -173,10 +192,8 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
   page.on('request', (request) => {
     if (request.url().endsWith('/commands')) launches++
   })
-  await withFixtureResponse(
-    page,
-    (r) => r.url().endsWith(`/reports/${header.id}`),
-    () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
+  await withReportResponse(page, header.id, () =>
+    page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
   )
   await page
     .getByRole('button', { name: 'Simulate combat', exact: true })
@@ -200,7 +217,7 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
   await expect(plan).not.toContainText('4 selected, 3 stationed')
   await expect(prepare).toBeDisabled()
   await expect(timing).toContainText('1m 40s')
-  expect(quotes.at(-1).ships[0].count).toBe('4')
+  expect(quotes.at(-1)?.ships[0].count).toBe('4')
   if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 1000 })
@@ -381,7 +398,7 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
   await expect(page.getByRole('alert')).toContainText(
     'All fleet slots are occupied',
   )
-  expect(quotes.at(-1).ships).toEqual([
+  expect(quotes.at(-1)?.ships).toEqual([
     { owner: binding.player, ship_type: 'LightFighter', count: '2' },
   ])
   expect(launches).toBe(0)

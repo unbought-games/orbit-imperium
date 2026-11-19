@@ -188,31 +188,61 @@ test('reviewed Depot supply and recall reach the real holdings list and update d
     page.getByRole('heading', { name: 'Hold Holding' }),
   ).toBeVisible()
   await expect(page.getByText('Departs in', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Supply fleet', exact: true }).click()
-  await page.getByRole('textbox', { name: 'Deuterium to supply' }).fill('4000')
-  await page.getByRole('button', { name: 'Review supply', exact: true }).click()
+  const visitingFleet = page.getByRole('article').filter({
+    has: page.getByRole('heading', { name: /Cassiopeia.*Defending/ }),
+  })
+  const departureLabel = visitingFleet.locator('header').getByText(/^Departs /)
+  const [originalDeparture, extendedDeparture] = await page.evaluate(
+    (epoch) => {
+      const formatter = new Intl.DateTimeFormat(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short',
+      })
+      return [1, 3].map(
+        (hours) => 'Departs ' + formatter.format(epoch + hours * 3600000),
+      )
+    },
+    now,
+  )
+  await expect(departureLabel).toHaveText(originalDeparture)
+  await visitingFleet
+    .getByRole('button', { name: 'Supply fleet', exact: true })
+    .click()
+  await visitingFleet
+    .getByRole('textbox', { name: 'Deuterium to supply' })
+    .fill('4000')
+  await visitingFleet
+    .getByRole('button', { name: 'Review supply', exact: true })
+    .click()
   await expect(
-    page
+    visitingFleet
       .getByText('Additional defense', { exact: true })
       .locator('..')
       .locator('dd'),
   ).toHaveText('2 hours')
   await expect(
-    page
+    visitingFleet
       .getByText('Budget after supply', { exact: true })
       .locator('..')
       .locator('dd'),
   ).toHaveText('6,000')
-  await page
+  await visitingFleet
     .getByRole('button', { name: 'Supply deuterium', exact: true })
     .click()
   await expect(
-    page.getByRole('status').filter({ hasText: 'Supply delivered' }),
+    visitingFleet.getByRole('status').filter({ hasText: 'Supply delivered' }),
   ).toBeVisible()
 
   await expect(
     page.getByText(/Available this rolling hour:/).getByTitle('Deuterium'),
   ).toHaveText('6,000')
+
+  await expect(departureLabel).toHaveText(extendedDeparture)
 
   await page.getByRole('button', { name: 'Review recall', exact: true }).click()
   await expect(

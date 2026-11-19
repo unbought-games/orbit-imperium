@@ -2472,8 +2472,16 @@ test('holding duration has a visible field surface and supports keyboard selecti
   await expect(duration).toHaveText('4 hours')
   await review(page).click()
   expect((await lastQuote(page)).intent.hold_hours).toBe(4)
-  await expect(page.getByText('Prepaid holding', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /Defend with/ }).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  const prepaid = quote
+    .getByText('Prepaid holding', { exact: true })
+    .locator('..')
+    .locator('dd')
+  await expect(prepaid).toHaveText('4h · 4 included in fuel')
+  await expect(
+    prepaid.getByRole('img', { name: 'Deuterium', exact: true }),
+  ).toBeVisible()
+  await quote.getByRole('button', { name: /Defend with/ }).click()
   await expect.poll(async () => (await snapshot(page)).launches).toBe(1)
   expect((await snapshot(page)).lastLaunch?.intent).toMatchObject({
     mission: 'Hold',
