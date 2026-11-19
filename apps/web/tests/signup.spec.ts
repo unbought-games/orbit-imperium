@@ -29,12 +29,18 @@ test('new player signs up, builds, refreshes and signs back in on mobile',async(
  const confirm = page.getByRole('button',{name:'Confirm upgrade',exact:true});
  await expect(confirm).toBeEnabled();
  await confirm.click();
- const construction = page.getByRole('region',{name:'Active construction',exact:true}).getByRole('heading',{name:'Upgrading Metal Mine to level 1',exact:true});
+ const active = page.getByRole('region',{name:'Active construction',exact:true});
+ const construction = active.getByRole('heading',{name:'Upgrading Metal Mine to level 1',exact:true});
  await expect(construction).toBeVisible();
+ // The same heading appears for an optimistic order. Reload after the server's
+ // confirmed construction replaces its estimated finish.
+ const remaining = active.getByRole('term').filter({hasText:/^Time remaining$/});
+ await expect(remaining).toBeVisible();
  const startupReads:string[]=[];
  page.on('request',r=>{const p=new URL(r.url()).pathname;if(p==='/api/v1/bootstrap'||p==='/api/v1/session'||p==='/api/v1/registration'||p.endsWith('/binding')||p.endsWith('/settings'))startupReads.push(p)});
  await page.reload();
  await expect(construction).toBeVisible();
+ await expect(remaining).toBeVisible();
  expect(startupReads).toEqual([]);
  await page.getByRole('link',{name:'Menu',exact:true}).click();
  await page.getByRole('main').getByRole('button',{name:'Log out',exact:true}).click();

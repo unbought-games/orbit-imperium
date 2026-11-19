@@ -1071,7 +1071,10 @@ test(
         page.getByRole('link', { name: 'Empire', exact: true }),
       ).toHaveAttribute('aria-current', 'page')
       expect(purchases()).toBe(0)
-      await withFixtureResponse(page, response => response.request() === held, async () => release())
+      release()
+      await settleOverview()
+      expect(held.failure(), 'The held overview must finish successfully').toBeNull()
+      expect((await held.response())?.ok()).toBe(true)
     } catch (error) {
       await attachFailureScreenshots([page], test.info())
       throw error
