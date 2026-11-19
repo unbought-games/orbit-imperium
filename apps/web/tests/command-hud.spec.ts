@@ -1,6 +1,6 @@
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { expect, test, type Page } from './fixtures/test'
-import { fixtureApiPath, refuseFixtureReads, installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
+import { fixtureApiPath, routeWorld, refuseFixtureReads, installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import type { components } from '../src/contracts'
@@ -313,20 +313,27 @@ test('HUD espionage attack action prepares the observed target and opens Dispatc
     await expect(attack).toBeVisible()
     await diagnosticScreenshot(page,{path:`${output}/report-attack-320x740.png`})
     // Dispatch opens from the historical observation even if a fresh system read is unavailable.
-    refuseFixtureReads(page, { world: ['Galaxy'] })
+    const isTargetSystem = (query: S['WorldQuery4']) =>
+      query.type === 'Galaxy' && query.galaxy === 1 && query.system === 1
+    await routeWorld(page, route => isTargetSystem(route.request().postDataJSON())
+      ? route.fulfill({status: 404, json: {code: 'NotFound'}})
+      : route.fallback())
     await withFixtureResponseStatus(page, response => {
       const request = response.request()
-      if (request.method() !== 'POST' || new URL(response.url()).pathname !== fixtureApiPath(page, 'world')) return false
-      const query = request.postDataJSON()
-      return query.type === 'Galaxy' && query.galaxy === 1 && query.system === 1
-    }, () => attack.click(), 404)
-    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
+      return request.method() === 'POST' &&
+        new URL(response.url()).pathname === fixtureApiPath(page, 'world') &&
+        isTargetSystem(request.postDataJSON())
+    }, async () => {
+      await attack.click()
+      await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
+      await expect(page.getByRole('radio', { checked: true })).toHaveValue('Attack')
+      await expect(page.getByLabel('Destination preview')).toContainText('Destination unavailable')
+    }, 404)
     const url = new URL(page.url())
     expect(Object.fromEntries(url.searchParams)).toMatchObject({mission:'Attack',galaxy:'1',system:'1',position:'9',target:'planet'})
     expect(await page.evaluate(()=>history.state.dispatchObservation)).toMatchObject({target:{type:'Body',id:observation.target.body,expected_owner:observation.target.owner,expected_kind:observation.target.kind},observedAt:baseTime})
     await expect(panel).not.toBeVisible()
     expect(await page.evaluate(()=>document.body.style.position)).toBe('')
-    await expect(page.getByRole('radio', { checked: true })).toHaveValue('Attack')
     // The same action remains in the full report at desktop sizes.
     await page.setViewportSize({width:1440,height:900})
     await withReportResponse(page, id(850), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(850)}`))
