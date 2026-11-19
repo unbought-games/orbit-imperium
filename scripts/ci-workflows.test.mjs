@@ -239,6 +239,31 @@ test('fixture browsers start independently of native compilation and stay routin
   )
 })
 
+test('relevant browser CI checks the built homepage once per matrix', () => {
+  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow
+    .jobs
+  const homepage = browser.steps.filter(
+    (step) => step.run === 'make test-homepage-built',
+  )
+  assert.equal(homepage.length, 1)
+  assert.equal(homepage[0].if, "matrix.suite == 'journeys'")
+  assert.equal(
+    browser.strategy.matrix.include.filter((row) => row.suite === 'journeys')
+      .length,
+    1,
+  )
+  const recipe = spawnSync(
+    'make',
+    ['--no-print-directory', '-n', 'test-homepage-built'],
+    { cwd: new URL('../', import.meta.url), encoding: 'utf8' },
+  )
+  assert.equal(recipe.status, 0, recipe.stderr)
+  assert.deepEqual(recipe.stdout.trim().split('\n'), [
+    'npm run build',
+    'npm run test:homepage-built',
+  ])
+})
+
 test('CI builds and inspects the release artifact without publishing or starting it', () => {
   const { image } = workflows.find(({ file }) => file === 'ci.yml').workflow
     .jobs
