@@ -43,7 +43,7 @@
   list-style: none;
   display: grid;
   grid-template-columns:
-    40px minmax(0, max-content) 44px 128px 72px minmax(0, 1fr)
+    40px minmax(0, min(26%, 28ch)) 44px 128px 72px minmax(0, 1fr)
     var(--galaxy-actions-width, 76px);
   column-gap: 10px;
   row-gap: 0;
@@ -89,6 +89,7 @@
   object-fit: contain;
 }
 .emptyOrbit {
+  justify-self: center;
   display: grid;
   place-items: center;
   width: 36px;
@@ -102,15 +103,22 @@
 .planetInfo {
   grid-column: 2;
   padding-inline-start: 6px;
-  width: max-content;
-  min-width: 13ch;
-  max-width: 28ch;
+  min-width: 0;
   position: relative;
   z-index: 1;
   pointer-events: none;
   display: grid;
+  grid-template-rows: 1rem 1rem 24px;
+  align-items: center;
   gap: 0;
   line-height: 1.15;
+}
+.planetInfo > .coordinates {
+  grid-row: 3;
+}
+.planetInfo:not(:has(.playerStatus)) > .planetTitle {
+  grid-row: 1 / 3;
+  align-self: end;
 }
 .planetTitle {
   display: flex;
@@ -554,7 +562,7 @@
 @media (max-width: 1100px) and (min-width: 600px) {
   .positionList {
     grid-template-columns:
-      40px minmax(0, max-content) 44px 100px 64px minmax(0, 1fr)
+      40px minmax(0, min(26%, 28ch)) 44px 100px 64px minmax(0, 1fr)
       76px;
     column-gap: 5px;
   }
@@ -593,8 +601,7 @@
   .planetInfo {
     width: 100%;
     min-width: 0;
-    max-width: none;
-    gap: 0;
+    grid-template-rows: 0.875rem 0.875rem 24px;
   }
   .planetTitle > strong {
     font-size: 0.65rem;
@@ -656,7 +663,7 @@
 .scanAction {
   display: contents;
 }
-.positionList:has(.scanAction) {
+.positionList[data-scan-capable] {
   --galaxy-actions-width: 124px;
 }
 
@@ -698,7 +705,73 @@
   max-width: 100%;
 }
 @media (max-width: 359px) {
-  .positionList:has(.scanAction) {
+  .positionList[data-scan-capable] {
     grid-template-columns: 26px minmax(0, 1fr) 44px 68px 54px 0 44px;
+  }
+}
+
+/* A dim limb and a slow ice-blue sweep echo the lighting of the planet art. */
+.orbitSkeleton,
+.titleSkeleton,
+.playerSkeleton {
+  position: relative;
+  overflow: hidden;
+}
+.orbitSkeleton {
+  background: radial-gradient(
+    circle at 26% 28%,
+    #344d5a,
+    #1d3340 48%,
+    #10222e 76%
+  );
+  box-shadow:
+    inset 1px 1px 0 #8fb9ca30,
+    inset -1px -1px 0 #739aab16;
+}
+.titleSkeleton,
+.playerSkeleton {
+  justify-self: start;
+  max-width: 90%;
+  border-radius: 2px;
+  background: #7799aa29;
+}
+.titleSkeleton {
+  width: 4.5rem;
+  height: 0.45rem;
+}
+.playerSkeleton {
+  width: 6rem;
+  height: 0.55rem;
+  background: #87a9b936;
+}
+.pendingCoordinates {
+  display: inline-flex;
+  align-items: center;
+  color: var(--link);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .orbitSkeleton::after,
+  .titleSkeleton::after,
+  .playerSkeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 15%,
+      #b4dfed24 50%,
+      transparent 85%
+    );
+    animation: galaxy-sweep 2.8s ease-in-out infinite !important;
+  }
+  @keyframes galaxy-sweep {
+    0% {
+      transform: translateX(-100%);
+    }
+    70%,
+    100% {
+      transform: translateX(100%);
+    }
   }
 }

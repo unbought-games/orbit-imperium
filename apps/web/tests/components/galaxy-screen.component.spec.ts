@@ -274,6 +274,65 @@ for (const width of [390, 1280]) {
   })
 }
 
+for (const width of [1440, 390]) {
+  test(`paging keeps all 15 slot boundaries and coordinates in place at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await open(page, { holdSystem: 372 })
+    await expect(row(page)).toContainText('Ember Watch')
+    await page.evaluate(() => document.fonts.ready)
+    const positions = page.getByRole('region', { name: 'Galaxy positions' })
+    const coordinates = positions.getByText(/^\[1:372:\d+\]$/)
+    const geometry = () =>
+      coordinates.evaluateAll((labels) =>
+        labels.map((label) => {
+          const range = document.createRange()
+          range.selectNodeContents(label)
+          return [
+            label.closest('li')!.getBoundingClientRect().toJSON(),
+            range.getBoundingClientRect().toJSON(),
+          ]
+        }),
+      )
+
+    await page.getByRole('button', { name: 'Next system' }).click()
+    await expect
+      .poll(() => page.evaluate(() => !!window.releaseGalaxyRead))
+      .toBe(true)
+    try {
+      await expect(positions).toHaveAttribute('aria-busy', 'true')
+      await expect(coordinates).toHaveText(
+        Array.from({ length: 15 }, (_, index) => `[1:372:${index + 1}]`),
+      )
+      await expect(positions.locator('button, a')).toHaveCount(0)
+      const firstSlot = positions.getByRole('listitem').first()
+      for (const part of ['planet', 'planet-name', 'player-name'])
+        await expect(
+          firstSlot.locator(`[data-skeleton="${part}"]`),
+        ).toBeVisible()
+      // The game-wide motion reset must allow this loading animation.
+      const planet = firstSlot.locator('[data-skeleton="planet"]')
+      expect(
+        await planet.evaluate(
+          (el) => getComputedStyle(el, '::after').animationName,
+        ),
+      ).not.toBe('none')
+      const pending = await geometry()
+      await page.evaluate(() => window.releaseGalaxyRead!())
+      await expect(
+        row(page).getByRole('button', { name: 'Actions for [1:372:1]' }),
+      ).toBeVisible()
+      await expect(row(page)).toContainText('Ember Watch')
+      await expect(positions).toHaveAttribute('aria-busy', 'false')
+      expect(await geometry()).toEqual(pending)
+    } finally {
+      await page.evaluate(() => window.releaseGalaxyRead?.())
+    }
+  })
+}
+
 test('changing systems drops stale rows, fences the delayed read and retries the current missing system', async ({
   page,
 }) => {
@@ -286,9 +345,10 @@ test('changing systems drops stale rows, fences the delayed read and retries the
     .poll(() => page.evaluate(() => !!window.releaseGalaxyRead))
     .toBe(true)
   try {
-    await expect(
-      page.getByRole('region', { name: 'Galaxy positions' }),
-    ).toHaveCount(0)
+    const pending = page.getByRole('region', { name: 'Galaxy positions' })
+    await expect(pending).toHaveAttribute('aria-busy', 'true')
+    await expect(pending).not.toContainText('[1:371:')
+    await expect(pending.getByRole('button')).toHaveCount(0)
     await page.evaluate(() => {
       window.galaxyInput!.failRead = true
     })
@@ -481,7 +541,7 @@ for (const width of [320, 390, 1280])
       page.getByRole('navigation', { name: 'System atlas' }),
     ).toHaveCount(0)
     const positions = page.getByRole('region', { name: 'Galaxy positions' })
-    await expect(positions.getByRole('listitem')).toHaveCount(15)
+    await expect(positions.getByRole('article')).toHaveCount(15)
     const toolbarBox = (await toolbar.boundingBox())!
     expect(
       (await positions.boundingBox())!.y - toolbarBox.y - toolbarBox.height,
@@ -534,16 +594,13 @@ for (const width of [320, 390, 1280])
     ).toBeLessThanOrEqual(width)
     await controls[3].click()
     await expect(controls[2]).toHaveValue('372')
+    await expect(row(page)).toContainText('[1:372:1]')
     await controls[1].click()
     await expect(controls[2]).toHaveValue('371')
     await expect(
       page.getByRole('button', { name: /Refresh galaxy|Retry loading galaxy/ }),
     ).toHaveCount(0)
-    await expect(
-      page
-        .getByRole('region', { name: 'Galaxy positions' })
-        .getByRole('listitem'),
-    ).toHaveCount(15)
+    await expect(positions.getByRole('article')).toHaveCount(15)
   })
 
 test('a held Spy request disables only its target and a second row sends its own coordinates', async ({
@@ -966,7 +1023,7 @@ test('editing both coordinates commits one bounded system read and restores the 
   const go = page.getByRole('button', { name: 'Go', exact: true })
   await expect(
     page.getByRole('region', { name: 'Galaxy positions' }),
-  ).toBeVisible()
+  ).toHaveAttribute('aria-busy', 'false')
   await expect(galaxy).toHaveAttribute('inputmode', 'numeric')
   await expect(system).toHaveAttribute('enterkeyhint', 'go')
   for (const value of ['', '4', '42', '420']) {
