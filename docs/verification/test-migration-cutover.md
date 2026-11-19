@@ -52,6 +52,8 @@ The following limits travel with every successor. The domain ledgers retain indi
 
 ## Post-snapshot contracts
 
+On the merged stream 08 tree, 533 application cases and 547 isolated cases remained required. All 49 entries from the reports final-case ledger appeared in native collection. Joining all eight domain handoffs, original/frozen records and direct post-stream successors still left 23 application and 44 isolated identities without an exact earlier entry. The [additional cases](test-migration-cutover/post-stream-additions.csv) identify each by full title, project and native ID, and name the surface it exercises. The commit column identifies the file version containing that case. It can postdate the test's introduction.
+
 The personal invitation, Rewards and Jump Gate files added 17 application cases outside the original file manifest. At `7449be12`, 29 focused checks in seven files passed in 0.772 seconds of Vitest time. They exercised invitation return, sharing and delivery, reward controller authority and claim identity, automatic title presentation, and Jump Gate selection. Their passing results cover those boundaries only.
 
 - The invitation path spans three owners. An anonymous visitor follows a native OIDC signup link with the original token as its return destination. An authenticated visitor enrolls in the bound universe before a real document replacement. The invitation-sharing form submits a selected universe and displays a selectable local link on clipboard denial. The entry and sharing models cannot verify the document replacement or that the live form consumed the selected universe. [Invitation verification](community-rewards.md#bound-universe-personal-invitation-redesign)
