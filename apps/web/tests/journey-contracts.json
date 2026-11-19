@@ -206,7 +206,7 @@
     "titlePath": [
       "HUD espionage attack action prepares the observed target and opens Dispatch"
     ],
-    "risk": "The HUD’s observed-target Attack action must seed the actual Dispatch route with the observed body and coordinates."
+    "risk": "The HUD’s Attack action must preserve the observed body and coordinates in Dispatch even when the selected system’s current Galaxy read returns 404. The destination must show its unavailable state."
   },
   {
     "file": "command-hud.spec.ts",
