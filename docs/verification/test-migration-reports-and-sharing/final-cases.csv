@@ -1,0 +1,50 @@
+playwright_id,boundary,title_path,journey
+38d246710ace21a6c2ab-295a950fbe0c39eb5a7e,application,combat-reports.spec.ts > combat small report preserves layout and contextual navigation,no
+38d246710ace21a6c2ab-08301fad6219775e0115,application,combat-reports.spec.ts > deuterium-only combat debris prepares a Harvest dispatch,no
+2f97afa1030eac3f13d2-508042052a62353a90a6,component,delivered-report.spec.ts > delivered detail preserves recorded endpoint names at 1440px,no
+2f97afa1030eac3f13d2-caaf65de6ab660382f51,component,delivered-report.spec.ts > delivered detail preserves recorded endpoint names at 390px,no
+d50df4b872d05117dd04-e5efce8da5d0ec662c6d,application,espionage-reports.spec.ts > authenticated espionage toolbar and target actions fit the shell,no
+278edd39583a326a65d6-0a730ea377d6a2e6ca1a,component,harvest-report.spec.ts > harvest resources and ships stay grouped at desktop and phone widths,no
+5526281c05869fbb30ff-2cc1aa06c751cb116371,component,"report-cleanup.spec.ts > archive shortcut ignores typing and owned keys, then archives once from checkbox focus",no
+5526281c05869fbb30ff-a50e972219aeab0c7004,component,report-cleanup.spec.ts > bulk rejected result restores every report and preserves the selection for review,no
+5526281c05869fbb30ff-5857061bc7c3266d6222,component,report-cleanup.spec.ts > bulk uncertain result restores every report and preserves the selection for review,no
+54d9c09805650af620e5-11c9941c55e3375ee07f,application,report-deletion.spec.ts > E archives the selection and confirms revocation in the shared detail,no
+54d9c09805650af620e5-b926ca5f700da4604eee,application,report-deletion.spec.ts > archive and restore respond at the fine-pointer target edge without opening the row,no
+54d9c09805650af620e5-a787e6f37fe9472da816,application,report-deletion.spec.ts > archiving a row and restoring its detail survive authoritative reloads,no
+54d9c09805650af620e5-65abbf9a282b2219157a,application,report-deletion.spec.ts > detail archive rejection and uncertainty stay recoverable at 1440px,no
+54d9c09805650af620e5-66371bc8f4161d36fa61,application,report-deletion.spec.ts > detail archive returns only after acceptance with list context at 390px,no
+54d9c09805650af620e5-7b30b3bcb865bc5a398f,application,report-deletion.spec.ts > failed or abandoned report loads do not mark reports read,no
+54d9c09805650af620e5-f90cbe3534472ddee934,application,report-deletion.spec.ts > immediate retry works and reload discards old order recovery at 390px,no
+54d9c09805650af620e5-3d22c2b40d9ce7820253,application,report-deletion.spec.ts > leaving detail during archive does not pull the player back after acceptance,no
+54d9c09805650af620e5-7f28478514b00005cc0e,application,report-deletion.spec.ts > mark shown read from orb leaves unloaded and archived reports unread at 390px,no
+54d9c09805650af620e5-8e6b2b536344205b9f08,application,report-deletion.spec.ts > mark shown read from reports leaves unloaded and archived reports unread at 1280px,no
+54d9c09805650af620e5-c9b823b0daf39055c1de,application,"report-deletion.spec.ts > opening a report marks it read after loading, clears the inbox badge and does not resubmit after refresh",no
+54d9c09805650af620e5-4205a387e3d4a3cbb29c,application,report-deletion.spec.ts > report touch actions > delete edges stay independent from row navigation at 320px,no
+54d9c09805650af620e5-ef5b24d27bb6084c5ae8,application,report-deletion.spec.ts > report touch actions > delete edges stay independent from row navigation at 820px,no
+54d9c09805650af620e5-35c087efabaefeed63f7,application,report-deletion.spec.ts > report whitespace opens the report while controls and keyboard stay independent at 1280px,no
+54d9c09805650af620e5-ee1d19297b14502c4745,application,report-deletion.spec.ts > the cleanup notice moves intact between Reports and the command HUD,no
+54d9c09805650af620e5-06ce45b69227eea8bf74,application,report-deletion.spec.ts > the open HUD shows its unread report after a pending archive settles,no
+d8a00397aa42369d9dc3-b013a46c7d2ef20ba555,component,report-readability.spec.ts > report identity stays below its activity and defender loot stays distinct,no
+ed3e7fbd4b155c8d3904-fb6b982c67def1276e00,component,report-reader.spec.ts > published planet intelligence groups and pairs named levels at desktop and phone widths,no
+ed3e7fbd4b155c8d3904-120eb51a6559e41b58df,component,report-reader.spec.ts > six-round combat keeps large forces readable and discloses the selected round,no
+ed3e7fbd4b155c8d3904-1c77d2eca501110625c1,component,report-reader.spec.ts > unbroken observed labels wrap beside their levels without disclosing hidden defenses,no
+d0a307a02c6d1e02212c-f4dbdf5db496b8b3a134,component,report-recovery.component.spec.ts > a throttled selection keeps a single quiet countdown and requires a fresh archive gesture,no
+d0a307a02c6d1e02212c-006614054b0e01977e66,component,"report-recovery.component.spec.ts > report notices disclose older failures, retry the uncertain row and return dismissal focus",no
+d54b45a2ab6da53a0b87-519932f7f56d435c5e73,component,report-sharing-controls.spec.ts > a newer unstar while confirmation is open cannot submit the opposite action,no
+d54b45a2ab6da53a0b87-b25a1d44d418de4531c9,component,report-sharing-controls.spec.ts > copy fallback selects the complete public URL and Escape returns focus to Share,no
+2cecf3dbcd0b9440bfb6-b034cd1ec883fd310255,application,report-sharing.spec.ts > a revoked report has a clear unavailable state,no
+2cecf3dbcd0b9440bfb6-08f4fb0be7df558ddbd6,application,report-sharing.spec.ts > included coordinates and names work without account navigation,no
+2cecf3dbcd0b9440bfb6-5f89928bcd4ae109966e,application,report-sharing.spec.ts > public report is readable without game initialization,yes
+2cecf3dbcd0b9440bfb6-54f13ac1433880786d59,application,report-sharing.spec.ts > publishing and revoking an unlisted link keeps the confirmed star,no
+2cecf3dbcd0b9440bfb6-3238c5953e02482da131,application,report-sharing.spec.ts > touch sharing controls > list archiving keeps a shared link available after confirmed unstar and reload,no
+46224a77127506ef7d7d-eb4ff10681ed56c837da,component,report-triage.component.spec.ts > Mark shown as read reports refusal and submits only the filtered rows of the current folder,no
+46224a77127506ef7d7d-db6a16af3d3349122cfb,component,report-triage.component.spec.ts > archive review retains the custom age across a breakpoint and archives unstarred reports outside the filter,no
+46224a77127506ef7d7d-c9ebd94f8928e1a1696f,component,report-triage.component.spec.ts > archive review waits for the final page and keeps its confirm control usable after refusal,no
+46224a77127506ef7d7d-8796ceb9c3d2c5094e89,component,report-triage.component.spec.ts > changing filters clears selection and rejecting the bulk command restores its rows and checkboxes,no
+46224a77127506ef7d7d-d4cb4ad0acf26c5c1bea,component,report-triage.component.spec.ts > custom archive age persists after a document reload without submitting cleanup,no
+46224a77127506ef7d7d-83227b355dab69936b85,component,report-triage.component.spec.ts > desktop HUD report actions fit before the first item and allow keyboard focus,no
+46224a77127506ef7d7d-48dddd018c6c63879914,component,report-triage.component.spec.ts > folder switch holds focus while archived history loads and bulk restoration empties the folder,no
+46224a77127506ef7d7d-4e44943d97e376a0fcde,component,report-triage.component.spec.ts > native filter pickers keep their panel in place and return focus at 1280px,no
+46224a77127506ef7d7d-cd156cef33965325dbe2,component,report-triage.component.spec.ts > native filter pickers keep their panel in place and return focus at 390px,no
+6a4e7368aa6c5c0ba526-713d5a5a546718f825b3,component,shared-combat-report.spec.ts > shared combat participant locations redacted,no
+6a4e7368aa6c5c0ba526-15f18efd6e9ddcab47fd,component,shared-combat-report.spec.ts > shared combat participant locations visible,no
