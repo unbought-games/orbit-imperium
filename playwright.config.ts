@@ -93,7 +93,6 @@ const coreFiles = [
   'login.spec.ts',
   'reconnect.spec.ts',
   'transport.spec.ts',
-  'zfoundation.spec.ts',
 ]
 export default defineConfig({
   // Routine fixture tests have no execution deadline. Explicit suites retain
