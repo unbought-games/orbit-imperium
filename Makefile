@@ -337,8 +337,9 @@ test-ship-customization-live: _dev-binary
 .PHONY: test-deuterium-debris test-deuterium-debris-db
 test-deuterium-debris:
 	cargo nextest run -p orbit-engine --test debris --test missions --test rules_update_impact --test persistence --lib
-	npm test -- galaxy-harvest galaxy-position
-	npm run test:ui -- galaxy-cards.spec.ts combat-reports.spec.ts harvest-reports.spec.ts catalog-pages.spec.ts --grep 'deuterium|harvest reports'
+	npm test -- galaxy-harvest galaxy-position combat-report-model report-preview-facts report-presentation report-observation
+	npm run test:components -- galaxy-position.component.spec.ts harvest-report.spec.ts --grep 'deuterium|harvest resources and ships'
+	npm run test:ui -- combat-reports.spec.ts --grep deuterium
 
 test-deuterium-debris-db:
 	sh scripts/test-db.sh rules_updates 'test(impact::) | test(compatibility::)'
