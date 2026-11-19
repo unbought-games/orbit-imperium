@@ -1,7 +1,7 @@
-import Ajv from 'ajv/dist/2020'
+import Ajv from 'ajv/dist/2020.js'
 import { completeProduction, gameViewFromContract } from './game-view-contract'
 import addFormats from 'ajv-formats'
-import schema from '../../../../contracts/openapi.json'
+import schema from '../../../../contracts/openapi.json' with { type: 'json' }
 import { ContractDataError } from './contract-error'
 export {
   ContractDataError,
