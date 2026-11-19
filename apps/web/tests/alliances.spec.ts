@@ -236,7 +236,7 @@ for (const viewport of [{ width: 390, height: 740 }]) {
 // Isolated components own role, draft, notice-editing and recruitment-form interactions.
 test(
   'creates an alliance from its route and returns to membership home',
-  { tag: '@journey' },
+
   async ({ page }) => {
     const f = await fixture(page, null)
     const membership = (response: import('@playwright/test').Response) =>
@@ -370,7 +370,7 @@ test('alliance presentation previews unsaved edits and publishes them through th
 // Route history/reload and the persistent workspace require the actual application router.
 test(
   'alliance deep links restore settings and history preserves authored drafts',
-  { tag: '@journey' },
+
   async ({ page }) => {
     await fixture(page, own())
     const root = `/u/andromeda/b/${body.id}/alliance`

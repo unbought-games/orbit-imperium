@@ -22,7 +22,7 @@ test.describe(`Jump Gates at ${width}`, () => {
   // with the selected moon retained across submission and reload on desktop/touch layouts.
   test(
     'build, review and jump preserves moon context and both cooldowns',
-    { tag: '@journey' },
+
     async ({ page }) => {
       await page.clock.install({ time: now })
       const source: S['BodyV3'] = {

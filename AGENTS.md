@@ -90,8 +90,8 @@ test fixtures/runners/CI selection, use the repository
 [test-design skill](.agents/skills/test-design/SKILL.md). Follow the
 [testing strategy](docs/architecture/testing-strategy.md): retain a small,
 deliberate browser merge gate and put most behavior at deterministic or isolated
-component boundaries. The strategy records migration status; do not assume the
-existing broad browser suite has already been replaced.
+component boundaries. Each required application journey has a named regression in the
+[journey contracts](apps/web/tests/journey-contracts.json).
 
 - After writing or materially changing browser/e2e tests, the implementer MUST
   launch the independent `browser_test_reviewer` in fresh context before

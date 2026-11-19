@@ -9,7 +9,7 @@ type S = components['schemas']
 
 
 for (const width of [1440]) {
-  test(`research directive opens its host planet and technology from the whole card at ${width}px`, { tag: width === 390 ? '@journey' : [] }, async ({ page }) => {
+  test(`research directive opens its host planet and technology from the whole card at ${width}px`, async ({ page }) => {
     refuseFixtureReads(page, { progression: ['Research'] })
     await page.setViewportSize({ width, height: 1000 })
     const now = Date.parse('2026-10-24T12:00:00Z')

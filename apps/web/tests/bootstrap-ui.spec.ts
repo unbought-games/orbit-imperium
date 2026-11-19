@@ -179,7 +179,7 @@ test('login and signup preserve the requested game destination', async ({
 
 test(
   'fetched startup uses one bootstrap request and never inserts the sign-in form',
-  { tag: '@journey' },
+
   async ({ page }) => {
     const requests: string[] = []
     page.on('request', (r) => {

@@ -308,7 +308,7 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
 
 test(
   'real quick-build only acknowledges committed orders and leaves rejection visible',
-  { tag: '@journey' },
+
   async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.emulateMedia({ reducedMotion: 'reduce' })

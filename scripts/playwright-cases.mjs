@@ -16,9 +16,6 @@ export async function listBrowserCases(suite, { shard, signal } = {}) {
         ...process.env,
         ORBIT_UI_E2E: '1',
         ORBIT_HOMEPAGE_E2E: suite === 'homepage' ? '1' : '',
-        ORBIT_BROWSER_SUITE: ['journeys', 'features'].includes(suite)
-          ? suite
-          : 'all',
       },
       signal,
     },

@@ -143,7 +143,7 @@ async function openRewardsFromAccount(page: Page, width: number) {
 
 test(
   'mobile account navigation opens a reward choice and confirms permanent delivery',
-  { tag: '@journey' },
+
   async ({ page }) => {
     const width = 390
     const owner = await openRewardsFromAccount(page, width)

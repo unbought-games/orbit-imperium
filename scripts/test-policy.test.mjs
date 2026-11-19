@@ -73,15 +73,28 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     (item) => !separateRunners.has(item.file),
   )
   const collectedFiles = new Set(routine.map((item) => item.file))
-  const expected = { journeys: [], features: [], components: [] }
+  const expected = { journeys: [], components: [] }
   for (const item of routine) {
     const suite = item.file.startsWith('components/')
       ? 'components'
-      : item.tags.includes('journey')
-        ? 'journeys'
-        : 'features'
+      : 'journeys'
     expected[suite].push(caseKey(item))
   }
+  const contracts = JSON.parse(
+    readFileSync(join(root, 'apps/web/tests/journey-contracts.json'), 'utf8'),
+  )
+  const contractKeys = contracts.map(({ file, project, titlePath, risk }) => {
+    assert.ok(
+      typeof risk === 'string' && risk.trim(),
+      `Missing journey risk for ${file}`,
+    )
+    return JSON.stringify([file, project, ...titlePath])
+  })
+  assert.deepEqual(
+    contractKeys.sort(),
+    [...expected.journeys].sort(),
+    'each application test needs one reviewed journey contract',
+  )
   const files = readdirSync(join(root, 'apps/web/tests'), {
     recursive: true,
   }).filter((file) => file.endsWith('.spec.ts') && !separateRunners.has(file))
@@ -90,10 +103,9 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     files.sort(),
     'every browser file needs an execution boundary',
   )
-  const selected = { journeys: [], features: [], components: [] }
+  const selected = { journeys: [], components: [] }
   assert.deepEqual([...new Set(jobs.map((job) => job.suite))].sort(), [
     'components',
-    'features',
     'journeys',
   ])
   for (const job of jobs) {

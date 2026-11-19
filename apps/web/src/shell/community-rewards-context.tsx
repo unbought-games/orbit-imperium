@@ -14,7 +14,9 @@ import {
   rewardsVisible,
 } from '../client-model/community-rewards'
 import { communityRewardsApi } from '../adapters/community-rewards'
-export const RewardsContext = createContext<CommunityRewardsController | null>(null)
+export const RewardsContext = createContext<CommunityRewardsController | null>(
+  null,
+)
 export function CommunityRewardsProvider({
   csrf,
   changed,

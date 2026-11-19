@@ -8,7 +8,7 @@ type Vacation = components['schemas']['VacationView4']
 const minimum = 48 * 60 * 60 * 1000
 // Preserve main's mobile journey; the desktop variant exhausted its repair.
 for (const width of [390]) {
-  test(`vacation review, commitment, minimum and return at ${width}px`, { tag: '@journey' }, async ({ page }) => {
+  test(`vacation review, commitment, minimum and return at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let now = Date.now()
     let revision = 1

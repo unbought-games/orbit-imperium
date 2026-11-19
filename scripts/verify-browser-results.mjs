@@ -8,7 +8,6 @@ const [suite, shard] = process.argv.slice(2)
 const directory = {
   homepage: 'browser-homepage',
   journeys: 'browser-ui',
-  features: 'browser-ui',
   components: 'components',
 }[suite]
 if (!directory) throw Error(`Unknown required browser boundary: ${suite}`)

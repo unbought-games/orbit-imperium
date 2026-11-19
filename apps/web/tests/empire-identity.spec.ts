@@ -121,7 +121,7 @@ async function capture(page: Page, state: string, width: number) {
 for (const width of [390]) {
   test(
     'an empire identity save is reflected by its public profile navigation',
-    { tag: width === 390 ? '@journey' : [] },
+
     async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 })
       const f = await setup(page)

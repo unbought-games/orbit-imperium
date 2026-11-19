@@ -46,7 +46,7 @@ for (const width of [390]) {
   test.describe(`phalanx at ${width}`, () => {
     test.use({ viewport: { width, height: 900 }, reducedMotion: 'reduce' })
     // Regression: navigation and historical report refresh must never buy an observation.
-    test('explicit paid scan opens immutable receipt report', { tag: (width === 390) ? '@journey' : [] }, async ({
+    test('explicit paid scan opens immutable receipt report', async ({
       page,
     }) => {
       await installGameFixture(page, {

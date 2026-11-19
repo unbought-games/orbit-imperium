@@ -115,7 +115,7 @@ async function hostedFixture(
 
 test(
   'hosted sign-in takes one homepage click and returns to the game at 1440px',
-  { tag: '@journey' },
+
   async ({ page, baseURL }) => {
     const width = 1440
     await page.setViewportSize({ width, height: 900 })
@@ -152,7 +152,7 @@ test(
 
 test(
   `hosted enrollment failure keeps the account and retries into the game across widths`,
-  { tag: '@journey' },
+
   async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 900 })
     const fixture = await hostedFixture(page, baseURL, { failEnrollment: true })

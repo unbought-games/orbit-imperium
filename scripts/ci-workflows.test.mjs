@@ -221,9 +221,7 @@ test('fixture browsers start independently of native compilation and stay routin
   )
   assert.ok(
     jobs.browser.steps.some(
-      (step) =>
-        step.run?.includes('make test-ui') &&
-        step.run.includes('make test-components'),
+      (step) => step.run === 'make test-${{ matrix.suite }}',
     ),
   )
   assert.ok(
@@ -419,21 +417,12 @@ test('browser shards run independently and Make forwards their native Playwright
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow
     .jobs
   assert.equal(browser.strategy['fail-fast'], false)
-  assert.equal(browser.strategy['max-parallel'], 8)
+  assert.equal(browser.strategy['max-parallel'], 2)
   const jobs = browser.strategy.matrix.include
-  assert.deepEqual(
-    jobs.filter((job) => job.suite !== 'features'),
-    [
-      { suite: 'journeys', shard: 1, shards: 1 },
-      { suite: 'components', shard: 1, shards: 1 },
-    ],
-  )
-  const features = jobs.filter((job) => job.suite === 'features')
-  assert.deepEqual(
-    features.map((job) => job.shard),
-    Array.from({ length: features.length }, (_, index) => index + 1),
-  )
-  assert.ok(features.every((job) => job.shards === features.length))
+  assert.deepEqual(jobs, [
+    { suite: 'journeys', shard: 1, shards: 1 },
+    { suite: 'components', shard: 1, shards: 1 },
+  ])
   const verify = browser.steps.find(
     (step) => step.run === 'make verify-browser-results',
   )
@@ -441,16 +430,15 @@ test('browser shards run independently and Make forwards their native Playwright
     BROWSER_SUITE: '${{ matrix.suite }}',
     UI_SHARD: '${{ matrix.shard }}/${{ matrix.shards }}',
   })
-  const run = browser.steps.find((step) =>
-    step.run?.includes('make test-components'),
+  const run = browser.steps.find(
+    (step) => step.run === 'make test-${{ matrix.suite }}',
   )
   assert.equal(run.env.UI_SHARD, '${{ matrix.shard }}/${{ matrix.shards }}')
-  assert.equal(run.env.BROWSER_SUITE, '${{ matrix.suite }}')
   const root = new URL('../', import.meta.url)
-  for (const job of [{ suite: 'all' }, ...jobs]) {
+  for (const job of [{ suite: 'journeys' }, ...jobs]) {
     const shard = job.shard ? `${job.shard}/${job.shards}` : ''
-    const target = job.suite === 'components' ? 'test-components' : 'test-ui'
-    const command = job.suite === 'components' ? 'test:components' : 'test:ui'
+    const target = `test-${job.suite}`
+    const command = `test:${job.suite}`
     const dryRun = spawnSync(
       'make',
       ['--no-print-directory', '-n', target, `UI_SHARD=${shard}`],

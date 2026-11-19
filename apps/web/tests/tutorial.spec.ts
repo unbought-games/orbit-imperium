@@ -180,7 +180,7 @@ for (const width of [1440]) {
 
 test(
   'full experience confirmation preserves progress and rewards across reload',
-  { tag: '@journey' },
+
   async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     const state = await installTutorialFixture(page)

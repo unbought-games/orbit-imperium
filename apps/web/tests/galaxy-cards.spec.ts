@@ -291,7 +291,7 @@ test('Galaxy uses the signed-in supporter identity for the owned planet', async 
   })
 })
 
-test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', { tag: '@journey' }, async ({
+test('one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -525,7 +525,7 @@ function harvestTerms(intent: components['schemas']['FleetIntent4']) {
   return { intent, profile_hash: 'a'.repeat(64), terms_hash: 'b'.repeat(64), distance: 1000, speeds: [['Recycler', '2000']], duration_ms: 120000, fuel: '1000000', capacity: '60000000000', maximum_payload: '60000000000', slot_limit: '3' }
 }
 
-test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', { tag: '@journey' }, async ({ page }) => {
+test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', async ({ page }) => {
   await setupHarvest(page)
   let quotes = 0, launches = 0
   let release!: () => void

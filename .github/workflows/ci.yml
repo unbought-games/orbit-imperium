@@ -178,18 +178,12 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 2
       matrix:
         include:
           - { suite: journeys, shard: 1, shards: 1 }
           - { suite: components, shard: 1, shards: 1 }
-          # Keep unmigrated feature interactions required until their replacements pass.
-          - { suite: features, shard: 1, shards: 6 }
-          - { suite: features, shard: 2, shards: 6 }
-          - { suite: features, shard: 3, shards: 6 }
-          - { suite: features, shard: 4, shards: 6 }
-          - { suite: features, shard: 5, shards: 6 }
-          - { suite: features, shard: 6, shards: 6 }
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -218,13 +212,7 @@ jobs:
       - name: Run selected browser boundary
         env:
           UI_SHARD: ${{ matrix.shard }}/${{ matrix.shards }}
-          BROWSER_SUITE: ${{ matrix.suite }}
-        run: |
-          if [ "$BROWSER_SUITE" = components ]; then
-            make test-components
-          else
-            ORBIT_BROWSER_SUITE="$BROWSER_SUITE" make test-ui
-          fi
+        run: make test-${{ matrix.suite }}
       - name: Verify executed browser cases
         env:
           BROWSER_SUITE: ${{ matrix.suite }}

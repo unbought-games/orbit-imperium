@@ -240,7 +240,7 @@ const dispatchResult = (page: Page) =>
 
 test(
   'successful dispatch resets ship and cargo quantities after preserving edits through review',
-  { tag: '@journey' },
+
   async ({ page }) => {
     const state = await setup(page)
     state.launchError = null
@@ -416,7 +416,7 @@ for (const width of [390]) {
 
 test(
   'browser Back restores only the active review and waits for fresh fleet terms',
-  { tag: '@journey' },
+
   async ({ page }) => {
     const state = await setup(page)
     const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
@@ -488,7 +488,7 @@ test(
 )
 
 
-test('a launch-time cargo change preserves the routed review and Edit cargo reopens its dispatch', { tag: '@journey' }, async ({ page }) => {
+test('a launch-time cargo change preserves the routed review and Edit cargo reopens its dispatch', async ({ page }) => {
   const state = await setup(page)
   const dispatchPath = `/u/andromeda/b/${body.id}/dispatch`
   const terms = (units: number, hash: string) => ({

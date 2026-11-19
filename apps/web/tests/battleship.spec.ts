@@ -186,7 +186,7 @@ async function setup(page: Page) {
 
 test(
   'Battleship submits the selected build quantity at 390px',
-  { tag: '@journey' },
+
   async ({ page }, testInfo) => {
     const width = 390
     await page.setViewportSize({ width, height: 900 })

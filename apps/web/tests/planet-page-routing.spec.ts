@@ -97,7 +97,7 @@ test.describe('planet page routing at 1440px', () => {
 
   test(
     'Messages: legacy normalization, planet switching and history keep page context',
-    { tag: '@journey' },
+
     async ({ page }) => {
       const purchases = await fixture(page)
       const query = `player=${id(800)}`
@@ -167,7 +167,7 @@ test('account pages remain usable without planets and reject a foreign planet in
 
 test(
   'public alliance entry keeps its query and hash when resolving the universe name',
-  { tag: '@journey' },
+
   async ({ page }) => {
     await fixture(page)
     await withFixtureResponse(
