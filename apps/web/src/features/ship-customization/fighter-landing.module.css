@@ -1,0 +1,155 @@
+.bay {
+  --arrival: 3200ms;
+  --approach-x: calc(75vw - var(--hangar-gutter) - 50cqw);
+  --approach-y: -44cqh;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+.projection {
+  width: min(96cqw, 126cqh);
+  translate: 0 -5%;
+  aspect-ratio: 3 / 2;
+  position: relative;
+}
+.projection::before {
+  content: '';
+  position: absolute;
+  inset: 40% -1% auto;
+  aspect-ratio: 1536 / 732;
+  background: url('./landing-pad.webp') center / contain no-repeat;
+  filter: brightness(0.6) drop-shadow(0 5px 5px #01050b88);
+}
+.airframe,
+.gear,
+.shadow {
+  position: absolute;
+  inset: 0;
+}
+.gear i {
+  position: absolute;
+  aspect-ratio: 224 / 300;
+  background: url('./orbit-base-strut.webp') center / contain no-repeat;
+  transform-origin: 73% 8%;
+}
+.farMain {
+  left: 16%;
+  top: 43.4%;
+  width: 11.3%;
+  filter: brightness(0.76);
+}
+.nearMain {
+  left: 62.8%;
+  top: 60.8%;
+  width: 12.3%;
+  filter: brightness(0.88);
+}
+.nose {
+  left: 22.5%;
+  top: 77.8%;
+  width: 11.6%;
+}
+.shadow {
+  background:
+    radial-gradient(ellipse 4.3% 1.6% at 19.5% 64%, #000d, transparent),
+    radial-gradient(ellipse 5.2% 1.9% at 66.7% 83.5%, #000e, transparent),
+    radial-gradient(ellipse 5.6% 2% at 26.3% 99.5%, #000f, transparent),
+    radial-gradient(ellipse 38% 23% at 47% 69%, #01060bfa, transparent);
+}
+
+@media (max-width: 740px) {
+  .bay {
+    --approach-x: 100vw;
+    --approach-y: -24%;
+    height: clamp(190px, 64vw, 32dvh);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bay[data-ready='false'] .airframe,
+  .bay[data-ready='false'] .shadow {
+    visibility: hidden;
+  }
+  .bay[data-ready='true'] .airframe {
+    animation: approach var(--arrival) linear both !important;
+  }
+  .bay[data-ready='true'] .gear i {
+    animation: lower-gear var(--arrival) linear both !important;
+  }
+  .bay[data-ready='true'] .shadow {
+    animation: ground-contact var(--arrival) linear both !important;
+  }
+}
+@keyframes approach {
+  0% {
+    transform: translate(var(--approach-x), var(--approach-y)) scale(0.08)
+      rotate(-8deg);
+    animation-timing-function: cubic-bezier(0.38, 0.15, 0.28, 1);
+  }
+  48% {
+    transform: translate(4%, -17%) scale(0.91) rotate(-2deg);
+    animation-timing-function: ease-out;
+  }
+  67% {
+    transform: translate(0, -14%);
+    animation-timing-function: ease-in;
+  }
+  88% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  93% {
+    transform: translateY(0.85%);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes lower-gear {
+  0%,
+  44% {
+    transform: translate(8%, -24%) rotate(-62deg) scaleY(0.08);
+    opacity: 0;
+  }
+  48% {
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  70%,
+  88% {
+    transform: none;
+    opacity: 1;
+  }
+  93% {
+    transform: scaleY(0.954);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes ground-contact {
+  0% {
+    opacity: 0;
+    transform: translate(var(--approach-x), -6%) scale(0.08);
+  }
+  48% {
+    opacity: 0.28;
+    transform: translate(5%, 2%) scale(0.92);
+    filter: blur(10px);
+  }
+  67% {
+    opacity: 0.42;
+    transform: none;
+    filter: blur(6px);
+  }
+  88%,
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

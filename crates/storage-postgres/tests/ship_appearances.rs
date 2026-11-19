@@ -219,7 +219,9 @@ async fn stage(f: &Fixture, id: Uuid) -> String {
 #[tokio::test]
 async fn http_auth_replay_revision_and_account_namespaces() {
     let f = Fixture::new().await;
-    let d = design();
+    let mut d = design();
+    d.recipe.skin_id = "orbit-base-light-fighter".into();
+    d.recipe.package_revision = "v1".into();
     let request = Uuid::new_v4();
     let action = serde_json::to_value(save(d.clone(), 0)).unwrap();
     assert_eq!(
@@ -247,6 +249,18 @@ async fn http_auth_replay_revision_and_account_namespaces() {
     let (status, first) = f.http(f.b, request, action.clone(), true).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(first["library"][0]["revision"], 1);
+    assert_eq!(first["library"][0]["recipe"]["skin_id"], d.recipe.skin_id);
+    let skin = first["catalog"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|skin| skin["id"] == d.recipe.skin_id)
+        .unwrap();
+    assert_eq!(skin["package_revision"], d.recipe.package_revision);
+    assert_eq!(
+        skin["package_url"],
+        "/art/ship-skins/orbit-base-light-fighter/v1/manifest.json"
+    );
     let (status, replay) = f.http(f.b, request, action, true).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(first, replay);

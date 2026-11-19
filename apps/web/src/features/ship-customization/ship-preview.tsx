@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FighterLanding } from './fighter-landing'
 import { ShipAppearancePreview } from '../../../../../packages/ship-appearance/browser'
 import type {
   ShipAppearanceState,
@@ -14,6 +15,7 @@ export function ShipPreview({
   state: ShipAppearanceState
   draft: ShipDesign
 }) {
+  const [landableSkin, setLandableSkin] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [failure, setFailure] = useState<{
     input: string
@@ -40,19 +42,34 @@ export function ShipPreview({
         Choose an available skin and dyes to preview this design.
       </p>
     )
+  const skinKey = skin.id + '/' + skin.package_revision
+  const landing = skinKey === 'orbit-base-light-fighter/v1'
+  const artwork = (
+    <ShipAppearancePreview
+      key={skinKey + '/' + attempt}
+      skin={skin}
+      colors={{ primary: primary.color, accent: accent.color }}
+      emblem={state.emblem}
+      treatment={draft.recipe.emblem.treatment}
+      placement={draft.recipe.emblem.placement}
+      className={landing ? undefined : styles.shipImage}
+      alt={`${draft.name} — live ship preview`}
+      onReady={() => setLandableSkin(skinKey)}
+      onError={(message) => {
+        setLandableSkin(skinKey)
+        setFailure({ input, message })
+      }}
+    />
+  )
   return (
     <div className={styles.previewFrame}>
-      <ShipAppearancePreview
-        key={attempt}
-        skin={skin}
-        colors={{ primary: primary.color, accent: accent.color }}
-        emblem={state.emblem}
-        treatment={draft.recipe.emblem.treatment}
-        placement={draft.recipe.emblem.placement}
-        className={styles.shipImage}
-        alt={`${draft.name} — live ship preview`}
-        onError={(message) => setFailure({ input, message })}
-      />
+      {landing ? (
+        <FighterLanding ready={landableSkin === skinKey}>
+          {artwork}
+        </FighterLanding>
+      ) : (
+        artwork
+      )}
       {failure?.input === input && (
         <div className={styles.previewFailure} role="status">
           <p>
