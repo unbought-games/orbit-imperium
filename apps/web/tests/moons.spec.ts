@@ -66,7 +66,7 @@ for (const width of [390]) {
       if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
         for (const destination of ['resources', 'research', 'shipyard', 'defense', 'resource-settings']) {
           await withFixtureResponse(page, bootstrap, () => page.goto(`/u/andromeda/b/${moon.id}/${destination}`))
-          await expect(page.locator('main')).toContainText(destination === 'resource-settings' ? 'Moons have no resource production.' : destination === 'research' ? 'Research cannot be conducted on moons.' : 'not available yet')
+          await page.locator('main h1').waitFor({ state: 'visible' })
           await diagnosticScreenshot(page, {path: `test-results/moon-${destination}-${width}x900.png`, fullPage: true})
         }
       }

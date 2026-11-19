@@ -390,7 +390,16 @@ for (const width of [390]) {
       await expect(onWorlds).toHaveText('13,281')
       await expect(deuterium.locator('strong')).toHaveText('6,243')
       for (const layoutWidth of [1440,width]) {
-        await page.setViewportSize({width:layoutWidth,height:1000})
+        await page.setViewportSize({ width: layoutWidth, height: 1000 })
+        // The fixed header consumes the content width published by the shell's
+        // ResizeObserver. Measure overflow after it has observed this viewport.
+        await expect.poll(() => page.evaluate(() => {
+          const shell = document.querySelector<HTMLElement>('[style*="--shell-content-width"]')
+          const columns = shell?.firstElementChild
+          if (!shell || !columns) return false
+          const headerWidth = Number.parseFloat(shell.style.getPropertyValue('--shell-content-width'))
+          return headerWidth === columns.getBoundingClientRect().width
+        }), { message: 'The fixed header has observed the resized shell columns' }).toBe(true)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
         for (const group of await ledger.getByRole('group').all()) {
           const centers = await group.locator('dt > svg').evaluateAll(icons => icons.map(icon => {
