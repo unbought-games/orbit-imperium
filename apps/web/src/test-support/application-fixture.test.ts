@@ -1,3 +1,5 @@
+import { createServer } from 'node:http'
+import { request } from 'playwright'
 import { expect, it, vi } from 'vitest'
 import type { Page, Route } from '@playwright/test'
 import {
@@ -370,3 +372,60 @@ it.each(['overview', 'settings'])(
     )
   },
 )
+
+it('the installed document handler retries a reset GET, strips embedded observations and preserves HTTP refusals', async () => {
+  const counts = new Map<string, number>()
+  const server = createServer((req, res) => {
+    const path = req.url!,
+      count = (counts.get(path) ?? 0) + 1
+    counts.set(path, count)
+    if (path === '/reset' && count === 1) {
+      req.socket.destroy()
+      return
+    }
+    res.writeHead(path === '/unavailable' ? 503 : 200, {
+      'content-type': 'text/html',
+    })
+    res.end(
+      '<script id="orbit-bootstrap" type="application/json">{"server":"observation"}</script><h1>Fixture document</h1>',
+    )
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const api = await request.newContext()
+  try {
+    const address = server.address()
+    if (!address || typeof address === 'string')
+      throw Error('Expected a loopback server')
+    const { page, handlers } = ports()
+    await installGameFixture(page)
+    for (const [path, status, count] of [
+      ['/reset', 200, 2],
+      ['/unavailable', 503, 1],
+    ] as const) {
+      const href = `http://127.0.0.1:${address.port}${path}`,
+        fulfill = vi.fn()
+      await handlers.get('**/*')!({
+        request: () => ({
+          resourceType: () => 'document',
+          url: () => href,
+          method: () => 'GET',
+        }),
+        fetch: (options: Parameters<typeof api.fetch>[1]) =>
+          api.fetch(href, options),
+        fulfill,
+      } as unknown as Route)
+      expect(counts.get(path)).toBe(count)
+      const [delivery] = fulfill.mock.calls[0]
+      expect(delivery.response.status()).toBe(status)
+      expect(delivery.body).toBe(
+        '<script id="orbit-bootstrap" type="application/json"></script><h1>Fixture document</h1>',
+      )
+    }
+  } finally {
+    await api.dispose()
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    )
+  }
+})

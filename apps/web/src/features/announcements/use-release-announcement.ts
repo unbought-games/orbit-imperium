@@ -7,7 +7,11 @@ import {
 } from './model'
 
 /** Fetch editorial content independently of game state and readiness. */
-export function useReleaseAnnouncement(account: string, joinedAt?: number) {
+export function useReleaseAnnouncement(
+  account: string,
+  joinedAt?: number,
+  read = loadAnnouncements,
+) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [, setAcknowledged] = useState(0)
   useEffect(() => {
@@ -17,7 +21,7 @@ export function useReleaseAnnouncement(account: string, joinedAt?: number) {
       if (pending || document.visibilityState === 'hidden') return
       pending = true
       try {
-        const feed = await loadAnnouncements(controller.signal)
+        const feed = await read(controller.signal)
         if (!controller.signal.aborted) setAnnouncements(feed)
       } catch {
         // A missing, invalid or unavailable feed never interrupts gameplay.
@@ -36,7 +40,7 @@ export function useReleaseAnnouncement(account: string, joinedAt?: number) {
       document.removeEventListener('visibilitychange', refresh)
       window.removeEventListener('focus', refresh)
     }
-  }, [])
+  }, [read])
   const announcement = currentAnnouncement(
     announcements,
     Date.now(),

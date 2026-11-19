@@ -41,28 +41,7 @@ export function SettingsScreen() {
       </SettingsPane>
       <SettingsPane section="support" selected={selected}>
         <SupportLinks />
-        <Section aria-label="Community">
-          <Heading level={2}>Community</Heading>
-          <Text>
-            Meet other players and keep up with Orbit Imperium on Discord.
-          </Text>
-          <DiscordLink />
-        </Section>
-        <Section aria-label="Help and conduct reports">
-          <Heading level={2}>Help & conduct reports</Heading>
-          <Text>
-            Email{' '}
-            <a
-              className={styles.supportLink}
-              href="mailto:support@unbought.games"
-            >
-              support@unbought.games
-            </a>{' '}
-            for help or to report a conduct concern. Support is best effort: we
-            aim to respond within 24 hours, but response times are not
-            guaranteed.
-          </Text>
-        </Section>
+        <SupportContacts />
         <UniverseSettings />
       </SettingsPane>
       <SettingsPane section="session" selected={selected}>
@@ -175,6 +154,34 @@ function SessionSettings() {
           Sign out
         </Button>
       </section>
+    </>
+  )
+}
+
+export function SupportContacts() {
+  return (
+    <>
+      <Section aria-label="Community">
+        <Heading level={2}>Community</Heading>
+        <Text>
+          Meet other players and keep up with Orbit Imperium on Discord.
+        </Text>
+        <DiscordLink />
+      </Section>
+      <Section aria-label="Help and conduct reports">
+        <Heading level={2}>Help & conduct reports</Heading>
+        <Text>
+          Email{' '}
+          <a
+            className={styles.supportLink}
+            href="mailto:support@unbought.games"
+          >
+            support@unbought.games
+          </a>{' '}
+          for help or to report a conduct concern. Support is best effort: we
+          aim to respond within 24 hours, but response times are not guaranteed.
+        </Text>
+      </Section>
     </>
   )
 }

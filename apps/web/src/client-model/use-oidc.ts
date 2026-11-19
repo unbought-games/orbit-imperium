@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { oidcHttp, type OidcConfig } from '../adapters/oidc'
 export type { OidcConfig } from '../adapters/oidc'
 type ConfigState =
@@ -22,10 +22,14 @@ export function requestOidcConfig(
   return () => controller.abort()
 }
 
+export const OidcEntryApi =
+  createContext<Pick<typeof oidcHttp, 'config' | 'enroll'>>(oidcHttp)
+
 export function useOidcConfig() {
+  const { config: read } = useContext(OidcEntryApi)
   const [state, setState] = useState<ConfigState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
-  useEffect(() => requestOidcConfig(setState), [attempt])
+  useEffect(() => requestOidcConfig(setState, read), [attempt, read])
   const retry = () => {
     setState({ status: 'loading' })
     setAttempt((value) => value + 1)
@@ -52,13 +56,14 @@ export function oidcLoginPath(
 }
 
 export function useUniverseEnrollment() {
+  const api = useContext(OidcEntryApi)
   const { state, retry } = useOidcConfig()
   const [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false)
   async function enroll(universe: string) {
     setBusy(true)
     try {
-      await oidcHttp.enroll(universe)
+      await api.enroll(universe)
       window.location.assign('/')
     } catch (error) {
       setMessage((error as Error).message)

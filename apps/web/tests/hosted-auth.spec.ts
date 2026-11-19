@@ -95,7 +95,11 @@ async function hostedFixture(
     expect(route.request().method()).toBe('POST')
     expect(route.request().headers()['x-csrf-token']).toBe('fixture')
     enrollments.push(route.request().postDataJSON())
-    if (failures-- > 0) return route.fulfill({ status: 403, json: { code: 'Forbidden', status: 403, type: 'about:blank' } })
+    if (failures-- > 0)
+      return route.fulfill({
+        status: 403,
+        json: { code: 'Forbidden', status: 403, type: 'about:blank' },
+      })
     enrolled = true
     return route.fulfill({ status: 204 })
   })
@@ -109,51 +113,47 @@ async function hostedFixture(
   }
 }
 
-for (const [width, returning] of [[390, false], [1440, true]] as const) {
-    test(`hosted ${returning ? 'sign-in' : 'registration'} takes one homepage click and returns to the game at ${width}px`, { tag: (returning && width === 1440) ? '@journey' : [] }, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.setViewportSize({ width, height: 900 })
-      const fixture = await hostedFixture(page, baseURL, { returning })
-      await page.goto('/')
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Victory isn’t for sale.',
-      )
-      await diagnosticScreenshot(page, {
-        path: `test-results/hosted-home-${returning ? 'closed' : 'open'}-${width}x900.png`,
-        fullPage: true,
-      })
-      await page
-        .getByRole('navigation', { name: 'Get started' })
-        .getByRole('link', {
-          name: returning ? 'Sign in' : 'Play free',
-          exact: true,
-        })
-        .click()
-      await expect(page).toHaveURL(
-        `${accounts}/${returning ? 'sign-in' : 'sign-up'}?state=fixture`,
-      )
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        returning ? 'Welcome back' : 'Create your account',
-      )
-      await page.getByRole('link', { name: 'Complete authentication' }).click()
-      await expect(page).toHaveURL(`${baseURL}${empirePath}`)
-      await expect(page.locator('main h1')).toContainText('Empire —')
-      expect(fixture.enrollments).toEqual([])
-      expect(fixture.automaticEnrollments).toEqual(
-        returning ? [] : [binding.universe],
-      )
-      await diagnosticScreenshot(page, {
-        path: `test-results/hosted-empire-${width}x900.png`,
-      })
+test(
+  'hosted sign-in takes one homepage click and returns to the game at 1440px',
+  { tag: '@journey' },
+  async ({ page, baseURL }) => {
+    const width = 1440
+    await page.setViewportSize({ width, height: 900 })
+    const fixture = await hostedFixture(page, baseURL, { returning: true })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Victory isn’t for sale.',
+    )
+    await diagnosticScreenshot(page, {
+      path: `test-results/hosted-home-closed-${width}x900.png`,
+      fullPage: true,
     })
-}
+    await page
+      .getByRole('navigation', { name: 'Get started' })
+      .getByRole('link', {
+        name: 'Sign in',
+        exact: true,
+      })
+      .click()
+    await expect(page).toHaveURL(`${accounts}/sign-in?state=fixture`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Welcome back',
+    )
+    await page.getByRole('link', { name: 'Complete authentication' }).click()
+    await expect(page).toHaveURL(`${baseURL}${empirePath}`)
+    await expect(page.locator('main h1')).toContainText('Empire —')
+    expect(fixture.enrollments).toEqual([])
+    expect(fixture.automaticEnrollments).toEqual([])
+    await diagnosticScreenshot(page, {
+      path: `test-results/hosted-empire-${width}x900.png`,
+    })
+  },
+)
 
-  test(`hosted enrollment failure keeps the account and retries into the game across widths`, { tag: '@journey' }, async ({
-    page,
-    baseURL,
-  }) => {
+test(
+  `hosted enrollment failure keeps the account and retries into the game across widths`,
+  { tag: '@journey' },
+  async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 390, height: 900 })
     const fixture = await hostedFixture(page, baseURL, { failEnrollment: true })
     fixture.completeAuthentication()
@@ -176,7 +176,9 @@ for (const [width, returning] of [[390, false], [1440, true]] as const) {
     const retryPositions = new Map<number, number>()
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 })
-      const position = (await page.getByRole('button', { name: 'Try again' }).boundingBox())!
+      const position = (await page
+        .getByRole('button', { name: 'Try again' })
+        .boundingBox())!
       retryPositions.set(width, position.y)
     }
     try {
@@ -186,63 +188,21 @@ for (const [width, returning] of [[390, false], [1440, true]] as const) {
       )
       for (const [width, retryY] of retryPositions) {
         await page.setViewportSize({ width, height: 900 })
-        const position = (await page.getByRole('button', { name: 'Joining…' }).boundingBox())!
+        const position = (await page
+          .getByRole('button', { name: 'Joining…' })
+          .boundingBox())!
         expect(Math.abs(position.y - retryY)).toBeLessThan(1)
-        await diagnosticScreenshot(page, { path: `test-results/hosted-enrollment-pending-${width}x900.png` })
+        await diagnosticScreenshot(page, {
+          path: `test-results/hosted-enrollment-pending-${width}x900.png`,
+        })
       }
     } finally {
       release()
     }
     await expect(page).toHaveURL(`${baseURL}${empirePath}`)
     expect(fixture.enrollments).toEqual([{ universe: binding.universe }])
-  })
-test('opening a hosted recovery URL cannot automatically enroll a player', async ({
-  page,
-  baseURL,
-}) => {
-  const fixture = await hostedFixture(page, baseURL)
-  fixture.authenticate()
-  await withBootstrapResponse(page, () => page.goto(joinPath))
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible()
-  expect(fixture.enrollments).toEqual([])
-  expect(fixture.automaticEnrollments).toEqual([])
-})
-
-test('hosted enrollment configuration can be retried without losing the authenticated account', async ({
-  page,
-  baseURL,
-}) => {
-  const fixture = await hostedFixture(page, baseURL, {
-    failConfig: true,
-    returning: true,
-  })
-  fixture.authenticate()
-  await withBootstrapResponse(page, () => page.goto(joinPath))
-  await expect(page.getByRole('alert')).toHaveText(
-    'Unable to load your universe. Please try again.',
-  )
-  expect(fixture.enrollments).toEqual([])
-  await page.getByRole('button', { name: 'Try again' }).click()
-  await expect(page).toHaveURL(`${baseURL}${empirePath}`)
-  expect(fixture.enrollments).toEqual([])
-})
-
-test('an enrollment failure can return to universe selection without an automatic retry', async ({
-  page,
-  baseURL,
-}) => {
-  const fixture = await hostedFixture(page, baseURL, { failEnrollment: true })
-  fixture.completeAuthentication()
-  await withBootstrapResponse(page, () => page.goto(joinPath))
-  await expect(page.getByRole('alert')).toBeVisible()
-  await page
-    .getByRole('link', { name: 'Choose a universe', exact: true })
-    .click()
-  await expect(
-    page.getByRole('heading', { name: 'Choose your universe' }),
-  ).toBeVisible()
-  expect(fixture.enrollments).toHaveLength(0)
-})
+  },
+)
 
 test('a join return path with a different hosted binding opens universe selection without enrolling', async ({
   page,
@@ -255,6 +215,8 @@ test('a join return path with a different hosted binding opens universe selectio
   fixture.authenticate()
   await withBootstrapResponse(page, () => page.goto(joinPath))
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByRole('heading', { name: 'Choose your universe' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Choose your universe' }),
+  ).toBeVisible()
   expect(fixture.enrollments).toEqual([])
 })

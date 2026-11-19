@@ -234,3 +234,14 @@ it('keeps older failures accessible in the same banner', async () => {
   expect(html).toContain('Retry order')
   expect(html).toContain('Dismiss notice')
 })
+
+it('offers reload for an incompatible snapshot without announcing a connection outage', async () => {
+  const html = await render([], '', {
+    foreground: true,
+    stale: true,
+    incompatibleSchema: 'GameView',
+  })
+  expect(html).toContain('The game returned data this version cannot read.')
+  expect(html).toContain('Reload app')
+  expect(html).not.toContain('Showing the last confirmed state. Reconnecting')
+})
