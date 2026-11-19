@@ -1,4 +1,4 @@
-import { test as base, expect, type BrowserContext } from '@playwright/test'
+import { test as base, type BrowserContext } from '@playwright/test'
 import { fixtureOperation } from './api-diagnostics'
 import { captureFailureScreenshots } from './diagnostic-screenshot'
 
@@ -13,21 +13,21 @@ export const test = base.extend<{
   boundary: process.env.ORBIT_UI_E2E ? 'application' : 'server',
   fixtureNetwork: [
     async ({ browser, context, boundary, announcements }, use, testInfo) => {
-      const diagnostics = new Set<string>()
       const extra = new Set<BrowserContext>()
       const install = async (target: BrowserContext) => {
         if (boundary === 'server') return
-        await target.route('**/api/**', async (route) => {
-          diagnostics.add(
-            'Unexpected API operation: ' + fixtureOperation(route.request()),
+        // The runner attributes route/listener exceptions to the active case.
+        // Throw here so an unmatched request cannot strand a readiness waiter.
+        await target.route('**/api/**', (route) => {
+          throw new Error(
+            'Unexpected fixture API operation: ' +
+              fixtureOperation(route.request()),
           )
-          if (boundary === 'component') await route.abort('blockedbyclient')
-          else await route.fulfill({ status: 404, json: { code: 'NotFound' } })
         })
         if (boundary === 'component') {
-          target.on('weberror', (error) =>
-            diagnostics.add('Component error: ' + error.error().message),
-          )
+          target.on('weberror', (error) => {
+            throw error.error()
+          })
           return
         }
         await target.route('**/api/analytics', (route) =>
@@ -56,7 +56,6 @@ export const test = base.extend<{
       } finally {
         browser.newContext = newContext
         try {
-          expect.soft([...diagnostics], 'Fixture diagnostics').toEqual([])
           await captureFailureScreenshots(
             [context, ...extra].flatMap((item) => item.pages()),
             testInfo,

@@ -145,6 +145,7 @@ export async function installGameFixture(
   fixtureWorldRevisions.set(page, options.viewerRevision ?? (() => '1'))
   const protocol = options.protocol ?? 3
   let purchases = 0
+  let signedIn = true
   // Fixtures own initial auth/data even when this suite runs against production HTML.
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() !== 'document') return route.fallback()
@@ -173,6 +174,23 @@ export async function installGameFixture(
       `/api/v${version}/universes/${binding.universe}/${name}`
     const post = (name: string, version: number = protocol) =>
       is('POST', api(version, name))
+    if (
+      is('DELETE', '/api/v1/session') &&
+      request.headers()['x-csrf-token'] === 'fixture'
+    ) {
+      signedIn = false
+      return route.fulfill({ status: 204 })
+    }
+    if (!signedIn && is('GET', '/api/v1/bootstrap'))
+      return route.fulfill({
+        json: {
+          version: 1,
+          signup_enabled: false,
+          result: { status: 'anonymous' },
+        },
+      })
+    if (!signedIn && is('GET', '/api/v1/session'))
+      return route.fulfill({ status: 401, json: { code: 'Unauthorized' } })
     if (is('GET', '/api/auth/config'))
       return route.fulfill({
         json: {

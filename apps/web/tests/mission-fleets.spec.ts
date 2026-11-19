@@ -274,11 +274,6 @@ async function interactiveFixture(
   screen: 'fleets' | 'overview',
 ) {
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page
-    .context()
-    .route('**/api/**', (route) =>
-      route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
-    )
   await page.clock.setFixedTime(now)
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {

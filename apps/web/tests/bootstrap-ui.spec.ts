@@ -1,7 +1,7 @@
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { binding, body, shellFixture, installGameFixture, inactiveTutorial } from './fixtures/game'
+import { binding, body, shellFixture, installGameFixture } from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
@@ -460,10 +460,7 @@ test(`explicit login records presence after retry; reload and cached-page restor
   await page.route('**/api/**', async (route) => {
     const request = route.request(),
       path = new URL(request.url()).pathname
-    if (path === '/api/auth/config') return route.fallback()
-    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
-      return inactiveTutorial(route, snapshot.view.viewer_revision)
-    if (path === '/api/v1/bootstrap') {
+    if (request.method() === 'GET' && path === '/api/v1/bootstrap') {
       bootstrapReads++
       return route.fulfill({
         json: signedIn
@@ -475,14 +472,14 @@ test(`explicit login records presence after retry; reload and cached-page restor
             },
       })
     }
-    if (path === '/api/v1/session' || path === '/api/v1/registration') {
+    if (request.method() === 'POST' && path === '/api/v1/session') {
       signedIn = true
       const failed = structuredClone(payload)
       if (failed.result.status === 'authenticated')
         failed.result.game = { status: 'unavailable', code: 'Unavailable' }
       return route.fulfill({ json: failed })
     }
-    if (path.endsWith('/presence')) {
+    if (request.method() === 'POST' && path === `/api/v4/universes/${binding.universe}/presence` && request.postDataJSON()?.command?.action?.type === 'RecordForegroundPresence') {
       const e = request.postDataJSON()
       if (e.command.action.cause === 'Login') logins++
       return route.fulfill({
@@ -498,7 +495,7 @@ test(`explicit login records presence after retry; reload and cached-page restor
         },
       })
     }
-    if (path.endsWith('/overview'))
+    if (request.method() === 'POST' && path === `/api/v4/universes/${binding.universe}/overview`)
       return route.fulfill({
         json: {
           ...snapshot.view,
@@ -555,6 +552,7 @@ test('a populated HTML payload renders without a bootstrap request', { tag: '@jo
     throw Error('fixture')
   payload.result.game.snapshot.view.bodies = [body]
   if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
+  await installGameFixture(page, { protocol: 3 })
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() !== 'document') return route.fallback()
     const response = await route.fetch()
@@ -564,22 +562,17 @@ test('a populated HTML payload renders without a bootstrap request', { tag: '@jo
     )
     return route.fulfill({ response, body: html })
   })
-  const calls: string[] = []
+  const startupReads: string[] = []
   await page.route('**/api/**', (route) => {
-    calls.push(new URL(route.request().url()).pathname)
+    const path = new URL(route.request().url()).pathname
+    if (!['/api/v1/bootstrap', '/api/v1/session'].includes(path) && !/\/(binding|settings)$/.test(path))
+      return route.fallback()
+    startupReads.push(path)
     return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
-  expect(
-    calls.filter(
-      (p) =>
-        p === '/api/v1/bootstrap' ||
-        p === '/api/v1/session' ||
-        p.endsWith('/binding') ||
-        p.endsWith('/settings'),
-    ),
-  ).toEqual([])
+  expect(startupReads).toEqual([])
   expect(await page.locator('#orbit-bootstrap').count()).toBe(0)
 })
 
@@ -821,17 +814,14 @@ test('mobile startup automatically recovers from a transient restart without sig
   let reads = 0
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
-    if (path === '/api/auth/config') return route.fallback()
-    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
-      return inactiveTutorial(route, snapshot.view.viewer_revision)
-    if (path === '/api/v1/bootstrap') {
+    if (request.method() === 'GET' && path === '/api/v1/bootstrap') {
       reads++
       return route.fulfill({ json: reads === 2 ? preparing : reads > 2 ? payload : {
         version: 1, signup_enabled: true,
         result: { status: 'unavailable', code: 'Unavailable' },
       } })
     }
-    if (path.endsWith('/overview')) return route.fulfill({ json: {
+    if (request.method() === 'POST' && path === `/api/v4/universes/${binding.universe}/overview`) return route.fulfill({ json: {
       ...snapshot.view, request_id: request.postDataJSON().request_id,
     } })
     return route.fallback()
