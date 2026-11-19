@@ -6,6 +6,7 @@ import {
   RouterContextProvider,
 } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
+import { commandId } from '../adapters/command-id'
 import type { BoundView } from '../client-model/commands'
 import { Coordinator } from '../client-model/coordinator'
 import { useCommands } from '../client-model/use-commands'
@@ -50,7 +51,7 @@ export function PreparedLinkContext({
         receipt: unexpected,
       },
       {
-        newId: () => crypto.randomUUID(),
+        newId: () => commandId(crypto),
         monotonicNowMs: () => 0,
         isOnline: () => true,
       },
