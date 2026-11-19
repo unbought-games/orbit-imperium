@@ -5,6 +5,7 @@ import {
   id,
   installGameFixture,
   playerProfilesFixture,
+  refuseFixtureReads,
 } from '../../tests/fixtures/game'
 import { installTutorialFixture } from '../../tests/fixtures/tutorial'
 import { routeProgressionOptions } from '../../tests/fixtures/progression-options'
@@ -141,4 +142,41 @@ it('a foreign tutorial binding cannot publish guidance or complete an objective'
   expect(state.data).toEqual(before)
   expect(read.fulfill).not.toHaveBeenCalled()
   expect(action.fulfill).not.toHaveBeenCalled()
+})
+
+it('a declared unavailable upgrade only refuses bound reads for the installed body', async () => {
+  const { page, handlers } = ports()
+  await installGameFixture(page, { protocol: 4 })
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
+  const handle = handlers.get('**/api/**')!
+  const request = { type: 'Upgrade', body: id(5), building: 'MetalMine' }
+  const bulk = prefix + '/progression-options/bulk'
+  const good = call('POST', bulk, { context, requests: [request] })
+  await handle(good.route)
+  expect(good.fulfill).toHaveBeenCalledWith({
+    status: 404,
+    json: { code: 'NotFound' },
+  })
+  for (const wrong of [
+    call('POST', bulk, {
+      context,
+      requests: [request, { type: 'Other', body: id(5) }],
+    }),
+    call('POST', bulk, { context, requests: [{ ...request, body: id(100) }] }),
+    call('POST', bulk, {
+      context: { ...context, binding: { ...binding, epoch: id(99) } },
+      requests: [request],
+    }),
+    call('POST', prefix + '/commands', {
+      gameplay: {
+        binding,
+        command_id: id(80),
+        command: { type: 'StartUpgrade', body: id(5) },
+      },
+    }),
+  ]) {
+    await handle(wrong.route)
+    expect(wrong.fallback).toHaveBeenCalledOnce()
+    expect(wrong.fulfill).not.toHaveBeenCalled()
+  }
 })
