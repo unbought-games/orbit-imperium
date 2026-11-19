@@ -4,7 +4,7 @@
 
 The historical collection at `a119915ffaeb881a7f54d65542478f4788bd4210` contains 1,183 application cases. Phase one at `0c235fd6d27422374abf61ea44e39c015a9c1675` collected 816 application cases, 271 isolated component cases, ten production homepage cases and 22 explicit browser cases. The historical and phase-one collections overlap. Read their dispositions by collection, project, file and full title ancestry. Keep the original IDs, including IDs for retired cases. [Frozen manifest and inventories](https://github.com/unbought-games/orbit-imperium/tree/16430828343977b9d78b22f8f4677ad9d36c7d15/docs/verification/e2e-migration/inventory)
 
-The first seven domain handoffs cover every historical and phase-one ID assigned to those streams. A row-by-row comparison found identical ID sets and full title paths for each pair of frozen and landed ledgers. The numbers below count rows in those two different collections. Each handoff links its tests, replacements and failure evidence.
+The eight domain handoffs account for all 1,183 historical application rows and all 1,087 phase-one application and component rows. A row-by-row comparison checked ID sets and full title paths against the frozen collections, along with project, file and boundary wherever the owner export included those fields. The 420 rows in the separately published stream delta ledgers all have a disposition. Multiple stages can describe the same identity. The numbers below count rows in those two different collections. Each handoff links its tests, replacements and failure evidence.
 
 | Domain | Historical application | Phase-one application and component | Handoff |
 | --- | ---: | ---: | --- |
@@ -15,12 +15,15 @@ The first seven domain handoffs cover every historical and phase-one ID assigned
 | Shell and navigation | 246 | 206 | [#448](test-migration-shell-navigation.md) |
 | Startup, HUD and tutorial | 150 | 144 | [#456](test-migration-startup-hud-tutorial.md) |
 | Social and identity | 69 | 77 | [#461](test-migration-social-identity.md) |
+| Reports, sharing and cleanup | 76 | 66 | [#486](test-migration-reports-and-sharing.md) |
 
 On main `7449be126307cf788c2f47083922c73e70f582f4`, Playwright's unfiltered fixture collections returned 570 application and 531 isolated cases. Of 53 candidates recorded in #462, 52 still had the same native Playwright ID and full title. The remaining DM case lost its width-specific title in stream 07. Its successor still sends from the deep link, waits for the delivered thread and returns to conversations. The nine cases in `game-invitations.spec.ts` are separate from stream 07's two recruitment token cases. The interim selector now matches 55 journeys. Its two additional Dispatch cases exercise launch-time cargo changes and browser Back while a fresh quote is pending. The remaining 515 application cases are still required. [Interim candidate ledger](test-migration-journey-candidates.csv) · [Social case ledger](test-migration-social-identity/final-cases.csv)
 
 For streams 01–03, native collection from source-only copies of the actual merge commits supplied the three missing end-of-stream exports. Stream 01 ended with 56 application and 43 component cases, stream 02 with 60 and 95, and stream 03 with 110 and 110. Comparing those complete identities to main found 16 later removals or renames. The [post-stream changes](test-migration-cutover/post-stream-changes.csv) identify all 16, with replacement titles and IDs where a direct successor exists. All 495 rows in the four published final-case ledgers for streams 04–07 still matched by boundary, file, project and complete title.
 
 The two restored-command cases in stream 01's ledger have historical dispositions. PR #445 changed recovery to in-memory only. One current production case holds a command while editing sliders. Reload discards unconfirmed recovery. Confirmed server state and durable user preferences still have separate reload contracts. The retired transition journal supplies no current acceptance contract.
+
+Stream 08 merged at `0e3b39b169ae6ba6e751a98b87ac301533d23107`. Its 24 application and 25 mounted cases passed. Three isolated PostgreSQL report binaries covered paging, reading and sharing, and 94 HTTP tests passed. Review restored the original small-combat reader, kept the healthy phone/tablet row-edge tests, and required actual receipt processing before checking that an archived report could not redirect another detail. The former history-range, bulk-read, three-report identity and combined phone deletion/reload sequences remain retired. [Coverage and review](test-migration-reports-and-sharing.md) · [PR CI](https://github.com/unbought-games/orbit-imperium/actions/runs/44442224962) · [Queue CI](https://github.com/unbought-games/orbit-imperium/actions/runs/44444877939)
 
 ## Selection check
 
