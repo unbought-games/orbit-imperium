@@ -1,6 +1,6 @@
 import { test, expect, type Locator } from './fixtures/test'
 
-import { body, installGameFixture } from './fixtures/game'
+import { refuseFixtureReads, body, installGameFixture } from './fixtures/game'
 
 import { withBootstrapResponse } from './fixtures/responses'
 
@@ -26,6 +26,7 @@ async function expectSelected(input: Locator) {
 test('dispatch numbers are replaced after click and refocus', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { world: ['Galaxy', 'ResolveDestination'] })
   await installGameFixture(page, {
     protocol: 4,
     extraCapabilities: ['Transport'],

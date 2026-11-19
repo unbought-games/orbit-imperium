@@ -99,7 +99,6 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     'login.spec.ts',
     'reconnect.spec.ts',
     'transport.spec.ts',
-    'zfoundation.spec.ts',
     'signup.spec.ts',
     'raiding.spec.ts',
     'missions.spec.ts',

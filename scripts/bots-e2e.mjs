@@ -57,8 +57,8 @@ try {
  const epochDay=Math.floor(Date.now()/86400000)+1;let at=epochDay*86400000+12*3600000;
  await client.query('CREATE TABLE orbit_test_clock(at_ms bigint NOT NULL)');await client.query('INSERT INTO orbit_test_clock VALUES($1)',[at]);
  const policyFile=join(temp,'policy.json');cli(['universe','config','export','--universe',u,'--out',policyFile]);
- const policy=JSON.parse(readFileSync(policyFile));assert.deepEqual(policy.policy.bots,{version:1,enabled:false,max_active:0,action_units_per_24h:null});
- policy.policy.bots={version:1,enabled:true,max_active:2,action_units_per_24h:3};writeFileSync(policyFile,JSON.stringify(policy));cli(['universe','config','apply','--universe',u,'--file',policyFile]);
+ const policy=JSON.parse(readFileSync(policyFile));assert.deepEqual(policy.policy.bots,{version:1,enabled:false,display:'visible',max_active:0,action_units_per_24h:null});
+ policy.policy.bots={...policy.policy.bots,enabled:true,max_active:2,action_units_per_24h:3};writeFileSync(policyFile,JSON.stringify(policy));cli(['universe','config','apply','--universe',u,'--file',policyFile]);
  await start();
  const create=name=>JSON.parse(cli(['bots','create','--universe',u,'--name',name,'--sleep-start-utc','00:00']));
  const a=create('harvester'),b=create('sentinel');

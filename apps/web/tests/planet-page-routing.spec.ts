@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures/test'
 
-import { installGameFixture, binding, body, id } from './fixtures/game'
+import { installGameFixture, refuseFixtureReads, binding, body, id } from './fixtures/game'
 
 import { withFixtureResponse } from './fixtures/responses'
 
@@ -98,6 +98,8 @@ for (const width of [1440, 390]) {
         `${title}: legacy normalization, planet switching and history keep page context`,
         { tag: title === 'Messages' ? '@journey' : [] },
         async ({ page }) => {
+          if (slug === 'alliance') refuseFixtureReads(page, { invitation: id(901) })
+          if (slug === 'settings') refuseFixtureReads(page, { insigniaLibrary: true })
           const purchases = await fixture(page)
           const destinationSlug =
             slug === 'alliance'
@@ -179,6 +181,7 @@ for (const width of [1440, 390]) {
 test('account pages remain usable without planets and reject a foreign planet instead of falling back', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { insigniaLibrary: true })
   await fixture(page, true)
   for (const [slug, title] of pages) {
     await boot(page, () => page.goto(`/u/andromeda/${slug}#details`))
@@ -313,6 +316,7 @@ for (const slug of ['menu', 'rewards']) {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 900 })
+    if (slug === 'rewards') refuseFixtureReads(page, { insigniaLibrary: true })
     await fixture(page)
     const open = (navigate: () => Promise<unknown>) =>
       slug === 'rewards'

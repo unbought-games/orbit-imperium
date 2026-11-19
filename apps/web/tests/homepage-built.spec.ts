@@ -75,41 +75,55 @@ for (const signup of [true, false]) {
         page.on('console', (message) => {
           if (message.type() === 'error') errors.push(message.text())
         })
-        await page.route('**/api/analytics', (route) =>
-          route.fulfill({ json: { enabled: false } }),
-        )
         await page.route('**/api/auth/config', (route) =>
-          route.fulfill({ json: { mode: 'local', universes: [] } }),
+          route.request().method() !== 'GET'
+            ? route.fallback()
+            : route.fulfill({ json: { mode: 'local', universes: [] } }),
         )
-        await page.route('**/api/auth/entry*', (route) =>
-          route.fulfill({
-            status: 303,
-            headers: {
-              location:
-                new URL(route.request().url()).searchParams.get('signup') ===
-                'true'
-                  ? '/signup'
-                  : '/login',
-            },
-          }),
+        await page.route(
+          (url) => url.pathname === '/api/auth/entry',
+          (route) =>
+            route.request().method() !== 'GET'
+              ? route.fallback()
+              : route.fulfill({
+                  status: 303,
+                  headers: {
+                    location:
+                      new URL(route.request().url()).searchParams.get(
+                        'signup',
+                      ) === 'true'
+                        ? '/signup'
+                        : '/login',
+                  },
+                }),
         )
         await page.route('**/api/v1/bootstrap', (route) =>
-          route.fulfill({
-            json: {
-              version: 1,
-              signup_enabled: signup,
-              result: { status: 'anonymous' },
-            },
-          }),
+          route.request().method() !== 'GET'
+            ? route.fallback()
+            : route.fulfill({
+                json: {
+                  version: 1,
+                  signup_enabled: signup,
+                  result: { status: 'anonymous' },
+                },
+              }),
         )
-        await page.route('**/', async (route) => {
-          const response = await context.request.get(`/${filename}`)
-          const html = (await response.text()).replace(
-            '<script id="orbit-bootstrap" type="application/json"></script>',
-            `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
-          )
-          await route.fulfill({ contentType: 'text/html', body: html })
-        })
+        await page.route(
+          (url) => url.pathname === '/',
+          async (route) => {
+            if (
+              route.request().method() !== 'GET' ||
+              route.request().resourceType() !== 'document'
+            )
+              return route.fallback()
+            const response = await context.request.get(`/${filename}`)
+            const html = (await response.text()).replace(
+              '<script id="orbit-bootstrap" type="application/json"></script>',
+              `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
+            )
+            await route.fulfill({ contentType: 'text/html', body: html })
+          },
+        )
         try {
           await page.goto('/')
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(

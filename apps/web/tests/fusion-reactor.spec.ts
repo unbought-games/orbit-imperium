@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/test'
-import { shellFixture, body, binding } from './fixtures/game'
+import { refuseFixtureReads, shellFixture, body, binding } from './fixtures/game'
 import { openProductionSettings } from './fixtures/production-settings'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
@@ -22,6 +22,7 @@ for (const width of [320, 1440]) {
   test(`Fusion shows fuel-limited output and saves requested duty at ${width}px`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize({ width, height: 900 })
     const production: S['ProductionDto'] = {
       body: body.id,

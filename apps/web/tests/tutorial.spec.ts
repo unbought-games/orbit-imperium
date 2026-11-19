@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/test'
 import { installTutorialFixture } from './fixtures/tutorial'
-import { body } from './fixtures/game'
+import { body, refuseFixtureReads } from './fixtures/game'
 import {
   withFixtureResponse,
   withProgressionResponse,
@@ -448,6 +448,7 @@ for (const width of [1100, 390]) {
   test(`opening More keeps messages reachable and promotes navigation with progress ${width}`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { allianceMembership: true })
     await page.setViewportSize({ width, height: 900 })
     const state = await installTutorialFixture(page)
     await withFixtureResponse(page, tutorial, () => page.goto(briefing))

@@ -1,4 +1,4 @@
-import { routeWorld } from './fixtures/game'
+import { refuseFixtureReads, routeWorld } from './fixtures/game'
 
 import {
   withBootstrapResponse,
@@ -167,6 +167,7 @@ for (const mode of modes) {
     test('controls suppress touch selection while content and desktop copying remain available', async ({
       page,
     }) => {
+      refuseFixtureReads(page, { progression: ['Upgrade'] })
       if (mode.installed)
         await page.addInitScript(() => {
           Object.defineProperty(navigator, 'standalone', { value: true })

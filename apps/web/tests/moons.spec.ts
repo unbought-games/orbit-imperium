@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
-import { installGameFixture, body, id } from './fixtures/game'
+import { installGameFixture, refuseFixtureReads, body, id } from './fixtures/game'
 import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
@@ -23,6 +23,8 @@ for (const width of [1440, 390]) {
     // Regression: a moon sharing its planet's coordinates must remain selectable
     // without exposing planet mutations or sending construction requests.
     test('selects a moon and inspects buildings while lunar construction stays unavailable', async ({page}) => {
+      // Dispatch can request the surrounding system while resolving the owned moon.
+      refuseFixtureReads(page, { world: ['Galaxy'] })
       await installGameFixture(page, {protocol: 4, bodies: [body, moon], catalog, sampledAt: now, missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'}, extraCapabilities: ['Attack', 'Espionage', 'Reports']})
       const mutations: string[] = []
       page.on('request', request => {
