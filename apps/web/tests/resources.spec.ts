@@ -14,10 +14,14 @@ import {
   shellFixture,
   body,
   binding,
+  matchesFixtureContext,
   refreshGame,
 } from './fixtures/game'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse } from './fixtures/responses'
+import {
+  withBootstrapResponse,
+  withFixtureResponse,
+} from './fixtures/responses'
 
 function production(): components['schemas']['ProductionDto'] {
   return {
@@ -50,21 +54,12 @@ function production(): components['schemas']['ProductionDto'] {
     fuel_utilization: '1000000',
   }
 }
-async function setup(
-  page: Page,
-  blocked = false,
-  commandReferences = false,
-  planet = structuredClone(body),
-  viewerRevision?: () => string,
-) {
+async function setup(page: Page, planet = structuredClone(body)) {
   const economy = { ...production(), body: planet.id }
-  if (blocked) planet.amounts.metal = '0'
   const sent: components['schemas']['CommandEnvelopeV3'][] = []
   await installGameFixture(page, {
     production: [economy],
     bodies: planet.id === body.id ? [planet] : [structuredClone(body), planet],
-    commandReferences,
-    viewerRevision,
   })
   await routeProgressionOptions(page, async (route) => {
     const { context, request } = route.request().postDataJSON()
@@ -97,18 +92,7 @@ async function setup(
           reserve_fields: 1,
         },
         terms_hash: 'b'.repeat(64),
-        blockers: blocked
-          ? [
-              {
-                code: 'InsufficientResources',
-                requirement: null,
-                required: '60000000',
-                actual: '0',
-                resource: 'Metal',
-                unit: 'MicroResource',
-              },
-            ]
-          : [],
+        blockers: [],
         estimates: {
           first_start_at: Date.now(),
           final_due_at: Date.now() + 76000,
@@ -196,10 +180,12 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
     )
     expect(await totals.innerText()).toBe(confirmedTotals)
     expect(sent).toHaveLength(1)
-    await panel.getByRole('status').scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {
-      path: 'test-results/production-autosave-pending-390.png',
-    })
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await panel.getByRole('status').scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, {
+        path: 'test-results/production-autosave-pending-390.png',
+      })
+    }
     await page.getByRole('link', { name: 'Develop', exact: true }).click()
     // A route change unmounts the controls while the user edits remain queued.
     await page.getByRole('link', { name: 'Facilities', exact: true }).click()
@@ -232,10 +218,12 @@ test('production autosaves rapid edits after reconciliation and keeps confirmed 
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true)
-  await panel.getByRole('status').scrollIntoViewIfNeeded()
-  await diagnosticScreenshot(page, {
-    path: 'test-results/production-autosave-saved-390.png',
-  })
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    await panel.getByRole('status').scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, {
+      path: 'test-results/production-autosave-saved-390.png',
+    })
+  }
 })
 
 test('production rejection retains edits and retry preserves unrelated server changes', async ({
@@ -277,13 +265,15 @@ test('production rejection retains edits and retry preserves unrelated server ch
   await expect(panel.getByRole('alert')).toHaveCount(0)
   await expect(page.getByLabel('metal mine production')).toHaveValue('50')
   expect(sent).toHaveLength(0)
-  for (const width of [1280, 390]) {
-    await page.setViewportSize({ width, height: 900 })
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, {
-      path: `test-results/unified-production-error-${width}x900.png`,
-      fullPage: true,
-    })
+  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, {
+        path: `test-results/unified-production-error-${width}x900.png`,
+        fullPage: true,
+      })
+    }
   }
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON()
@@ -317,102 +307,6 @@ test('production rejection retains edits and retry preserves unrelated server ch
   )
 })
 
-test('production edits wait for an in-memory production command', async ({
-  page,
-}) => {
-  let viewerRevision = '1'
-  const { economy } = await setup(
-    page,
-    false,
-    false,
-    structuredClone(body),
-    () => viewerRevision,
-  )
-  const sent: components['schemas']['CommandEnvelopeV3'][] = []
-  const receipts = new Map<string, components['schemas']['BoundReceipt3']>()
-  await page.route('**/commands', async (route) => {
-    const envelope = route.request().postDataJSON()
-    sent.push(envelope)
-    const pending: components['schemas']['BoundReceipt3'] = {
-      protocol: 3,
-      binding,
-      command_id: envelope.command_id,
-      admitted_at: Date.now(),
-      executed_at: null,
-      status: 'Pending',
-    }
-    if (sent.length === 1) {
-      receipts.set(envelope.command_id, pending)
-      await route.fulfill({ json: pending })
-    } else {
-      economy.settings = envelope.command.settings
-      economy.settings_revision = '3'
-      viewerRevision = '3'
-      await route.fulfill({
-        json: {
-          ...pending,
-          status: 'Committed',
-          executed_at: Date.now(),
-          minimum_viewer_revision: viewerRevision,
-          result_ids: [],
-        },
-      })
-    }
-  })
-  await page.route('**/commands/*', (route) => {
-    const id = new URL(route.request().url()).pathname.split('/').pop()!
-    return route.fulfill({ json: receipts.get(id) })
-  })
-  await openProductionSettings(page)
-  await moveProductionSlider(page, 'metal mine production', '50')
-  await expect.poll(() => sent.length).toBe(1)
-  await openProductionSettings(page)
-  const panel = page.getByRole('region', { name: 'Production controls' })
-  const metal = page.getByLabel('metal mine production')
-  await expect(metal).toHaveValue('50')
-  const totals = panel
-    .locator('div')
-    .filter({ has: page.getByText('Energy balance', { exact: true }) })
-    .first()
-  const confirmedTotals = await totals.innerText()
-  const desired = '100'
-  await moveProductionSlider(page, 'metal mine production', desired)
-  await expect(metal).toHaveValue(desired)
-  await expect(panel.getByRole('status')).toContainText(
-    'Saving production changes',
-  )
-  expect(sent).toHaveLength(1)
-  expect(await totals.innerText()).toBe(confirmedTotals)
-  economy.settings = {
-    ...economy.settings,
-    metal_mine: 50,
-    crystal_mine: 80,
-  }
-  economy.settings_revision = '2'
-  viewerRevision = '2'
-  // The committed production receipt releases the queued edit after refresh.
-  const original = receipts.get(sent[0].command_id)!
-  receipts.set(sent[0].command_id, {
-    ...original,
-    status: 'Committed',
-    executed_at: Date.now(),
-    minimum_viewer_revision: viewerRevision,
-    result_ids: [],
-  })
-  await refreshGame(page)
-  await expect.poll(() => sent.length).toBe(2)
-  expect(sent[1].command).toMatchObject({
-    type: 'SetProduction',
-    expected_settings_revision: '2',
-    settings: { metal_mine: Number(desired), crystal_mine: 80 },
-  })
-  await expect(panel.getByRole('status')).toHaveText(
-    'All changes saved automatically.',
-  )
-  await expect(metal).toHaveValue(desired)
-  await expect(panel.getByRole('alert')).toHaveCount(0)
-})
-
 test('legacy resource catalogs retain cancellation and refresh the open upgrade after completion', async ({
   page,
 }) => {
@@ -437,35 +331,57 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
     releaseUpgrade = resolve
   })
   let failNextQuote = true
-  await page.route('**/quotes', async (route) => {
-    if (failNextQuote) {
-      failNextQuote = false
-      await route.fulfill({ status: 422, json: { code: 'Unavailable' } })
-      return
-    }
-    const { context, request } = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 2,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        request,
-        terms: {
-          profile_hash: 'a'.repeat(64),
-          terms_hash: (planet.levels.MetalMine === 1 ? 'b' : 'c').repeat(64),
-          cost: { metal: '60000000', crystal: '15000000', deuterium: '0' },
-          duration: 76000,
-          target_level: planet.levels.MetalMine + 1,
-          fuel: '0',
-          capacity: '0',
-          maximum_payload: '0',
+  const inspected: string[] = []
+  await page.route(
+    (url) => url.pathname === `/api/v2/universes/${binding.universe}/quotes`,
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const { context, request } = route.request().postDataJSON()
+      if (
+        !matchesFixtureContext(context) ||
+        request.body !== body.id ||
+        request.type !== 'Upgrade'
+      )
+        return route.fallback()
+      inspected.push(request.building)
+      if (!Object.hasOwn(planet.levels, request.building))
+        return route.fallback()
+
+      if (failNextQuote) {
+        failNextQuote = false
+        await route.fulfill({ status: 422, json: { code: 'Unavailable' } })
+        return
+      }
+      await route.fulfill({
+        json: {
+          protocol: 2,
+          binding,
+          request_id: context.request_id,
+          viewer_revision: '1',
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          request,
+          terms: {
+            profile_hash: 'a'.repeat(64),
+            terms_hash: (planet.levels.MetalMine === 1 ? 'b' : 'c').repeat(64),
+            cost: {
+              metal:
+                request.building === 'SolarPlant' ? '80000000' : '60000000',
+              crystal: '15000000',
+              deuterium: '0',
+            },
+            duration: 76000,
+            target_level:
+              planet.levels[request.building as keyof typeof planet.levels]! +
+              1,
+            fuel: '0',
+            capacity: '0',
+            maximum_payload: '0',
+          },
         },
-      },
-    })
-  })
+      })
+    },
+  )
   await page.route('**/commands', async (route) => {
     const envelope = route.request().postDataJSON()
     sent.push(envelope)
@@ -544,6 +460,57 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   await expect(
     page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }),
   ).toHaveAttribute('title', 'Fusion Reactor · unavailable in this universe')
+  const panel = page.getByRole('region', { name: 'Upgrade quote' })
+  const back = page.getByRole('link', {
+    name: 'Back to Resources',
+    exact: true,
+  })
+  for (const [name, building, cost] of [
+    ['Crystal Mine', 'CrystalMine', '60'],
+    ['Solar Plant', 'SolarPlant', '80'],
+  ]) {
+    await withFixtureResponse(
+      page,
+      (r) =>
+        r.request().method() === 'POST' &&
+        new URL(r.url()).pathname.endsWith('/quotes') &&
+        r.request().postDataJSON().request.building === building,
+      () =>
+        activate(
+          page.getByRole('link', { name: `Upgrade ${name}`, exact: true }),
+        ),
+    )
+    await expect(
+      panel.getByRole('heading', { name, exact: true }),
+    ).toBeVisible()
+    await expect(
+      panel.getByRole('button', { name: 'Metal details' }).locator('strong'),
+    ).toHaveText(`Cost ${cost}`)
+    await expect(
+      panel.getByRole('button', { name: 'Confirm upgrade' }),
+    ).toBeDisabled()
+    await expect(panel.getByText('Loading building details…')).toHaveCount(0)
+    if (building === 'CrystalMine') await activate(back)
+  }
+  await page.goBack()
+  await expect(
+    page.getByRole('region', { name: 'Resource buildings' }),
+  ).toBeVisible()
+  await page.goBack()
+  await expect(
+    panel.getByRole('heading', { name: 'Crystal Mine', exact: true }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole('button', { name: 'Metal details' }).locator('strong'),
+  ).toHaveText('Cost 60')
+  await activate(back)
+  await activate(
+    page.getByRole('link', { name: 'Upgrade Fusion Reactor', exact: true }),
+  )
+  await expect(panel).toContainText('Unavailable in this universe.')
+  expect(inspected).not.toContain('FusionReactor')
+  await expect(panel.getByText('Loading building details…')).toHaveCount(0)
+  await activate(back)
   await activate(
     page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
   )
@@ -590,6 +557,7 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
     type: 'StartUpgrade',
     expected_terms_hash: 'c'.repeat(64),
   })
+  expect(inspected).not.toContain('FusionReactor')
 })
 
 test("full-storage warnings open the selected planet's matching storage at 390px", async ({
@@ -607,7 +575,7 @@ test("full-storage warnings open the selected planet's matching storage at 390px
       id: '00000000-0000-4000-8000-000000000006',
     }
     colony.amounts = { ...colony.capacity, crystal: '11000000000' }
-    const { sent } = await setup(page, false, false, colony)
+    const { sent } = await setup(page, colony)
     await selectBody(page, colony.id)
     await expect(page).toHaveURL(new RegExp(`/b/${colony.id}/resources$`))
     await expect(page.locator('main h1')).toBeFocused()

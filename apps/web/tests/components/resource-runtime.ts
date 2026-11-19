@@ -2,6 +2,7 @@ import { readyFixture, id } from '../../src/test-support/bootstrap'
 import { productionFixture } from '../../src/test-support/production'
 import { progressionFixture } from '../../src/features/progression/progression-test-fixture'
 import { Coordinator } from '../../src/client-model/coordinator'
+import { sameBinding } from '../../src/client-model/commands'
 import type {
   BoundProgressionOptions,
   GamePort,
@@ -90,6 +91,16 @@ export async function createResourceScene(params: URLSearchParams) {
     view.research = [{ research: 'EnergyTechnology', level: 1 }]
     body.amounts.metal = '59999999'
   }
+  if (params.has('aliases'))
+    view.progress = {
+      sampled_at: epoch,
+      scopes: [],
+      minimum_revision_pending: false,
+      projection_limit: null,
+      command_references: true,
+    }
+  let admitPending = false
+  const receipts = new Map<string, BoundReceipt>()
   const sent: Envelope[] = []
   let elapsed = 0
   let throttled = false
@@ -520,6 +531,27 @@ export async function createResourceScene(params: URLSearchParams) {
           status: 'Rejected',
           code: 'InsufficientResources',
         }
+      if (
+        admitPending &&
+        [
+          'StartUpgrade',
+          'StartResearch',
+          'CancelConstruction',
+          'CancelResearch',
+          'SetProduction',
+        ].includes(command.type)
+      ) {
+        const receipt: BoundReceipt = {
+          protocol,
+          binding: view.binding,
+          command_id: envelope.command_id,
+          admitted_at: epoch,
+          executed_at: null,
+          status: 'Pending',
+        }
+        receipts.set(envelope.command_id, receipt)
+        return receipt
+      }
       if (command.type === 'SetProduction') {
         const production = view.progression.production[0]
         production.settings = command.settings
@@ -550,8 +582,11 @@ export async function createResourceScene(params: URLSearchParams) {
         minimum_viewer_revision: view.viewer_revision,
       }
     },
-    receipt: async () => {
-      throw Error('Presentation component unexpectedly requested a receipt')
+    receipt: async (binding, commandId) => {
+      const receipt = receipts.get(commandId)
+      if (!receipt || !sameBinding(binding, view.binding))
+        throw Error('Unexpected resource receipt')
+      return structuredClone(receipt)
     },
   }
   const model = new Coordinator(port, {
@@ -566,6 +601,21 @@ export async function createResourceScene(params: URLSearchParams) {
     sent,
     requests,
     queries: () => queries,
+    pending(value: boolean) {
+      admitPending = value
+    },
+    commitReceipt(commandId: string) {
+      const receipt = receipts.get(commandId)
+      if (!receipt || receipt.status !== 'Pending')
+        throw Error('Expected an admitted command')
+      receipts.set(commandId, {
+        ...receipt,
+        status: 'Committed',
+        executed_at: epoch,
+        result_ids: [],
+        minimum_viewer_revision: view.viewer_revision,
+      })
+    },
     failInspection: (value: boolean) => {
       failInspection = value
     },

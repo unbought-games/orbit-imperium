@@ -1,3 +1,11 @@
+import { Coordinator } from '../../src/client-model/coordinator'
+import { useCommands } from '../../src/client-model/use-commands'
+import { SessionContext } from '../../src/shell/session-context'
+import { DefaultDestination } from '../../src/shell/default-destination'
+import { body } from '../../src/test-support/empire'
+import { readyFixture } from '../../src/test-support/bootstrap'
+import { Home } from '../../src/features/home'
+import { ProtectedGame } from '../../src/shell/protected-game'
 import { HostedJoin } from '../../src/features/hosted-join'
 import { UniverseEnrollment } from '../../src/features/oidc'
 import { useState } from 'react'
@@ -21,10 +29,13 @@ import { validateAuthSearch } from '../../src/shell/auth-search'
 import { AuthenticationPage } from '../../src/shell/authentication-page'
 import { RuntimeControllerContext } from '../../src/shell/bootstrap-context'
 
-const universe = '00000000-0000-4000-8000-000000000007'
+const universe = readyFixture(4).session.memberships[0].universe
 
 function prepare() {
   const query = new URLSearchParams(location.search)
+  const memberships = query.has('member')
+    ? readyFixture(4).session.memberships
+    : []
   const requests: { kind: string; name: string; password: string }[] = []
   let release!: () => void
   const pending = new Promise<void>((resolve) => {
@@ -99,9 +110,30 @@ function prepare() {
       ...routes,
       createRoute({
         getParentRoute: () => root,
+        path: '/',
+        component:
+          query.get('mode') === 'member-home' ? MemberDestination : Home,
+      }),
+      createRoute({
+        getParentRoute: () => root,
+        path: '/u/$universe/b/$body/overview',
+        component: () => null,
+      }),
+      createRoute({
+        getParentRoute: () => root,
+        path: '$',
+        component: ProtectedGame,
+      }),
+      createRoute({
+        getParentRoute: () => root,
         path: '/join',
         component: () => (
-          <HostedJoin universe={universe} hasMembership={false} />
+          <HostedJoin
+            universe={universe}
+            hasMembership={memberships.some(
+              (membership) => membership.universe === universe,
+            )}
+          />
         ),
       }),
       createRoute({
@@ -112,15 +144,21 @@ function prepare() {
     ]),
     history: createMemoryHistory({
       initialEntries: [
-        query.get('mode') === 'join'
-          ? '/join'
-          : query.get('mode') === 'choice'
-            ? '/choice'
-            : query.get('mode') === 'signup'
-              ? '/signup'
-              : query.has('protected')
-                ? '/login?redirect=%2Fu%2Fandromeda%2Fb%2Fplanet%2Fmessages%23last'
-                : '/login?redirect=%2Fu%2F..%2F..%2Flogin',
+        query.get('mode') === 'member-home'
+          ? '/'
+          : query.get('mode') === 'unknown'
+            ? '/unknown'
+            : query.get('mode') === 'alias'
+              ? '/index.html'
+              : query.get('mode') === 'join'
+                ? '/join'
+                : query.get('mode') === 'choice'
+                  ? '/choice'
+                  : query.get('mode') === 'signup'
+                    ? '/signup'
+                    : query.has('protected')
+                      ? '/login?redirect=%2Fu%2Fandromeda%2Fb%2Fplanet%2Fmessages%23last'
+                      : '/login?redirect=%2Fu%2F..%2F..%2Flogin',
       ],
     }),
   })
@@ -131,6 +169,7 @@ function prepare() {
       config,
       enroll: async (target: string) => {
         enrollments.push(target)
+        await window.recordHostedEnrollment?.(target)
         throw new Error('Universe admission refused.')
       },
     },
@@ -139,6 +178,51 @@ function prepare() {
     release,
     configReads: () => configReads,
   }
+}
+
+// Exercise the destination lookup against the returned existing membership. The
+// application's real hosted callback journey owns rendering the game itself.
+function MemberDestination() {
+  const [{ model, view, universeName }] = useState(() => {
+    const { snapshot, session } = readyFixture(4)
+    const view = snapshot.view
+    view.bodies = [structuredClone(body)]
+    const unexpected = (): never => {
+      throw Error('A member destination lookup does not issue game orders')
+    }
+    const model = new Coordinator(
+      {
+        currentBinding: unexpected,
+        view: unexpected,
+        settings: unexpected,
+        quote: unexpected,
+        receipt: unexpected,
+        submit: unexpected,
+      },
+      {
+        newId: crypto.randomUUID.bind(crypto),
+        monotonicNowMs: () => performance.now(),
+        isOnline: () => true,
+      },
+    )
+    return { model, view, universeName: session.memberships[0].universe_name }
+  })
+  const commands = useCommands(null)
+  return (
+    <SessionContext.Provider
+      value={{
+        model,
+        view,
+        universeName,
+        commands,
+        logout: async () => {
+          throw Error('Unexpected member logout')
+        },
+      }}
+    >
+      <DefaultDestination />
+    </SessionContext.Provider>
+  )
 }
 
 function AuthFrame() {
@@ -159,6 +243,7 @@ function FormRoute({ signup }: { signup: boolean }) {
 declare global {
   interface Window {
     authenticationScene: ReturnType<typeof prepare>
+    recordHostedEnrollment?: (target: string) => Promise<void>
   }
 }
 

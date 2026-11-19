@@ -106,3 +106,26 @@ it('writes a protocol-3 upgrade as the direct bound HTTP envelope', async () => 
     vi.unstubAllGlobals()
   }
 })
+
+it.each(['Upgrade', 'Research'] as const)(
+  'admits %s without fabricating a completed engine operation',
+  async (type) => {
+    const { model, sent, view, pending } = await createResourceScene(
+      new URLSearchParams({ protocol: '3', aliases: 'yes' }),
+    )
+    pending(true)
+    const quote = await model.options(
+      type === 'Upgrade'
+        ? { type, body: id(5), building: 'RoboticsFactory' }
+        : { type, host: id(5), research: 'CombustionDrive' },
+    )
+    const command = progressionCommand(quote!)!
+    await model.send(command, quote!)
+    expect(sent).toHaveLength(1)
+    expect(model.store.getState().attempts.values().next().value?.status).toBe(
+      'pending',
+    )
+    expect(view.constructions).toEqual([])
+    expect(view.progression.research_operation ?? null).toBeNull()
+  },
+)

@@ -120,3 +120,77 @@ test('production throttle gives one cooldown notice and waits for an explicit re
   ).toHaveText('All changes saved automatically.')
   expect(await page.evaluate(() => window.resourceScene.sent.length)).toBe(2)
 })
+
+test('an admitted in-memory production receipt fences the next slider edit until the new confirmed revision', async ({
+  page,
+}) => {
+  await page.goto('/?scenario=resources&page=production&protocol=3')
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-component-ready',
+    'resources',
+  )
+  const panel = page.getByRole('region', { name: 'Production controls' })
+  const metal = panel.getByRole('slider', { name: 'metal mine production' })
+  const balance = panel
+    .locator('div')
+    .filter({ has: page.getByText('Energy balance', { exact: true }) })
+    .last()
+  await expect(metal).toHaveValue('100')
+  const initial = await balance.innerText()
+  await page.evaluate(() => window.resourceScene.pending(true))
+  await metal.press('Home')
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...window.resourceScene.model.store.getState().attempts.values()].map(
+          (a) => a.status,
+        ),
+      ),
+    )
+    .toEqual(['pending'])
+  await metal.press('End')
+  await expect(metal).toHaveValue('100')
+  await expect(panel.getByRole('status')).toContainText(
+    'Saving production changes',
+  )
+  expect(await balance.innerText()).toBe(initial)
+  const first = await page.evaluate(() =>
+    window.resourceScene.sent.map((e) => e.command),
+  )
+  expect(first).toHaveLength(1)
+  expect(first[0]).toMatchObject({
+    type: 'SetProduction',
+    expected_settings_revision: '1',
+    settings: { metal_mine: 0 },
+  })
+  await page.evaluate(async () => {
+    const scene = window.resourceScene
+    const production = scene.view.progression.production[0]
+    production.settings = {
+      ...production.settings,
+      metal_mine: 0,
+      crystal_mine: 80,
+    }
+    production.settings_revision = '2'
+    scene.view.viewer_revision = '2'
+    scene.commitReceipt(scene.sent[0].command_id)
+    scene.pending(false)
+    await scene.model.poll()
+  })
+  await expect(panel.getByRole('status')).toHaveText(
+    'All changes saved automatically.',
+  )
+  await expect(metal).toHaveValue('100')
+  await expect(
+    panel.getByRole('slider', { name: 'crystal mine production' }),
+  ).toHaveValue('80')
+  const commands = await page.evaluate(() =>
+    window.resourceScene.sent.map((e) => e.command),
+  )
+  expect(commands).toHaveLength(2)
+  expect(commands[1]).toMatchObject({
+    type: 'SetProduction',
+    expected_settings_revision: '2',
+    settings: { metal_mine: 100, crystal_mine: 80 },
+  })
+})

@@ -42,7 +42,12 @@ async function cancellationFixture(page: Page, lateOptions = false) {
     protocol: 4,
     bodies: [planet],
     // Keep refund and one-micro-unit affordability assertions independent of income.
-    production: [{ ...productionFixture(planet), gross_per_hour: { metal: '0', crystal: '0', deuterium: '0' } }],
+    production: [
+      {
+        ...productionFixture(planet),
+        gross_per_hour: { metal: '0', crystal: '0', deuterium: '0' },
+      },
+    ],
     constructions,
     catalog: [
       {
@@ -148,7 +153,7 @@ async function cancellationFixture(page: Page, lateOptions = false) {
         required_energy: '0',
         reserve_fields: 1,
       },
-      terms_hash: 'b'.repeat(64),
+      terms_hash: (revision === '1' ? 'b' : 'c').repeat(64),
       blockers,
       estimates: null,
     }
@@ -188,12 +193,17 @@ async function cancellationFixture(page: Page, lateOptions = false) {
       },
     })
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/resources`),
+  )
   // Only unlocked, inactive tiles inspect costs; the Deuterium Tank remains
   // locked and the Crystal Mine keeps its active-construction presentation.
   await expect
     .poll(() =>
-      inspections.filter((x) => x.delivered).map((x) => x.building).sort(),
+      inspections
+        .filter((x) => x.delivered)
+        .map((x) => x.building)
+        .sort(),
     )
     .toEqual([
       'CrystalStorage',
@@ -212,7 +222,9 @@ async function cancellationFixture(page: Page, lateOptions = false) {
   })
   async function inspect(title: string) {
     await pane.getByRole('link', { name: /^Back to / }).click()
-    await page.getByRole('link', { name: `Upgrade ${title}`, exact: true }).click()
+    await page
+      .getByRole('link', { name: `Upgrade ${title}`, exact: true })
+      .click()
     return pane.getByRole('button', { name: 'Confirm upgrade', exact: true })
   }
   async function startCancellation() {
@@ -223,7 +235,10 @@ async function cancellationFixture(page: Page, lateOptions = false) {
     await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
     for (const title of titles.filter((title) => title !== 'Crystal Mine')) {
       await inspect(title)
-      if (!lateOptions) await expect(pane.getByLabel('Action blockers')).toContainText('Active Construction')
+      if (!lateOptions)
+        await expect(pane.getByLabel('Action blockers')).toContainText(
+          'Active Construction',
+        )
     }
     await expect
       .poll(() =>
@@ -244,7 +259,9 @@ async function cancellationFixture(page: Page, lateOptions = false) {
       ),
     ).toBe(false)
     await expect(
-      page.getByRole('button', { name: /^Build / }).and(page.locator(':enabled')),
+      page
+        .getByRole('button', { name: /^Build / })
+        .and(page.locator(':enabled')),
     ).toHaveCount(0)
     await inspect('Crystal Mine')
     await expect(cancel).toBeDisabled()
@@ -283,7 +300,8 @@ for (const width of [390]) {
         await fixture.startCancellation()
         commandGate.resolve('Committed')
         await expect(cancel).toHaveCount(0)
-        for (const title of titles) await expect(await inspect(title)).toBeEnabled()
+        for (const title of titles)
+          await expect(await inspect(title)).toBeEnabled()
         optionsGate.resolve()
         await expect
           .poll(() =>
@@ -292,9 +310,9 @@ for (const width of [390]) {
               .every((x) => x.delivered),
           )
           .toBe(true)
-        // Consume late responses and another snapshot without losing the fresh eligibility.
+        // The first pass checked every sibling. Only the funded Metal Mine
+        // submits the next command after this refresh; its bound hash must change.
         await refreshGame(page)
-        for (const title of titles) await expect(await inspect(title)).toBeEnabled()
         await expect(await inspect('Metal Storage')).toBeDisabled()
         await expect(await inspect('Deuterium Tank')).toBeDisabled()
         await expect(await inspect('Fusion Reactor')).toHaveCount(0)
@@ -330,7 +348,7 @@ for (const width of [390]) {
             type: 'StartUpgrade',
             body: body.id,
             building: 'MetalMine',
-            expected_terms_hash: 'b'.repeat(64),
+            expected_terms_hash: 'c'.repeat(64),
           })
       } finally {
         commandGate.resolve('Rejected')
