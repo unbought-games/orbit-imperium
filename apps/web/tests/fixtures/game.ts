@@ -128,6 +128,7 @@ export async function installGameFixture(
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
     accountUrl?: string
+    csrf?: string
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
     unreadReportCount?: () => number
@@ -172,6 +173,7 @@ export async function installGameFixture(
   installedGames.set(page, { protocol, revision: options.viewerRevision })
   let purchases = 0
   let signedIn = true
+  const csrf = options.csrf ?? 'fixture'
   // Fixtures own initial auth/data even when this suite runs against production HTML.
   await page.route('**/*', async (route) => {
     if (
@@ -204,11 +206,18 @@ export async function installGameFixture(
       is('POST', boundApi(version, name))
     if (
       is('DELETE', '/api/v1/session') &&
-      request.headers()['x-csrf-token'] === 'fixture'
+      request.headers()['x-csrf-token'] === csrf
     ) {
       signedIn = false
       return route.fulfill({ status: 204 })
     }
+    if (
+      is('POST', '/api/v1/session/renew') &&
+      request.headers()['x-csrf-token'] === csrf
+    )
+      return signedIn
+        ? route.fulfill({ status: 204 })
+        : route.fulfill({ status: 401, json: { code: 'Unauthenticated' } })
     if (!signedIn && is('GET', '/api/v1/bootstrap'))
       return route.fulfill({
         json: {
@@ -286,7 +295,7 @@ export async function installGameFixture(
     }
     const session = {
       account: binding.account,
-      csrf: 'fixture',
+      csrf,
       expires_at: Date.now() + 1000000,
       memberships: [
         {

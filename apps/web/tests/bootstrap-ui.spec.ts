@@ -450,7 +450,7 @@ test(`explicit login records presence after retry; reload and cached-page restor
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
   if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
-  await installGameFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4, csrf: payload.result.session.csrf })
   let signedIn = false,
     logins = 0,
     bootstrapReads = 0
@@ -549,7 +549,7 @@ test('a populated HTML payload renders without a bootstrap request', { tag: '@jo
     throw Error('fixture')
   payload.result.game.snapshot.view.bodies = [body]
   if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
-  await installGameFixture(page, { protocol: 3 })
+  await installGameFixture(page, { protocol: 3, csrf: payload.result.session.csrf })
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() !== 'document' || new URL(route.request().url()).pathname.startsWith('/api/')) return route.fallback()
     const response = await route.fetch()
@@ -807,7 +807,7 @@ test('mobile startup automatically recovers from a transient restart without sig
   const preparing = structuredClone(payload)
   if (preparing.result.status !== 'authenticated') throw Error('fixture')
   preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
-  await installGameFixture(page, { protocol: 4 })
+  await installGameFixture(page, { protocol: 4, csrf: payload.result.session.csrf })
   let reads = 0
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
