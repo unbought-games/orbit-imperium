@@ -54,7 +54,7 @@
     "titlePath": [
       "a new empire chooses its title, look and name, then lands in Briefing at 1280px"
     ],
-    "risk": "Completing Arrival must wait for the chosen name’s committed receipt and matching authoritative overview. The selected title and appearance must belong to the new empire that enters Briefing."
+    "risk": "After selecting a title and appearance, Arrival must keep the new empire on its landing screen while the latest authoritative overview still carries the old homeworld name. It completes once and opens Briefing after that homeworld shows the chosen name."
   },
   {
     "file": "battleship.spec.ts",
@@ -613,9 +613,9 @@
     "file": "missile-warfare.spec.ts",
     "project": "",
     "titlePath": [
-      "missile inventory launch and reports at 390px"
+      "Galaxy launches two reviewed missiles and opens the new outgoing flight"
     ],
-    "risk": "Opening the defended Galaxy missile target must lead to a reviewed one-way order. Its confirmed command, threat warning, missile detail and impact report must refer to that launch."
+    "risk": "Reviewing two missiles against the selected Galaxy planet must send exactly one bound LaunchMissiles command paired with its presence record. The refreshed Empire row must open that same outgoing flight at its funded detail URL."
   },
   {
     "file": "moons.spec.ts",
