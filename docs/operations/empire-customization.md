@@ -338,8 +338,8 @@ all provenance while the existing ownership key remains unique.
 ## Asynchronous ship appearances
 
 The additive ship appearance API saves immutable account design revisions and pins
-an empire's equipment to a specific revision. Initial installed content is the
-free Concord Light Fighter package. Editing a template does not change other
+an empire's equipment to a specific revision. The development Hangar offers the
+free Concord and Orbit Base Light Fighter skins. New designs start with Orbit Base. The Hangar opens an equipped design when one exists. Editing a template does not change other
 empires' equipment. The current empire emblem follows automatically, including
 removal and access fallback. Saved paint choices are retained when unavailable;
 free dyes remain available without Accounts or hosted content.

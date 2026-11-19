@@ -75,6 +75,8 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('../../src/dev/hud/hud-playground')).HudPlayground,
   'tutorial-briefing': async () =>
     (await import('./tutorial-briefing.scenario')).TutorialBriefingScenario,
+  'fighter-arrival': async () =>
+    (await import('./ship-customization.scenarios')).FighterArrivalScenario,
   'ship-customization': async () =>
     (await import('./ship-customization.scenarios')).ShipCustomizationScenario,
   shipyard: async () => (await import('./shipyard.scenarios')).ShipyardScenario,

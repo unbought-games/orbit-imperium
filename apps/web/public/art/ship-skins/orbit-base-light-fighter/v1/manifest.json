@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "orbit-base-light-fighter",
+  "revision": "v1",
+  "renderer": "finish-decal-v1",
+  "target": {
+    "kind": "Ship",
+    "id": "LightFighter"
+  },
+  "collection_id": "orbit-standard",
+  "view": "front-three-quarter-left",
+  "channels": [
+    "primary",
+    "accent"
+  ],
+  "map_encoding": "rgba8-finish-decal-v1",
+  "color_space": "srgb",
+  "alpha": "straight-preserved",
+  "capabilities": {
+    "treatments": [
+      "none",
+      "full",
+      "layers"
+    ],
+    "placements": [
+      "near-wing",
+      "paired"
+    ]
+  },
+  "width": 1536,
+  "height": 1024,
+  "reference": [
+    "#8e97a5",
+    "#e8be90"
+  ],
+  "maps": {
+    "source": {
+      "file": "source.png",
+      "sha256": "68d85475dd3d38abf8d453db49ac72341579968f1d8a04565a1b1af8980ee552",
+      "bytes": 1847658
+    },
+    "material": {
+      "file": "material-mask.png",
+      "sha256": "e2097f04b8c6e5390348f1048030313d82c3219bc1c9de281f27316858617617",
+      "bytes": 69834
+    },
+    "response": {
+      "file": "response-map.png",
+      "sha256": "e4e6c856e01aa9d0b896b15a9baf291e24d7a80dcb2dc16e7e0c5b06c9b1f36f",
+      "bytes": 467879
+    },
+    "receiver": {
+      "file": "receiver.png",
+      "sha256": "5322abb085319729b755c25a0a8b9be7206f058f60bf2d862a0765afbfdad1bb",
+      "bytes": 56755
+    },
+    "decalResponse": {
+      "file": "decal-response.png",
+      "sha256": "42c74d82d052378708f335fc9ada55d7eb33a3548ae73785eb90fa334a9eeb87",
+      "bytes": 798280
+    }
+  },
+  "slots": [
+    {
+      "id": "near-wing",
+      "quad": [
+        [
+          1072,
+          430
+        ],
+        [
+          1184,
+          472
+        ],
+        [
+          1114,
+          530
+        ],
+        [
+          1000,
+          498
+        ]
+      ]
+    },
+    {
+      "id": "far-wing",
+      "quad": [
+        [
+          408,
+          290
+        ],
+        [
+          504,
+          286
+        ],
+        [
+          438,
+          344
+        ],
+        [
+          344,
+          338
+        ]
+      ]
+    }
+  ],
+  "paint": {
+    "opacity": 0.96,
+    "responseFloor": 0,
+    "responseCeiling": 1.5
+  },
+  "license": "CC-BY-SA-4.0 under repository artwork scope",
+  "attribution": "Orbit Imperium contributors / Unbought Games, LLC",
+  "provenance": {
+    "authoring": "tools/ship-appearance/compile-orbit-base.mjs",
+    "sourceDirectory": "art/orbit-base/ships/v1/light-fighter-cannon-pods",
+    "inputs": {
+      "master.png": "68d85475dd3d38abf8d453db49ac72341579968f1d8a04565a1b1af8980ee552",
+      "livery.svg": "70e7ae28c71d46054efe56133495d4df4900e2be24f0ae6f08a2c4cbbbc5ce5b",
+      "emblem-slots.json": "32f6ad08035abaa510dde2063ace46a1e16fe21098fd56fda668bf54adbfe822",
+      "paint.json": "6068b53de63b3ff5caa47674d73ba2f07e1036e1b1adf69b9b0c2388ad895c2b"
+    },
+    "versions": {
+      "sharp": "0.35.5"
+    }
+  }
+}

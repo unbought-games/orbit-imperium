@@ -43,6 +43,14 @@ export function initialDraft(
   )
   const dyes = state.dyes.filter((item) => item.availability === 'available')
   if (!skin || !dyes.length) return null
+  const orbitBase =
+    skin.id === 'orbit-base-light-fighter' && skin.package_revision === 'v1'
+  const primary =
+    (orbitBase && dyes.find((dye) => dye.id === 'free-steel')) || dyes[0]
+  const accent =
+    (orbitBase && dyes.find((dye) => dye.id === 'free-gold')) ||
+    dyes[1] ||
+    dyes[0]
   return {
     id: '',
     name: `${targetLabel(target)} design`,
@@ -52,8 +60,8 @@ export function initialDraft(
       version: 1,
       skin_id: skin.id,
       package_revision: skin.package_revision,
-      primary: dyes[0].id,
-      accent: (dyes[1] ?? dyes[0]).id,
+      primary: primary.id,
+      accent: accent.id,
       emblem: { treatment: 'full', placement: 'paired' },
     },
   }
