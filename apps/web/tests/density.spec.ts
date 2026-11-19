@@ -1,4 +1,4 @@
-import { installReportReadReceipt } from './fixtures/game'
+import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
 import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
@@ -160,17 +160,18 @@ for (const viewport of [
       debris: resources,
       loot: resources,
     }
-    await page.route('**/api/**/reports**', async (route) => {
-      const request = route.request().postDataJSON()
+    await page.route(url => [fixtureReportPath(), fixtureReportPath(header.id)].includes(url.pathname), async (route) => {
+      const detail = new URL(route.request().url()).pathname === fixtureReportPath(header.id)
+      const context = fixtureReportContext(route, detail ? header.id : undefined)
       await route.fulfill({
         json: {
           protocol: 4,
           binding,
-          request_id: (request.context ?? request).request_id,
+          request_id: context.request_id,
           viewer_revision: '1',
           sampled_at: now,
           as_of_ms: now,
-          data: new URL(route.request().url()).pathname.endsWith(header.id)
+          data: detail
             ? { header, payload }
             : {
                 items: [header],

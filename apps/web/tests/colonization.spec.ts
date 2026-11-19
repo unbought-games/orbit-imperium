@@ -1,4 +1,4 @@
-import { installReportReadReceipt } from './fixtures/game'
+import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
 import { refuseFixtureReads, routeWorld } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { setDestination } from './fixtures/coordinates'
@@ -87,9 +87,8 @@ for(const success of [true])test(`colonization ${success?'success links to a usa
  :{kind,reason:'Occupied',fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,return_at:120000}
  const header = {id:id(81),kind,observed_at:1000,read:false,hidden:false}
  await installReportReadReceipt(page, header)
- await page.route(`**/api/v4/universes/${binding.universe}/reports/${header.id}`,async route=>{
-  if(route.request().method() !== 'POST') return route.fallback()
-  const request=route.request().postDataJSON()
+ await page.route(url => url.pathname === fixtureReportPath(header.id),async route=>{
+  const request=fixtureReportContext(route, header.id)
   await route.fulfill({json:bound(request.request_id,{header,payload})})
  })
  await withReportResponse(page, id(81), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(81)}`))

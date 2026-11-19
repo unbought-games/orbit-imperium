@@ -1,4 +1,4 @@
-import { installReportReadReceipt } from './fixtures/game'
+import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
 import { mkdirSync } from 'node:fs'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { smallCombatObservation } from './fixtures/small-combat-observation'
@@ -33,13 +33,13 @@ async function openCombat(
   }
   if (!initiallyRead) await installReportReadReceipt(page, header)
   await page.route(
-    `**/api/v4/universes/${binding.universe}/reports/${header.id}`,
+    (url) => url.pathname === fixtureReportPath(header.id),
     (route) =>
       route.fulfill({
         json: {
           protocol: 4,
           binding,
-          request_id: route.request().postDataJSON().request_id,
+          request_id: fixtureReportContext(route, header.id).request_id,
           viewer_revision: '1',
           sampled_at: Date.now(),
           as_of_ms: Date.now(),

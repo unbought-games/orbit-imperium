@@ -1,4 +1,4 @@
-import { matchesFixtureContext, refuseFixtureReads, routeWorld } from './fixtures/game'
+import { fixtureReportContext, fixtureReportPath, matchesFixtureContext, refuseFixtureReads, routeWorld } from './fixtures/game'
 
 import {
   trackFixtureResponses,
@@ -2352,6 +2352,7 @@ for (const width of [320, 390, 1440]) {
 test('empty reports wait for a successful response and offer planet-aware navigation at every size', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { world: ['Galaxy'] })
   let revision = 1
   let requests = 0
   await installGameFixture(page, {
@@ -2362,11 +2363,12 @@ test('empty reports wait for a successful response and offer planet-aware naviga
   let pending = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.route('**/api/**/reports', async (route) => {
+  const settleReports = trackFixtureResponses(page, request => request.method() === 'POST' &&
+    new URL(request.url()).pathname === fixtureReportPath() && matchesFixtureContext(request.postDataJSON()?.context))
+  await page.route(url => url.pathname === fixtureReportPath(), async (route) => {
+    const context = fixtureReportContext(route)
     requests++
     await pending
-    const request = route.request().postDataJSON()
-    const context = request.context ?? request
     await route.fulfill({
       json: {
         protocol: 4,
@@ -2384,11 +2386,15 @@ test('empty reports wait for a successful response and offer planet-aware naviga
       },
     })
   })
-  await page.goto(`/u/andromeda/b/${body.id}/reports`)
-  await expect(page.getByText('Loading report history…')).toBeVisible()
   const empty = page.getByRole('region', { name: 'No reports to show.' })
-  await expect(empty).toHaveCount(0)
-  release()
+  try {
+    await page.goto(`/u/andromeda/b/${body.id}/reports`)
+    await expect(page.getByText('Loading report history…')).toBeVisible()
+    await expect(empty).toHaveCount(0)
+  } finally {
+    release()
+    await settleReports()
+  }
   await expect(empty).toBeVisible()
   await expect(empty).toContainText(
     'Fleet arrivals, espionage findings, and battle outcomes',
@@ -2438,6 +2444,7 @@ test('empty reports wait for a successful response and offer planet-aware naviga
     expect(await empty.boundingBox()).toEqual(beforeRefresh)
   } finally {
     release()
+    await settleReports()
   }
   await explore.focus()
   await page.keyboard.press('Enter')

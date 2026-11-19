@@ -11,7 +11,15 @@ import type { Response } from '@playwright/test'
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, matchesFixtureGameplay, binding, body, id } from './fixtures/game'
+import {
+  installGameFixture,
+  matchesFixtureGameplay,
+  fixtureReportPath,
+  fixtureReportContext,
+  binding,
+  body,
+  id,
+} from './fixtures/game'
 
 const commandsPath = `/api/v4/universes/${binding.universe}/commands`
 function matchesWorldAction(action: string) {
@@ -62,7 +70,7 @@ async function reportsFixture(
     })
   await installGameFixture(page, {
     protocol: 4,
-    missingReceipt: commandId => missingReceipts.has(commandId),
+    missingReceipt: (commandId) => missingReceipts.has(commandId),
     extraCapabilities: ['Reports'],
     ...(quiet
       ? {
@@ -80,97 +88,112 @@ async function reportsFixture(
   const pageRequests: Array<string | null> = []
   const readRequests: string[] = []
   const readBatches: string[][] = []
-  await page.route('**/api/**/reports**', async (route) => {
-    const path = new URL(route.request().url()).pathname
-    expect(route.request().method()).toBe('POST')
-    const request = route.request().postDataJSON()
-    const context = request.context ?? request
-    if (path.endsWith('/reports/read')) {
-      const ids: string[] = request.reports
-      readBatches.push(ids)
-      readRequests.push(...ids)
-      for (const report of ids)
-        headers.find((row) => row.id === report)!.read = true
-      revision++
-      return route.fulfill({
-        json: {
-          ...context,
-          viewer_revision: String(revision),
-          items: headers.filter((row) => ids.includes(row.id)),
-        },
-      })
-    }
-    const report = headers.find((r) => path.endsWith('/reports/' + r.id))
-    expect(report !== undefined || path.endsWith('/reports'), path).toBe(true)
-    const filter = request.filter
-    const rows = filter
-      ? triageReports(
-          headers,
-          filter.sort,
-          false,
-          filter.unread_only
-            ? 'unread'
-            : filter.starred_only
-              ? 'starred'
-              : 'all',
-          false,
-          filter.hidden ? 'archived' : 'inbox',
-          request.kind ?? 'all',
+  await page.route(
+    (url) =>
+      url.pathname === fixtureReportPath() ||
+      url.pathname === fixtureReportPath('read') ||
+      headers.some((row) => url.pathname === fixtureReportPath(row.id)),
+    async (route) => {
+      const path = new URL(route.request().url()).pathname
+      const report = headers.find((row) => path === fixtureReportPath(row.id))
+      const batchRead = path === fixtureReportPath('read')
+      const context = fixtureReportContext(
+        route,
+        batchRead ? 'read' : report?.id,
+      )
+      const request = route.request().postDataJSON()
+      if (batchRead) {
+        const ids: string[] = request.reports
+        expect(ids.every((id) => headers.some((row) => row.id === id))).toBe(
+          true,
         )
-      : headers.filter((r) => request.include_hidden || !r.hidden)
-    const index = request.cursor ? Number(request.cursor.slice(-12)) - 71 : 0
-    const response = {
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: String(revision),
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: report
-          ? {
-              header: report,
-              payload: {
-                kind: 'Espionage',
-                observed_at: report.observed_at,
-                target: {
-                  body: id(80),
-                  coordinates: { galaxy: 1, system: 2, position: 3 },
-                  owner: id(9),
-                  kind: 'Planet',
+        readBatches.push(ids)
+        readRequests.push(...ids)
+        for (const report of ids)
+          headers.find((row) => row.id === report)!.read = true
+        revision++
+        return route.fulfill({
+          json: {
+            ...context,
+            viewer_revision: String(revision),
+            items: headers.filter((row) => ids.includes(row.id)),
+          },
+        })
+      }
+      const filter = request.filter
+      const rows = filter
+        ? triageReports(
+            headers,
+            filter.sort,
+            false,
+            filter.unread_only
+              ? 'unread'
+              : filter.starred_only
+                ? 'starred'
+                : 'all',
+            false,
+            filter.hidden ? 'archived' : 'inbox',
+            request.kind ?? 'all',
+          )
+        : headers.filter((r) => request.include_hidden || !r.hidden)
+      const index = request.cursor ? Number(request.cursor.slice(-12)) - 71 : 0
+      const response = {
+        json: {
+          protocol: 4,
+          binding,
+          request_id: context.request_id,
+          viewer_revision: String(revision),
+          sampled_at: Date.now(),
+          as_of_ms: Date.now(),
+          data: report
+            ? {
+                header: report,
+                payload: {
+                  kind: 'Espionage',
+                  observed_at: report.observed_at,
+                  target: {
+                    body: id(80),
+                    coordinates: { galaxy: 1, system: 2, position: 3 },
+                    owner: id(9),
+                    kind: 'Planet',
+                  },
+                  resources: { visibility: 'Unknown' },
+                  fleet: { visibility: 'Unknown' },
+                  defenses: { visibility: 'Unknown' },
+                  buildings: { visibility: 'Unknown' },
+                  research: { visibility: 'Unknown' },
+                  activity: { type: 'None' },
+                  counterespionage: { probability_ppm: 0, detected: false },
                 },
-                resources: { visibility: 'Unknown' },
-                fleet: { visibility: 'Unknown' },
-                defenses: { visibility: 'Unknown' },
-                buildings: { visibility: 'Unknown' },
-                research: { visibility: 'Unknown' },
-                activity: { type: 'None' },
-                counterespionage: { probability_ppm: 0, detected: false },
+              }
+            : {
+                unread_count: Math.min(
+                  99,
+                  headers.filter((row) => !row.read && !row.hidden).length,
+                ),
+                items: rows.slice(index, index + pageSize),
+                has_more: index + pageSize < rows.length,
+                next_cursor:
+                  index + pageSize < rows.length
+                    ? id(71 + pageSize + index)
+                    : null,
+                as_of_ms: Date.now(),
               },
-            }
-          : {
-              unread_count: Math.min(
-                99,
-                headers.filter((row) => !row.read && !row.hidden).length,
-              ),
-              items: rows.slice(index, index + pageSize),
-              has_more: index + pageSize < rows.length,
-              next_cursor:
-                index + pageSize < rows.length
-                  ? id(71 + pageSize + index)
-                  : null,
-              as_of_ms: Date.now(),
-            },
-      },
-    }
-    if (!report) pageRequests.push(request.cursor)
-    await route.fulfill(response)
-  })
+        },
+      }
+      if (!report) pageRequests.push(request.cursor)
+      await route.fulfill(response)
+    },
+  )
   let mode: 'success' | 'rejected' | 'uncertain' = 'success'
   let pause: Promise<void> | undefined
   let submitted = 0
   await page.route(`**${commandsPath}`, async (route) => {
-    if (route.request().method() !== 'POST' || !matchesFixtureGameplay(route.request().postDataJSON())) return route.fallback()
+    if (
+      route.request().method() !== 'POST' ||
+      !matchesFixtureGameplay(route.request().postDataJSON())
+    )
+      return route.fallback()
     const envelope = route.request().postDataJSON().gameplay
     expect(envelope.command.type).toBe('World')
     if (envelope.command.action.type === 'MarkReportRead') {
@@ -211,6 +234,13 @@ async function reportsFixture(
     expect(['ArchiveReport', 'SetReportHidden', 'SetReportsHidden']).toContain(
       envelope.command.action.type,
     )
+    const targetReports =
+      envelope.command.action.type === 'SetReportsHidden'
+        ? envelope.command.action.reports
+        : [envelope.command.action.report]
+    expect(
+      targetReports.every((id: string) => headers.some((row) => row.id === id)),
+    ).toBe(true)
     submitted++
     await pause
     if (mode === 'uncertain') {
@@ -537,11 +567,15 @@ test('opening a report marks it read after loading, clears the inbox badge and d
     release = resolve
   })
   let requested = false
-  await page.route(`**/api/**/reports/${id(71)}`, async (route) => {
-    requested = true
-    await gate
-    await route.fallback()
-  })
+  await page.route(
+    (url) => url.pathname === fixtureReportPath(id(71)),
+    async (route) => {
+      fixtureReportContext(route, id(71))
+      requested = true
+      await gate
+      await route.fallback()
+    },
+  )
   try {
     await page
       .locator('main article')
@@ -592,14 +626,16 @@ test('failed or abandoned report loads do not mark reports read', async ({
   page,
 }) => {
   const fixture = await reportsFixture(page)
-  await page.route(`**/api/**/reports/${id(71)}`, (route) =>
-    route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
-  )
+  const failedDetail = (url: URL) => url.pathname === fixtureReportPath(id(71))
+  await page.route(failedDetail, (route) => {
+    fixtureReportContext(route, id(71))
+    return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+  })
   await withFixtureResponseStatus(
     page,
     (response) =>
       response.request().method() === 'POST' &&
-      response.url().endsWith('/reports/' + id(71)),
+      failedDetail(new URL(response.url())),
     () => page.goto(reportPath(id(71))),
     503,
   )
@@ -612,15 +648,16 @@ test('failed or abandoned report loads do not mark reports read', async ({
   const gate = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.unroute(`**/api/**/reports/${id(71)}`)
-  await page.route(`**/api/**/reports/${id(71)}`, async (route) => {
+  await page.unroute(failedDetail)
+  await page.route(failedDetail, async (route) => {
+    fixtureReportContext(route, id(71))
     requested = true
     await gate
     await route.fallback()
   })
-  await page.getByRole('button', { name: 'Retry reports' }).click()
-  await expect.poll(() => requested).toBe(true)
   try {
+    await page.getByRole('button', { name: 'Retry reports' }).click()
+    await expect.poll(() => requested).toBe(true)
     await page.getByRole('link', { name: 'Back to reports' }).click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/reports`)
     // The URL changes before React commits the inbox and cancels the detail load.
@@ -629,10 +666,9 @@ test('failed or abandoned report loads do not mark reports read', async ({
       page.getByRole('heading', { name: 'Reports', level: 2, exact: true }),
     ).toBeVisible()
     await expect(page.locator('main article')).toHaveCount(2)
+    await withReportResponse(page, id(71), async () => release())
   } finally {
-    await withReportResponse(page, id(71), async () => {
-      release()
-    })
+    release()
   }
   await expect(page.locator('main article')).toHaveCount(2)
   expect(fixture.readRequests).toEqual([])
@@ -956,7 +992,7 @@ test('immediate retry works and reload discards old order recovery at 390px', as
   await page.setViewportSize({ width: 390, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   const fixture = await reportsFixture(page, true, 2, 50)
-  const submissions: unknown[] = []
+  const submissions: components['schemas']['ForegroundAction4'][] = []
   await page.route(`**${commandsPath}`, async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     submissions.push(route.request().postDataJSON())
@@ -997,6 +1033,10 @@ test('immediate retry works and reload discards old order recovery at 390px', as
     503,
   )
   expect(submissions).toHaveLength(2)
+  expect(submissions[0].gameplay.command).toEqual({
+    type: 'World',
+    action: { type: 'SetReportHidden', report: id(70), hidden: true },
+  })
   expect(submissions[1]).toEqual(submissions[0])
   await expect(retry).toBeEnabled()
   const announcement = (await page

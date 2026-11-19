@@ -5,6 +5,7 @@ import {
   id,
   installGameFixture,
   installReportReadReceipt,
+  fixtureReportContext,
   playerProfilesFixture,
   refuseFixtureReads,
 } from '../../tests/fixtures/game'
@@ -137,6 +138,7 @@ it('a foreign tutorial binding cannot publish guidance or complete an objective'
         action: {
           type: 'RecordForegroundPresence',
           cause: 'GameplayGesture',
+          body: null,
           paired_command_id: id(90),
         },
       },
@@ -240,6 +242,7 @@ it('a read acknowledgement needs the installed report and its own matched gamepl
   const action = {
     type: 'RecordForegroundPresence',
     cause: 'GameplayGesture',
+    body: null,
     paired_command_id: gameplay.command_id,
   }
   const presence = {
@@ -250,6 +253,14 @@ it('a read acknowledgement needs the installed report and its own matched gamepl
   }
   for (const pair of [
     { gameplay },
+    {
+      gameplay,
+      presence: {
+        ...presence,
+        command: { type: 'World', action: { ...action, body: undefined } },
+      },
+    },
+    { gameplay, presence: { ...presence, command_id: 'bad-id' } },
     {
       gameplay,
       presence: {
@@ -283,4 +294,39 @@ it('a read acknowledgement needs the installed report and its own matched gamepl
     status: 'Committed',
     minimum_viewer_revision: '8',
   })
+})
+
+it('report fixtures bind direct detail and nested list/read requests before invoking scenario logic', () => {
+  const path = prefix + '/reports'
+  expect(fixtureReportContext(call('POST', path, { context }).route)).toEqual(
+    context,
+  )
+  expect(
+    fixtureReportContext(
+      call('POST', path + '/read', { context, reports: [id(81)] }).route,
+      'read',
+    ),
+  ).toEqual(context)
+  expect(
+    fixtureReportContext(
+      call('POST', path + '/' + id(81), context).route,
+      id(81),
+    ),
+  ).toEqual(context)
+  for (const wrong of [
+    call('PUT', path + '/' + id(81), context),
+    call('POST', path + '/' + id(82), context),
+    call(
+      'POST',
+      path.replace(binding.universe, id(99)) + '/' + id(81),
+      context,
+    ),
+    call('POST', path + '/' + id(81), {
+      ...context,
+      binding: { ...binding, account: id(99) },
+    }),
+  ])
+    expect(() => fixtureReportContext(wrong.route, id(81))).toThrow(
+      'Unexpected fixture API operation',
+    )
 })

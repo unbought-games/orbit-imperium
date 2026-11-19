@@ -1,7 +1,9 @@
+import { validate, ContractDataError } from '../../src/client-model/schema'
+import { unexpectedFixtureApi } from './api-diagnostics'
 import { sameBinding } from '../../src/client-model/commands'
 import { withBootstrapResponse } from './responses'
 import { productionFixture } from '../../src/test-support/production'
-import { universeSlug } from '../../src/client-model/universe-name'
+import { fixtureRoutePath } from './navigation'
 import { expect, type Page, type Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
 
@@ -16,14 +18,22 @@ export const binding = {
 const boundApi = (version: number, name: string) =>
   `/api/v${version}/universes/${binding.universe}/${name}`
 
+function fixtureContract<T>(schema: string, value: unknown) {
+  try {
+    return validate<T>(schema, value)
+  } catch (error) {
+    if (error instanceof ContractDataError) return undefined
+    throw error
+  }
+}
 export function matchesFixtureContext(
-  context: components['schemas']['QueryContext'] | undefined,
-) {
-  return (
-    !!context?.binding &&
-    sameBinding(context.binding, binding) &&
-    typeof context.request_id === 'string'
+  value: unknown,
+): value is components['schemas']['QueryContext'] {
+  const context = fixtureContract<components['schemas']['QueryContext']>(
+    'QueryContext',
+    value,
   )
+  return !!context && sameBinding(context.binding, binding)
 }
 export const resources = {
   metal: '6661686240',
@@ -132,29 +142,43 @@ export function routeWorld(
 }
 
 export function matchesFixtureGameplay(
-  pair: components['schemas']['ForegroundAction4'] | undefined,
-) {
-  const presence = pair?.presence,
-    gameplay = pair?.gameplay
-  if (
-    presence?.protocol !== 4 ||
-    gameplay?.protocol !== 4 ||
-    !presence.binding ||
-    !gameplay.binding ||
-    !sameBinding(presence.binding, binding) ||
-    !sameBinding(gameplay.binding, binding) ||
-    typeof presence.command_id !== 'string' ||
-    typeof gameplay.command_id !== 'string' ||
-    presence.command_id === gameplay.command_id
+  value: unknown,
+): value is components['schemas']['ForegroundAction4'] {
+  const pair = fixtureContract<components['schemas']['ForegroundAction4']>(
+    'ForegroundAction4',
+    value,
   )
-    return false
+  if (!pair) return false
+  const { presence, gameplay } = pair
   const command = presence.command
   return (
-    command?.type === 'World' &&
-    command.action?.type === 'RecordForegroundPresence' &&
+    sameBinding(presence.binding, binding) &&
+    sameBinding(gameplay.binding, binding) &&
+    presence.command_id !== gameplay.command_id &&
+    command.type === 'World' &&
+    command.action.type === 'RecordForegroundPresence' &&
     command.action.cause === 'GameplayGesture' &&
     command.action.paired_command_id === gameplay.command_id
   )
+}
+
+export const fixtureReportPath = (suffix?: string) =>
+  boundApi(4, suffix ? `reports/${suffix}` : 'reports')
+
+export function fixtureReportContext(
+  route: Route,
+  suffix?: string,
+): components['schemas']['QueryContext'] {
+  const request = route.request()
+  if (
+    request.method() !== 'POST' ||
+    new URL(request.url()).pathname !== fixtureReportPath(suffix)
+  )
+    return unexpectedFixtureApi(route)
+  const payload = request.postDataJSON()
+  const context = suffix && suffix !== 'read' ? payload : payload?.context
+  if (!matchesFixtureContext(context)) return unexpectedFixtureApi(route)
+  return context
 }
 
 /** Register an acknowledgement only for the header actually installed by the reader. */
@@ -711,7 +735,11 @@ export async function shellFixture(
   const purchases = await installGameFixture(page, options)
   await withBootstrapResponse(page, () =>
     page.goto(
-      `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+      fixtureRoutePath(
+        options.universeName ?? 'Andromeda',
+        'overview',
+        body.id,
+      ),
     ),
   )
   // A startup connection surface also has an H1; mutations need the ready game.
