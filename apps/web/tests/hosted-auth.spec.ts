@@ -1,9 +1,6 @@
 import { test, expect, type Page } from './fixtures/test'
 import { binding, body, installGameFixture } from './fixtures/game'
-import {
-  withBootstrapResponse,
-  withFixtureResponseStatus,
-} from './fixtures/responses'
+import { withBootstrapResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 const accounts = 'https://accounts.unbought.games'
@@ -216,14 +213,16 @@ test('hosted enrollment configuration can be retried without losing the authenti
     returning: true,
   })
   fixture.authenticate()
-  await withFixtureResponseStatus(
-    page,
-    (response) =>
-      response.request().method() === 'GET' &&
-      new URL(response.url()).pathname === '/api/auth/config',
-    () => withBootstrapResponse(page, () => page.goto(joinPath)),
-    503,
-  )
+  // The adapter rejects a bodyless config error as soon as its headers arrive.
+  const [config] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname === '/api/auth/config',
+    ),
+    withBootstrapResponse(page, () => page.goto(joinPath)),
+  ])
+  expect(config.status()).toBe(503)
   await expect(page.getByRole('alert')).toHaveText(
     'Unable to load your universe. Please try again.',
   )
