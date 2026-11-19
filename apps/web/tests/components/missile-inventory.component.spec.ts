@@ -14,16 +14,40 @@ test('missile stock and reserved capacity reach both Defense forms before an exa
     'progression-detail',
   )
   const capacity = page.getByRole('region', { name: 'Missile silo capacity' })
+  const missiles = [
+    {
+      link: page.getByRole('link', {
+        name: 'Build Anti Ballistic Missile',
+        exact: true,
+      }),
+      stationed: '6',
+    },
+    {
+      link: page.getByRole('link', {
+        name: 'Build Interplanetary Missile',
+        exact: true,
+      }),
+      stationed: '10',
+    },
+  ]
+  for (const { link } of missiles) await expect(link).toBeVisible()
   await expect(capacity).toHaveCount(0)
   const pane = page.getByRole('region', { name: 'Progression quote' })
   const build = pane.getByRole('button', { name: 'Build', exact: true })
   const quantity = pane.getByLabel('Defenses quantity')
-  for (const name of ['Anti Ballistic Missile', 'Interplanetary Missile']) {
-    await page.getByRole('link', { name: 'Build ' + name, exact: true }).click()
+  for (const missile of missiles) {
+    await missile.link.click()
+    const inventory = pane.getByRole('region', { name: 'Unit inventory' })
+    await expect(
+      inventory
+        .getByText('Stationed', { exact: true })
+        .locator('..')
+        .locator('strong'),
+    ).toHaveText(missile.stationed)
     await expect(capacity.locator('dd')).toHaveText(['26', '2', '40'])
     await quantity.fill('2')
     await expect(build).toBeEnabled()
-    if (name === 'Anti Ballistic Missile')
+    if (missile === missiles[0])
       await pane.getByRole('link', { name: 'Back to Defense' }).click()
   }
   await quantity.fill('20')
