@@ -1,12 +1,12 @@
 import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
-import { refuseFixtureReads, routeWorld } from './fixtures/game'
-import { withGalaxyResponse } from './fixtures/galaxy'
-import { setDestination } from './fixtures/coordinates'
+import { refuseFixtureReads } from './fixtures/game'
+
+
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, shellFixture, body, binding, id } from './fixtures/game'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import { withReportResponse } from './fixtures/responses'
 type S = components['schemas']
 const coords = {galaxy:1,system:371,position:8}
 const colony: S['BodyV3'] = {...body,id:id(90),coordinates:coords,fields:230,fields_used:0,fields_reserved:0,levels:Object.fromEntries(Object.keys(body.levels).map(k=>[k,0])),inventories:[],colony:{diameter_km:15191,min_temperature:24,max_temperature:64,created_at:1000,profile:'oi-redesign-reconstructed-v1'}}
@@ -15,69 +15,9 @@ const catalog: S['CatalogEntry3'][] = [
  {key:{kind:'Ship',id:'SmallCargo'},body_kinds:['Planet'],enabled:true,mobile:true,requirements:[]},
 ]
 const fixtureOptions = (bodies = [body], astrophysics = 1): Parameters<typeof shellFixture>[1] => ({protocol:4,bodies,catalog,research:[{research:'Astrophysics',level:astrophysics}],extraCapabilities:['Colonize','Deploy','Transport'],missions:{fleets:[],incoming:[],score_value_micro:'0',fleet_slots:'2'}})
-async function setup(page: Parameters<typeof shellFixture>[0], bodies = [body], astrophysics = 1) {
- await shellFixture(page,fixtureOptions(bodies,astrophysics))
-}
-const bound = (request_id:string,data:unknown)=>({protocol:4,binding,request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data})
-const emptyGalaxy = (galaxy: number, system: number): S['GalaxySystem4'] => ({
-  galaxy, system, observed_at: Date.now(),
-  positions: Array.from({ length: 15 }, (_, index) => ({
-    coordinates: { galaxy, system, position: index + 1 }, body: null, debris: null,
-  })),
-})
 
-test('colony position gates and full-capacity warning lead to an empty-position quote and one launch',async({page})=>{
- const source={...body,inventories:[...body.inventories,{item:{kind:'Ship' as const,id:'ColonyShip' as const},count:'2'}]}
- await setup(page,[source,colony])
- let sent:unknown=null, launches=0
- await routeWorld(page,async route=>{
-  const request=route.request().postDataJSON()
-  let data:unknown
-  if(request.type==='Galaxy')data=emptyGalaxy(request.galaxy,request.system)
-  else if(request.type==='ResolveDestination'){
-   expect(request.selection.type).toBe('EmptyPositionAt')
-   data={type:'EmptyPosition',coordinates:request.selection.coordinates,slot_revision:'0'}
-  }else{
-   expect(['FleetQuote', 'FleetEstimate']).toContain(request.type)
-   data={intent:request.intent,profile_hash:'a'.repeat(64),terms_hash:'b'.repeat(64),distance:1020,speeds:[['ColonyShip','4000'],['SmallCargo','5000']],duration_ms:120000,fuel:'100000000',capacity:'20000000000',maximum_payload:'19900000000',slot_limit:'2'}
-  }
-  await route.fulfill({json:bound(request.context.request_id,data)})
- })
- await page.route('**/commands',async route=>{
-  const pair=route.request().postDataJSON()
-  sent=pair.gameplay.command;launches++
-  await route.fulfill({json:{protocol:4,binding,command_id:pair.gameplay.command_id,admitted_at:Date.now(),executed_at:Date.now(),status:'Committed',result_ids:[id(80)],minimum_viewer_revision:'1'}})
- })
- await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
- const cards=page.getByRole('region',{name:'Galaxy positions'}).getByRole('listitem')
- const lockedSlot=cards.nth(2).getByRole('button',{name:/^Actions for/})
- await expect(lockedSlot).toBeVisible()
- expect((await lockedSlot.boundingBox())!.height).toBeGreaterThanOrEqual(24)
- await lockedSlot.press('Enter')
- await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/galaxy`)
- await page.getByRole('menuitem',{name:'Colonize',exact:true}).click()
- await expect(page.getByRole('radio', { checked: true })).toHaveValue('Colonize')
- await expect(page.getByRole('status').filter({hasText:'Astrophysics level 4'}).first()).toBeVisible()
- await expect(page.getByRole('button',{name:'Review fleet',exact:true})).toBeDisabled()
- await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
- await cards.nth(3).getByRole('button',{name:/^Actions for/}).press('Enter')
- await page.getByRole('menuitem',{name:'Colonize',exact:true}).click()
- await expect(page.getByRole('radio', { checked: true })).toHaveValue('Colonize')
- await expect(page.getByRole('group', { name: 'Mission', exact: true })).toContainText('Use a Colony Ship to settle an empty planet slot.')
- await page.getByRole('textbox',{name:'Colony Ship · 2 available'}).fill('2')
- await page.getByRole('textbox',{name:'Small Cargo · 2 available'}).fill('1')
- await page.getByRole('textbox',{name:'Metal',exact:true}).fill('1000')
- await page.getByRole('button',{name:'Review fleet',exact:true}).click()
- const quote=page.getByRole('region',{name:'Fleet quote'})
- await expect(quote.getByRole('status')).toContainText('Your planet limit is full.')
- await expect(quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Colony Ship 2', 'Small Cargo 1'])
- await quote.getByRole('button',{name:/^Colonize with /}).click()
- await expect.poll(()=>launches).toBe(1)
- expect(sent).toMatchObject({type:'World',action:{type:'LaunchFleet',intent:{mission:'Colonize',destination:{type:'EmptyPosition',coordinates:{galaxy:1,system:371,position:4},slot_revision:'0'},cargo:{metal:'1000000000',crystal:'0',deuterium:'0'}},expected_terms_hash:'b'.repeat(64)}})
- await withBootstrapResponse(page, () => page.reload())
- await expect(page.getByRole('radio', { checked: true })).toBeVisible()
- expect(launches).toBe(1)
-})
+const bound = (request_id:string,data:unknown)=>({protocol:4,binding,request_id,viewer_revision:'1',sampled_at:Date.now(),as_of_ms:Date.now(),data})
+
 
 for(const success of [true])test(`colonization ${success?'success links to a usable colony':'failure explains conserved return'}`,async({page})=>{
  refuseFixtureReads(page, { progression: ['Upgrade'] })

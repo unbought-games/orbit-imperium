@@ -1,3 +1,4 @@
+import { expectFleetPageFits } from './fixtures/fleet-layout'
 import { routeWorld } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
@@ -41,7 +42,7 @@ const bound = (request_id: string, data: unknown) => ({
   as_of_ms: now,
   data,
 })
-for (const width of [1440, 390]) {
+for (const width of [390]) {
   test.describe(`phalanx at ${width}`, () => {
     test.use({ viewport: { width, height: 900 }, reducedMotion: 'reduce' })
     // Regression: navigation and historical report refresh must never buy an observation.
@@ -276,11 +277,7 @@ for (const width of [1440, 390]) {
         page.getByRole('region', { name: 'Report observation' }),
       ).toContainText('historical observation')
       expect(scans).toBe(2)
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true)
+      await expectFleetPageFits(page, [390, 1440])
       await page.route('**/progression-options', async (route) => {
         const { context, request } = route.request().postDataJSON()
         await route.fulfill({

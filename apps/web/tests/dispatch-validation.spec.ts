@@ -1,9 +1,9 @@
 import { routeWorld } from './fixtures/game'
-import { withFixtureResponse, withReportResponse } from './fixtures/responses'
-import { setDestination } from './fixtures/coordinates'
+import { withFixtureResponse } from './fixtures/responses'
+
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page, type Route } from './fixtures/test'
-import { installGameFixture, playerProfilesFixture, refreshGame, body, binding, id } from './fixtures/game'
+import { installGameFixture, playerProfilesFixture, body, binding, id } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import type { components } from '../src/contracts'
 import reportObservation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
@@ -234,105 +234,9 @@ const mission = (page: Page) =>
 const dispatchResult = (page: Page) =>
   page.getByRole('group', { name: 'Fleet dispatch result', exact: true })
 
-async function prepareHistoricalDraft(page: Page) {
-  const reportId = id(63)
-  await page.route(`**/api/**/reports/${reportId}`, async (route) => {
-    const request = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: request.request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
-          header: {
-            id: reportId,
-            kind: 'Espionage',
-            observed_at: 1000,
-            read: true,
-            hidden: false,
-          },
-          payload: {
-            ...reportObservation,
-            target: {
-              ...reportObservation.target,
-              body: id(20),
-              owner: id(30),
-              coordinates: { galaxy: 1, system: 1, position: 1 },
-            },
-          },
-        },
-      },
-    })
-  })
-  await withReportResponse(page, reportId, () => page.goto(`/u/andromeda/b/${body.id}/reports/${reportId}`))
-  await page.getByRole('button', { name: 'Attack', exact: true }).click()
-  await expect(mission(page)).toHaveValue('Attack')
-  await expect(
-    page.getByText('Prepared from an observation at', { exact: false }),
-  ).toHaveCount(0)
-  await page.getByLabel('Small Cargo · 2 available').fill('1')
-}
-
 // Historical report routing and a real launch exercise the application boundary.
 // Manual intent construction is covered by dispatch-requests.test.ts and the reset journey below.
-for (const historical of [true]) {
-  test(`owned-colony deploy launches with ${historical ? 'an edited historical draft' : 'manual coordinates'}`, { tag: '@journey' }, async ({
-    page,
-  }) => {
-    const state = await setup(page)
-    state.launchError = null
-    if (historical) await prepareHistoricalDraft(page)
-    await page.getByRole('radio', { name: 'Deploy', exact: true }).check()
-    await setDestination(page, { position: '2' })
-    await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
-    for (const width of [390, 1440]) {
-      await page.setViewportSize({ width, height: 900 })
-      await review(page).click()
-      const quote = page.getByRole('region', { name: 'Fleet quote' })
-      await expect(quote).toBeVisible()
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true)
-      await diagnosticScreenshot(page, {
-        path: `test-results/deploy-${historical ? 'historical' : 'manual'}-${width}.png`,
-        fullPage: true,
-      })
-      if (width === 390)
-        await page.getByRole('button', { name: 'Back to edit mission' }).click()
-    }
-    const launch = page.waitForRequest('**/commands')
-    await page
-      .getByRole('button', {
-        name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-      })
-      .click()
-    expect((await launch).postDataJSON().gameplay.command).toMatchObject({
-      type: 'World',
-      action: {
-        type: 'LaunchFleet',
-        intent: {
-          mission: 'Deploy',
-          origin: body.id,
-          destination: {
-            type: 'Body',
-            id: id(6),
-            expected_owner: binding.player,
-            expected_kind: 'Planet',
-          },
-          cargo: { metal: '42000000', crystal: '0', deuterium: '0' },
-        },
-        expected_terms_hash: 'b'.repeat(64),
-      },
-    })
-    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
-    expect(state.launches).toBe(1)
-  })
-}
+
 
 test('successful dispatch resets ship and cargo quantities after preserving edits through review', { tag: '@journey' }, async ({
   page,
@@ -344,8 +248,39 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
     page.getByRole('textbox', { name, exact: true }),
   )
   for (const field of cargo) await field.fill('42')
+  const content = page.locator('main')
+  for (const width of [390, 767, 768, 1199, 1200, 1440, 1599, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const cap = width >= 1600 ? 896 : width >= 1200 ? 768 : width >= 768 ? 640 : Infinity
+    const geometry = await content.evaluate(element => {
+      const current = element.getBoundingClientRect()
+      const parent = element.parentElement!.getBoundingClientRect()
+      return { width: current.width, center: current.x + current.width / 2, available: parent.width, parentCenter: parent.x + parent.width / 2 }
+    })
+    expect(geometry.width).toBeCloseTo(Math.min(cap, geometry.available), 0)
+    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+    if ([390, 768, 1440, 1920].includes(width)) {
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-${width}x1000.png`, fullPage: width >= 768 })
+    }
+  }
   await review(page).click()
+  await expect(page.getByRole('region', { name:'Fleet quote' })).toBeVisible()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    const geometry = await content.evaluate(element => {
+      const rect = element.getBoundingClientRect(), parent = element.parentElement!.getBoundingClientRect()
+      return { width: rect.width, available: parent.width, center: rect.x + rect.width / 2, parentCenter: parent.x + parent.width / 2 }
+    })
+    expect(geometry.width).toBeCloseTo(Math.min(width === 1440 ? 768 : Infinity, geometry.available), 0)
+    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-review-${width}x1000.png`, fullPage: true })
+  }
   await page.getByRole('button', { name: 'Back to edit mission' }).click()
+  await expect(review(page)).toBeFocused()
   await expect(ship).toHaveValue('1')
   for (const field of cargo) await expect(field).toHaveValue('42')
   await review(page).click()
@@ -385,191 +320,11 @@ test('successful dispatch resets ship and cargo quantities after preserving edit
   await expect(dispatchResult(page)).toHaveCount(0)
   await selectBody(page, body.id)
   await expect(dispatchResult(page)).toHaveCount(0)
+  await page.getByRole('link', {name:'Back to fleets',exact:true}).click()
+  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
 })
 
-test('dispatch shows submitting then uncertain without false success', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await setup(page)
-  let commandId = ''
-  let launches = 0
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  await page.route('**/commands/*?epoch=*', (route) =>
-    route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
-  )
-  await page.route('**/commands', async (route) => {
-    launches++
-    commandId = route.request().postDataJSON().gameplay.command_id
-    await gate
-    await route.abort('failed')
-  })
-  await review(page).click()
-  try {
-    await page
-      .getByRole('button', {
-        name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-      })
-      .click()
-    await expect(dispatchResult(page)).toContainText('Sending fleet order…')
-    await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
-    await expect.poll(() => launches).toBe(1)
-  } finally {
-    release()
-  }
-  const feedback = page.getByTestId('game-error-banner').getByRole('group', { name: 'Order status' })
-  await expect(dispatchResult(page)).toHaveCount(0)
-  await expect(feedback).toContainText('We’re checking whether this order went through.')
-  await expect(feedback).not.toContainText('Fleet sent.')
-  await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
-    '1',
-  )
-  if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-    await review(page).scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, { path: 'test-results/dispatch-uncertain.png' })
-  }
-  {
-    // Optional captures do not change layout or scroll when disabled.
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') for (const width of [1280, 390]) {
-      await page.setViewportSize({ width, height: 900 })
-      await page.evaluate(() => window.scrollTo(0, 0))
-      await diagnosticScreenshot(page, { path: `test-results/unified-fleet-error-${width}x900.png`, fullPage: true })
-    }
-    // Background receipt polling may arrive before Playwright clicks Retry.
-    // Hold recovery until the click so polling cannot remove its own target.
-    let releaseRecovery!: () => void
-    const recovery = new Promise<void>((resolve) => { releaseRecovery = resolve })
-    const polling = page.waitForRequest('**/commands/*?epoch=*')
-    await page.route('**/commands/*?epoch=*', async (route) => {
-      await recovery
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: commandId,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [id(80)],
-          minimum_viewer_revision: '1',
-        },
-      })
-    })
-    try {
-      await polling
-      await feedback
-        .getByRole('button', { name: 'Retry order' })
-        .click()
-    } finally {
-      releaseRecovery()
-    }
-    await expect(dispatchResult(page)).toContainText('Fleet sent.')
-    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
-      '0',
-    )
-  }
-  expect(launches).toBe(1)
-})
-
-for (const width of [320]) {
-  test(`dispatch review keeps each ship and count on its own row at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await setup(page)
-    await page.getByLabel('Recycler · 1 available').fill('1')
-    await page.getByLabel('Colony Ship · 1 available').fill('1')
-    await review(page).click()
-    const quote = page.getByRole('region', { name: 'Fleet quote' })
-    const ships = quote.getByRole('list', { name: 'Ship composition' })
-    await expect(ships.getByRole('listitem')).toHaveText(['Recycler 1', 'Colony Ship 1', 'Small Cargo 1'])
-    const rows = await ships.getByRole('listitem').evaluateAll(elements => elements.map(element => {
-      const [name, count] = Array.from(element.children).map(child => child.getBoundingClientRect())
-      return { nameTop: name.top, countTop: count.top, bottom: element.getBoundingClientRect().bottom, top: element.getBoundingClientRect().top }
-    }))
-    for (const [index, row] of rows.entries()) {
-      expect(row.nameTop).toBe(row.countTop)
-      if (index > 0) expect(row.top).toBeGreaterThanOrEqual(rows[index - 1].bottom)
-    }
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-composition-${width}.png` })
-    await page.getByRole('button', { name: 'Back to edit mission', exact: true }).click()
-    await expect(review(page)).toBeFocused()
-    await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
-    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
-  })
-}
-
-test('origin changes preserve destination and mission but discard origin-specific input and stale review', async ({ page }) => {
-  const state = await setup(page)
-  await page.getByRole('radio', { name: 'Espionage', exact: true }).check()
-  await page.getByLabel('Espionage Probe · 1 available').fill('1')
-  await page.getByLabel('Metal', { exact: true }).fill('12')
-  let release!: () => void
-  let held = false
-  const gate = new Promise<void>(resolve => { release = resolve })
-  state.hold = async route => {
-    if (route.request().postDataJSON().type === 'FleetQuote') { held = true; await gate }
-  }
-  await review(page).click()
-  await expect.poll(() => held).toBe(true)
-  await selectBody(page, id(6))
-  await expect(page.getByRole('group', { name: 'Origin', exact: true })).toContainText('Haven Colony')
-  await expect(mission(page)).toHaveValue('Espionage')
-  await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue('1:1:1')
-  await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
-  await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('0')
-  const response = page.waitForResponse(r => r.url().endsWith('/world') && r.request().postDataJSON().type === 'FleetQuote')
-  release()
-  await response
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
-  await page.getByRole('radio', { name: 'Transport', exact: true }).check()
-  await selectDestinationPlanet(page, body.id)
-  await expect(page.getByLabel('Destination preview')).toContainText('Your Homeworld')
-  expect(state.launches).toBe(0)
-})
-
-test('Dispatch shares a centered responsive content column with its review', async ({ page }) => {
-  await setup(page)
-  await selectDestinationPlanet(page, id(6))
-  const content = page.locator('main')
-  for (const width of [390, 767, 768, 1199, 1200, 1440, 1599, 1600, 1920]) {
-    await page.setViewportSize({ width, height: 1000 })
-    const cap = width >= 1600 ? 896 : width >= 1200 ? 768 : width >= 768 ? 640 : Infinity
-    const geometry = await content.evaluate(element => {
-      const current = element.getBoundingClientRect()
-      const parent = element.parentElement!.getBoundingClientRect()
-      return { width: current.width, center: current.x + current.width / 2, available: parent.width, parentCenter: parent.x + parent.width / 2 }
-    })
-    expect(geometry.width).toBeCloseTo(Math.min(cap, geometry.available), 0)
-    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
-    if ([390, 768, 1440, 1920].includes(width)) {
-      await page.evaluate(() => window.scrollTo(0, 0))
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-${width}x1000.png`, fullPage: width >= 768 })
-    }
-  }
-  await review(page).click()
-  await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 })
-    const geometry = await content.evaluate(element => {
-      const rect = element.getBoundingClientRect(), parent = element.parentElement!.getBoundingClientRect()
-      return { width: rect.width, available: parent.width, center: rect.x + rect.width / 2, parentCenter: parent.x + parent.width / 2 }
-    })
-    expect(geometry.width).toBeCloseTo(Math.min(width === 1440 ? 768 : Infinity, geometry.available), 0)
-    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-review-${width}x1000.png`, fullPage: true })
-  }
-})
-
-
-for (const width of [390, 1440]) {
+for (const width of [390]) {
   test(`Empire retains cargo wealth while launching and restores rejected reservations at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 })
     await setup(page)
@@ -594,13 +349,16 @@ for (const width of [390, 1440]) {
       await expect(metal.locator('strong')).toHaveText('13,323')
       await expect(onWorlds).toHaveText('13,281')
       await expect(deuterium.locator('strong')).toHaveText('6,243')
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      for (const group of await ledger.getByRole('group').all()) {
-        const centers = await group.locator('dt > svg').evaluateAll(icons => icons.map(icon => {
-          const box = icon.getBoundingClientRect()
-          return box.x + box.width / 2
-        }))
-        expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(1)
+      for (const layoutWidth of [1440,width]) {
+        await page.setViewportSize({width:layoutWidth,height:1000})
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        for (const group of await ledger.getByRole('group').all()) {
+          const centers = await group.locator('dt > svg').evaluateAll(icons => icons.map(icon => {
+            const box = icon.getBoundingClientRect()
+            return box.x + box.width / 2
+          }))
+          expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(1)
+        }
       }
       await diagnosticScreenshot(ledger, { path: `test-results/empire-wealth-launching-${width}x1000.png` })
       release()

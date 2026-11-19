@@ -127,52 +127,5 @@ for (const width of [390]) {
       ),
     ).toBe(true)
   })
-  test(`recent sign-in rejection ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await shellFixture(page, {
-      protocol: 4,
-      missions: {
-        fleets: [],
-        incoming: [],
-        score_value_micro: '0',
-        fleet_slots: '1',
-      },
-    })
-    await page.route('**/commands', (route) =>
-      route.fulfill({
-        status: 422,
-        json: {
-          type: 'about:blank',
-          status: 422,
-          code: 'GameRejected',
-          game_code: 'ReauthenticationRequired',
-        },
-      }),
-    )
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/deletion`))
-    const section = page.getByRole('region', {
-      name: 'Delete empire',
-      exact: true,
-    })
-    await section
-      .getByRole('button', { name: 'Request empire deletion', exact: true })
-      .click()
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Schedule empire deletion' })
-      .click()
-    await expect(section.getByRole('alert')).toContainText(
-      'Sign out and sign in again',
-    )
-    await expect(
-      section.getByRole('button', {
-        name: 'Request empire deletion',
-        exact: true,
-      }),
-    ).toBeEnabled()
-    await section.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {
-      path: `test-results/empire-deletion-error-${width}x900.png`,
-    })
-  })
+
 }

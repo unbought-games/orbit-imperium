@@ -14,7 +14,7 @@ import {
 
 // Same sizing ancestors as GameShellFrame → Reports. The route tests own the
 // header, current viewer actions and cross-page navigation.
-function ReaderWidth({ children }: { children: ReactNode }) {
+export function ReaderWidth({ children }: { children: ReactNode }) {
   return (
     <div className={shell['game-shell']} data-has-command-hud>
       <div className={shell['shell-columns']}>

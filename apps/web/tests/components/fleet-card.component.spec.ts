@@ -54,6 +54,18 @@ for (const container of ['article', 'list'] as const) {
       await page.getByRole('button', { name: 'Refresh fleet snapshot' }).click()
       await expect(toggle).toHaveAttribute('aria-expanded', 'true')
       await expect(route).toHaveText(original!)
+      await row.hover({ position: blank })
+      await page.mouse.down()
+      await expect(row).toHaveAttribute('data-pressed', 'true')
+      await expect(row).not.toHaveCSS('border-color', idle.border)
+      await row.dispatchEvent('pointercancel', {
+        button: 0,
+        pointerType: 'mouse',
+        isPrimary: true,
+      })
+      await page.mouse.move(0, 0)
+      await page.mouse.up()
+      await expect(route).toHaveText(original!)
       await row.getByRole('button', { name: 'Review recall' }).click()
       await expect(
         row.getByRole('region', { name: 'Review recall' }),

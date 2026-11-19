@@ -12,8 +12,15 @@ import {
 
 type S = components['schemas']
 /** External port fixtures only. All client request validation, projection and state transitions use Coordinator. */
-export async function createDispatchFixture() {
+export async function createDispatchFixture(
+  readGalaxy?: (
+    query: Extract<WorldQuery, { type: 'Galaxy' }>,
+  ) => Promise<S['GalaxySystem4']>,
+  monotonicNowMs = () => 0,
+  dimensions?: { galaxies: number; systems_per_galaxy: number },
+) {
   const data = dispatchData()
+  if (dimensions) Object.assign(data.ready.snapshot.settings, dimensions)
   let source = data.view
   const options = data.options
   const calls: WorldQuery[] = []
@@ -100,6 +107,8 @@ export async function createDispatchFixture() {
       launches++
       const work = (async () => {
         await gates.get('LaunchFleet')?.promise
+        if (options.launchOutcome === 'RateLimited')
+          throw { status: 429, code: 'RateLimited', retryAfterMs: 60_000 }
         return {
           protocol: 4 as const,
           binding: envelope.binding,
@@ -109,7 +118,7 @@ export async function createDispatchFixture() {
           ...(options.launchOutcome === 'Rejected'
             ? {
                 status: 'Rejected' as const,
-                code: 'BeginnerProtected' as const,
+                code: options.rejectionCode ?? ('BeginnerProtected' as const),
               }
             : options.launchOutcome === 'Pending'
               ? { status: 'Pending' as const, executed_at: null }
@@ -133,7 +142,9 @@ export async function createDispatchFixture() {
       const work = (async (): Promise<S['BoundWorld4']> => {
         await gates.get(query.type)?.promise
         let result: S['BoundWorld4']['data']
-        if (query.type === 'Galaxy') {
+        if (query.type === 'Galaxy' && readGalaxy) {
+          result = await readGalaxy(query)
+        } else if (query.type === 'Galaxy') {
           result = {
             galaxy: query.galaxy,
             system: query.system,
@@ -159,6 +170,16 @@ export async function createDispatchFixture() {
                       attack_blocker: options.blocker,
                     }
                   : null,
+              ...(i === 0 && options.observedMoon
+                ? {
+                    moon: {
+                      id: id(70),
+                      name: 'Selene',
+                      diameter_km: 8500,
+                      activity: { type: 'None' as const },
+                    },
+                  }
+                : {}),
               debris: options.debris
                 ? {
                     field_identity: id(40),
@@ -167,6 +188,21 @@ export async function createDispatchFixture() {
                   }
                 : null,
             })),
+          }
+        } else if (query.type === 'MissileQuote' && options.missileRules) {
+          result = {
+            intent: query.intent,
+            source_coordinates: source.bodies[0].coordinates,
+            target_coordinates: { galaxy: 1, system: 371, position: 1 },
+            interceptor_body: query.intent.target.id,
+            distance: 0,
+            range: 24,
+            duration_ms: 6000,
+            weapons: 0,
+            speed: 5,
+            rules: options.missileRules,
+            profile_hash: source.profile_hash,
+            terms_hash: 'b'.repeat(64),
           }
         } else if (query.type === 'ResolveDestination') {
           if (options.resolveError) throw Error(options.resolveError)
@@ -221,6 +257,15 @@ export async function createDispatchFixture() {
                   distance: 1000,
                   speeds: [],
                   slot_limit: '5',
+                  ...(query.intent.mission === 'Hold'
+                    ? {
+                        holding: {
+                          duration_ms: (query.intent.hold_hours ?? 1) * 3600000,
+                          rates: { SmallCargo: 10 },
+                          fuel: '4000000',
+                        },
+                      }
+                    : {}),
                   terms_hash:
                     (query.intent.cargo_fill && options.liveQuote?.hash) ||
                     'b'.repeat(64),
@@ -252,7 +297,7 @@ export async function createDispatchFixture() {
   }
   const model = new Coordinator(port, {
     newId: () => id(sequence++),
-    monotonicNowMs: () => 0,
+    monotonicNowMs,
     isOnline: () => true,
   })
   await model.initialize(data.ready.session, data.ready.snapshot)
