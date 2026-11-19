@@ -1,6 +1,6 @@
 # 10 — Final journey gate, CI cutover and agent guidance
 
-Status: **guidance/reconciliation portion delegated** to chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba`; final selection cutover remains pending. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **guidance/reconciliation portion merged in PR #462** (`1a8db850`), implemented by chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba`; final selection cutover remains pending. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 

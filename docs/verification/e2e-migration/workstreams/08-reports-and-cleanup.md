@@ -1,6 +1,6 @@
 # 08 — Reports, sharing, deletion and history
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1f17b-bd5d-7b81-b1b7-e07b5eb14524` for the whole stream through confirmed merge; see the [November 18 assignment](../STATUS.md#2026-11-18-rebase-and-stream-08-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -79,3 +79,14 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 08 in `docs/verification/e2e-migration/workstreams/08-reports-and-cleanup.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Current-main and review requirements
+
+Read the current test-design independent-review procedure introduced by #462.
+After authoring/materially changing browser tests, launch a fresh-context
+browser_test_reviewer and record its findings/dispositions before completion
+or final PR publication; repeat focused independent review after material fixes.
+Reconcile current report read/archive/revocation behavior and in-memory-only
+retries rather than restoring old storage or success-message contracts from
+this frozen snapshot. The earlier retained-reload advice applies only where
+the current product actually preserves that state.

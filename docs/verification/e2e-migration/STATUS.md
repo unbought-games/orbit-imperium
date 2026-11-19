@@ -12,10 +12,10 @@ replacement-equivalence validation and final CI cutover remain open.
 | 04 Empire/settings | Merged | PR #446 | Complete handoff in test-migration-empire-settings.md; retained layout gaps remain explicit | `3e5540e1d9834ca45ecd007f853b3f793720431b` |
 | 05 Shell/navigation | Merged | PR #448 | Complete handoff in test-migration-shell-navigation.md | `3292240300c4addd3a499a69622f2cb6af41e7c9` |
 | 06 Startup/HUD/tutorial | Merged | PR #456 | Complete handoff in test-migration-startup-hud-tutorial.md; combined caption-sequence gap explicit | `150db24f196c01fabcc7181b6f4f10ffa454ddb0` |
-| 07 Social/identity | Delegated | — | Whole stream through merge; reconcile alliance/identity main deltas | Chat `01a1ef30-f8b3-7a63-8fd3-ca561afc616f` |
-| 08 Reports | Not started | — | Independent rollback/archive outcomes | — |
+| 07 Social/identity | Merged | PR #461 | Complete handoff in test-migration-social-identity.md | `5508c75b5c40d45b1db1781afc1b2dde1bdda693` |
+| 08 Reports | Delegated | — | Whole stream through merge with mandatory fresh adversarial review | Chat `01a1f17b-bd5d-7b81-b1b7-e07b5eb14524` |
 | 09 Harness/acceptance | Not started | — | Unexpected-operation diagnostics | — |
-| 10 Cutover/reliability | Guidance/reconciliation portion delegated; final cutover pending | Light retrospective recorded | Adversarial reviewer, skill examples and journey reconciliation | Chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba` |
+| 10 Cutover/reliability | Guidance/reconciliation merged; final cutover pending | PR #462; light retrospective recorded | Final decision after 08/09, preserve required feature cohort | `1a8db8508f3c6ed0b13a67c1ca010d1a1856ddb6` |
 
 ## Slice record template
 
@@ -214,3 +214,30 @@ or duplicate the active social/identity stream. The parent recorded a light
 [retrospective](RELIABILITY-2026-11-18.md): 61/62 main workflows passed, all on
 attempt 1; the latest 40 consecutive runs passed. The one historical failed
 workflow and report limitations remain explicit. No scheduled monitoring added.
+
+## 2026-11-18: rebase and stream 08 assignment
+
+Fetched main `7449be126307cf788c2f47083922c73e70f582f4` and rebased/published
+the audit branch cleanly. Confirmed stream 07 merged in PR #461 at
+`5508c75b5c40d45b1db1781afc1b2dde1bdda693`; its originating chat reports 37
+application/54 component cases and first-attempt PR/queue/main CI passes.
+
+The accelerated guidance portion of stream 10 merged in PR #462 at
+`1a8db8508f3c6ed0b13a67c1ca010d1a1856ddb6`. Fresh-context independent review
+using browser_test_reviewer is now mandatory after new/material browser-test
+changes. The verified invocation and evidence requirements are in the current
+test-design skill. The final feature-cohort cutover remains pending; the journey
+review ledger is not permission to deselect unmatched coverage.
+
+Assigned the whole Reports, sharing, deletion and history stream to chat
+`01a1f17b-bd5d-7b81-b1b7-e07b5eb14524` (Complete reports sharing and cleanup test
+migration), explicitly authorized for /pr and /finish-pr through confirmed merge.
+The handoff requires the real fresh-context adversary and recorded dispositions,
+not self-review or green CI as a substitute. No implementation success is claimed
+by this assignment.
+
+Reconcile current database report-read behavior (#404), archive shortcut (#413),
+timestamps (#431), in-memory retry semantics (#445), removed read confirmation
+copy (#452), sharing-revocation review (#470), orb outcome/age display (#484) and
+Dreadnought report contracts (#483) where they touch the owned source. Preserve
+actual HUD/shell wiring from 05/06 and retired report sequence repair history.

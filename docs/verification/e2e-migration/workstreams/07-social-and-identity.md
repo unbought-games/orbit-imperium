@@ -1,6 +1,6 @@
 # 07 — Social, alliances, recruitment and identity
 
-Status: **delegated** to chat `01a1ef30-f8b3-7a63-8fd3-ca561afc616f` for the whole stream through confirmed merge; see the [November 18 assignment](../STATUS.md#2026-11-18-rebase-and-stream-07-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **merged in PR #461** (`5508c75b`); implementation by chat `01a1ef30-f8b3-7a63-8fd3-ca561afc616f` for the whole stream through confirmed merge; see the [November 18 assignment](../STATUS.md#2026-11-18-rebase-and-stream-07-assignment). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
