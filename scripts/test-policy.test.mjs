@@ -6,6 +6,7 @@ import { parse } from 'smol-toml'
 import { load } from 'js-yaml'
 import { loadConfigFromFile } from 'vite'
 import { exec, root } from './test-helpers.mjs'
+import { playwrightCases } from './playwright-cases.mjs'
 
 test('native routine runners retain no execution deadline rather than finite defaults', async (t) => {
   const vite = await loadConfigFromFile(
@@ -54,6 +55,7 @@ test('CI browser boundaries and shards preserve every retained test exactly once
         'node_modules/@playwright/test/cli.js',
         'test',
         '--list',
+        '--forbid-only',
         '--reporter=json',
         ...(suite === 'components'
           ? ['--config=playwright.components.config.ts']
@@ -76,18 +78,13 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     assert.equal(report.config.globalTimeout, 0)
     for (const project of report.config.projects)
       assert.equal(project.timeout, 0)
-    const collect = (suites) =>
-      suites.flatMap((group) => [
-        ...group.specs.flatMap((spec) => {
-          if (!shard)
-            collectedFiles.add(
-              `${suite === 'components' ? 'components/' : ''}${spec.file}`,
-            )
-          return spec.tests.map((test) => `${spec.id}:${test.projectName}`)
-        }),
-        ...collect(group.suites ?? []),
-      ])
-    return collect(report.suites)
+    return Array.from(playwrightCases(report.suites), (item) => {
+      const file = suite === 'components' ? `components/${item.file}` : item.file
+      if (!shard) collectedFiles.add(file)
+      const identity = JSON.stringify([file, item.project, ...item.titlePath])
+      assert.equal(item.expectedStatus, 'passed', identity)
+      return identity
+    })
   }
   const all = [...(await inventory('all')), ...(await inventory('components'))]
   // New browser files must be deliberately placed, not silently omitted from
