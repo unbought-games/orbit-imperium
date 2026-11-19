@@ -270,6 +270,7 @@ test('origin DNS policy excludes local, metadata, mapped and transition addresse
 
 test('data-only installed registry loads a second independently authored package and rejects caller paths', async () => {
   assert.deepEqual(packageSelection({}), [
+    { id: 'orbit-base-light-fighter', revision: 'v1' },
     { id: 'orbit-light-fighter', revision: 'concord-v1' },
   ])
   for (const entries of [
@@ -446,5 +447,38 @@ test('fourteen native-resolution packages pass startup hashes, then load lazily 
     assert.notEqual(reloaded.source, selected.source)
   } finally {
     await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('Orbit Base reconstructs its approved master and dyes armor without coating functional parts', async () => {
+  const fighter = await loadPackage('orbit-base-light-fighter', 'v1')
+  assert.ok(checkSchema(fighter.manifest), JSON.stringify(checkSchema.errors))
+  const [primary, accent] = fighter.manifest.reference
+  assert.deepEqual(
+    renderShipPixels(fighter, { primary, accent }),
+    fighter.source,
+  )
+  const hull = renderShipPixels(fighter, { primary: '#ed338d', accent })
+  const trim = renderShipPixels(fighter, { primary, accent: '#00c9d2' })
+  const pixel = (bytes, x, y) => {
+    const offset = 4 * (y * fighter.manifest.width + x)
+    return bytes.slice(offset, offset + 4)
+  }
+  for (const [x, y] of [
+    [600, 530],
+    [233, 534],
+    [939, 717],
+    [948, 94],
+    [807, 625],
+  ]) {
+    assert.deepEqual(pixel(hull, x, y), pixel(fighter.source, x, y))
+    assert.deepEqual(pixel(trim, x, y), pixel(fighter.source, x, y))
+  }
+  for (const [x, y, painted, other] of [
+    [1120, 500, hull, trim],
+    [940, 440, trim, hull],
+  ]) {
+    assert.notDeepEqual(pixel(painted, x, y), pixel(fighter.source, x, y))
+    assert.deepEqual(pixel(other, x, y), pixel(fighter.source, x, y))
   }
 })

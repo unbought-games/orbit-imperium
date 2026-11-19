@@ -3,6 +3,8 @@ import { routeProgressionOptions } from './fixtures/progression-options'
 import { expect, test, type Page } from './fixtures/test'
 import {
   installGameFixture,
+  fixtureApiPath,
+  routeWorld,
   matchesFixtureGameplay,
   fixtureReportContext,
   fixtureReportPath,
@@ -17,6 +19,7 @@ import type { components } from '../src/contracts'
 import {
   withBootstrapResponse,
   withFixtureResponse,
+  withFixtureResponseStatus,
   withReportListResponse,
   withReportResponse,
   withProgressionResponse,
@@ -306,156 +309,153 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
   expect(await overlay()).toBe('none')
 })
 
-test(
-  'real quick-build only acknowledges committed orders and leaves rejection visible',
-  async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    const home = { ...structuredClone(body), fields_reserved: 0 }
-    const colony = {
-      ...structuredClone(body),
-      id: id(6),
-      coordinates: { galaxy: 1, system: 2, position: 3 },
-      fields_used: 4,
-      fields: 218,
-      fields_reserved: 0,
-    }
-    colony.levels.CrystalMine = 2
-    let reject = false
-    await installGameFixture(page, {
-      protocol: 4,
-      bodies: [home, colony],
-      missions: emptyMissions(),
-      catalog: [
-        {
-          key: { kind: 'Building', id: 'MetalMine' },
-          enabled: true,
-          mobile: false,
-          body_kinds: ['Planet'],
-          requirements: [],
+test('real quick-build only acknowledges committed orders and leaves rejection visible', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const home = { ...structuredClone(body), fields_reserved: 0 }
+  const colony = {
+    ...structuredClone(body),
+    id: id(6),
+    coordinates: { galaxy: 1, system: 2, position: 3 },
+    fields_used: 4,
+    fields: 218,
+    fields_reserved: 0,
+  }
+  colony.levels.CrystalMine = 2
+  let reject = false
+  await installGameFixture(page, {
+    protocol: 4,
+    bodies: [home, colony],
+    missions: emptyMissions(),
+    catalog: [
+      {
+        key: { kind: 'Building', id: 'MetalMine' },
+        enabled: true,
+        mobile: false,
+        body_kinds: ['Planet'],
+        requirements: [],
+      },
+    ],
+  })
+  await routeProgressionOptions(page, (route) => {
+    const { context, request } = route.request().postDataJSON()
+    const planet = [home, colony].find((b) => b.id === request.body)
+    if (
+      !planet ||
+      request.type !== 'Upgrade' ||
+      !Object.hasOwn(planet.levels, request.building)
+    )
+      return route.fallback()
+    const current =
+      planet.levels[request.building as keyof typeof planet.levels]!
+    return route.fulfill({
+      json: {
+        protocol: 4,
+        ...context,
+        viewer_revision: '1',
+        sampled_at: Date.now(),
+        as_of_ms: Date.now(),
+        request,
+        terms_hash: 'b'.repeat(64),
+        blockers: [],
+        estimates: null,
+        terms: {
+          type: 'Building',
+          profile_hash: 'a'.repeat(64),
+          body: planet.id,
+          building: request.building,
+          action: 'Upgrade',
+          source_level: current,
+          target_level: current + 1,
+          paid: { metal: '1000000', crystal: '1000000', deuterium: '0' },
+          duration_ms: 60000,
+          formula: 'BuildingRedesign2011',
+          facilities: [],
+          required_energy: '0',
+          reserve_fields: 1,
         },
-      ],
+      },
     })
-    await routeProgressionOptions(page, (route) => {
-      const { context, request } = route.request().postDataJSON()
-      const planet = [home, colony].find((b) => b.id === request.body)
-      if (
-        !planet ||
-        request.type !== 'Upgrade' ||
-        !Object.hasOwn(planet.levels, request.building)
-      )
-        return route.fallback()
-      const current =
-        planet.levels[request.building as keyof typeof planet.levels]!
-      return route.fulfill({
-        json: {
-          protocol: 4,
-          ...context,
-          viewer_revision: '1',
-          sampled_at: Date.now(),
-          as_of_ms: Date.now(),
-          request,
-          terms_hash: 'b'.repeat(64),
-          blockers: [],
-          estimates: null,
-          terms: {
-            type: 'Building',
-            profile_hash: 'a'.repeat(64),
-            body: planet.id,
-            building: request.building,
-            action: 'Upgrade',
-            source_level: current,
-            target_level: current + 1,
-            paid: { metal: '1000000', crystal: '1000000', deuterium: '0' },
-            duration_ms: 60000,
-            formula: 'BuildingRedesign2011',
-            facilities: [],
-            required_energy: '0',
-            reserve_fields: 1,
-          },
-        },
-      })
+  })
+  await page.route('**/commands', (route) => {
+    const data = route.request().postDataJSON()
+    if (!matchesFixtureGameplay(data)) return route.fallback()
+    const { gameplay } = data
+    if (gameplay.command.type !== 'StartUpgrade') return route.fallback()
+    expect(gameplay.command.building).toBe('MetalMine')
+    expect(data.presence.command).toMatchObject({
+      type: 'World',
+      action: { type: 'RecordForegroundPresence', body: colony.id },
     })
-    await page.route('**/commands', (route) => {
-      const data = route.request().postDataJSON()
-      if (!matchesFixtureGameplay(data)) return route.fallback()
-      const { gameplay } = data
-      if (gameplay.command.type !== 'StartUpgrade') return route.fallback()
-      expect(gameplay.command.building).toBe('MetalMine')
-      expect(data.presence.command).toMatchObject({
-        type: 'World',
-        action: { type: 'RecordForegroundPresence', body: colony.id },
-      })
-      expect(gameplay.command.body).toBe(colony.id)
-      expect(gameplay.command.expected_terms_hash).toBe('b'.repeat(64))
-      return route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          ...(reject
-            ? { status: 'Rejected', code: 'InsufficientResources' }
-            : {
-                status: 'Committed',
-                result_ids: [id(900)],
-                minimum_viewer_revision: '1',
-              }),
-        },
-      })
+    expect(gameplay.command.body).toBe(colony.id)
+    expect(gameplay.command.expected_terms_hash).toBe('b'.repeat(64))
+    return route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        command_id: gameplay.command_id,
+        admitted_at: Date.now(),
+        executed_at: Date.now(),
+        ...(reject
+          ? { status: 'Rejected', code: 'InsufficientResources' }
+          : {
+              status: 'Committed',
+              result_ids: [id(900)],
+              minimum_viewer_revision: '1',
+            }),
+      },
     })
-    const quoteFor = (planet: string) => (request: S['QuoteRequest3']) =>
-      request.type === 'Upgrade' &&
-      request.body === planet &&
-      request.building === 'MetalMine'
-    await withProgressionResponse(page, quoteFor(home.id), () =>
-      page.goto(`/u/andromeda/b/${home.id}/resources`),
-    )
-    const rows = page.getByRole('region', { name: 'Resource buildings' })
-    await expect(
-      rows.getByRole('button', { name: '3 of 163 fields used', exact: true }),
-    ).toHaveText('3/163')
-    await withProgressionResponse(page, quoteFor(colony.id), () =>
-      selectBody(page, colony.id),
-    )
-    await expect(
-      rows.getByRole('button', { name: '4 of 218 fields used', exact: true }),
-    ).toHaveText('4/218')
-    await expect(page).toHaveURL(`/u/andromeda/b/${colony.id}/resources`)
-    const quick = page
-      .getByRole('button', { name: /Upgrade Metal Mine|Build Metal Mine/ })
-      .first()
-    await expect(quick).toBeEnabled()
-    await quick.click()
-    const toast = page
-      .getByLabel('Recent game events')
-      .getByRole('button', { name: /Construction started/ })
-    await expect(toast).toBeVisible()
-    await expect(toast).toContainText('level 2')
-    await expect(page.getByTestId('command-orb')).toHaveAttribute(
-      'data-tone',
-      'green',
-    )
-    await diagnosticScreenshot(page, { path: `${output}/building-390x844.png` })
-    // Reload intentionally removes ephemeral acknowledgments and restored success history is silent.
-    reject = true
-    await withProgressionResponse(page, quoteFor(colony.id), () =>
-      page.reload(),
-    )
-    await expect(page.getByTestId('command-orb')).toHaveAttribute(
-      'data-tone',
-      'ice',
-    )
-    await quick.click()
-    await expect(page.getByLabel('Action needs attention')).toContainText(
-      'rejected',
-    )
-    await expect(
-      page.getByLabel('Recent game events').getByRole('button'),
-    ).toHaveCount(0)
-  },
-)
+  })
+  const quoteFor = (planet: string) => (request: S['QuoteRequest3']) =>
+    request.type === 'Upgrade' &&
+    request.body === planet &&
+    request.building === 'MetalMine'
+  await withProgressionResponse(page, quoteFor(home.id), () =>
+    page.goto(`/u/andromeda/b/${home.id}/resources`),
+  )
+  const rows = page.getByRole('region', { name: 'Resource buildings' })
+  await expect(
+    rows.getByRole('button', { name: '3 of 163 fields used', exact: true }),
+  ).toHaveText('3/163')
+  await withProgressionResponse(page, quoteFor(colony.id), () =>
+    selectBody(page, colony.id),
+  )
+  await expect(
+    rows.getByRole('button', { name: '4 of 218 fields used', exact: true }),
+  ).toHaveText('4/218')
+  await expect(page).toHaveURL(`/u/andromeda/b/${colony.id}/resources`)
+  const quick = page
+    .getByRole('button', { name: /Upgrade Metal Mine|Build Metal Mine/ })
+    .first()
+  await expect(quick).toBeEnabled()
+  await quick.click()
+  const toast = page
+    .getByLabel('Recent game events')
+    .getByRole('button', { name: /Construction started/ })
+  await expect(toast).toBeVisible()
+  await expect(toast).toContainText('level 2')
+  await expect(page.getByTestId('command-orb')).toHaveAttribute(
+    'data-tone',
+    'green',
+  )
+  await diagnosticScreenshot(page, { path: `${output}/building-390x844.png` })
+  // Reload intentionally removes ephemeral acknowledgments and restored success history is silent.
+  reject = true
+  await withProgressionResponse(page, quoteFor(colony.id), () => page.reload())
+  await expect(page.getByTestId('command-orb')).toHaveAttribute(
+    'data-tone',
+    'ice',
+  )
+  await quick.click()
+  await expect(page.getByLabel('Action needs attention')).toContainText(
+    'rejected',
+  )
+  await expect(
+    page.getByLabel('Recent game events').getByRole('button'),
+  ).toHaveCount(0)
+})
 
 test('HUD espionage attack action prepares the observed target and opens Dispatch', async ({
   page,
@@ -505,8 +505,36 @@ test('HUD espionage attack action prepares the observed target and opens Dispatc
   await diagnosticScreenshot(page, {
     path: `${output}/report-attack-320x740.png`,
   })
-  await attack.click()
-  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
+  // Dispatch opens from the historical observation even if a fresh system read is unavailable.
+  const isTargetSystem = (query: S['WorldQuery4']) =>
+    query.type === 'Galaxy' && query.galaxy === 1 && query.system === 1
+  await routeWorld(page, (route) =>
+    isTargetSystem(route.request().postDataJSON())
+      ? route.fulfill({ status: 404, json: { code: 'NotFound' } })
+      : route.fallback(),
+  )
+  await withFixtureResponseStatus(
+    page,
+    (response) => {
+      const request = response.request()
+      return (
+        request.method() === 'POST' &&
+        new URL(response.url()).pathname === fixtureApiPath(page, 'world') &&
+        isTargetSystem(request.postDataJSON())
+      )
+    },
+    async () => {
+      await attack.click()
+      await expect(page).toHaveURL(new RegExp(`/b/${body.id}/dispatch\\?`))
+      await expect(page.getByRole('radio', { checked: true })).toHaveValue(
+        'Attack',
+      )
+      await expect(page.getByLabel('Destination preview')).toContainText(
+        'Destination unavailable',
+      )
+    },
+    404,
+  )
   const url = new URL(page.url())
   expect(Object.fromEntries(url.searchParams)).toMatchObject({
     mission: 'Attack',
@@ -528,7 +556,6 @@ test('HUD espionage attack action prepares the observed target and opens Dispatc
   })
   await expect(panel).not.toBeVisible()
   expect(await page.evaluate(() => document.body.style.position)).toBe('')
-  await expect(page.getByRole('radio', { checked: true })).toHaveValue('Attack')
   // The same action remains in the full report at desktop sizes.
   await page.setViewportSize({ width: 1440, height: 900 })
   await withReportResponse(page, id(850), () =>

@@ -22,6 +22,7 @@ export type ShipAppearancePreviewProps = {
   placement: EmblemPlacement
   className?: string
   alt?: string
+  onReady?: () => void
   onError?: (message: string) => void
 }
 export function ShipAppearancePreview({
@@ -32,6 +33,7 @@ export function ShipAppearancePreview({
   placement,
   className,
   alt = 'Customized ship',
+  onReady,
   onError,
 }: ShipAppearancePreviewProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -45,10 +47,12 @@ export function ShipAppearancePreview({
     key: string
     promise: ReturnType<typeof rasterizeInsignia>
   } | null>(null)
+  const readyCallback = useRef(onReady)
   const errorCallback = useRef(onError)
   useEffect(() => {
+    readyCallback.current = onReady
     errorCallback.current = onError
-  }, [onError])
+  }, [onReady, onError])
   const skinKey = JSON.stringify({
     id: skin.id,
     package_revision: skin.package_revision,
@@ -104,6 +108,7 @@ export function ShipAppearancePreview({
         // not another persisted copy of the authoritative recipe or game state.
         node.style.opacity = '1'
         if (fallback.current) fallback.current.style.visibility = 'hidden'
+        readyCallback.current?.()
       } catch (error) {
         if (current) {
           packageLoad.current = null

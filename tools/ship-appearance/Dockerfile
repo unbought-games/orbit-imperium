@@ -20,6 +20,7 @@ COPY packages/ship-appearance ./packages/ship-appearance
 COPY tools/ship-appearance/*.mjs ./tools/ship-appearance/
 COPY --from=build /app/tools/ship-appearance/dist ./tools/ship-appearance/dist
 COPY apps/web/public/art/ship-skins ./apps/web/public/art/ship-skins
+COPY crates/application/assets/ship-skins.json ./crates/application/assets/ship-skins.json
 COPY crates/application/assets/insignias ./crates/application/assets/insignias
 USER node
 ENV ORBIT_SHIP_RENDERER_HOST=0.0.0.0 ORBIT_SHIP_RENDERER_PORT=52941

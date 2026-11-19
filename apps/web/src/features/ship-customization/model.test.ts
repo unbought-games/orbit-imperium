@@ -113,6 +113,21 @@ describe('ship customization drafts', () => {
     expect(draft.revision).toBe(0)
   })
 
+  it('opens a fresh Orbit Base in steel and gold, falling back when a dye is unavailable', () => {
+    const snapshot = state()
+    snapshot.equipment = []
+    snapshot.catalog[0].id = 'orbit-base-light-fighter'
+    const steel = { ...snapshot.dyes[0], id: 'free-steel' }
+    const gold = { ...snapshot.dyes[1], id: 'free-gold' }
+    snapshot.dyes.push(steel, gold)
+    expect(initialDraft(snapshot, 'LightFighter')?.recipe).toMatchObject({
+      primary: 'free-steel',
+      accent: 'free-gold',
+    })
+    steel.availability = 'locked'
+    expect(initialDraft(snapshot, 'LightFighter')?.recipe.primary).toBe('navy')
+  })
+
   it('does not invent a default for an unsupported target or a catalog without available dyes', () => {
     const snapshot = state()
     expect(initialDraft(snapshot, 'Destroyer')).toBeNull()
