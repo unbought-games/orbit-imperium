@@ -187,8 +187,8 @@ for (const width of [390]) {
     const shipyard = page
       .locator('main header')
       .getByRole('link', { name: 'Shipyard', exact: true, includeHidden: true })
-    for (const layoutWidth of [1280,511,width]) {
-      await page.setViewportSize({width:layoutWidth,height:900})
+    for (const layoutWidth of [1280, 511, width]) {
+      await page.setViewportSize({ width: layoutWidth, height: 900 })
       const dispatchBox = (await dispatch.boundingBox())!
       const slotsBox = (await slots.boundingBox())!
       if (layoutWidth < 640) {
@@ -218,7 +218,6 @@ for (const width of [390]) {
       )
       expect(slotsBox.x + slotsBox.width).toBeLessThan(dispatchBox.x)
       expect(Math.abs(slotsBox.y - dispatchBox.y)).toBeLessThan(8)
-
     }
     const panel = page.getByRole('region', {
       name: 'Stationed ships',
@@ -345,43 +344,74 @@ for (const width of [390]) {
         exact: true,
       }),
     ).toBeVisible()
-    await page.setViewportSize({width:1280,height:900})
+    await page.setViewportSize({ width: 1280, height: 900 })
     await shipyard.click()
     await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/shipyard`)
     await page.goBack()
     await expect(panel).toBeVisible()
-    await page.setViewportSize({width,height:900})
+    await page.setViewportSize({ width, height: 900 })
     await cargo.getByRole('link').click()
     await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/shipyard/small-cargo`)
     await page.goBack()
     await expect(panel).toBeVisible()
-    await page.setViewportSize({width:1280,height:900})
-    const listPath=`/u/andromeda/b/${id(6)}/fleets`
-    const details=listPath+'/'+id(30)
-    const link=page.getByRole('link',{name:'View Transport returning fleet',exact:true}).and(page.locator(`a[href="${details}"]`))
-    const row=page.getByRole('article').filter({has:link})
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const listPath = `/u/andromeda/b/${id(6)}/fleets`
+    const details = listPath + '/' + id(30)
+    const link = page
+      .getByRole('link', {
+        name: 'View Transport returning fleet',
+        exact: true,
+      })
+      .and(page.locator(`a[href="${details}"]`))
+    const row = page.getByRole('article').filter({ has: link })
     await expect(link).toBeVisible()
     // A modified blank-row click opens a native tab. Enter below verifies the
     // live iframe-free game destination and the subsequent history focus.
-    await page.context().route(url=>url.pathname===details,route=>
-      route.request().resourceType()==='document' && route.request().method()==='GET'
-        ? route.fulfill({contentType:'text/html',body:'<title>Fleet destination</title>'}) : route.fallback(), {times:1})
-    const popup=page.context().waitForEvent('page')
-    const box=(await row.boundingBox())!
-    await row.click({position:{x:box.width/2,y:4},modifiers:['ControlOrMeta']})
-    const extra=await popup
-    try{await expect(extra).toHaveURL(details)}finally{await extra.close()}
+    await page.context().route(
+      (url) => url.pathname === details,
+      (route) =>
+        route.request().resourceType() === 'document' &&
+        route.request().method() === 'GET'
+          ? route.fulfill({
+              contentType: 'text/html',
+              body: '<title>Fleet destination</title>',
+            })
+          : route.fallback(),
+      { times: 1 },
+    )
+    const existingPages = new Set(page.context().pages())
+    const box = (await row.boundingBox())!
+    await row.click({
+      position: { x: box.width / 2, y: 4 },
+      modifiers: ['ControlOrMeta'],
+    })
+    await expect
+      .poll(() => page.context().pages().length)
+      .toBe(existingPages.size + 1)
+    const extra = page
+      .context()
+      .pages()
+      .find((candidate) => !existingPages.has(candidate))!
+    try {
+      await expect(extra).toHaveURL(details)
+    } finally {
+      await extra.close()
+    }
     await expect(page).toHaveURL(listPath)
     await link.focus()
     await page.keyboard.press('Tab')
     await page.keyboard.press('Shift+Tab')
     await expect(link).toBeFocused()
-    await expect(row).toHaveCSS('outline-style','solid')
+    await expect(row).toHaveCSS('outline-style', 'solid')
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(details)
     await expect(panel).toHaveCount(0)
-    await expect(page.getByRole('heading',{name:'Mission details',exact:true})).toBeVisible()
-    await expect(page.getByRole('article',{name:'Transport fleet',exact:true})).not.toHaveAttribute('data-clickable')
+    await expect(
+      page.getByRole('heading', { name: 'Mission details', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('article', { name: 'Transport fleet', exact: true }),
+    ).not.toHaveAttribute('data-clickable')
     await page.goBack()
     await expect(page).toHaveURL(listPath)
     await expect(page.locator('main h1')).toBeFocused()

@@ -560,7 +560,9 @@ test('mobile harvest quotes and sends one departure, stays in Galaxy and reserve
 })
 
 for (const width of [390]) {
-  test('Galaxy history closes the active Harvest popup and releases its shortcuts when entering Fleets and Dispatch', async ({ page }) => {
+  test('Galaxy history closes the active Harvest popup and releases its shortcuts when entering Fleets and Dispatch', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const now = Date.now()
@@ -569,7 +571,12 @@ for (const width of [390]) {
       id: id(80),
       intent: {
         origin: body.id,
-        destination: { type: 'Body', id: id(6), expected_kind: 'Planet', expected_owner: binding.player },
+        destination: {
+          type: 'Body',
+          id: id(6),
+          expected_kind: 'Planet',
+          expected_owner: binding.player,
+        },
         mission: 'Transport',
         ships: [{ owner: binding.player, ship_type: 'SmallCargo', count: '2' }],
         cargo: { metal: '100000000', crystal: '0', deuterium: '0' },
@@ -587,87 +594,174 @@ for (const width of [390]) {
       can_recall: true,
     }
     await setup(page, null, {
-      catalog: [{ key: { kind:'Ship',id:'SmallCargo' }, requirements:[],enabled:true,mobile:true,body_kinds:['Planet'] }, ...recyclerCatalog],
-      bodies:[{...body,inventories:[...body.inventories,{item:{kind:'Ship',id:'Recycler'},count:'5'}]}],
+      catalog: [
+        {
+          key: { kind: 'Ship', id: 'SmallCargo' },
+          requirements: [],
+          enabled: true,
+          mobile: true,
+          body_kinds: ['Planet'],
+        },
+        ...recyclerCatalog,
+      ],
+      bodies: [
+        {
+          ...body,
+          inventories: [
+            ...body.inventories,
+            { item: { kind: 'Ship', id: 'Recycler' }, count: '5' },
+          ],
+        },
+      ],
       missions: {
         fleets: [fleet, { ...fleet, id: id(81), leg: 'Returning' }],
-        incoming: [{ sender: id(9), origin: { galaxy: 1, system: 372, position: 3 }, target: body.id, mission: 'Transport', arrival_at: now + 300000, ships: { visibility: 'Unknown' } }],
-        score_value_micro: '0', fleet_slots: '4',
+        incoming: [
+          {
+            sender: id(9),
+            origin: { galaxy: 1, system: 372, position: 3 },
+            target: body.id,
+            mission: 'Transport',
+            arrival_at: now + 300000,
+            ships: { visibility: 'Unknown' },
+          },
+        ],
+        score_value_micro: '0',
+        fleet_slots: '4',
       },
     })
     const nav = page.getByRole('navigation', { name: 'Main navigation' })
-    for (const layoutWidth of [320,768,1440,width]) {
-      await page.setViewportSize({width:layoutWidth,height:900})
-    await expect(nav.getByRole('link')).toHaveText(layoutWidth >= 1024
-      ? ['Empire', 'Develop', 'Resources', 'Facilities', 'Research', 'Shipyard', 'Defense', 'Galaxy', 'Fleets', 'Reports', 'Combat Simulator', 'Alliance', 'Messages', 'High Scores']
-      : ['Empire', 'Develop', 'Galaxy', 'Fleets', 'Menu'])
+    for (const layoutWidth of [320, 768, 1440, width]) {
+      await page.setViewportSize({ width: layoutWidth, height: 900 })
+      await expect(nav.getByRole('link')).toHaveText(
+        layoutWidth >= 1024
+          ? [
+              'Empire',
+              'Develop',
+              'Resources',
+              'Facilities',
+              'Research',
+              'Shipyard',
+              'Defense',
+              'Galaxy',
+              'Fleets',
+              'Reports',
+              'Combat Simulator',
+              'Alliance',
+              'Messages',
+              'High Scores',
+            ]
+          : ['Empire', 'Develop', 'Galaxy', 'Fleets', 'Menu'],
+      )
     }
     const galaxy = nav.getByRole('link', { name: 'Galaxy', exact: true })
     const fleets = nav.getByRole('link', { name: 'Fleets', exact: true })
     await galaxy.click()
     await expect(galaxy).toHaveAttribute('aria-current', 'page')
     await expect(fleets).not.toHaveAttribute('aria-current')
-    await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
+    await expect(
+      page.getByRole('navigation', { name: 'Fleet navigation' }),
+    ).toHaveCount(0)
     await expect(rows(page)).toHaveCount(15)
     const capture = async (screen: string) => {
-      for(const layoutWidth of [320,768,1440,width]) {
-        await page.setViewportSize({width:layoutWidth,height:900})
-        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(layoutWidth)
-        if(layoutWidth===390||layoutWidth===1440) await diagnosticScreenshot(page,{path:`test-results/navigation-${screen}-${layoutWidth}x900.png`,animations:'disabled'})
+      for (const layoutWidth of [320, 768, 1440, width]) {
+        await page.setViewportSize({ width: layoutWidth, height: 900 })
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth),
+        ).toBe(layoutWidth)
+        if (layoutWidth === 390 || layoutWidth === 1440)
+          await diagnosticScreenshot(page, {
+            path: `test-results/navigation-${screen}-${layoutWidth}x900.png`,
+            animations: 'disabled',
+          })
       }
     }
     await capture('galaxy')
-    const system = page.getByRole('textbox', {name:'Solar system',exact:true})
-    const next = page.getByRole('button', {name:'Next system',exact:true})
-    await page.setViewportSize({width:1280,height:844})
+    const system = page.getByRole('textbox', {
+      name: 'Solar system',
+      exact: true,
+    })
+    const next = page.getByRole('button', { name: 'Next system', exact: true })
+    await page.setViewportSize({ width: 1280, height: 844 })
     await next.focus()
-    await withGalaxyResponse(page,()=>page.keyboard.press('ArrowRight'))
+    await withGalaxyResponse(page, () => page.keyboard.press('ArrowRight'))
     await expect(page).toHaveURL(/galaxy=1&system=372$/)
     await expect(system).toHaveValue('372')
     const harvest = await openHarvest(page)
     await expect(harvest).toContainText('Debris at [1:372:2]')
-    await withGalaxyResponse(page,()=>page.goBack())
+    await withGalaxyResponse(page, () => page.goBack())
     await expect(system).toHaveValue('371')
     await expect(harvest).toBeHidden()
-    await withGalaxyResponse(page,()=>page.goForward())
+    await withGalaxyResponse(page, () => page.goForward())
     await expect(rows(page).nth(1)).toContainText('[1:372:2]')
     await expect(harvest).toBeHidden()
-    await expect(actions(page,2)).toBeEnabled()
+    await expect(actions(page, 2)).toBeEnabled()
     await next.focus()
-    await withGalaxyResponse(page,()=>page.keyboard.press('ArrowLeft'))
+    await withGalaxyResponse(page, () => page.keyboard.press('ArrowLeft'))
     await expect(page).toHaveURL(/galaxy=1&system=371$/)
-    await page.setViewportSize({width,height:900})
-    await withGalaxyResponse(page,()=>next.click())
+    await page.setViewportSize({ width, height: 900 })
+    await withGalaxyResponse(page, () => next.click())
     await expect(rows(page).first()).toContainText('[1:372:1]')
     await fleets.click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
     await expect(fleets).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('region',{name:'Galaxy browser'})).toHaveCount(0)
+    await expect(
+      page.getByRole('region', { name: 'Galaxy browser' }),
+    ).toHaveCount(0)
     await page.keyboard.press('ArrowRight')
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
-    await expect(page.getByRole('heading', { name: 'Transport Outbound' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Transport Returning' })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Empire fleet traffic' })).toBeVisible()
-    await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
+    await expect(
+      page.getByRole('heading', { name: 'Transport Outbound' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Transport Returning' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('region', { name: 'Empire fleet traffic' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('navigation', { name: 'Fleet navigation' }),
+    ).toHaveCount(0)
     await capture('fleets')
-    await page.getByRole('link', { name: 'Dispatch Fleet', exact: true }).click()
+    await page
+      .getByRole('link', { name: 'Dispatch Fleet', exact: true })
+      .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
     await expect(fleets).toHaveAttribute('aria-current', 'page')
-    await expect(page.getByRole('region',{name:'Galaxy browser'})).toHaveCount(0)
+    await expect(
+      page.getByRole('region', { name: 'Galaxy browser' }),
+    ).toHaveCount(0)
     await page.keyboard.press('ArrowRight')
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/dispatch`)
-    await expect(page.getByRole('textbox', { name: 'Destination coordinates' })).toBeVisible()
-    await expect(page.getByText('Looking up destination…', { exact: true })).toHaveCount(0)
-    await expect(page.getByRole('textbox', { name: /^Small Cargo/ })).toBeVisible()
-    await page.getByRole('textbox', { name: 'Destination coordinates' }).fill('1:371:2')
-    await expect(page.getByLabel('Destination preview')).toContainText('CommanderAndromedaTheUnreasonablyLongName')
+    await expect(
+      page.getByRole('textbox', { name: 'Destination coordinates' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Looking up destination…', { exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('textbox', { name: /^Small Cargo/ }),
+    ).toBeVisible()
+    await page
+      .getByRole('textbox', { name: 'Destination coordinates' })
+      .fill('1:371:2')
+    await expect(page.getByLabel('Destination preview')).toContainText(
+      'CommanderAndromedaTheUnreasonablyLongName',
+    )
     await capture('dispatch')
-    await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
+    await page
+      .getByRole('link', { name: 'Back to fleets', exact: true })
+      .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
-    await expect(page.getByRole('heading', { name: 'Transport Outbound' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Transport Outbound' }),
+    ).toBeVisible()
     // A direct Dispatch load also offers a deterministic return to the list.
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/dispatch`))
-    await page.getByRole('link', { name: 'Back to fleets', exact: true }).click()
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/dispatch`),
+    )
+    await page
+      .getByRole('link', { name: 'Back to fleets', exact: true })
+      .click()
     await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
   })
 }

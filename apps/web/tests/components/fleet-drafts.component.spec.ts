@@ -12,6 +12,13 @@ import {
   selectDestinationPlanet,
 } from './dispatch-driver'
 
+test.afterEach(async ({ page }) => {
+  const unexpected = await page.evaluate(
+    () => window.dispatchScene?.snapshot().unexpected ?? [],
+  )
+  expect(unexpected, 'unexpected Dispatch feature port operations').toEqual([])
+})
+
 test('an edited historical attack can deploy to its own colony with the new origin, cargo and approved quote', async ({
   page,
   mount,

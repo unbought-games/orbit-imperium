@@ -238,91 +238,132 @@ const dispatchResult = (page: Page) =>
 // Manual intent construction is covered by dispatch-requests.test.ts and the reset journey below.
 
 
-test('successful dispatch resets ship and cargo quantities after preserving edits through review', { tag: '@journey' }, async ({
-  page,
-}) => {
-  const state = await setup(page)
-  state.launchError = null
-  const ship = page.getByLabel('Small Cargo · 2 available')
-  const cargo = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
-    page.getByRole('textbox', { name, exact: true }),
-  )
-  for (const field of cargo) await field.fill('42')
-  const content = page.locator('main')
-  for (const width of [390, 767, 768, 1199, 1200, 1440, 1599, 1600, 1920]) {
-    await page.setViewportSize({ width, height: 1000 })
-    const cap = width >= 1600 ? 896 : width >= 1200 ? 768 : width >= 768 ? 640 : Infinity
-    const geometry = await content.evaluate(element => {
-      const current = element.getBoundingClientRect()
-      const parent = element.parentElement!.getBoundingClientRect()
-      return { width: current.width, center: current.x + current.width / 2, available: parent.width, parentCenter: parent.x + parent.width / 2 }
-    })
-    expect(geometry.width).toBeCloseTo(Math.min(cap, geometry.available), 0)
-    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
-    if ([390, 768, 1440, 1920].includes(width)) {
-      await page.evaluate(() => window.scrollTo(0, 0))
-      await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-${width}x1000.png`, fullPage: width >= 768 })
+test(
+  'successful dispatch resets ship and cargo quantities after preserving edits through review',
+  { tag: '@journey' },
+  async ({ page }) => {
+    const state = await setup(page)
+    state.launchError = null
+    const ship = page.getByLabel('Small Cargo · 2 available')
+    const cargo = ['Metal', 'Crystal', 'Deuterium'].map((name) =>
+      page.getByRole('textbox', { name, exact: true }),
+    )
+    for (const field of cargo) await field.fill('42')
+    const content = page.locator('main')
+    for (const width of [390, 767, 768, 1199, 1200, 1440, 1599, 1600, 1920]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const cap =
+        width >= 1600
+          ? 896
+          : width >= 1200
+            ? 768
+            : width >= 768
+              ? 640
+              : Infinity
+      const geometry = await content.evaluate((element) => {
+        const current = element.getBoundingClientRect()
+        const parent = element.parentElement!.getBoundingClientRect()
+        return {
+          width: current.width,
+          center: current.x + current.width / 2,
+          available: parent.width,
+          parentCenter: parent.x + parent.width / 2,
+        }
+      })
+      expect(geometry.width).toBeCloseTo(Math.min(cap, geometry.available), 0)
+      expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true)
+      await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue(
+        '1',
+      )
+      if ([390, 768, 1440, 1920].includes(width)) {
+        await page.evaluate(() => window.scrollTo(0, 0))
+        await diagnosticScreenshot(page, {
+          path: `test-results/dispatch-centered-${width}x1000.png`,
+          fullPage: width >= 768,
+        })
+      }
     }
-  }
-  await review(page).click()
-  await expect(page.getByRole('region', { name:'Fleet quote' })).toBeVisible()
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 })
-    const geometry = await content.evaluate(element => {
-      const rect = element.getBoundingClientRect(), parent = element.parentElement!.getBoundingClientRect()
-      return { width: rect.width, available: parent.width, center: rect.x + rect.width / 2, parentCenter: parent.x + parent.width / 2 }
-    })
-    expect(geometry.width).toBeCloseTo(Math.min(width === 1440 ? 768 : Infinity, geometry.available), 0)
-    expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: `test-results/dispatch-centered-review-${width}x1000.png`, fullPage: true })
-  }
-  await page.getByRole('button', { name: 'Back to edit mission' }).click()
-  await expect(review(page)).toBeFocused()
-  await expect(ship).toHaveValue('1')
-  for (const field of cargo) await expect(field).toHaveValue('42')
-  await review(page).click()
-  await page
-    .getByRole('button', {
-      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-    })
-    .click()
-  await expect(ship).toHaveValue('0')
-  await expect(page.getByLabel('Light Fighter · 0 available')).toHaveCount(0)
-  await page.getByRole('button', { name: /^Show all ships/ }).click()
-  await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue('0')
-  for (const field of cargo) await expect(field).toHaveValue('0')
-  await expect(page.getByRole('region', { name: 'Flight timing' }).locator('p')).toHaveText(
-    'Select ships to see flight times.',
-  )
-  expect(state.launches).toBe(1)
-  await expect(dispatchResult(page)).toContainText('Transport to [1:1:1]')
-  await expect(dispatchResult(page)).toContainText('Fleet sent.')
-  for (const width of [320, 390, 1440]) {
-    await page.setViewportSize({ width, height: 900 })
-    await review(page).scrollIntoViewIfNeeded()
-    await expect(dispatchResult(page)).toBeInViewport()
-    const [resultBox, buttonBox] = await Promise.all([
-      dispatchResult(page).boundingBox(),
-      review(page).boundingBox(),
-    ])
-    expect(buttonBox!.y - (resultBox!.y + resultBox!.height)).toBeLessThan(32)
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBeLessThanOrEqual(width)
-    await diagnosticScreenshot(page, {
-      path: `test-results/dispatch-success-${width}.png`,
-    })
-  }
-  await selectBody(page, id(6))
-  await expect(dispatchResult(page)).toHaveCount(0)
-  await selectBody(page, body.id)
-  await expect(dispatchResult(page)).toHaveCount(0)
-  await page.getByRole('link', {name:'Back to fleets',exact:true}).click()
-  await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
-})
+    await review(page).click()
+    await expect(
+      page.getByRole('region', { name: 'Fleet quote' }),
+    ).toBeVisible()
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const geometry = await content.evaluate((element) => {
+        const rect = element.getBoundingClientRect(),
+          parent = element.parentElement!.getBoundingClientRect()
+        return {
+          width: rect.width,
+          available: parent.width,
+          center: rect.x + rect.width / 2,
+          parentCenter: parent.x + parent.width / 2,
+        }
+      })
+      expect(geometry.width).toBeCloseTo(
+        Math.min(width === 1440 ? 768 : Infinity, geometry.available),
+        0,
+      )
+      expect(geometry.center).toBeCloseTo(geometry.parentCenter, 0)
+      await page.evaluate(() => window.scrollTo(0, 0))
+      await diagnosticScreenshot(page, {
+        path: `test-results/dispatch-centered-review-${width}x1000.png`,
+        fullPage: true,
+      })
+    }
+    await page.getByRole('button', { name: 'Back to edit mission' }).click()
+    await expect(review(page)).toBeFocused()
+    await expect(ship).toHaveValue('1')
+    for (const field of cargo) await expect(field).toHaveValue('42')
+    await review(page).click()
+    await page
+      .getByRole('button', {
+        name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
+      })
+      .click()
+    await expect(ship).toHaveValue('0')
+    await expect(page.getByLabel('Light Fighter · 0 available')).toHaveCount(0)
+    await page.getByRole('button', { name: /^Show all ships/ }).click()
+    await expect(page.getByLabel('Light Fighter · 0 available')).toHaveValue(
+      '0',
+    )
+    for (const field of cargo) await expect(field).toHaveValue('0')
+    await expect(
+      page.getByRole('region', { name: 'Flight timing' }).locator('p'),
+    ).toHaveText('Select ships to see flight times.')
+    expect(state.launches).toBe(1)
+    await expect(dispatchResult(page)).toContainText('Transport to [1:1:1]')
+    await expect(dispatchResult(page)).toContainText('Fleet sent.')
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      await review(page).scrollIntoViewIfNeeded()
+      await expect(dispatchResult(page)).toBeInViewport()
+      const [resultBox, buttonBox] = await Promise.all([
+        dispatchResult(page).boundingBox(),
+        review(page).boundingBox(),
+      ])
+      expect(buttonBox!.y - (resultBox!.y + resultBox!.height)).toBeLessThan(32)
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width)
+      await diagnosticScreenshot(page, {
+        path: `test-results/dispatch-success-${width}.png`,
+      })
+    }
+    await selectBody(page, id(6))
+    await expect(dispatchResult(page)).toHaveCount(0)
+    await selectBody(page, body.id)
+    await expect(dispatchResult(page)).toHaveCount(0)
+    await page
+      .getByRole('link', { name: 'Back to fleets', exact: true })
+      .click()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/fleets`)
+  },
+)
 
 for (const width of [390]) {
   test(`Empire retains cargo wealth while launching and restores rejected reservations at ${width}px`, async ({ page }) => {

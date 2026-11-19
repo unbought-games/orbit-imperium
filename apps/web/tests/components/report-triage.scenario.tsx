@@ -25,6 +25,11 @@ import { ContentColumn } from '../../src/ui/content-column'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../../src/ui/error-banner'
 
 type Header = components['schemas']['ReportHeader4']
+type ColonyObservation = {
+  body: components['schemas']['BodyV3']
+  header: Header
+  payload: components['schemas']['ColonizedPayload4']
+}
 async function prepare() {
   const { snapshot, session } = readyFixture(4)
   const view = snapshot.view
@@ -32,8 +37,9 @@ async function prepare() {
   const time = Date.UTC(2026, 9, 30, 12)
   view.sampled_at = view.as_of_ms = snapshot.candidate.sampled_at = time
   view.viewer_revision = '1'
-  view.bodies = [body]
-  view.progression.production = [productionFixture(body)]
+  const colony = window.reportTriageColony
+  view.bodies = colony ? [body, colony.body] : [body]
+  view.progression.production = view.bodies.map(owned => productionFixture(owned))
   view.capabilities = [
     { capability: 'Reports', enabled: true, reason: 'Available' },
   ]
@@ -82,6 +88,7 @@ async function prepare() {
       hidden: true,
     },
   ]
+  if (colony) headers.unshift(structuredClone(colony.header))
   const submissions: Envelope[] = []
   const readBatches: string[][] = []
   const unexpected = (operation: string): never => {
@@ -134,6 +141,8 @@ async function prepare() {
     },
     report: async (context, requested) => {
       const header = headers.find((row) => row.id === requested)
+      if (colony && requested === colony.header.id && header?.kind === 'Colonized')
+        return structuredClone({ ...context, protocol:4, viewer_revision:view.viewer_revision, sampled_at:time, as_of_ms:time, data:{header,payload:colony.payload} })
       if (header?.kind !== 'Espionage')
         return unexpected(`unprepared observation ${requested}`)
       return structuredClone({
@@ -258,6 +267,7 @@ async function prepare() {
 declare global {
   interface Window {
     reportPageSize?: number
+    reportTriageColony?: ColonyObservation
     reportTriage: Awaited<ReturnType<typeof prepare>>
     reportSourceProfiles: PlayerProfilesController
     releaseReportPort?: () => void
@@ -384,7 +394,7 @@ export function ReportTriageScenario() {
       history: createMemoryHistory(),
     })
     router.history.replace(
-      router.buildLocation(routeTarget('andromeda', 'reports', body.id)).href,
+      router.buildLocation(routeTarget('andromeda', 'reports', body.id, window.reportTriageColony?.header.id)).href,
     )
     return router
   })

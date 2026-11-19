@@ -6,6 +6,8 @@ import {
   binding,
   body,
   installGameFixture,
+  matchesFixtureContext,
+  matchesFixtureGameplay,
   refuseFixtureReads,
 } from './fixtures/game'
 
@@ -98,60 +100,136 @@ test('a new empire chooses its title, look and name, then lands in Briefing at 1
     address: label,
     access: 'free' as const,
   })
+  const home = { ...body, name: 'Terra' }
+  const chosenName = 'Vesper Reach'
+  let revision = 1
+  const renamed: string[] = []
+  const renameReads = new Set<string>()
+  let releaseRenameView!: () => void
+  let released = false
+  const gate = new Promise<void>((resolve) => {
+    releaseRenameView = resolve
+  })
   await installGameFixture(page, {
     protocol: 4,
-    bodies: [{ ...body, name: 'Terra' }],
+    bodies: [home],
+    viewerRevision: () => String(revision),
     homeworldId: body.id,
     arrivalPending: () => pending,
   })
-  await page.route('**/api/v4/empire-profiles/**', (route) => {
-    if (route.request().method() === 'POST') {
-      profileWrites.push(route.request().postDataJSON())
-      return route.fulfill({ json: { ok: true } })
-    }
-    return route.fulfill({
+  const api = `/api/v4/universes/${binding.universe}`
+  await page.route(`**${api}/commands`, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const pair = route.request().postDataJSON()
+    if (
+      !matchesFixtureGameplay(pair) ||
+      pair.gameplay.command.type !== 'World' ||
+      pair.gameplay.command.action.type !== 'RenamePlanet'
+    )
+      return route.fallback()
+    const action = pair.gameplay.command.action
+    expect(action).toEqual({
+      type: 'RenamePlanet',
+      body: home.id,
+      name: chosenName,
+    })
+    renamed.push(pair.gameplay.command_id)
+    home.name = action.name
+    revision++
+    const at = Date.now()
+    await route.fulfill({
       json: {
-        player: binding.player,
-        profile: binding.account,
-        universe: binding.universe,
-        epoch: binding.epoch,
-        universe_name: 'Andromeda',
-        username: 'fixture',
-        display: null,
-        revision: 1,
-        owner: true,
-        removed: false,
-        closed: false,
-        public: false,
-        entries: [],
-        next: null,
-        identity: { name: '', tagline: '', title_id: 'commander' },
-        title: {
-          id: 'commander',
-          label: 'Commander',
-          address: 'Commander',
-          expires_at: null,
-        },
-        title_choices: [
-          {
-            title: title('commander', 'Commander'),
-            availability: 'available',
-          },
-          { title: title('captain', 'Captain'), availability: 'available' },
-          {
-            title: { ...title('regent', 'Regent'), access: 'supporter' },
-            availability: 'supporter_required',
-          },
-        ],
+        protocol: 4,
+        binding,
+        command_id: pair.gameplay.command_id,
+        admitted_at: at,
+        executed_at: at,
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: String(revision),
       },
     })
   })
-  await page.route('**/arrival', (route) => {
-    const { action } = route.request().postDataJSON()
-    if (action.type !== 'Load') arrival.push(action)
-    if (action.type === 'Complete') pending = false
-    return route.fulfill({ json: { pending } })
+  await page.route(`**${api}/overview`, async (route) => {
+    const req = route.request()
+    if (req.method() === 'POST' && renamed.length && !released) {
+      const context = req.postDataJSON()
+      if (!matchesFixtureContext(context)) return route.fallback()
+      renameReads.add(context.request_id)
+      await gate
+    }
+    return route.fallback()
   })
+  await page.route(
+    (url) => url.pathname === `/api/v4/empire-profiles/${binding.player}`,
+    (route) => {
+      if (route.request().method() === 'POST') {
+        const edit = route.request().postDataJSON()
+        if (edit.action?.type !== 'Identity') return route.fallback()
+        profileWrites.push(edit)
+        return route.fulfill({ json: { ok: true } })
+      }
+      if (route.request().method() !== 'GET') return route.fallback()
+      return route.fulfill({
+        json: {
+          player: binding.player,
+          profile: binding.account,
+          universe: binding.universe,
+          epoch: binding.epoch,
+          universe_name: 'Andromeda',
+          username: 'fixture',
+          display: null,
+          revision: 1,
+          owner: true,
+          removed: false,
+          closed: false,
+          public: false,
+          entries: [],
+          next: null,
+          identity: { name: '', tagline: '', title_id: 'commander' },
+          title: {
+            id: 'commander',
+            label: 'Commander',
+            address: 'Commander',
+            expires_at: null,
+          },
+          title_choices: [
+            {
+              title: title('commander', 'Commander'),
+              availability: 'available',
+            },
+            { title: title('captain', 'Captain'), availability: 'available' },
+            {
+              title: { ...title('regent', 'Regent'), access: 'supporter' },
+              availability: 'supporter_required',
+            },
+          ],
+        },
+      })
+    },
+  )
+  await page.route(
+    (url) => url.pathname === `/api/v1/universes/${binding.universe}/arrival`,
+    (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const { action, context } = route.request().postDataJSON()
+      if (
+        !matchesFixtureContext(context) ||
+        !['Load', 'SetAppearance', 'Complete'].includes(action?.type)
+      )
+        return route.fallback()
+      if (action.type !== 'Load') arrival.push(action)
+      if (action.type === 'Complete') {
+        expect(
+          released,
+          'arrival cannot complete while the renamed view is held',
+        ).toBe(true)
+        expect(renamed).toHaveLength(1)
+        pending = false
+      }
+      return route.fulfill({ json: { pending } })
+    },
+  )
   await withFixtureResponse(
     page,
     (response) => response.url().includes('/empire-profiles/'),
@@ -207,13 +285,42 @@ test('a new empire chooses its title, look and name, then lands in Briefing at 1
   await expect(scene.getByRole('alert')).toContainText('1–40 characters')
   await scene.getByRole('button', { name: 'Suggest a random name' }).click()
   await expect(name).toHaveValue(/^\S+ \S+$/)
-  await name.fill('Terra')
+  await name.fill(chosenName)
   await scene.getByRole('button', { name: 'Name it' }).click()
 
-  await expect(scene).toContainText('Terra. It suits it.')
-  await scene.getByRole('button', { name: 'Begin' }).click()
+  await expect(scene).toContainText(`${chosenName}. It suits it.`)
+  try {
+    await withFixtureResponse(
+      page,
+      (r) =>
+        new URL(r.url()).pathname === api + '/overview' &&
+        r.request().method() === 'POST' &&
+        renameReads.has(r.request().postDataJSON()?.request_id),
+      async () => {
+        await withFixtureResponse(
+          page,
+          (r) =>
+            new URL(r.url()).pathname === api + '/commands' &&
+            r.request().method() === 'POST' &&
+            r.request().postDataJSON()?.gameplay?.command?.action?.type ===
+              'RenamePlanet',
+          () => scene.getByRole('button', { name: 'Begin' }).click(),
+        )
+        await expect.poll(() => renameReads.size).toBeGreaterThan(0)
+        expect(renamed).toHaveLength(1)
+        expect(arrival).not.toContainEqual({ type: 'Complete' })
+        await expect(scene).toBeVisible()
+        released = true
+        releaseRenameView()
+      },
+    )
+  } finally {
+    released = true
+    releaseRenameView()
+  }
   await expect(scene).toBeHidden()
   await expect(page).toHaveURL(new RegExp(`/b/${body.id}/briefing$`))
+  expect(renamed).toHaveLength(1)
   expect(profileWrites.map((w) => w.action.identity.title_id)).toEqual([
     'captain',
   ])

@@ -14,6 +14,12 @@ async function open(page: Page, input: Input = {}) {
     'galaxy-screen',
   )
 }
+test.afterEach(async ({ page }) => {
+  const unexpected = await page.evaluate(
+    () => window.galaxyScene?.snapshot().unexpected ?? [],
+  )
+  expect(unexpected, 'unexpected Galaxy feature port operations').toEqual([])
+})
 const row = (page: Page, index = 0) =>
   page
     .getByRole('region', { name: 'Galaxy positions' })
