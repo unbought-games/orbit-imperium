@@ -79,6 +79,16 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('./ship-customization.scenarios')).ShipCustomizationScenario,
   shipyard: async () => (await import('./shipyard.scenarios')).ShipyardScenario,
   empire: async () => (await import('./empire.scenarios')).EmpireScenario,
+  'report-triage': async () =>
+    (await import('./report-triage.scenario')).ReportTriageScenario,
+  'large-combat-reader': async () =>
+    (await import('./report-reader.scenarios')).LargeCombatReader,
+  'long-espionage-reader': async () =>
+    (await import('./report-reader.scenarios')).LongEspionageReader,
+  'published-espionage-reader': async () =>
+    (await import('./report-reader.scenarios')).PublishedEspionageReader,
+  'report-sharing-controls': async () =>
+    (await import('./report-sharing-controls.scenario')).SharingControls,
   'report-readability': async () =>
     (await import('./report-readability.scenario')).ReportReadabilityScenario,
   'galaxy-navigation': async () =>
