@@ -149,7 +149,13 @@ Engine fixtures cover capacity, completion, demolition guards, deterministic
 interception/damage, private reports, duplicate events, changed rules, ordinary
 raids and future parent/moon behavior. `make _db-missile_warfare` uses the existing
 disposable database runner for manufacture → launch → speed change → restart →
-impact → audit in serial and scoped modes. Client tests check capacity previews,
-quote binding and incoming warnings. `npm run test:ui -- missile-warfare.spec.ts`
-checks manufacturing, scrap, launch review, incoming flights and impact reports
-through the mobile launch journey. The Galaxy feature mounts cover the responsive missile menu and its target invalidation. Set `ORBIT_TEST_SCREENSHOTS=1` to retain captures.
+impact → audit in serial and scoped modes.
+
+`npm run test:ui -- missile-warfare.spec.ts` opens a Galaxy target, reviews
+two missiles, sends one bound launch and follows the new outgoing flight from
+Empire to its exact Fleets detail. `npm run test:components -- missile-inventory.component.spec.ts`
+exercises both missile types in Defense, silo capacity, manufacturing and scrap.
+The Galaxy feature mounts verify the responsive menu and target invalidation.
+Client tests in `missile-observations.test.ts` verify incoming fleet traffic and
+an independent defender impact report. Set `ORBIT_TEST_SCREENSHOTS=1` to retain
+the launch review capture.
