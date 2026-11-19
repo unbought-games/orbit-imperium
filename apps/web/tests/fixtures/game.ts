@@ -1,3 +1,4 @@
+import { sameBinding } from '../../src/client-model/commands'
 import { withBootstrapResponse } from './responses'
 import { productionFixture } from '../../src/test-support/production'
 import { universeSlug } from '../../src/client-model/universe-name'
@@ -11,6 +12,18 @@ export const binding = {
   player: id(2),
   universe: id(3),
   epoch: id(4),
+}
+const boundApi = (version: number, name: string) =>
+  `/api/v${version}/universes/${binding.universe}/${name}`
+
+function matchesContext(
+  context: components['schemas']['QueryContext'] | undefined,
+) {
+  return (
+    !!context?.binding &&
+    sameBinding(context.binding, binding) &&
+    typeof context.request_id === 'string'
+  )
 }
 export const resources = {
   metal: '6661686240',
@@ -80,11 +93,15 @@ export function routeWorld(
   options?: { times?: number },
 ) {
   return page.route(
-    '**/world',
-    (route) =>
-      route.request().postDataJSON()?.type === 'Tutorial'
+    `**${boundApi(4, 'world')}`,
+    (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const query = route.request().postDataJSON()
+      if (!matchesContext(query?.context)) return route.fallback()
+      return query.type === 'Tutorial'
         ? inactiveTutorial(route, fixtureWorldRevisions.get(page)?.() ?? '1')
-        : handler(route),
+        : handler(route)
+    },
     options,
   )
 }
@@ -174,10 +191,8 @@ export async function installGameFixture(
         : (options.sampledAt ?? Date.now())
     const is = (method: string, path: string) =>
       request.method() === method && url.pathname === path
-    const api = (version: number, name: string) =>
-      `/api/v${version}/universes/${binding.universe}/${name}`
     const post = (name: string, version: number = protocol) =>
-      is('POST', api(version, name))
+      is('POST', boundApi(version, name))
     if (
       is('DELETE', '/api/v1/session') &&
       request.headers()['x-csrf-token'] === 'fixture'
@@ -214,6 +229,16 @@ export async function installGameFixture(
       context = request.postDataJSON()
     } catch {
       return route.fallback()
+    }
+    // Query and command envelopes select the actor and epoch as well as the URL.
+    if (request.method() === 'POST' && url.pathname.includes('/universes/')) {
+      const envelope = context?.context ?? context?.gameplay ?? context
+      if (
+        !envelope?.binding ||
+        !sameBinding(envelope.binding, binding) ||
+        typeof (envelope.request_id ?? envelope.command_id) !== 'string'
+      )
+        return route.fallback()
     }
     // The development shell asks for its optional ship designs on mount and
     // the overview loads the player's public name. Customization tests supply
@@ -264,11 +289,11 @@ export async function installGameFixture(
     }
 
     if (
-      (protocol !== 2 && is('GET', api(2, 'binding'))) ||
-      (protocol === 4 && is('GET', api(3, 'binding')))
+      (protocol !== 2 && is('GET', boundApi(2, 'binding'))) ||
+      (protocol === 4 && is('GET', boundApi(3, 'binding')))
     )
       return route.fulfill({ status: 426, json: { code: 'UpgradeRequired' } })
-    if (is('GET', api(protocol, 'binding')))
+    if (is('GET', boundApi(protocol, 'binding')))
       return route.fulfill({
         json: {
           protocol,
@@ -278,7 +303,7 @@ export async function installGameFixture(
         },
       })
     if (
-      is('GET', api(4, 'updates')) &&
+      is('GET', boundApi(4, 'updates')) &&
       url.searchParams.get('epoch') === binding.epoch
     )
       return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
@@ -568,10 +593,12 @@ export async function playerProfilesFixture(
     expires_at?: number
   }> | null,
 ) {
-  await page.route('**/player-profiles', async (route) => {
+  await page.route(`**${boundApi(1, 'player-profiles')}`, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const { context } = route.request().postDataJSON()
+    if (!matchesContext(context)) return route.fallback()
     const players = profiles()
     if (players === null) return route.fulfill({ status: 503 })
-    const { context } = route.request().postDataJSON()
     const now = Math.floor(Date.now() / 1000)
     await route.fulfill({
       json: {
