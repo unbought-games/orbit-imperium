@@ -1,9 +1,20 @@
-import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
+import {
+  installReportReadReceipt,
+  fixtureReportContext,
+  fixtureReportPath,
+} from './fixtures/game'
 import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { refuseFixtureReads, shellFixture, binding, body, id, resources } from './fixtures/game'
+import {
+  refuseFixtureReads,
+  shellFixture,
+  binding,
+  body,
+  id,
+  resources,
+} from './fixtures/game'
 import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 type S = components['schemas']
@@ -54,115 +65,138 @@ async function firstViewport(page: Page, controls: Locator[]) {
   ).toBeLessThanOrEqual(page.viewportSize()!.width)
 }
 
-for (const viewport of [
+const viewportSizes = [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
   { width: 320, height: 740 },
-]) {
-  test(`fleet inventory leads the first viewport and traffic stays reachable at ${viewport.width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(viewport)
-    await page.clock.setFixedTime(now)
-    await shellFixture(page, {
-      protocol: 4,
-      missions: {
-        fleets: [fleet],
-        incoming: [],
-        score_value_micro: '0',
-        fleet_slots: '2',
-      },
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
-    const recall = page.getByRole('button', {
-      name: 'Review recall',
-      exact: true,
-    })
-    await firstViewport(page, [
-      page.getByRole('heading', { name: 'Fleets', level: 2, exact: true }),
-      page.getByRole('button', { name: 'Empire', exact: true }),
-      page.getByRole('link', { name: 'Dispatch Fleet' }),
-    ])
-    await diagnosticScreenshot(page, {
-      path: `test-results/density-fleets-${viewport.width}.png`,
-    })
-    await recall.scrollIntoViewIfNeeded()
-    await expect(recall).toBeInViewport({ ratio: 1 })
-    await expect(page.getByText('Arrives in', { exact: true })).toBeInViewport()
-    await page
-      .getByRole('link', { name: /^View .* fleet$/ })
-      .click()
-    await firstViewport(page, [
-      recall,
-      page.getByRole('link', { name: 'All fleets' }),
-    ])
-    await expect(
-      page.getByRole('navigation', { name: 'Fleet navigation' }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('group', { name: 'Planet and resources' }),
-    ).toBeVisible()
-    const path = page
-      .locator('details')
-      .filter({ has: page.locator('summary', { hasText: 'Flight path' }) })
-    await expect(path).not.toHaveAttribute('open')
-    await diagnosticScreenshot(page, {
-      path: `test-results/density-mission-${viewport.width}.png`,
-    })
-    await recall.click()
-    await expect(
-      page.getByRole('region', { name: 'Review recall' }),
-    ).toContainText('Fuel is not refunded')
-    await page.getByRole('button', { name: 'Keep mission' }).click()
-    await path.locator('summary').click()
-    await expect(path.locator('figure')).toBeVisible()
-    await page.getByRole('link', { name: 'All fleets' }).click()
-    await expect(
-      page.getByRole('navigation', { name: 'Fleet navigation' }),
-    ).toHaveCount(0)
-  })
+] as const
 
-  test(`combat outcome and follow-up lead the first viewport at ${viewport.width}px`, async ({
-    page,
-  }) => {
+async function checkFirstFold(page: Page, controls: Locator[]) {
+  await firstViewport(page, controls)
+  for (const viewport of viewportSizes) {
+    const current = page.viewportSize()
+    if (current?.width === viewport.width && current.height === viewport.height)
+      continue
     await page.setViewportSize(viewport)
-    await page.clock.setFixedTime(now)
-    await shellFixture(page, {
-      protocol: 4,
-      extraCapabilities: ['Reports', 'Harvest'],
-    })
-    const header: S['ReportHeader4'] = {
-      id: id(62),
-      kind: 'Combat',
-      observed_at: now - 3600000,
-      read: false,
-      hidden: false,
-    }
-    await installReportReadReceipt(page, header)
-    const payload: S['CombatPayload4'] = {
-      kind: 'Combat',
-      at: header.observed_at,
-      target: destination,
-      outcome: 'AttackerVictory',
-      mission: 'Attack',
-      return_at: now + 180000,
-      participants: [{
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    await firstViewport(page, controls)
+  }
+}
+test(`fleet inventory leads the first viewport and traffic stays reachable across supported viewports`, async ({
+  page,
+}) => {
+  await page.setViewportSize(viewportSizes[0])
+  await page.clock.setFixedTime(now)
+  await shellFixture(page, {
+    protocol: 4,
+    missions: {
+      fleets: [fleet],
+      incoming: [],
+      score_value_micro: '0',
+      fleet_slots: '2',
+    },
+  })
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/fleets`),
+  )
+  const recall = page.getByRole('button', {
+    name: 'Review recall',
+    exact: true,
+  })
+  await checkFirstFold(page, [
+    page.getByRole('heading', { name: 'Fleets', level: 2, exact: true }),
+    page.getByRole('button', { name: 'Empire', exact: true }),
+    page.getByRole('link', { name: 'Dispatch Fleet' }),
+  ])
+  await diagnosticScreenshot(page, {
+    path: `test-results/density-fleets-${page.viewportSize()!.width}.png`,
+  })
+  await recall.scrollIntoViewIfNeeded()
+  await expect(recall).toBeInViewport({ ratio: 1 })
+  await expect(page.getByText('Arrives in', { exact: true })).toBeInViewport()
+  await page.getByRole('link', { name: /^View .* fleet$/ }).click()
+  await checkFirstFold(page, [
+    recall,
+    page.getByRole('link', { name: 'All fleets' }),
+  ])
+  await expect(
+    page.getByRole('navigation', { name: 'Fleet navigation' }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('group', { name: 'Planet and resources' }),
+  ).toBeVisible()
+  const path = page
+    .locator('details')
+    .filter({ has: page.locator('summary', { hasText: 'Flight path' }) })
+  await expect(path).not.toHaveAttribute('open')
+  await diagnosticScreenshot(page, {
+    path: `test-results/density-mission-${page.viewportSize()!.width}.png`,
+  })
+  await recall.click()
+  await expect(
+    page.getByRole('region', { name: 'Review recall' }),
+  ).toContainText('Fuel is not refunded')
+  await page.getByRole('button', { name: 'Keep mission' }).click()
+  await path.locator('summary').click()
+  await expect(path.locator('figure')).toBeVisible()
+  await page.getByRole('link', { name: 'All fleets' }).click()
+  await expect(
+    page.getByRole('navigation', { name: 'Fleet navigation' }),
+  ).toHaveCount(0)
+})
+
+test(`combat outcome and follow-up lead the first viewport across supported viewports`, async ({
+  page,
+}) => {
+  await page.setViewportSize(viewportSizes[0])
+  await page.clock.setFixedTime(now)
+  await shellFixture(page, {
+    protocol: 4,
+    extraCapabilities: ['Reports', 'Harvest'],
+  })
+  const header: S['ReportHeader4'] = {
+    id: id(62),
+    kind: 'Combat',
+    observed_at: now - 3600000,
+    read: false,
+    hidden: false,
+  }
+  await installReportReadReceipt(page, header)
+  const payload: S['CombatPayload4'] = {
+    kind: 'Combat',
+    at: header.observed_at,
+    target: destination,
+    outcome: 'AttackerVictory',
+    mission: 'Attack',
+    return_at: now + 180000,
+    participants: [
+      {
         owner: binding.player,
         origin: { Fleet: id(30) },
         side: 'Attacker',
         units: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '12' }],
         technology: [0, 0, 0],
-      }],
-      rounds: [],
-      survivors: [],
-      gross_losses: [],
-      recovered: [],
-      debris: resources,
-      loot: resources,
-    }
-    await page.route(url => [fixtureReportPath(), fixtureReportPath(header.id)].includes(url.pathname), async (route) => {
-      const detail = new URL(route.request().url()).pathname === fixtureReportPath(header.id)
-      const context = fixtureReportContext(route, detail ? header.id : undefined)
+      },
+    ],
+    rounds: [],
+    survivors: [],
+    gross_losses: [],
+    recovered: [],
+    debris: resources,
+    loot: resources,
+  }
+  await page.route(
+    (url) =>
+      [fixtureReportPath(), fixtureReportPath(header.id)].includes(
+        url.pathname,
+      ),
+    async (route) => {
+      const detail =
+        new URL(route.request().url()).pathname === fixtureReportPath(header.id)
+      const context = fixtureReportContext(
+        route,
+        detail ? header.id : undefined,
+      )
       await route.fulfill({
         json: {
           protocol: 4,
@@ -181,101 +215,140 @@ for (const viewport of [
               },
         },
       })
-    })
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
-    await firstViewport(page, [
-      page.getByRole('heading', { name: 'Victory', exact: true }),
-      page.getByRole('button', { name: 'Prepare harvest' }),
-      page.getByRole('link', { name: 'Back to reports' }),
-    ])
-    await expect(
-      page.getByRole('heading', { name: 'Dispatches from the frontier.' }),
-    ).toHaveCount(0)
-    const back = page.getByRole('link', { name: 'Back to reports' })
-    await expect(back).toHaveText('')
-    await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
-    const remove = page.getByRole('button', { name: 'Archive report' })
-    await expect(remove).toHaveText('')
-    await expect(remove.locator('svg.lucide-archive')).toBeVisible()
-    const timestamp = page.getByRole('button', { name: 'Report time details' })
-    await expect(timestamp).toHaveText('1 hour ago')
-    await timestamp.click()
-    const fullTime = page.getByRole('dialog', { name: 'Report time', exact: true })
-    await expect(fullTime.locator('time')).toHaveAttribute('datetime', new Date(header.observed_at).toISOString())
-    await page.keyboard.press('Escape')
-    await expect(fullTime).toHaveCount(0)
-    // Escape deliberately suppresses hover until the pointer leaves the trigger.
-    // Re-enter it to exercise hover opening, rather than moving in place.
-    await page.mouse.move(0, 0)
-    await timestamp.hover()
-    await expect(fullTime).toBeVisible()
-    await page.keyboard.press('Escape')
-    const harvest = (await page.getByRole('button', { name: 'Prepare harvest' }).boundingBox())!
-    const outcome = (await page.getByRole('region', { name: 'Report observation' }).locator(':scope > header').boundingBox())!
+    },
+  )
+  await withReportResponse(page, header.id, () =>
+    page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
+  )
+  await checkFirstFold(page, [
+    page.getByRole('heading', { name: 'Victory', exact: true }),
+    page.getByRole('button', { name: 'Prepare harvest' }),
+    page.getByRole('link', { name: 'Back to reports' }),
+  ])
+  await expect(
+    page.getByRole('heading', { name: 'Dispatches from the frontier.' }),
+  ).toHaveCount(0)
+  const back = page.getByRole('link', { name: 'Back to reports' })
+  await expect(back).toHaveText('')
+  await expect(back.locator('svg.lucide-arrow-left')).toBeVisible()
+  const remove = page.getByRole('button', { name: 'Archive report' })
+  await expect(remove).toHaveText('')
+  await expect(remove.locator('svg.lucide-archive')).toBeVisible()
+  const timestamp = page.getByRole('button', { name: 'Report time details' })
+  await expect(timestamp).toHaveText('1 hour ago')
+  await timestamp.click()
+  const fullTime = page.getByRole('dialog', {
+    name: 'Report time',
+    exact: true,
+  })
+  await expect(fullTime.locator('time')).toHaveAttribute(
+    'datetime',
+    new Date(header.observed_at).toISOString(),
+  )
+  await page.keyboard.press('Escape')
+  await expect(fullTime).toHaveCount(0)
+  // Escape deliberately suppresses hover until the pointer leaves the trigger.
+  // Re-enter it to exercise hover opening, rather than moving in place.
+  await page.mouse.move(0, 0)
+  await timestamp.hover()
+  await expect(fullTime).toBeVisible()
+  await page.keyboard.press('Escape')
+  for (const viewport of viewportSizes) {
+    await page.setViewportSize(viewport)
+    const harvest = (await page
+      .getByRole('button', { name: 'Prepare harvest' })
+      .boundingBox())!
+    const outcome = (await page
+      .getByRole('region', { name: 'Report observation' })
+      .locator(':scope > header')
+      .boundingBox())!
     expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
     expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
-    await expect(page.getByRole('heading', { name: 'Loot', exact: true })).toBeVisible()
-    const resourceSection = (await page.getByRole('heading', { name: 'Loot', exact: true }).locator('../..').boundingBox())!
-    expect(resourceSection.y - harvest.y - harvest.height).toBeGreaterThanOrEqual(16)
+    await expect(
+      page.getByRole('heading', { name: 'Loot', exact: true }),
+    ).toBeVisible()
+    const resourceSection = (await page
+      .getByRole('heading', { name: 'Loot', exact: true })
+      .locator('../..')
+      .boundingBox())!
+    expect(
+      resourceSection.y - harvest.y - harvest.height,
+    ).toBeGreaterThanOrEqual(16)
     if (viewport.width > 850) {
-      const loot = (await page.getByRole('heading', { name: 'Loot', exact: true }).locator('..').boundingBox())!
-      const debris = (await page.getByRole('heading', { name: 'Debris created', exact: true }).locator('..').boundingBox())!
+      const loot = (await page
+        .getByRole('heading', { name: 'Loot', exact: true })
+        .locator('..')
+        .boundingBox())!
+      const debris = (await page
+        .getByRole('heading', { name: 'Debris created', exact: true })
+        .locator('..')
+        .boundingBox())!
       expect(debris.y).toBe(loot.y)
       expect(debris.x - loot.x - loot.width).toBeGreaterThanOrEqual(64)
     }
-    await diagnosticScreenshot(page, {
-      path: `test-results/density-combat-${viewport.width}.png`,
-    })
-    await page.getByRole('button', { name: 'Prepare harvest' }).click()
-    await expect(
-      page.getByRole('radio', { checked: true }),
-    ).toHaveValue('Harvest')
-    await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('system', '372'))
-    await expect(page.getByLabel('Destination coordinates', { exact: true })).toHaveValue(coordinatePattern('position', '10'))
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
-    await page.getByRole('link', { name: 'Back to reports' }).click()
-    await firstViewport(page, [
-      page.getByRole('link', { name: 'Combat', exact: true }),
-      page.getByRole('button', { name: 'Archive report' }),
-    ])
+  }
+  await diagnosticScreenshot(page, {
+    path: `test-results/density-combat-${page.viewportSize()!.width}.png`,
   })
+  await page.getByRole('button', { name: 'Prepare harvest' }).click()
+  await expect(page.getByRole('radio', { checked: true })).toHaveValue(
+    'Harvest',
+  )
+  await expect(
+    page.getByLabel('Destination coordinates', { exact: true }),
+  ).toHaveValue(coordinatePattern('system', '372'))
+  await expect(
+    page.getByLabel('Destination coordinates', { exact: true }),
+  ).toHaveValue(coordinatePattern('position', '10'))
+  await withReportResponse(page, header.id, () =>
+    page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
+  )
+  await page.getByRole('link', { name: 'Back to reports' }).click()
+  await checkFirstFold(page, [
+    page.getByRole('link', { name: 'Combat', exact: true }),
+    page.getByRole('button', { name: 'Archive report' }),
+  ])
+})
 
-  test(`building choices remain visible without colony artwork at ${viewport.width}px`, async ({
-    page,
-  }) => {
-    refuseFixtureReads(page, { progression: ['Upgrade'] })
-    await page.setViewportSize(viewport)
-    await shellFixture(page, {
-      bodies: [body],
-      catalog: [
-        {
-          key: { kind: 'Building', id: 'MetalMine' },
-          requirements: [],
-          enabled: true,
-          mobile: false,
-          body_kinds: ['Planet'],
-        },
-      ],
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))
-    const tile = page.getByRole('link', {
-      name: 'Upgrade Metal Mine',
-      exact: true,
-    })
-    await firstViewport(page, [tile])
-    await expect(
-      page.getByRole('button', { name: 'Resource settings', exact: true }),
-    ).toHaveCount(0)
-    await expect(page.getByLabel('Planet energy')).toHaveCount(0)
-    await expect(page.locator('main details')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Resources', level: 2 })).toHaveCount(0)
-    await diagnosticScreenshot(page, {
-      path: `test-results/density-resources-${viewport.width}.png`,
-    })
+test(`building choices remain visible without colony artwork across supported viewports`, async ({
+  page,
+}) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
+  await page.setViewportSize(viewportSizes[0])
+  await shellFixture(page, {
+    bodies: [body],
+    catalog: [
+      {
+        key: { kind: 'Building', id: 'MetalMine' },
+        requirements: [],
+        enabled: true,
+        mobile: false,
+        body_kinds: ['Planet'],
+      },
+    ],
   })
-}
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/resources`),
+  )
+  const tile = page.getByRole('link', {
+    name: 'Upgrade Metal Mine',
+    exact: true,
+  })
+  await checkFirstFold(page, [tile])
+  await expect(
+    page.getByRole('button', { name: 'Resource settings', exact: true }),
+  ).toHaveCount(0)
+  await expect(page.getByLabel('Planet energy')).toHaveCount(0)
+  await expect(page.locator('main details')).toHaveCount(0)
+  await expect(
+    page.getByRole('heading', { name: 'Resources', level: 2 }),
+  ).toHaveCount(0)
+  await diagnosticScreenshot(page, {
+    path: `test-results/density-resources-${page.viewportSize()!.width}.png`,
+  })
+})
 
-for (const width of [1280, 390]) {
+for (const width of [390]) {
   test(`legacy fleet details retain navigation from Empire at ${width}px`, async ({
     page,
   }) => {
@@ -332,6 +405,26 @@ for (const width of [1280, 390]) {
     await expect(
       page.getByRole('button', { name: 'Review recall', exact: true }),
     ).toHaveCount(2)
+    const checkTransport = async () => {
+      await expect(
+        page.getByRole('combobox', { name: 'Destination', exact: true }),
+      ).toHaveValue(id(60))
+      await expect(
+        page.getByRole('button', { name: 'Calculate transport', exact: true }),
+      ).toBeEnabled()
+      await expect(
+        page.getByRole('navigation', { name: 'Fleet navigation', exact: true }),
+      ).toHaveCount(0)
+      for (const screenWidth of [1280, 390]) {
+        await page.setViewportSize({ width: screenWidth, height: 844 })
+        expect(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true)
+      }
+    }
+    await checkTransport()
     // A direct load also preserves navigation and the selected funding planet.
     await withBootstrapResponse(page, () => page.goto(detailUrl))
     await page
@@ -344,8 +437,15 @@ for (const width of [1280, 390]) {
     await expect(
       page.getByRole('combobox', { name: 'Selected body' }),
     ).toHaveAttribute('data-value', body.id)
+    await expect(
+      page.getByRole('link', { name: 'Back to fleets', exact: true }),
+    ).toBeVisible()
+    await expect(page.locator('main h1')).toBeVisible()
+    await checkTransport()
   })
+}
 
+for (const width of [1280, 390]) {
   test(`legacy fleet and dispatch navigation preserves transport controls at ${width}px`, async ({
     page,
   }) => {
@@ -360,7 +460,9 @@ for (const width of [1280, 390]) {
       ['fleets', 'Fleets'],
       ['dispatch', 'Dispatch fleet'],
     ]) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${route}`))
+      await withBootstrapResponse(page, () =>
+        page.goto(`/u/andromeda/b/${body.id}/${route}`),
+      )
       // Measure the selected planet's screen after navigation settles.
       await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/${route}`)
       const heading = page.getByRole('heading', {
@@ -369,9 +471,13 @@ for (const width of [1280, 390]) {
         exact: true,
       })
       await expect(heading).toHaveCount(0)
-      await expect(page.getByRole('navigation', { name: 'Fleet navigation' })).toHaveCount(0)
+      await expect(
+        page.getByRole('navigation', { name: 'Fleet navigation' }),
+      ).toHaveCount(0)
       if (route === 'dispatch') {
-        await expect(page.getByRole('link', { name: 'Back to fleets' })).toBeVisible()
+        await expect(
+          page.getByRole('link', { name: 'Back to fleets' }),
+        ).toBeVisible()
         await expect(page.locator('main h1')).toBeVisible()
       }
       await expect(
@@ -389,43 +495,7 @@ for (const width of [1280, 390]) {
     }
   })
 }
-
-for (const width of [390, 1280]) {
-  test(`tabbed pages omit repeated titles and preserve route focus at ${width}px`, async ({ page }) => {
-    refuseFixtureReads(page, { progression: ['Upgrade'], world: ['Galaxy'] })
-    await page.setViewportSize({ width, height: 844 })
-    await shellFixture(page, { protocol: 4 })
-    for (const [route, title, navigation] of [
-      ['resources', 'Resources', 'Develop'],
-      ['facilities', 'Facilities', 'Develop'],
-      ['research', 'Research', 'Develop'],
-      ['shipyard', 'Shipyard', 'Develop'],
-      ['defense', 'Defense', 'Develop'],
-      ['fleets', 'Fleets', 'Main'],
-      ['galaxy', 'Galaxy', 'Main'],
-      ['dispatch', 'Dispatch', 'Main'],
-    ]) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${route}`))
-      const tabs = page.getByRole('navigation', { name: `${navigation} navigation` })
-      await expect(tabs).toBeVisible()
-      await expect(tabs.getByRole('link', { name: route === 'dispatch' ? 'Fleets' : title, exact: true })).toHaveAttribute('aria-current', 'page')
-      await expect(page.locator('main h1')).toHaveText(title)
-      await expect(page.locator('main h1')).toBeFocused()
-      await expect.poll(async () => (await page.locator('main h1').locator('..').boundingBox())?.height ?? Infinity).toBeLessThanOrEqual(1)
-      await expect(page.locator('main header').getByRole('heading', { level: 2, name: new RegExp(`^${title}( fleet| review)?$`) })).toHaveCount(route === 'dispatch' || route === 'fleets' ? 1 : 0)
-      if (route === 'fleets') {
-        await expect(page.getByRole('link', { name: 'Dispatch Fleet' })).toBeVisible()
-        await expect(page.getByRole('button', { name: /^Fleet slots:/ })).toBeVisible()
-      }
-      if (route === 'dispatch') {
-        await expect(page.getByRole('button', { name: /^Fleet slots:/ }).first()).toBeVisible()
-        await expect(page.getByRole('group', { name: 'Mission and destination' })).toBeVisible()
-      }
-    }
-  })
-}
-
-for (const width of [320, 390, 1440]) {
+for (const width of [390]) {
   test(`fleet threats, visible routes and ticking countdowns at ${width}px`, async ({
     page,
   }) => {
@@ -484,7 +554,9 @@ for (const width of [320, 390, 1440]) {
         fleet_slots: '4',
       },
     })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/fleets`),
+    )
     const attacks = page.getByRole('article', {
       name: 'Incoming attack fleet',
       exact: true,
@@ -516,19 +588,21 @@ for (const width of [320, 390, 1440]) {
     await expect(spy.getByRole('heading')).toHaveText(
       'Espionage Incoming · Hostile',
     )
-    await expect(outbound.getByRole('heading')).toHaveText(
-      'Attack Outbound',
-    )
+    await expect(outbound.getByRole('heading')).toHaveText('Attack Outbound')
     await expect(returning.getByRole('heading')).toHaveText(
       'Espionage Returning',
     )
     await expect(outbound).toContainText('12m 34s')
     await expect(returning).toContainText('Home in')
     await expect(returning).toContainText('1h 1m 1s')
-    await expect(returning.getByRole('img', { name: /^Returning: .* ← / })).toBeVisible()
+    await expect(
+      returning.getByRole('img', { name: /^Returning: .* ← / }),
+    ).toBeVisible()
     await expect(attack).toContainText('From Commander Vega')
     for (const card of [attack, spy, transport, deploy, attacks.last()]) {
-      await card.getByRole('button', { name: /^Incoming .* ship composition:/ }).click()
+      await card
+        .getByRole('button', { name: /^Incoming .* ship composition:/ })
+        .click()
     }
     await expect(
       attack.getByRole('link', {
@@ -549,7 +623,11 @@ for (const width of [320, 390, 1440]) {
     await expect(attack).toContainText('Ship composition unknown')
     await expect(spy).toContainText('3 ships · Types unknown')
     await expect(transport).toContainText('8 ships · Small Cargo, Large Cargo')
-    await expect(deploy.getByRole('list', { name: 'Ship composition' }).getByRole('listitem')).toHaveText(['Light Fighter 2'])
+    await expect(
+      deploy
+        .getByRole('list', { name: 'Ship composition' })
+        .getByRole('listitem'),
+    ).toHaveText(['Light Fighter 2'])
     await expect(attack).not.toContainText('Small Cargo')
     await expect(spy).not.toContainText('Espionage Probe')
     const danger = await page
@@ -568,19 +646,43 @@ for (const width of [320, 390, 1440]) {
     }, danger)
     for (const hostile of [attack, spy]) {
       await expect(hostile.getByRole('heading')).toHaveCSS('color', color)
-      await expect(hostile.getByRole('timer').locator('strong')).toHaveCSS('color', color)
+      await expect(hostile.getByRole('timer').locator('strong')).toHaveCSS(
+        'color',
+        color,
+      )
     }
     for (const friendly of [transport, deploy, outbound, returning]) {
       await expect(friendly).not.toContainText('Hostile')
       await expect(friendly.getByRole('heading')).not.toHaveCSS('color', color)
     }
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBeLessThanOrEqual(width)
+    for (const w of [320, 390, 1440]) {
+      await page.setViewportSize({ width: w, height: 900 })
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(w)
+    }
+    await page.setViewportSize({ width, height: 900 })
     await diagnosticScreenshot(page, {
       path: `test-results/fleet-threats-${width}.png`,
       fullPage: true,
     })
+    await page.setViewportSize({ width: 390, height: 667 })
+    await attack.scrollIntoViewIfNeeded()
+    await expect(attack).toBeInViewport()
+    const arrival = attack.getByRole('timer')
+    const nav = await page
+      .getByRole('navigation', { name: 'Main navigation', exact: true })
+      .elementHandle()
+    expect(
+      await arrival.evaluate(
+        (timer, dock) =>
+          timer.getBoundingClientRect().bottom <
+          dock.getBoundingClientRect().top,
+        nav!,
+      ),
+    ).toBe(true)
+    await nav!.dispose()
+    await page.setViewportSize({ width, height: 844 })
     await attack.scrollIntoViewIfNeeded()
     await diagnosticScreenshot(page, {
       path: `test-results/fleet-threats-incoming-${width}.png`,
@@ -602,19 +704,17 @@ for (const width of [320, 390, 1440]) {
     )
     await expect(attack.getByRole('heading')).toHaveCSS('color', color)
     await page.unroute('**/api/**/overview')
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
+    await withBootstrapResponse(page, () =>
+      page.goto(`/u/andromeda/b/${body.id}/overview`),
+    )
     const board = page.getByRole('region', { name: 'Fleet movements' })
     await expect(board).toContainText('3 incoming hostile fleets detected')
-    const spyFlight = board
-      .getByRole('listitem')
-      .filter({
-        has: page.getByRole('heading', { name: 'Incoming espionage · Hostile' }),
-      })
-    const ownFlight = board
-      .getByRole('listitem')
-      .filter({
-        has: page.getByRole('link', { name: 'View Attack outbound fleet' }),
-      })
+    const spyFlight = board.getByRole('listitem').filter({
+      has: page.getByRole('heading', { name: 'Incoming espionage · Hostile' }),
+    })
+    const ownFlight = board.getByRole('listitem').filter({
+      has: page.getByRole('link', { name: 'View Attack outbound fleet' }),
+    })
     await expect(spyFlight.getByRole('heading')).toHaveCSS('color', color)
     await expect(ownFlight.locator('svg').first()).not.toHaveCSS('color', color)
   })

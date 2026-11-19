@@ -21,7 +21,11 @@ import {
 } from '@tanstack/react-router'
 import { useGameSession } from './session-context'
 import { ScreenContext } from './screen-context'
-import { resolveShellRoute, type ShellParams } from './shell-route'
+import {
+  resolveShellRoute,
+  usesVisuallyHiddenHeading,
+  type ShellParams,
+} from './shell-route'
 import { withoutBodySearch } from './page-search'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
@@ -32,7 +36,7 @@ import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { bodyName, coordinates } from '../ui/format'
-import { buildPages, pageTitles } from './navigation-model'
+import { pageTitles } from './navigation-model'
 import { ArrowLeft } from 'lucide-react'
 import { developmentActivity, developmentBlockers } from './navigation-activity'
 export function GameShell() {
@@ -235,20 +239,11 @@ function GameShellContent() {
         : {}),
     })
   }
-  const hideRouteHeading =
-    available &&
-    (page === 'overview' ||
-      buildPages.includes(page) ||
-      page === 'galaxy' ||
-      page === 'fleets' ||
-      (page === 'dispatch' && view.protocol === 4) ||
-      page === 'settings' ||
-      page === 'rewards' ||
-      page === 'menu' ||
-      page === 'alliance' ||
-      page === 'alliance-create' ||
-      page === 'alliance-discover' ||
-      (view.protocol === 4 && (page === 'reports' || page === 'messages')))
+  const hideRouteHeading = usesVisuallyHiddenHeading(
+    page,
+    available,
+    view.protocol,
+  )
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'

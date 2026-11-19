@@ -321,3 +321,74 @@ for (const signup of [true, false]) {
     }
   }
 }
+
+test('production deep links and public entries share a root-scoped installable manifest and decodable icons', async ({
+  request,
+  page,
+}) => {
+  // Inspect the document as served, before a client script can amend its head.
+  const game = await request.get(
+    '/u/andromeda/b/00000000-0000-4000-8000-000000000005/resources',
+  )
+  expect(game.ok()).toBe(true)
+  const metadata = await page.evaluate(
+    (html) => {
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      return {
+        manifest: doc
+          .querySelector('link[rel="manifest"]')
+          ?.getAttribute('href'),
+        theme: doc
+          .querySelector('meta[name="theme-color"]')
+          ?.getAttribute('content'),
+        appleCapable: doc
+          .querySelector('meta[name="apple-mobile-web-app-capable"]')
+          ?.getAttribute('content'),
+      }
+    },
+    await game.text(),
+  )
+  expect(metadata.manifest).toBe('/manifest.webmanifest')
+  const manifestURL = new URL(metadata.manifest!, game.url())
+  const response = await request.get(manifestURL.href)
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['content-type']).toContain(
+    'application/manifest+json',
+  )
+  const manifest = await response.json()
+  expect(manifest).toMatchObject({
+    id: '/',
+    name: 'Orbit Imperium',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+  })
+  expect(metadata.appleCapable).toBe('yes')
+  expect(metadata.theme).toBe(manifest.theme_color)
+  for (const icon of manifest.icons) {
+    const url = new URL(icon.src, manifestURL)
+    expect(url.origin).toBe(manifestURL.origin)
+    const response = await request.get(url.href)
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain(icon.type)
+    const dimensions = await page.evaluate(async (src) => {
+      const image = new Image()
+      image.src = src
+      await image.decode()
+      return `${image.naturalWidth}x${image.naturalHeight}`
+    }, url.href)
+    if (icon.sizes !== 'any') expect(dimensions).toBe(icon.sizes)
+  }
+
+  for (const path of [
+    '/',
+    '/login',
+    '/signup',
+    '/homepage.html',
+    '/homepage-closed.html',
+  ]) {
+    const entry = await request.get(path)
+    expect(entry.ok()).toBe(true)
+    expect(await entry.text()).toContain('href="/manifest.webmanifest"')
+  }
+})

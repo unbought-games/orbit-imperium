@@ -1,3 +1,4 @@
+import { buildPages } from './navigation-model'
 import type { BoundView } from '../client-model/commands'
 import { universeSlug } from '../client-model/universe-name'
 import { bodyPages, resolveNamedDestination, type Page } from './routes'
@@ -64,4 +65,27 @@ export function resolveShellRoute(
     canonicalizing,
     parentAfterDestruction: parent?.id,
   }
+}
+
+/** These screens supply their own visible title. The route heading remains a focus target. */
+export function usesVisuallyHiddenHeading(
+  page: Page,
+  available: boolean,
+  protocol: BoundView['protocol'],
+) {
+  return (
+    available &&
+    (page === 'overview' ||
+      buildPages.includes(page) ||
+      page === 'galaxy' ||
+      page === 'fleets' ||
+      (page === 'dispatch' && protocol === 4) ||
+      page === 'settings' ||
+      page === 'rewards' ||
+      page === 'menu' ||
+      page === 'alliance' ||
+      page === 'alliance-create' ||
+      page === 'alliance-discover' ||
+      (protocol === 4 && (page === 'reports' || page === 'messages')))
+  )
 }
