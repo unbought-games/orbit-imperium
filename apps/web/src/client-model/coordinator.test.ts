@@ -1122,6 +1122,166 @@ it('reconciles unread report alerts from live invalidations and reconnect snapsh
   expect(model.store.getState().view).toBeNull()
 })
 
+it('rolls back only the refused archive when independent report gestures complete out of order', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { mergeReportHeaders, projectedReportInbox, unreadReportCount } =
+    await import('./report-state')
+  const { session, snapshot } = readyFixture(4)
+  const { c, port } = setup()
+  await c.initialize(session, snapshot)
+  const [first, second] = [id(700), id(701)]
+  const rows = [first, second].map((id) => ({
+    id,
+    kind: 'Espionage',
+    observed_at: 1000,
+    read: false,
+    hidden: false,
+  }))
+  c.store.setState({
+    reportHeaders: mergeReportHeaders(new Map(), rows, '1'),
+    reportInbox: {
+      items: [first, second],
+      revision: '1',
+      next_cursor: null,
+      as_of_ms: 1000,
+      has_more: false,
+      unread_count: 2,
+    },
+  })
+  const refuse = new Map<string, () => void>()
+  port.submit = (envelope) => {
+    const command = envelope.command
+    if (command.type !== 'World' || command.action.type !== 'SetReportHidden')
+      throw Error('Unexpected report preference')
+    const report = command.action.report
+    return new Promise((resolve) => {
+      refuse.set(report, () =>
+        resolve({
+          protocol: 4,
+          binding: snapshot.candidate.binding,
+          command_id: envelope.command_id,
+          status: 'Rejected',
+          code: 'NotFound',
+          admitted_at: 1000,
+          executed_at: 1000,
+        }),
+      )
+    })
+  }
+  const archive = (report: string) =>
+    c.send({
+      type: 'World',
+      action: { type: 'SetReportHidden', report, hidden: true },
+    })
+  function expectVisible(ids: string[]) {
+    const state = c.store.getState()
+    expect(projectedReportInbox(state)?.items.map((row) => row.id)).toEqual(ids)
+    expect(unreadReportCount(state)).toBe(ids.length)
+  }
+  const pendingFirst = archive(first)
+  expectVisible([second])
+  const pendingSecond = archive(second)
+  expectVisible([])
+  expect([...refuse.keys()]).toEqual([first, second])
+  refuse.get(second)!()
+  await pendingSecond
+  expectVisible([second])
+  refuse.get(first)!()
+  await pendingFirst
+  expectVisible([first, second])
+  expect(
+    [...c.store.getState().reportHeaders.values()].map(
+      ({ header }) => header.hidden,
+    ),
+  ).toEqual([false, false])
+})
+
+it('a throttled detail archive never commits until a new gesture, then returns on its receipt before refresh', async () => {
+  const { readyFixture } = await import('../test-support/bootstrap')
+  const { observeReportVisibilityCommit } = await import(
+    '../features/report-visibility'
+  )
+  const { session, snapshot } = readyFixture(4)
+  let now = 0
+  const { c, port, sent } = setup(() => now)
+  await c.initialize(session, snapshot)
+  const report = id(700)
+  const command = {
+    type: 'World',
+    action: { type: 'ArchiveReport', report, revoke_share: false },
+  } as const
+  let commits = 0
+  function observe() {
+    return observeReportVisibilityCommit(c.store, report, true, () => {
+      commits++
+    })
+  }
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    throw { status: 429, retryAfterMs: 60_000 }
+  }
+  const stop = observe()
+  expect(await c.send(command)).toBeUndefined()
+  stop()
+  expect(commits).toBe(0)
+  now = 60_000
+  c.tick()
+  expect(sent).toHaveLength(1)
+  expect(commits).toBe(0)
+
+  const revision = String(Number(snapshot.view.viewer_revision) + 1)
+  let deliverReceipt!: () => void
+  let completeRefresh!: () => void
+  let requestRefresh!: () => void
+  const receipt = new Promise<void>((resolve) => {
+    deliverReceipt = resolve
+  })
+  const refresh = new Promise<void>((resolve) => {
+    completeRefresh = resolve
+  })
+  const refreshing = new Promise<void>((resolve) => {
+    requestRefresh = resolve
+  })
+  port.submit = async (envelope) => {
+    sent.push(envelope.command_id)
+    await receipt
+    return {
+      protocol: 4,
+      binding: snapshot.candidate.binding,
+      command_id: envelope.command_id,
+      admitted_at: 1000,
+      executed_at: 1000,
+      status: 'Committed',
+      result_ids: [],
+      minimum_viewer_revision: revision,
+    }
+  }
+  port.view = async (context) => {
+    requestRefresh()
+    await refresh
+    return {
+      ...snapshot.view,
+      request_id: context.request_id,
+      viewer_revision: revision,
+    }
+  }
+  observe()
+  const archive = c.send(command)
+  expect(commits).toBe(0)
+  deliverReceipt()
+  try {
+    await refreshing
+    expect(c.view?.viewer_revision).toBe(snapshot.view.viewer_revision)
+    expect(commits).toBe(1)
+  } finally {
+    completeRefresh()
+  }
+  await archive
+  expect(sent).toHaveLength(2)
+  expect(sent[0]).not.toBe(sent[1])
+  expect(commits).toBe(1)
+})
+
 it('prunes superseded report failures after a successful retry', async () => {
   const { readyFixture } = await import('../test-support/bootstrap')
   const { mergeReportHeaders } = await import('./report-state')

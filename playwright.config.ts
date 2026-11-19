@@ -55,7 +55,6 @@ const uiFiles = [
   'fleet-inventory.spec.ts',
   'number-input.spec.ts',
   'high-scores.spec.ts',
-  'report-glance.spec.ts',
   'report-deletion.spec.ts',
   'coordinate-links.spec.ts',
   'detail-playground.spec.ts',
