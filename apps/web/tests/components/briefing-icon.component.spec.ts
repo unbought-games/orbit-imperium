@@ -1,4 +1,5 @@
 import { expect, test } from './fixture'
+import { body } from '../../src/test-support/empire'
 import { tutorialFixture } from '../../src/test-support/tutorial'
 import type {} from './empire.scenarios'
 
@@ -33,7 +34,8 @@ for (const width of [390]) {
         exact: true,
       })
       await expect(unread).toHaveAttribute('data-attention', 'true')
-      const href = (await unread.getAttribute('href'))!
+      const href = `/u/andromeda/b/${body.id}/briefing`
+      await expect(unread).toHaveAttribute('href', href)
       const geometry = await page.evaluate(
         ([name, book, resources]) => {
           const h = name!.getBoundingClientRect(),

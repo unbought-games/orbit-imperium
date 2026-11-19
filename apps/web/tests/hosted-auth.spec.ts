@@ -1,6 +1,9 @@
 import { test, expect, type Page } from './fixtures/test'
 import { binding, body, installGameFixture } from './fixtures/game'
-import { withBootstrapResponse } from './fixtures/responses'
+import {
+  withBootstrapResponse,
+  withFixtureResponseStatus,
+} from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 const accounts = 'https://accounts.unbought.games'
@@ -203,6 +206,36 @@ test(
     expect(fixture.enrollments).toEqual([{ universe: binding.universe }])
   },
 )
+
+test('hosted enrollment configuration can be retried without losing the authenticated account', async ({
+  page,
+  baseURL,
+}) => {
+  const fixture = await hostedFixture(page, baseURL, {
+    failConfig: true,
+    returning: true,
+  })
+  fixture.authenticate()
+  await withFixtureResponseStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/auth/config',
+    () => withBootstrapResponse(page, () => page.goto(joinPath)),
+    503,
+  )
+  await expect(page.getByRole('alert')).toHaveText(
+    'Unable to load your universe. Please try again.',
+  )
+  expect(fixture.enrollments).toEqual([])
+  await withBootstrapResponse(page, () =>
+    page.getByRole('button', { name: 'Try again', exact: true }).click(),
+  )
+  await expect(page).toHaveURL(`${baseURL}${empirePath}`)
+  await expect(page.locator('main h1')).toContainText('Empire —')
+  expect(fixture.enrollments).toEqual([])
+  expect(fixture.automaticEnrollments).toEqual([])
+})
 
 test('a join return path with a different hosted binding opens universe selection without enrolling', async ({
   page,

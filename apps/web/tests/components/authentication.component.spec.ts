@@ -4,7 +4,7 @@ import type {} from './authentication.scenario'
 // HostedJoin uses a real native document navigation to /. Serve the destination
 // feature there using this fixture's prebuilt entry; normal game bootstrap and
 // membership retrieval remain covered at the application's hosted boundary.
-async function expectLanding(page: Page, mode: 'member-home' | 'choice') {
+async function expectChooserLanding(page: Page) {
   const writes: string[] = []
   let documents = 0
   await page.exposeFunction('recordHostedEnrollment', (universe: string) => {
@@ -19,7 +19,7 @@ async function expectLanding(page: Page, mode: 'member-home' | 'choice') {
       documents++
       return route.fulfill({
         status: 302,
-        headers: { location: `/?scenario=authentication&mode=${mode}` },
+        headers: { location: '/?scenario=authentication&mode=choice' },
       })
     },
   )
@@ -141,7 +141,7 @@ test('the named universe chooser submits its UUID and displays authoritative ref
 test('a direct hosted recovery visit waits for the player to retry before attempting enrollment', async ({
   page,
 }) => {
-  const landing = await expectLanding(page, 'choice')
+  const landing = await expectChooserLanding(page)
   await page.goto('/?scenario=authentication&mode=join')
   await expect(page.locator('html')).toHaveAttribute(
     'data-component-ready',
@@ -255,21 +255,4 @@ test('the anonymous index alias replaces its route and renders the home sign-in 
   await expect(
     page.getByRole('link', { name: 'Sign in', exact: true }),
   ).toBeVisible()
-})
-
-test('retrying hosted configuration redirects an existing member without attempting enrollment', async ({
-  page,
-}) => {
-  const landing = await expectLanding(page, 'member-home')
-  await page.goto('/?scenario=authentication&mode=join&member&config=retry')
-  const retry = page.getByRole('button', { name: 'Try again', exact: true })
-  await expect(page.getByRole('alert')).toHaveText(
-    'Unable to load your universe. Please try again.',
-  )
-  await retry.click()
-  await expect(page.getByRole('status', { name: 'Current route' })).toHaveText(
-    '/u/andromeda/b/00000000-0000-4000-8000-000000000005/overview',
-  )
-  expect(landing.documents()).toBe(1)
-  expect(landing.writes).toEqual([])
 })

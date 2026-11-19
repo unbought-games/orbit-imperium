@@ -124,7 +124,9 @@ test('production throttle gives one cooldown notice and waits for an explicit re
 test('an admitted in-memory production receipt fences the next slider edit until the new confirmed revision', async ({
   page,
 }) => {
-  await page.goto('/?scenario=resources&page=production&protocol=3')
+  await page.goto(
+    '/?scenario=resources&page=production&protocol=3&mode=building',
+  )
   await expect(page.locator('html')).toHaveAttribute(
     'data-component-ready',
     'resources',
@@ -136,7 +138,9 @@ test('an admitted in-memory production receipt fences the next slider edit until
     .filter({ has: page.getByText('Energy balance', { exact: true }) })
     .last()
   await expect(metal).toHaveValue('100')
-  const initial = await balance.innerText()
+  const confirmedEnergy = balance.locator('strong')
+  await expect(confirmedEnergy).toHaveText('26')
+  await expect(balance.locator('small')).toHaveText('48 supplied / 22 demanded')
   await page.evaluate(() => window.resourceScene.pending(true))
   await metal.press('Home')
   await expect
@@ -148,12 +152,15 @@ test('an admitted in-memory production receipt fences the next slider edit until
       ),
     )
     .toEqual(['pending'])
+  await expect(metal).toHaveValue('0')
+  await expect(confirmedEnergy).toHaveText('26')
+  await expect(balance.locator('small')).toHaveText('48 supplied / 22 demanded')
   await metal.press('End')
   await expect(metal).toHaveValue('100')
   await expect(panel.getByRole('status')).toContainText(
     'Saving production changes',
   )
-  expect(await balance.innerText()).toBe(initial)
+  await expect(confirmedEnergy).toHaveText('26')
   const first = await page.evaluate(() =>
     window.resourceScene.sent.map((e) => e.command),
   )
