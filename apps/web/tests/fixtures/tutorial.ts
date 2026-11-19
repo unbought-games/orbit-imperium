@@ -7,7 +7,7 @@ import {
 } from '../../src/test-support/tutorial'
 import { validateTutorialFixture as validate } from '../../src/test-support/tutorial'
 import { progressionTarget } from '../../src/features/tutorial/model'
-import { installGameFixture, matchesFixtureContext, matchesFixtureGameplay, body, binding, id } from './game'
+import { installGameFixture, fixtureReportContext, matchesFixtureContext, matchesFixtureGameplay, body, binding, id } from './game'
 import { productionFixture } from '../../src/test-support/production'
 import { routeProgressionOptions } from './progression-options'
 type S = components['schemas']
@@ -563,12 +563,10 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
     })
   })
   await page.route(`**${prefix}/reports`, (route) => {
-    if (route.request().method() !== 'POST') return route.fallback()
-    const q = route.request().postDataJSON()
-    if (!matchesFixtureContext(q?.context)) return unexpectedFixtureApi(route)
+    const q = fixtureReportContext(route)
     return route.fulfill({
       json: {
-        ...envelope(q.context.request_id),
+        ...envelope(q.request_id),
         data: {
           items: ['return', 'complete', 'reinvest'].includes(state.stage)
             ? [state.report.header]
@@ -581,9 +579,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
     })
   })
   await page.route(`**${prefix}/reports/${state.report.header.id}`, (route) => {
-    if (route.request().method() !== 'POST') return route.fallback()
-    const q = route.request().postDataJSON()
-    if (!matchesFixtureContext(q)) return unexpectedFixtureApi(route)
+    const q = fixtureReportContext(route, state.report.header.id)
     return route.fulfill({
       json: { ...envelope(q.request_id), data: state.report },
     })

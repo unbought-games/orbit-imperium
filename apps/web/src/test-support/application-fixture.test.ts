@@ -298,9 +298,14 @@ it('a read acknowledgement needs the installed report and its own matched gamepl
 
 it('report fixtures bind direct detail and nested list/read requests before invoking scenario logic', () => {
   const path = prefix + '/reports'
-  expect(fixtureReportContext(call('POST', path, { context }).route)).toEqual(
+  const list = {
     context,
-  )
+    cursor: null,
+    kind: null,
+    include_hidden: false,
+    limit: 50,
+  }
+  expect(fixtureReportContext(call('POST', path, list).route)).toEqual(context)
   expect(
     fixtureReportContext(
       call('POST', path + '/read', { context, reports: [id(81)] }).route,
@@ -313,6 +318,21 @@ it('report fixtures bind direct detail and nested list/read requests before invo
       id(81),
     ),
   ).toEqual(context)
+  for (const invalid of [
+    { context },
+    { ...list, limit: 0 },
+    { ...list, include_hidden: 'yes' },
+  ]) {
+    expect(() =>
+      fixtureReportContext(call('POST', path, invalid).route),
+    ).toThrow('Unexpected fixture API operation')
+  }
+  expect(() =>
+    fixtureReportContext(
+      call('POST', path + '/read', { context, reports: [] }).route,
+      'read',
+    ),
+  ).toThrow('Unexpected fixture API operation')
   for (const wrong of [
     call('PUT', path + '/' + id(81), context),
     call('POST', path + '/' + id(82), context),

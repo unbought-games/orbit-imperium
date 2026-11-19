@@ -1058,7 +1058,7 @@ test(
     try {
       const pending = page.waitForRequest(matchesOverview)
       await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-      await pending
+      const held = await pending
       for (const heading of ['Shipyard', 'Resources', 'Empire']) {
         await page.goBack()
         await expect(page.locator('main h1')).toContainText(heading)
@@ -1071,6 +1071,7 @@ test(
         page.getByRole('link', { name: 'Empire', exact: true }),
       ).toHaveAttribute('aria-current', 'page')
       expect(purchases()).toBe(0)
+      await withFixtureResponse(page, response => response.request() === held, async () => release())
     } catch (error) {
       await attachFailureScreenshots([page], test.info())
       throw error
@@ -2363,10 +2364,16 @@ test('empty reports wait for a successful response and offer planet-aware naviga
   let pending = new Promise<void>((resolve) => {
     release = resolve
   })
-  const settleReports = trackFixtureResponses(page, request => request.method() === 'POST' &&
-    new URL(request.url()).pathname === fixtureReportPath() && matchesFixtureContext(request.postDataJSON()?.context))
+  const inboxPage = (request: import('@playwright/test').Request) => {
+    if (request.method() !== 'POST' || new URL(request.url()).pathname !== fixtureReportPath()) return false
+    const query = request.postDataJSON()
+    return matchesFixtureContext(query?.context) && query.cursor === null && query.kind === null && query.filter?.unread_only === false
+  }
+  const settleReports = trackFixtureResponses(page, inboxPage)
+  const deliverInbox = () => withFixtureResponse(page, response => inboxPage(response.request()), async () => release())
   await page.route(url => url.pathname === fixtureReportPath(), async (route) => {
     const context = fixtureReportContext(route)
+    if (!inboxPage(route.request())) return route.fallback()
     requests++
     await pending
     await route.fulfill({
@@ -2391,6 +2398,8 @@ test('empty reports wait for a successful response and offer planet-aware naviga
     await page.goto(`/u/andromeda/b/${body.id}/reports`)
     await expect(page.getByText('Loading report history…')).toBeVisible()
     await expect(empty).toHaveCount(0)
+    await expect.poll(() => requests).toBeGreaterThan(0)
+    await deliverInbox()
   } finally {
     release()
     await settleReports()
@@ -2442,6 +2451,7 @@ test('empty reports wait for a successful response and offer planet-aware naviga
     await expect.poll(() => requests).toBeGreaterThan(previousRequests)
     await expect(empty).toBeVisible()
     expect(await empty.boundingBox()).toEqual(beforeRefresh)
+    await deliverInbox()
   } finally {
     release()
     await settleReports()

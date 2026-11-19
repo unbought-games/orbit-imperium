@@ -176,8 +176,14 @@ export function fixtureReportContext(
   )
     return unexpectedFixtureApi(route)
   const payload = request.postDataJSON()
-  const context = suffix && suffix !== 'read' ? payload : payload?.context
-  if (!matchesFixtureContext(context)) return unexpectedFixtureApi(route)
+  const schema = !suffix
+    ? 'ReportsQuery4'
+    : suffix === 'read'
+      ? 'ReportsReadRequest'
+      : 'QueryContext'
+  if (!fixtureContract(schema, payload)) return unexpectedFixtureApi(route)
+  const context = !suffix || suffix === 'read' ? payload.context : payload
+  if (!sameBinding(context.binding, binding)) return unexpectedFixtureApi(route)
   return context
 }
 
@@ -658,7 +664,7 @@ export async function installGameFixture(
         json: {
           protocol: 4,
           binding,
-          request_id: context.context.request_id,
+          request_id: fixtureReportContext(route).request_id,
           viewer_revision: options.viewerRevision?.() ?? '1',
           sampled_at: sampledAt,
           as_of_ms: sampledAt,
