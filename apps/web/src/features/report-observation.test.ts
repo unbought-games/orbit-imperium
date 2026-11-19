@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
+import { expandedEspionage } from '../test-support/espionage-observation'
 import { ReportObservation } from './report-observation'
 import { PlayerProfilesContext } from '../shell/player-profiles-context'
 import { PlayerProfilesController } from '../client-model/player-profiles'
@@ -425,4 +426,31 @@ it('uses the recorded body kind to keep moon structures out of planet reports', 
     expect(planet).not.toContain(name)
     expect(render({ ...observation, target: { kind: 'Moon' } })).toContain(name)
   }
+})
+
+it('pairs expanded planet levels with their recorded groups in publication order', () => {
+  const text = renderToStaticMarkup(
+    createElement(ReportObservation, {
+      payload: expandedEspionage,
+      shared: true,
+    }),
+  ).replace(/<[^>]+>/g, '')
+  expect(text).toContain(
+    [
+      'BuildingsMinesMetal MineLevel 7Crystal MineLevel 6Deuterium SynthesizerLevel 0',
+      'PowerSolar PlantLevel 9Fusion ReactorLevel 3',
+      'StorageMetal StorageLevel 0Crystal StorageLevel 0Deuterium TankLevel 0',
+      'ProductionRobotics FactoryLevel 0Nanite FactoryLevel 1',
+      'InfrastructureShipyardLevel 0Research LabLevel 2',
+    ].join(''),
+  )
+  expect(text).toContain(
+    [
+      'ResearchCombat and espionageWeapons TechnologyLevel 8Shielding TechnologyLevel 0Armour TechnologyLevel 0Espionage TechnologyLevel 5',
+      'Drive researchCombustion DriveLevel 0Impulse DriveLevel 0Hyperspace DriveLevel 0',
+      'Basic researchEnergy TechnologyLevel 0Plasma TechnologyLevel 2',
+      'Advanced researchComputer TechnologyLevel 0AstrophysicsLevel 0',
+    ].join(''),
+  )
+  expect(text).not.toMatch(/Observed level|Lunar Base|Sensor Phalanx|Jump Gate/)
 })
