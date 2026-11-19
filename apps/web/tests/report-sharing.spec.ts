@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/test'
-import { shellFixture, binding, id } from './fixtures/game'
+import { installGameFixture, binding, id } from './fixtures/game'
 import type { Page } from '@playwright/test'
 import { reportPath } from './fixtures/report-path'
 import {
@@ -110,7 +110,7 @@ async function openSharingDetail(page: Page, published = false) {
   let hidden = false
   let starred = published
   let revision = 1
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     extraCapabilities: ['Reports'],
     viewerRevision: () => String(revision),
@@ -330,11 +330,9 @@ test.describe('touch sharing controls', () => {
     await withReportListResponse(page, () =>
       page.getByRole('link', { name: 'Back to reports' }).click(),
     )
-    const row = page
-      .getByRole('article')
-      .filter({
-        has: page.getByRole('link', { name: 'Espionage', exact: true }),
-      })
+    const row = page.getByRole('article').filter({
+      has: page.getByRole('link', { name: 'Espionage', exact: true }),
+    })
     await withFixtureResponse(
       page,
       (r) =>

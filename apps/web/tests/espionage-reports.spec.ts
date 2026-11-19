@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/test'
-import { shellFixture, binding, id } from './fixtures/game'
+import { installGameFixture, binding, id } from './fixtures/game'
 import { withReportResponse } from './fixtures/responses'
 import { reportPath } from './fixtures/report-path'
 import { expandedEspionage } from '../src/test-support/espionage-observation'
@@ -7,7 +7,7 @@ import { expandedEspionage } from '../src/test-support/espionage-observation'
 test('authenticated espionage toolbar and target actions fit the shell', async ({
   page,
 }) => {
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     extraCapabilities: ['Reports', 'Attack'],
     missions: {

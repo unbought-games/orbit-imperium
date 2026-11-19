@@ -178,6 +178,29 @@ test('unbroken observed labels wrap beside their levels without disclosing hidde
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width)
   }
+  const translated = research.getByText(longName, { exact: true })
+  const art = translated
+    .locator('xpath=ancestor::div[parent::dl]')
+    .locator('img')
+  await art.scrollIntoViewIfNeeded()
+  await expect
+    .poll(() => art.evaluate((node) => (node as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0)
+  const lines = await translated.evaluate((label) => {
+    const range = document.createRange()
+    range.selectNodeContents(label)
+    const column = label.closest('dt')!.getBoundingClientRect()
+    return Array.from(range.getClientRects(), (line) => ({
+      left: line.left - column.left,
+      right: column.right - line.right,
+      top: line.top,
+    }))
+  })
+  expect(new Set(lines.map((line) => line.top)).size).toBeGreaterThan(1)
+  for (const line of lines) {
+    expect(line.left).toBeGreaterThanOrEqual(-1)
+    expect(line.right).toBeGreaterThanOrEqual(-1)
+  }
 })
 
 test('published planet intelligence groups and pairs named levels at desktop and phone widths', async ({

@@ -10,13 +10,17 @@ test('report notices disclose older failures, retry the uncertain row and return
   await page.evaluate(() => {
     const { port } = window.reportTriage
     const submit = port.submit
+    const firstReply = new Promise<void>((resolve) => {
+      window.releaseReportPort = resolve
+    })
     let calls = 0
     port.receipt = async () => {
       throw { status: 404 }
     }
     port.submit = async (envelope) => {
       calls++
-      if (calls === 1)
+      if (calls === 1) {
+        await firstReply
         return {
           protocol: 4,
           binding: envelope.binding,
@@ -26,29 +30,45 @@ test('report notices disclose older failures, retry the uncertain row and return
           admitted_at: 1000,
           executed_at: 1000,
         }
+      }
       if (calls === 2) throw { status: 503, code: 'Unavailable' }
       return submit(envelope)
     }
   })
   const banner = page.getByTestId('game-error-banner')
-  const first = rows.nth(0)
-  await first.getByRole('button', { name: 'Archive report' }).click()
-  await expect(banner.getByRole('alert')).toContainText(
-    'Action rejected: Not Found',
-  )
+  const firstPath = await rows
+    .nth(0)
+    .getByRole('link')
+    .first()
+    .getAttribute('href')
+  const secondPath = await rows
+    .nth(1)
+    .getByRole('link')
+    .first()
+    .getAttribute('href')
+  const first = rows.filter({ has: page.locator(`a[href="${firstPath}"]`) })
+  const second = rows.filter({ has: page.locator(`a[href="${secondPath}"]`) })
+  const secondArchive = second.getByRole('button', { name: 'Archive report' })
+  const retry = banner.getByRole('button', { name: 'Retry order' })
+  try {
+    await first.getByRole('button', { name: 'Archive report' }).click()
+    await expect(first).toHaveCount(0)
+    await expect(secondArchive).toBeEnabled()
+    await secondArchive.press('Enter')
+    await expect(retry).toBeEnabled()
+    await expect(secondArchive).toBeDisabled()
+    await expect(second).not.toContainText('We’re checking')
+    await expect(first).toHaveCount(0)
+  } finally {
+    await page.evaluate(() => {
+      window.releaseReportPort?.()
+      delete window.releaseReportPort
+    })
+  }
   await expect(
     first.getByRole('button', { name: 'Archive report' }),
   ).toBeEnabled()
   await expect(first).not.toContainText('Action rejected')
-  const second = rows.nth(1)
-  const secondPath = await second.getByRole('link').first().getAttribute('href')
-  await second.getByRole('button', { name: 'Archive report' }).press('Enter')
-  const retry = banner.getByRole('button', { name: 'Retry order' })
-  await expect(retry).toBeEnabled()
-  await expect(
-    second.getByRole('button', { name: 'Archive report' }),
-  ).toBeDisabled()
-  await expect(second).not.toContainText('We’re checking')
   await expect(rows).toHaveCount(5)
   const disclosure = banner.getByText('1 more order needs attention')
   await expect(banner.getByRole('group', { name: 'Order status' })).toHaveCount(

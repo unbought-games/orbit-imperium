@@ -571,11 +571,8 @@ test('opening a report marks it read after loading, clears the inbox badge and d
   await expect.poll(() => fixture.headers[1].read).toBe(true)
   expect(fixture.readRequests).toEqual([id(71)])
   await page.getByRole('link', { name: 'Back to reports' }).click()
-  await page
-    .locator('main article')
-    .first()
-    .getByRole('link', { name: 'Espionage', exact: true })
-    .click()
+  await page.locator(`main article a[href="${reportPath(id(71))}"]`).click()
+  await expect(page).toHaveURL(reportPath(id(71)))
   await expect(
     page.getByRole('region', { name: 'Report observation' }),
   ).toBeVisible()
@@ -856,7 +853,7 @@ test.describe('report touch actions', () => {
 
 // Opening the HUD while the Reports route owns an outstanding preference must
 // display the shared loading state and populate the actual panel on commitment.
-test('HUD infinite paging waits for a pending report preference, then resumes', async ({
+test('the open HUD shows its unread report after a pending archive settles', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 900 })
@@ -1195,6 +1192,8 @@ test('leaving detail during archive does not pull the player back after acceptan
   page,
 }) => {
   const fixture = await reportsFixture(page, true, 2, 50)
+  // With B already read, only the archive can advance the fixture to revision 2.
+  fixture.headers[1].read = true
   const open = () =>
     page
       .getByRole('article')
@@ -1222,6 +1221,17 @@ test('leaving detail during archive does not pull the player back after acceptan
         await expect(page.getByRole('article')).toHaveCount(1)
         await withReportResponse(page, id(71), open)
         await expect(page).toHaveURL(reportPath(id(71)))
+        // This overview is requested only after Coordinator.receive has published
+        // the archive receipt and notified any surviving navigation observer.
+        await withFixtureResponse(
+          page,
+          (response) =>
+            response.url().endsWith('/overview') &&
+            response.request().headers()['x-orbit-minimum-revision'] === '2',
+          async () => {
+            release()
+          },
+        )
       } finally {
         release()
       }
