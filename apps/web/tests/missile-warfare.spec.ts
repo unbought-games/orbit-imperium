@@ -1,612 +1,276 @@
-import { expectFleetPageFits } from './fixtures/fleet-layout'
-import { routeWorld } from './fixtures/game'
-import { routeProgressionOptions } from './fixtures/progression-options'
-import { readFileSync, mkdirSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { test, expect } from './fixtures/test'
-import { shellFixture, refreshGame, body, binding, id } from './fixtures/game'
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import {
+  installGameFixture,
+  body,
+  binding,
+  id,
+  matchesFixtureGameplay,
+  routeWorld,
+} from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
+import { withFixtureResponse } from './fixtures/responses'
+import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
-import { withBootstrapResponse, withReportListResponse, withReportResponse } from './fixtures/responses'
+import content from '../../../rules/content/missile-warfare.json' with { type: 'json' }
+
 type S = components['schemas']
-const content = JSON.parse(
-  readFileSync('rules/content/missile-warfare.json', 'utf8'),
-)
-const baseline = JSON.parse(readFileSync('rules/mvp-v1-slice-13.json', 'utf8'))
 const target = {
   id: id(20),
-  expected_kind: 'Planet' as const,
+  expected_kind: 'Planet',
   expected_owner: id(21),
-}
+} as const
 const at = { galaxy: 1, system: 371, position: 3 }
+const intent: S['MissileIntent4'] = {
+  origin: body.id,
+  target,
+  count: '2',
+  primary: 'RocketLauncher',
+}
 const hash = 'b'.repeat(64)
-async function setup(page: Parameters<typeof shellFixture>[0]) {
-  const commands: S['Command4'][] = []
-  let currentTarget = target
-  let revision = 1
-  const now = Date.now()
-  const missileBody = {
-    ...body,
-    amounts: {
-      metal: '900000000000',
-      crystal: '900000000000',
-      deuterium: '900000000000',
-    },
-    levels: { ...body.levels, MissileSilo: 4, Shipyard: 1 },
-    silo: { occupied: '26', reserved: '2', total: '40' },
-    inventories: [
-      ...body.inventories,
-      {
-        item: {
-          kind: 'Missile' as const,
-          id: 'InterplanetaryMissile' as const,
-        },
-        count: '10',
-      },
-      {
-        item: { kind: 'Missile' as const, id: 'AntiBallisticMissile' as const },
-        count: '6',
-      },
-    ],
+const flightId = id(51)
+
+// The predecessor used its #373 response-readiness repair.
+test('Galaxy launches two reviewed missiles and opens the new outgoing flight', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const missiles: S['MissileFlightView4'][] = []
+  const quotes: S['MissileIntent4'][] = []
+  const commands: S['ForegroundAction4'][] = []
+  const inventory = {
+    item: { kind: 'Missile', id: 'InterplanetaryMissile' } as const,
+    count: '10',
   }
-  await shellFixture(page, {
+  const now = Date.now()
+  const api = '/api/v4/universes/' + binding.universe
+  const silo = { occupied: '20', reserved: '0', total: '40' }
+  let revision = 1
+  await installGameFixture(page, {
     protocol: 4,
     viewerRevision: () => String(revision),
-    bodies: [missileBody],
-    catalog: baseline.catalog.map((e: S['CatalogEntry3']) =>
-      e.key.kind === 'Missile'
-        ? { ...e, enabled: true, requirements: content[e.key.id].requirements }
-        : e.key.id === 'MissileSilo'
-          ? { ...e, enabled: true, requirements: content.requirements }
-          : e,
-    ),
-    research: [{ research: 'ImpulseDrive', level: 5 }],
-    extraCapabilities: ['Missiles', 'Attack', 'Reports'],
-    missiles: [
+    missiles,
+    bodies: [
       {
-        id: id(51),
+        ...body,
+        levels: { ...body.levels, MissileSilo: 4 },
+        silo,
+        inventories: [...body.inventories, inventory],
+      },
+    ],
+    catalog: [
+      {
+        key: { kind: 'Defense', id: 'RocketLauncher' },
+        body_kinds: ['Planet'],
+        enabled: true,
+        mobile: false,
+        requirements: [],
+      },
+    ],
+    extraCapabilities: ['Missiles', 'Attack'],
+    research: [{ research: 'ImpulseDrive', level: 5 }],
+  })
+  await routeWorld(page, async (route) => {
+    const query: S['WorldQuery4'] = route.request().postDataJSON()
+    const common = {
+      protocol: 4,
+      binding,
+      request_id: query.context.request_id,
+      viewer_revision: String(revision),
+      sampled_at: now,
+      as_of_ms: now,
+    }
+    if (query.type === 'MissileQuote') {
+      quotes.push(query.intent)
+      const data: S['MissileTerms4'] = {
+        intent: query.intent,
+        source_coordinates: body.coordinates,
+        target_coordinates: at,
+        interceptor_body: target.id,
+        distance: 0,
+        range: 24,
+        duration_ms: 6000,
+        weapons: 0,
+        speed: 5,
+        rules: content.rules as S['MissileRules4'],
+        profile_hash: 'a'.repeat(64),
+        terms_hash: hash,
+      }
+      return route.fulfill({ json: { ...common, data } })
+    }
+    if (
+      query.type !== 'Galaxy' ||
+      query.galaxy !== at.galaxy ||
+      query.system !== at.system
+    )
+      return route.fallback()
+    const data: S['GalaxySystem4'] = {
+      galaxy: at.galaxy,
+      system: at.system,
+      observed_at: now,
+      positions: Array.from({ length: 15 }, (_, i) => ({
+        coordinates: { ...at, position: i + 1 },
+        debris: null,
+        body:
+          i + 1 === at.position
+            ? {
+                id: target.id,
+                kind: 'Planet',
+                owner: target.expected_owner,
+                name: 'Bastion',
+                activity: { type: 'None' },
+                inactivity: 'Active',
+                vacation: false,
+                attack_blocker: null,
+                espionage_eligible: true,
+              }
+            : null,
+      })),
+    }
+    await route.fulfill({ json: { ...common, data } })
+  })
+  await page.route(
+    (url) => url.pathname === api + '/commands',
+    async (route) => {
+      const request = route.request()
+      if (request.method() !== 'POST') return route.fallback()
+      const pair = request.postDataJSON()
+      if (
+        !matchesFixtureGameplay(pair) ||
+        pair.gameplay.command.type !== 'World' ||
+        pair.gameplay.command.action.type !== 'LaunchMissiles'
+      )
+        return route.fallback()
+      commands.push(pair)
+      expect(pair.presence.command).toEqual({
+        type: 'World',
+        action: {
+          type: 'RecordForegroundPresence',
+          cause: 'GameplayGesture',
+          body: body.id,
+          paired_command_id: pair.gameplay.command_id,
+        },
+      })
+      expect(pair.gameplay.command.action).toEqual({
+        type: 'LaunchMissiles',
+        intent,
+        expected_terms_hash: hash,
+      })
+      missiles.push({
+        id: flightId,
         attacker: binding.player,
         origin: body.coordinates,
         target: at,
         target_body: target.id,
         target_kind: 'Planet',
-        count: '2',
-        arrival_at: now + 60000,
+        count: intent.count,
+        arrival_at: now + 6000,
         outgoing: true,
-      },
-      {
-        id: id(50),
-        attacker: target.expected_owner,
-        origin: at,
-        target: body.coordinates,
-        target_body: body.id,
-        target_kind: 'Planet',
-        count: '3',
-        arrival_at: now + 90000,
-        outgoing: false,
-      },
-    ],
-    manufacturing: [
-      {
-        id: id(60),
-        body: body.id,
-        item: { kind: 'Missile', id: 'AntiBallisticMissile' },
-        quantity: '2',
-        completed_prefix: '0',
-        remaining: '2',
-        paid: { metal: '16000000000', crystal: '0', deuterium: '4000000000' },
-        accepted_at: now,
-        first_start_at: now,
-        next_due_at: now + 60000,
-        final_due_at: now + 120000,
-        unit_duration_ms: 60000,
-        state: 'Producing',
-        can_cancel: false,
-      },
-    ],
-    missions: {
-      fleets: [
-        {
-          id: id(52),
-          intent: {
-            origin: body.id,
-            destination: { type: 'Body', ...target },
-            mission: 'Transport',
-            ships: [
-              { owner: binding.player, ship_type: 'SmallCargo', count: '1' },
-            ],
-            cargo: { metal: '0', crystal: '0', deuterium: '0' },
-            speed_percent: 100,
-          },
-          origin: body.coordinates,
-          destination: at,
-          leg: 'Outbound',
-          ships: [{ ship_type: 'SmallCargo', count: '1' }],
-          cargo: { metal: '0', crystal: '0', deuterium: '0' },
-          due_at: now + 30000,
-          launched_at: now - 30000,
-          duration_ms: 60000,
-          paid_fuel: '1000000',
-          can_recall: true,
-        },
-      ],
-      incoming: [
-        {
-          sender: target.expected_owner,
-          origin: at,
-          target: body.id,
-          mission: 'Attack',
-          arrival_at: now + 120000,
-          ships: { visibility: 'Unknown' },
-        },
-      ],
-      score_value_micro: '0',
-      fleet_slots: '1',
-    },
-  })
-  await routeProgressionOptions(page, async (route) => {
-    const { context, request } = route.request().postDataJSON()
-    const manufacture = request.type === 'Manufacture'
-    const cost = manufacture
-      ? (content[request.item.id]?.cost ?? {
-          metal: 2000,
-          crystal: 0,
-          deuterium: 0,
-        })
-      : { metal: 320000, crystal: 320000, deuterium: 16000 }
-    const unit = Object.fromEntries(
-      Object.entries(cost).map(([k, v]) => [k, String(Number(v) * 1000000)]),
-    )
-    const quantity = manufacture ? BigInt(request.quantity) : 1n
-    const capacity =
-      manufacture &&
-      request.item.kind === 'Missile' &&
-      quantity * BigInt(request.item.id === 'InterplanetaryMissile' ? 2 : 1) >
-        12n
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: now,
-        as_of_ms: now,
-        request,
-        terms: manufacture
-          ? {
-              type: 'Manufacture',
-              silo_slots:
-                request.item.kind === 'Missile'
-                  ? request.item.id === 'InterplanetaryMissile'
-                    ? 2
-                    : 1
-                  : undefined,
-              profile_hash: 'a'.repeat(64),
-              body: body.id,
-              item: request.item,
-              quantity: request.quantity,
-              unit_cost: unit,
-              paid: Object.fromEntries(
-                Object.entries(unit).map(([k, v]) => [
-                  k,
-                  (BigInt(v) * quantity).toString(),
-                ]),
-              ),
-              unit_duration_ms: 60000,
-              formula: 'ManufactureClassic',
-              facilities: [{ building: 'Shipyard', level: 1 }],
-            }
-          : {
-              type: 'Building',
-              profile_hash: 'a'.repeat(64),
-              body: body.id,
-              building: request.building,
-              action: request.type,
-              source_level: 4,
-              target_level: request.type === 'Upgrade' ? 5 : 3,
-              paid: unit,
-              duration_ms: 60000,
-              formula: 'BuildingRedesign2011',
-              facilities: [],
-              required_energy: '0',
-              reserve_fields: 1,
-            },
-        terms_hash: hash,
-        blockers: capacity
-          ? [
-              {
-                code: 'CapacityReserved',
-                requirement: null,
-                required: null,
-                actual: null,
-                resource: null,
-                unit: null,
-              },
-            ]
-          : [],
-        estimates: { first_start_at: now, final_due_at: now + 60000 },
-      },
-    })
-  })
-  await routeWorld(page, async (route) => {
-    const q = route.request().postDataJSON()
-    const common = {
-      protocol: 4,
-      binding,
-      request_id: q.context.request_id,
-      viewer_revision: String(revision),
-      sampled_at: now,
-      as_of_ms: now,
-    }
-    if (q.type === 'MissileQuote')
-      return route.fulfill({
-        json: {
-          ...common,
-          data: {
-            intent: q.intent,
-            source_coordinates: body.coordinates,
-            target_coordinates: at,
-            interceptor_body: currentTarget.id,
-            distance: 0,
-            range: 24,
-            duration_ms: 6000,
-            weapons: 0,
-            speed: 5,
-            rules: content.rules,
-            profile_hash: 'a'.repeat(64),
-            terms_hash: hash,
-          },
-        },
       })
-    await route.fulfill({
-      json: {
-        ...common,
-        data: {
-          galaxy: 1,
-          system: 371,
-          observed_at: now,
-          positions: Array.from({ length: 15 }, (_, index) =>
-            index === 2
-              ? {
-                  coordinates: at,
-                  body: {
-                    id: currentTarget.id,
-                    kind: 'Planet',
-                    owner: currentTarget.expected_owner,
-                    name: 'Bastion',
-                    activity: { type: 'None' },
-                    inactivity: 'Active',
-                    vacation: false,
-                    attack_blocker: null,
-                    espionage_eligible: true,
-                  },
-                  debris: null,
-                }
-              : {
-                  coordinates: { galaxy: 1, system: 371, position: index + 1 },
-                  body: null,
-                  debris: null,
-                },
-          ),
-        },
-      },
-    })
-  })
-  await page.route('**/commands', async (route) => {
-    const pair = route.request().postDataJSON()
-    const e = pair.gameplay ?? pair
-    commands.push(e.command)
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        command_id: e.command_id,
-        admitted_at: now,
-        executed_at: now,
-        status: 'Committed',
-        result_ids: [id(88)],
-        minimum_viewer_revision: '1',
-      },
-    })
-  })
-  const payload: S['MissileImpactPayload4'] = {
-    kind: 'MissileImpact',
-    at: now,
-    attacker: target.expected_owner,
-    origin: at,
-    target: body.coordinates,
-    target_kind: 'Planet',
-    outcome: 'Impacted',
-    sent: '8',
-    intercepted: '6',
-    penetrating: '2',
-    destroyed: { RocketLauncher: '120' },
-    primary: 'RocketLauncher',
-    interceptors_spent: '6',
-    interceptors_remaining: '0',
-  }
-  const {
-    at: _at,
-    primary: _primary,
-    interceptors_spent: _spent,
-    interceptors_remaining: _remaining,
-    ...preview
-  } = payload
-  const header = {
-    id: id(70),
-    kind: 'MissileImpact',
-    observed_at: now,
-    read: false,
-    hidden: false,
-    preview,
-  }
-  await page.route('**/api/**/reports', async (route) => {
-    const { context } = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: now,
-        as_of_ms: now,
-        data: {
-          items: [header],
-          next_cursor: null,
-          has_more: false,
-          as_of_ms: now,
-        },
-      },
-    })
-  })
-  await page.route(`**/api/**/reports/${id(70)}*`, async (route) => {
-    const context = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: context.request_id,
-        viewer_revision: '1',
-        sampled_at: now,
-        as_of_ms: now,
-        data: { header, payload },
-      },
-    })
-  })
-  return {
-    commands,
-    refreshTarget: async (patch: Partial<typeof target> = {}) => {
-      currentTarget = { ...currentTarget, ...patch }
+      inventory.count = '8'
+      silo.occupied = '16'
       revision++
-      const refreshed = page.waitForResponse(response =>
-        response.url().endsWith('/world') &&
-        response.request().postDataJSON().type === 'Galaxy' &&
-        response.ok(),
-      )
-      await refreshGame(page)
-      await refreshed
-    },
-  }
-}
-for (const width of [390])
-  test(`missile inventory launch and reports at ${width}px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 900 })
-    const { commands } = await setup(page)
-    const capture = async (name: string) => {
-      // The mounted missile review covers its distinct sheet and desktop popover.
-      // Other delivered routes are checked at both widths before recording captures.
-      await expectFleetPageFits(page, name === 'launch-review' ? [width] : [width, 1440])
-      if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
-      await page.evaluate(() =>
-        window.scrollTo({ top: 0, behavior: 'instant' }),
-      )
-      mkdirSync('test-results/missile-screenshots', { recursive: true })
-      await diagnosticScreenshot(page, {
-        path: resolve(
-          `test-results/missile-screenshots/${name}-${width}x900.png`,
-        ),
-        fullPage: true,
+      await route.fulfill({
+        json: {
+          protocol: 4,
+          binding,
+          command_id: pair.gameplay.command_id,
+          admitted_at: now,
+          executed_at: now,
+          status: 'Committed',
+          result_ids: [],
+          minimum_viewer_revision: String(revision),
+        },
       })
-    }
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(
-      page.getByRole('region', { name: 'Fleet movements' }),
-    ).toContainText('Missile attack')
-    await capture('empire-warning')
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense`))
-    await expect(
-      page.getByRole('region', { name: 'Missile silo capacity' }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByText('Interplanetary Missile', { exact: true }).first(),
-    ).toBeVisible()
-    await capture('defense-catalog')
-    for (const slug of ['anti-ballistic-missile', 'interplanetary-missile']) {
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/defense/${slug}`))
-      const pane = page.getByRole('region', { name: 'Progression quote' })
-      await expect(
-        pane.getByRole('region', { name: 'Missile silo capacity' }),
-      ).toContainText('Reserved in queue')
-      await expect(
-        pane.getByRole('button', { name: 'Build', exact: true }),
-      ).toBeVisible()
-      await page.getByLabel('Defenses quantity').fill('2')
-      await expect(
-        pane.getByRole('button', { name: 'Build', exact: true }),
-      ).toBeEnabled()
-      await capture(slug)
-      if (slug === 'interplanetary-missile') {
-        await page.getByLabel('Defenses quantity').fill('20')
-        await expect(
-          pane.getByRole('button', { name: 'Build', exact: true }),
-        ).toBeDisabled()
-        await page.getByLabel('Defenses quantity').fill('2')
-        await pane.getByRole('button', { name: 'Build', exact: true }).click()
-        await expect
-          .poll(() =>
-            commands.some(
-              (c) =>
-                c.type === 'StartManufacture' &&
-                c.item.kind === 'Missile' &&
-                c.quantity === '2',
-            ),
-          )
-          .toBe(true)
-        await pane
-          .getByText('Scrap Interplanetary Missile', { exact: true })
-          .click()
-        await page.getByLabel('Scrap quantity').fill('1')
-        await page.getByRole('button', { name: 'Scrap without refund' }).click()
-        await expect(
-          page.getByText('Missiles scrapped.', { exact: true }),
-        ).toBeVisible()
-      }
-    }
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/facilities/missile-silo`))
-    await expect(
-      page.getByRole('region', { name: 'Missile silo capacity' }),
-    ).toBeVisible()
-    await capture('silo-details')
-    await withGalaxyResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/galaxy`))
-    const actions = page.getByRole('button', {
-      name: 'Actions for [1:371:3]', exact: true,
-    })
-    const launchItem = page.getByRole('menuitem', { name: 'Launch missiles', exact: true })
-    const dialog = page.getByRole('dialog', { name: 'Launch missiles', exact: true })
-    await expect(actions).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Launch missiles at/ })).toHaveCount(0)
-    await expect(launchItem).not.toBeVisible()
-    await page.evaluate(() => document.fonts.ready)
-    await diagnosticScreenshot(page, {
-      path: `test-results/missile-screenshots/galaxy-${width}x900.png`,
-      animations: 'disabled',
-    })
-    await actions.press('Enter')
-    await expect(launchItem).toBeVisible()
-    await diagnosticScreenshot(page, {
-      path: `test-results/missile-screenshots/galaxy-menu-${width}x900.png`,
-      animations: 'disabled',
-    })
-    await launchItem.click()
-    await expect(dialog).toBeVisible()
-    await expect(launchItem).not.toBeVisible()
-    await expect(dialog.getByLabel('Missile quantity', { exact: true })).toHaveValue('1')
-    await page.keyboard.press('Escape')
-    await expect(dialog).not.toBeVisible()
-    await expect(actions).toBeFocused()
-    await actions.press('Enter')
-    await launchItem.focus()
-    await launchItem.press('Enter')
-    await expect(dialog).toBeVisible()
-    expect(commands.some(c => c.type === 'World' && c.action.type === 'LaunchMissiles')).toBe(false)
-    await page.getByLabel('Missile quantity', { exact: true }).fill('2')
-    await page
-      .getByLabel('Primary defense', { exact: true })
-      .selectOption('RocketLauncher')
-    await page.getByRole('button', { name: 'Review missile launch' }).click()
-    await expect(
-      page.getByRole('button', { name: 'Launch missiles — no recall' }),
-    ).toBeEnabled()
-    await capture('launch-review')
-    await page
-      .getByRole('button', { name: 'Launch missiles — no recall' })
-      .click()
-    await expect(
-      page.getByText('Missiles launched. Track their arrival in Fleets.'),
-    ).toBeVisible()
-    expect(
-      commands.filter(
-        (c) => c.type === 'World' && c.action.type === 'LaunchMissiles',
-      ),
-    ).toHaveLength(1)
-    const launch = commands.find(
-      (c) => c.type === 'World' && c.action.type === 'LaunchMissiles',
-    ) as Extract<S['Command4'], { type: 'World' }>
-    expect(launch.action).toMatchObject({
-      type: 'LaunchMissiles',
-      intent: { count: '2', primary: 'RocketLauncher', target },
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    const empireMissile = page
-      .getByRole('region', { name: 'Fleet movements' })
-      .getByRole('listitem', { name: 'Outgoing missile attack', exact: true })
-    await expect(
-      empireMissile.getByRole('button', { name: /recall/i }),
-    ).toHaveCount(0)
-    await expect(
-      empireMissile.getByRole('group', { name: 'Carried resources' }),
-    ).toHaveCount(0)
-    const missileDetails = await empireMissile
-      .getByRole('link', { name: 'View missile attack details' })
-      .getAttribute('href')
-    await empireMissile
-      .getByText('Cannot be recalled.', { exact: true })
-      .click()
-    await expect(page).toHaveURL(missileDetails!)
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
-    await expect(
-      page.getByRole('region', { name: 'Empire fleet traffic' }),
-    ).toContainText('Incoming missile attack')
-    await expect(
-      page.getByRole('region', { name: 'Missile flights' }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByText('No active fleets.', { exact: true }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByText('No visible incoming fleets.', { exact: true }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('article', { name: 'Outgoing missile attack' }),
-    ).toContainText('Cannot be recalled.')
-    await expect(
-      page
-        .getByRole('article', { name: 'Outgoing missile attack' })
-        .getByRole('button', { name: /recall/i }),
-    ).toHaveCount(0)
-    expect(
-      await page
-        .locator('main article[aria-label]')
-        .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('aria-label'))),
-    ).toEqual([
-      'Transport fleet',
-      'Outgoing missile attack',
-      'Incoming missile attack',
-      'Incoming attack fleet',
-    ])
-    await expect(
-      page.locator('main').getByRole('button', { name: 'Fleet slots: 1 used / 1 total', exact: true }),
-    ).toBeVisible()
-    await capture('incoming-missiles')
-    const outgoing = page.getByRole('article', {
-      name: 'Outgoing missile attack',
-    })
-    await expect(
-      outgoing.getByText('Mission details', { exact: true }),
-    ).toHaveCount(0)
-    await outgoing.getByText('Cannot be recalled.', { exact: true }).click()
-    await expect(
-      page.getByRole('article', { name: 'Outgoing missile attack' }),
-    ).toBeVisible()
-    await expect(
-      page.getByText('Fleet unavailable.', { exact: true }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('region', { name: 'Empire fleet traffic' }),
-    ).toHaveCount(0)
-    await capture('missile-mission-details')
-    await withReportListResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/reports`))
-    await expect(page.getByText('6 intercepted · 2 penetrated')).toBeVisible()
-    await capture('report-list')
-    await withReportResponse(page, id(70), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(70)}`))
-    await expect(
-      page.getByRole('region', { name: 'Missile impact report' }),
-    ).toContainText('Permanently destroyed defenses')
-    await expect(
-      page.getByRole('region', { name: 'Missile impact report' }),
-    ).toContainText('Your interceptors remaining')
-    await capture('impact-report')
+    },
+  )
+  const path = '/u/andromeda/b/' + body.id
+  await withGalaxyResponse(page, () => page.goto(path + '/galaxy'))
+  const actions = page.getByRole('button', {
+    name: 'Actions for [1:371:3]',
+    exact: true,
   })
+  const launchItem = page.getByRole('menuitem', {
+    name: 'Launch missiles',
+    exact: true,
+  })
+  const dialog = page.getByRole('dialog', {
+    name: 'Launch missiles',
+    exact: true,
+  })
+  await expect(launchItem).toBeHidden()
+  await actions.press('Enter')
+  await launchItem.press('Enter')
+  await expect(dialog.getByLabel('Missile quantity')).toHaveValue('1')
+  await page.keyboard.press('Escape')
+  await expect(actions).toBeFocused()
+  await actions.press('Enter')
+  await launchItem.press('Enter')
+  await dialog.getByLabel('Missile quantity').fill('2')
+  await dialog.getByLabel('Primary defense').selectOption('RocketLauncher')
+  await withFixtureResponse(
+    page,
+    (r) =>
+      new URL(r.url()).pathname === api + '/world' &&
+      r.request().method() === 'POST' &&
+      r.request().postDataJSON().type === 'MissileQuote',
+    () => dialog.getByRole('button', { name: 'Review missile launch' }).click(),
+  )
+  expect(quotes).toEqual([intent])
+  expect(commands).toEqual([])
+  await expect(
+    dialog
+      .getByText('Flight time', { exact: true })
+      .locator('..')
+      .locator('dd'),
+  ).toHaveText('6s')
+  await expect(
+    dialog.getByText('Range', { exact: true }).locator('..').locator('dd'),
+  ).toHaveText('0 / 24 systems')
+  await diagnosticScreenshot(page, {
+    path: 'test-results/missile-screenshots/launch-review-390x900.png',
+  })
+  await withFixtureResponse(
+    page,
+    (r) =>
+      new URL(r.url()).pathname === api + '/commands' &&
+      r.request().method() === 'POST' &&
+      r.request().postDataJSON().gameplay?.command?.action?.type ===
+        'LaunchMissiles',
+    () =>
+      dialog
+        .getByRole('button', { name: 'Launch missiles — no recall' })
+        .click(),
+  )
+  await expect(dialog.getByRole('status')).toHaveText(
+    'Missiles launched. Track their arrival in Fleets.',
+  )
+  await page.keyboard.press('Escape')
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Empire', exact: true })
+    .click()
+  const outbound = page
+    .getByRole('region', { name: 'Fleet movements' })
+    .getByRole('listitem', { name: 'Outgoing missile attack', exact: true })
+  const destination = path + '/fleets/' + flightId
+  await expect(
+    outbound.getByRole('link', { name: 'View missile attack details' }),
+  ).toHaveAttribute('href', destination)
+  await expect(
+    outbound.getByRole('group', { name: 'Carried resources' }),
+  ).toHaveCount(0)
+  await outbound.getByText('Cannot be recalled.', { exact: true }).click()
+  await expect(page).toHaveURL(destination)
+  const detail = page.getByRole('article', {
+    name: 'Outgoing missile attack',
+    exact: true,
+  })
+  await expect(detail).toContainText('2 Interplanetary Missiles')
+  await expect(detail).toContainText('Cannot be recalled.')
+  await expect(
+    detail.getByRole('link', { name: 'View destination [1:371:3] in galaxy' }),
+  ).toBeVisible()
+  await expect(detail.getByRole('button', { name: /recall/i })).toHaveCount(0)
+  await expect(
+    page.getByRole('region', { name: 'Empire fleet traffic' }),
+  ).toHaveCount(0)
+  expect(commands).toHaveLength(1)
+})
