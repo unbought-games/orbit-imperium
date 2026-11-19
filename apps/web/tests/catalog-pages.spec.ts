@@ -391,67 +391,6 @@ test('catalogs fit narrow screens and enlarged text without losing controls', as
   }
 })
 
-test(
-  'catalog deep links survive refresh and history without Escape dismissal at 390px',
-  { tag: '@journey' },
-  async ({ page }) => {
-    const width = 390
-    await page.setViewportSize({ width, height: 900 })
-    const { sent } = await setup(page)
-    const tab = 'Shipyard'
-    const path = 'shipyard'
-    const item = 'small-cargo'
-    const title = 'Small Cargo'
-    const linkName = 'Build Small Cargo'
-    const parent = `/u/andromeda/b/${body.id}/${path}`
-    const detail = `${parent}/${item}`
-    await navigate(page, tab)
-    const tile = page.getByRole('link', { name: linkName, exact: true })
-    await expect(tile).toHaveAttribute('href', detail)
-    await tile.click()
-    await expect(page).toHaveURL(detail)
-    await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
-    await expect(
-      page.getByRole('region', {
-        name: /^(Buildings|Research|Shipyard & defense)$/,
-      }),
-    ).toHaveCount(0)
-    const panel = page.getByRole('region', { name: 'Progression quote' })
-    await expect(
-      panel.getByRole('heading', { name: title, exact: true }),
-    ).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page).toHaveURL(detail)
-    await expect(panel).toBeVisible()
-    await withProgressionResponse(
-      page,
-      (request) =>
-        request.type === 'Manufacture' &&
-        request.body === body.id &&
-        request.item.id === 'SmallCargo',
-      () => page.reload(),
-    )
-    await expect(panel).toBeVisible()
-    await expect(panel).toBeFocused()
-    await expect(panel).toHaveCSS('outline-style', 'none')
-    await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
-    const back = panel.getByRole('link', {
-      name: `Back to ${tab}`,
-      exact: true,
-    })
-    await expect(back).toHaveAttribute('href', parent)
-    await back.click()
-    await expect(page).toHaveURL(parent)
-    await expect(tile).toBeFocused()
-    await page.goBack()
-    await expect(page).toHaveURL(detail)
-    await expect(panel).toBeVisible()
-    await page.goForward()
-    await expect(page).toHaveURL(parent)
-    expect(sent).toEqual([])
-  },
-)
-
 test('planet changes retain the item, reset edits, and link across prerequisites in the selected context', async ({
   page,
 }) => {
@@ -545,6 +484,38 @@ test('planet changes retain the item, reset edits, and link across prerequisites
   await expect(page).toHaveURL(
     `/u/andromeda/b/${other.id}/shipyard/small-cargo`,
   )
+  // Returning to the funding planet's item is still a real item page after
+  // reload, not a dismissible dialog or a list with the old quantity selected.
+  await page.setViewportSize({ width: 390, height: 900 })
+  const itemPath = `/u/andromeda/b/${other.id}/shipyard/small-cargo`
+  const listPath = `/u/andromeda/b/${other.id}/shipyard`
+  const item = page.getByRole('region', { name: 'Progression quote' })
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(itemPath)
+  await expect(item).toBeVisible()
+  await withProgressionResponse(
+    page,
+    (r) =>
+      r.type === 'Manufacture' &&
+      r.body === other.id &&
+      r.item.id === 'SmallCargo',
+    () => page.reload(),
+  )
+  await expect(item).toBeFocused()
+  await expect(item).toHaveCSS('outline-style', 'none')
+  await expect(page.locator('[data-catalog-item]')).toHaveCount(0)
+  const back = item.getByRole('link', { name: 'Back to Shipyard', exact: true })
+  await expect(back).toHaveAttribute('href', listPath)
+  await back.click()
+  await expect(page).toHaveURL(listPath)
+  await expect(
+    page.getByRole('link', { name: 'Build Small Cargo', exact: true }),
+  ).toBeFocused()
+  await page.goBack()
+  await expect(page).toHaveURL(itemPath)
+  await expect(item).toBeVisible()
+  await page.goForward()
+  await expect(page).toHaveURL(listPath)
   expect(sent).toHaveLength(1)
 })
 

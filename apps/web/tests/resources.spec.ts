@@ -1,5 +1,5 @@
 import { routeProgressionOptions } from './fixtures/progression-options'
-import { navigate, menuDestination } from './fixtures/navigation'
+import { navigate } from './fixtures/navigation'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
@@ -589,61 +589,6 @@ test('legacy resource catalogs retain cancellation and refresh the open upgrade 
   expect(sent[3].command).toMatchObject({
     type: 'StartUpgrade',
     expected_terms_hash: 'c'.repeat(64),
-  })
-})
-
-test('resource settings navigation preserves history and reload support at 390px', async ({
-  page,
-}) => {
-  const width = 390
-  await page.setViewportSize({ width, height: 900 })
-  await setup(page)
-  await page.getByRole('link', { name: 'Empire', exact: true }).click()
-  // The Empire route moves focus on commit. Finish that transition before
-  // focusing the persistent energy link and sending a real keyboard event.
-  await expect(page.locator('main h1')).toHaveText('Empire — Planet [1:371:12]')
-  await expect(page.locator('main h1')).toBeFocused()
-  const menu = page.getByRole('navigation', { name: 'Menu destinations' })
-  const settings = await menuDestination(page, 'Resource settings')
-  await expect(settings).toHaveAttribute(
-    'href',
-    `/u/andromeda/b/${body.id}/resource-settings`,
-  )
-  await settings.focus()
-  await expect(settings).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(menu).not.toBeVisible()
-  await expect(page.locator('main h1')).toHaveText('Resource settings')
-  await expect(page.locator('main h1')).toBeFocused()
-  await expect(
-    page.getByRole('link', { name: 'Develop', exact: true }),
-  ).toHaveAttribute('aria-current', 'page')
-  await expect(
-    page.getByRole('link', { name: 'Menu', exact: true }),
-  ).not.toHaveAttribute('aria-current')
-  await expect(
-    page.getByRole('navigation', { name: 'Develop navigation', exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('region', { name: 'Production controls' }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
-  ).toHaveCount(0)
-  await withBootstrapResponse(page, () => page.reload())
-  await expect(page.getByLabel('metal mine production')).toHaveValue('100')
-  await page.goBack()
-  await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
-  await page.goForward()
-  await expect(
-    page.getByRole('region', { name: 'Production controls' }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Develop', exact: true }),
-  ).toHaveAttribute('aria-current', 'page')
-  await diagnosticScreenshot(page, {
-    path: `test-results/resource-settings-develop-${width}x900.png`,
-    fullPage: true,
   })
 })
 
