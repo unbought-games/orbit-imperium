@@ -135,7 +135,10 @@ describe('published catalog coverage', () => {
     for (const asset of manifest.assets) {
       for (const variant of asset.variants) {
         const path = new URL(`art/atlas/${variant.path}`, publicRoot)
-        const metadata = await sharp(fileURLToPath(path)).metadata()
+        const image = sharp(fileURLToPath(path))
+        const metadata = await image.metadata()
+        // Metadata alone is readable even when the WebP pixel stream is corrupt.
+        await image.resize(1, 1).raw().toBuffer()
         expect(metadata, variant.path).toMatchObject({
           format: 'webp',
           width: variant.width,

@@ -8,7 +8,11 @@ import type { BoundProgressionOptions } from '../../client-model/commands'
 import { readyFixture } from '../../test-support/bootstrap'
 import { createGameStore } from '../../client-model/game-store'
 import { noticeContent, orbAppearance } from '../command-hud/model'
-import { availableDispatchShips } from '../../client-model/ship-selection'
+import { dispatchShips } from '../../client-model/dispatch-timing'
+import {
+  availableDispatchShips,
+  dispatchableShipTypes,
+} from '../../client-model/ship-selection'
 import { validate } from '../../client-model/schema'
 import { catalogContent } from './catalog-content'
 import { ShipStatistics } from './ship-statistics'
@@ -424,12 +428,33 @@ describe.each(ships)('$id catalog contract', (example) => {
     })
   })
   it('keeps its exact inventory and accepts its selected fleet composition', () => {
+    const item = entryFor(example)
+    const satellite = {
+      ...item,
+      key: { kind: 'Ship', id: 'SolarSatellite' },
+      mobile: false,
+    } as const
+    const inventory: S['BodyV3']['inventories'] = [
+      { item: { kind: 'Ship', id: example.id }, count: '2' },
+      { item: satellite.key, count: '7' },
+    ]
+    const types = dispatchableShipTypes([item, satellite], inventory)
+    expect(types).toEqual([example.id])
+    expect(dispatchableShipTypes([{ ...item, enabled: false }], [])).toEqual([])
     expect(
-      availableDispatchShips(
-        [example.id],
-        [{ item: { kind: 'Ship', id: example.id }, count: '2' }],
-      ),
-    ).toEqual({ [example.id]: '2' })
+      dispatchableShipTypes([{ ...item, enabled: false }], inventory),
+    ).toEqual([example.id])
+    expect(availableDispatchShips(types, inventory)).toEqual({
+      [example.id]: '2',
+    })
+    const manifest = dispatchShips(
+      types,
+      { [example.id]: '02', SolarSatellite: '7' },
+      view.binding.player,
+    )
+    expect(manifest).toEqual([
+      { owner: view.binding.player, ship_type: example.id, count: '2' },
+    ])
     expect(() =>
       validate('FleetIntent4', {
         origin: view.binding.player,
@@ -440,9 +465,7 @@ describe.each(ships)('$id catalog contract', (example) => {
           expected_owner: view.binding.player,
         },
         mission: example.id === 'LargeCargo' ? 'Transport' : 'Attack',
-        ships: [
-          { owner: view.binding.player, ship_type: example.id, count: '2' },
-        ],
+        ships: manifest,
         cargo: { metal: '0', crystal: '0', deuterium: '0' },
         speed_percent: 100,
       }),

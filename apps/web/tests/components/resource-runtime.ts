@@ -91,6 +91,8 @@ export async function createResourceScene(params: URLSearchParams) {
     body.amounts.metal = '59999999'
   }
   const sent: Envelope[] = []
+  let elapsed = 0
+  let throttled = false
   let rejected = false
   let held: Promise<void> | null = null
   let release = () => {}
@@ -504,6 +506,8 @@ export async function createResourceScene(params: URLSearchParams) {
     },
     submit: async (envelope): Promise<BoundReceipt> => {
       sent.push(envelope)
+      if (throttled)
+        throw { status: 429, code: 'RateLimited', retryAfterMs: 60000 }
       if (held) await held
       const command = envelope.command
       if (rejected)
@@ -552,7 +556,7 @@ export async function createResourceScene(params: URLSearchParams) {
   }
   const model = new Coordinator(port, {
     newId: () => id(sequence++),
-    monotonicNowMs: () => 0,
+    monotonicNowMs: () => elapsed,
     isOnline: () => true,
   })
   await model.initialize(structuredClone(session), structuredClone(snapshot))
@@ -568,6 +572,13 @@ export async function createResourceScene(params: URLSearchParams) {
     releaseOptions: () => {
       optionsGate = null
       optionsRelease()
+    },
+    throttle: (value: boolean) => {
+      throttled = value
+    },
+    tick: (ms: number) => {
+      elapsed += ms
+      model.tick()
     },
     reject: (value: boolean) => {
       rejected = value

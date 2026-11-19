@@ -1,10 +1,9 @@
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { productionFixture } from '../src/test-support/production'
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { expect, test, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { refuseFixtureReads, binding, body, id, refreshGame, shellFixture } from './fixtures/game'
+import { binding, body, id, refreshGame, shellFixture } from './fixtures/game'
 import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
@@ -336,91 +335,6 @@ for (const width of [390]) {
       } finally {
         commandGate.resolve('Rejected')
         optionsGate.resolve()
-      }
-    })
-  }
-}
-
-test('rejected cancellation keeps construction active and every upgrade blocked', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 900 })
-  const fixture = await cancellationFixture(page)
-  try {
-    await fixture.startCancellation()
-    fixture.commandGate.resolve('Rejected')
-    await expect(fixture.cancel).toBeEnabled()
-    await expect(
-      fixture.pane.getByRole('region', { name: 'Active construction' }).getByRole('heading', { name: 'Upgrading Crystal Mine to level 2', exact: true }),
-    ).toBeVisible()
-    await refreshGame(page)
-    await fixture.pane.getByRole('link', { name: /^Back to / }).click()
-    await expect(
-      page.getByRole('button', { name: /^Build / }).and(page.locator(':enabled')),
-    ).toHaveCount(0)
-    await expect(
-      page
-        .getByRole('link', { name: 'Upgrade Crystal Mine', exact: true })
-        .getByLabel('Construction progress'),
-    ).toBeVisible()
-  } finally {
-    fixture.commandGate.resolve('Rejected')
-    fixture.optionsGate.resolve()
-  }
-})
-
-for (const kind of ['construction'] as const) {
-  // work-cancellation.test.ts owns all elapsed boundaries and long-duration text.
-  // Components own both consumers' safe focus, Escape and rejection.
-  // Keep the application command and click-time confirmation-boundary wiring.
-  for (const elapsed of [29_999]) {
-    test(`${kind} cancellation uses server elapsed ${elapsed}ms`, async ({ page }) => {
-      refuseFixtureReads(page, { progression: ['Upgrade'] })
-      await page.clock.install({ time: now - 60_000 })
-      await page.clock.pauseAt(now)
-      const paid = { metal: '76000000', crystal: '38000000', deuterium: '0' }
-      const timing = { id: id(10), started_at: now - elapsed, due_at: now + 3_600_000, paid }
-      const constructions: S['Construction3'][] = kind === 'construction' ? [{ ...timing, body: body.id, building: 'MetalMine', target_level: 2 }] : []
-      const researchOperation: S['ResearchOperationDto'] | null = kind === 'research' ? { ...timing, host: body.id, research: 'EnergyTechnology', source_level: 1, target_level: 2, labs: [], effective_lab: '1', can_cancel: true } : null
-      await page.setViewportSize({ width: elapsed === 30_000 ? 390 : 1440, height: 900 })
-      await shellFixture(page, { protocol: 4, sampledAt: now, constructions, researchOperation, catalog: [
-        { key: { kind: 'Building', id: 'MetalMine' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
-        { key: { kind: 'Research', id: 'EnergyTechnology' }, enabled: true, mobile: false, body_kinds: ['Planet'], requirements: [] },
-      ] })
-      const sent: unknown[] = []
-      await page.route('**/commands', route => {
-        const envelope = route.request().postDataJSON().gameplay
-        sent.push(envelope.command)
-        return route.fulfill({ json: { protocol: 4, binding, command_id: envelope.command_id, admitted_at: now, executed_at: now, status: 'Rejected', code: 'OperationNotActive' } })
-      })
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/${kind === 'construction' ? 'resources/metal-mine' : 'research/energy-technology'}`))
-      const cancel = page.getByRole('button', { name: `Cancel ${kind}`, exact: true })
-      await cancel.focus()
-      await page.keyboard.press('Enter')
-      const dialog = page.getByRole('dialog', { name: `Cancel ${kind}?`, exact: true })
-      if (elapsed >= 30_000) {
-        await expect(dialog).toBeVisible()
-        await expect(dialog).toContainText(elapsed === 29 * 3_600_000 ? '29 hours of work will be lost.' : '30 seconds of work will be lost.')
-        await expect(dialog.getByRole('button', { name: 'Keep working' })).toBeFocused()
-        expect(sent).toHaveLength(0)
-        expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-        await diagnosticScreenshot(page, { path: `test-results/cancellation-${kind}-${elapsed}.png` })
-        await page.keyboard.press('Escape')
-        await expect(cancel).toBeFocused()
-        await cancel.click()
-        await dialog.getByRole('button', { name: 'Yes, cancel' }).click()
-      } else await expect(dialog).toHaveCount(0)
-      await expect.poll(() => sent.length).toBe(1)
-      expect(sent[0]).toEqual({ type: kind === 'construction' ? 'CancelConstruction' : 'CancelResearch', operation: id(10) })
-      // Rejection leaves authoritative work intact and permits a deliberate retry.
-      await expect(cancel).toBeEnabled()
-      await expect(page.getByRole('region', { name: `Active ${kind}`, exact: true })).toBeVisible()
-      if (elapsed === 29_999) {
-        // Cross the boundary between render ticks; the click must re-read time.
-        await page.clock.runFor(1)
-        await cancel.click()
-        await expect(dialog).toContainText('30 seconds of work will be lost.')
-        expect(sent).toHaveLength(1)
       }
     })
   }

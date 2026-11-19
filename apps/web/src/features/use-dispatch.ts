@@ -1,3 +1,4 @@
+import { dispatchableShipTypes } from '../client-model/ship-selection'
 import {
   DispatchRequests,
   type DispatchCargoFill,
@@ -170,19 +171,7 @@ export function useDispatch({
     mission === 'Attack'
       ? ''
       : observedMissionWarning(mission, observedTarget ?? undefined)
-  const types = view.catalog.flatMap((entry) =>
-    entry.key.kind === 'Ship' &&
-    entry.mobile &&
-    (entry.enabled ||
-      body.inventories.some(
-        (stack) =>
-          stack.item.kind === 'Ship' &&
-          stack.item.id === entry.key.id &&
-          BigInt(stack.count) > 0n,
-      ))
-      ? [entry.key.id]
-      : [],
-  )
+  const types = dispatchableShipTypes(view.catalog, body.inventories)
   const quoteRef = useRef<HTMLElement>(null)
   let timingShips: S['FleetIntent4']['ships'] = []
   let invalidShips = false
