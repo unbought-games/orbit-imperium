@@ -447,7 +447,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
           },
         },
       })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await routeProgressionOptions(page, (route) => {
     const { context, request } = route.request().postDataJSON()

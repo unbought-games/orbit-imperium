@@ -1,7 +1,7 @@
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { binding, body, shellFixture, inactiveTutorial } from './fixtures/game'
+import { binding, body, shellFixture, installGameFixture, inactiveTutorial } from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
@@ -453,6 +453,7 @@ test(`explicit login records presence after retry; reload and cached-page restor
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
   if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
+  await installGameFixture(page, { protocol: 4 })
   let signedIn = false,
     logins = 0,
     bootstrapReads = 0
@@ -504,7 +505,7 @@ test(`explicit login records presence after retry; reload and cached-page restor
           request_id: request.postDataJSON().request_id,
         },
       })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await withBootstrapResponse(page, () => page.goto('/login'))
   await page.getByLabel('Account', { exact: true }).fill('test')
@@ -816,6 +817,7 @@ test('mobile startup automatically recovers from a transient restart without sig
   const preparing = structuredClone(payload)
   if (preparing.result.status !== 'authenticated') throw Error('fixture')
   preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
+  await installGameFixture(page, { protocol: 4 })
   let reads = 0
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
@@ -832,7 +834,7 @@ test('mobile startup automatically recovers from a transient restart without sig
     if (path.endsWith('/overview')) return route.fulfill({ json: {
       ...snapshot.view, request_id: request.postDataJSON().request_id,
     } })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   await ready(page.getByText('Connection temporarily unavailable. Reconnecting automatically…')).toBeVisible()

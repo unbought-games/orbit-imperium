@@ -1,4 +1,4 @@
-import { withFixtureResponse } from './responses'
+import { withBootstrapResponse } from './responses'
 import { productionFixture } from '../../src/test-support/production'
 import { universeSlug } from '../../src/client-model/universe-name'
 import { expect, type Page, type Route } from '@playwright/test'
@@ -146,9 +146,6 @@ export async function installGameFixture(
   const protocol = options.protocol ?? 3
   let purchases = 0
   // Fixtures own initial auth/data even when this suite runs against production HTML.
-  await page.route('**/api/analytics', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  )
   await page.route('**/*', async (route) => {
     if (route.request().resourceType() !== 'document') return route.fallback()
     // The local HTML connection can reset during reload. Retry only safe GET
@@ -170,7 +167,13 @@ export async function installGameFixture(
       typeof options.sampledAt === 'function'
         ? options.sampledAt()
         : (options.sampledAt ?? Date.now())
-    if (url.pathname === '/api/auth/config')
+    const is = (method: string, path: string) =>
+      request.method() === method && url.pathname === path
+    const api = (version: number, name: string) =>
+      `/api/v${version}/universes/${binding.universe}/${name}`
+    const post = (name: string, version: number = protocol) =>
+      is('POST', api(version, name))
+    if (is('GET', '/api/auth/config'))
       return route.fulfill({
         json: {
           mode: 'local',
@@ -184,14 +187,33 @@ export async function installGameFixture(
         },
       })
     if (url.pathname === '/api/announcements') return route.fallback()
-    const context = request.postDataJSON()
-    if (url.pathname.endsWith('/player-preferences')) {
+    let context
+    try {
+      context = request.postDataJSON()
+    } catch {
+      return route.fallback()
+    }
+    // The development shell asks for its optional ship designs on mount and
+    // the overview loads the player's public name. Customization tests supply
+    // these observations. Only their passive reads are unavailable by default.
+    if (
+      (post('ship-appearances', 1) && context?.action?.type === 'Load') ||
+      (is('GET', `/api/v4/empire-profiles/${binding.player}`) &&
+        url.searchParams.get('library') === 'false')
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (post('player-preferences', 1)) {
       if (context.preferences) preferences = context.preferences
       return route.fulfill({ json: { ...context.context, preferences } })
     }
-    if (url.pathname.endsWith('/world') && context?.type === 'Tutorial')
+    if (post('world', 4) && context?.type === 'Tutorial')
       return inactiveTutorial(route, options.viewerRevision?.() ?? '1')
-    if (url.pathname.endsWith('/player-profiles'))
+    if (
+      post('player-profiles', 1) &&
+      ['SelfAccount', 'Incoming', 'Galaxy', 'Rankings', 'Report'].includes(
+        context?.source?.type,
+      )
+    )
       return route.fulfill({
         json: {
           binding: context.context.binding,
@@ -220,11 +242,11 @@ export async function installGameFixture(
     }
 
     if (
-      (protocol !== 2 && url.pathname.includes('/v2/')) ||
-      (protocol === 4 && url.pathname.includes('/v3/'))
+      (protocol !== 2 && is('GET', api(2, 'binding'))) ||
+      (protocol === 4 && is('GET', api(3, 'binding')))
     )
       return route.fulfill({ status: 426, json: { code: 'UpgradeRequired' } })
-    if (url.pathname.endsWith('/binding'))
+    if (is('GET', api(protocol, 'binding')))
       return route.fulfill({
         json: {
           protocol,
@@ -233,6 +255,11 @@ export async function installGameFixture(
           sampled_at: sampledAt,
         },
       })
+    if (
+      is('GET', api(4, 'updates')) &&
+      url.searchParams.get('epoch') === binding.epoch
+    )
+      return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     const settings = {
       ...common,
       speed: options.speed ?? 1,
@@ -369,7 +396,7 @@ export async function installGameFixture(
         : {}),
     }
 
-    if (url.pathname === '/api/v1/bootstrap')
+    if (is('GET', '/api/v1/bootstrap'))
       return route.fulfill({
         headers: options.snapshotHeaders?.(),
         json: {
@@ -395,15 +422,16 @@ export async function installGameFixture(
           },
         },
       })
-    if (url.pathname === '/api/v1/rewards')
+    if (is('GET', '/api/v1/rewards'))
       return route.fulfill({ json: { enabled: false } })
-    if (url.pathname === '/api/v1/session')
-      return route.fulfill({ json: session })
-    if (url.pathname.endsWith('/settings'))
-      return route.fulfill({ json: settings })
-    if (url.pathname.endsWith('/overview'))
+    if (is('GET', '/api/v1/session')) return route.fulfill({ json: session })
+    if (post('settings')) return route.fulfill({ json: settings })
+    if (post('overview'))
       return route.fulfill({ json: view, headers: options.snapshotHeaders?.() })
-    if (url.pathname.endsWith('/presence'))
+    if (
+      post('presence', 4) &&
+      context?.command?.action?.type === 'RecordForegroundPresence'
+    )
       return route.fulfill({
         json: {
           protocol: 4,
@@ -417,7 +445,7 @@ export async function installGameFixture(
         },
       })
     if (
-      url.pathname.endsWith('/commands') &&
+      post('commands') &&
       context?.gameplay?.command?.action?.type === 'MarkReportRead'
     )
       return route.fulfill({
@@ -432,7 +460,12 @@ export async function installGameFixture(
           minimum_viewer_revision: options.viewerRevision?.() ?? '1',
         },
       })
-    if (url.pathname.endsWith('/social/query'))
+    if (
+      post('social/query', 4) &&
+      ['Conversations', 'Messages', 'Circulars', 'Contacts'].includes(
+        context?.query?.type,
+      )
+    )
       return route.fulfill({
         json: {
           ...context.context,
@@ -444,7 +477,7 @@ export async function installGameFixture(
           next_cursor: null,
         },
       })
-    if (protocol === 4 && url.pathname.endsWith('/reports'))
+    if (protocol === 4 && post('reports'))
       return route.fulfill({
         json: {
           protocol: 4,
@@ -474,8 +507,8 @@ export async function installGameFixture(
           },
         },
       })
-    if (url.pathname.endsWith('/commands')) purchases++
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (post('commands')) purchases++
+    return route.fallback()
   })
   return () => purchases
 }
@@ -486,13 +519,10 @@ export async function shellFixture(
   options: Parameters<typeof installGameFixture>[1] = {},
 ) {
   const purchases = await installGameFixture(page, options)
-  await withFixtureResponse(
-    page,
-    (response) => response.url().endsWith('/bootstrap'),
-    () =>
-      page.goto(
-        `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
-      ),
+  await withBootstrapResponse(page, () =>
+    page.goto(
+      `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+    ),
   )
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Empire —')
