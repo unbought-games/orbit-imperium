@@ -66,7 +66,9 @@ test('Galaxy emblems remain visible during refresh and reload from the persisten
           ...context,
           players: [
             { player: binding.player, username: 'Aurelia' },
-            { player: id(31), username: 'Cassian' },
+            ...(source.type === 'Galaxy'
+              ? [{ player: id(31), username: 'Cassian' }]
+              : []),
           ].map((player) => ({
             ...player,
             observed_at: now,

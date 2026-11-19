@@ -252,3 +252,27 @@ it('builds and matches every alliance section and settings deep link', async () 
     }
   }
 })
+
+it.each(['/u/andromeda/galaxy', '/u/andromeda/b/earth/galaxy'])(
+  'validates coordinates on the registered Galaxy route at %s',
+  async (path) => {
+    const load = async (system: number) => {
+      const history = createMemoryHistory({
+        initialEntries: [`${path}?galaxy=1&system=${system}&position=12`],
+      })
+      const router = createAppRouter({ history })
+      await router.load()
+      return router.state.matches.at(-1)!
+    }
+    const valid = await load(5)
+    expect(valid.status).toBe('success')
+    expect(valid.staticData.page).toBe('galaxy')
+    expect(valid.search).toMatchObject({ galaxy: 1, system: 5, position: 12 })
+    const invalid = await load(-1)
+    expect(invalid.status).toBe('error')
+    expect(invalid.error).toBeInstanceOf(Error)
+    expect((invalid.error as Error).message).toMatch(
+      /invalid galaxy coordinates/i,
+    )
+  },
+)

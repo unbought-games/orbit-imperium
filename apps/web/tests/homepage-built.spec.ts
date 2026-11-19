@@ -365,6 +365,20 @@ test('production deep links and public entries share a root-scoped installable m
   })
   expect(metadata.appleCapable).toBe('yes')
   expect(metadata.theme).toBe(manifest.theme_color)
+  expect(manifest.icons).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        src: '/icon-1024.png',
+        sizes: '1024x1024',
+        type: 'image/png',
+      }),
+      expect.objectContaining({
+        src: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+      }),
+    ]),
+  )
   for (const icon of manifest.icons) {
     const url = new URL(icon.src, manifestURL)
     expect(url.origin).toBe(manifestURL.origin)

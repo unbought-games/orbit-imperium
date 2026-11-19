@@ -2,7 +2,10 @@ import type { Page, Response } from '@playwright/test'
 import { withFixtureResponse } from './responses'
 import { preparedEmpireIdentity } from './empire-identity'
 import { binding } from '../../src/test-support/empire'
-import type { ProfileAction } from '../../src/adapters/empire-history'
+import type { EmpireProfile } from '../../src/adapters/empire-history'
+import type { components } from '../../src/contracts'
+import { ContractDataError, validate } from '../../src/client-model/schema'
+import { defaultTitle } from '../../src/client-model/empire-identity'
 const archive = '/api/v4/empire-profiles/' + binding.player
 const observations =
   '/api/v1/universes/' + binding.universe + '/player-profiles'
@@ -17,6 +20,53 @@ export const loaded = (page: Page, action: () => Promise<unknown>) =>
       r.request().method() === 'GET' && new URL(r.url()).pathname === archive,
     action,
   )
+type ProfileCommand = components['schemas']['ProfileCommand']
+
+export async function installIdentityArchive(page: Page, data: EmpireProfile) {
+  const ownerPath = `/api/v4/empire-profiles/${data.player}`
+  const writes: ProfileCommand[] = []
+  await page.route(
+    (url) => url.pathname === ownerPath,
+    async (route) => {
+      const request = route.request()
+      const url = new URL(request.url())
+      if (request.method() === 'GET' && url.search === '?library=false')
+        return route.fulfill({ json: data })
+      if (
+        request.method() !== 'POST' ||
+        url.search ||
+        request.headers()['x-csrf-token'] !== 'fixture'
+      )
+        return route.fallback()
+      let command: ProfileCommand
+      try {
+        command = validate<ProfileCommand>(
+          'ProfileCommand',
+          request.postDataJSON(),
+        )
+      } catch (error) {
+        if (error instanceof ContractDataError) return route.fallback()
+        throw error
+      }
+      if (command.action.type !== 'Identity') return route.fallback()
+      if (command.expected_revision !== data.revision)
+        return route.fulfill({ status: 409, json: { code: 'Conflict' } })
+      writes.push(command)
+      data.identity = command.action.identity
+      const selected = data.title_choices?.find(
+        (choice) => choice.title.id === data.identity?.title_id,
+      )
+      if (selected?.availability === 'available') {
+        const { id, label, address } = selected.title
+        data.title = { id, label, address, expires_at: null }
+      } else data.title = defaultTitle
+      data.revision++
+      return route.fulfill({ json: { ok: true } })
+    },
+  )
+  return writes
+}
+
 export async function installObservedEmpire(page: Page) {
   const data = preparedEmpireIdentity()
   data.identity = {
@@ -30,7 +80,6 @@ export async function installObservedEmpire(page: Page) {
     address: 'Consul',
     expires_at: null,
   }
-  const writes: ProfileAction[] = []
   await page.route(
     (u) => u.pathname === '/api/v1/session',
     (r) => {
@@ -45,25 +94,7 @@ export async function installObservedEmpire(page: Page) {
       })
     },
   )
-  await page.route(
-    (u) => u.pathname === archive,
-    (r) => {
-      if (
-        r.request().method() === 'GET' &&
-        new URL(r.request().url()).searchParams.get('library') === 'false'
-      )
-        return r.fulfill({ json: data })
-      if (r.request().method() !== 'POST') return r.fallback()
-      const req = r.request().postDataJSON()
-      if (req.action?.type !== 'Identity') return r.fallback()
-      if (req.expected_revision !== data.revision)
-        return r.fulfill({ status: 409, json: { code: 'Conflict' } })
-      writes.push(req.action)
-      data.identity = req.action.identity
-      data.revision++
-      return r.fulfill({ json: { ok: true } })
-    },
-  )
+  const writes = await installIdentityArchive(page, data)
   await page.route(
     (u) => u.pathname === observations,
     (r) => {

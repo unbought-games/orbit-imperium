@@ -73,3 +73,24 @@ it('starts the supporter preview directly without loading a game runtime or game
   expect(loadInitialRuntime).not.toHaveBeenCalled()
   expect(createAppRouter).not.toHaveBeenCalled()
 })
+
+it('dispatches the public directory to its captured universe before game bootstrap', async () => {
+  const universe = '00000000-0000-4000-8000-000000000031'
+  vi.stubGlobal('document', {
+    querySelectorAll: () => [],
+    getElementById: () => ({}),
+  })
+  vi.stubGlobal('location', { pathname: `/alliances/${universe}` })
+  vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0', platform: 'MacIntel' })
+  const render = vi.fn()
+  vi.mocked(createRoot).mockReturnValue({ render, unmount: vi.fn() })
+  await startGame()
+  const { PublicRecruitmentDirectory } = await import(
+    './features/alliances/recruitment-directory'
+  )
+  expect(render).toHaveBeenCalledOnce()
+  expect(render.mock.calls[0][0].type).toBe(PublicRecruitmentDirectory)
+  expect(render.mock.calls[0][0].props.universe).toBe(universe)
+  expect(loadInitialRuntime).not.toHaveBeenCalled()
+  expect(createAppRouter).not.toHaveBeenCalled()
+})

@@ -161,6 +161,11 @@ it('queues the post-send refresh behind an older-history page instead of droppin
   expect(queried.some((q) => q.type === 'Messages' && q.after === 'm51')).toBe(
     true,
   )
+  expect(queried.filter((q) => q.type === 'Messages')).toEqual([
+    { type: 'Messages', player: 'peer', before: null, after: null, limit: 50 },
+    { type: 'Messages', player: 'peer', before: 'm50', after: null, limit: 50 },
+    { type: 'Messages', player: 'peer', before: null, after: 'm51', limit: 50 },
+  ])
   expect(c.store.getState().history?.messages.map((m) => m.id)).toEqual([
     'm49',
     'm50',

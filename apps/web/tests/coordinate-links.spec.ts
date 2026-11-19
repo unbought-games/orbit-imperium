@@ -4,7 +4,13 @@ import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { shellFixture, binding, body, id, resources } from './fixtures/game'
+import {
+  installGameFixture,
+  binding,
+  body,
+  id,
+  resources,
+} from './fixtures/game'
 import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
@@ -45,7 +51,7 @@ const fleet: S['OwnMission4'] = {
 
 async function setup(page: Page, leg: S['OwnMission4']['leg'] = 'Outbound') {
   await page.clock.setFixedTime(now)
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     sampledAt: now,
     universeName: 'Andromeda Prime',
@@ -150,11 +156,10 @@ for (const width of [390]) {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toHaveCount(0)
     await expect(target).toBeFocused()
-    await target.blur()
     await diagnosticScreenshot(page, {
       path: `test-results/coordinate-mission-${width}.png`,
     })
-    await target.focus()
+    await expect(target).toBeFocused()
     await page.keyboard.press('Enter')
     await assertLocation(page, 5, 12)
     expect(requests.at(-1)).toEqual({ galaxy: 1, system: 5 })

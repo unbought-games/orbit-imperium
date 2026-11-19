@@ -9,6 +9,7 @@ import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import {
   refuseFixtureReads,
+  installGameFixture,
   shellFixture,
   binding,
   body,
@@ -87,7 +88,7 @@ test(`fleet inventory leads the first viewport and traffic stays reachable acros
 }) => {
   await page.setViewportSize(viewportSizes[0])
   await page.clock.setFixedTime(now)
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     missions: {
       fleets: [fleet],
@@ -138,7 +139,52 @@ test(`fleet inventory leads the first viewport and traffic stays reachable acros
   ).toContainText('Fuel is not refunded')
   await page.getByRole('button', { name: 'Keep mission' }).click()
   await path.locator('summary').click()
-  await expect(path.locator('figure')).toBeVisible()
+  const diagram = path.getByRole('figure', {
+    name: 'Mission route schematic',
+  })
+  await expect(diagram).toBeVisible()
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await expect
+      .poll(() =>
+        diagram
+          .locator('img')
+          .evaluateAll(
+            (images) =>
+              images.length > 0 &&
+              images.every(
+                (image) =>
+                  (image as HTMLImageElement).complete &&
+                  (image as HTMLImageElement).naturalWidth > 0,
+              ),
+          ),
+      )
+      .toBe(true)
+    for (const coordinate of ['[1:371:12]', '[1:372:10]']) {
+      const label = diagram.getByText(coordinate, { exact: true })
+      expect(
+        await label.evaluate((node) => {
+          const bounds = node.getBoundingClientRect(),
+            stage = node.closest('figure')!.getBoundingClientRect()
+          const text = document.createRange()
+          text.selectNodeContents(node)
+          return {
+            contained:
+              bounds.x >= stage.x &&
+              bounds.right <= stage.right &&
+              bounds.y >= stage.y &&
+              bounds.bottom <= stage.bottom,
+            lines: text.getClientRects().length,
+          }
+        }),
+      ).toEqual({ contained: true, lines: 1 })
+    }
+  }
   await page.getByRole('link', { name: 'All fleets' }).click()
   await expect(
     page.getByRole('navigation', { name: 'Fleet navigation' }),
@@ -150,7 +196,7 @@ test(`combat outcome and follow-up lead the first viewport across supported view
 }) => {
   await page.setViewportSize(viewportSizes[0])
   await page.clock.setFixedTime(now)
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     extraCapabilities: ['Reports', 'Harvest'],
   })
@@ -315,7 +361,7 @@ test(`building choices remain visible without colony artwork across supported vi
 }) => {
   refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.setViewportSize(viewportSizes[0])
-  await shellFixture(page, {
+  await installGameFixture(page, {
     bodies: [body],
     catalog: [
       {
@@ -463,7 +509,7 @@ for (const width of [390]) {
       ships,
       arrival_at: now + 454000,
     })
-    await shellFixture(page, {
+    await installGameFixture(page, {
       protocol: 4,
       sampledAt: now,
       playerNames: { [id(99)]: 'Commander Vega' },

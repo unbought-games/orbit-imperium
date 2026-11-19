@@ -57,7 +57,7 @@ async function open(
   await mount('empire')
   return page.getByRole('article', { name: 'Transport fleet' })
 }
-test('flight detail keeps its recorded endpoints, manifest and exact arrival readable at each shell width', async ({
+test('flight detail shows its exact manifest, arrival and recall review', async ({
   page,
   mount,
 }) => {
@@ -72,48 +72,6 @@ test('flight detail keeps its recorded endpoints, manifest and exact arrival rea
     'datetime',
     new Date(fleet.due_at).toISOString(),
   )
-  await mission.getByText('Flight path', { exact: true }).click()
-  const diagram = mission.getByRole('figure', {
-    name: 'Mission route schematic',
-  })
-  await expect(diagram).toBeVisible()
-  for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 })
-    await expect
-      .poll(() =>
-        diagram
-          .locator('img')
-          .evaluateAll(
-            (images) =>
-              images.length > 0 &&
-              images.every(
-                (image) =>
-                  (image as HTMLImageElement).complete &&
-                  (image as HTMLImageElement).naturalWidth > 0,
-              ),
-          ),
-      )
-      .toBe(true)
-    for (const coordinate of ['[1:371:12]', '[1:372:10]']) {
-      const label = diagram.getByText(coordinate, { exact: true })
-      expect(
-        await label.evaluate((node) => {
-          const bounds = node.getBoundingClientRect(),
-            stage = node.closest('figure')!.getBoundingClientRect()
-          const text = document.createRange()
-          text.selectNodeContents(node)
-          return {
-            contained:
-              bounds.x >= stage.x &&
-              bounds.right <= stage.right &&
-              bounds.y >= stage.y &&
-              bounds.bottom <= stage.bottom,
-            lines: text.getClientRects().length,
-          }
-        }),
-      ).toEqual({ contained: true, lines: 1 })
-    }
-  }
   await page.getByRole('button', { name: 'Review recall', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Review recall' }),

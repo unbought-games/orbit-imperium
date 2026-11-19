@@ -2,7 +2,13 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/test'
 import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { binding, id } from './fixtures/game'
+import {
+  binding,
+  id,
+  matchesFixtureContext,
+  playerProfilesFixture,
+} from './fixtures/game'
+import { installIdentityArchive, loaded } from './fixtures/observed-empire'
 import type { EmpireProfile } from '../src/adapters/empire-history'
 const profileId = id(80)
 function fixtureProfile(): EmpireProfile {
@@ -70,60 +76,35 @@ function fixtureProfile(): EmpireProfile {
 }
 async function setup(page: Page) {
   const data = fixtureProfile()
-  const writes: unknown[] = []
-  await page.route('**/api/v1/session', (r) =>
-    r.fulfill({
-      json: {
-        account: binding.account,
-        csrf: 'fixture',
-        expires_at: Date.now() + 3600000,
-        memberships: [
-          {
-            universe: binding.universe,
-            player: binding.player,
-            universe_name: 'Andromeda',
-          },
-        ],
-      },
-    }),
+  const writes = await installIdentityArchive(page, data)
+  await page.route(
+    (url) => url.pathname === '/api/v1/session' && !url.search,
+    (r) =>
+      r.request().method() === 'GET'
+        ? r.fulfill({
+            json: {
+              account: binding.account,
+              csrf: 'fixture',
+              expires_at: Date.now() + 3600000,
+              memberships: [
+                {
+                  universe: binding.universe,
+                  player: binding.player,
+                  universe_name: 'Andromeda',
+                },
+              ],
+            },
+          })
+        : r.fallback(),
   )
-  await page.route('**/api/v4/empire-profiles/**', async (r) => {
-    if (r.request().method() === 'POST') {
-      const body = r.request().postDataJSON()
-      writes.push(body)
-      if (body.expected_revision !== data.revision)
-        return r.fulfill({ status: 409, json: { code: 'Conflict' } })
-      data.identity = body.action.identity
-      const chosen = data.title_choices?.find(
-        (c) => c.title.id === data.identity?.title_id,
-      )
-      data.title =
-        chosen?.availability === 'available'
-          ? { ...chosen.title, expires_at: null }
-          : fixtureProfile().title
-      // TitleDisplay doesn't expose catalog access metadata.
-      if (data.title) {
-        const { id, label, address, expires_at } = data.title
-        data.title = { id, label, address, expires_at }
-      }
-      data.revision++
-      return r.fulfill({ json: { ok: true } })
-    }
-    return r.fulfill({ json: data })
-  })
-  await page.route('**/api/v4/my-profile', (r) =>
-    r.fulfill({ json: { id: profileId, owner: true, empires: [data] } }),
+  await page.route(
+    (url) => url.pathname === '/api/v4/my-profile' && !url.search,
+    (r) =>
+      r.request().method() === 'GET'
+        ? r.fulfill({ json: { id: profileId, owner: true, empires: [data] } })
+        : r.fallback(),
   )
   return { data, writes }
-}
-async function loaded(page: Page, action: () => Promise<unknown>) {
-  await withFixtureResponse(
-    page,
-    (r) =>
-      r.request().method() === 'GET' &&
-      r.url().includes(`/api/v4/empire-profiles/${binding.player}`),
-    action,
-  )
 }
 async function capture(page: Page, state: string, width: number) {
   expect(
@@ -213,54 +194,47 @@ test('dossier keyboard focus and orb use the same empire identity', async ({
       score_value_micro: '0',
     },
   })
-  await page.route('**/rankings', (r) =>
-    r.fulfill({
-      json: {
-        binding,
-        request_id: r.request().postDataJSON().request_id,
-        sampled_at: Date.now(),
-        processing_pending: false,
-        players: [
-          {
-            player: binding.player,
-            username: 'Aurelia',
-            points: '12',
-            rank: 1,
-          },
-        ],
-      },
-    }),
+  await page.route(
+    (url) => url.pathname === `/api/v4/universes/${binding.universe}/rankings`,
+    (r) => {
+      if (r.request().method() !== 'POST') return r.fallback()
+      const context = r.request().postDataJSON()
+      if (!matchesFixtureContext(context)) return r.fallback()
+      return r.fulfill({
+        json: {
+          binding,
+          request_id: context.request_id,
+          sampled_at: Date.now(),
+          processing_pending: false,
+          players: [
+            {
+              player: binding.player,
+              username: 'Aurelia',
+              points: '12',
+              rank: 1,
+            },
+          ],
+        },
+      })
+    },
   )
-  await page.route('**/player-profiles', (r) => {
-    const { context } = r.request().postDataJSON()
-    const now = Math.floor(Date.now() / 1000)
-    return r.fulfill({
-      json: {
-        binding,
-        request_id: context.request_id,
-        players: [
-          {
-            player: binding.player,
-            username: 'Aurelia',
-            kind: 'human',
-            observed_at: now,
-            expires_at: now + 300,
-            identity: {
-              name: 'Roman Empire',
-              tagline: 'Many worlds. One people.',
-              title_id: 'consul',
-            },
-            title: {
-              id: 'consul',
-              label: 'Consul',
-              address: 'Consul',
-              expires_at: null,
-            },
-          },
-        ],
+  await playerProfilesFixture(page, () => [
+    {
+      player: binding.player,
+      username: 'Aurelia',
+      identity: {
+        name: 'Roman Empire',
+        tagline: 'Many worlds. One people.',
+        title_id: 'consul',
       },
-    })
-  })
+      title: {
+        id: 'consul',
+        label: 'Consul',
+        address: 'Consul',
+        expires_at: null,
+      },
+    },
+  ])
   await withFixtureResponse(
     page,
     (r) =>
