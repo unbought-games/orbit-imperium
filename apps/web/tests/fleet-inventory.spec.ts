@@ -189,14 +189,33 @@ for (const width of [390]) {
       .getByRole('link', { name: 'Shipyard', exact: true, includeHidden: true })
     for (const layoutWidth of [1280, 511, width]) {
       await page.setViewportSize({ width: layoutWidth, height: 900 })
-      const dispatchBox = (await dispatch.boundingBox())!
-      const slotsBox = (await slots.boundingBox())!
+      const actions =
+        layoutWidth < 640 ? slots.or(dispatch) : shipyard.or(slots).or(dispatch)
+      const boxes = await actions.evaluateAll((controls) =>
+        controls.map((control) => {
+          const { left, right, top, height } = control.getBoundingClientRect()
+          return {
+            label:
+              control.getAttribute('aria-label') ?? control.textContent?.trim(),
+            left,
+            right,
+            centerY: top + height / 2,
+          }
+        }),
+      )
+      const expectedActions = [
+        'Fleet slots: 2 used / 8 total',
+        'Dispatch Fleet',
+      ]
+      if (layoutWidth >= 640) expectedActions.unshift('Shipyard')
+      expect(boxes.map((box) => box.label)).toEqual(expectedActions)
+      const [slotsBox, dispatchBox] = boxes.slice(-2)
       if (layoutWidth < 640) {
         await expect(shipyard).toBeHidden()
       } else {
-        const shipyardBox = (await shipyard.boundingBox())!
-        expect(shipyardBox.x + shipyardBox.width).toBeLessThan(slotsBox.x)
-        expect(Math.abs(shipyardBox.y - slotsBox.y)).toBeLessThan(8)
+        const shipyardBox = boxes[0]
+        expect(shipyardBox.right).toBeLessThan(slotsBox.left)
+        expect(Math.abs(shipyardBox.centerY - slotsBox.centerY)).toBeLessThan(2)
       }
       const headerScope = page
         .locator('main header')
@@ -216,8 +235,8 @@ for (const width of [390]) {
         layoutWidth < 480 ? 'Dispatch' : 'Dispatch Fleet',
         { useInnerText: true },
       )
-      expect(slotsBox.x + slotsBox.width).toBeLessThan(dispatchBox.x)
-      expect(Math.abs(slotsBox.y - dispatchBox.y)).toBeLessThan(8)
+      expect(slotsBox.right).toBeLessThan(dispatchBox.left)
+      expect(Math.abs(slotsBox.centerY - dispatchBox.centerY)).toBeLessThan(2)
     }
     const panel = page.getByRole('region', {
       name: 'Stationed ships',
@@ -331,11 +350,13 @@ for (const width of [390]) {
       fullPage: true,
       path: `test-results/fleets-moon-${width}x900.png`,
     })
-    await selectBody(page, body.id)
-    await diagnosticScreenshot(panel, {
-      path: `test-results/fleet-inventory-compact-${width}.png`,
-    })
-    await selectBody(page, id(6))
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      await selectBody(page, body.id)
+      await diagnosticScreenshot(panel, {
+        path: `test-results/fleet-inventory-compact-${width}.png`,
+      })
+      await selectBody(page, id(6))
+    }
     await expect(panel).toContainText('No ships stationed here.')
     await expect(cargo.getByRole('cell')).toHaveText(['0', '9', '7'])
     await expect(
@@ -415,6 +436,5 @@ for (const width of [390]) {
     await page.goBack()
     await expect(page).toHaveURL(listPath)
     await expect(page.locator('main h1')).toBeFocused()
-
   })
 }

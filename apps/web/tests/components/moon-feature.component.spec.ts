@@ -6,6 +6,8 @@ import {
   selectDestinationPlanet,
   snapshot,
   configure,
+  hold,
+  release,
 } from './dispatch-driver'
 import { body, id, binding } from '../../src/test-support/empire'
 import type { EmpireSceneInput } from './empire-runtime'
@@ -144,7 +146,30 @@ test('hostile lunar Attack defers to the reviewed quote while Espionage exposes 
       .filter({ hasText: 'Beginner protection prevents this mission' }),
   ).toHaveCount(0)
   await expect(review(page)).toBeEnabled()
-  await review(page).click()
+  await hold(page, 'FleetQuote')
+  try {
+    await review(page).click()
+    await expect
+      .poll(async () =>
+        (await snapshot(page)).calls
+          .filter((q) => q.type === 'FleetQuote')
+          .at(-1),
+      )
+      .toMatchObject({
+        type: 'FleetQuote',
+        intent: {
+          mission: 'Attack',
+          destination: {
+            type: 'Body',
+            id: id(70),
+            expected_kind: 'Moon',
+            expected_owner: id(30),
+          },
+        },
+      })
+  } finally {
+    await release(page)
+  }
   await expect(page.getByRole('alert')).toContainText(
     'Beginner protection prevents this mission',
   )

@@ -353,7 +353,7 @@ function Surface() {
                   <ContentColumn as="main" className={layout['work-area']}>
                     <h1 tabIndex={-1}>Reports</h1>
                     <ErrorBannerSlot model={scene.model} />
-                    {path.endsWith('/reports') || details ? (
+                    {path.endsWith('/reports') || (details && /\/reports\/[^/]+$/.test(path)) ? (
                       <Reports
                         model={scene.model}
                         universe="andromeda"

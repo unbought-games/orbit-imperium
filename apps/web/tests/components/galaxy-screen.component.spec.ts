@@ -303,6 +303,8 @@ test('changing systems drops stale rows, fences the delayed read and retries the
     })
     await page.getByRole('button', { name: 'Retry loading galaxy' }).click()
     await expect(row(page)).toContainText('[1:25:1]')
+    await field.focus()
+    await expect(field).toBeFocused()
   } finally {
     await page.evaluate(async () => {
       window.releaseGalaxyRead?.()
@@ -310,6 +312,7 @@ test('changing systems drops stale rows, fences the delayed read and retries the
     })
   }
   await expect(row(page)).toContainText('[1:25:1]')
+  await expect(field).toBeFocused()
   await expect(
     page.getByRole('region', { name: 'Galaxy positions' }),
   ).not.toContainText('[1:24:1]')
@@ -732,7 +735,12 @@ test('occupied and empty debris display exact amounts while Harvest and Colonize
     page.getByRole('menuitem', { name: 'Colonize', exact: true }),
   ).toBeEnabled()
   await page.getByRole('menuitem', { name: 'Colonize', exact: true }).click()
-  await expect(page.getByLabel('Prepared fleet')).toContainText('"position":5')
+  const prepared = page.getByLabel('Prepared fleet')
+  await expect(prepared).toBeVisible()
+  expect(JSON.parse(await prepared.innerText())).toEqual({
+    mission: 'Colonize',
+    coordinates: { galaxy: 1, system: 371, position: 5 },
+  })
   const caps = await page.evaluate(
     () => window.galaxyScene.snapshot().view.capabilities,
   )

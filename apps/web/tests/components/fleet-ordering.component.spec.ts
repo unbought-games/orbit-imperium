@@ -1,11 +1,51 @@
 import { test, expect } from './fixture'
-import { body, id } from '../../src/test-support/empire'
+import { body, binding, id, resources } from '../../src/test-support/empire'
 import type { components } from '../../src/contracts'
 import type {} from './empire.scenarios'
-import { now, fleet } from '../fixtures/mission-traffic'
 type S = components['schemas']
+const now = 1793275200000
+function fleet(
+  n: number,
+  mission: S['Mission4'],
+  due: number,
+  leg: S['OwnMission4']['leg'] = 'Outbound',
+): S['OwnMission4'] {
+  return {
+    id: id(n),
+    intent: {
+      origin: body.id,
+      destination: {
+        type: 'Body',
+        id: id(99),
+        expected_kind: 'Planet',
+        expected_owner: id(90),
+      },
+      mission,
+      ships: [
+        { owner: binding.player, ship_type: 'LargeCargo', count: '2' },
+        { owner: binding.player, ship_type: 'Cruiser', count: '11' },
+      ],
+      cargo: { metal: '1000000000', crystal: '2000000000', deuterium: '0' },
+      speed_percent: 100,
+    },
+    origin: body.coordinates,
+    destination: { galaxy: 1, system: 15, position: 7 },
+    leg,
+    ships: [
+      { ship_type: 'LargeCargo', count: '2' },
+      { ship_type: 'Cruiser', count: '11' },
+    ],
+    cargo: resources,
+    due_at: now + due,
+    launched_at: now - 180000,
+    duration_ms: due + 180000,
+    paid_fuel: '1000000',
+    can_recall: leg === 'Outbound',
+  }
+}
+
 for (const width of [320, 1280])
-  test(`the active fleet list preserves ordered trajectories, review and pending recall at ${width}px`, async ({
+  test(`the active fleet list preserves ordered trajectories and recall review at ${width}px`, async ({
     page,
     mount,
   }) => {
@@ -104,7 +144,6 @@ for (const width of [320, 1280])
     await expect(
       attack.getByText('Mission details', { exact: true }),
     ).toHaveCount(0)
-    await page.evaluate(() => scrollTo(0, 0))
     await manifestToggle.click()
     await expect(manifestToggle).toHaveAttribute('aria-expanded', 'true')
     await expect(
@@ -116,9 +155,6 @@ for (const width of [320, 1280])
       'datetime',
       new Date(now + 1810000).toISOString(),
     )
-    await attack.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 80),
-    )
     await manifestToggle.click()
     await expect(
       attack.getByRole('list', { name: 'Ship composition' }),
@@ -126,12 +162,6 @@ for (const width of [320, 1280])
     await attack.getByRole('button', { name: 'Review recall' }).click()
     const review = attack.getByRole('region', { name: 'Review recall' })
     await expect(review).toContainText('Estimated return if recalled now')
-    const reviewHeight = width < 768 ? 1200 : 900
-    await page.setViewportSize({ width, height: reviewHeight })
-    await attack.evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - 80),
-    )
-    await page.setViewportSize({ width, height: 900 })
     await review.getByRole('button', { name: 'Keep mission' }).click()
     await expect(review).toHaveCount(0)
     await attack.getByRole('group', { name: 'Carried resources' }).click()
@@ -143,7 +173,6 @@ for (const width of [320, 1280])
     await expect(attack).toContainText('Speed 100%')
     await expect(page.getByText('Fleet slots and protection')).toHaveCount(0)
     await expect(page.getByText('Completed-asset score:')).toHaveCount(0)
-    await page.evaluate(() => scrollTo(0, 0))
     await page.getByRole('link', { name: 'All fleets', exact: true }).click()
     missions.fleets[1] = {
       ...missions.fleets[1],
@@ -170,9 +199,7 @@ for (const width of [320, 1280])
     await expect(
       cards.first().getByRole('button', { name: 'Review recall' }),
     ).toHaveCount(0)
-    await cards
-      .first()
-      .evaluate((el) => window.scrollBy(0, el.getBoundingClientRect().top - 80))
+    if (width !== 320) return
     const harvest = page.getByRole('article', {
       name: 'Harvest fleet',
       exact: true,

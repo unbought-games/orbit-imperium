@@ -192,14 +192,27 @@ test('reviewed Depot supply and recall reach the real holdings list and update d
   await page.getByRole('textbox', { name: 'Deuterium to supply' }).fill('4000')
   await page.getByRole('button', { name: 'Review supply', exact: true }).click()
   await expect(
-    page.getByText('Additional defense', { exact: true }),
-  ).toBeVisible()
+    page
+      .getByText('Additional defense', { exact: true })
+      .locator('..')
+      .locator('dd'),
+  ).toHaveText('2 hours')
+  await expect(
+    page
+      .getByText('Budget after supply', { exact: true })
+      .locator('..')
+      .locator('dd'),
+  ).toHaveText('6,000')
   await page
     .getByRole('button', { name: 'Supply deuterium', exact: true })
     .click()
   await expect(
     page.getByRole('status').filter({ hasText: 'Supply delivered' }),
   ).toBeVisible()
+
+  await expect(
+    page.getByText(/Available this rolling hour:/).getByTitle('Deuterium'),
+  ).toHaveText('6,000')
 
   await page.getByRole('button', { name: 'Review recall', exact: true }).click()
   await expect(
@@ -370,15 +383,41 @@ test('a moon displays its local ships but its visiting defence fleet is supplied
   await expect
     .poll(() =>
       page.evaluate(() =>
-        window.empireScene.sent.flatMap(({ command }) =>
-          command.type === 'World' &&
-          command.action.type === 'SupplyHoldingFleet'
-            ? [command.action.intent]
-            : [],
-        ),
+        window.empireScene.sent.flatMap((envelope) => {
+          if (
+            envelope.protocol !== 4 ||
+            envelope.command.type !== 'World' ||
+            envelope.command.action.type !== 'SupplyHoldingFleet'
+          )
+            return []
+          const presence = envelope.presence?.command
+          return [
+            {
+              intent: envelope.command.action.intent,
+              presence: presence?.type === 'World' ? presence.action : null,
+              paired:
+                presence?.type === 'World' &&
+                presence.action.type === 'RecordForegroundPresence' &&
+                presence.action.paired_command_id === envelope.command_id,
+            },
+          ]
+        }),
       ),
     )
     .toEqual([
-      { source_planet: home.id, fleet: id(81), deuterium: '1000000000' },
+      {
+        intent: {
+          source_planet: home.id,
+          fleet: id(81),
+          deuterium: '1000000000',
+        },
+        presence: {
+          type: 'RecordForegroundPresence',
+          cause: 'GameplayGesture',
+          body: home.id,
+          paired_command_id: expect.any(String),
+        },
+        paired: true,
+      },
     ])
 })

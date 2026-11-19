@@ -230,7 +230,13 @@ export async function createDispatchFixture(
                   }
                 : {
                     type: 'Body',
-                    id: owned?.id ?? id(20),
+                    id:
+                      owned?.id ??
+                      (options.observedMoon &&
+                      selection.kind === 'Moon' &&
+                      selection.coordinates.position === 1
+                        ? id(70)
+                        : id(20)),
                     expected_owner: owned ? player : id(30),
                     expected_kind: selection.kind,
                   }
