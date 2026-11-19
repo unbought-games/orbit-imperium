@@ -1,6 +1,6 @@
 # 10 — Final journey gate, CI cutover and agent guidance
 
-Status: **guidance/reconciliation portion merged in PR #462** (`1a8db850`), implemented by chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba`; final selection cutover remains pending. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **guidance/reconciliation portion merged in PR #462** (`1a8db850`), implemented by chat `01a1ef3c-3b4e-7110-8cdd-ccf62826d8ba`; final selection cutover is now delegated to chat `01a1f17e-e323-7d33-a149-54f36a433bc7`, dependent on 08/09. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -76,3 +76,17 @@ The parent completed the requested [light retrospective](../RELIABILITY-2026-11-
 Do not repeat a deep CI analysis, add scheduling or remove unfinished required
 coverage. The final cohort cutover and broader performance/acceptance work remain
 separate; advancing guidance does not mark all of stream 10 complete.
+
+## Final cutover assignment and current scope
+
+The full remaining cutover is assigned to chat
+`01a1f17e-e323-7d33-a149-54f36a433bc7` through confirmed merge. Reports 08
+(`01a1f17b-bd5d-7b81-b1b7-e07b5eb14524`) and harness/acceptance 09
+(`01a1f17e-3982-7cb1-a428-982096d858dd`) must merge before final selection,
+expensive validation and cutover publication. Read-only reconciliation and
+independent implementation may proceed now. Do not redo #462 guidance work.
+
+The owner narrowed measurement to a light retrospective of existing subsequent
+GitHub runs. This supersedes the original requirement to wait for five future
+merged PR lifecycles. Do not schedule validation or manufacture evidence; report
+what is known and separate operational limitations from structural completion.

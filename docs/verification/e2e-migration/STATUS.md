@@ -14,8 +14,8 @@ replacement-equivalence validation and final CI cutover remain open.
 | 06 Startup/HUD/tutorial | Merged | PR #456 | Complete handoff in test-migration-startup-hud-tutorial.md; combined caption-sequence gap explicit | `150db24f196c01fabcc7181b6f4f10ffa454ddb0` |
 | 07 Social/identity | Merged | PR #461 | Complete handoff in test-migration-social-identity.md | `5508c75b5c40d45b1db1781afc1b2dde1bdda693` |
 | 08 Reports | Delegated | — | Whole stream through merge with mandatory fresh adversarial review | Chat `01a1f17b-bd5d-7b81-b1b7-e07b5eb14524` |
-| 09 Harness/acceptance | Not started | — | Unexpected-operation diagnostics | — |
-| 10 Cutover/reliability | Guidance/reconciliation merged; final cutover pending | PR #462; light retrospective recorded | Final decision after 08/09, preserve required feature cohort | `1a8db8508f3c6ed0b13a67c1ca010d1a1856ddb6` |
+| 09 Harness/acceptance | Delegated | — | Harness/acceptance through merge; expensive validation follows 08 | Chat `01a1f17e-3982-7cb1-a428-982096d858dd` |
+| 10 Cutover/reliability | Final portion delegated; guidance merged in #462 | PR #462; light retrospective recorded | Final implementation/validation/merge after 08 and 09 land | Chat `01a1f17e-e323-7d33-a149-54f36a433bc7` |
 
 ## Slice record template
 
@@ -241,3 +241,30 @@ timestamps (#431), in-memory retry semantics (#445), removed read confirmation
 copy (#452), sharing-revocation review (#470), orb outcome/age display (#484) and
 Dreadnought report contracts (#483) where they touch the owned source. Preserve
 actual HUD/shell wiring from 05/06 and retired report sequence repair history.
+
+## 2026-11-18: final two workstreams launched
+
+The owner explicitly requested both remaining chats, continuing the end-to-end
+/pr and /finish-pr authorization through confirmed merge:
+
+- 09: `01a1f17e-3982-7cb1-a428-982096d858dd` — Complete shared test harness and explicit acceptance.
+- 10: `01a1f17e-e323-7d33-a149-54f36a433bc7` — Finish the browser journey gate and CI cutover.
+
+Both may inspect/design/implement independent work now. Expensive local validation
+is ordered **08 then 09 then 10**: 09 waits for Reports to finish validation and
+merge; 10 waits for both dependency merges and integrates their handoffs before
+final selection changes, expensive validation or publishing the cutover. Use
+thread status and actual Git/PR state, not assumed completion. No process registry
+or scheduler is introduced, and other chats' processes remain untouched.
+
+09 owns shared fixture/runner implementation and explicit acceptance; 10 owns
+final workflow selection/guidance and consumes 09's final interfaces. 10 must not
+merely relabel the broad feature suite as journeys or deselect unfinished cases.
+Both must invoke the installed fresh-context adversarial reviewer and follow
+required CI/review/merge-queue checks. No implementation success is claimed here.
+
+The owner's latest measurement constraint supersedes the earlier five-future-PR
+observation plan: use a light retrospective of actual existing GitHub runs. No
+new measurement system, recurring automation, manufactured PRs or indefinite
+wait for future merges. Distinguish structural completion from available
+operational evidence and preserve all failure/attempt history.

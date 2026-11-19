@@ -1,6 +1,6 @@
 # 09 — Shared harness, contracts and explicit acceptance
 
-Status: **not started**. Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
+Status: **delegated** to chat `01a1f17e-3982-7cb1-a428-982096d858dd` through confirmed merge; see [final-stream coordination](../STATUS.md#2026-11-18-final-two-workstreams-launched). Snapshot: `0c235fd6d27422374abf61ea44e39c015a9c1675`. This brief is implementation-ready triage, not permission to remove assertions without passing replacements.
 
 ## Scope and evidence
 
@@ -85,3 +85,11 @@ Update this status and append a slice record to [STATUS.md](../STATUS.md): compl
 Launch prompt:
 
 > Work on stream 09 in `docs/verification/e2e-migration/workstreams/09-harness-and-acceptance.md`. Read its status and the relevant inventory rows. Continue the next bounded slice using the repository test-design skill. Preserve required coverage until replacements pass. Do not re-audit the whole repository or start other streams. Coordinate shared files, validate serially, and leave a complete resume record if the session ends.
+
+## Active coordination override
+
+Reports 08 is chat `01a1f17b-bd5d-7b81-b1b7-e07b5eb14524`; final cutover 10 is
+`01a1f17e-e323-7d33-a149-54f36a433bc7`. Inspect/design/implement independent work
+now, but wait for 08's validation and merge before expensive local execution.
+Then 09 owns that execution window through its PR merge; 10 follows. The whole
+stream is authorized, not only its suggested first slice. Keep measurement light.
