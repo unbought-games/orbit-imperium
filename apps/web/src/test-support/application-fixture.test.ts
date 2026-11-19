@@ -78,6 +78,10 @@ it('the single and bulk quotes dispatcher checks method, selected universe and b
   const request = { type: 'Upgrade', body: id(5), building: 'MetalMine' }
   for (const bad of [
     call('PUT', path, { context, request }),
+    call('POST', path + '/bulk', {
+      context,
+      requests: [request, { type: 'Other' }],
+    }),
     call('POST', path.replace(binding.universe, id(99)), { context, request }),
     call('POST', path.replace('/v4/', '/v3/'), { context, request }),
     call('POST', path, {

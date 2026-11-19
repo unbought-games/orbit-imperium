@@ -34,6 +34,14 @@ export async function routeProgressionOptions(
       )
         return route.fallback()
       const requests = payload.requests ?? [payload.request]
+      if (
+        !requests.every((item: { type?: unknown } | null) =>
+          ['Upgrade', 'Demolition', 'Research', 'Manufacture'].some(
+            (type) => type === item?.type,
+          ),
+        )
+      )
+        return route.fallback()
       const factories = [...handlers.get(page)!].reverse()
       const used = new Set<Registration>()
       let failure: Parameters<Route['fulfill']>[0] | undefined
@@ -65,6 +73,10 @@ export async function routeProgressionOptions(
                     })
                 if (property === 'fulfill')
                   return async (response: Parameters<Route['fulfill']>[0]) => {
+                    if (!response)
+                      throw Error(
+                        'Expected a response from the progression fixture',
+                      )
                     if (response.status && response.status >= 400)
                       failure = response
                     else
