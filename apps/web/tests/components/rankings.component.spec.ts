@@ -574,3 +574,80 @@ test('player attachments align together and long identities stay within narrow r
     }
   }
 })
+
+test('pageshow refreshes the mounted ranking identity and open dossier from the authoritative profile source', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  const player = id(31),
+    now = Math.floor(Date.now() / 1000)
+  await prepare(
+    page,
+    mount,
+    { players: [{ player, username: 'Harvester', rank: 1, points: '12500' }] },
+    {
+      profiles: [
+        {
+          player,
+          username: 'Harvester',
+          kind: 'bot',
+          observed_at: now,
+          expires_at: now + 300,
+        },
+      ],
+    },
+  )
+  const trigger = page.getByRole('link', { name: 'Harvester profile details' })
+  await expect(trigger.getByLabel('Bot', { exact: true })).toBeVisible()
+  await focusPlayerDetails(page, trigger)
+  const profile = page.getByRole('tooltip', { name: 'Harvester profile' })
+  await expect(profile).toContainText('Automated player')
+  const before = await page.evaluate(() => window.rankingProfileReads.length)
+  await page.evaluate(() => {
+    window.rankingInput.profiles = window.rankingInput.profiles!.map((p) => ({
+      ...p,
+      kind: 'human',
+      observed_at: p.observed_at + 1,
+    }))
+    window.dispatchEvent(new Event('pageshow'))
+  })
+  await expect
+    .poll(() =>
+      page.evaluate((start) => window.rankingProfileReads.slice(start), before),
+    )
+    .toContainEqual([player])
+  await expect(trigger.getByLabel('Bot', { exact: true })).toHaveCount(0)
+  await expect(trigger).toContainText('Harvester')
+  await expect(profile).toBeVisible()
+  await expect(profile).toContainText('Commander')
+  await expect(profile).not.toContainText(/automated|\bBot\b/i)
+  await page.keyboard.press('Escape')
+  await expect(profile).toHaveCount(0)
+})
+
+test('browser Back releases a live score-details dialog and restores an operable previous route', async ({
+  page,
+  mount,
+}) => {
+  await prepare(page, () => mount('rankings-history'), {
+    players: [
+      { player: id(2), username: 'Selected Commander', points: '12', rank: 1 },
+    ],
+  })
+  const entry = page.getByRole('link', { name: 'High Scores', exact: true })
+  await entry.click()
+  const open = page.getByRole('button', {
+    name: 'Score details for Selected Commander: 12 points',
+    exact: true,
+  })
+  await open.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(entry).toBeVisible()
+  await entry.focus()
+  await expect(entry).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(open).toBeVisible()
+})

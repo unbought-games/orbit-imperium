@@ -4,8 +4,14 @@ import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { shellFixture, binding, body, id, resources } from './fixtures/game'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import {
+  installGameFixture,
+  binding,
+  body,
+  id,
+  resources,
+} from './fixtures/game'
+import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
 const now = 1792756800000
@@ -45,7 +51,7 @@ const fleet: S['OwnMission4'] = {
 
 async function setup(page: Page, leg: S['OwnMission4']['leg'] = 'Outbound') {
   await page.clock.setFixedTime(now)
-  await shellFixture(page, {
+  await installGameFixture(page, {
     protocol: 4,
     sampledAt: now,
     universeName: 'Andromeda Prime',
@@ -98,37 +104,42 @@ async function assertLocation(page: Page, system: number, position: number) {
   ).toHaveAttribute('data-value', body.id)
   const selected = page.locator('li[aria-current="location"]')
   await expect(selected).toHaveAttribute('id', `position-${position}`)
-  await expect(selected.getByRole('link', { name: `View [1:${system}:${position}] in galaxy`, exact: true })).toBeVisible()
+  await expect(
+    selected.getByRole('link', {
+      name: `View [1:${system}:${position}] in galaxy`,
+      exact: true,
+    }),
+  ).toBeVisible()
   await expect(selected).toBeInViewport()
   await expect(selected).toBeFocused()
   await expect(selected).toContainText('Empty position')
   await expect(page.locator('a a, button a, a button')).toHaveCount(0)
 }
-for (const width of [1280, 390, 320]) {
-  test(`selected galaxy location retains its outline with focus inside at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 })
-    await setup(page)
-    await withGalaxyResponse(page, () => page.goto(path('galaxy?galaxy=1&system=5&position=12')))
-    const selected = page.locator('li[aria-current="location"]')
-    await expect(selected).toBeFocused()
-    await expect(selected).toHaveCSS('outline-style', 'solid')
-    const control = selected.getByRole('link', { name: 'View [1:5:12] in galaxy', exact: true })
-    await expect(control).toHaveCSS('min-height', '24px')
-    await control.focus()
-    await expect(control).toBeFocused()
-    await expect(selected).toHaveCSS('outline-style', 'solid')
-    await expect(selected).toHaveCSS('outline-width', '2px')
-    expect((await selected.boundingBox())!.height).toBe((await page.locator('#position-11').boundingBox())!.height)
-    await expect(page.getByText('Selected location', { exact: false })).toHaveCount(0)
-    if (width < 768) await expect(control).toHaveCSS('outline-style', 'none')
-  })
-
+for (const width of [390]) {
   test(`mission endpoints retain planet context and browser history at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 844 })
     const requests = await setup(page)
-    await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
+    await withBootstrapResponse(page, () =>
+      page.goto(path(`fleets/${fleet.id}`)),
+    )
+    // A fleet is empire-wide. Changing the funding body must retain the selected fleet detail.
+    await selectBody(page, other.id)
+    await expect(page).toHaveURL(
+      `/u/andromeda-prime/b/${other.id}/fleets/${fleet.id}`,
+    )
+    await withBootstrapResponse(page, () => page.reload())
+    await expect(
+      page.getByRole('heading', { name: 'Mission details', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page
+        .getByRole('list', { name: 'Ship composition' })
+        .getByRole('listitem'),
+    ).toHaveText(['Small Cargo 3'])
+    await selectBody(page, body.id)
+    await expect(page).toHaveURL(path(`fleets/${fleet.id}`))
     const target = page
       .getByRole('link', {
         name: 'View destination [1:5:12] in galaxy',
@@ -145,11 +156,10 @@ for (const width of [1280, 390, 320]) {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menu')).toHaveCount(0)
     await expect(target).toBeFocused()
-    await target.blur()
     await diagnosticScreenshot(page, {
       path: `test-results/coordinate-mission-${width}.png`,
     })
-    await target.focus()
+    await expect(target).toBeFocused()
     await page.keyboard.press('Enter')
     await assertLocation(page, 5, 12)
     expect(requests.at(-1)).toEqual({ galaxy: 1, system: 5 })
@@ -183,31 +193,24 @@ for (const width of [1280, 390, 320]) {
   })
 }
 
-test('returning mission keeps origin and destination labels unambiguous', async ({
+test('fleet card coordinates open Galaxy from the overview and the modal HUD', async ({
   page,
 }) => {
-  await setup(page, 'Returning')
-  await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
-  const mission = page.getByRole('article', { name: 'Attack fleet' })
-  await expect(
-    mission.getByRole('img', { name: /^Returning: .* ← / }),
-  ).toBeVisible()
-  await withGalaxyResponse(page, () =>
-    mission.getByRole('link', { name: 'View destination [1:5:12] in galaxy' }).click(),
-  )
-  await assertLocation(page, 5, 12)
-})
-
-test('fleet card coordinates open Galaxy from the overview and the modal HUD', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await setup(page)
   const overview = path('overview')
   await withBootstrapResponse(page, () => page.goto(overview))
-  const card = page.getByRole('region', { name: 'Fleet movements' })
+  const card = page
+    .getByRole('region', { name: 'Fleet movements' })
     .getByRole('listitem', { name: 'Attack fleet' })
-  const destination = { name: 'View destination [1:5:12] in galaxy', exact: true }
-  await withGalaxyResponse(page, () => card.getByRole('link', destination).click())
+  const destination = {
+    name: 'View destination [1:5:12] in galaxy',
+    exact: true,
+  }
+  await withGalaxyResponse(page, () =>
+    card.getByRole('link', destination).click(),
+  )
   await assertLocation(page, 5, 12)
   await page.goBack()
   await expect(page).toHaveURL(overview)
@@ -221,197 +224,21 @@ test('fleet card coordinates open Galaxy from the overview and the modal HUD', a
   const viewInGalaxy = hud.getByRole('menuitem', { name: 'View in Galaxy' })
   await expect(viewInGalaxy).toBeVisible()
   await expect(page).toHaveURL(overview)
-  await diagnosticScreenshot(page, { path: 'test-results/hud-coordinate-menu-1280x900.png' })
+  await diagnosticScreenshot(page, {
+    path: 'test-results/hud-coordinate-menu-1280x900.png',
+  })
   await page.keyboard.press('Escape')
   await expect(viewInGalaxy).toBeHidden()
   await page.setViewportSize({ width: 390, height: 844 })
   await link.click({ button: 'right' })
   await expect(viewInGalaxy).toBeVisible()
-  await diagnosticScreenshot(page, { path: 'test-results/hud-coordinate-menu-390x844.png' })
+  await diagnosticScreenshot(page, {
+    path: 'test-results/hud-coordinate-menu-390x844.png',
+  })
   await withGalaxyResponse(page, () => viewInGalaxy.click())
   await assertLocation(page, 5, 12)
   await expect(hud).toBeHidden()
 })
-
-test('context-free direct links preserve coordinates and invalid locations are safe', async ({
-  page,
-}) => {
-  const requests = await setup(page)
-  await withGalaxyResponse(page, () => page.goto('/u/andromeda-prime/galaxy?galaxy=1&system=5&position=12'))
-  await assertLocation(page, 5, 12)
-  requests.length = 0
-  await withBootstrapResponse(page, () => page.goto(path('galaxy?galaxy=1&system=500&position=12')))
-  await expect(page.getByRole('alert')).toContainText('outside this universe')
-  expect(requests).toEqual([])
-  await withBootstrapResponse(page, () => page.goto(path('galaxy?galaxy=1&system=-1&position=12')))
-  await expect(
-    page.getByRole('heading', { name: 'Destination unavailable', exact: true }),
-  ).toBeVisible()
-  expect(requests).toEqual([])
-})
-
-test('planet selector is one target while empire coordinates browse without changing selection', async ({
-  page,
-}) => {
-  await setup(page)
-  await withBootstrapResponse(page, () => page.goto(path('overview')))
-  for (const width of [1280, 390, 320]) {
-    await page.setViewportSize({ width, height: 844 })
-    const selector = page.getByRole('combobox', { name: 'Selected body' })
-    const controls = selector
-    await expect(controls.getByRole('link')).toHaveCount(0)
-    for (const label of [
-      controls.locator('img'),
-      controls.getByText('Planet', { exact: true }),
-      controls.getByText('[1:371:12]', { exact: true }),
-    ]) {
-      const box = (await label.boundingBox())!
-      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-      expect(
-        await selector.evaluate(
-          (element, { x, y }) => document.elementFromPoint(x, y) === element,
-          point,
-        ),
-      ).toBe(true)
-      await page.mouse.click(point.x, point.y)
-      await expect(page.getByRole('listbox')).toBeVisible()
-      await page.keyboard.press('Escape')
-      // Escape returns focus before the closing popup is hidden. Let that
-      // visible state settle before clicking the trigger again.
-      await expect(page.locator('[role="listbox"]:visible')).toHaveCount(0)
-      await expect(selector).toBeFocused()
-      await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
-    }
-    await selectBody(page, other.id)
-    await expect(page).toHaveURL(new RegExp(`/b/${other.id}/overview$`))
-    await selectBody(page, body.id)
-    await expect(page).toHaveURL(new RegExp(`/b/${body.id}/overview$`))
-  }
-  const dossier = page.getByRole('article', {
-    name: 'Hades [1:2:4] dossier',
-    exact: true,
-  })
-  await dossier
-    .getByRole('link', { name: 'View [1:2:4] in galaxy', exact: true })
-    .click()
-  await assertLocation(page, 2, 4)
-  await page.goBack()
-  await selectBody(page, other.id)
-  await expect(page).toHaveURL(new RegExp(`/b/${other.id}/overview$`))
-})
-
-for (const [kind, payload, linkName] of [
-  [
-    'Espionage',
-    {
-      kind: 'Espionage',
-      observed_at: now,
-      target: {
-        body: id(99),
-        kind: 'Planet',
-        owner: id(90),
-        coordinates: destination,
-      },
-      resources: { visibility: 'Unknown' },
-      fleet: { visibility: 'Unknown' },
-      defenses: { visibility: 'Unknown' },
-      buildings: { visibility: 'Unknown' },
-      research: { visibility: 'Unknown' },
-      activity: { type: 'None' },
-      counterespionage: { probability_ppm: 0, detected: false },
-    },
-    'View target [1:5:12] in galaxy',
-  ],
-  [
-    'Combat',
-    {
-      kind: 'Combat',
-      at: now,
-      target: destination,
-      outcome: 'Draw',
-      mission: 'Attack',
-      rounds: [],
-      participants: [],
-      survivors: [],
-      gross_losses: [],
-      recovered: [],
-      debris: resources,
-      loot: resources,
-    },
-    'View target [1:5:12] in galaxy',
-  ],
-  [
-    'Delivered',
-    {
-      kind: 'Delivered',
-      at: now,
-      sender: binding.player,
-      recipient: id(90),
-      origin: other.coordinates,
-      target: destination,
-      cargo: resources,
-    },
-    'View destination [1:5:12] in galaxy',
-  ],
-  [
-    'ColonizationFailed',
-    {
-      kind: 'ColonizationFailed',
-      fleet: fleet.id,
-      origin: other.id,
-      at: now,
-      return_at: now + 180000,
-      destination_coordinates: destination,
-      reason: 'Occupied',
-    },
-    'View destination [1:5:12] in galaxy',
-  ],
-] satisfies [string, S['ReportPayload4'], string][]) {
-  test(`${kind} report links recorded coordinates when the historical body is missing`, async ({
-    page,
-  }) => {
-    await setup(page)
-    const header = {
-      id: id(62),
-      kind,
-      observed_at: now - 3600000,
-      read: true,
-      hidden: false,
-    }
-    await page.route('**/api/**/reports**', async (route) => {
-      const request = route.request().postDataJSON()
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          request_id: (request.context ?? request).request_id,
-          viewer_revision: '1',
-          sampled_at: now,
-          as_of_ms: now,
-          data: new URL(route.request().url()).pathname.endsWith(header.id)
-            ? { header, payload }
-            : {
-                items: [header],
-                has_more: false,
-                next_cursor: null,
-                as_of_ms: now,
-              },
-        },
-      })
-    })
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda-prime/b/${body.id}/reports/${header.id}`))
-    await expect(
-      page.getByRole('link', { name: linkName, exact: true }),
-    ).toBeVisible()
-    await page.getByRole('link', { name: linkName, exact: true }).click()
-    await assertLocation(page, 5, 12)
-    await page.goBack()
-    await expect(
-      page.getByRole('link', { name: 'Back to reports', exact: true }),
-    ).toBeVisible()
-    await expect(page.locator('a a, button a, a button')).toHaveCount(0)
-  })
-}
 
 test('copy, menus and explicit dispatch actions preserve origin and recent copy', async ({
   page,
@@ -480,7 +307,9 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
   page,
 }) => {
   await setup(page)
-  await withGalaxyResponse(page, () => page.goto('/u/andromeda-prime/location/1:5:12?target=moon'))
+  await withGalaxyResponse(page, () =>
+    page.goto('/u/andromeda-prime/location/1:5:12?target=moon'),
+  )
   await expect(page).toHaveURL(
     /galaxy\?galaxy=1&system=5&position=12&target=moon/,
   )
@@ -491,30 +320,40 @@ test('share URLs highlight deleted moon slots and preserve moon intent through r
   await expect(page.locator('li[aria-current="location"]')).toContainText(
     'Empty position',
   )
-  await withGalaxyResponse(page, () => page.goto(
-    '/u/andromeda-prime/location/1:5:12?target=moon&mission=transport',
-  ))
+  await withGalaxyResponse(page, () =>
+    page.goto(
+      '/u/andromeda-prime/location/1:5:12?target=moon&mission=transport',
+    ),
+  )
   const input = page.getByLabel('Destination coordinates', { exact: true })
   await expect(input).toHaveValue('1:5:12')
-  await expect(page.getByLabel('Destination preview')).toContainText('Moon unavailable')
+  await expect(page.getByLabel('Destination preview')).toContainText(
+    'Moon unavailable',
+  )
   await withGalaxyResponse(page, () => page.reload())
-  await expect(page.getByLabel('Destination preview')).toContainText('Moon unavailable')
-  await withGalaxyResponse(page, () => input.evaluate((element) => {
-    const data = new DataTransfer()
-    data.setData(
-      'text/plain',
-      location.origin + '/u/andromeda-prime/location/1:7:3?target=moon',
-    )
-    element.dispatchEvent(
-      new ClipboardEvent('paste', {
-        clipboardData: data,
-        bubbles: true,
-        cancelable: true,
-      }),
-    )
-  }))
+  await expect(page.getByLabel('Destination preview')).toContainText(
+    'Moon unavailable',
+  )
+  await withGalaxyResponse(page, () =>
+    input.evaluate((element) => {
+      const data = new DataTransfer()
+      data.setData(
+        'text/plain',
+        location.origin + '/u/andromeda-prime/location/1:7:3?target=moon',
+      )
+      element.dispatchEvent(
+        new ClipboardEvent('paste', {
+          clipboardData: data,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    }),
+  )
   await expect(input).toHaveValue('1:7:3')
-  await expect(page.getByLabel('Destination preview')).toContainText('Moon unavailable')
+  await expect(page.getByLabel('Destination preview')).toContainText(
+    'Moon unavailable',
+  )
   await input.evaluate((element) => {
     const data = new DataTransfer()
     data.setData(
@@ -557,7 +396,9 @@ test('shared locations show an access error without offering enrollment', async 
       },
     }),
   )
-  await withBootstrapResponse(page, () => page.goto('/u/andromeda-prime/location/1:5:12'))
+  await withBootstrapResponse(page, () =>
+    page.goto('/u/andromeda-prime/location/1:5:12'),
+  )
   await expect(
     page.getByRole('heading', { name: 'Destination unavailable', exact: true }),
   ).toBeVisible()
@@ -567,40 +408,4 @@ test('shared locations show an access error without offering enrollment', async 
   await expect(page.getByRole('button', { name: /join|enroll/i })).toHaveCount(
     0,
   )
-})
-
-test('closing a coordinate menu respects focus moved to its location link', async ({ page }) => {
-  await setup(page)
-  await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
-  const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
-  const origin = page.getByRole('link', { name: 'View origin [1:2:4] in galaxy', exact: true }).first()
-  await target.click({ button: 'right' })
-  const menu = page.getByRole('menu')
-  await expect(menu).toBeVisible()
-  await page.keyboard.press('Escape')
-  await origin.focus()
-  await expect(menu).toHaveCount(0)
-  await expect(origin).toBeFocused()
-  await page.keyboard.press('Enter')
-  await assertLocation(page, 2, 4)
-})
-
-test.describe('coordinate actions on touch', () => {
-  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
-  test('long-press opens location actions without following the link', async ({ page }) => {
-    await setup(page)
-    await withBootstrapResponse(page, () => page.goto(path(`fleets/${fleet.id}`)))
-    const target = page.getByRole('link', { name: 'View destination [1:5:12] in galaxy', exact: true }).first()
-    await expect(target).toBeVisible()
-    await expect(target.locator('..').getByRole('button')).toHaveCount(0)
-    const box = (await target.boundingBox())!
-    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-    const cdp = await page.context().newCDPSession(page)
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] })
-    await expect(page.getByRole('menuitem', { name: 'Copy coordinates', exact: true })).toBeVisible()
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-    await expect(page.getByRole('menuitem', { name: 'Copy location link', exact: true })).toBeVisible()
-    await expect(page).toHaveURL(path(`fleets/${fleet.id}`))
-    await diagnosticScreenshot(page, { path: 'test-results/coordinate-long-press-390.png' })
-  })
 })

@@ -10,7 +10,8 @@ import { PlayerPreferencesController } from '../client-model/player-preferences'
 import { playerPreferencesApi } from '../adapters/player-preferences'
 import type { Binding } from '../client-model/commands'
 
-const Context = createContext<PlayerPreferencesController | null>(null)
+export const PlayerPreferencesContext =
+  createContext<PlayerPreferencesController | null>(null)
 export function PlayerPreferencesProvider({
   binding,
   csrf,
@@ -29,10 +30,14 @@ export function PlayerPreferencesProvider({
     [account, player, universe, epoch, csrf],
   )
   useEffect(() => () => controller.stop(), [controller])
-  return <Context.Provider value={controller}>{children}</Context.Provider>
+  return (
+    <PlayerPreferencesContext.Provider value={controller}>
+      {children}
+    </PlayerPreferencesContext.Provider>
+  )
 }
 export function usePlayerPreferences() {
-  const controller = useContext(Context)
+  const controller = useContext(PlayerPreferencesContext)
   if (!controller) throw Error('Player preferences require a game session.')
   const state = useStore(controller.store)
   useEffect(() => {

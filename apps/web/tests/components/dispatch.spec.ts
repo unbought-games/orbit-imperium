@@ -383,7 +383,6 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   mount,
 }) => {
   const now = new Date('2026-10-25T12:00:00Z')
-  await page.clock.install({ time: now })
   await page.clock.pauseAt(now)
   await setup(page, mount)
   const position = page.getByLabel('Destination coordinates', { exact: true })
@@ -448,7 +447,6 @@ test('own-planet attack is actionable, while transport to another owned planet a
   mount,
 }) => {
   const now = new Date('2026-10-26T12:00:00Z')
-  await page.clock.install({ time: now })
   await page.clock.pauseAt(now)
   await setup(page, mount)
   await setDestination(page, { position: '2' })
@@ -2244,6 +2242,32 @@ test('known locked colony positions disable review and an eligible position rest
   await expect(review(page)).toBeEnabled()
   expect((await counts(page)).quotes).toBe(0)
   expect((await counts(page)).launches).toBe(0)
+  const { view } = await snapshot(page)
+  const bodies = structuredClone(view.bodies)
+  bodies[0].inventories.find((stack) => stack.item.id === 'ColonyShip')!.count =
+    '2'
+  await page.evaluate(
+    (bodies) => window.dispatchScene!.configure({ view: { bodies } }),
+    bodies,
+  )
+  await page.getByLabel('Colony Ship · 2 available').fill('2')
+  await page.getByLabel('Small Cargo · 2 available').fill('1')
+  await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
+  await review(page).click()
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  await expect(quote.getByRole('status')).toContainText(
+    'Your planet limit is full.',
+  )
+  await expect(
+    quote.getByRole('list', { name: 'Ship composition' }).getByRole('listitem'),
+  ).toHaveText(['Colony Ship 2', 'Small Cargo 1'])
+  await quote.getByRole('button', { name: /^Colonize with / }).click()
+  await expect.poll(async () => (await snapshot(page)).launches).toBe(1)
+  expect((await snapshot(page)).lastLaunch?.intent).toMatchObject({
+    mission: 'Colonize',
+    destination: { type: 'EmptyPosition', coordinates: { position: 4 } },
+    cargo: { metal: '42000000', crystal: '0', deuterium: '0' },
+  })
 })
 
 test('prepared attack opens final review with carried fleet and speed, without launching', async ({
@@ -2448,6 +2472,21 @@ test('holding duration has a visible field surface and supports keyboard selecti
   await expect(duration).toHaveText('4 hours')
   await review(page).click()
   expect((await lastQuote(page)).intent.hold_hours).toBe(4)
+  const quote = page.getByRole('region', { name: 'Fleet quote' })
+  const prepaid = quote
+    .getByText('Prepaid holding', { exact: true })
+    .locator('..')
+    .locator('dd')
+  await expect(prepaid).toHaveText('4h · 4 included in fuel')
+  await expect(
+    prepaid.getByRole('img', { name: 'Deuterium', exact: true }),
+  ).toBeVisible()
+  await quote.getByRole('button', { name: /Defend with/ }).click()
+  await expect.poll(async () => (await snapshot(page)).launches).toBe(1)
+  expect((await snapshot(page)).lastLaunch?.intent).toMatchObject({
+    mission: 'Hold',
+    hold_hours: 4,
+  })
 })
 
 test('returning to Review refreshes Max cargo and confirms a material shipment against the original review', async ({

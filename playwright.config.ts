@@ -6,86 +6,13 @@ const budgets: Record<string, number> = JSON.parse(
   readFileSync(new URL('./scripts/test-budgets.json', import.meta.url), 'utf8'),
 )
 const suite = process.env.ORBIT_TEST_SUITE ?? 'core'
-const browserSuite = process.env.ORBIT_BROWSER_SUITE ?? 'all'
-if (!['all', 'journeys', 'features'].includes(browserSuite))
-  throw new Error(`Unknown browser suite: ${browserSuite}`)
-const uiFiles = [
-  'loading-region.spec.ts',
-  'arrival.spec.ts',
-  'release-announcement.spec.ts',
-  'research-network.spec.ts',
-  'tutorial-advisor.spec.ts',
-  'tutorial.spec.ts',
-  'empire-identity.spec.ts',
-  'empire-history.spec.ts',
-  'planet-page-routing.spec.ts',
-  'recruitment.spec.ts',
-  'client-update.spec.ts',
-  'sensor-phalanx.spec.ts',
-  'jump-gates.spec.ts',
-  'moon-fleets.spec.ts',
-  'moons.spec.ts',
-  'vacation.spec.ts',
-  'active-work-summary.spec.ts',
-  'hosted-auth.spec.ts',
-  'empire-deletion.spec.ts',
-  'alliance-attacks.spec.ts',
-  'alliance-depot.spec.ts',
-  'terraformer.spec.ts',
-  'industrial-buildings.spec.ts',
-  'insignias.spec.ts',
-  'community-rewards.spec.ts',
-  'game-invitations.spec.ts',
-  'desktop-navigation.spec.ts',
-  'planet-abandonment.spec.ts',
-  'mission-fleets.spec.ts',
-  'missile-warfare.spec.ts',
-  'mobile-selection.spec.ts',
-  'hyperspace-drive.spec.ts',
-  'hyperspace-technology.spec.ts',
-  'command-hud.spec.ts',
-  'hud-playground.spec.ts',
-  'catalog-affordability.spec.ts',
-  'social.spec.ts',
-  'home.spec.ts',
-  'alliance-identity.spec.ts',
-  'alliances.spec.ts',
-  'report-sharing.spec.ts',
-  'combat-simulation.spec.ts',
-  'fleet-inventory.spec.ts',
-  'number-input.spec.ts',
-  'high-scores.spec.ts',
-  'report-deletion.spec.ts',
-  'coordinate-links.spec.ts',
-  'detail-playground.spec.ts',
-  'planet-names.spec.ts',
-  'player-profiles.spec.ts',
-  'content-updates.spec.ts',
-  'heavy-fighter.spec.ts',
-  'solar-satellite.spec.ts',
-  'fusion-reactor.spec.ts',
-  'cruiser.spec.ts',
-  'bomber.spec.ts',
-  'destroyer.spec.ts',
-  'battlecruiser.spec.ts',
-  'battleship.spec.ts',
-  'large-cargo.spec.ts',
-  'density.spec.ts',
-  'colonization.spec.ts',
-  'dispatch-validation.spec.ts',
-  'combat-reports.spec.ts',
-  'espionage-reports.spec.ts',
-  'empire.spec.ts',
-  'locked-buildings.spec.ts',
-  'shell.spec.ts',
-  'resources.spec.ts',
-  'catalog-pages.spec.ts',
-  'galaxy-cards.spec.ts',
-  'bootstrap-ui.spec.ts',
-  'progression-cancellation.spec.ts',
-  'building-quotes.spec.ts',
-  'web-app.spec.ts',
-]
+const journeyContracts: { file: string }[] = JSON.parse(
+  readFileSync(
+    new URL('./apps/web/tests/journey-contracts.json', import.meta.url),
+    'utf8',
+  ),
+)
+const uiFiles = [...new Set(journeyContracts.map((journey) => journey.file))]
 
 const coreFiles = [
   'bootstrap.spec.ts',
@@ -116,10 +43,7 @@ export default defineConfig({
             : process.env.ORBIT_MISSIONS_E2E
               ? 'missions.spec.ts'
               : process.env.ORBIT_PROGRESSION_E2E
-                ? [
-                    'responsive.spec.ts',
-                    'routing.spec.ts',
-                  ]
+                ? ['responsive.spec.ts', 'routing.spec.ts']
                 : process.env.ORBIT_MVP_E2E
                   ? 'mvp.spec.ts'
                   : '**/*.spec.ts',
@@ -150,18 +74,6 @@ export default defineConfig({
                   '**/routing.spec.ts',
                 ]),
   ],
-  grep:
-    process.env.ORBIT_UI_E2E &&
-    !process.env.ORBIT_HOMEPAGE_E2E &&
-    browserSuite === 'journeys'
-      ? /@journey/
-      : undefined,
-  grepInvert:
-    process.env.ORBIT_UI_E2E &&
-    !process.env.ORBIT_HOMEPAGE_E2E &&
-    browserSuite === 'features'
-      ? /@journey/
-      : undefined,
   fullyParallel: !!process.env.ORBIT_UI_E2E,
   workers: process.env.ORBIT_UI_E2E ? Math.min(3, availableParallelism()) : 1,
   use: {

@@ -578,7 +578,6 @@ for (const width of [390, 1440]) {
     page,
   }) => {
     const now = new Date('2026-10-29T12:00:00Z')
-    await page.clock.install({ time: now })
     await page.clock.pauseAt(now)
     await page.setViewportSize({ width, height: 1000 })
     const options = empireFixture(now.getTime())

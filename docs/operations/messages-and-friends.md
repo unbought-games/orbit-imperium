@@ -77,7 +77,5 @@ intake records, automatic sanctions, or moderation workers.
 `make _db-social _db-alliances` covers PostgreSQL history, recipient privacy,
 permission revocation, retention, friendship and block races, monotonic read/hide
 state, retry identity, and HTTP authorization. Use an isolated Compose project as
-in the CI runner instructions. `npm run test:ui -- social.spec.ts` exercises the
-conversation and circular flows on desktop and mobile with deterministic HTTP
-fixtures. Related report/profile/galaxy browser suites protect the message entry
+in the CI runner instructions. `npm run test:ui -- social.spec.ts` follows a direct message from its funded deep link through delivery and return. Run `npm run test:components -- messages-screen.component.spec.ts social.component.spec.ts` for the live polling, draft, contact, read/hide and circular controls. Related report/profile/galaxy browser suites protect the message entry
 points and accessibility.

@@ -36,7 +36,11 @@ test('every workflow job uses an explicitly approved disposable runner', () => {
 test('browser jobs configure Ubuntu mirrors before installing Linux dependencies', () => {
   for (const { file, workflow } of workflows) {
     const browserJobs = Object.values(workflow.jobs).filter((job) =>
-      job.steps.some((step) => /make test-(ui|explicit)/.test(step.run ?? '')),
+      job.steps.some(
+        (step) =>
+          step.run === 'make test-${{ matrix.suite }}' ||
+          /make test-explicit/.test(step.run ?? ''),
+      ),
     )
     if (file === 'ci.yml' || file === 'explicit-tests.yml')
       assert.ok(browserJobs.length > 0, file)
@@ -221,9 +225,7 @@ test('fixture browsers start independently of native compilation and stay routin
   )
   assert.ok(
     jobs.browser.steps.some(
-      (step) =>
-        step.run?.includes('make test-ui') &&
-        step.run.includes('make test-components'),
+      (step) => step.run === 'make test-${{ matrix.suite }}',
     ),
   )
   assert.ok(
@@ -237,6 +239,31 @@ test('fixture browsers start independently of native compilation and stay routin
       /make test-(explicit|acceptance|container)/.test(command),
     ),
   )
+})
+
+test('relevant browser CI checks the built homepage once per matrix', () => {
+  const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow
+    .jobs
+  const homepage = browser.steps.filter(
+    (step) => step.run === 'make test-homepage-built',
+  )
+  assert.equal(homepage.length, 1)
+  assert.equal(homepage[0].if, "matrix.suite == 'journeys'")
+  assert.equal(
+    browser.strategy.matrix.include.filter((row) => row.suite === 'journeys')
+      .length,
+    1,
+  )
+  const recipe = spawnSync(
+    'make',
+    ['--no-print-directory', '-n', 'test-homepage-built'],
+    { cwd: new URL('../', import.meta.url), encoding: 'utf8' },
+  )
+  assert.equal(recipe.status, 0, recipe.stderr)
+  assert.deepEqual(recipe.stdout.trim().split('\n'), [
+    'npm run build',
+    'npm run test:homepage-built',
+  ])
 })
 
 test('CI builds and inspects the release artifact without publishing or starting it', () => {
@@ -394,31 +421,28 @@ test('browser shards run independently and Make forwards their native Playwright
   const { browser } = workflows.find(({ file }) => file === 'ci.yml').workflow
     .jobs
   assert.equal(browser.strategy['fail-fast'], false)
-  assert.equal(browser.strategy['max-parallel'], 8)
+  assert.equal(browser.strategy['max-parallel'], 2)
   const jobs = browser.strategy.matrix.include
-  assert.deepEqual(
-    jobs.filter((job) => job.suite !== 'features'),
-    [
-      { suite: 'journeys', shard: 1, shards: 1 },
-      { suite: 'components', shard: 1, shards: 1 },
-    ],
+  assert.deepEqual(jobs, [
+    { suite: 'journeys', shard: 1, shards: 1 },
+    { suite: 'components', shard: 1, shards: 1 },
+  ])
+  const verify = browser.steps.find(
+    (step) => step.run === 'make verify-browser-results',
   )
-  const features = jobs.filter((job) => job.suite === 'features')
-  assert.deepEqual(
-    features.map((job) => job.shard),
-    Array.from({ length: features.length }, (_, index) => index + 1),
-  )
-  assert.ok(features.every((job) => job.shards === features.length))
-  const run = browser.steps.find((step) =>
-    step.run?.includes('make test-components'),
+  assert.deepEqual(verify.env, {
+    BROWSER_SUITE: '${{ matrix.suite }}',
+    UI_SHARD: '${{ matrix.shard }}/${{ matrix.shards }}',
+  })
+  const run = browser.steps.find(
+    (step) => step.run === 'make test-${{ matrix.suite }}',
   )
   assert.equal(run.env.UI_SHARD, '${{ matrix.shard }}/${{ matrix.shards }}')
-  assert.equal(run.env.BROWSER_SUITE, '${{ matrix.suite }}')
   const root = new URL('../', import.meta.url)
-  for (const job of [{ suite: 'all' }, ...jobs]) {
+  for (const job of [{ suite: 'journeys' }, ...jobs]) {
     const shard = job.shard ? `${job.shard}/${job.shards}` : ''
-    const target = job.suite === 'components' ? 'test-components' : 'test-ui'
-    const command = job.suite === 'components' ? 'test:components' : 'test:ui'
+    const target = `test-${job.suite}`
+    const command = `test:${job.suite}`
     const dryRun = spawnSync(
       'make',
       ['--no-print-directory', '-n', target, `UI_SHARD=${shard}`],

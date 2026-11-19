@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
   createMemoryHistory,
+  createBrowserHistory,
+  Link,
+  Outlet,
   createRootRoute,
   createRoute,
   createRouter,
@@ -25,6 +28,7 @@ export type RankingInput = {
 declare global {
   interface Window {
     rankingInput: RankingInput
+    rankingProfileReads: string[][]
     rankingRequests: number
     holdRankings: () => void
     releaseRankings: () => void
@@ -68,11 +72,17 @@ const model = new Coordinator(
   },
 )
 await model.initialize(session, snapshot)
-const profiles = new PlayerProfilesController(async () => ({
-  binding: snapshot.view.binding,
-  request_id: id(91),
-  players: window.rankingInput.profiles ?? [],
-}))
+window.rankingProfileReads = []
+const profiles = new PlayerProfilesController(async (source) => {
+  if (source.type !== 'Rankings')
+    throw Error('Unexpected ranking profile source: ' + source.type)
+  window.rankingProfileReads.push([...source.players])
+  return {
+    binding: snapshot.view.binding,
+    request_id: id(91),
+    players: structuredClone(window.rankingInput.profiles ?? []),
+  }
+})
 
 function Surface() {
   useEffect(() => profiles.start(), [])
@@ -109,6 +119,42 @@ export function RankingsScenario() {
       history: createMemoryHistory({
         initialEntries: [`/u/andromeda/b/${id(5)}/high-scores`],
       }),
+    })
+  })
+  return <RouterProvider router={router} />
+}
+
+function ScoreEntry() {
+  return (
+    <main>
+      <Link
+        to="/u/$universe/b/$body/high-scores"
+        params={{ universe: 'andromeda', body: id(5) }}
+      >
+        High Scores
+      </Link>
+    </main>
+  )
+}
+
+// Use native browser history for modal teardown; the ranking surface and its
+// prepared ports are identical to the isolated score table above.
+export function RankingsHistoryScenario() {
+  const [router] = useState(() => {
+    const root = createRootRoute({ component: Outlet })
+    const index = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: ScoreEntry,
+    })
+    const scores = createRoute({
+      getParentRoute: () => root,
+      path: '/u/$universe/b/$body/high-scores',
+      component: Surface,
+    })
+    return createRouter({
+      routeTree: root.addChildren([index, scores]),
+      history: createBrowserHistory(),
     })
   })
   return <RouterProvider router={router} />

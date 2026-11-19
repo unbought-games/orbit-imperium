@@ -158,6 +158,38 @@ describe('report facts rendered by the production observation component', () => 
     expect(text).toContain('Rocket Launcher')
   })
 
+  it('renders the defender’s observed loot, debris and lost cargo under their own headings', () => {
+    const { markup } = render({
+      viewer: 'defender',
+      payload: {
+        ...combat,
+        debris: {
+          metal: '29000000000',
+          crystal: '51000000000',
+          deuterium: '7000000000',
+        },
+        own_cargo_loss: {
+          metal: '1000000000',
+          crystal: '2000000000',
+          deuterium: '0',
+        },
+      },
+    })
+    const groups = [
+      ...markup.matchAll(/<h3>([^<]*)<\/h3><dl>([\s\S]*?)<\/dl>/g),
+    ]
+    expect(
+      groups.map(([, heading, facts]) => [
+        heading,
+        facts.replace(/<[^>]+>/g, ''),
+      ]),
+    ).toEqual([
+      ['Loot', 'metal10,713crystal8,238deuterium2,608'],
+      ['Debris created', 'metal29,000crystal51,000deuterium7,000'],
+      ['Your cargo lost', 'metal1,000crystal2,000deuterium0'],
+    ])
+  })
+
   it('keeps zero random explosions separate from 33 destroyed defenders', () => {
     const attackers = {
       ...attacker,

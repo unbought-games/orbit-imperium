@@ -1,14 +1,16 @@
-import {
-  withSocialResponse,
-  withFixtureResponseStatus,
-} from './fixtures/responses'
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
+import { installEmptyMessageMembership } from './fixtures/message-membership'
+import { withSocialResponse } from './fixtures/responses'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, binding, body, id } from './fixtures/game'
+import {
+  installGameFixture,
+  binding,
+  body,
+  id,
+  matchesFixtureContext,
+} from './fixtures/game'
 import type { components } from '../src/contracts'
 type S = components['schemas']
-const peer = id(800),
-  alliance = id(900)
+const peer = id(800)
 const contact = (): S['SocialContact'] => ({
   player: peer,
   username: 'Nova',
@@ -24,9 +26,11 @@ const message = (n: number): S['SocialMessage'] => ({
   body: `Message ${n}`,
   sent_at: 1700000000000 + n,
 })
-async function fixture(page: Page, count = 65) {
+
+async function installThread(page: Page, bodies: (typeof body)[]) {
   await installGameFixture(page, {
     protocol: 4,
+    bodies,
     missions: {
       fleets: [],
       incoming: [],
@@ -34,247 +38,88 @@ async function fixture(page: Page, count = 65) {
       fleet_slots: '1',
     },
   })
-  const c = contact()
-  const messages = Array.from({ length: count }, (_, i) => message(i + 1))
-  let hidden = false,
-    read = 0
-  const requests: S['SocialQuery'][] = [],
-    commands: S['SocialCommandRequest'][] = []
-  await page.route('**/alliances/query', (route) => {
-    const { context } = route.request().postDataJSON()
-    return route.fulfill({
-      json: {
+  await installEmptyMessageMembership(page)
+  const messages = [message(1)]
+  const commands: S['SocialCommandRequest'][] = []
+  let read = 0
+  const api = `/api/v4/universes/${binding.universe}/social/`
+  await page.route(
+    (url) => url.pathname === api + 'query',
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const { context, query } = route
+        .request()
+        .postDataJSON() as S['SocialQueryRequest']
+      if (!matchesFixtureContext(context)) return route.fallback()
+      const result: S['SocialView'] = {
         ...context,
-        sampled_at: 1700000000000,
-        directory: [],
-        directory_count: 0,
-        applications: [],
-        alliance: {
-          summary: {
-            id: alliance,
-            universe: binding.universe,
-            name: 'Starlight',
-            tag: 'STAR',
-            member_count: 2,
-            recruitment: 'Open',
+        conversations: [],
+        messages: [],
+        circulars: [],
+        contacts: [],
+        contact: null,
+        next_cursor: null,
+      }
+      if (query.type === 'Conversations') {
+        result.conversations = [
+          {
+            contact: contact(),
+            latest: messages.at(-1)!,
+            unread: messages.some(
+              (m) => m.sender === peer && Number(m.sequence) > read,
+            ),
           },
-          public_text: '',
-          revision: 1,
-          leader: binding.player,
-          permissions: ['SendCircular'],
-          grantable_permissions: [],
-        },
-      },
-    })
-  })
-  let historyGate: Promise<void> | undefined,
-    failHistory = false
-  await page.route('**/social/query', async (route) => {
-    const { context, query: q } = route
-      .request()
-      .postDataJSON() as S['SocialQueryRequest']
-    requests.push(q)
-    const result: S['SocialView'] = {
-      ...context,
-      conversations: [],
-      messages: [],
-      circulars: [],
-      contacts: [],
-      contact: null,
-      next_cursor: null,
-    }
-    if (q.type === 'Messages') {
-      const gate = historyGate
-      historyGate = undefined
-      await gate
-      if (failHistory) {
-        failHistory = false
-        return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
-      }
-      result.contact = { ...c }
-      const index = q.before
-        ? messages.findIndex((m) => m.id === q.before)
-        : q.after
-          ? messages.findIndex((m) => m.id === q.after)
+        ]
+      } else if (query.type === 'Messages' && query.player === peer) {
+        result.contact = contact()
+        const offset = query.after
+          ? messages.findIndex((m) => m.id === query.after)
           : -1
-      const filtered = q.before
-        ? messages.slice(0, index)
-        : q.after
-          ? messages.slice(index + 1)
-          : messages
-      result.messages = q.after
-        ? filtered.slice(0, q.limit)
-        : filtered.slice(-q.limit)
-      if (filtered.length > q.limit)
-        result.next_cursor = q.after
-          ? result.messages.at(-1)!.id
-          : result.messages[0].id
-    }
-    if (q.type === 'Conversations' && !hidden && messages.length)
-      result.conversations = [
-        {
-          contact: { ...c },
-          latest: messages.at(-1)!,
-          unread: messages.some(
-            (m) => m.sender !== binding.player && Number(m.sequence) > read,
-          ),
-        },
-      ]
-    return route.fulfill({ json: result })
-  })
-  await page.route('**/social/commands', (route) => {
-    const req = route.request().postDataJSON() as S['SocialCommandRequest']
-    commands.push(req)
-    const a = req.action
-    let sent: string | null = null
-    if (a.type === 'Send') {
-      const m = {
-        ...message(messages.length + 1),
-        sender: binding.player,
-        body: a.body,
-      }
-      messages.push(m)
-      sent = m.id
-      hidden = false
-    }
-    if (a.type === 'Read')
-      read = Number(messages.find((m) => m.id === a.message)!.sequence)
-    if (a.type === 'Hide') hidden = true
-    return route.fulfill({
-      json: { command_id: req.command_id, message: sent },
-    })
-  })
-  return {
-    requests,
-    commands,
-    holdHistory: () => {
-      let release!: () => void
-      historyGate = new Promise<void>((resolve) => {
-        release = resolve
+        result.messages = messages.slice(offset + 1)
+      } else return route.fallback()
+      await route.fulfill({ json: result })
+    },
+  )
+  await page.route(
+    (url) => url.pathname === api + 'commands',
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const req = route.request().postDataJSON() as S['SocialCommandRequest']
+      if (!matchesFixtureContext(req.context)) return route.fallback()
+      let sent: string | null = null
+      if (req.action.type === 'Read' && req.action.player === peer) {
+        const id = req.action.message
+        const latest = messages.find((m) => m.id === id)
+        if (!latest) return route.fallback()
+        read = Number(latest.sequence)
+      } else if (req.action.type === 'Send' && req.action.player === peer) {
+        const m = {
+          ...message(messages.length + 1),
+          sender: binding.player,
+          body: req.action.body,
+        }
+        messages.push(m)
+        sent = m.id
+      } else return route.fallback()
+      commands.push(req)
+      await route.fulfill({
+        json: { command_id: req.command_id, message: sent },
       })
-      return release
     },
-    failHistory: () => {
-      failHistory = true
-    },
-    incoming: () => {
-      messages.push(message(messages.length + 1))
-      hidden = false
-    },
-  }
+  )
+  return { commands }
 }
-
-test('conversation action announces unread state and clears it after reading', async ({
-  page,
-}) => {
-  await fixture(page)
-  await withSocialResponse(page, 'Conversations', () =>
-    page.goto(`/u/andromeda/b/${body.id}/messages`),
-  )
-  const action = page.getByRole('button', {
-    name: /^Open conversation with Nova/,
-  })
-  await expect(action).toHaveAccessibleName(
-    'Open conversation with Nova · Unread',
-  )
-  await action.click()
-  await expect(
-    page.getByLabel('Message history').getByText('Message 65', { exact: true }),
-  ).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Back to conversations', exact: true })
-    .click()
-  await expect(action).toHaveAccessibleName('Open conversation with Nova')
-  await expect(action).not.toContainText('Unread')
-})
-
-test('new messages arrive incrementally and hiding preserves history', async ({
-  page,
-}) => {
-  const f = await fixture(page)
-  await withSocialResponse(page, 'Messages', () =>
-    page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
-  )
-  await expect(
-    page.getByLabel('Message history').getByText('Message 65', { exact: true }),
-  ).toBeVisible()
-  f.incoming()
-  await expect(
-    page.getByLabel('Message history').getByText('Message 66', { exact: true }),
-  ).toBeVisible({ timeout: 15000 })
-  expect(
-    f.requests.some((q) => q.type === 'Messages' && q.after === id(1065)),
-  ).toBe(true)
-  await page
-    .getByRole('button', { name: 'Conversation options', exact: true })
-    .click()
-  await page
-    .getByRole('menuitem', { name: 'Hide conversation', exact: true })
-    .click()
-  await expect(page.getByText(/No conversations yet/)).toBeVisible()
-  await withSocialResponse(page, 'Messages', () =>
-    page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
-  )
-  await expect(
-    page.getByLabel('Message history').getByText('Message 66', { exact: true }),
-  ).toBeVisible()
-  await diagnosticScreenshot(page, {
-    path: 'test-results/social-desktop.png',
-    fullPage: true,
-  })
-})
-
-test('initial and background history errors remain visible and Refresh retries', async ({
-  page,
-}) => {
-  const now = new Date('2026-10-31T14:20:00Z')
-  await page.clock.install({ time: now })
-  await page.clock.pauseAt(now)
-  const f = await fixture(page)
-  f.failHistory()
-  await withFixtureResponseStatus(
-    page,
-    (r) =>
-      r.url().endsWith('/social/query') &&
-      r.request().postDataJSON().query.type === 'Messages',
-    () => page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
-    503,
-  )
-  await expect(page.getByRole('alert')).toBeVisible()
-  await expect(page.getByText('Loading messages…')).toHaveCount(0)
-  const release = f.holdHistory()
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-  await expect(page.getByText('Loading messages…')).toBeVisible()
-  await withSocialResponse(page, 'Messages', async () => release())
-  const history = page.getByLabel('Message history')
-  await expect(history.getByText('Message 65', { exact: true })).toBeVisible()
-  const composer = page.getByLabel('Message', { exact: true })
-  await composer.fill('Keep this after a failed poll')
-  f.failHistory()
-  await page.clock.runFor(5000)
-  await expect(page.getByRole('alert')).toBeVisible()
-  await expect(history.getByText('Message 65', { exact: true })).toBeVisible()
-  await expect(composer).toBeFocused()
-  await expect(composer).toHaveValue('Keep this after a failed poll')
-  await expect(composer).toBeEnabled()
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
-  await expect(page.getByRole('alert')).toHaveCount(0)
-  await expect(
-    page.getByRole('button', { name: 'Load older messages' }),
-  ).toBeEnabled()
-  await expect(composer).toHaveValue('Keep this after a failed poll')
-})
-
 // Application gate: command wiring plus the direct-message route and its return link.
 // Isolated components own layout, draft editing, menus and keyboard permutations.
 test(
   'submits a direct message from its deep link and returns to the conversation list',
-  { tag: '@journey' },
   async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    const f = await fixture(page, 1)
+    const selectedBody = { ...structuredClone(body), id: id(6), name: 'Beta' }
+    const f = await installThread(page, [body, selectedBody])
+    const list = `/u/andromeda/b/${selectedBody.id}/messages`
     await withSocialResponse(page, 'Messages', () =>
-      page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`),
+      page.goto(`${list}?player=${peer}#details`),
     )
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 })
@@ -302,7 +147,7 @@ test(
     await page
       .getByRole('button', { name: 'Back to conversations', exact: true })
       .click()
-    await expect(page).not.toHaveURL(/player=/)
+    await expect(page).toHaveURL(`${list}#details`)
     await expect(
       page.getByRole('button', { name: /Open conversation with Nova/ }),
     ).toContainText('Meet at the outpost.')
@@ -311,53 +156,3 @@ test(
     ).toHaveLength(1)
   },
 )
-
-// Controller tests cannot establish that the application installs its polling timer.
-test('application polls message history at five seconds without replacing the loaded thread', async ({
-  page,
-}) => {
-  const now = new Date('2026-10-31T14:20:00Z')
-  await page.clock.install({ time: now })
-  await page.clock.pauseAt(now)
-  const f = await fixture(page)
-  const releaseInitial = f.holdHistory()
-  await page.goto(`/u/andromeda/b/${body.id}/messages?player=${peer}`)
-  await expect(
-    page.getByText('Loading messages…', { exact: true }),
-  ).toBeVisible()
-  await withSocialResponse(page, 'Messages', async () => releaseInitial())
-  await expect(
-    page.getByLabel('Message history').getByText('Message 65', { exact: true }),
-  ).toBeVisible()
-  const releasePoll = f.holdHistory()
-  const count = f.requests.filter((query) => query.type === 'Messages').length
-  try {
-    await page.clock.runFor(4999)
-    expect(
-      f.requests.filter((query) => query.type === 'Messages'),
-    ).toHaveLength(count)
-    await page.clock.runFor(1)
-    await expect
-      .poll(
-        () => f.requests.filter((query) => query.type === 'Messages').length,
-      )
-      .toBe(count + 1)
-    await expect(
-      page.getByText('Loading messages…', { exact: true }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('button', { name: 'Load older messages' }),
-    ).toBeEnabled()
-    await withSocialResponse(page, 'Messages', async () => releasePoll())
-  } finally {
-    releasePoll()
-  }
-  expect(
-    f.requests
-      .filter((query) => query.type === 'Messages')
-      .every((query) => query.limit === 50),
-  ).toBe(true)
-  await expect(
-    page.getByLabel('Message history').getByText('Message 65', { exact: true }),
-  ).toBeVisible()
-})

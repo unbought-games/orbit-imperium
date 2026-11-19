@@ -1,6 +1,6 @@
 import { it, expect, vi, afterEach } from 'vitest'
 import { gamePort, request } from './http'
-import { readyFixture } from '../test-support/bootstrap'
+import { id, readyFixture } from '../test-support/bootstrap'
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -218,5 +218,58 @@ it('negotiates spy identity while accepting older inbox rows and mutual destruct
     expect.objectContaining({
       headers: expect.objectContaining({ 'X-Orbit-Report-Preview': '1' }),
     }),
+  )
+})
+
+it('decodes an empire deletion HTTP rejection into the reauthentication refusal consumed by the coordinator', async () => {
+  const { session, snapshot } = readyFixture(4)
+  const binding = snapshot.candidate.binding
+  const commandId = id(50)
+  const fetch = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          type: 'about:blank',
+          status: 422,
+          code: 'GameRejected',
+          game_code: 'ReauthenticationRequired',
+        }),
+        {
+          status: 422,
+          headers: { 'Content-Type': 'application/problem+json' },
+        },
+      ),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const port = gamePort(session.csrf, snapshot.candidate)
+  await expect(
+    port.submit({
+      protocol: 4,
+      binding,
+      command_id: commandId,
+      command: { type: 'World', action: { type: 'RequestEmpireDeletion' } },
+      presence: {
+        protocol: 4,
+        binding,
+        command_id: id(51),
+        command: {
+          type: 'World',
+          action: {
+            type: 'RecordForegroundPresence',
+            cause: 'GameplayGesture',
+            body: null,
+            paired_command_id: commandId,
+          },
+        },
+      },
+    }),
+  ).rejects.toMatchObject({
+    status: 422,
+    code: 'GameRejected',
+    message: 'ReauthenticationRequired',
+  })
+  expect(fetch).toHaveBeenCalledWith(
+    `/api/v4/universes/${binding.universe}/commands`,
+    expect.objectContaining({ method: 'POST' }),
   )
 })

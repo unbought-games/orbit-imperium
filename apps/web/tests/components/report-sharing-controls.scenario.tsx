@@ -35,14 +35,15 @@ export function SharingControls() {
       },
     )
     const { session, snapshot } = readyFixture(4)
+    const published = !new URLSearchParams(location.search).has('unpublished')
     const header = {
       id: id(70),
       kind: 'Espionage' as const,
       observed_at: 1000,
       read: true,
       hidden: false,
-      starred: true,
-      shared: true,
+      starred: published,
+      shared: published,
     }
     model.store.setState({
       ready: true,

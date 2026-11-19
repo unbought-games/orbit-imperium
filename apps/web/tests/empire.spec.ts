@@ -1,27 +1,18 @@
 import { empireFixture } from '../src/test-support/empire'
-import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
-import {
-  refuseFixtureReads,
-  binding,
-  body,
-  id,
-  shellFixture,
-  installGameFixture,
-  refreshGame,
-} from './fixtures/game'
+import { refuseFixtureReads, body, id, shellFixture, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
 
 type S = components['schemas']
 
 
-for (const width of [1440, 390]) {
-  test(`research directive opens its host planet and technology from the whole card at ${width}px`, { tag: width === 390 ? '@journey' : [] }, async ({ page }) => {
+for (const width of [1440]) {
+  test(`research directive opens its host planet and technology from the whole card at ${width}px`, async ({ page }) => {
     refuseFixtureReads(page, { progression: ['Research'] })
     await page.setViewportSize({ width, height: 1000 })
     const now = Date.parse('2026-10-24T12:00:00Z')
-    await page.clock.install({ time: now })
     await page.clock.pauseAt(now)
     await page.emulateMedia({ reducedMotion: 'reduce' })
     let revision = '1'
@@ -50,7 +41,7 @@ for (const width of [1440, 390]) {
     await expect.poll(() => research.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
     await expect(card.getByRole('progressbar')).toHaveAttribute('value', '37.5')
     // Inspect intermediate and smallest supported widths.
-    for (const viewport of [320, 768, 1024, width]) {
+    for (const viewport of [320, 390, 768, 1024, width]) {
       await page.setViewportSize({ width: viewport, height: 1000 })
       if (viewport >= 768) {
         const label = card.getByText('Empire-wide research', { exact: true })
@@ -93,171 +84,6 @@ for (const width of [1440, 390]) {
     await diagnosticScreenshot(card, { path: `test-results/research-idle-${width}x1000.png` })
     await card.click({ position: { x: 8, y: 8 } })
     await expect(page).toHaveURL(new RegExp(`/b/${body.id}/research$`))
-  })
-}
-
-
-test('empire shows every body, its own work and resources, and directional fleet traffic', { tag: '@journey' }, async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1672, height: 1100 })
-  const now = Date.parse('2026-10-24T12:00:00Z')
-  await page.clock.install({ time: now })
-  // Pin wall time before pausing so a delayed protocol round-trip cannot make
-  // the target timestamp older than the running fake clock.
-  await page.clock.setFixedTime(now)
-  await page.clock.pauseAt(now)
-  const options = empireFixture(now)
-  const purchases = await shellFixture(page, { ...options, sampledAt: now })
-  await expect(page).toHaveTitle('Empire · Andromeda · Orbit Imperium')
-  await expect(page.getByRole('article')).toHaveCount(4)
-  const planet = page.getByRole('article', {
-    name: 'Planet [1:371:4] dossier',
-    exact: true,
-  })
-  const colony = page.getByRole('article', {
-    name: 'Planet [1:380:8] dossier',
-    exact: true,
-  })
-  const moon = page.getByRole('article', {
-    name: 'Moon [1:371:4] dossier',
-    exact: true,
-  })
-  await expect(planet).toContainText('Metal Mine · Level 8')
-  await expect(colony).toContainText('Robotics Factory · Level 7')
-  await expect(colony).toContainText('15191 km · 24 to 64 °C')
-  await expect(planet.getByRole('button', { name: '-60 to -20 °C', exact: true })).toBeVisible()
-  await expect(colony.getByRole('button', { name: '24 to 64 °C', exact: true })).toBeVisible()
-  await expect(moon.getByText(/Maximum temperature/)).toHaveCount(0)
-  await expect(moon).not.toContainText('Metal Mine · Level 8')
-  await expect(planet.getByLabel('Planet resources')).toContainText('25,216')
-  await expect(planet).toContainText('1 in')
-  await expect(planet).toContainText('2 out')
-  await expect(colony).toContainText('2 in')
-  await expect(moon).toContainText('0 in')
-  const traffic = page.getByRole('region', {
-    name: 'Fleet movements',
-    exact: true,
-  })
-  await expect(traffic.getByRole('listitem')).toHaveCount(4)
-  await expect(traffic).toContainText('1 incoming hostile fleet detected')
-  await expect(traffic).toContainText('Ship composition unknown')
-  await expect(
-    page.getByRole('region', { name: 'Empire research' }).getByRole('link', { name: /Energy Technology/ }),
-  ).toHaveAccessibleDescription('Host Planet [1:371:4]')
-  await expect(colony).not.toContainText('Energy Technology')
-  await page.getByText('Empire orbital network', { exact: true }).click()
-  await page
-    .getByRole('link', { name: 'Focus Planet [1:380:8]', exact: true })
-    .click()
-  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
-  await expect(colony).toContainText('Command focus')
-  await expect(page.getByRole('article')).toHaveCount(4)
-  await expect(page.getByRole('link', { name: 'Dispatch fleet' })).toHaveCount(0)
-  expect(purchases()).toBe(0)
-})
-
-
-test('one quiet planet, unavailable fleets and missing art remain usable', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.route('**/art/**', (route) => route.abort())
-  await shellFixture(page, { bodies: [body], protocol: 3 })
-  await expect(page.getByRole('article')).toHaveCount(1)
-  await expect(page.getByText('The lanes are quiet.')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Dispatch fleet' })).toHaveCount(
-    0,
-  )
-  await expect(
-    page.getByRole('link', { name: 'Manage Planet [1:371:12]' }),
-  ).toBeVisible()
-  await expect(page.getByText('No research in progress.')).toBeVisible()
-})
-
-
-for (const width of [390]) {
-  test(`current carried resources appear in owned fleet summaries at ${width}px`, { tag: '@journey' }, async ({ page }) => {
-    const now = new Date('2026-10-24T12:00:00Z')
-    await page.clock.install({ time: now })
-    await page.setViewportSize({ width, height: 1000 })
-    const options = empireFixture(now.getTime())
-    const base = options.missions.fleets[0]
-    const cases = [
-      { mission: 'Transport', leg: 'Outbound', cargo: { metal: '1250000000', crystal: '2000000', deuterium: '3500000' } },
-      { mission: 'Deploy', leg: 'Outbound', cargo: { metal: '4000000', crystal: '5000000', deuterium: '6000000' } },
-      { mission: 'Attack', leg: 'Returning', cargo: { metal: '9223372036854775807', crystal: '8000000', deuterium: '9000000' } },
-      { mission: 'Transport', leg: 'Returning', cargo: { metal: '11000000', crystal: '12000000', deuterium: '13000000' } },
-      { mission: 'Deploy', leg: 'Returning', cargo: { metal: '0', crystal: '0', deuterium: '0' } },
-    ] as const
-    options.missions.fleets = cases.map(({ mission, leg, cargo }, index) => ({
-      ...base,
-      id: id(300 + index),
-      intent: { ...base.intent, mission, cargo: { metal: '999000000', crystal: '999000000', deuterium: '999000000' } },
-      leg,
-      cargo,
-      can_recall: leg === 'Outbound',
-    }))
-    await shellFixture(page, { ...options, sampledAt: now.getTime() })
-    const board = page.getByRole('region', { name: 'Fleet movements', exact: true })
-    await expect(board.getByRole('group', { name: 'Carried resources' })).toHaveCount(5)
-    const incoming = board.getByRole('listitem').filter({ hasText: 'Incoming' })
-    await expect(incoming.getByRole('group', { name: 'Carried resources' })).toHaveCount(0)
-    const verifyCargo = async (container: import('@playwright/test').Locator, index: number) => {
-      const cargo = container.getByRole('group', { name: 'Carried resources' })
-      await expect(cargo).toHaveCount(1)
-      for (const [resource, value] of Object.entries(cases[index].cargo)) {
-        const title = resource[0].toUpperCase() + resource.slice(1)
-        const quantity = cargo.locator(`[title="${title}"]`)
-        await expect(quantity.getByRole('img', { name: title })).toBeVisible()
-        await expect(quantity).toHaveText((BigInt(value) / 1000000n).toLocaleString('en-US'))
-      }
-      await expect(cargo).not.toContainText('999')
-      expect(await container.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
-    }
-    for (const [index, entry] of cases.entries()) {
-      const row = board.getByRole('listitem').filter({ has: page.getByRole('link', {
-        name: `View ${entry.mission} ${entry.leg.toLowerCase()} fleet`, exact: true,
-      }) })
-      await verifyCargo(row, index)
-    }
-    await diagnosticScreenshot(board, { path: `test-results/cargo-empire-${width}.png` })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/fleets`))
-    const cards = page.getByRole('article').filter({ has: page.getByRole('group', { name: 'Carried resources' }) })
-    await expect(cards).toHaveCount(5)
-    for (let index = 0; index < cases.length; index++) await verifyCargo(cards.nth(index), index)
-    await expect(page.getByRole('article', { name: /^Incoming .* fleet$/ }).getByRole('group', { name: 'Carried resources' })).toHaveCount(0)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await diagnosticScreenshot(cards.nth(2), { path: `test-results/cargo-returning-attack-${width}.png` })
-    await cards.nth(2).getByRole('link', { name: /^View .* fleet$/ }).click()
-    await verifyCargo(page.getByRole('article', { name: 'Attack fleet', exact: true }), 2)
-  })
-}
-
-
-for (const member of [true, false]) {
-  test(`alliance panel waits for confirmed membership before offering discovery (${member ? 'member' : 'nonmember'})`, async ({ page }) => {
-    await installGameFixture(page, { protocol: 4, bodies: [body], missions: { fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1' } })
-    let release!: () => void
-    const profilesReady = new Promise<void>((resolve) => { release = resolve })
-    await page.route('**/player-profiles', async route => {
-      await profilesReady
-      const { context } = route.request().postDataJSON()
-      const now = Math.floor(Date.now() / 1000)
-      await route.fulfill({ json: {
-        ...context,
-        players: [{ player: binding.player, username: 'Commander', observed_at: now, expires_at: now + 300,
-          ...(member ? { alliance: { id: id(800), universe: binding.universe, name: 'Starlight Assembly', tag: 'STAR' } } : {}),
-        } satisfies S['PlayerDisplay']],
-      } })
-    })
-    const requested = page.waitForRequest(request => request.url().endsWith('/player-profiles'))
-    await withFixtureResponse(page, response => response.url().endsWith('/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await requested
-    const panel = page.getByRole('region', { name: 'Empire alliance', exact: true })
-    await expect(panel.getByRole('link', { name: 'Open alliance', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/alliance`)
-    await withFixtureResponse(page, response => response.url().endsWith('/player-profiles'), async () => { release() })
-    await expect(panel.getByRole('link', { name: member ? 'Your alliance' : 'Find your alliance', exact: true })).toHaveAttribute('href', `/u/andromeda/b/${body.id}/alliance${member ? '' : '/discover'}`)
   })
 }
 

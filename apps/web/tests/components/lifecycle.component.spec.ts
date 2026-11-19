@@ -177,3 +177,202 @@ test('desktop abandonment reviews losses, restores focus and rechecks changed bl
   await expect(dialog).not.toBeVisible()
   await expect(trigger).toBeFocused()
 })
+
+test('a rejected rename leaves its editable draft and confirmed name intact', async ({
+  page,
+  mount,
+}) => {
+  await page.addInitScript((body) => {
+    window.empireInput = {
+      surface: 'rename',
+      bodies: [{ ...body, name: 'Terra' }],
+    }
+  }, body)
+  await mount('empire')
+  await page.evaluate(() => window.empireScene.setOutcome('Rejected'))
+  await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
+  const draft = page.getByRole('textbox', { name: 'Planet name' })
+  await draft.fill('New Terra')
+  await page.getByRole('button', { name: 'Save name' }).click()
+  await expect(
+    page
+      .getByTestId('game-error-banner')
+      .getByRole('alert')
+      .filter({ hasText: 'Action rejected:' }),
+  ).toContainText('Not Owned')
+  await expect(draft).toHaveValue('New Terra')
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Terra', exact: true }),
+  ).toBeVisible()
+})
+
+test('an unnamed planet may explicitly save its fallback label exactly once', async ({
+  page,
+  mount,
+}) => {
+  await page.addInitScript((body) => {
+    window.empireInput = {
+      surface: 'rename',
+      bodies: [{ ...body, name: undefined }],
+    }
+  }, body)
+  await mount('empire')
+  const open = page.getByRole('button', { name: 'Rename planet [1:371:12]' })
+  const draft = page.getByRole('textbox', { name: 'Planet name' })
+  await open.click()
+  await draft.fill('Planet')
+  const save = page.getByRole('button', { name: 'Save name' })
+  await expect(save).toBeEnabled()
+  await save.click()
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Planet renamed.' }),
+  ).toBeVisible()
+  expect(
+    await page.evaluate(() =>
+      window.empireScene.sent.map((envelope) => envelope.command),
+    ),
+  ).toEqual([
+    {
+      type: 'World',
+      action: { type: 'RenamePlanet', body: body.id, name: 'Planet' },
+    },
+  ])
+  await open.click()
+  await expect(draft).toHaveValue('Planet')
+  await expect(save).toBeDisabled()
+})
+
+test('the deletion control explains an authoritative reauthentication refusal and reopens review', async ({
+  page,
+  mount,
+}) => {
+  await page.addInitScript(() => {
+    window.empireInput = { surface: 'settings' }
+  })
+  await mount('empire')
+  await page.evaluate(() => window.empireScene.setOutcome('reauth'))
+  const section = page.getByRole('region', {
+    name: 'Delete empire',
+    exact: true,
+  })
+  const request = section.getByRole('button', {
+    name: 'Request empire deletion',
+    exact: true,
+  })
+  await request.click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Schedule empire deletion' })
+    .click()
+  await expect(section.getByRole('alert')).toContainText(
+    'Sign out and sign in again',
+  )
+  await expect(request).toBeEnabled()
+})
+
+test('the overview alliance destination waits for authoritative membership on its mounted profile subscription', async ({
+  page,
+  mount,
+}) => {
+  await mount('empire')
+  const panel = page.getByRole('region', { name: 'Empire alliance' })
+  const universe = 'andromeda'
+  const selected = await page.evaluate(
+    () => window.empireScene.view.bodies[0].id,
+  )
+  const href = `/u/${universe}/b/${selected}/alliance`
+  await expect(
+    panel.getByRole('link', { name: 'Open alliance', exact: true }),
+  ).toHaveAttribute('href', href)
+  for (const member of [true, false]) {
+    await page.evaluate((member) => {
+      const binding = window.empireScene.view.binding
+      const time = Math.floor(Date.now() / 1000)
+      window.empireProfileFeed.store.setState({
+        players: {
+          [binding.player]: {
+            player: binding.player,
+            username: 'Commander',
+            observed_at: time,
+            expires_at: time + 300,
+            ...(member
+              ? {
+                  alliance: {
+                    id: '00000000-0000-4000-8000-000000000800',
+                    universe: binding.universe,
+                    name: 'Starlight Assembly',
+                    tag: 'STAR',
+                  },
+                }
+              : {}),
+          },
+        },
+      })
+    }, member)
+    await expect(
+      panel.getByRole('link', {
+        name: member ? 'Your alliance' : 'Find your alliance',
+        exact: true,
+      }),
+    ).toHaveAttribute('href', member ? href : href + '/discover')
+  }
+})
+
+test('the same vacation control clears confirmation after an authoritative enter and exit', async ({
+  page,
+  mount,
+}) => {
+  await page.addInitScript(() => {
+    window.empireInput = { surface: 'settings' }
+  })
+  await mount('empire')
+  const section = page.getByRole('region', {
+    name: 'Vacation mode',
+    exact: true,
+  })
+  const enter = section.getByRole('button', {
+    name: 'Enter vacation mode',
+    exact: true,
+  })
+  await enter.click()
+  await section
+    .getByRole('button', { name: 'Confirm vacation mode', exact: true })
+    .click()
+  const leave = section.getByRole('button', {
+    name: 'Leave vacation mode',
+    exact: true,
+  })
+  await expect(leave).toBeDisabled()
+  await page.evaluate(async () => {
+    const scene = window.empireScene
+    const eligible = scene.view.vacation!.earliest_exit_at!
+    scene.view.as_of_ms = eligible
+    scene.view.sampled_at = eligible
+    await scene.refresh()
+  })
+  await expect(leave).toBeEnabled()
+  await leave.click()
+  await expect(
+    section.getByText(
+      'Vacation mode ended. Your production settings have resumed.',
+    ),
+  ).toBeVisible()
+  await expect(
+    section.getByRole('button', { name: 'Confirm vacation mode', exact: true }),
+  ).toHaveCount(0)
+  await enter.click()
+  await expect(
+    section.getByRole('button', { name: 'Keep playing' }),
+  ).toBeFocused()
+  await expect(
+    section.getByRole('button', { name: 'Confirm vacation mode', exact: true }),
+  ).toBeEnabled()
+  expect(
+    await page.evaluate(() =>
+      window.empireScene.sent.map(({ command }) =>
+        command.type === 'World' ? command.action.type : command.type,
+      ),
+    ),
+  ).toEqual(['EnterVacation', 'ExitVacation'])
+})

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { body } from '../test-support/empire'
+import { productionFixture } from '../test-support/production'
 import { it, expect, vi } from 'vitest'
 import {
   prepareRuntime,
@@ -104,4 +107,33 @@ it('reload starts from the server snapshot without recovering or resending old a
   expect(fresh.game.model.ready).toBe(true)
   expect(port.receipt).not.toHaveBeenCalled()
   expect(port.submit).toHaveBeenCalledOnce()
+})
+
+it('prepares protocol 3 bootstrap with all published building level keys on the funded planet', async () => {
+  const payload = bootstrapFixture(3)
+  if (
+    payload.result.status !== 'authenticated' ||
+    payload.result.game.status !== 'ready' ||
+    payload.result.game.snapshot.view.protocol !== 3
+  )
+    throw Error('Expected a ready protocol 3 snapshot')
+  const view = payload.result.game.snapshot.view
+  const keys: string[] = JSON.parse(
+    readFileSync('contracts/openapi.json', 'utf8'),
+  ).components.schemas.BuildingId3.enum
+  const planet = {
+    ...body,
+    levels: { ...body.levels, ...Object.fromEntries(keys.map((k) => [k, 0])) },
+  }
+  view.bodies = [planet]
+  view.progression.production = [productionFixture(planet)]
+  const runtime = await prepareRuntime(payload, 'document', dependencies())
+  expect(runtime.status).toBe('authenticated')
+  if (runtime.status !== 'authenticated' || runtime.game.status !== 'ready')
+    throw Error('Expanded building levels prevented startup')
+  expect(runtime.game.model.view?.bodies[0].levels).toMatchObject({
+    Terraformer: 0,
+    NaniteFactory: 0,
+    ResearchLab: 0,
+  })
 })

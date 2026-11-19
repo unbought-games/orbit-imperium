@@ -2,7 +2,13 @@ import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/test'
-import { shellFixture, body, binding, id } from './fixtures/game'
+import {
+  shellFixture,
+  body,
+  binding,
+  id,
+  matchesFixtureGameplay,
+} from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse } from './fixtures/responses'
@@ -157,7 +163,9 @@ async function setup(page: Page) {
               ],
             }
           : null,
-        terms_hash: battleship ? 'b'.repeat(64) : null,
+        terms_hash: battleship
+          ? (request.quantity === '2' ? 'c' : 'b').repeat(64)
+          : null,
         blockers: !battleship
           ? [
               {
@@ -178,29 +186,49 @@ async function setup(page: Page) {
 
 test(
   'Battleship submits the selected build quantity at 390px',
-  { tag: '@journey' },
   async ({ page }, testInfo) => {
     const width = 390
     await page.setViewportSize({ width, height: 900 })
     await setup(page)
     const pane = page.getByRole('region', { name: 'Progression quote' })
-    let sent: unknown = null
-    await page.route('**/commands', async (route) => {
-      const pair = route.request().postDataJSON()
-      sent = pair.gameplay.command
-      await route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: pair.gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [id(80)],
-          minimum_viewer_revision: '1',
-        },
-      })
-    })
+    const sent: S['CommandEnvelopeV4'][] = []
+    await page.route(
+      (url) =>
+        url.pathname === `/api/v4/universes/${binding.universe}/commands`,
+      async (route) => {
+        if (route.request().method() !== 'POST') return route.fallback()
+        const pair = route.request().postDataJSON()
+        if (!matchesFixtureGameplay(pair)) return route.fallback()
+        const { command } = pair.gameplay
+        if (
+          command.type !== 'StartManufacture' ||
+          command.item.id !== 'Battleship'
+        )
+          return route.fallback()
+        expect(pair.presence.command).toMatchObject({
+          type: 'World',
+          action: {
+            type: 'RecordForegroundPresence',
+            cause: 'GameplayGesture',
+            body: body.id,
+            paired_command_id: pair.gameplay.command_id,
+          },
+        })
+        sent.push(pair.gameplay)
+        await route.fulfill({
+          json: {
+            protocol: 4,
+            binding,
+            command_id: pair.gameplay.command_id,
+            admitted_at: Date.now(),
+            executed_at: Date.now(),
+            status: 'Committed',
+            result_ids: [id(80)],
+            minimum_viewer_revision: '1',
+          },
+        })
+      },
+    )
     await withBootstrapResponse(page, () =>
       page.goto(`/u/andromeda/b/${body.id}/shipyard`),
     )
@@ -244,17 +272,18 @@ test(
       fullPage: true,
     })
     await pane.getByRole('button', { name: 'Build', exact: true }).click()
-    await expect
-      .poll(() => sent)
-      .toMatchObject({
-        type: 'StartManufacture',
-        body: body.id,
-        item,
-        quantity: '2',
-      })
+    await expect.poll(() => sent.length).toBe(1)
+    expect(sent[0].command).toEqual({
+      type: 'StartManufacture',
+      body: body.id,
+      item,
+      quantity: '2',
+      expected_terms_hash: 'c'.repeat(64),
+    })
     const result = pane.getByRole('group', { name: 'Latest action result' })
     await expect(result).toContainText('Last submitted: 2 × Battleship')
     await expect(result).toContainText('Order confirmed')
+    expect(sent).toHaveLength(1)
     await expectLayoutAndCapture(page, {
       path: testInfo.outputPath(`battleship-confirmed-${width}x900.png`),
       fullPage: true,

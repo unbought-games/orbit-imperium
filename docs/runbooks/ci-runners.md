@@ -5,12 +5,7 @@ run on GitHub-hosted `ubuntu-24.04` VMs. Each job gets a disposable host, includ
 Docker and Chromium's Linux dependencies. Explicit suites remain opt-in with
 generous preparation and execution guards.
 
-Routine browser validation uses eight disposable VMs: one for tagged application
-journeys, one for isolated components, and six for remaining required feature
-integrations. These run in parallel with native build/lint/unit checks and three
-PostgreSQL groups after changed-path selection. Unmigrated feature assertions
-remain required; the inventory check rejects omissions and duplicate execution
-across all three browser classes. The two measured longest database
+Relevant browser validation runs on two disposable VMs. One job exercises application journeys and the production homepage. The other runs the mounted component gallery. A native inventory check rejects missing or duplicated cases and every completed JSON report must match its intended suite. Both jobs run alongside native checks and relevant PostgreSQL groups. The two measured longest database
 binaries, `rules_updates` and `world_edit`, each get a group; the `rest` group
 includes every other binary automatically. Each group compiles only its selected
 binaries. Run them locally with `make test-db-rules`, `make test-db-world`, or
@@ -37,14 +32,9 @@ Routine and continuous image-publication jobs have no custom job or step timeout
 Routine Node, Vitest, Nextest and fixture Playwright execution has no per-test or
 suite deadline. GitHub-hosted jobs retain the platform's six-hour cap. Functional
 network timeouts and assertions about timeout behavior remain unchanged.
-Each browser shard uses at most three workers, bounded by available CPUs.
-Playwright's `fullyParallel` mode partitions individual tests across shards.
-`make test-ui` runs all application fixture tests locally. Use `make test-journeys`
-for the `@journey` cohort, `make test-features UI_SHARD=2/6` for one remaining
-feature shard, and `make test-components` for the isolated gallery. All three
-classes block the aggregate gate. Browser case placement follows the
-[testing strategy](../architecture/testing-strategy.md), with explicit mappings
-in `docs/verification/test-migration-*.md`.
+The native Playwright runners use at most three workers per VM. Run `make test-journeys` for all required fixture application journeys and `make test-components` for the mounted views. `make test-ui` and `npm run test:ui` continue to run the application boundary. For a single file or case use `npm run test:journeys -- <file> -g '<title>'`. CI selects the two complete boundaries. Local `UI_SHARD=n/m` uses Playwright’s native partitioning.
+
+The [journey contracts](../../apps/web/tests/journey-contracts.json) identify each routine application test by its complete title, project and risk. The [cutover evidence](../verification/test-migration-cutover.md) includes the final inventory and historical dispositions.
 
 Both application and component fixture runners build temporary bundles before
 opening a browser. Lazy module compilation therefore cannot consume an
@@ -53,8 +43,7 @@ report-observation entrypoint.
 The bundle deliberately retains development previews and React development
 checks; it is not a release artifact. The separate built-homepage check still
 validates production assets. The runner removes its temporary bundle and closes
-its server/browser on exit. Components use a test-only Vite entry with prepared
-real components and fail on unexpected API requests or page errors. Neither
+its server/browser on exit. Components use a test-only Vite entry with real components and prepared external inputs. A test may declare its own specific feature API response. Unexpected operations and page errors fail that case. Neither
 runner hot-reloads changing source during validation.
 
 On a shared development machine, one owner serializes browser suites, builds

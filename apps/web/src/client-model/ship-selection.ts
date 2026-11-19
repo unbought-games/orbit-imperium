@@ -2,6 +2,25 @@ import type { components } from '../contracts'
 import { dispatchQuantity } from './dispatch-validation'
 type Inventory = components['schemas']['BodyV3']['inventories']
 
+export function dispatchableShipTypes(
+  catalog: components['schemas']['CatalogEntry3'][],
+  inventories: Inventory,
+) {
+  return catalog.flatMap((entry) =>
+    entry.key.kind === 'Ship' &&
+    entry.mobile &&
+    (entry.enabled ||
+      inventories.some(
+        (stack) =>
+          stack.item.kind === 'Ship' &&
+          stack.item.id === entry.key.id &&
+          BigInt(stack.count) > 0n,
+      ))
+      ? [entry.key.id]
+      : [],
+  )
+}
+
 /** The dispatchable type list excludes stationary ships; keep exact counts. */
 export function availableDispatchShips(
   types: readonly string[],

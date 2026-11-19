@@ -5,7 +5,6 @@ import { smallCombatObservation } from './fixtures/small-combat-observation'
 import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, installGameFixture, binding, id } from './fixtures/game'
 import { withFixtureResponse } from './fixtures/responses'
-import { combatObservation } from './fixtures/combat-observation'
 import { reportPath } from './fixtures/report-path'
 
 const combatGame = {
@@ -21,7 +20,7 @@ const combatGame = {
 
 async function openCombat(
   page: Page,
-  payload: typeof smallCombatObservation | ReturnType<typeof combatObservation>,
+  payload: typeof smallCombatObservation,
   initiallyRead: boolean,
 ) {
   const header = {
@@ -201,25 +200,5 @@ test('combat small report preserves layout and contextual navigation', async ({
     .click()
   await expect(page).toHaveURL(
     /galaxy\?galaxy=2&system=24&position=5&target=moon/,
-  )
-})
-
-test('deuterium-only combat debris prepares a Harvest dispatch', async ({
-  page,
-}) => {
-  await installGameFixture(page, combatGame)
-  await openCombat(page, combatObservation(false, true), true)
-  const debris = page
-    .getByRole('heading', { name: 'Debris created', exact: true })
-    .locator('..')
-  await expect(
-    debris.getByRole('img', { name: 'Deuterium', exact: true }),
-  ).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Prepare harvest', exact: true })
-    .click()
-  await expect(page).toHaveURL(/dispatch/)
-  await expect(page.getByRole('radio', { checked: true })).toHaveValue(
-    'Harvest',
   )
 })

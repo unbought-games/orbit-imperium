@@ -37,6 +37,27 @@ function InvitationLanding({
   authenticated: boolean
 }) {
   const entry = useInvitationEntry(code, authenticated, continuation)
+  return (
+    <InvitationView
+      code={code}
+      continuation={continuation}
+      authenticated={authenticated}
+      entry={entry}
+    />
+  )
+}
+
+export function InvitationView({
+  code,
+  continuation,
+  authenticated,
+  entry,
+}: {
+  code: string
+  continuation?: string
+  authenticated: boolean
+  entry: ReturnType<typeof useInvitationEntry>
+}) {
   const universe = entry.preview?.universe
   const inviter = entry.preview?.inviter
   const ready = entry.preview?.status === 'ready' && !!universe

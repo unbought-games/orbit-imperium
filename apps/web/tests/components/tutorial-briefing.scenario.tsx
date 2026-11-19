@@ -1,3 +1,4 @@
+import { MenuScreen } from '../../src/features/menu'
 import { useEffect, useState } from 'react'
 import {
   createMemoryHistory,
@@ -18,13 +19,16 @@ import { Navigation } from '../../src/shell/navigation'
 import { routeTarget } from '../../src/shell/route-target'
 import { SessionContext } from '../../src/shell/session-context'
 import { ScreenContext } from '../../src/shell/screen-context'
+import { body as preparedPlanet } from '../../src/test-support/empire'
+import { productionFixture } from '../../src/test-support/production'
 import { readyFixture } from '../../src/test-support/bootstrap'
 import { Link } from '../../src/ui/link'
 
 export type TutorialSceneInput = {
   data: TutorialData | null
+  refused?: boolean
   body: string
-  page: 'briefing' | 'overview' | 'resources'
+  page: 'briefing' | 'overview' | 'resources' | 'menu'
 }
 declare global {
   interface Window {
@@ -37,9 +41,16 @@ const unexpected = async (): Promise<never> => {
   throw new Error('Viewing a briefing must not issue a game request')
 }
 
-function prepare({ body, data }: TutorialSceneInput) {
-  const view = readyFixture(4).snapshot.view
+async function prepare({ body, data, refused }: TutorialSceneInput) {
+  const { session, snapshot } = readyFixture(4)
+  const view = snapshot.view
   if (view.protocol !== 4) throw Error('Protocol 4 required')
+  if (window.tutorialInput.page === 'menu')
+    view.capabilities = [
+      { capability: 'Transport', enabled: true, reason: 'Available' },
+      { capability: 'Research', enabled: true, reason: 'Available' },
+      { capability: 'Manufacturing', enabled: true, reason: 'Available' },
+    ]
   view.bodies = [
     {
       id: body,
@@ -67,6 +78,18 @@ function prepare({ body, data }: TutorialSceneInput) {
       quote: unexpected,
       submit: unexpected,
       receipt: unexpected,
+      world: async (context, request) => {
+        if (!refused || request.type !== 'Tutorial' || !data)
+          return unexpected()
+        return {
+          protocol: 4,
+          ...context,
+          viewer_revision: view.viewer_revision,
+          sampled_at: view.sampled_at,
+          as_of_ms: view.as_of_ms,
+          data,
+        }
+      },
     },
     {
       newId: () => crypto.randomUUID(),
@@ -74,28 +97,41 @@ function prepare({ body, data }: TutorialSceneInput) {
       isOnline: () => true,
     },
   )
+  if (refused) {
+    view.bodies[0].levels = { ...preparedPlanet.levels }
+    view.progression.production = view.bodies.map((b) => productionFixture(b))
+    await model.initialize(session, snapshot)
+  }
   model.store.setState({
     ready: true,
     view,
     binding: view.binding,
     tutorial: {
-      data,
-      loading: !data,
+      data: refused ? null : data,
+      loading: !data && !refused,
       revision: view.viewer_revision,
-      error: null,
+      error: refused
+        ? 'Unable to load guidance. Your orders and earned rewards are safe. Retry guidance.'
+        : null,
     },
   })
   return { model, view }
 }
 
+const preparedTutorial = await prepare(window.tutorialInput)
+
 function Surface() {
-  const [{ model, view }] = useState(() => prepare(window.tutorialInput))
+  const { model, view } = preparedTutorial
   const [suspended, setSuspended] = useState(false)
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
   const body = view.bodies[0]
-  const page = pathname.endsWith('/briefing') ? 'briefing' : 'overview'
+  const page = pathname.endsWith('/briefing')
+    ? 'briefing'
+    : pathname.endsWith('/menu')
+      ? 'menu'
+      : 'overview'
   const session = {
     model,
     view,
@@ -142,7 +178,8 @@ function Surface() {
               <BriefingWelcome />
             </>
           ) : null}
-          {window.tutorialInput.page === 'resources' && (
+          {window.tutorialInput.page === 'menu' && <MenuScreen />}
+          {['resources', 'menu'].includes(window.tutorialInput.page) && (
             <Navigation
               hasUnreadReports={false}
               view={view}

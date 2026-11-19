@@ -276,6 +276,7 @@ function Shell({
   return <RouterProvider router={router} />
 }
 export const ShellDefault = () => <Shell />
+export const ShellWorldBarThreat = () => <Shell hostile />
 export const ShellAllianceThreat = () => (
   <Shell initialPage="alliance" hostile />
 )

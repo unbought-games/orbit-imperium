@@ -1,4 +1,5 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
+import { gamePort } from '../../adapters/http'
 import { createResourceScene } from '../../../tests/components/resource-runtime'
 import { id } from '../../test-support/bootstrap'
 import { progressionCommand } from './options'
@@ -54,3 +55,77 @@ it('settles construction and cancellation through the real coordinator', async (
   await model.send({ type: 'CancelConstruction', operation: id(90) })
   expect(model.view?.constructions).toEqual([])
 })
+
+it('writes a protocol-3 upgrade as the direct bound HTTP envelope', async () => {
+  const { model, sent, view } = await createResourceScene(
+    new URLSearchParams({ protocol: '3' }),
+  )
+  const options = await model.options({
+    type: 'Upgrade',
+    body: id(5),
+    building: 'MetalMine',
+  })
+  await model.send(progressionCommand(options)!, options!)
+  expect(sent).toHaveLength(1)
+  const [envelope] = sent
+  const transport = gamePort('fixture', { binding: view.binding, protocol: 3 })
+  const fetch = vi.fn(
+    async (_input: RequestInfo | URL, _options?: RequestInit) =>
+      new Response(
+        JSON.stringify({
+          protocol: 3,
+          binding: view.binding,
+          command_id: envelope.command_id,
+          admitted_at: 1000,
+          executed_at: 1000,
+          status: 'Committed',
+          result_ids: [id(90)],
+          minimum_viewer_revision: '1',
+        }),
+        { headers: { 'Content-Type': 'application/json' } },
+      ),
+  )
+  vi.stubGlobal('fetch', fetch)
+  try {
+    await transport.submit(envelope)
+    const [path, options] = fetch.mock.calls[0]
+    expect(path).toBe(`/api/v3/universes/${view.binding.universe}/commands`)
+    expect(options?.method).toBe('POST')
+    expect(JSON.parse(String(options?.body))).toEqual({
+      protocol: 3,
+      binding: view.binding,
+      command_id: envelope.command_id,
+      command: {
+        type: 'StartUpgrade',
+        body: id(5),
+        building: 'MetalMine',
+        expected_terms_hash: 'b'.repeat(64),
+      },
+    })
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it.each(['Upgrade', 'Research'] as const)(
+  'admits %s without fabricating a completed engine operation',
+  async (type) => {
+    const { model, sent, view, pending } = await createResourceScene(
+      new URLSearchParams({ protocol: '3', aliases: 'yes' }),
+    )
+    pending(true)
+    const quote = await model.options(
+      type === 'Upgrade'
+        ? { type, body: id(5), building: 'RoboticsFactory' }
+        : { type, host: id(5), research: 'CombustionDrive' },
+    )
+    const command = progressionCommand(quote!)!
+    await model.send(command, quote!)
+    expect(sent).toHaveLength(1)
+    expect(model.store.getState().attempts.values().next().value?.status).toBe(
+      'pending',
+    )
+    expect(view.constructions).toEqual([])
+    expect(view.progression.research_operation ?? null).toBeNull()
+  },
+)

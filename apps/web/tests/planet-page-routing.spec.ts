@@ -1,6 +1,12 @@
 import { test, expect, type Page } from './fixtures/test'
 
-import { installGameFixture, refuseFixtureReads, binding, body, id } from './fixtures/game'
+import {
+  installGameFixture,
+  refuseFixtureReads,
+  binding,
+  body,
+  id,
+} from './fixtures/game'
 
 import { withFixtureResponse } from './fixtures/responses'
 
@@ -86,97 +92,48 @@ const bootAlliance = (page: Page, navigate: () => Promise<unknown>) =>
     () => boot(page, navigate),
   )
 
-for (const width of [1440, 390]) {
-  test.describe(`planet page routing at ${width}px`, () => {
-    test.use({ viewport: { width, height: 900 } })
-    // Canonicalization/foreign-context permutations are deterministic in shell-route.test.
-    // Messages and Settings retain both actual navigation compositions.
-    for (const [slug, title, query] of pages.filter(
-      ([slug]) => width === 1440 || slug === 'messages' || slug === 'settings',
-    )) {
-      test(
-        `${title}: legacy normalization, planet switching and history keep page context`,
-        { tag: title === 'Messages' ? '@journey' : [] },
-        async ({ page }) => {
-          if (slug === 'alliance') refuseFixtureReads(page, { invitation: id(901) })
-          if (slug === 'settings') refuseFixtureReads(page, { insigniaLibrary: true })
-          const purchases = await fixture(page)
-          const destinationSlug =
-            slug === 'alliance'
-              ? 'alliance/discover'
-              : slug === 'settings' && width >= 1024
-                ? 'settings/identity'
-                : slug
-          const destinationTitle =
-            slug === 'alliance' ? 'Discover alliances' : title
-          // TanStack serializes the validated welcome string as JSON, while the legacy input is numeric.
-          const canonicalQuery = query.replace('welcome=1', 'welcome=%221%22')
-          const suffix = `${canonicalQuery ? `?${canonicalQuery}` : ''}#details`
-          const canonical = (planet: string) =>
-            `/u/andromeda/b/${planet}/${destinationSlug}${suffix}`
-          const open = slug === 'alliance' ? bootAlliance : boot
-          await open(page, () =>
-            page.goto(
-              `/u/andromeda/${slug}?body=${body.id}${query ? `&${query}` : ''}#details`,
-            ),
-          )
-          await expect(page).toHaveURL(canonical(body.id))
-          await expect(page.locator('main h1')).toHaveText(destinationTitle)
-          const selector = page.getByRole('combobox', { name: 'Selected body' })
-          if (slug === 'alliance') {
-            // Alliance pages intentionally omit the planet/resource bar. Preserve
-            // legacy normalization and reload coverage without demanding its removal be undone.
-            await expect(selector).toHaveCount(0)
-            await open(page, () => page.reload())
-            await expect(page).toHaveURL(canonical(body.id))
-            await expect(page.locator('main h1')).toHaveText(destinationTitle)
-            await expect(selector).toHaveCount(0)
-            expect(purchases()).toBe(0)
-            return
-          }
-          await expect(selector).toHaveAttribute('data-value', body.id)
-          await selector.click()
-          await page.getByRole('option', { name: /Beta/ }).click()
-          await expect(page).toHaveURL(canonical(id(6)))
-          await expect(selector).toHaveAttribute('data-value', id(6))
-          await expect(page.locator('main h1')).toHaveText(destinationTitle)
-          await page.goBack()
-          await expect(page).toHaveURL(canonical(body.id))
-          await expect(selector).toHaveAttribute('data-value', body.id)
-          await page.goForward()
-          await expect(page).toHaveURL(canonical(id(6)))
-          await expect(selector).toHaveAttribute('data-value', id(6))
-          await open(page, () => page.reload())
-          await expect(page).toHaveURL(canonical(id(6)))
-          await expect(selector).toHaveAttribute('data-value', id(6))
-          await expect(page.locator('main h1')).toHaveText(destinationTitle)
-          // Menu navigation must generate the canonical path directly, without a redirect.
-          const link = await menuDestination(page, title)
-          await expect(link).toHaveAttribute(
-            'href',
-            `/u/andromeda/b/${id(6)}/${slug}`,
-          )
-          await link.click()
-          await expect(page).toHaveURL(
-            `/u/andromeda/b/${id(6)}/${slug === 'settings' && width >= 1024 ? 'settings/identity' : slug}`,
-          )
-          expect(purchases()).toBe(0)
-          if (slug === 'settings') {
-            await boot(page, () =>
-              page.goto('/u/andromeda/settings#galaxy-espionage'),
-            )
-            await expect(page).toHaveURL(
-              `/u/andromeda/b/${body.id}/settings/game`,
-            )
-            await expect(
-              page.getByRole('textbox', { name: 'Probes per spy mission' }),
-            ).toHaveValue('1')
-          }
-        },
+test.describe('planet page routing at 1440px', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+
+  test(
+    'Messages: legacy normalization, planet switching and history keep page context',
+    async ({ page }) => {
+      const purchases = await fixture(page)
+      const query = `player=${id(800)}`
+      const canonical = (planet: string) =>
+        `/u/andromeda/b/${planet}/messages?${query}#details`
+      await boot(page, () =>
+        page.goto(`/u/andromeda/messages?body=${body.id}&${query}#details`),
       )
-    }
-  })
-}
+      const selector = page.getByRole('combobox', { name: 'Selected body' })
+      await expect(page).toHaveURL(canonical(body.id))
+      await expect(page.locator('main h1')).toHaveText('Messages')
+      await expect(selector).toHaveAttribute('data-value', body.id)
+      await selector.click()
+      await page.getByRole('option', { name: /Beta/ }).click()
+      await expect(page).toHaveURL(canonical(id(6)))
+      await expect(selector).toHaveAttribute('data-value', id(6))
+      await page.goBack()
+      await expect(page).toHaveURL(canonical(body.id))
+      await expect(selector).toHaveAttribute('data-value', body.id)
+      await page.goForward()
+      await expect(page).toHaveURL(canonical(id(6)))
+      await expect(selector).toHaveAttribute('data-value', id(6))
+      await boot(page, () => page.reload())
+      await expect(page).toHaveURL(canonical(id(6)))
+      await expect(page.locator('main h1')).toHaveText('Messages')
+      await expect(selector).toHaveAttribute('data-value', id(6))
+      const link = await menuDestination(page, 'Messages')
+      await expect(link).toHaveAttribute(
+        'href',
+        `/u/andromeda/b/${id(6)}/messages`,
+      )
+      await link.click()
+      await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/messages`)
+      expect(purchases()).toBe(0)
+    },
+  )
+})
 
 test('account pages remain usable without planets and reject a foreign planet instead of falling back', async ({
   page,
@@ -190,7 +147,9 @@ test('account pages remain usable without planets and reject a foreign planet in
       `/u/andromeda/${slug === 'settings' ? 'settings/identity' : slug}#details`,
     )
   }
+  await page.setViewportSize({ width: 320, height: 900 })
   await boot(page, () => page.goto(`/u/andromeda/messages?body=${id(99)}`))
+  await page.addStyleTag({ content: 'html { font-size:200% }' })
   await expect(
     page.getByRole('heading', { name: 'Destination unavailable' }),
   ).toBeVisible()
@@ -198,62 +157,15 @@ test('account pages remain usable without planets and reject a foreign planet in
     page.getByText('Planet unavailable.', { exact: false }),
   ).toBeVisible()
   await expect(page).toHaveURL(`/u/andromeda/messages?body=${id(99)}`)
-})
-
-test('message selection retains the selected planet', async ({ page }) => {
-  await fixture(page)
-  const peer = id(800)
-  const contact = {
-    player: peer,
-    username: 'Nova',
-    blocked: false,
-    request: null,
-    requested_by: null,
-    accepted: true,
-  }
-  await page.route('**/social/query', (route) => {
-    const { context, query } = route.request().postDataJSON()
-    return route.fulfill({
-      json: {
-        ...context,
-        conversations: [],
-        messages: [],
-        circulars: [],
-        next_cursor: null,
-        contacts: query.type === 'Contacts' ? [contact] : [],
-        contact: query.type === 'Messages' ? contact : null,
-      },
-    })
-  })
-  await boot(page, () => page.goto(`/u/andromeda/b/${id(6)}/messages#details`))
-  await withFixtureResponse(
-    page,
-    (response) =>
-      response.url().endsWith('/social/query') &&
-      response.request().postDataJSON().query.type === 'Contacts',
-    () => page.getByRole('button', { name: 'Friends', exact: true }).click(),
-  )
-  await withFixtureResponse(
-    page,
-    (response) =>
-      response.url().endsWith('/social/query') &&
-      response.request().postDataJSON().query.type === 'Messages',
-    () =>
-      page.getByRole('button', { name: 'Message Nova', exact: true }).click(),
-  )
-  await expect(page).toHaveURL(
-    `/u/andromeda/b/${id(6)}/messages?player=${peer}#details`,
-  )
-  await expect(
-    page.getByRole('button', { name: 'Back to conversations' }),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Back to conversations' }).click()
-  await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/messages#details`)
+  expect(
+    (await page
+      .getByRole('heading', { name: 'Destination unavailable', exact: true })
+      .boundingBox())!.height,
+  ).toBeGreaterThan(20)
 })
 
 test(
   'public alliance entry keeps its query and hash when resolving the universe name',
-  { tag: '@journey' },
   async ({ page }) => {
     await fixture(page)
     await withFixtureResponse(
@@ -270,80 +182,14 @@ test(
     await expect(page).toHaveURL(
       `/u/andromeda/b/${id(6)}/alliance/discover?alliance=${id(900)}#details`,
     )
-  },
-)
-
-test('canonical planet context wins over a redundant legacy query', async ({
-  page,
-}) => {
-  await fixture(page)
-  await boot(page, () =>
-    page.goto(
-      `/u/andromeda/b/${id(6)}/messages?body=${body.id}&player=${id(800)}#details`,
-    ),
-  )
-  await expect(page).toHaveURL(
-    `/u/andromeda/b/${id(6)}/messages?player=${id(800)}#details`,
-  )
-  await expect(
-    page.getByRole('combobox', { name: 'Selected body' }),
-  ).toHaveAttribute('data-value', id(6))
-})
-
-test(
-  'anonymous direct links retain their canonical path, query and hash through the login gate',
-  { tag: '@journey' },
-  async ({ page }) => {
-    await fixture(page)
-    await page.route('**/api/v1/bootstrap', (route) =>
-      route.fulfill({
-        json: {
-          version: 1,
-          signup_enabled: false,
-          result: { status: 'anonymous' },
-        },
-      }),
+    await withFixtureResponse(
+      page,
+      (response) => response.url().endsWith(`/alliances/${id(900)}`),
+      () => bootAlliance(page, () => page.reload()),
     )
-    const target = `/u/andromeda/b/${body.id}/messages?player=${id(800)}#details`
-    await boot(page, () => page.goto(target))
-    await expect(page).toHaveURL(/\/login\?/)
-    expect(new URL(page.url()).searchParams.get('redirect')).toBe(target)
+    await expect(page.getByText('Explore together.')).toBeVisible()
+    await expect(page).toHaveURL(
+      `/u/andromeda/b/${id(6)}/alliance/discover?alliance=${id(900)}#details`,
+    )
   },
 )
-
-for (const slug of ['menu', 'rewards']) {
-  test(`${slug}: legacy entry becomes a body path and switching retains it through history and reload`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 390, height: 900 })
-    if (slug === 'rewards') refuseFixtureReads(page, { insigniaLibrary: true })
-    await fixture(page)
-    const open = (navigate: () => Promise<unknown>) =>
-      slug === 'rewards'
-        ? withFixtureResponse(
-            page,
-            (response) =>
-              new URL(response.url()).pathname === '/api/v1/rewards',
-            navigate,
-          )
-        : boot(page, navigate)
-    const canonical = (planet: string) =>
-      `/u/andromeda/b/${planet}/${slug}#details`
-    await open(() => page.goto(`/u/andromeda/${slug}?body=${body.id}#details`))
-    await expect(page).toHaveURL(canonical(body.id))
-    const selector = page.getByRole('combobox', { name: 'Selected body' })
-    await expect(selector).toHaveAttribute('data-value', body.id)
-    await selector.click()
-    await page.getByRole('option', { name: /Beta/ }).click()
-    await expect(page).toHaveURL(canonical(id(6)))
-    await expect(selector).toHaveAttribute('data-value', id(6))
-    await page.goBack()
-    await expect(page).toHaveURL(canonical(body.id))
-    await page.goForward()
-    await expect(page).toHaveURL(canonical(id(6)))
-    await open(() => page.reload())
-    await expect(page).toHaveURL(canonical(id(6)))
-    await expect(selector).toHaveAttribute('data-value', id(6))
-    expect(new URL(page.url()).searchParams.has('body')).toBe(false)
-  })
-}

@@ -217,3 +217,84 @@ for (const width of [1440, 390]) {
     await expect(facilities).toHaveAttribute('aria-current', 'page')
   })
 }
+
+for (const width of [1100, 390]) {
+  test(`More opens deferred destinations and promotes routes after a private site arrives at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const data = structuredClone(initial)
+    await prepare(page, { page: 'menu', data })
+    await mount('tutorial-briefing')
+    const navigation =
+      width >= 1024
+        ? page.getByLabel('Game navigation', { exact: true })
+        : page.getByRole('navigation', {
+            name: 'Menu destinations',
+            exact: true,
+          })
+    const disclosure = navigation.locator('summary').filter({ hasText: 'More' })
+    await expect(disclosure).toBeVisible()
+    const messages = navigation.getByRole('link', {
+      name: 'Messages',
+      exact: true,
+    })
+    await expect(messages).not.toBeVisible()
+    await disclosure.press('Enter')
+    const more = navigation.getByRole('navigation', {
+      name: 'More navigation',
+      exact: true,
+    })
+    const alliance = more.getByRole('link', { name: 'Alliance', exact: true })
+    await expect(alliance).toHaveAttribute('href', base + '/alliance')
+    await expect(
+      more.getByRole('link', { name: 'Messages', exact: true }),
+    ).toHaveAttribute('href', base + '/messages')
+    await expect(
+      more.getByRole('link', { name: 'Reports', exact: true }),
+    ).toBeVisible()
+    data.sites = structuredClone(completed.sites)
+    const directive = data.chapters
+      .flatMap((c) => c.objectives)
+      .find((o) => o.id === 'deuterium-1')!
+    directive.completed = true
+    directive.next_action = null
+    directive.inspection = null
+    await deliver(page, data)
+    await expect(
+      navigation.getByRole('link', { name: 'Reports', exact: true }),
+    ).toBeVisible()
+    await expect(
+      more.getByRole('link', { name: 'Reports', exact: true }),
+    ).toHaveCount(0)
+  })
+}
+
+test('guidance refusal keeps the overview entry and briefing retry recovers the delivered chapter', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await prepare(page, {
+    page: 'overview',
+    data: structuredClone(initial),
+    refused: true,
+  })
+  await mount('tutorial-briefing')
+  const status = page.getByRole('region', {
+    name: 'Briefing status',
+    exact: true,
+  })
+  await expect(
+    status.getByRole('button', { name: 'Retry briefing' }),
+  ).toBeVisible()
+  await status.getByRole('link', { name: 'Briefing', exact: true }).click()
+  const retry = page.getByRole('button', { name: 'Retry guidance' })
+  await expect(retry).toBeVisible()
+  await retry.click()
+  await expect(
+    page.getByRole('button', { name: /01 Establish the colony/ }),
+  ).toBeVisible()
+  await expect(retry).toHaveCount(0)
+})
