@@ -42,6 +42,7 @@ export async function recruitmentFixture(
 ) {
   await installGameFixture(page, {
     protocol: 4,
+    allianceHonors: alliance,
     missions: {
       fleets: [],
       incoming: [],

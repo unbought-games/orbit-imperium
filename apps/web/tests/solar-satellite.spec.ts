@@ -2,7 +2,7 @@ import { routeProgressionOptions } from './fixtures/progression-options'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { selectBody } from './fixtures/body-selector'
 import { test, expect } from './fixtures/test'
-import { shellFixture, body, binding, id, refreshGame } from './fixtures/game'
+import { refuseFixtureReads, shellFixture, body, binding, id, refreshGame } from './fixtures/game'
 import { readFileSync } from 'node:fs'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse, withFixtureResponse, withProgressionResponse } from './fixtures/responses'
@@ -212,6 +212,7 @@ test('satellites require Shipyard 1 and show stationary statistics and local ene
 test('satellites manufacture by quantity but never appear in fleet selection', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { world: ['Galaxy'] })
   await setup(page)
   const sent: S['Command4'][] = []
   await page.route('**/commands', async (route) => {

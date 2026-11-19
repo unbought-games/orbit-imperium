@@ -204,7 +204,8 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
     assert.deepEqual(view.bodies[0].amounts, { metal: '1283666000', crystal: '1099453888', deuterium: '984000000' })
     assert.deepEqual(recipient.bodies[0].amounts, { metal: '1391935000', crystal: '1221453888', deuterium: '1010000000' })
     assert.equal(view.bodies[0].inventories[0].count, '2'); assert.equal(view.fleets.length, 0)
-    assert.equal(view.reports.length, 4); assert.equal(recipient.reports.length, 1)
+    assert.deepEqual(view.reports.map(report => report.kind).sort(), ['Delivered', 'Returned', 'Returned'])
+    assert.deepEqual(recipient.reports.map(report => report.kind), ['Delivered'])
     const counts = (await db.query("SELECT (SELECT count(*) FROM commands WHERE NOT done) pending_commands,(SELECT count(*) FROM scheduled_events WHERE NOT done AND NOT cancelled) pending_events,(SELECT count(*) FROM commands WHERE done AND receipt->>'status'='Committed') committed_commands,(SELECT count(*) FROM commands WHERE done AND receipt->>'status'='Rejected') rejected_commands,(SELECT count(*) FROM scheduled_events WHERE done AND NOT cancelled) completed_events")).rows[0]
     assert.deepEqual(counts, { pending_commands: '0', pending_events: '0', committed_commands: '4', rejected_commands: String(extra), completed_events: '4' })
     console.log(`PASS ${overlap ? 'separate redundant API/workers, paused work and stream replay' : crashIndex === null ? 'scoped baseline' : `${stage} worker kill at transition ${crashIndex + 1}`} — exact balances, ships, reports and terminal outcomes`)

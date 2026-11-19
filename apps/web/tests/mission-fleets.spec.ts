@@ -274,11 +274,6 @@ async function interactiveFixture(
   screen: 'fleets' | 'overview',
 ) {
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page
-    .context()
-    .route('**/api/**', (route) =>
-      route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
-    )
   await page.clock.setFixedTime(now)
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
@@ -419,6 +414,12 @@ for (const screen of ['fleets', 'overview'] as const) {
 
       if (width === 1280) {
         // A modified row click retains native link/new-tab behavior.
+        // The popup contract is native tab creation at the exact fleet URL.
+        // The Enter action below separately renders and verifies this detail.
+        await page.context().route(url => url.pathname === details, route =>
+          route.request().resourceType() === 'document' && route.request().method() === 'GET'
+            ? route.fulfill({ contentType: 'text/html', body: '<title>Fleet destination</title>' })
+            : route.fallback(), { times: 1 })
         const before = page.context().pages().length
         await row.click({ position: blank, modifiers: ['ControlOrMeta'] })
         await expect.poll(() => page.context().pages().length).toBe(before + 1)

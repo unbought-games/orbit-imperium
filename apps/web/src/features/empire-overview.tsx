@@ -57,6 +57,7 @@ import {
   storagePercent,
   type EmpireFlight,
 } from './empire-model'
+import { useResourceColumns } from './use-resource-columns'
 import styles from './empire-overview.module.css'
 
 type Body = BoundView['bodies'][number]
@@ -453,9 +454,14 @@ function PlanetClimate({
 }
 
 function PlanetResources({ body, view }: { body: Body; view: BoundView }) {
+  const columns = useResourceColumns<HTMLDListElement>()
   const rates = currentResourceRates(view, body)
   return (
-    <dl className={styles.resources} aria-label={`${body.kind} resources`}>
+    <dl
+      ref={columns}
+      className={styles.resources}
+      aria-label={`${body.kind} resources`}
+    >
       {resourceNames.map((name) => {
         const amount = body.amounts[name]
         const capacity = body.capacity[name]

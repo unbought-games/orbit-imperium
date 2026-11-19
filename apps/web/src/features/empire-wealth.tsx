@@ -7,6 +7,7 @@ import { ResourceNumber } from '../ui/number-value'
 import { ResourceMark } from '../ui/resource-mark'
 import { label } from '../ui/format'
 import { empireTotals } from './empire-model'
+import { useResourceColumns } from './use-resource-columns'
 import styles from './empire-overview.module.css'
 
 export function EmpireWealth({
@@ -16,6 +17,7 @@ export function EmpireWealth({
   view: BoundView
   pendingCargo?: components['schemas']['Resources'][]
 }) {
+  const columns = useResourceColumns<HTMLDivElement>()
   const totals = empireTotals(view, pendingCargo)
   return (
     <div className={styles.empireLedger} aria-label="Empire resource totals">
@@ -25,7 +27,7 @@ export function EmpireWealth({
           Empire wealth<small>Worlds & owned fleet cargo</small>
         </span>
       </div>
-      <div className={styles.wealthRows}>
+      <div ref={columns} className={styles.wealthResources}>
         {resourceNames.map((name) => (
           <div
             className={styles.total}

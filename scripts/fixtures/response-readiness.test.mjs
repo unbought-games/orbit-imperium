@@ -4,6 +4,7 @@ import { setImmediate } from 'node:timers/promises'
 import { EventEmitter } from 'node:events'
 import {
   trackFixtureResponses,
+  withBootstrapResponse,
   withProgressionResponse,
 } from '../../apps/web/tests/fixtures/responses.ts'
 
@@ -45,6 +46,21 @@ function fixture() {
     },
   }
 }
+
+test('bootstrap readiness requires the completed GET to the bootstrap endpoint', async () => {
+  const f = fixture()
+  await withBootstrapResponse(f.page, async () => {
+    assert.equal(await f.finish(response('/bootstrap', {})), false)
+    assert.equal(
+      await f.finish(response('/other/bootstrap', {}, { method: 'GET' })),
+      false,
+    )
+    assert.equal(
+      await f.finish(response('/bootstrap', {}, { method: 'GET' })),
+      true,
+    )
+  })
+})
 
 const wanted = {
   type: 'Upgrade',

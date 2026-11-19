@@ -1,4 +1,5 @@
 import type { components } from '../../src/contracts'
+import { fixtureApiPath, matchesFixtureContext } from './game'
 import type { Page, Route } from '@playwright/test'
 
 type Handler = (route: Route) => unknown | Promise<unknown>
@@ -19,8 +20,28 @@ export async function routeProgressionOptions(
     stack = []
     handlers.set(page, stack)
     await page.route(/\/progression-options(?:\/bulk)?$/, async (route) => {
-      const payload = route.request().postDataJSON()
+      const request = route.request()
+      if (request.method() !== 'POST') return route.fallback()
+      const path = new URL(request.url()).pathname
+      const single = fixtureApiPath(page, 'progression-options')
+      if (path !== single && path !== single + '/bulk') return route.fallback()
+      const payload = request.postDataJSON()
+      if (
+        !matchesFixtureContext(payload?.context) ||
+        (path === single
+          ? !payload.request || payload.requests !== undefined
+          : !Array.isArray(payload.requests) || !payload.requests.length)
+      )
+        return route.fallback()
       const requests = payload.requests ?? [payload.request]
+      if (
+        !requests.every((item: { type?: unknown } | null) =>
+          ['Upgrade', 'Demolition', 'Research', 'Manufacture'].some(
+            (type) => type === item?.type,
+          ),
+        )
+      )
+        return route.fallback()
       const factories = [...handlers.get(page)!].reverse()
       const used = new Set<Registration>()
       let failure: Parameters<Route['fulfill']>[0] | undefined
@@ -52,6 +73,10 @@ export async function routeProgressionOptions(
                     })
                 if (property === 'fulfill')
                   return async (response: Parameters<Route['fulfill']>[0]) => {
+                    if (!response)
+                      throw Error(
+                        'Expected a response from the progression fixture',
+                      )
                     if (response.status && response.status >= 400)
                       failure = response
                     else
@@ -82,9 +107,9 @@ export async function routeProgressionOptions(
           return value
         }),
       )
+      if (missing) return route.fallback()
       if (aborted) return route.abort(aborted)
       if (failure) return route.fulfill(failure)
-      if (missing) return route.fallback()
       // Legacy item factories sample Date.now independently. A bulk service
       // reads once; publish one observation time for the assembled snapshot.
       const snapshot = options.map((option) => ({

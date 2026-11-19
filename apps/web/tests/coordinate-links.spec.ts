@@ -548,7 +548,7 @@ test('shared locations show an access error without offering enrollment', async 
           status: 'authenticated',
           session: {
             account: binding.account,
-            csrf: 'test',
+            csrf: 'fixture',
             expires_at: 9999999999,
             memberships: [],
           },

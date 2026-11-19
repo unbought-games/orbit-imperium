@@ -1203,6 +1203,7 @@ it('does not make an accepted construction block an independent manufacturing or
     }),
   ).toBe(false)
   expect(pendingCommand(s, { ...upgrade, building: 'CrystalMine' })).toBe(true)
+  expect(pendingCommand(s, { ...upgrade, body: 'second-planet' })).toBe(false)
 })
 
 it('allows production changes beside a known upgrade but fences an unknown intent', () => {

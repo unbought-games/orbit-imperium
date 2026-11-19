@@ -1,6 +1,6 @@
 import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
-import { body, id, shellFixture, installGameFixture, refreshGame } from './fixtures/game'
+import { refuseFixtureReads, body, id, shellFixture, installGameFixture, refreshGame } from './fixtures/game'
 import { selectBody } from './fixtures/body-selector'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
@@ -9,6 +9,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 test('desktop navigation preserves body history, reload and report refresh', { tag: '@journey' }, async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   let unread = false
@@ -102,6 +103,7 @@ test('desktop navigation preserves body history, reload and report refresh', { t
 test('touch sidebar opens Settings and Facilities in the application', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1024, height: 900 }, hasTouch: true })
   const page = await context.newPage()
+  refuseFixtureReads(page, { insigniaLibrary: true })
   try {
     await shellFixture(page)
     const sidebar = page.getByRole('complementary', { name: 'Game navigation' })

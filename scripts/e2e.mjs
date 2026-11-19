@@ -1,4 +1,5 @@
 import {reserveTestPort} from './fixtures/ports.mjs';
+import {cleanupAll} from './fixtures/cleanup.mjs';
 import {spawn,execFileSync} from 'node:child_process';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {mkdirSync,writeFileSync,unlinkSync} from 'node:fs';
@@ -11,17 +12,41 @@ const passwords=[randomUUID(),randomUUID()],secret=`${process.env.ORBIT_TEST_SEC
 const portLease=await reserveTestPort(process.env.ORBIT_TEST_HTTP_PORT);
 const port=portLease.port;
 const base=`http://localhost:${port}`;
-let server;
+let server, databaseCreated = false;
+async function awaitReady() {
+ for (let attempt = 0; attempt < 100; attempt++) {
+  if (server.exitCode !== null || server.signalCode !== null)
+   throw Error('Foundation server exited before readiness');
+  try {
+   if ((await fetch(base + '/health/ready')).ok) return;
+  } catch {}
+  await new Promise(resolve => setTimeout(resolve, 100));
+ }
+ throw Error('Foundation server did not become ready');
+}
 try{
  compose('exec','-T','db','createdb','-U','orbit',db);
+ databaseCreated = true;
  writeFileSync(secret,passwords.join('\n'),{mode:0o600});
  const env={...process.env,ORBIT_TEST_SEEDED:"1",DATABASE_URL:`postgres://orbit:${encodeURIComponent(process.env.ORBIT_DB_PASSWORD || 'orbit')}@127.0.0.1:${process.env.ORBIT_TEST_DB_PORT??'55432'}/${db}`,ORBIT_SEED_PASSWORD_FILE:secret,ORBIT_BIND:`127.0.0.1:${port}`,ORBIT_ORIGIN:base,ORBIT_TEST_BASE_URL:base,ORBIT_ALLOW_INSECURE_HTTP:'1',ALPHA_PASSWORD:passwords[0],BETA_PASSWORD:passwords[1],TEST_DB_NAME:db};
  exec('target/debug/orbit',['test-foundation-create','--universe',randomUUID(),'--at','1000000'],env);
  compose('exec','-T','db','psql','-U','orbit','-d',db,'-c','CREATE TABLE orbit_test_clock(at_ms bigint NOT NULL); INSERT INTO orbit_test_clock VALUES(1000000)');
  await portLease.release();
  server=spawn('target/debug/orbit',['serve'],{env,stdio:'ignore'});
- for(let i=0;i<100;i++){try{if((await fetch(base+'/health/ready')).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
+ await awaitReady();
  console.log(redact(exec('npx',['playwright','test'],env).toString()));
  console.log('Playwright passed against isolated PostgreSQL and real server.');
-}catch(e){console.error(redact(e.stdout?.toString()??'Browser run failed'));console.error(redact(e.stderr?.toString()??''));process.exitCode=1;}
-finally{if(server){server.kill('SIGINT');await new Promise(r=>server.once('exit',r));}compose('exec','-T','db','dropdb','-U','orbit','--force',db);try{unlinkSync(secret)}catch{}}
+}catch(e){console.error(redact(e.stdout?.toString()??e.message));console.error(redact(e.stderr?.toString()??''));process.exitCode=1;}
+finally {
+ await cleanupAll([
+  async () => {
+   if (server && server.exitCode === null && server.signalCode === null) {
+    server.kill('SIGINT');
+    await new Promise(resolve => server.once('exit', resolve));
+   }
+  },
+  () => portLease.release(),
+  () => { if (databaseCreated) compose('exec','-T','db','dropdb','-U','orbit','--force',db); },
+  () => { try { unlinkSync(secret); } catch (error) { if (error.code !== 'ENOENT') throw error; } },
+ ]);
+}

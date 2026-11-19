@@ -89,6 +89,7 @@ async function fixture(
 ) {
   await installGameFixture(page, {
     protocol: 4,
+    csrf: multiple ? 'csrf' : 'fixture',
     missions: {
       fleets: [],
       incoming: [],

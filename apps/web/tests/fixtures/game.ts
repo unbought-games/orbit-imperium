@@ -1,6 +1,9 @@
-import { withFixtureResponse } from './responses'
+import { validate, ContractDataError } from '../../src/client-model/schema'
+import { unexpectedFixtureApi } from './api-diagnostics'
+import { sameBinding } from '../../src/client-model/commands'
+import { withBootstrapResponse } from './responses'
 import { productionFixture } from '../../src/test-support/production'
-import { universeSlug } from '../../src/client-model/universe-name'
+import { fixtureRoutePath } from './navigation'
 import { expect, type Page, type Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
 
@@ -11,6 +14,26 @@ export const binding = {
   player: id(2),
   universe: id(3),
   epoch: id(4),
+}
+const boundApi = (version: number, name: string) =>
+  `/api/v${version}/universes/${binding.universe}/${name}`
+
+function fixtureContract<T>(schema: string, value: unknown) {
+  try {
+    return validate<T>(schema, value)
+  } catch (error) {
+    if (error instanceof ContractDataError) return undefined
+    throw error
+  }
+}
+export function matchesFixtureContext(
+  value: unknown,
+): value is components['schemas']['QueryContext'] {
+  const context = fixtureContract<components['schemas']['QueryContext']>(
+    'QueryContext',
+    value,
+  )
+  return !!context && sameBinding(context.binding, binding)
 }
 export const resources = {
   metal: '6661686240',
@@ -45,7 +68,32 @@ export const body: components['schemas']['BodyV3'] = {
   energy: { supply: '48400000', demand: '22000000', utilization: '1000000' },
   inventories: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '2' }],
 }
-const fixtureWorldRevisions = new WeakMap<Page, () => string>()
+type UnavailableFixtureReads = {
+  progression?: readonly components['schemas']['ProgressionQuoteRequest']['type'][]
+  world?: readonly components['schemas']['WorldQueryKind4']['type'][]
+  allianceMembership?: boolean
+  insigniaLibrary?: boolean
+  empireProfile?: string
+  invitation?: string
+}
+const unavailableReads = new WeakMap<Page, UnavailableFixtureReads>()
+
+/** A navigation or layout case can deliberately omit named backend reads.
+ * Scenario-specific data handlers still take precedence. Writes and unknown
+ * query kinds must always reach the unexpected-operation diagnostic. */
+export function refuseFixtureReads(page: Page, reads: UnavailableFixtureReads) {
+  unavailableReads.set(page, reads)
+}
+const installedGames = new WeakMap<
+  Page,
+  { protocol: number; revision?: () => string }
+>()
+export function fixtureApiPath(page: Page, resource: string) {
+  const game = installedGames.get(page)
+  if (!game)
+    throw Error('Install the game fixture before sending bound API requests')
+  return boundApi(game.protocol, resource)
+}
 export function inactiveTutorial(route: Route, revision: string) {
   const query = route.request().postDataJSON()
   return route.fulfill({
@@ -80,13 +128,113 @@ export function routeWorld(
   options?: { times?: number },
 ) {
   return page.route(
-    '**/world',
-    (route) =>
-      route.request().postDataJSON()?.type === 'Tutorial'
-        ? inactiveTutorial(route, fixtureWorldRevisions.get(page)?.() ?? '1')
-        : handler(route),
+    `**${boundApi(4, 'world')}`,
+    (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const query = route.request().postDataJSON()
+      if (!matchesFixtureContext(query?.context)) return route.fallback()
+      return query.type === 'Tutorial'
+        ? inactiveTutorial(route, installedGames.get(page)?.revision?.() ?? '1')
+        : handler(route)
+    },
     options,
   )
+}
+
+export function matchesFixtureGameplay(
+  value: unknown,
+): value is components['schemas']['ForegroundAction4'] {
+  const pair = fixtureContract<components['schemas']['ForegroundAction4']>(
+    'ForegroundAction4',
+    value,
+  )
+  if (!pair) return false
+  const { presence, gameplay } = pair
+  const command = presence.command
+  return (
+    sameBinding(presence.binding, binding) &&
+    sameBinding(gameplay.binding, binding) &&
+    presence.command_id !== gameplay.command_id &&
+    command.type === 'World' &&
+    command.action.type === 'RecordForegroundPresence' &&
+    command.action.cause === 'GameplayGesture' &&
+    command.action.paired_command_id === gameplay.command_id
+  )
+}
+
+export const fixtureReportPath = (suffix?: string) =>
+  boundApi(4, suffix ? `reports/${suffix}` : 'reports')
+
+export function fixtureReportContext(
+  route: Route,
+  suffix?: string,
+): components['schemas']['QueryContext'] {
+  const request = route.request()
+  if (
+    request.method() !== 'POST' ||
+    new URL(request.url()).pathname !== fixtureReportPath(suffix)
+  )
+    return unexpectedFixtureApi(route)
+  const payload = request.postDataJSON()
+  const schema = !suffix
+    ? 'ReportsQuery4'
+    : suffix === 'read'
+      ? 'ReportsReadRequest'
+      : 'QueryContext'
+  if (!fixtureContract(schema, payload)) return unexpectedFixtureApi(route)
+  const context = !suffix || suffix === 'read' ? payload.context : payload
+  if (!sameBinding(context.binding, binding)) return unexpectedFixtureApi(route)
+  return context
+}
+
+/** Register an acknowledgement only for the header actually installed by the reader. */
+export function installReportReadReceipt(
+  page: Page,
+  header: { id: string; read: boolean },
+) {
+  return page.route(`**${boundApi(4, 'commands')}`, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const pair = route.request().postDataJSON()
+    const command = pair?.gameplay?.command
+    if (
+      !matchesFixtureGameplay(pair) ||
+      command?.type !== 'World' ||
+      command.action?.type !== 'MarkReportRead' ||
+      command.action.report !== header.id
+    )
+      return route.fallback()
+    header.read = true
+    const now = Date.now()
+    return route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        command_id: pair.gameplay.command_id,
+        admitted_at: now,
+        executed_at: now,
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: installedGames.get(page)?.revision?.() ?? '1',
+      },
+    })
+  })
+}
+
+export function installSessionRenewal(
+  page: Page,
+  csrf: string,
+  signedIn = () => true,
+) {
+  return page.route('**/api/v1/session/renew', (route) => {
+    if (
+      route.request().method() !== 'POST' ||
+      route.request().headers()['x-csrf-token'] !== csrf
+    )
+      return route.fallback()
+    return signedIn()
+      ? route.fulfill({ status: 204 })
+      : route.fulfill({ status: 401, json: { code: 'Unauthenticated' } })
+  })
 }
 
 /** Install HTTP fixtures before navigating directly to the page under test. */
@@ -101,7 +249,10 @@ export async function installGameFixture(
     catalog?: components['schemas']['CatalogEntry3'][]
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
+    allianceHonors?: string
+    missingReceipt?: (commandId: string) => boolean
     accountUrl?: string
+    csrf?: string
     protocol?: 2 | 3 | 4
     hasUnreadReports?: () => boolean
     unreadReportCount?: () => number
@@ -142,15 +293,19 @@ export async function installGameFixture(
     >
   } = {},
 ) {
-  fixtureWorldRevisions.set(page, options.viewerRevision ?? (() => '1'))
   const protocol = options.protocol ?? 3
+  installedGames.set(page, { protocol, revision: options.viewerRevision })
   let purchases = 0
+  let signedIn = true
+  const csrf = options.csrf ?? 'fixture'
+  await installSessionRenewal(page, csrf, () => signedIn)
   // Fixtures own initial auth/data even when this suite runs against production HTML.
-  await page.route('**/api/analytics', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  )
   await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback()
+    if (
+      route.request().resourceType() !== 'document' ||
+      new URL(route.request().url()).pathname.startsWith('/api/')
+    )
+      return route.fallback()
     // The local HTML connection can reset during reload. Retry only safe GET
     // transport resets; Playwright still exposes HTTP errors and exhausted retries.
     const response = await route.fetch({
@@ -170,7 +325,43 @@ export async function installGameFixture(
       typeof options.sampledAt === 'function'
         ? options.sampledAt()
         : (options.sampledAt ?? Date.now())
-    if (url.pathname === '/api/auth/config')
+    const is = (method: string, path: string) =>
+      request.method() === method && url.pathname === path
+    const post = (name: string, version: number = protocol) =>
+      is('POST', boundApi(version, name))
+    if (
+      is('DELETE', '/api/v1/session') &&
+      request.headers()['x-csrf-token'] === csrf
+    ) {
+      signedIn = false
+      return route.fulfill({ status: 204 })
+    }
+    if (!signedIn && is('GET', '/api/v1/bootstrap'))
+      return route.fulfill({
+        json: {
+          version: 1,
+          signup_enabled: false,
+          result: { status: 'anonymous' },
+        },
+      })
+    if (!signedIn && is('GET', '/api/v1/session'))
+      return route.fulfill({ status: 401, json: { code: 'Unauthorized' } })
+    if (
+      options.allianceHonors &&
+      is('GET', `/api/v1/rewards/alliances/${options.allianceHonors}/honors`)
+    )
+      return route.fulfill({
+        json: { alliance_id: options.allianceHonors, honors: [] },
+      })
+    const commandId = url.pathname.split('/').at(-1)
+    if (
+      commandId &&
+      is('GET', boundApi(protocol, `commands/${commandId}`)) &&
+      url.searchParams.get('epoch') === binding.epoch &&
+      options.missingReceipt?.(commandId)
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (is('GET', '/api/auth/config'))
       return route.fulfill({
         json: {
           mode: 'local',
@@ -184,14 +375,43 @@ export async function installGameFixture(
         },
       })
     if (url.pathname === '/api/announcements') return route.fallback()
-    const context = request.postDataJSON()
-    if (url.pathname.endsWith('/player-preferences')) {
+    let context
+    try {
+      context = request.postDataJSON()
+    } catch {
+      return route.fallback()
+    }
+    // Query and command envelopes select the actor and epoch as well as the URL.
+    if (request.method() === 'POST' && url.pathname.includes('/universes/')) {
+      const envelope = context?.context ?? context?.gameplay ?? context
+      if (
+        !envelope?.binding ||
+        !sameBinding(envelope.binding, binding) ||
+        typeof (envelope.request_id ?? envelope.command_id) !== 'string'
+      )
+        return route.fallback()
+    }
+    // The development shell asks for its optional ship designs on mount and
+    // the overview loads the player's public name. Customization tests supply
+    // these observations. Only their passive reads are unavailable by default.
+    if (
+      (post('ship-appearances', 1) && context?.action?.type === 'Load') ||
+      (is('GET', `/api/v4/empire-profiles/${binding.player}`) &&
+        url.searchParams.get('library') === 'false')
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (post('player-preferences', 1)) {
       if (context.preferences) preferences = context.preferences
       return route.fulfill({ json: { ...context.context, preferences } })
     }
-    if (url.pathname.endsWith('/world') && context?.type === 'Tutorial')
+    if (post('world', 4) && context?.type === 'Tutorial')
       return inactiveTutorial(route, options.viewerRevision?.() ?? '1')
-    if (url.pathname.endsWith('/player-profiles'))
+    if (
+      post('player-profiles', 1) &&
+      ['SelfAccount', 'Incoming', 'Galaxy', 'Rankings', 'Report'].includes(
+        context?.source?.type,
+      )
+    )
       return route.fulfill({
         json: {
           binding: context.context.binding,
@@ -208,7 +428,7 @@ export async function installGameFixture(
     }
     const session = {
       account: binding.account,
-      csrf: 'fixture',
+      csrf,
       expires_at: Date.now() + 1000000,
       memberships: [
         {
@@ -220,11 +440,11 @@ export async function installGameFixture(
     }
 
     if (
-      (protocol !== 2 && url.pathname.includes('/v2/')) ||
-      (protocol === 4 && url.pathname.includes('/v3/'))
+      (protocol !== 2 && is('GET', boundApi(2, 'binding'))) ||
+      (protocol === 4 && is('GET', boundApi(3, 'binding')))
     )
       return route.fulfill({ status: 426, json: { code: 'UpgradeRequired' } })
-    if (url.pathname.endsWith('/binding'))
+    if (is('GET', boundApi(protocol, 'binding')))
       return route.fulfill({
         json: {
           protocol,
@@ -233,6 +453,11 @@ export async function installGameFixture(
           sampled_at: sampledAt,
         },
       })
+    if (
+      is('GET', boundApi(4, 'updates')) &&
+      url.searchParams.get('epoch') === binding.epoch
+    )
+      return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     const settings = {
       ...common,
       speed: options.speed ?? 1,
@@ -369,7 +594,7 @@ export async function installGameFixture(
         : {}),
     }
 
-    if (url.pathname === '/api/v1/bootstrap')
+    if (is('GET', '/api/v1/bootstrap'))
       return route.fulfill({
         headers: options.snapshotHeaders?.(),
         json: {
@@ -395,15 +620,21 @@ export async function installGameFixture(
           },
         },
       })
-    if (url.pathname === '/api/v1/rewards')
+    if (is('GET', '/api/v1/rewards'))
       return route.fulfill({ json: { enabled: false } })
-    if (url.pathname === '/api/v1/session')
-      return route.fulfill({ json: session })
-    if (url.pathname.endsWith('/settings'))
-      return route.fulfill({ json: settings })
-    if (url.pathname.endsWith('/overview'))
+    if (is('GET', '/api/v1/session')) return route.fulfill({ json: session })
+    if (
+      (post('settings') || post('overview')) &&
+      !matchesFixtureContext(context)
+    )
+      return unexpectedFixtureApi(route)
+    if (post('settings')) return route.fulfill({ json: settings })
+    if (post('overview'))
       return route.fulfill({ json: view, headers: options.snapshotHeaders?.() })
-    if (url.pathname.endsWith('/presence'))
+    if (
+      post('presence', 4) &&
+      context?.command?.action?.type === 'RecordForegroundPresence'
+    )
       return route.fulfill({
         json: {
           protocol: 4,
@@ -417,22 +648,11 @@ export async function installGameFixture(
         },
       })
     if (
-      url.pathname.endsWith('/commands') &&
-      context?.gameplay?.command?.action?.type === 'MarkReportRead'
+      post('social/query', 4) &&
+      ['Conversations', 'Messages', 'Circulars', 'Contacts'].includes(
+        context?.query?.type,
+      )
     )
-      return route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: context.gameplay.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [],
-          minimum_viewer_revision: options.viewerRevision?.() ?? '1',
-        },
-      })
-    if (url.pathname.endsWith('/social/query'))
       return route.fulfill({
         json: {
           ...context.context,
@@ -444,12 +664,12 @@ export async function installGameFixture(
           next_cursor: null,
         },
       })
-    if (protocol === 4 && url.pathname.endsWith('/reports'))
+    if (protocol === 4 && post('reports'))
       return route.fulfill({
         json: {
           protocol: 4,
           binding,
-          request_id: context.context.request_id,
+          request_id: fixtureReportContext(route).request_id,
           viewer_revision: options.viewerRevision?.() ?? '1',
           sampled_at: sampledAt,
           as_of_ms: sampledAt,
@@ -474,8 +694,46 @@ export async function installGameFixture(
           },
         },
       })
-    if (url.pathname.endsWith('/commands')) purchases++
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    const refused = unavailableReads.get(page)
+    if (
+      (refused?.allianceMembership &&
+        post('alliances/query', 4) &&
+        context?.query?.type === 'Mine') ||
+      (refused?.insigniaLibrary &&
+        post('insignias', 1) &&
+        context?.action?.type === 'Load') ||
+      (refused?.empireProfile &&
+        is('GET', `/api/v4/empire-profiles/${refused.empireProfile}`)) ||
+      (refused?.invitation &&
+        is('GET', boundApi(4, `invitations/${refused.invitation}`)))
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (
+      refused?.world &&
+      post('world', 4) &&
+      refused.world.includes(context?.type)
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (
+      refused?.progression &&
+      (post('progression-options') || post('progression-options/bulk'))
+    ) {
+      const items = post('progression-options/bulk')
+        ? context.requests
+        : [context.request]
+      if (
+        Array.isArray(items) &&
+        items.length &&
+        items.every(
+          (item) =>
+            refused.progression!.includes(item?.type) &&
+            bodies.some((body) => body.id === (item.body ?? item.host)),
+        )
+      )
+        return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    }
+    if (post('commands')) purchases++
+    return route.fallback()
   })
   return () => purchases
 }
@@ -486,13 +744,14 @@ export async function shellFixture(
   options: Parameters<typeof installGameFixture>[1] = {},
 ) {
   const purchases = await installGameFixture(page, options)
-  await withFixtureResponse(
-    page,
-    (response) => response.url().endsWith('/bootstrap'),
-    () =>
-      page.goto(
-        `/u/${universeSlug(options.universeName ?? 'Andromeda')}/b/${body.id}/overview`,
+  await withBootstrapResponse(page, () =>
+    page.goto(
+      fixtureRoutePath(
+        options.universeName ?? 'Andromeda',
+        'overview',
+        body.id,
       ),
+    ),
   )
   // A startup connection surface also has an H1; mutations need the ready game.
   await expect(page.locator('main h1')).toContainText('Empire —')
@@ -516,16 +775,37 @@ export async function playerProfilesFixture(
     expires_at?: number
   }> | null,
 ) {
-  await page.route('**/player-profiles', async (route) => {
+  await page.route(`**${boundApi(1, 'player-profiles')}`, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const { context, source } = route.request().postDataJSON()
+    if (!matchesFixtureContext(context)) return route.fallback()
+    // These prepared observations cover the owned account, the requested
+    // rankings players, or the installed home system. Other sources use the
+    // game's empty observation or a more specific scenario handler.
+    const matches = (player: { player: string }) => {
+      if (source.type === 'SelfAccount') return player.player === binding.player
+      if (source.type === 'Rankings')
+        return source.players.includes(player.player)
+      return true
+    }
+    if (
+      !(
+        source?.type === 'SelfAccount' ||
+        (source?.type === 'Rankings' && Array.isArray(source.players)) ||
+        (source?.type === 'Galaxy' &&
+          source.galaxy === body.coordinates.galaxy &&
+          source.system === body.coordinates.system)
+      )
+    )
+      return route.fallback()
     const players = profiles()
     if (players === null) return route.fulfill({ status: 503 })
-    const { context } = route.request().postDataJSON()
     const now = Math.floor(Date.now() / 1000)
     await route.fulfill({
       json: {
         binding: context.binding,
         request_id: context.request_id,
-        players: players.map((p) => ({
+        players: players.filter(matches).map((p) => ({
           observed_at: now,
           expires_at: now + 300,
           ...p,

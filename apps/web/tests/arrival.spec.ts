@@ -2,7 +2,7 @@ import { recruitmentFixture, alliance } from './fixtures/recruitment'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { withFixtureResponse } from './fixtures/responses'
 import { expect, test } from './fixtures/test'
-import { binding, body, installGameFixture } from './fixtures/game'
+import { binding, body, installGameFixture, refuseFixtureReads } from './fixtures/game'
 
 test('declining recruitment can finish arrival despite intent failure and retry a failed landing', async ({
   page,
@@ -11,6 +11,7 @@ test('declining recruitment can finish arrival despite intent failure and retry 
   await page.emulateMedia({ reducedMotion: 'reduce' })
   let pending = true,
     completions = 0
+  refuseFixtureReads(page, { empireProfile: binding.player })
   const fixture = await recruitmentFixture(page, {
     arrivalPending: () => pending,
   })

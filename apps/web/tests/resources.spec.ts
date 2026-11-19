@@ -7,7 +7,7 @@ import { confirmCancellation } from './fixtures/confirmation'
 import { moveProductionSlider, openProductionSettings } from './fixtures/production-settings'
 import { captureCatalog } from './fixtures/catalog-capture'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, shellFixture, body, binding, refreshGame } from './fixtures/game'
+import { refuseFixtureReads, installGameFixture, shellFixture, body, binding, refreshGame } from './fixtures/game'
 import type { components } from '../src/contracts'
 import { withBootstrapResponse } from './fixtures/responses'
 
@@ -878,6 +878,7 @@ for (const [protocol, pageName, building, title] of [
   test(`building grid shows confirmed construction on ${pageName} protocol ${protocol}`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     const planet = structuredClone(body)
     const constructions: components['schemas']['Construction3'][] = [
       {
@@ -997,6 +998,7 @@ test('mobile construction starts visibly before the server responds and rejectio
 test('construction cancellation is reachable in the building queue and recovers on rejection', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.setViewportSize({ width: 390, height: 844 })
   const constructions: components['schemas']['Construction3'][] = [
     {
@@ -1071,6 +1073,7 @@ test('construction cancellation is reachable in the building queue and recovers 
 test('active construction stays visible without covering current work at enlarged text sizes', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.setViewportSize({ width: 320, height: 900 })
   await shellFixture(page, {
     constructions: [
@@ -1304,6 +1307,7 @@ test('legacy item links inspect other buildings during construction without stal
 
 for (const width of [1440, 390, 320]) {
   test(`resource list Settings opens the selected planet's controls at ${width}px`, async ({ page }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize({ width, height: 900 })
     const colony = { ...structuredClone(body), id: '00000000-0000-4000-8000-000000000006' }
     await installGameFixture(page, {
@@ -1379,6 +1383,7 @@ test('resource settings follows the selected planet on protocol 4', async ({ pag
 
 for (const protocol of [2, 3, 4] as const) {
   test(`resource settings navigation opens production controls for supported protocols on protocol ${protocol}`, async ({ page }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await shellFixture(page, { protocol })
     if (protocol !== 2) {
       await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/resources`))

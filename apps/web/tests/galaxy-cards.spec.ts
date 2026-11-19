@@ -1,3 +1,4 @@
+import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
 import { routeWorld } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 import { selectBody } from './fixtures/body-selector'
@@ -650,9 +651,11 @@ test('incoming fleets and report details use the supplied public name without an
     page.getByRole('region', { name: 'Empire fleet traffic' }),
   ).toContainText('From Commander Vega')
   const reportId = id(62)
+  const header = {id: reportId, kind:'SpyContact', observed_at: Date.now()-1000, read:false, hidden:false}
+  await installReportReadReceipt(page, header)
   let names: Record<string, string> | undefined = playerNames
-  await page.route('**/api/**/reports/**', async (route) => {
-    const context = route.request().postDataJSON()
+  await page.route(url => url.pathname === fixtureReportPath(reportId), async (route) => {
+    const context = fixtureReportContext(route, reportId)
     await route.fulfill({
       json: {
         protocol: 4,
@@ -662,13 +665,7 @@ test('incoming fleets and report details use the supplied public name without an
         sampled_at: Date.now(),
         as_of_ms: Date.now(),
         data: {
-          header: {
-            id: reportId,
-            kind: 'SpyContact',
-            observed_at: Date.now() - 1000,
-            read: false,
-            hidden: false,
-          },
+          header,
           payload: {
             kind: 'SpyContact',
             at: Date.now() - 1000,

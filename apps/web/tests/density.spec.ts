@@ -1,8 +1,9 @@
+import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
 import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { shellFixture, binding, body, id, resources } from './fixtures/game'
+import { refuseFixtureReads, shellFixture, binding, body, id, resources } from './fixtures/game'
 import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 type S = components['schemas']
@@ -137,6 +138,7 @@ for (const viewport of [
       read: false,
       hidden: false,
     }
+    await installReportReadReceipt(page, header)
     const payload: S['CombatPayload4'] = {
       kind: 'Combat',
       at: header.observed_at,
@@ -158,17 +160,18 @@ for (const viewport of [
       debris: resources,
       loot: resources,
     }
-    await page.route('**/api/**/reports**', async (route) => {
-      const request = route.request().postDataJSON()
+    await page.route(url => [fixtureReportPath(), fixtureReportPath(header.id)].includes(url.pathname), async (route) => {
+      const detail = new URL(route.request().url()).pathname === fixtureReportPath(header.id)
+      const context = fixtureReportContext(route, detail ? header.id : undefined)
       await route.fulfill({
         json: {
           protocol: 4,
           binding,
-          request_id: (request.context ?? request).request_id,
+          request_id: context.request_id,
           viewer_revision: '1',
           sampled_at: now,
           as_of_ms: now,
-          data: new URL(route.request().url()).pathname.endsWith(header.id)
+          data: detail
             ? { header, payload }
             : {
                 items: [header],
@@ -240,6 +243,7 @@ for (const viewport of [
   test(`building choices remain visible without colony artwork at ${viewport.width}px`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize(viewport)
     await shellFixture(page, {
       bodies: [body],
@@ -388,6 +392,7 @@ for (const width of [1280, 390]) {
 
 for (const width of [390, 1280]) {
   test(`tabbed pages omit repeated titles and preserve route focus at ${width}px`, async ({ page }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'], world: ['Galaxy'] })
     await page.setViewportSize({ width, height: 844 })
     await shellFixture(page, { protocol: 4 })
     for (const [route, title, navigation] of [

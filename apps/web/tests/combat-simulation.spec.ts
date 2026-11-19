@@ -1,4 +1,4 @@
-import { routeWorld } from './fixtures/game'
+import { refuseFixtureReads, routeWorld } from './fixtures/game'
 import { withFixtureResponse, withFixtureResponseStatus } from './fixtures/responses'
 import { menuDestination } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -20,6 +20,7 @@ const catalog: components['schemas']['CatalogEntry3'][] = [
   { key: { kind: 'Defense', id: 'PlasmaTurret' }, body_kinds: ['Planet'], requirements: [], enabled: true, mobile: false, technical_data: { ...technicalData, combat: { ...technicalData.combat, attack_ticks: '300000000', shield_ticks: '30000000', hull_ticks: '1000000000' } } },
 ]
 for (const hidden of [false, true]) test(`prefills report simulation with ${hidden ? 'unknown' : 'observed'} intelligence`, async ({ page }) => {
+  refuseFixtureReads(page, { world: ['ResolveDestination'] })
   await installGameFixture(page, { protocol: 4, catalog, bodies: [{ ...body, inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '3' }] }, { ...body, id: id(6), inventories: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: '99' }] }, { ...body, id: id(7), kind: 'Moon' }], extraCapabilities: ['Reports'] })
   const observedResources = { metal: '29800000000', crystal: '110000000', deuterium: '90000000' }
   const header = { id: id(63), kind: 'Espionage', observed_at: 6000, read: true, hidden: false }

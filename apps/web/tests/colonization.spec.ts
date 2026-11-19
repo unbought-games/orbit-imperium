@@ -1,4 +1,5 @@
-import { routeWorld } from './fixtures/game'
+import { installReportReadReceipt, fixtureReportContext, fixtureReportPath } from './fixtures/game'
+import { refuseFixtureReads, routeWorld } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { setDestination } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -79,13 +80,16 @@ test('colony position gates and full-capacity warning lead to an empty-position 
 })
 
 for(const success of [true])test(`colonization ${success?'success links to a usable colony':'failure explains conserved return'}`,async({page})=>{
+ refuseFixtureReads(page, { progression: ['Upgrade'] })
  await installGameFixture(page,fixtureOptions(success?[body,colony]:[body]))
  const kind=success?'Colonized':'ColonizationFailed'
  const payload=success?{kind,body:colony.id,fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,fields:230,diameter_km:15191,min_temperature:24,max_temperature:64,resources:{metal:'1500000000',crystal:'500000000',deuterium:'0'},return_at:null}
  :{kind,reason:'Occupied',fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,return_at:120000}
- await page.route(`**/api/**/reports/${id(81)}`,async route=>{
-  const request=route.request().postDataJSON()
-  await route.fulfill({json:bound(request.request_id,{header:{id:id(81),kind,observed_at:1000,read:false,hidden:false},payload})})
+ const header = {id:id(81),kind,observed_at:1000,read:false,hidden:false}
+ await installReportReadReceipt(page, header)
+ await page.route(url => url.pathname === fixtureReportPath(header.id),async route=>{
+  const request=fixtureReportContext(route, header.id)
+  await route.fulfill({json:bound(request.request_id,{header,payload})})
  })
  await withReportResponse(page, id(81), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(81)}`))
  const report=page.getByRole('region',{name:'Report observation'})

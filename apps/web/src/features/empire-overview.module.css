@@ -55,13 +55,27 @@
   margin: 13px 0 0;
   letter-spacing: 0.035em;
 }
-.wealthRows {
+.wealthResources,
+.resources {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(max-content, 1fr));
   container-type: inline-size;
 }
+.wealthResources[data-rows],
+.resources[data-rows] {
+  grid-template-columns: minmax(0, 1fr);
+  container-name: resource-rows;
+}
 .empireLedger {
+  container: empire-wealth / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3.25fr);
   border: 1px solid var(--hud-border);
   background: linear-gradient(110deg, #a4dbef08, #a4dbef02);
   margin-bottom: 18px;
+}
+.empireLedger > * {
+  grid-column: 1 / -1;
 }
 .ledgerLabel {
   display: flex;
@@ -83,13 +97,33 @@
   font-size: 0.69rem;
 }
 .total {
-  display: grid;
-  grid-template-columns: 46% minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  row-gap: 5px;
   padding: 12px 14px;
 }
-.total + .total,
-.resources > div + div {
+.total > div,
+.balance {
+  flex: 47 1 0;
+  min-width: max-content;
+}
+.wealthBreakdown,
+.productionDetails {
+  flex: 53 1 0;
+  min-width: max-content;
+}
+.wealthResources:not([data-rows]) > .total {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 6px;
+}
+.wealthResources:not([data-rows]) > .total + .total {
+  border-left: 1px solid var(--hud-border);
+}
+.wealthResources[data-rows] > .total + .total,
+.resources[data-rows] > div + div {
   border-top: 1px solid var(--hud-border);
 }
 .resourceName {
@@ -136,7 +170,7 @@
   padding-left: var(--branch-inset);
   text-transform: none;
   letter-spacing: normal;
-  font-size: 0.75rem;
+  font-size: clamp(0.75rem, 1.65cqi, 0.88rem);
 }
 /* Opt this slow resource cue into motion despite the global immediate-state reset. */
 .wealthBreakdown::before {
@@ -243,12 +277,14 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-@media (min-width: 1150px) {
-  .empireLedger {
-    display: grid;
-    grid-template-columns: minmax(12rem, 1fr) minmax(0, 3.25fr);
+@container empire-wealth (min-width: 60rem) {
+  .wealthResources {
+    grid-column: 2;
+    grid-row: 1;
   }
   .ledgerLabel {
+    grid-column: 1;
+    grid-row: 1;
     align-items: flex-start;
     padding: 22px 18px;
     border-bottom: 0;
@@ -262,17 +298,15 @@
     margin-top: 4px;
   }
 }
-@container (min-width:44rem) {
-  .total {
-    padding: 13px 22px;
-  }
-  .wealthAmount strong {
-    font-size: 1.35rem;
-  }
-  .wealthBreakdown {
-    font-size: 0.88rem;
-    --part-height: 1.55rem;
-  }
+.wealthAmount strong {
+  font-size: clamp(1.125rem, 2.5cqi, 1.35rem);
+}
+.wealthResources:not([data-rows]) .wealthBreakdown::before,
+.wealthResources:not([data-rows]) .wealthBreakdown::after {
+  top: -6px;
+}
+.wealthResources:not([data-rows]) .wealthBreakdown > div:first-child::after {
+  content: none;
 }
 .commandDeck {
   display: grid;
@@ -746,14 +780,30 @@
   border: 1px solid var(--hud-border);
 }
 .resources {
-  container-type: inline-size;
+  column-gap: 12px;
   margin: 0;
   border-block: 1px solid var(--hud-border);
 }
 .resources > div {
-  display: grid;
-  grid-template-columns: 47% minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   padding: 11px 0;
+}
+.resources .resourceName {
+  flex-basis: 100%;
+}
+.resources:not([data-rows]) > div {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+.resources:not([data-rows]) .utilization {
+  margin-right: 0;
+}
+.resources:not([data-rows]) .productionDetails {
+  grid-area: 3 / 1;
+  padding: 4px 0 0;
 }
 .resources dd {
   margin: 0;
@@ -777,6 +827,7 @@
 }
 .resources meter {
   flex: 1;
+  width: 1rem;
   min-width: 1rem;
   max-width: 5.4rem;
   height: 3px;
@@ -815,10 +866,7 @@
 .storageFull {
   color: var(--accent);
 }
-@container (max-width:21rem) {
-  .total {
-    grid-template-columns: 53% minmax(0, 1fr);
-  }
+@container resource-rows (max-width:21rem) {
   .wealthBreakdown {
     --part-height: 2.2rem;
     grid-template-columns: minmax(0, 1fr);
@@ -831,18 +879,17 @@
     text-align: left;
   }
 }
-@container (max-width:19.5rem) {
+@container resource-rows (max-width:19.5rem) {
   .productionDetails > div {
     align-items: flex-start;
     flex-direction: column;
     gap: 0;
   }
 }
-@container (max-width:17.5rem) {
-  .total,
-  .resources > div {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 5px;
+@container resource-rows (max-width:17.5rem) {
+  .total > div,
+  .balance {
+    flex-basis: 100%;
   }
   .wealthBreakdown {
     grid-template-columns: minmax(0, 1fr) max-content;
@@ -853,7 +900,6 @@
     text-align: right;
   }
   .productionDetails {
-    grid-area: 3/1;
     padding: 0;
   }
   .productionDetails > div {

@@ -1,7 +1,7 @@
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { binding, body, shellFixture, inactiveTutorial } from './fixtures/game'
+import { refuseFixtureReads, binding, body, shellFixture, installGameFixture, installSessionRenewal } from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
@@ -42,14 +42,11 @@ test('fixture document loading recovers connection resets without retrying HTTP 
 })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/analytics', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  )
   await page.route('**/api/auth/config', (route) =>
-    route.fulfill({ json: { mode: 'local', universes: [] } }),
+    route.request().method() === 'GET' ? route.fulfill({ json: { mode: 'local', universes: [] } }) : route.fallback(),
   )
-  await page.route('**/api/auth/entry*', (route) =>
-    route.fulfill({
+  await page.route(url => url.pathname === '/api/auth/entry', (route) =>
+    route.request().method() !== 'GET' ? route.fallback() : route.fulfill({
       status: 303,
       headers: {
         location: new URL(route.request().url()).searchParams.get('signup') === 'true'
@@ -68,6 +65,7 @@ for (const blocked of [
   test(`content blockers cannot prevent startup, navigation, or logout (${blocked})`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize({ width: 390, height: 844 })
     await shellFixture(page)
     const errors: string[] = []
@@ -187,7 +185,8 @@ test('OIDC sign-in offers one prominent account action and retains the destinati
 test('login and signup preserve the requested game destination', async ({
   page,
 }) => {
-  await shellFixture(page)
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
+  await shellFixture(page, { csrf: 'csrf' })
   for (const path of ['/login', '/signup']) {
     await withBootstrapResponse(page, () => page.goto(path))
     await expect(
@@ -453,16 +452,14 @@ test(`explicit login records presence after retry; reload and cached-page restor
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
   if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
+  await installGameFixture(page, { protocol: 4, csrf: payload.result.session.csrf })
   let signedIn = false,
     logins = 0,
     bootstrapReads = 0
   await page.route('**/api/**', async (route) => {
     const request = route.request(),
       path = new URL(request.url()).pathname
-    if (path === '/api/auth/config') return route.fallback()
-    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
-      return inactiveTutorial(route, snapshot.view.viewer_revision)
-    if (path === '/api/v1/bootstrap') {
+    if (request.method() === 'GET' && path === '/api/v1/bootstrap') {
       bootstrapReads++
       return route.fulfill({
         json: signedIn
@@ -474,14 +471,14 @@ test(`explicit login records presence after retry; reload and cached-page restor
             },
       })
     }
-    if (path === '/api/v1/session' || path === '/api/v1/registration') {
+    if (request.method() === 'POST' && path === '/api/v1/session' && new URL(request.url()).searchParams.get('bootstrap') === 'true') {
       signedIn = true
       const failed = structuredClone(payload)
       if (failed.result.status === 'authenticated')
         failed.result.game = { status: 'unavailable', code: 'Unavailable' }
       return route.fulfill({ json: failed })
     }
-    if (path.endsWith('/presence')) {
+    if (request.method() === 'POST' && path === `/api/v4/universes/${binding.universe}/presence` && request.postDataJSON()?.command?.action?.type === 'RecordForegroundPresence') {
       const e = request.postDataJSON()
       if (e.command.action.cause === 'Login') logins++
       return route.fulfill({
@@ -497,14 +494,14 @@ test(`explicit login records presence after retry; reload and cached-page restor
         },
       })
     }
-    if (path.endsWith('/overview'))
+    if (request.method() === 'POST' && path === `/api/v4/universes/${binding.universe}/overview`)
       return route.fulfill({
         json: {
           ...snapshot.view,
           request_id: request.postDataJSON().request_id,
         },
       })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await withBootstrapResponse(page, () => page.goto('/login'))
   await page.getByLabel('Account', { exact: true }).fill('test')
@@ -554,8 +551,9 @@ test('a populated HTML payload renders without a bootstrap request', { tag: '@jo
     throw Error('fixture')
   payload.result.game.snapshot.view.bodies = [body]
   if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
+  await installGameFixture(page, { protocol: 3, csrf: payload.result.session.csrf })
   await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback()
+    if (route.request().resourceType() !== 'document' || new URL(route.request().url()).pathname.startsWith('/api/')) return route.fallback()
     const response = await route.fetch()
     const html = (await response.text()).replace(
       '<script id="orbit-bootstrap" type="application/json"></script>',
@@ -563,22 +561,17 @@ test('a populated HTML payload renders without a bootstrap request', { tag: '@jo
     )
     return route.fulfill({ response, body: html })
   })
-  const calls: string[] = []
+  const startupReads: string[] = []
   await page.route('**/api/**', (route) => {
-    calls.push(new URL(route.request().url()).pathname)
+    const path = new URL(route.request().url()).pathname
+    if (!['/api/v1/bootstrap', '/api/v1/session'].includes(path) && !/\/(binding|settings)$/.test(path))
+      return route.fallback()
+    startupReads.push(path)
     return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
   })
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
-  expect(
-    calls.filter(
-      (p) =>
-        p === '/api/v1/bootstrap' ||
-        p === '/api/v1/session' ||
-        p.endsWith('/binding') ||
-        p.endsWith('/settings'),
-    ),
-  ).toEqual([])
+  expect(startupReads).toEqual([])
   expect(await page.locator('#orbit-bootstrap').count()).toBe(0)
 })
 
@@ -773,6 +766,7 @@ test('enrollment displays a universe name and submits its stable UUID', async ({
   if (payload.result.status !== 'authenticated') throw Error('fixture')
   payload.result.session.memberships = []
   payload.result.game = { status: 'no_membership' }
+  await installSessionRenewal(page, payload.result.session.csrf)
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: payload }))
   await page.route('**/api/v1/session', route => route.fulfill({ json: { csrf: 'fixture' } }))
   await page.route('**/api/auth/config', route => route.fulfill({ json: {
@@ -816,23 +810,21 @@ test('mobile startup automatically recovers from a transient restart without sig
   const preparing = structuredClone(payload)
   if (preparing.result.status !== 'authenticated') throw Error('fixture')
   preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
+  await installGameFixture(page, { protocol: 4, csrf: payload.result.session.csrf })
   let reads = 0
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname
-    if (path === '/api/auth/config') return route.fallback()
-    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
-      return inactiveTutorial(route, snapshot.view.viewer_revision)
-    if (path === '/api/v1/bootstrap') {
+    if (request.method() === 'GET' && path === '/api/v1/bootstrap') {
       reads++
       return route.fulfill({ json: reads === 2 ? preparing : reads > 2 ? payload : {
         version: 1, signup_enabled: true,
         result: { status: 'unavailable', code: 'Unavailable' },
       } })
     }
-    if (path.endsWith('/overview')) return route.fulfill({ json: {
+    if (request.method() === 'POST' && path === `/api/v4/universes/${binding.universe}/overview`) return route.fulfill({ json: {
       ...snapshot.view, request_id: request.postDataJSON().request_id,
     } })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
   await ready(page.getByText('Connection temporarily unavailable. Reconnecting automatically…')).toBeVisible()
@@ -858,6 +850,7 @@ test('automatic outage retries preserve Retry and Sign out focus without manual-
   let reads = 0
   const release = new Map<number, () => void>()
   const completed = new Set<number>()
+  await installSessionRenewal(page, payload.result.session.csrf)
   await page.route('**/api/v1/bootstrap', async route => {
     const read = ++reads
     if (read === 1) return route.fulfill({ json: payload })
