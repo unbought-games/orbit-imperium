@@ -125,8 +125,6 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('./report-reader.scenarios')).PublishedEspionageReader,
   'report-sharing-controls': async () =>
     (await import('./report-sharing-controls.scenario')).SharingControls,
-  'report-readability': async () =>
-    (await import('./report-readability.scenario')).ReportReadabilityScenario,
   'galaxy-navigation': async () =>
     (await import('./galaxy-navigation.scenario')).GalaxyNavigationScenario,
   'cosmetic-treatments': async () =>

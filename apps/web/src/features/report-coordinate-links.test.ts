@@ -7,6 +7,8 @@ import { id } from '../test-support/bootstrap'
 import { fleetPresentationFixture } from '../test-support/fleet-presentation'
 import { MissionFleetCardPresentation } from './mission-fleet-card'
 import { ReportObservation } from './report-observation'
+import { ReportListRow } from './report-list-row'
+import { useGameSession } from '../shell/session-context'
 
 type S = components['schemas']
 const now = 1792756800000
@@ -107,6 +109,61 @@ it.each(reports)(
     })
   },
 )
+
+it('a defeated defender’s list row keeps the report and historical Galaxy position as separate native links', () => {
+  function DefenderRow() {
+    const { model, view, universeName } = useGameSession()
+    return createElement(ReportListRow, {
+      model,
+      universe: universeName,
+      origin: id(5),
+      report: {
+        id: id(70),
+        kind: 'Combat',
+        observed_at: now,
+        read: false,
+        hidden: false,
+        preview: {
+          kind: 'Combat',
+          outcome: 'AttackerVictory',
+          target: destination,
+          target_name: 'Sol',
+          loot: {
+            metal: '37827000000',
+            crystal: '21881000000',
+            deuterium: '2465000000',
+          },
+          participants: [
+            { owner: id(20), side: 'Attacker' },
+            { owner: view.binding.player, side: 'Defender' },
+          ],
+        },
+      },
+      playerNames: { [id(20)]: 'Vega' },
+      now,
+      disabled: false,
+    })
+  }
+  const html = renderToStaticMarkup(
+    createElement(PreparedLinkContext, {
+      children: createElement(DefenderRow),
+    }),
+  )
+  const anchors = html.match(/<a\b[^>]*>[\s\S]*?<\/a>/g) ?? []
+  expect(anchors).toHaveLength(2)
+  const [report, coordinate] = anchors
+  expect(report).toContain('aria-label="Defeat · Vega · Sol"')
+  expect(report).toContain(
+    'href="/u/andromeda-prime/b/' + id(5) + '/reports/' + id(70) + '"',
+  )
+  expect(coordinate).toContain('aria-label="View [1:5:12] in galaxy"')
+  expect(coordinate).toContain(
+    'href="/u/andromeda-prime/b/' +
+      id(5) +
+      '/galaxy?galaxy=1&amp;system=5&amp;position=12"',
+  )
+  expect(html.replace(/<[^>]+>/g, '')).toContain('Loot:37,82721,8812,465')
+})
 
 it('a returning flight points home but its destination link still opens the recorded target', () => {
   const { view, body, fleet } = fleetPresentationFixture()
