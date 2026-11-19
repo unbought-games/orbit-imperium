@@ -49,3 +49,30 @@ it('validates catalog identity and category without hiding disabled items', () =
     'SolarSatellite',
   )
 })
+
+it('opens the published missile detail paths in their own catalog sections', () => {
+  const view = readyFixture(4).snapshot.view as BoundView
+  const paths = [
+    ['facilities', 'missile-silo', { kind: 'Building', id: 'MissileSilo' }],
+    [
+      'defense',
+      'anti-ballistic-missile',
+      { kind: 'Missile', id: 'AntiBallisticMissile' },
+    ],
+    [
+      'defense',
+      'interplanetary-missile',
+      { kind: 'Missile', id: 'InterplanetaryMissile' },
+    ],
+  ] as const
+  view.catalog = paths.map(([, , key]) => ({
+    key,
+    enabled: true,
+    body_kinds: ['Planet'],
+    requirements: [],
+    mobile: false,
+  }))
+  for (const [page, slug, key] of paths) {
+    expect(resolveCatalogItem(page, slug, view)).toBe(key.id)
+  }
+})

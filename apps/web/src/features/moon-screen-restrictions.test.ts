@@ -5,13 +5,15 @@ import { expect, it } from 'vitest'
 import { ScreenContext } from '../shell/screen-context'
 import { useGameSession } from '../shell/session-context'
 import type { Page } from '../shell/routes'
+import { empireFixture } from '../test-support/empire'
 import { PreparedLinkContext } from '../test-support/prepared-link-context'
 import { EconomyScreen, ResourceSettingsScreen } from './game-screens'
 import { progressionFixture } from './progression/progression-test-fixture'
 
-function MoonScreen({ page }: { page: Page }) {
+function FundedScreen({ page, bodyId }: { page: Page; bodyId: string }) {
   const session = useGameSession()
-  const body = session.view.bodies[0]
+  const body = session.view.bodies.find((candidate) => candidate.id === bodyId)
+  if (!body) throw Error('Missing selected fixture body')
   return createElement(
     ScreenContext.Provider,
     {
@@ -53,21 +55,26 @@ it.each(cases)(
     )
     view.catalog = JSON.parse(readFileSync(profile, 'utf8')).catalog
     const planet = view.bodies[0]
+    view.progression.production = [
+      { ...empireFixture(1000).production[0], body: planet.id },
+    ]
     view.bodies = [
+      planet,
       {
         ...planet,
         id: 'moon',
         kind: 'Moon',
         moon: { parent: planet.id, created_at: 1000 },
       },
-      planet,
     ]
-    const html = renderToStaticMarkup(
-      createElement(PreparedLinkContext, {
-        view,
-        children: createElement(MoonScreen, { page }),
-      }),
-    )
-    expect(html).toContain(message)
+    const render = (bodyId: string) =>
+      renderToStaticMarkup(
+        createElement(PreparedLinkContext, {
+          view,
+          children: createElement(FundedScreen, { page, bodyId }),
+        }),
+      )
+    expect(render('moon')).toContain(message)
+    expect(render(planet.id)).not.toContain(message)
   },
 )
