@@ -132,6 +132,7 @@ test('publishing and revoking a private report link leaves its confirmed star on
   await page.route('**' + path, async (route) => {
     const req = route.request()
     if (req.method() !== 'POST') return route.fallback()
+    expect(req.headers()['x-csrf-token']).toBe('csrf')
     const { context, action } = req.postDataJSON()
     expect(context.binding).toEqual({
       account: id(1),

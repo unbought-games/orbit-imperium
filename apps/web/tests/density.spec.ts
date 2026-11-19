@@ -3,12 +3,12 @@ import {
   fixtureReportContext,
   fixtureReportPath,
 } from './fixtures/game'
-import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
 import {
   refuseFixtureReads,
+  routeWorld,
   installGameFixture,
   shellFixture,
   binding,
@@ -16,7 +16,11 @@ import {
   id,
   resources,
 } from './fixtures/game'
-import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
+import {
+  withBootstrapResponse,
+  withReportResponse,
+  withFixtureResponse,
+} from './fixtures/responses'
 
 type S = components['schemas']
 const now = Date.now()
@@ -196,9 +200,22 @@ test(`combat outcome and follow-up lead the first viewport across supported view
 }) => {
   await page.setViewportSize(viewportSizes[0])
   await page.clock.setFixedTime(now)
+  const funding = {
+    ...structuredClone(body),
+    id: id(6),
+    name: 'Second colony',
+    coordinates: { galaxy: 1, system: 371, position: 13 },
+  }
   await installGameFixture(page, {
+    bodies: [body, funding],
     protocol: 4,
     extraCapabilities: ['Reports', 'Harvest'],
+    missions: {
+      fleets: [],
+      incoming: [],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    },
   })
   const header: S['ReportHeader4'] = {
     id: id(62),
@@ -228,7 +245,7 @@ test(`combat outcome and follow-up lead the first viewport across supported view
     survivors: [],
     gross_losses: [],
     recovered: [],
-    debris: resources,
+    debris: { metal: '0', crystal: '0', deuterium: '60000000000' },
     loot: resources,
   }
   await page.route(
@@ -263,8 +280,41 @@ test(`combat outcome and follow-up lead the first viewport across supported view
       })
     },
   )
+  await routeWorld(page, async (route) => {
+    const { type, galaxy, system, context } = route.request().postDataJSON()
+    if (type !== 'Galaxy' || galaxy !== 1 || system !== 372)
+      return route.fallback()
+    const data: S['GalaxySystem4'] = {
+      galaxy,
+      system,
+      observed_at: now,
+      positions: Array.from({ length: 15 }, (_, i) => ({
+        coordinates: { galaxy, system, position: i + 1 },
+        body: null,
+        debris:
+          i + 1 === 10
+            ? {
+                field_identity: id(61),
+                metal: '0',
+                crystal: '0',
+                deuterium: '60000',
+              }
+            : null,
+      })),
+    }
+    await route.fulfill({
+      json: {
+        protocol: 4,
+        ...context,
+        viewer_revision: '1',
+        sampled_at: now,
+        as_of_ms: now,
+        data,
+      },
+    })
+  })
   await withReportResponse(page, header.id, () =>
-    page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
+    page.goto(`/u/andromeda/b/${funding.id}/reports/${header.id}`),
   )
   await checkFirstFold(page, [
     page.getByRole('heading', { name: 'Victory', exact: true }),
@@ -299,55 +349,84 @@ test(`combat outcome and follow-up lead the first viewport across supported view
   await timestamp.hover()
   await expect(fullTime).toBeVisible()
   await page.keyboard.press('Escape')
+  const report = page.getByRole('region', { name: 'Report observation' })
+  const actions = page.getByRole('button', { name: 'Prepare harvest' })
+  const lootHeading = report.getByRole('heading', { name: 'Loot', exact: true })
+  const debrisHeading = report.getByRole('heading', {
+    name: 'Debris created',
+    exact: true,
+  })
+  await expect(lootHeading).toBeVisible()
+  await expect(debrisHeading).toBeVisible()
+  // Changing shell width can also move the work area when the pinned header
+  // finishes its ResizeObserver update. Read relative geometry in one layout.
   for (const viewport of viewportSizes) {
     await page.setViewportSize(viewport)
-    const harvest = (await page
-      .getByRole('button', { name: 'Prepare harvest' })
-      .boundingBox())!
-    const outcome = (await page
-      .getByRole('region', { name: 'Report observation' })
-      .locator(':scope > header')
-      .boundingBox())!
-    expect(harvest.y).toBeGreaterThanOrEqual(outcome.y + outcome.height)
-    expect(harvest.y - outcome.y - outcome.height).toBeLessThan(30)
-    await expect(
-      page.getByRole('heading', { name: 'Loot', exact: true }),
-    ).toBeVisible()
-    const resourceSection = (await page
-      .getByRole('heading', { name: 'Loot', exact: true })
-      .locator('../..')
-      .boundingBox())!
-    expect(
-      resourceSection.y - harvest.y - harvest.height,
-    ).toBeGreaterThanOrEqual(16)
+    const [harvest, outcome, resourceSection, loot, debris] =
+      await page.evaluate(
+        (els) =>
+          els.map((el) => {
+            const { x, y, width, height, right, bottom } =
+              el.getBoundingClientRect()
+            return { x, y, width, height, right, bottom }
+          }),
+        await Promise.all(
+          [
+            actions,
+            report.locator(':scope > header'),
+            lootHeading.locator('../..'),
+            lootHeading.locator('..'),
+            debrisHeading.locator('..'),
+          ].map((el) => el.elementHandle()),
+        ),
+      )
+    expect(harvest.y).toBeGreaterThanOrEqual(outcome.bottom)
+    expect(harvest.y - outcome.bottom).toBeLessThan(30)
+    expect(resourceSection.y - harvest.bottom).toBeGreaterThanOrEqual(16)
     if (viewport.width > 850) {
-      const loot = (await page
-        .getByRole('heading', { name: 'Loot', exact: true })
-        .locator('..')
-        .boundingBox())!
-      const debris = (await page
-        .getByRole('heading', { name: 'Debris created', exact: true })
-        .locator('..')
-        .boundingBox())!
       expect(debris.y).toBe(loot.y)
-      expect(debris.x - loot.x - loot.width).toBeGreaterThanOrEqual(64)
+      expect(debris.x - loot.right).toBeGreaterThanOrEqual(64)
     }
   }
   await diagnosticScreenshot(page, {
     path: `test-results/density-combat-${page.viewportSize()!.width}.png`,
   })
-  await page.getByRole('button', { name: 'Prepare harvest' }).click()
+  const debrisPanel = page
+    .getByRole('heading', { name: 'Debris created', exact: true })
+    .locator('..')
+  await expect(
+    debrisPanel.getByRole('img', { name: 'Deuterium', exact: true }),
+  ).toBeVisible()
+  await withFixtureResponse(
+    page,
+    (response) => {
+      if (
+        response.request().method() !== 'POST' ||
+        new URL(response.url()).pathname !==
+          `/api/v4/universes/${binding.universe}/world`
+      )
+        return false
+      const q = response.request().postDataJSON()
+      return q.type === 'Galaxy' && q.galaxy === 1 && q.system === 372
+    },
+    () =>
+      page
+        .getByRole('button', { name: 'Prepare harvest', exact: true })
+        .click(),
+  )
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === `/u/andromeda/b/${funding.id}/dispatch` &&
+      url.searchParams.get('target') === 'debris',
+  )
   await expect(page.getByRole('radio', { checked: true })).toHaveValue(
     'Harvest',
   )
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
-  ).toHaveValue(coordinatePattern('system', '372'))
-  await expect(
-    page.getByLabel('Destination coordinates', { exact: true }),
-  ).toHaveValue(coordinatePattern('position', '10'))
+  ).toHaveValue('1:372:10')
   await withReportResponse(page, header.id, () =>
-    page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`),
+    page.goto(`/u/andromeda/b/${funding.id}/reports/${header.id}`),
   )
   await page.getByRole('link', { name: 'Back to reports' }).click()
   await checkFirstFold(page, [
@@ -495,7 +574,6 @@ for (const width of [390]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
-    await page.clock.install({ time: now })
     await page.clock.pauseAt(now)
     const incoming = (
       mission: S['Mission4'],

@@ -75,7 +75,6 @@ for (const viewport of [{ width: 390, height: 844 }]) {
   test(`a click during quiet session recovery is explicitly refused (${viewport.width}x${viewport.height})`, async ({ page }, info) => {
     await page.setViewportSize(viewport)
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.clock.install()
     await page.clock.pauseAt(new Date())
     const purchases = await installGameFixture(page, { protocol: 4 })
     await withFixtureResponse(page, r => r.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))

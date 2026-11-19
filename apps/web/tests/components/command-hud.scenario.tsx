@@ -34,6 +34,7 @@ export type HudInput = {
   conversations?: S['SocialView']['conversations']
   circulars?: S['SocialView']['circulars']
   headers?: S['ReportHeader4'][]
+  pageSize?: number
   reports?: number
   invalidCursor?: boolean
   missions?: S['MissionView4']
@@ -146,7 +147,7 @@ async function prepareHud(input: HudInput = {}) {
       const start = cursor
         ? rows.findIndex((header) => header.id === cursor) + 1
         : 0
-      const items = rows.slice(start, start + 50)
+      const items = rows.slice(start, start + (input.pageSize ?? 50))
       const hasMore = input.invalidCursor || start + items.length < rows.length
       return structuredClone({
         ...metadata(context),

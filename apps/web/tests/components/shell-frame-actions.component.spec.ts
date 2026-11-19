@@ -128,6 +128,6 @@ test('another dossier links its coordinates using the selected funding body', as
   )
   await link.click()
   await expect(page.getByLabel('Scene destination')).toHaveText(
-    '/u/andromeda/b/' + body.id + '/galaxy',
+    '/u/andromeda/b/' + body.id + '/galaxy?galaxy=1&system=380&position=8',
   )
 })

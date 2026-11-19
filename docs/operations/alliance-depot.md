@@ -91,5 +91,5 @@ of losing fleet commitments or restoring spent budget. Database backups retain
 all fleet and supply history.
 
 Focused checks: `make _db-holding`, `make _db-rules_updates`, engine holding tests,
-and `npm run test:ui -- alliance-depot.spec.ts`. Routine CI uses the existing test
+and `npm run test:components -- alliance-flight.component.spec.ts depot-facility.component.spec.ts`. Routine CI uses the existing test
 classes; no new scheduled or full-system validation job is required.

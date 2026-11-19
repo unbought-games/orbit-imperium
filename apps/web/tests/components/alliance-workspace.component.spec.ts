@@ -47,8 +47,8 @@ test('own-alliance discovery returns to membership without submitting a command'
   )
 })
 
-for (const mode of ['join', 'apply'] as const) {
-  test(`the welcome ${mode} control retries the same confirmed command and returns to its membership result`, async ({
+for (const mode of ['join', 'apply', 'ordinary-apply'] as const) {
+  test(mode === 'ordinary-apply' ? 'ordinary discovery locks the application draft during an ambiguous submission and retries that same request' : `the welcome ${mode} control retries the same confirmed command and returns to its membership result`, async ({
     page,
   }) => {
     const alliance = id(800)
@@ -105,7 +105,19 @@ for (const mode of ['join', 'apply'] as const) {
     ).toHaveCount(0)
     const commands = await page.evaluate(() => window.allianceWorkspaceCommands)
     expect(commands).toHaveLength(2)
-    expect(commands[0].action.type).toBe(mode === 'join' ? 'Join' : 'Apply')
+    for (const command of commands) {
+      expect(command.context.binding).toEqual({
+        account: id(1),
+        player: id(2),
+        universe: id(3),
+        epoch: id(4),
+      })
+      expect(command.action).toEqual(
+        mode === 'join'
+          ? { type: 'Join', alliance }
+          : { type: 'Apply', alliance, text: 'My original application' },
+      )
+    }
     expect(commands[1].command_id).toBe(commands[0].command_id)
     expect(commands[1].action).toEqual(commands[0].action)
   })
@@ -274,10 +286,17 @@ test('alliance discovery keeps the targeted application after refusal and return
     page.getByRole('heading', { name: 'You’re not in an alliance yet.' }),
   ).toBeVisible()
   const commands = await page.evaluate(() => window.allianceWorkspaceCommands)
-  expect(commands.map((c) => c.action.type)).toEqual([
-    'Apply',
-    'Apply',
-    'Withdraw',
+  expect(commands.map((c) => c.action)).toEqual([
+    { type: 'Apply', alliance, text: 'I explore distant stars.' },
+    { type: 'Apply', alliance, text: 'I explore distant stars.' },
+    { type: 'Withdraw', application: id(810) },
   ])
+  for (const command of commands)
+    expect(command.context.binding).toEqual({
+      account: id(1),
+      player: id(2),
+      universe: id(3),
+      epoch: id(4),
+    })
   expect(commands[0].command_id).not.toBe(commands[1].command_id)
 })

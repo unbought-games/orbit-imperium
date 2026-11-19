@@ -38,7 +38,8 @@ test.describe('coordinate actions on touch', () => {
     mount,
   }) => {
     await mount('shell-coordinates')
-    const initialUrl = page.url()
+    const location = page.getByLabel('Coordinate route')
+    await expect(location).toHaveText('/')
     const target = page
       .getByRole('link', {
         name: 'View destination [1:5:12] in galaxy',
@@ -64,7 +65,15 @@ test.describe('coordinate actions on touch', () => {
     await expect(
       page.getByRole('menuitem', { name: 'Copy location link', exact: true }),
     ).toBeVisible()
-    await expect(page).toHaveURL(initialUrl)
+    await expect(location).toHaveText('/')
     await cdp.detach()
+    await page.keyboard.press('Escape')
+    await expect(
+      page.getByRole('menuitem', { name: 'Copy location link', exact: true }),
+    ).toHaveCount(0)
+    const destination = await target.getAttribute('href')
+    expect(destination).toMatch(/galaxy=1&system=5&position=12$/)
+    await target.tap()
+    await expect(location).toHaveText(destination!)
   })
 })

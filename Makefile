@@ -20,7 +20,7 @@ DB_SUITES = $(basename $(notdir $(wildcard crates/storage-postgres/tests/*.rs)))
 DB_TARGETS = $(addprefix _db-,$(DB_SUITES))
 DB_JOBS ?= 4
 
-.PHONY: check test-tooling test-client test-server test-db test-ui test-components test-journeys test-features prepare-server _server _database _static $(DB_TARGETS)
+.PHONY: check test-tooling test-client test-server test-db test-ui test-components test-journeys test-features verify-browser-results prepare-server _server _database _static $(DB_TARGETS)
 check: test-tooling test-client test-server
 	cargo clippy --workspace --all-targets --features orbit-server/test-support -- -D warnings
 	$(MAKE) _static
@@ -98,6 +98,12 @@ test-ui:
 
 test-components:
 	npm run test:components $(if $(UI_SHARD),-- --shard=$(UI_SHARD))
+
+verify-browser-results:
+	node scripts/verify-browser-results.mjs "$(BROWSER_SUITE)" "$(UI_SHARD)"
+ifeq ($(BROWSER_SUITE),journeys)
+	node scripts/verify-browser-results.mjs homepage
+endif
 
 test-journeys:
 	ORBIT_BROWSER_SUITE=journeys $(MAKE) test-ui
@@ -320,6 +326,7 @@ test-insignias:
 	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(insignia)'
 	cargo nextest run -p orbit-storage-assets --lib
 	npm test -- insignias
+	npm run test:components -- insignia-editor.component.spec.ts galaxy-dossier.component.spec.ts
 	npm run test:ui -- insignias.spec.ts
 
 # Explicit-only real-server insignia acceptance; use an isolated Compose database.
@@ -340,7 +347,7 @@ test-deuterium-debris:
 	cargo nextest run -p orbit-engine --test debris --test missions --test rules_update_impact --test persistence --lib
 	npm test -- galaxy-harvest galaxy-position combat-report-model report-preview-facts report-presentation report-observation
 	npm run test:components -- galaxy-position.component.spec.ts harvest-report.spec.ts --grep 'deuterium|harvest resources and ships'
-	npm run test:ui -- combat-reports.spec.ts --grep deuterium
+	npm run test:ui -- density.spec.ts -g 'combat outcome and follow-up'
 
 test-deuterium-debris-db:
 	sh scripts/test-db.sh rules_updates 'test(impact::) | test(compatibility::)'
@@ -350,11 +357,13 @@ test-deuterium-debris-db:
 test-terraformer:
 	cargo nextest run -p orbit-engine --lib --test progression -E 'test(terraformer)'
 	cargo nextest run -p orbit-application --lib -E 'test(terraformer)'
-	npm test -- apps/web/src/features/progression/detail-insights.test.ts
-	npm run test:ui -- terraformer.spec.ts
+	npm test -- src/features/progression/detail-insights.test.ts src/features/progression/technology-details.test.ts
+	npm run test:components -- resources.component.spec.ts -g "construction cancellation preserves safe focus"
 
 test-terraformer-db:
-	sh scripts/test-db.sh rules_updates 'test(terraformer)'
+	# The long two-runtime Terraformer tour was retired in #433. Check the
+	# actual additive upgrade/restart boundary and the Terraformer world export.
+	sh scripts/test-db.sh rules_updates 'test(standard_upgrade_retains_paid_work_and_identity_is_read_only_until_apply_and_repeats_safely)'
 	sh scripts/test-db.sh world_edit 'test(terraformer)'
 
 # Explicit cross-service acceptance; the fixture manifest contains synthetic secrets.
@@ -382,7 +391,8 @@ test-moon-fleets:
 test-lunar-base:
 	cargo nextest run -p orbit-engine -p orbit-application --all-targets
 	npm test
-	npm run test:ui -- moons.spec.ts terraformer.spec.ts
+	npm run test:components -- resources.component.spec.ts -g "construction cancellation preserves safe focus"
+	npm run test:ui -- moons.spec.ts
 
 test-lunar-base-db:
 	sh scripts/test-db.sh moons
@@ -392,7 +402,8 @@ test-lunar-base-db:
 test-lunar-industry:
 	cargo nextest run -p orbit-engine -p orbit-application --all-targets
 	npm test
-	npm run test:ui -- moons.spec.ts industrial-buildings.spec.ts
+	npm run test:components -- resources.component.spec.ts -g "unavailable facilities and resource buildings"
+	npm run test:ui -- moons.spec.ts
 
 test-lunar-industry-db:
 	sh scripts/test-db.sh moons
@@ -407,6 +418,7 @@ test-phalanx:
 test-empire-identity:
 	cargo nextest run -p orbit-application -p orbit-transport-http --lib -E 'test(empire_identity) | test(insignia)'
 	npm test -- deadline-timer empire-identity player-profiles
+	npm run test:components -- empire-identity-name.component.spec.ts profile-editor.component.spec.ts
 	npm run test:ui -- empire-identity.spec.ts
 
 # Linked lab arithmetic, persisted operation snapshots and responsive inspectors.
@@ -414,7 +426,8 @@ test-empire-identity:
 test-research-network:
 	cargo nextest run -p orbit-engine -p orbit-application --all-targets
 	npm test
-	npm run test:ui -- research-network.spec.ts hyperspace-technology.spec.ts
+	npm run test:components -- progression-detail.component.spec.ts -g "technical disclosures and modal tabs"
+	npm run test:ui -- research-network.spec.ts
 
 test-research-network-db:
 	sh scripts/test-db.sh rules_updates
@@ -459,6 +472,7 @@ test-auth-telemetry:
 test-announcements:
 	cargo nextest run -p orbit-application -p orbit-storage-assets -p orbit-transport-http -p orbit-server -E 'test(announcements) | binary(announcements_cli)'
 	npm test -- apps/web/src/features/announcements apps/web/src/features/alliances/markdown.test.ts apps/web/src/adapters/announcements.test.ts
+	npm run test:components -- announcement-delivery.component.spec.ts
 	npm run test:ui -- release-announcement.spec.ts
 
 .PHONY: test-request-metrics

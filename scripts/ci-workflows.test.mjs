@@ -434,6 +434,13 @@ test('browser shards run independently and Make forwards their native Playwright
     Array.from({ length: features.length }, (_, index) => index + 1),
   )
   assert.ok(features.every((job) => job.shards === features.length))
+  const verify = browser.steps.find(
+    (step) => step.run === 'make verify-browser-results',
+  )
+  assert.deepEqual(verify.env, {
+    BROWSER_SUITE: '${{ matrix.suite }}',
+    UI_SHARD: '${{ matrix.shard }}/${{ matrix.shards }}',
+  })
   const run = browser.steps.find((step) =>
     step.run?.includes('make test-components'),
   )

@@ -46,7 +46,7 @@ this change.
 
 Validation: application projection tests, HTTP authentication/CSRF and public
 HTML tests, `make _db-report_sharing` with a disposable database, and the fixture
-browser suite `npm run test:ui -- report-sharing.spec.ts`.
+browser suite `npm run test:ui -- report-sharing.spec.ts`. Run `npm run test:components -- published-report.component.spec.ts report-sharing-controls.spec.ts` for publication controls and the public reader’s interactive presentation.
 
 Commemorative publication is a separate action with a separate lasting URL.
 Archiving from details revokes the unlisted report share and preserves battles referenced by profile history. See [Empire profiles and lasting

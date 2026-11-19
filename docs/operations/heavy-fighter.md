@@ -79,8 +79,7 @@ activation requires a binary that understands Heavy Fighter definitions. Follow
 ## Validation
 
 `make check` covers tooling, client/server tests, lint, contracts, and the web
-build. `npm run test:ui -- heavy-fighter.spec.ts` covers fixture-based shipyard
-and dispatch behavior. Engine tests cover all three construction gates, payment
+build. `npm test -- catalog-content-migration ship-selection` checks the ship profile and dispatch selection. `npm run test:components -- progression-forms.component.spec.ts dispatch.spec.ts` exercises the production controls. Engine tests cover all three construction gates, payment
 and completion, propulsion, combat technology bonuses, rapid fire, retained
 production, combat reports, and return conservation. The preparation-script tests
 verify idempotence, preservation of custom settings, prerequisite rejection, and

@@ -32,7 +32,9 @@ const { alliance, applicant, member, summary, own } = allianceMembershipFixture(
 )
 const mode = new URLSearchParams(location.search).get('mode')
 const membership = own()
-let joined = !['join', 'apply', 'withdraw'].includes(mode ?? '')
+let joined = !['join', 'apply', 'ordinary-apply', 'withdraw'].includes(
+  mode ?? '',
+)
 const applications: components['schemas']['AllianceApplication'][] = []
 const commands: components['schemas']['AllianceCommandRequest'][] = []
 const departed = id(888)
@@ -86,19 +88,38 @@ const port: GamePort = {
     const allowed =
       mode === 'join'
         ? ['Join']
-        : mode === 'apply'
+        : mode === 'apply' || mode === 'ordinary-apply'
           ? ['Apply']
           : mode === 'withdraw'
             ? ['Apply', 'Withdraw']
             : []
     if (!allowed.includes(action.type)) return unexpected()
+    if (
+      context.binding.player !== view.binding.player ||
+      context.binding.universe !== view.binding.universe
+    )
+      return unexpected()
+    if (
+      (action.type === 'Join' || action.type === 'Apply') &&
+      action.alliance !== alliance
+    )
+      return unexpected()
+    if (
+      action.type === 'Withdraw' &&
+      !applications.some((item) => item.id === action.application)
+    )
+      return unexpected()
     commands.push(structuredClone({ ...request, context }))
     if (commands.length === 1) {
       if (mode === 'withdraw')
         throw Object.assign(new Error('Conflict'), { status: 409 })
       throw { status: 503, code: 'Unavailable' }
     }
-    if (action.type === 'Withdraw') applications.splice(0)
+    if (action.type === 'Withdraw')
+      applications.splice(
+        applications.findIndex((item) => item.id === action.application),
+        1,
+      )
     if (action.type === 'Join') joined = true
     if (action.type === 'Apply')
       applications.push({
@@ -229,7 +250,7 @@ export function AllianceWorkspaceScenario() {
       ]),
       history: createMemoryHistory({
         initialEntries: [
-          `/u/andromeda/b/${body.id}/alliance${['join', 'apply'].includes(mode ?? '') ? `/discover?alliance=${alliance}&welcome=1` : ''}`,
+          `/u/andromeda/b/${body.id}/alliance${['join', 'apply', 'ordinary-apply'].includes(mode ?? '') ? `/discover?alliance=${alliance}${mode === 'ordinary-apply' ? '' : '&welcome=1'}` : ''}`,
         ],
       }),
     })

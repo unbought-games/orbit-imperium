@@ -7,7 +7,10 @@ import {
   binding,
   id,
 } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import {
+  withFixtureResponse,
+  withProgressionResponse,
+} from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -100,6 +103,14 @@ test.describe(`Jump Gates at ${width}`, () => {
       })
       await page.route('**/progression-options', async (route) => {
         const { context, request } = route.request().postDataJSON()
+        if (
+          route.request().method() !== 'POST' ||
+          request.type !== 'Upgrade' ||
+          request.body !== source.id ||
+          request.building !== 'JumpGate'
+        )
+          return route.fallback()
+        expect(context.binding).toEqual(binding)
         const level = source.levels.JumpGate ?? 0
         await route.fulfill({
           json: {
@@ -148,13 +159,25 @@ test.describe(`Jump Gates at ${width}`, () => {
       await page.route('**/commands', async (route) => {
         const pair = route.request().postDataJSON(),
           e = pair.gameplay ?? pair
+        if (
+          !pair.gameplay ||
+          !pair.presence ||
+          route.request().method() !== 'POST'
+        )
+          return route.fallback()
+        expect(e.binding).toEqual(binding)
         if (e.command.type === 'StartUpgrade') {
+          expect(e.command).toMatchObject({
+            type: 'StartUpgrade',
+            body: source.id,
+            building: 'JumpGate',
+            expected_terms_hash: 'b'.repeat(64),
+          })
           builds++
           source.levels.JumpGate = 1
           source.fields_used = 2
           revision++
-        }
-        if (e.command.action?.type === 'JumpShips') {
+        } else if (e.command.action?.type === 'JumpShips') {
           jumps++
           expect(pair.presence.command.action.body).toBe(source.id)
           expect(e.command.action.intent).toEqual({
@@ -179,7 +202,7 @@ test.describe(`Jump Gates at ${width}`, () => {
           source.jump_gate = { ready_at: now + 3600000, cooldown_ms: 3600000 }
           destination.jump_gate = { ...source.jump_gate }
           revision++
-        }
+        } else return route.fallback()
         await route.fulfill({
           json: {
             protocol: 4,
@@ -193,9 +216,12 @@ test.describe(`Jump Gates at ${width}`, () => {
           },
         })
       })
-      await withFixtureResponse(
+      await withProgressionResponse(
         page,
-        (r) => r.url().endsWith('/progression-options'),
+        (r) =>
+          r.type === 'Upgrade' &&
+          r.body === source.id &&
+          r.building === 'JumpGate',
         () => page.goto(`/u/andromeda/b/${source.id}/facilities/jump-gate`),
       )
       const panel = page.getByRole('region', { name: 'Jump Gate transfer' })
@@ -271,9 +297,12 @@ test.describe(`Jump Gates at ${width}`, () => {
       await expect(panel).toContainText('This gate is cooling down')
       expect(jumps).toBe(1)
       await capture('cooling')
-      await withFixtureResponse(
+      await withProgressionResponse(
         page,
-        (r) => r.url().endsWith('/progression-options'),
+        (r) =>
+          r.type === 'Upgrade' &&
+          r.body === source.id &&
+          r.building === 'JumpGate',
         () => page.reload(),
       )
       await expect(panel).toContainText('This gate is cooling down')

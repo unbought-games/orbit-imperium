@@ -225,6 +225,11 @@ jobs:
           else
             ORBIT_BROWSER_SUITE="$BROWSER_SUITE" make test-ui
           fi
+      - name: Verify executed browser cases
+        env:
+          BROWSER_SUITE: ${{ matrix.suite }}
+          UI_SHARD: ${{ matrix.shard }}/${{ matrix.shards }}
+        run: make verify-browser-results
       - name: Save browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

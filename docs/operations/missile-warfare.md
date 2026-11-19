@@ -152,4 +152,4 @@ disposable database runner for manufacture → launch → speed change → resta
 impact → audit in serial and scoped modes. Client tests check capacity previews,
 quote binding and incoming warnings. `npm run test:ui -- missile-warfare.spec.ts`
 checks manufacturing, scrap, launch review, incoming flights and impact reports
-at desktop and mobile sizes. Set `ORBIT_TEST_SCREENSHOTS=1` to retain captures.
+through the mobile launch journey. The Galaxy feature mounts cover the responsive missile menu and its target invalidation. Set `ORBIT_TEST_SCREENSHOTS=1` to retain captures.

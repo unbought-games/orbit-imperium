@@ -5,7 +5,6 @@ const epoch = new Date('2026-10-31T14:20:00Z')
 test('the real Messages screen retries its initial refusal and polls a settled open thread every five seconds', async ({
   page,
 }) => {
-  await page.clock.install({ time: epoch })
   await page.clock.pauseAt(epoch)
   await page.goto('/?scenario=messages-screen&failure=1')
   await expect(page.locator('html')).toHaveAttribute(

@@ -169,7 +169,6 @@ for (const [width, height] of [
   }) => {
     await page.setViewportSize({ width, height })
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.clock.install({ time: baseTime })
     await page.clock.pauseAt(baseTime)
     const origin: S['Destination'] = {
       id: id(98),
@@ -242,7 +241,6 @@ test('enemy attacks open above fleets, use red, keep hidden intelligence hidden,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.clock.install({ time: baseTime })
   await page.clock.pauseAt(baseTime)
   const ships: S['PublicShip4'][] = [
     { ship_type: 'Cruiser', count: '1200' },

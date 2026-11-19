@@ -227,16 +227,45 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
   )
   const orb = page.getByTestId('command-orb')
   await expect(orb).toHaveAttribute('data-tone', 'ice')
+  const bar = page.getByRole('group', { name: 'Planet and resources' })
+  const overlay = () =>
+    bar.evaluate((element) => getComputedStyle(element, '::after').content)
+  const deliver = () =>
+    withFixtureResponse(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname ===
+          `/api/v4/universes/${binding.universe}/overview`,
+      () => f.refresh(),
+    )
+  expect(await overlay()).toBe('none')
+  f.missions.incoming.push({
+    sender: id(9),
+    origin: { galaxy: 1, system: 372, position: 3 },
+    target: body.id,
+    mission: 'Transport',
+    arrival_at: baseTime + 240000,
+    ships: { visibility: 'Unknown' },
+  })
+  await deliver()
+  await expect(
+    page.getByRole('listitem', { name: 'Incoming transport fleet' }),
+  ).toBeVisible()
+  expect(await overlay()).toBe('none')
   f.missions.incoming.push({
     sender: id(99),
     origin: { galaxy: 1, system: 372, position: 3 },
-    target: body.id,
+    target: id(6),
     mission: 'Attack',
     arrival_at: baseTime + 180000,
     ships: { visibility: 'Unknown' },
   })
-  await f.refresh()
+  await deliver()
   await expect(orb).toHaveAttribute('data-tone', 'red')
+  await expect(bar.getByRole('status')).toHaveText(
+    'Incoming hostile fleet: attack or espionage detected.',
+  )
   const threat = page
     .getByLabel('Recent game events')
     .getByRole('button', { name: /Hostile fleet inbound/ })
@@ -255,6 +284,11 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
   await threat.focus()
   await page.keyboard.press('Escape')
   await expect(threat).toHaveCount(0)
+  await selectBody(page, id(6))
+  await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
+  await expect(bar.getByRole('status')).toHaveText(
+    'Incoming hostile fleet: attack or espionage detected.',
+  )
   await expect(orb).toHaveAttribute('data-tone', 'red')
   await orb.click()
   await diagnosticScreenshot(page, { path: `${output}/inbox-390x844.png` })
@@ -264,9 +298,12 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
     .click()
   await expect(page).toHaveURL(/\/fleets\/?$/)
   await expect(orb).toHaveAttribute('data-tone', 'red')
-  f.missions.incoming.length = 0
-  await f.refresh()
+  f.missions.incoming.pop()
+  await deliver()
   await expect(orb).toHaveAttribute('data-tone', 'ice')
+  await expect(bar.getByRole('status')).toHaveText('')
+  await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(133, 115, 84)')
+  expect(await overlay()).toBe('none')
 })
 
 test(

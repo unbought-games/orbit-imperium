@@ -9,7 +9,6 @@ for (const width of [320, 390, 1280]) {
       mount,
     }) => {
       await page.setViewportSize({ width, height: 844 })
-      await page.clock.install({ time: 100000 })
       await page.clock.pauseAt(100000)
       await mount('galaxy-traffic')
       const rows = page.getByRole('article')

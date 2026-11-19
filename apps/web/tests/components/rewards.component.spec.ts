@@ -1,5 +1,6 @@
 import { expect, test } from './fixture'
 import type {} from './rewards.scenario'
+declare global { interface Window { invitationCopyAttempts:string[] } }
 
 test('automatic titles expand beside the available cosmetic choices', async ({
   page,
@@ -66,16 +67,12 @@ for (const [mode, content] of [
 test('choosing the invitation universe reveals a selectable link after clipboard refusal', async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        writeText: async () => {
-          throw Error('denied')
-        },
-      },
-    }),
-  )
+  await page.addInitScript(() => {
+    window.invitationCopyAttempts=[]
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+      writeText:async (url:string)=>{window.invitationCopyAttempts.push(url);throw Error('denied')}
+    }})
+  })
   await page.goto('/?scenario=rewards-screen&surface=management')
   await expect(page.locator('html')).toHaveAttribute(
     'data-component-ready',
@@ -88,11 +85,12 @@ test('choosing the invitation universe reveals a selectable link after clipboard
   await expect(copy).toBeDisabled()
   await page
     .getByRole('combobox', { name: 'Invite to universe' })
-    .selectOption({ label: 'Andromeda' })
+    .selectOption({ label: 'Orion Reach' })
   await copy.click()
   await expect(
     page.getByRole('textbox', { name: 'Invitation link', exact: true }),
   ).toHaveValue(new URL('/invite/inv_fixture-A_9', page.url()).href)
+  expect(await page.evaluate(()=>window.invitationCopyAttempts)).toEqual([new URL('/invite/inv_fixture-A_9',page.url()).href])
   await expect(
     page.getByRole('status').filter({ hasText: 'Select and copy' }),
   ).toBeVisible()
@@ -105,7 +103,7 @@ test('choosing the invitation universe reveals a selectable link after clipboard
       type: 'create_invitation',
       kind: 'personal',
       game_id: 'orbit-imperium',
-      universe_id: '00000000-0000-4000-8000-000000000003',
+      universe_id: '00000000-0000-4000-8000-000000000091',
     },
   ])
 })

@@ -184,26 +184,14 @@ test(
     await expect(page).toHaveURL(
       `/u/andromeda/b/${id(6)}/alliance/discover?alliance=${id(900)}#details`,
     )
-  },
-)
-
-test(
-  'anonymous direct links retain their canonical path, query and hash through the login gate',
-  { tag: '@journey' },
-  async ({ page }) => {
-    await fixture(page)
-    await page.route('**/api/v1/bootstrap', (route) =>
-      route.fulfill({
-        json: {
-          version: 1,
-          signup_enabled: false,
-          result: { status: 'anonymous' },
-        },
-      }),
+    await withFixtureResponse(
+      page,
+      (response) => response.url().endsWith(`/alliances/${id(900)}`),
+      () => bootAlliance(page, () => page.reload()),
     )
-    const target = `/u/andromeda/b/${body.id}/messages?player=${id(800)}#details`
-    await boot(page, () => page.goto(target))
-    await expect(page).toHaveURL(/\/login\?/)
-    expect(new URL(page.url()).searchParams.get('redirect')).toBe(target)
+    await expect(page.getByText('Explore together.')).toBeVisible()
+    await expect(page).toHaveURL(
+      `/u/andromeda/b/${id(6)}/alliance/discover?alliance=${id(900)}#details`,
+    )
   },
 )

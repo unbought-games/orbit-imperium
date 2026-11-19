@@ -12,7 +12,6 @@ test('active HUD fleet accordion updates its actual flight rows, route links and
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.clock.install({ time: baseTime })
   await page.clock.pauseAt(baseTime)
   const bodies = [
     { ...body, name: 'Aster Prime' },

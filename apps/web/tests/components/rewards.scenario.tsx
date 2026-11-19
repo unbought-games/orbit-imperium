@@ -9,7 +9,7 @@ import { CommunityRewardsController } from '../../src/client-model/community-rew
 import { InsigniaController } from '../../src/client-model/insignias'
 import { useCommands } from '../../src/client-model/use-commands'
 import { automaticTitlesFixture } from '../../src/test-support/automatic-titles'
-import { readyFixture } from '../../src/test-support/bootstrap'
+import { readyFixture, id } from '../../src/test-support/bootstrap'
 import { RewardsScreen } from '../../src/features/rewards/rewards-screen'
 import { InvitationManagement } from '../../src/features/rewards/invitation-management'
 import { RewardsContext } from '../../src/shell/community-rewards-context'
@@ -86,7 +86,7 @@ const insignias = new InsigniaController(
 )
 const memberships = [
   { universe: view.binding.universe, universe_name: 'Andromeda' },
-  { universe: 'second-universe', universe_name: 'Orion Reach' },
+  { universe: id(91), universe_name: 'Orion Reach' },
 ]
 function Surface() {
   const [runtime] = useState(() => ({

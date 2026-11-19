@@ -1,4 +1,9 @@
 import { expect, test } from './fixture'
+declare global {
+  interface Window {
+    reportArchiveArrivals: unknown[]
+  }
+}
 import { id } from '../../src/test-support/bootstrap'
 
 test('a fine pointer archives and restores at the row edge, and the detail toolbar stays separately actionable', async ({
@@ -474,30 +479,37 @@ test('the shared detail archive shortcut requires explicit revocation and stays 
   expect(
     await page.evaluate(() => window.reportTriage.submissions.length),
   ).toBe(0)
+  const expectedArchive = {
+    type: 'World',
+    action: { type: 'ArchiveReport', revoke_share: true, report: id(72) },
+  }
   await page.evaluate(() => {
     const port = window.reportTriage.port
     const submit = port.submit
-    port.submit = async (e) => {
-      await new Promise<void>((resolve) => {
-        window.releaseReportPort = resolve
-      })
-      return submit(e)
+    const sharedGate = new Promise<void>((resolve) => {
+      window.releaseReportPort = resolve
+    })
+    window.reportArchiveArrivals = []
+    port.submit = async (envelope) => {
+      window.reportArchiveArrivals.push(structuredClone(envelope.command))
+      await sharedGate
+      return submit(envelope)
     }
   })
+  const arrivals = () => page.evaluate(() => window.reportArchiveArrivals)
   const route = page.getByLabel('Mounted report route')
   try {
     await page.keyboard.press('e')
     await dialog
       .getByRole('button', { name: /Archive and stop sharing/i })
       .click()
-    await expect
-      .poll(() => page.evaluate(() => typeof window.releaseReportPort))
-      .toBe('function')
+    await expect.poll(arrivals).toEqual([expectedArchive])
     await expect(route).toContainText(id(72))
     await expect(
       page.getByRole('button', { name: 'Move to inbox', exact: true }),
     ).toBeDisabled()
     await page.keyboard.press('e')
+    expect(await arrivals()).toEqual([expectedArchive])
   } finally {
     await page.evaluate(() => window.releaseReportPort?.())
   }
@@ -513,6 +525,7 @@ test('the shared detail archive shortcut requires explicit revocation and stays 
   }
   await row.getByRole('checkbox').check()
   await page.keyboard.press('e')
+  expect(await arrivals()).toEqual([expectedArchive])
   expect(
     await page.evaluate(() => window.reportTriage.submissions.length),
   ).toBe(1)
@@ -521,6 +534,7 @@ test('the shared detail archive shortcut requires explicit revocation and stays 
     page.getByRole('button', { name: 'Move to inbox', exact: true }),
   ).toBeEnabled()
   await page.keyboard.press('e')
+  expect(await arrivals()).toEqual([expectedArchive])
   expect(
     await page.evaluate(() =>
       window.reportTriage.submissions.map((s) => s.command),

@@ -1,5 +1,11 @@
 import { expect, type Page } from '@playwright/test'
-import { installGameFixture, binding, id, body } from './game'
+import {
+  installGameFixture,
+  binding,
+  id,
+  body,
+  matchesFixtureContext,
+} from './game'
 import type { components } from '../../src/contracts'
 type S = components['schemas']
 export const alliance = id(910),
@@ -208,8 +214,14 @@ export async function recruitmentFixture(
   await page.route(`**/invitations/${token}`, (route) =>
     route.fulfill({ json: data }),
   )
-  await page.route(`**/alliances/${alliance}`, (route) =>
-    route.fulfill({ json: data }),
+  await page.route(
+    (url) =>
+      url.pathname ===
+      `/api/v4/universes/${binding.universe}/alliances/${alliance}`,
+    (route) =>
+      route.request().method() !== 'GET'
+        ? route.fallback()
+        : route.fulfill({ json: data }),
   )
   await page.route(/\/recruitment(?:\?|$)/, (route) => {
     const q = new URL(route.request().url()).searchParams
@@ -236,70 +248,82 @@ export async function recruitmentFixture(
       },
     })
   })
-  await page.route('**/alliances/commands', (route) => {
-    const command = route
-      .request()
-      .postDataJSON() as S['AllianceCommandRequest']
-    commands.push(command)
-    const action = command.action
-    if (action.type === 'Apply')
-      applications = [
-        {
-          id: id(912),
-          alliance,
-          alliance_tag: 'STAR',
-          player: binding.player,
-          username: 'Commander',
-          text: action.text,
-          created_at: 1700000000000,
-        },
-      ]
-    if (action.type === 'Join')
-      detail = {
-        summary: data.summary,
-        public_text: data.public_text,
-        revision: 1,
-        leader: id(913),
-        permissions: [],
-        grantable_permissions: [],
-      }
-    if (action.type === 'SavePresentation' && detail?.presentation?.editor) {
-      const p = detail.presentation.editor
-      for (const edit of action.edits) {
-        if (edit.type === 'SetIdentity') p.identity = edit.value
-        if (edit.type === 'SetHall') p.hall = edit.value
-        if (edit.type === 'SetTemplateDocument')
-          p.templates[edit.template_id] = edit.document
-        if (edit.type === 'SelectTemplate') p.active_template = edit.template_id
-      }
-      data.summary.visual_identity = p.identity
-      data.presentation = {
-        schema_version: 1,
-        identity: p.identity,
-        template_id: p.active_template,
-        document: p.templates[p.active_template] ?? {
+  await page.route(
+    (url) =>
+      url.pathname ===
+      `/api/v4/universes/${binding.universe}/alliances/commands`,
+    (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      const command = route
+        .request()
+        .postDataJSON() as S['AllianceCommandRequest']
+      const action = command.action
+      if (
+        !matchesFixtureContext(command.context) ||
+        (action.type === 'SavePresentation' && action.alliance !== alliance)
+      )
+        return route.fallback()
+      commands.push(command)
+      if (action.type === 'Apply')
+        applications = [
+          {
+            id: id(912),
+            alliance,
+            alliance_tag: 'STAR',
+            player: binding.player,
+            username: 'Commander',
+            text: action.text,
+            created_at: 1700000000000,
+          },
+        ]
+      if (action.type === 'Join')
+        detail = {
+          summary: data.summary,
+          public_text: data.public_text,
+          revision: 1,
+          leader: id(913),
+          permissions: [],
+          grantable_permissions: [],
+        }
+      if (action.type === 'SavePresentation' && detail?.presentation?.editor) {
+        const p = detail.presentation.editor
+        for (const edit of action.edits) {
+          if (edit.type === 'SetIdentity') p.identity = edit.value
+          if (edit.type === 'SetHall') p.hall = edit.value
+          if (edit.type === 'SetTemplateDocument')
+            p.templates[edit.template_id] = edit.document
+          if (edit.type === 'SelectTemplate')
+            p.active_template = edit.template_id
+        }
+        data.summary.visual_identity = p.identity
+        data.presentation = {
           schema_version: 1,
-          content: {},
+          identity: p.identity,
+          template_id: p.active_template,
+          document: p.templates[p.active_template] ?? {
+            schema_version: 1,
+            content: {},
+          },
+        }
+        detail.presentation = {
+          editor: p,
+          public: data.presentation,
+          hall: p.hall,
+        }
+      }
+      if (action.type === 'SetRecruitmentProfile')
+        detail!.summary.recruitment_profile = action.profile
+      if (action.type === 'SetInvitation')
+        detail!.invitation = action.enabled ? token : null
+      if (detail) detail.revision++
+      return route.fulfill({
+        json: {
+          command_id: command.command_id,
+          alliance,
+          revision: detail?.revision ?? null,
         },
-      }
-      detail.presentation = {
-        editor: p,
-        public: data.presentation,
-        hall: p.hall,
-      }
-    }
-    if (action.type === 'SetRecruitmentProfile')
-      detail!.summary.recruitment_profile = action.profile
-    if (action.type === 'SetInvitation')
-      detail!.invitation = action.enabled ? token : null
-    if (detail) detail.revision++
-    return route.fulfill({
-      json: {
-        command_id: command.command_id,
-        alliance,
-        revision: detail?.revision ?? null,
-      },
-    })
-  })
+      })
+    },
+  )
   return { data, commands, enrollments }
 }

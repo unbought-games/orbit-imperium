@@ -344,6 +344,11 @@ test('alliance presentation previews unsaved edits and publishes them through th
   const command = fixture.commands.find(
     (c) => c.action.type === 'SavePresentation',
   )!
+  expect(command.context.binding).toEqual(binding)
+  expect(command.action).toMatchObject({
+    type: 'SavePresentation',
+    alliance: recruitmentAlliance,
+  })
   expect(command.expected_revision).toBe(1)
   expect(
     command.action.type === 'SavePresentation' &&
