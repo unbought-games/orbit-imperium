@@ -1,4 +1,3 @@
-import { sameBinding } from '../../src/client-model/commands'
 import { unexpectedFixtureApi } from './api-diagnostics'
 import type { Page, Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
@@ -8,7 +7,7 @@ import {
 } from '../../src/test-support/tutorial'
 import { validateTutorialFixture as validate } from '../../src/test-support/tutorial'
 import { progressionTarget } from '../../src/features/tutorial/model'
-import { installGameFixture, matchesFixtureContext, body, binding, id } from './game'
+import { installGameFixture, matchesFixtureContext, matchesFixtureGameplay, body, binding, id } from './game'
 import { productionFixture } from '../../src/test-support/production'
 import { routeProgressionOptions } from './progression-options'
 type S = components['schemas']
@@ -503,11 +502,8 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
   await page.route(`**${prefix}/commands`, (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     const pair = route.request().postDataJSON()
-    const gameplay = pair?.gameplay, presence = pair?.presence
-    if (gameplay?.protocol !== 4 || !gameplay.binding || !sameBinding(gameplay.binding, binding) ||
-        typeof gameplay.command_id !== 'string' || presence?.protocol !== 4 || !presence.binding ||
-        !sameBinding(presence.binding, binding) || typeof presence.command_id !== 'string' ||
-        presence.command?.action?.paired_command_id !== gameplay.command_id) return unexpectedFixtureApi(route)
+    if (!matchesFixtureGameplay(pair)) return unexpectedFixtureApi(route)
+    const gameplay = pair.gameplay
     const command: S['Command4'] | undefined = gameplay.command
     if (command?.type !== 'StartUpgrade' && !(command?.type === 'World' &&
         ['ReviewProductionSettings', 'SetTutorialPresentation', 'OpenTutorial', 'LaunchFleet', 'MarkReportRead'].includes(command.action.type)))

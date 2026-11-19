@@ -1,3 +1,4 @@
+import { installReportReadReceipt } from './fixtures/game'
 import { refuseFixtureReads, routeWorld } from './fixtures/game'
 import { withGalaxyResponse } from './fixtures/galaxy'
 import { setDestination } from './fixtures/coordinates'
@@ -84,9 +85,12 @@ for(const success of [true])test(`colonization ${success?'success links to a usa
  const kind=success?'Colonized':'ColonizationFailed'
  const payload=success?{kind,body:colony.id,fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,fields:230,diameter_km:15191,min_temperature:24,max_temperature:64,resources:{metal:'1500000000',crystal:'500000000',deuterium:'0'},return_at:null}
  :{kind,reason:'Occupied',fleet:id(80),origin:body.id,destination_coordinates:coords,at:1000,return_at:120000}
- await page.route(`**/api/**/reports/${id(81)}`,async route=>{
+ const header = {id:id(81),kind,observed_at:1000,read:false,hidden:false}
+ await installReportReadReceipt(page, header)
+ await page.route(`**/api/v4/universes/${binding.universe}/reports/${header.id}`,async route=>{
+  if(route.request().method() !== 'POST') return route.fallback()
   const request=route.request().postDataJSON()
-  await route.fulfill({json:bound(request.request_id,{header:{id:id(81),kind,observed_at:1000,read:false,hidden:false},payload})})
+  await route.fulfill({json:bound(request.request_id,{header,payload})})
  })
  await withReportResponse(page, id(81), () => page.goto(`/u/andromeda/b/${body.id}/reports/${id(81)}`))
  const report=page.getByRole('region',{name:'Report observation'})

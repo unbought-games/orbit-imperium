@@ -1,4 +1,4 @@
-import { refuseFixtureReads, routeWorld } from './fixtures/game'
+import { matchesFixtureContext, refuseFixtureReads, routeWorld } from './fixtures/game'
 
 import {
   trackFixtureResponses,
@@ -1046,20 +1046,19 @@ test(
     const gate = new Promise<void>((resolve) => {
       release = resolve
     })
-    const settleOverview = trackFixtureResponses(page, request =>
-      request.method() === 'POST' && new URL(request.url()).pathname === `/api/v4/universes/${binding.universe}/overview`)
+    const matchesOverview = (request: import('@playwright/test').Request) =>
+      request.method() === 'POST' && new URL(request.url()).pathname === `/api/v4/universes/${binding.universe}/overview` &&
+      matchesFixtureContext(request.postDataJSON())
+    const settleOverview = trackFixtureResponses(page, matchesOverview)
     await page.route('**/api/**/overview', async (route) => {
-      await gate
+      if (matchesOverview(route.request())) await gate
       await route.fallback()
     })
     await page.route('**/art/**', (route) => route.abort())
-    const pending = page.waitForRequest(
-      (request) =>
-        request.url().includes('/api/') && request.url().endsWith('/overview'),
-    )
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-    await pending
     try {
+      const pending = page.waitForRequest(matchesOverview)
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await pending
       for (const heading of ['Shipyard', 'Resources', 'Empire']) {
         await page.goBack()
         await expect(page.locator('main h1')).toContainText(heading)

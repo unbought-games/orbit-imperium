@@ -1,3 +1,4 @@
+import { installReportReadReceipt } from './fixtures/game'
 import { test, expect, type Page } from './fixtures/test'
 import { shellFixture, binding, body, id } from './fixtures/game'
 import { withBootstrapResponse, withReportResponse, withFixtureResponseStatus } from './fixtures/responses'
@@ -5,14 +6,17 @@ import observation from '../../../contracts/fixtures/espionage-expanded.json' wi
 import schema from '../../../contracts/openapi.json' with { type: 'json' }
 
 async function reports(page: Page, payload: () => unknown, status = () => 200) {
-  await page.route('**/api/**/reports**', async route => {
+  const header = { id: id(62), kind: 'Espionage', observed_at: observation.observed_at, read: false, hidden: false }
+  await installReportReadReceipt(page, header)
+  await page.route(`**/api/v4/universes/${binding.universe}/reports/${header.id}`, async route => {
+    if (route.request().method() !== 'POST') return route.fallback()
     if (status() !== 200) return route.fulfill({ status: status(), json: { code: 'Unavailable' } })
     const request = route.request().postDataJSON()
     await route.fulfill({ json: {
       protocol: 4, binding, request_id: (request.context ?? request).request_id,
       viewer_revision: '1', sampled_at: Date.now(), as_of_ms: Date.now(),
       data: {
-        header: { id: id(62), kind: 'Espionage', observed_at: observation.observed_at, read: false, hidden: false },
+        header,
         payload: payload(), player_names: { [observation.target.owner]: '12345678901234567890' },
       },
     } })

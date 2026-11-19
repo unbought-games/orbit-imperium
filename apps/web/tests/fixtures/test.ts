@@ -1,5 +1,8 @@
 import { test as base, type BrowserContext } from '@playwright/test'
-import { unexpectedFixtureApi } from './api-diagnostics'
+import {
+  checkFixtureStartupMethod,
+  unexpectedFixtureApi,
+} from './api-diagnostics'
 import { captureFailureScreenshots } from './diagnostic-screenshot'
 
 export * from '@playwright/test'
@@ -16,6 +19,7 @@ export const test = base.extend<{
       const extra = new Set<BrowserContext>()
       const install = async (target: BrowserContext) => {
         if (boundary === 'server') return
+        target.on('request', checkFixtureStartupMethod)
         await target.route('**/api/**', unexpectedFixtureApi)
         if (boundary === 'component') {
           target.on('weberror', (error) => {

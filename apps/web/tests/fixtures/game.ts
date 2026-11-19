@@ -131,6 +131,65 @@ export function routeWorld(
   )
 }
 
+export function matchesFixtureGameplay(
+  pair: components['schemas']['ForegroundAction4'] | undefined,
+) {
+  const presence = pair?.presence,
+    gameplay = pair?.gameplay
+  if (
+    presence?.protocol !== 4 ||
+    gameplay?.protocol !== 4 ||
+    !presence.binding ||
+    !gameplay.binding ||
+    !sameBinding(presence.binding, binding) ||
+    !sameBinding(gameplay.binding, binding) ||
+    typeof presence.command_id !== 'string' ||
+    typeof gameplay.command_id !== 'string' ||
+    presence.command_id === gameplay.command_id
+  )
+    return false
+  const command = presence.command
+  return (
+    command?.type === 'World' &&
+    command.action?.type === 'RecordForegroundPresence' &&
+    command.action.cause === 'GameplayGesture' &&
+    command.action.paired_command_id === gameplay.command_id
+  )
+}
+
+/** Register an acknowledgement only for the header actually installed by the reader. */
+export function installReportReadReceipt(
+  page: Page,
+  header: { id: string; read: boolean },
+) {
+  return page.route(`**${boundApi(4, 'commands')}`, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    const pair = route.request().postDataJSON()
+    const command = pair?.gameplay?.command
+    if (
+      !matchesFixtureGameplay(pair) ||
+      command?.type !== 'World' ||
+      command.action?.type !== 'MarkReportRead' ||
+      command.action.report !== header.id
+    )
+      return route.fallback()
+    header.read = true
+    const now = Date.now()
+    return route.fulfill({
+      json: {
+        protocol: 4,
+        binding,
+        command_id: pair.gameplay.command_id,
+        admitted_at: now,
+        executed_at: now,
+        status: 'Committed',
+        result_ids: [],
+        minimum_viewer_revision: installedGames.get(page)?.revision?.() ?? '1',
+      },
+    })
+  })
+}
+
 export function installSessionRenewal(
   page: Page,
   csrf: string,
@@ -546,22 +605,6 @@ export async function installGameFixture(
           protocol: 4,
           binding,
           command_id: context.command_id,
-          admitted_at: Date.now(),
-          executed_at: Date.now(),
-          status: 'Committed',
-          result_ids: [],
-          minimum_viewer_revision: options.viewerRevision?.() ?? '1',
-        },
-      })
-    if (
-      post('commands') &&
-      context?.gameplay?.command?.action?.type === 'MarkReportRead'
-    )
-      return route.fulfill({
-        json: {
-          protocol: 4,
-          binding,
-          command_id: context.gameplay.command_id,
           admitted_at: Date.now(),
           executed_at: Date.now(),
           status: 'Committed',

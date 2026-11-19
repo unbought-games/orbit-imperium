@@ -1,3 +1,4 @@
+import { installReportReadReceipt } from './fixtures/game'
 import { mkdirSync } from 'node:fs'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { smallCombatObservation } from './fixtures/small-combat-observation'
@@ -30,6 +31,7 @@ async function openCombat(
     read: initiallyRead,
     hidden: false,
   }
+  if (!initiallyRead) await installReportReadReceipt(page, header)
   await page.route(
     `**/api/v4/universes/${binding.universe}/reports/${header.id}`,
     (route) =>

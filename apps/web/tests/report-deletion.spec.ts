@@ -11,12 +11,14 @@ import type { Response } from '@playwright/test'
 import type { components } from '../src/contracts'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, binding, body, id } from './fixtures/game'
+import { installGameFixture, matchesFixtureGameplay, binding, body, id } from './fixtures/game'
 
+const commandsPath = `/api/v4/universes/${binding.universe}/commands`
 function matchesWorldAction(action: string) {
   return (response: Response) =>
     response.request().method() === 'POST' &&
-    response.url().endsWith('/commands') &&
+    new URL(response.url()).pathname === commandsPath &&
+    matchesFixtureGameplay(response.request().postDataJSON()) &&
     response.request().postDataJSON().gameplay.command.action.type === action
 }
 
@@ -167,7 +169,8 @@ async function reportsFixture(
   let mode: 'success' | 'rejected' | 'uncertain' = 'success'
   let pause: Promise<void> | undefined
   let submitted = 0
-  await page.route('**/commands', async (route) => {
+  await page.route(`**${commandsPath}`, async (route) => {
+    if (route.request().method() !== 'POST' || !matchesFixtureGameplay(route.request().postDataJSON())) return route.fallback()
     const envelope = route.request().postDataJSON().gameplay
     expect(envelope.command.type).toBe('World')
     if (envelope.command.action.type === 'MarkReportRead') {
@@ -954,8 +957,9 @@ test('immediate retry works and reload discards old order recovery at 390px', as
   await page.emulateMedia({ reducedMotion: 'reduce' })
   const fixture = await reportsFixture(page, true, 2, 50)
   const submissions: unknown[] = []
-  await page.route('**/commands', async (route) => {
-    submissions.push(route.request().postDataJSON().gameplay)
+  await page.route(`**${commandsPath}`, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
+    submissions.push(route.request().postDataJSON())
     return route.fallback()
   })
   await page.evaluate(() => {

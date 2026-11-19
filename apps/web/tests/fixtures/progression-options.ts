@@ -107,9 +107,9 @@ export async function routeProgressionOptions(
           return value
         }),
       )
+      if (missing) return route.fallback()
       if (aborted) return route.abort(aborted)
       if (failure) return route.fulfill(failure)
-      if (missing) return route.fallback()
       // Legacy item factories sample Date.now independently. A bulk service
       // reads once; publish one observation time for the assembled snapshot.
       const snapshot = options.map((option) => ({

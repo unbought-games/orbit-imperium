@@ -36,3 +36,21 @@ export function unexpectedFixtureApi(route: Route): never {
     'Unexpected fixture API operation: ' + fixtureOperation(route.request()),
   )
 }
+
+const startupMethods = new Map([
+  ['/api/v1/bootstrap', 'GET'],
+  ['/api/auth/config', 'GET'],
+  ['/api/auth/entry', 'GET'],
+  ['/api/auth/enroll', 'POST'],
+  ['/api/announcements', 'GET'],
+  ['/api/v1/session/renew', 'POST'],
+])
+
+/** Observe the method even when a scenario supplies its own page-level handler. */
+export function checkFixtureStartupMethod(request: Request) {
+  const method = startupMethods.get(new URL(request.url()).pathname)
+  if (method && request.method() !== method)
+    throw new Error(
+      'Unexpected fixture API operation: ' + fixtureOperation(request),
+    )
+}

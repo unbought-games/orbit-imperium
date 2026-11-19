@@ -4,6 +4,7 @@ import {
   binding,
   id,
   installGameFixture,
+  installReportReadReceipt,
   playerProfilesFixture,
   refuseFixtureReads,
 } from '../../tests/fixtures/game'
@@ -28,7 +29,8 @@ const prefix = `/api/v4/universes/${binding.universe}`
 const context = { binding, request_id: id(82) }
 function call(method: string, path: string, payload: unknown) {
   const fallback = vi.fn(),
-    fulfill = vi.fn()
+    fulfill = vi.fn(),
+    abort = vi.fn()
   const route = {
     request: () => ({
       method: () => method,
@@ -37,8 +39,9 @@ function call(method: string, path: string, payload: unknown) {
     }),
     fallback,
     fulfill,
+    abort,
   } as unknown as Route
-  return { route, fallback, fulfill }
+  return { route, fallback, fulfill, abort }
 }
 
 it('profile fixtures distinguish the signed-in player, rankings selection and unknown sources', async () => {
@@ -131,7 +134,11 @@ it('a foreign tutorial binding cannot publish guidance or complete an objective'
       command_id: id(91),
       command: {
         type: 'World',
-        action: { type: 'RecordForegroundPresence', paired_command_id: id(90) },
+        action: {
+          type: 'RecordForegroundPresence',
+          cause: 'GameplayGesture',
+          paired_command_id: id(90),
+        },
       },
     },
   })
@@ -179,4 +186,101 @@ it('a declared unavailable upgrade only refuses bound reads for the installed bo
     expect(wrong.fallback).toHaveBeenCalledOnce()
     expect(wrong.fulfill).not.toHaveBeenCalled()
   }
+})
+
+it.each(['response', 'abort'])(
+  'a modeled quote %s cannot hide a missing sibling in a bulk request',
+  async (mode) => {
+    const { page, handlers } = ports()
+    await installGameFixture(page, { protocol: 4 })
+    await routeProgressionOptions(page, (route) => {
+      if (route.request().postDataJSON().request.type !== 'Upgrade')
+        return route.fallback()
+      return mode === 'response'
+        ? route.fulfill({ status: 503 })
+        : route.abort('failed')
+    })
+    const quote = handlers.get(String(/\/progression-options(?:\/bulk)?$/))!
+    const path = prefix + '/progression-options/bulk'
+    const upgrade = { type: 'Upgrade', body: id(5), building: 'MetalMine' }
+    const mixed = call('POST', path, {
+      context,
+      requests: [
+        upgrade,
+        { type: 'Research', host: id(5), research: 'ComputerTechnology' },
+      ],
+    })
+    await quote(mixed.route)
+    expect(mixed.fallback).toHaveBeenCalledOnce()
+    expect(mixed.fulfill).not.toHaveBeenCalled()
+    expect(mixed.abort).not.toHaveBeenCalled()
+    const modeled = call('POST', path, { context, requests: [upgrade] })
+    await quote(modeled.route)
+    if (mode === 'response')
+      expect(modeled.fulfill).toHaveBeenCalledWith({ status: 503 })
+    else expect(modeled.abort).toHaveBeenCalledWith('failed')
+  },
+)
+
+it('a read acknowledgement needs the installed report and its own matched gameplay gesture', async () => {
+  const { page, handlers } = ports()
+  await installGameFixture(page, { protocol: 4, viewerRevision: () => '8' })
+  const header = { id: id(81), read: false }
+  await installReportReadReceipt(page, header)
+  const commands = handlers.get('**' + prefix + '/commands')!
+  const gameplay = {
+    protocol: 4,
+    binding,
+    command_id: id(90),
+    command: {
+      type: 'World',
+      action: { type: 'MarkReportRead', report: header.id },
+    },
+  }
+  const action = {
+    type: 'RecordForegroundPresence',
+    cause: 'GameplayGesture',
+    paired_command_id: gameplay.command_id,
+  }
+  const presence = {
+    protocol: 4,
+    binding,
+    command_id: id(91),
+    command: { type: 'World', action },
+  }
+  for (const pair of [
+    { gameplay },
+    {
+      gameplay,
+      presence: {
+        ...presence,
+        command: { type: 'World', action: { ...action, cause: 'Login' } },
+      },
+    },
+    { gameplay, presence: { ...presence, command_id: gameplay.command_id } },
+    {
+      gameplay: {
+        ...gameplay,
+        command: {
+          type: 'World',
+          action: { type: 'MarkReportRead', report: id(82) },
+        },
+      },
+      presence,
+    },
+  ]) {
+    const wrong = call('POST', prefix + '/commands', pair)
+    await commands(wrong.route)
+    expect(wrong.fallback).toHaveBeenCalledOnce()
+    expect(header.read).toBe(false)
+  }
+  const right = call('POST', prefix + '/commands', { gameplay, presence })
+  await commands(right.route)
+  expect(header.read).toBe(true)
+  expect(right.fulfill.mock.calls[0][0].json).toMatchObject({
+    binding,
+    command_id: gameplay.command_id,
+    status: 'Committed',
+    minimum_viewer_revision: '8',
+  })
 })

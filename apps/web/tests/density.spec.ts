@@ -1,3 +1,4 @@
+import { installReportReadReceipt } from './fixtures/game'
 import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
@@ -137,6 +138,7 @@ for (const viewport of [
       read: false,
       hidden: false,
     }
+    await installReportReadReceipt(page, header)
     const payload: S['CombatPayload4'] = {
       kind: 'Combat',
       at: header.observed_at,

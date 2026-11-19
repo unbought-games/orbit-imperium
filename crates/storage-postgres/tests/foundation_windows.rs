@@ -163,6 +163,16 @@ async fn report_windows_and_independent_body_admission_are_exact() {
         .await
         .unwrap();
     let window = game.bound_view(p, context()).await.unwrap();
+    assert_eq!(
+        window
+            .view
+            .constructions
+            .iter()
+            .map(|job| job.body)
+            .collect::<Vec<_>>(),
+        [first],
+        "resolving the cancellation conflict must remove only the second body's work"
+    );
     assert_eq!(window.view.reports.len(), 100);
     assert!(window.view.reports_truncated);
     assert_eq!(window.view.reports[0].at, 101);
