@@ -185,7 +185,8 @@ prepare-explicit:
 	$(MAKE) test-runtime prepare-migrations
 
 test-acceptance: prepare-explicit
-	$(TIMEOUT) full-system $(MAKE) -j3 _acceptance
+	# Independent suites share prepared binaries. Run each even if a sibling fails.
+	$(TIMEOUT) full-system $(MAKE) -k -j3 _acceptance
 
 _acceptance: $(addprefix run-,$(EXPLICIT_SUITES))
 
