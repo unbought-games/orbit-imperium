@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
@@ -44,6 +45,13 @@ it.each(cases)(
   'shows the lunar restriction on the %s screen',
   (page, message) => {
     const { view } = progressionFixture()
+    // The universe enables these technologies on planets. The selected moon's
+    // restriction must still be visible when the relevant catalog is populated.
+    const profile = new URL(
+      '../../../../rules/mvp-v1-slice-13.json',
+      import.meta.url,
+    )
+    view.catalog = JSON.parse(readFileSync(profile, 'utf8')).catalog
     const planet = view.bodies[0]
     view.bodies = [
       {
