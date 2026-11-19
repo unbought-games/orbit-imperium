@@ -42,35 +42,41 @@ export function SharedReportPage({ token }: { token: string }) {
           <Button onClick={() => setRetry((n) => n + 1)}>Retry</Button>
         </>
       ) : report ? (
-        <>
-          <Text>
-            Report {report.report} ·{' '}
-            <time dateTime={new Date(report.observed_at).toISOString()}>
-              {new Date(report.observed_at).toLocaleString()}
-            </time>
-          </Text>
-          <Text>
-            Published from one player’s observation.{' '}
-            {report.options.include_identity
-              ? 'Names recorded at publication.'
-              : 'Player and planet names hidden.'}{' '}
-            {report.options.include_coordinates
-              ? 'Coordinates included.'
-              : 'Coordinates hidden.'}{' '}
-            “Your” refers to the publishing player.
-          </Text>
-          <PlayerKinds.Provider value={report.player_kinds ?? {}}>
-            <ReportObservation
-              payload={report.payload}
-              playerNames={report.player_names}
-              playerAlliances={report.player_alliances}
-              shared
-            />
-          </PlayerKinds.Provider>
-        </>
+        <PublishedReport report={report} />
       ) : (
         <Text role="status">Loading shared report…</Text>
       )}
     </main>
+  )
+}
+
+export function PublishedReport({ report }: { report: SharedReport }) {
+  return (
+    <>
+      <Text>
+        Report {report.report} ·{' '}
+        <time dateTime={new Date(report.observed_at).toISOString()}>
+          {new Date(report.observed_at).toLocaleString()}
+        </time>
+      </Text>
+      <Text>
+        Published from one player’s observation.{' '}
+        {report.options.include_identity
+          ? 'Names recorded at publication.'
+          : 'Player and planet names hidden.'}{' '}
+        {report.options.include_coordinates
+          ? 'Coordinates included.'
+          : 'Coordinates hidden.'}{' '}
+        “Your” refers to the publishing player.
+      </Text>
+      <PlayerKinds.Provider value={report.player_kinds ?? {}}>
+        <ReportObservation
+          payload={report.payload}
+          playerNames={report.player_names}
+          playerAlliances={report.player_alliances}
+          shared
+        />
+      </PlayerKinds.Provider>
+    </>
   )
 }

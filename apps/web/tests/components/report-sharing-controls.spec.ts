@@ -120,3 +120,95 @@ test('a newer unstar while confirmation is open cannot submit the opposite actio
     await page.evaluate(() => window.reportSharingControls!.attempts()),
   ).toBe(0)
 })
+
+test('publishing and revoking a private report link leaves its confirmed star on the real toolbar', async ({
+  page,
+}) => {
+  const path = `/api/v4/universes/${id(3)}/reports/${id(70)}/share`
+  const token = id(75)
+  const actions: string[] = []
+  let published = false,
+    starred = false
+  await page.route('**' + path, async (route) => {
+    const req = route.request()
+    if (req.method() !== 'POST') return route.fallback()
+    const { context, action } = req.postDataJSON()
+    expect(context.binding).toEqual({
+      account: id(1),
+      player: id(2),
+      universe: id(3),
+      epoch: id(4),
+    })
+    if (action.type === 'Create') {
+      expect(action.options).toEqual({
+        include_identity: false,
+        include_coordinates: false,
+      })
+      published = true
+      starred = true
+    } else if (action.type === 'Revoke') published = false
+    else if (action.type !== 'Status') return route.fallback()
+    actions.push(action.type)
+    return route.fulfill({
+      json: {
+        token: published ? token : null,
+        options: published
+          ? { include_identity: false, include_coordinates: false }
+          : null,
+        viewer_revision: String(actions.length),
+        header: {
+          id: id(70),
+          kind: 'Espionage',
+          observed_at: 1000,
+          read: true,
+          hidden: false,
+          starred,
+          shared: published,
+        },
+      },
+    })
+  })
+  await page.goto('/?scenario=report-sharing-controls&unpublished')
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-component-ready',
+    'report-sharing-controls',
+  )
+  const trigger = page.getByRole('button', {
+    name: 'Share report',
+    exact: true,
+  })
+  const delivered = (action: () => Promise<unknown>) =>
+    withFixtureResponse(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === path,
+      action,
+    )
+  await trigger.focus()
+  await delivered(() => page.keyboard.press('Enter'))
+  const create = page.getByRole('button', { name: 'Create share link' })
+  await expect(create).toBeVisible()
+  await expect(
+    page.getByRole('checkbox', { name: 'Include player and planet names' }),
+  ).not.toBeChecked()
+  await expect(
+    page.getByRole('checkbox', {
+      name: 'Include coordinates (target and origins)',
+    }),
+  ).not.toBeChecked()
+  await delivered(() => create.click())
+  await expect(page.getByRole('textbox', { name: 'Share link' })).toHaveValue(
+    new URL(`/reports/shared/${token}`, page.url()).href,
+  )
+  await delivered(() =>
+    page.getByRole('button', { name: 'Stop sharing', exact: true }).click(),
+  )
+  await expect(create).toBeVisible()
+  expect(actions).toEqual(['Status', 'Create', 'Revoke'])
+  await page.keyboard.press('Escape')
+  await expect(trigger).toBeFocused()
+  await expect(
+    page.getByRole('button', { name: 'Unstar report', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true')
+})
