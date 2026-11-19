@@ -6,7 +6,12 @@ import { parse } from 'smol-toml'
 import { load } from 'js-yaml'
 import { loadConfigFromFile } from 'vite'
 import { exec, root } from './test-helpers.mjs'
-import { playwrightCases } from './playwright-cases.mjs'
+import {
+  caseKey,
+  listBrowserCases,
+  playwrightCases,
+  requirePassingCase,
+} from './playwright-cases.mjs'
 
 test('native routine runners retain no execution deadline rather than finite defaults', async (t) => {
   const vite = await loadConfigFromFile(
@@ -47,33 +52,9 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8'),
   )
   const jobs = workflow.jobs.browser.strategy.matrix.include
-  const list = async (args, browserSuite) => {
-    const { stdout } = await exec(
-      process.execPath,
-      [
-        'node_modules/@playwright/test/cli.js',
-        'test',
-        '--list',
-        '--forbid-only',
-        '--reporter=json',
-        ...args,
-      ],
-      {
-        cwd: root,
-        env: {
-          ...process.env,
-          ORBIT_UI_E2E: '1',
-          ORBIT_HOMEPAGE_E2E: '',
-          ORBIT_BROWSER_SUITE: browserSuite,
-        },
-        signal: t.signal,
-      },
-    )
-    return JSON.parse(stdout)
-  }
   // Collect directly from the directory without either runtime config. A
   // shared grep or testMatch can otherwise hide a test from both sides.
-  const source = await list(['--config=apps/web/tests'], 'all')
+  const source = await listBrowserCases('source', { signal: t.signal })
   const separateRunners = new Set([
     'bootstrap.spec.ts',
     'construction.spec.ts',
@@ -92,10 +73,15 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     (item) => !separateRunners.has(item.file),
   )
   const collectedFiles = new Set(routine.map((item) => item.file))
-  // The first suite is the file, relative to the active config's testDir.
-  const identity = (file, item) =>
-    JSON.stringify([file, item.project, ...item.titlePath.slice(1)])
-  const all = routine.map((item) => identity(item.file, item))
+  const expected = { journeys: [], features: [], components: [] }
+  for (const item of routine) {
+    const suite = item.file.startsWith('components/')
+      ? 'components'
+      : item.tags.includes('journey')
+        ? 'journeys'
+        : 'features'
+    expected[suite].push(caseKey(item))
+  }
   const files = readdirSync(join(root, 'apps/web/tests'), {
     recursive: true,
   }).filter((file) => file.endsWith('.spec.ts') && !separateRunners.has(file))
@@ -104,19 +90,17 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     files.sort(),
     'every browser file needs an execution boundary',
   )
-  const selected = []
+  const selected = { journeys: [], features: [], components: [] }
   assert.deepEqual([...new Set(jobs.map((job) => job.suite))].sort(), [
     'components',
     'features',
     'journeys',
   ])
   for (const job of jobs) {
-    const config =
-      job.suite === 'components'
-        ? ['--config=playwright.components.config.ts']
-        : []
-    const shard = `--shard=${job.shard}/${job.shards}`
-    const report = await list([...config, shard], job.suite)
+    const report = await listBrowserCases(job.suite, {
+      shard: `${job.shard}/${job.shards}`,
+      signal: t.signal,
+    })
     assert.equal(report.config.fullyParallel, true)
     assert.equal(report.config.globalTimeout, 0)
     for (const project of report.config.projects)
@@ -124,21 +108,36 @@ test('CI browser boundaries and shards preserve every retained test exactly once
     const tests = Array.from(playwrightCases(report.suites), (item) => {
       const file =
         job.suite === 'components' ? `components/${item.file}` : item.file
-      const key = identity(file, item)
-      assert.equal(item.expectedStatus, 'passed', key)
-      return key
+      requirePassingCase(item)
+      return caseKey(item, file)
     })
     assert.ok(tests.length > 0, `${job.suite} ${job.shard} is not empty`)
-    selected.push(...tests)
+    selected[job.suite].push(...tests)
   }
+  const combined = Object.values(selected).flat()
   assert.equal(
-    new Set(selected).size,
-    selected.length,
+    new Set(combined).size,
+    combined.length,
     'boundaries must not duplicate tests',
   )
-  assert.deepEqual(
-    selected.sort(),
-    all.sort(),
-    'boundary selection must not omit or add tests',
+  for (const suite of Object.keys(expected)) {
+    assert.deepEqual(
+      selected[suite].sort(),
+      expected[suite].sort(),
+      `${suite} must contain its complete source inventory`,
+    )
+  }
+  const expectedHomepage = [...playwrightCases(source.suites)]
+    .filter((item) => item.file === 'homepage-built.spec.ts')
+    .map((item) => caseKey(item))
+  assert.ok(expectedHomepage.length > 0)
+  const homepage = await listBrowserCases('homepage', { signal: t.signal })
+  const selectedHomepage = Array.from(
+    playwrightCases(homepage.suites),
+    (item) => {
+      requirePassingCase(item)
+      return caseKey(item)
+    },
   )
+  assert.deepEqual(selectedHomepage.sort(), expectedHomepage.sort())
 })

@@ -31,6 +31,12 @@ The policy test obtains its reference collection directly from the test director
 
 Before cutover the native directory collection found 1,128 entries, including the separate 27 homepage/explicit entries. The policy and workflow tests passed all 15 checks in 8.37 seconds. A disposable copy excluded one harvest-row case by title from the component config, leaving its siblings selected. The union check failed on the missing case's complete identity. The first copy lacked the invitation fixture's compass SVG and failed during collection. After supplying that same tracked file, the omission probe produced the expected assertion failure. No browser ran during these checks.
 
+### Independent policy review
+
+A fresh `browser_test_reviewer` inspected the authored policy changes from `0e3b39b169ae6ba6e751a98b87ac301533d23107` to `967044167ceb6c2ee6b88e31a6940df08f1fbbca` with no parent history. It verified the nested-title collection and the missing-sibling probe. It found four gaps in the checks. The global union could pass if journeys and features exchanged places. The direct CLI collection could miss a misrouted Make/npm command. Playwright lists `test.fail` with an annotation while its expected status can still read `passed`. The homepage recipe check alone could miss a title filter or incorrect npm target.
+
+Independent discovery now assigns identities to each intended boundary and checks the homepage collection directly. Required cases reject the expected-failure annotation. The executed-result comparison uses the native report to check the complete intended suite and shard, including first-run status. Against the 25 actual stream 08 component results, it accepted all 25 and rejected a runtime skip, an expected-failure annotation, a retry and a substituted full title with an unchanged total count. This was a local check using retained execution data.
+
 ## Repair and retirement history
 
 The following limits travel with every successor. The domain ledgers retain individual IDs and earlier failures for the complete set. [Phase-one gap register](https://github.com/unbought-games/orbit-imperium/blob/16430828343977b9d78b22f8f4677ad9d36c7d15/docs/verification/e2e-migration/AUDIT.md#retirement-and-coverage-gap-register)
