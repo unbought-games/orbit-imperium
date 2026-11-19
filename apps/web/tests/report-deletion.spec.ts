@@ -35,6 +35,7 @@ async function reportsFixture(
   pageSize = 1,
 ) {
   let revision = 1
+  const missingReceipts = new Set<string>()
   const headers: components['schemas']['ReportHeader4'][] = [
     {
       id: id(70),
@@ -59,6 +60,7 @@ async function reportsFixture(
     })
   await installGameFixture(page, {
     protocol: 4,
+    missingReceipt: commandId => missingReceipts.has(commandId),
     extraCapabilities: ['Reports'],
     ...(quiet
       ? {
@@ -208,8 +210,11 @@ async function reportsFixture(
     )
     submitted++
     await pause
-    if (mode === 'uncertain')
+    if (mode === 'uncertain') {
+      missingReceipts.add(envelope.command_id)
       return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+    }
+    missingReceipts.delete(envelope.command_id)
     if (mode === 'success') {
       const reports =
         envelope.command.action.type === 'SetReportsHidden'

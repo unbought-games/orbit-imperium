@@ -7,7 +7,7 @@ import { attachFailureScreenshots, diagnosticScreenshot } from './fixtures/diagn
 import { confirmCancellation } from './fixtures/confirmation'
 import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from './fixtures/test'
-import { installGameFixture, shellFixture, body, binding, refreshGame, id } from './fixtures/game'
+import { refuseFixtureReads, installGameFixture, shellFixture, body, binding, refreshGame, id } from './fixtures/game'
 import { universeSlug } from '../src/client-model/universe-name'
 import type { components } from '../src/contracts'
 type S = components['schemas']
@@ -1250,6 +1250,7 @@ for (const width of [1280]) {
   test(`ship comparison follows catalog rows and opens with the keyboard at ${width}px`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Manufacture'] })
     await page.setViewportSize({ width, height: 950 })
     const ship = (
       id: 'LightFighter' | 'HeavyFighter',

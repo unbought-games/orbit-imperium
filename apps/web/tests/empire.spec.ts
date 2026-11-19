@@ -3,6 +3,7 @@ import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { expect, test } from './fixtures/test'
 import {
+  refuseFixtureReads,
   binding,
   body,
   id,
@@ -17,6 +18,7 @@ type S = components['schemas']
 
 for (const width of [1440, 390]) {
   test(`research directive opens its host planet and technology from the whole card at ${width}px`, { tag: width === 390 ? '@journey' : [] }, async ({ page }) => {
+    refuseFixtureReads(page, { progression: ['Research'] })
     await page.setViewportSize({ width, height: 1000 })
     const now = Date.parse('2026-10-24T12:00:00Z')
     await page.clock.install({ time: now })

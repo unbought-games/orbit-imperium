@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/test'
-import { body, shellFixture } from './fixtures/game'
+import { refuseFixtureReads, body, shellFixture } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 
 test.use({
@@ -74,6 +74,7 @@ for (const mode of ['ios-installed', 'ios-browser', 'other-browser'] as const) {
 }
 
 test('iOS installed app keeps scrolling, fixed navigation and menu taps after resizing', async ({ page }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'standalone', { value: true })
   })
@@ -165,6 +166,7 @@ test('mobile game navigation stays in the same document and app scope', { tag: '
   page,
   context,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await shellFixture(page, { extraCapabilities: ['Transport'] })
   const originalDocument = await page.evaluateHandle(() => document)
   const pages = context.pages().length

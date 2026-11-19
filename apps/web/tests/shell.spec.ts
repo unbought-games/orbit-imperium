@@ -1,6 +1,7 @@
-import { routeWorld } from './fixtures/game'
+import { refuseFixtureReads, routeWorld } from './fixtures/game'
 
 import {
+  trackFixtureResponses,
   withBootstrapResponse,
   withFixtureResponse,
 } from './fixtures/responses'
@@ -35,6 +36,7 @@ for (const building of [null, 'MetalMine', 'ResearchLab'] as const) {
   test(`work summary links stay contextual with ${building ?? 'idle'} construction`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize({ width: 390, height: 844 })
     const now = Date.now()
     await page.clock.setFixedTime(now)
@@ -160,6 +162,7 @@ test(
   'cold Defense navigation retains named universe and planet through preloading, switching and direct loads',
   { tag: '@journey' },
   async ({ page }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     test.skip(
       !process.env.ORBIT_UI_E2E,
       'Controls lazy route delivery in the fixture browser suite.',
@@ -955,6 +958,7 @@ test('overview preserves rich work, exact inventory, incoming visibility and res
 test('navigation retains the ledger through cold art, rapid routes and reduced motion', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.route('**/art/**', (route) => route.abort())
   const purchases = await shellFixture(page, { protocol: 4 })
@@ -1022,6 +1026,7 @@ test(
           : undefined,
     })
     const page = await context.newPage()
+    refuseFixtureReads(page, { progression: ['Upgrade'], world: ['Galaxy'] })
     const purchases = await shellFixture(page, { protocol: 4 })
     await page
       .getByLabel('Current resources')
@@ -1041,6 +1046,8 @@ test(
     const gate = new Promise<void>((resolve) => {
       release = resolve
     })
+    const settleOverview = trackFixtureResponses(page, request =>
+      request.method() === 'POST' && new URL(request.url()).pathname === `/api/v4/universes/${binding.universe}/overview`)
     await page.route('**/api/**/overview', async (route) => {
       await gate
       await route.fallback()
@@ -1070,7 +1077,7 @@ test(
       throw error
     } finally {
       release()
-      await page.unrouteAll({ behavior: 'wait' })
+      await settleOverview()
       await context.close()
     }
   },
@@ -1079,6 +1086,7 @@ test(
 test('disconnection preserves selected world, ledger and urgent fleet navigation', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { world: ['Galaxy'] })
   await shellFixture(page, { protocol: 4 })
   await page.route('**/api/**/overview', (route) =>
     route.fulfill({ status: 503, json: { code: 'Unavailable' } }),
@@ -1663,6 +1671,7 @@ test('legacy fleets retain trajectory, exact arrival and reviewed recall', async
 test('selected body context truncates on phones and retains full labels and accessible route focus', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   const selected = {
     ...body,
     coordinates: { galaxy: 1, system: 499, position: 15 },
@@ -1705,6 +1714,7 @@ for (const width of [390, 1440]) {
   test(`construction stays in queues and details without a shared footer at ${width}px`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'], insigniaLibrary: width === 1440 })
     await page.setViewportSize({ width, height: 900 })
     await shellFixture(page, {
       constructions: [
@@ -1776,6 +1786,7 @@ for (const width of [390, 1440]) {
 test('failed world images settle without browser broken-image borders or lost controls', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.route('**/art/**', (route) => route.abort())
   await shellFixture(page)
   const art = page.locator('img[src*="/art/"]')
@@ -1898,6 +1909,7 @@ for (const reducedMotion of navigationMotionPreferences) {
     test(`navigation limits motion to desktop hover colors at ${width}px with ${reducedMotion}`, async ({
       page,
     }) => {
+      refuseFixtureReads(page, { progression: ['Upgrade'] })
       await page.setViewportSize({ width, height: 844 })
       await page.emulateMedia({ reducedMotion })
       await page.addInitScript(() => {
@@ -2229,6 +2241,7 @@ test.describe('planet-scoped gameplay routes retain context and redirect old que
     ['reports', 'Reports'],
   ]) {
     test(path, async ({ page }) => {
+      if (path === 'galaxy' || path === 'dispatch') refuseFixtureReads(page, { world: ['Galaxy'] })
       const purchases = await installGameFixture(page, { protocol: 4 })
       await withBootstrapResponse(page, () =>
         page.goto(`/u/andromeda/b/${body.id}/${path}`),

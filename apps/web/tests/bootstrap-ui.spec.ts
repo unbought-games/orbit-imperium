@@ -1,7 +1,7 @@
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { binding, body, shellFixture, installGameFixture } from './fixtures/game'
+import { refuseFixtureReads, binding, body, shellFixture, installGameFixture, installSessionRenewal } from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
 import { createServer } from 'node:http'
@@ -65,6 +65,7 @@ for (const blocked of [
   test(`content blockers cannot prevent startup, navigation, or logout (${blocked})`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize({ width: 390, height: 844 })
     await shellFixture(page)
     const errors: string[] = []
@@ -184,7 +185,8 @@ test('OIDC sign-in offers one prominent account action and retains the destinati
 test('login and signup preserve the requested game destination', async ({
   page,
 }) => {
-  await shellFixture(page)
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
+  await shellFixture(page, { csrf: 'csrf' })
   for (const path of ['/login', '/signup']) {
     await withBootstrapResponse(page, () => page.goto(path))
     await expect(
@@ -764,6 +766,7 @@ test('enrollment displays a universe name and submits its stable UUID', async ({
   if (payload.result.status !== 'authenticated') throw Error('fixture')
   payload.result.session.memberships = []
   payload.result.game = { status: 'no_membership' }
+  await installSessionRenewal(page, payload.result.session.csrf)
   await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: payload }))
   await page.route('**/api/v1/session', route => route.fulfill({ json: { csrf: 'fixture' } }))
   await page.route('**/api/auth/config', route => route.fulfill({ json: {
@@ -847,6 +850,7 @@ test('automatic outage retries preserve Retry and Sign out focus without manual-
   let reads = 0
   const release = new Map<number, () => void>()
   const completed = new Set<number>()
+  await installSessionRenewal(page, payload.result.session.csrf)
   await page.route('**/api/v1/bootstrap', async route => {
     const read = ++reads
     if (read === 1) return route.fulfill({ json: payload })

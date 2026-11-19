@@ -1,6 +1,7 @@
 import { test, expect, type Page } from './fixtures/test'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {
+  refuseFixtureReads,
   installGameFixture,
   refreshGame,
   body,
@@ -162,6 +163,7 @@ for (const width of [390, 511, 1280]) {
   test(`stationed inventory separates exact counts and Shipyard links at ${width}px`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Manufacture'] })
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     let revision = 1

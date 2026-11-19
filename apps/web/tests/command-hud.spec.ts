@@ -1,6 +1,6 @@
 import { routeProgressionOptions } from './fixtures/progression-options'
 import { expect, test, type Page } from './fixtures/test'
-import { installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
+import { refuseFixtureReads, installGameFixture, binding, body, id, refreshGame } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
 import type { components } from '../src/contracts'
@@ -372,6 +372,7 @@ test('HUD details return to the list without closing, even after scrolling a rep
 })
 
 test('orb captions retain their education and humor history across client navigation', async ({page}) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.setViewportSize({width:390,height:844})
   await page.emulateMedia({reducedMotion:'reduce'})
   await page.clock.install()

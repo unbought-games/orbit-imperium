@@ -4,7 +4,7 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { confirmCancellation } from './fixtures/confirmation'
 import { expect, test, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { binding, body, id, refreshGame, shellFixture } from './fixtures/game'
+import { refuseFixtureReads, binding, body, id, refreshGame, shellFixture } from './fixtures/game'
 import { withBootstrapResponse } from './fixtures/responses'
 
 type S = components['schemas']
@@ -375,6 +375,7 @@ for (const kind of ['construction'] as const) {
   // Keep the application command and click-time confirmation-boundary wiring.
   for (const elapsed of [29_999]) {
     test(`${kind} cancellation uses server elapsed ${elapsed}ms`, async ({ page }) => {
+      refuseFixtureReads(page, { progression: ['Upgrade'] })
       await page.clock.install({ time: now - 60_000 })
       await page.clock.pauseAt(now)
       const paid = { metal: '76000000', crystal: '38000000', deuterium: '0' }

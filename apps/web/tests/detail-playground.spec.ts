@@ -1,4 +1,4 @@
-import { body, id, refreshGame, shellFixture } from './fixtures/game'
+import { refuseFixtureReads, body, id, refreshGame, shellFixture } from './fixtures/game'
 
 import type { components } from '../src/contracts'
 
@@ -9,6 +9,7 @@ import { withBootstrapResponse } from './fixtures/responses'
 test('a completed operation removes its open cancellation confirmation without sending', async ({
   page,
 }) => {
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
   await page.clock.install()
   const planet = structuredClone(body)
   const constructions: components['schemas']['Construction3'][] = [

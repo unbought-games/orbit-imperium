@@ -58,6 +58,22 @@ export const body: components['schemas']['BodyV3'] = {
   energy: { supply: '48400000', demand: '22000000', utilization: '1000000' },
   inventories: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '2' }],
 }
+type UnavailableFixtureReads = {
+  progression?: readonly components['schemas']['ProgressionQuoteRequest']['type'][]
+  world?: readonly components['schemas']['WorldQueryKind4']['type'][]
+  allianceMembership?: boolean
+  insigniaLibrary?: boolean
+  empireProfile?: string
+  invitation?: string
+}
+const unavailableReads = new WeakMap<Page, UnavailableFixtureReads>()
+
+/** A navigation or layout case can deliberately omit named backend reads.
+ * Scenario-specific data handlers still take precedence. Writes and unknown
+ * query kinds must always reach the unexpected-operation diagnostic. */
+export function refuseFixtureReads(page: Page, reads: UnavailableFixtureReads) {
+  unavailableReads.set(page, reads)
+}
 const installedGames = new WeakMap<
   Page,
   { protocol: number; revision?: () => string }
@@ -115,6 +131,23 @@ export function routeWorld(
   )
 }
 
+export function installSessionRenewal(
+  page: Page,
+  csrf: string,
+  signedIn = () => true,
+) {
+  return page.route('**/api/v1/session/renew', (route) => {
+    if (
+      route.request().method() !== 'POST' ||
+      route.request().headers()['x-csrf-token'] !== csrf
+    )
+      return route.fallback()
+    return signedIn()
+      ? route.fulfill({ status: 204 })
+      : route.fulfill({ status: 401, json: { code: 'Unauthenticated' } })
+  })
+}
+
 /** Install HTTP fixtures before navigating directly to the page under test. */
 export async function installGameFixture(
   page: Page,
@@ -127,6 +160,8 @@ export async function installGameFixture(
     catalog?: components['schemas']['CatalogEntry3'][]
     research?: components['schemas']['Research3'][]
     researchOperation?: components['schemas']['ResearchOperationDto'] | null
+    allianceHonors?: string
+    missingReceipt?: (commandId: string) => boolean
     accountUrl?: string
     csrf?: string
     protocol?: 2 | 3 | 4
@@ -174,6 +209,7 @@ export async function installGameFixture(
   let purchases = 0
   let signedIn = true
   const csrf = options.csrf ?? 'fixture'
+  await installSessionRenewal(page, csrf, () => signedIn)
   // Fixtures own initial auth/data even when this suite runs against production HTML.
   await page.route('**/*', async (route) => {
     if (
@@ -211,13 +247,6 @@ export async function installGameFixture(
       signedIn = false
       return route.fulfill({ status: 204 })
     }
-    if (
-      is('POST', '/api/v1/session/renew') &&
-      request.headers()['x-csrf-token'] === csrf
-    )
-      return signedIn
-        ? route.fulfill({ status: 204 })
-        : route.fulfill({ status: 401, json: { code: 'Unauthenticated' } })
     if (!signedIn && is('GET', '/api/v1/bootstrap'))
       return route.fulfill({
         json: {
@@ -228,6 +257,21 @@ export async function installGameFixture(
       })
     if (!signedIn && is('GET', '/api/v1/session'))
       return route.fulfill({ status: 401, json: { code: 'Unauthorized' } })
+    if (
+      options.allianceHonors &&
+      is('GET', `/api/v1/rewards/alliances/${options.allianceHonors}/honors`)
+    )
+      return route.fulfill({
+        json: { alliance_id: options.allianceHonors, honors: [] },
+      })
+    const commandId = url.pathname.split('/').at(-1)
+    if (
+      commandId &&
+      is('GET', boundApi(protocol, `commands/${commandId}`)) &&
+      url.searchParams.get('epoch') === binding.epoch &&
+      options.missingReceipt?.(commandId)
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
     if (is('GET', '/api/auth/config'))
       return route.fulfill({
         json: {
@@ -572,6 +616,44 @@ export async function installGameFixture(
           },
         },
       })
+    const refused = unavailableReads.get(page)
+    if (
+      (refused?.allianceMembership &&
+        post('alliances/query', 4) &&
+        context?.query?.type === 'Mine') ||
+      (refused?.insigniaLibrary &&
+        post('insignias', 1) &&
+        context?.action?.type === 'Load') ||
+      (refused?.empireProfile &&
+        is('GET', `/api/v4/empire-profiles/${refused.empireProfile}`)) ||
+      (refused?.invitation &&
+        is('GET', boundApi(4, `invitations/${refused.invitation}`)))
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (
+      refused?.world &&
+      post('world', 4) &&
+      refused.world.includes(context?.type)
+    )
+      return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    if (
+      refused?.progression &&
+      (post('progression-options') || post('progression-options/bulk'))
+    ) {
+      const items = post('progression-options/bulk')
+        ? context.requests
+        : [context.request]
+      if (
+        Array.isArray(items) &&
+        items.length &&
+        items.every(
+          (item) =>
+            refused.progression!.includes(item?.type) &&
+            bodies.some((body) => body.id === (item.body ?? item.host)),
+        )
+      )
+        return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    }
     if (post('commands')) purchases++
     return route.fallback()
   })

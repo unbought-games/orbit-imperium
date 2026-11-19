@@ -2,7 +2,7 @@ import { coordinatePattern } from './fixtures/coordinates'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect, type Locator, type Page } from './fixtures/test'
 import type { components } from '../src/contracts'
-import { shellFixture, binding, body, id, resources } from './fixtures/game'
+import { refuseFixtureReads, shellFixture, binding, body, id, resources } from './fixtures/game'
 import { withBootstrapResponse, withReportResponse } from './fixtures/responses'
 
 type S = components['schemas']
@@ -240,6 +240,7 @@ for (const viewport of [
   test(`building choices remain visible without colony artwork at ${viewport.width}px`, async ({
     page,
   }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize(viewport)
     await shellFixture(page, {
       bodies: [body],
@@ -388,6 +389,7 @@ for (const width of [1280, 390]) {
 
 for (const width of [390, 1280]) {
   test(`tabbed pages omit repeated titles and preserve route focus at ${width}px`, async ({ page }) => {
+    refuseFixtureReads(page, { progression: ['Upgrade'], world: ['Galaxy'] })
     await page.setViewportSize({ width, height: 844 })
     await shellFixture(page, { protocol: 4 })
     for (const [route, title, navigation] of [
