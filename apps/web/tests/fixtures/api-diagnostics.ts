@@ -1,7 +1,7 @@
-import type { Request } from '@playwright/test'
+import type { Request, Route } from '@playwright/test'
 
 /** Include operation discriminators without logging credentials, request IDs or payloads. */
-export function fixtureOperation(request: Request): string {
+function fixtureOperation(request: Request): string {
   const address = request.method() + ' ' + new URL(request.url()).pathname
   let payload
   try {
@@ -27,4 +27,12 @@ export function fixtureOperation(request: Request): string {
   return operations.length
     ? address + ' (' + operations.join(', ') + ')'
     : address
+}
+
+/** Throw from the route callback so Playwright interrupts the active case,
+ * including requests whose wrong URL or operation leaves a waiter pending. */
+export function unexpectedFixtureApi(route: Route): never {
+  throw new Error(
+    'Unexpected fixture API operation: ' + fixtureOperation(route.request()),
+  )
 }

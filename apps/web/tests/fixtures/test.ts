@@ -1,5 +1,5 @@
 import { test as base, type BrowserContext } from '@playwright/test'
-import { fixtureOperation } from './api-diagnostics'
+import { unexpectedFixtureApi } from './api-diagnostics'
 import { captureFailureScreenshots } from './diagnostic-screenshot'
 
 export * from '@playwright/test'
@@ -16,14 +16,7 @@ export const test = base.extend<{
       const extra = new Set<BrowserContext>()
       const install = async (target: BrowserContext) => {
         if (boundary === 'server') return
-        // The runner attributes route/listener exceptions to the active case.
-        // Throw here so an unmatched request cannot strand a readiness waiter.
-        await target.route('**/api/**', (route) => {
-          throw new Error(
-            'Unexpected fixture API operation: ' +
-              fixtureOperation(route.request()),
-          )
-        })
+        await target.route('**/api/**', unexpectedFixtureApi)
         if (boundary === 'component') {
           target.on('weberror', (error) => {
             throw error.error()

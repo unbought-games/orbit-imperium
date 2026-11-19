@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { fixtureOperation } from '../../apps/web/tests/fixtures/api-diagnostics.ts'
+import { unexpectedFixtureApi } from '../../apps/web/tests/fixtures/api-diagnostics.ts'
 
-const describe = (payload, path = 'world') =>
-  fixtureOperation({
+function reject(payload, path, operation) {
+  const request = {
     method: () => 'POST',
     url: () => 'https://fixture.test/api/' + path + '?epoch=private',
     postDataJSON: () => JSON.parse(payload),
+  }
+  assert.throws(() => unexpectedFixtureApi({ request: () => request }), {
+    message: 'Unexpected fixture API operation: POST /api/' + path + operation,
   })
+}
 
 test('the unexpected call identifies the bound operation without dumping payload or query data', () => {
   for (const [payload, operation] of [
@@ -32,11 +36,12 @@ test('the unexpected call identifies the bound operation without dumping payload
       'LaunchFleet',
     ],
   ]) {
-    assert.equal(
-      describe(JSON.stringify({ ...payload, password: 'private' })),
-      'POST /api/world (' + operation + ')',
+    reject(
+      JSON.stringify({ ...payload, password: 'private' }),
+      'world',
+      ' (' + operation + ')',
     )
   }
-  assert.equal(describe('null'), 'POST /api/world')
-  assert.equal(describe('incomplete'), 'POST /api/world (invalid JSON)')
+  reject('null', 'world', '')
+  reject('incomplete', 'world', ' (invalid JSON)')
 })
