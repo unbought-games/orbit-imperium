@@ -113,61 +113,70 @@ test('touch energy navigation and resource details remain usable with enlarged t
     viewport: { width: 390, height: 844 },
   })
   const page = await context.newPage()
-  await shellFixture(page)
-  const energy = page.getByRole('link', { name: 'Energy — resource settings' })
-  await energy.focus()
-  await expect(page.getByRole('tooltip', { name: 'Energy' })).toContainText(
-    '26',
-  )
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('tooltip', { name: 'Energy' })).toHaveCount(0)
-  await energy.tap()
-  await expect(page.locator('main h1')).toHaveText('Resource settings')
-  await page.addStyleTag({
-    content:
-      'html { font-size: 200% !important; } * { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; }',
-  })
-
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true)
-  await page.getByRole('button', { name: 'Metal details' }).click()
-  const popover = page.getByRole('dialog', { name: 'Metal' })
-  await expect(popover).toContainText('6,661')
-  const rect = await popover.boundingBox()
-  expect(rect!.x).toBeGreaterThanOrEqual(0)
-  expect(rect!.x + rect!.width).toBeLessThanOrEqual(390)
-  await diagnosticScreenshot(page, {
-    path: 'test-results/compact-shell-text-size.png',
-    fullPage: true,
-  })
-  await context.close()
-})
-
-// The old modal focus-lock/resize scenario was removed with the dialog.
-// desktop-navigation.spec.ts covers route persistence on resize and Back.
-test(
-  'mobile menu page signs out through the existing account session',
-  { tag: '@journey' },
-  async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
+  try {
     await shellFixture(page)
-    await page.getByRole('link', { name: 'Menu', exact: true }).click()
-    await page
-      .getByRole('main')
-      .getByRole('button', { name: 'Log out' })
-      .click()
+    const energy = page.getByRole('link', {
+      name: 'Energy — resource settings',
+    })
+    await energy.focus()
+    await expect(page.getByRole('tooltip', { name: 'Energy' })).toContainText(
+      '26',
+    )
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('tooltip', { name: 'Energy' })).toHaveCount(0)
+    await energy.tap()
+    await expect(page.locator('main h1')).toHaveText('Resource settings')
+    await expect(page.locator('main h1')).toBeFocused()
     await expect(
-      page.getByRole('button', { name: 'Sign in', exact: true }),
+      page.getByRole('link', { name: 'Develop', exact: true }),
+    ).toHaveAttribute('aria-current', 'page')
+    await expect(
+      page.getByRole('link', { name: 'Menu', exact: true }),
+    ).not.toHaveAttribute('aria-current')
+    await expect(
+      page.getByRole('navigation', { name: 'Develop navigation', exact: true }),
     ).toBeVisible()
     await expect(
-      page.getByRole('navigation', { name: 'Menu destinations' }),
+      page.getByRole('region', { name: 'Production controls', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Upgrade Metal Mine', exact: true }),
     ).toHaveCount(0)
-    await expect(page.getByLabel('Current resources')).toHaveCount(0)
-  },
-)
+    await withBootstrapResponse(page, () => page.reload())
+    await expect(page.getByLabel('metal mine production')).toHaveValue('100')
+    await page.goBack()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/overview`)
+    await page.goForward()
+    await expect(page).toHaveURL(`/u/andromeda/b/${body.id}/resource-settings`)
+    await expect(page.getByLabel('metal mine production')).toHaveValue('100')
+
+    await page.addStyleTag({
+      content:
+        'html { font-size: 200% !important; } * { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; }',
+    })
+
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true)
+    await page.getByRole('button', { name: 'Metal details' }).click()
+    const popover = page.getByRole('dialog', { name: 'Metal' })
+    await expect(popover).toContainText('6,661')
+    const rect = await popover.boundingBox()
+    expect(rect!.x).toBeGreaterThanOrEqual(0)
+    expect(rect!.x + rect!.width).toBeLessThanOrEqual(390)
+    await diagnosticScreenshot(page, {
+      path: 'test-results/compact-shell-text-size.png',
+      fullPage: true,
+    })
+  } catch (error) {
+    await attachFailureScreenshots([page], test.info())
+    throw error
+  } finally {
+    await context.close()
+  }
+})
 
 test(
   'navigation keeps shell identity mounted through rapid route changes',

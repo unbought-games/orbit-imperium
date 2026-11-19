@@ -358,3 +358,35 @@ test('editor preserves the equipped design across membership observations and pe
   await expect(panel.getByLabel('Permanently unlocked')).toBeVisible()
   expect((await designs(page))[0].recipe.symbol).toBe('test-star')
 })
+
+test('a refused insignia save keeps the draft through a real library reload and retry', async ({
+  page,
+  mount,
+}) => {
+  await prepare(page, mount)
+  const panel = page.getByRole('region', {
+    name: 'Empire insignia',
+    exact: true,
+  })
+  await panel.getByRole('button', {name:'New design',exact:true}).click()
+  await expect(panel.getByLabel('Design name', { exact: true })).toBeVisible()
+  await panel.getByLabel('Design name', { exact: true }).fill('Still mine')
+  await page.evaluate(() => {
+    window.rejectNextInsigniaSave = true
+  })
+  await panel.getByRole('button', { name: 'Save & equip' }).click()
+  await expect(panel.getByRole('alert')).toContainText('could not confirm')
+  await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
+    'Still mine',
+  )
+  await panel.getByRole('button', { name: 'Reload library' }).click()
+  await expect(panel.getByRole('alert')).toHaveCount(0)
+  await expect(panel.getByLabel('Design name', { exact: true })).toHaveValue(
+    'Still mine',
+  )
+  await panel.getByRole('button', { name: 'Save & equip' }).click()
+  await expect(panel.getByRole('status')).toContainText(
+    'Design saved and equipped.',
+  )
+  expect((await designs(page)).map((d) => d.name)).toEqual(['Still mine'])
+})

@@ -19,7 +19,7 @@ const summary: S['AllianceSummary'] = {
     activity: 'Weekly',
   },
 }
-const publicData: S['PublicAlliance'] = {
+export const publicData: S['PublicAlliance'] = {
   summary,
   public_text:
     '**A home among the stars.**\n\nWe welcome new commanders, share what we learn, and plan our next adventure together.',

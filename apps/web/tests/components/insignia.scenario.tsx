@@ -17,6 +17,7 @@ import { InsigniaContext } from '../../src/shell/insignia-context'
 
 declare global {
   interface Window {
+    rejectNextInsigniaSave?: boolean
     insigniaSnapshot: InsigniaState
     remountInsignia: () => void
   }
@@ -29,6 +30,10 @@ async function library(action: InsigniaAction) {
   const library = snapshot.library
   switch (action.type) {
     case 'Save': {
+      if (window.rejectNextInsigniaSave) {
+        window.rejectNextInsigniaSave = false
+        throw Error('Save response unavailable')
+      }
       const design = {
         ...structuredClone(action.design),
         revision: action.design.revision + 1,
