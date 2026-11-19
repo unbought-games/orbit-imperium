@@ -198,8 +198,10 @@ async function reportsFixture(
     expect(envelope.command.type).toBe('World')
     if (envelope.command.action.type === 'MarkReportRead') {
       const report = envelope.command.action.report
+      const target = headers.find(row => row.id === report)
+      if (!target) return route.fallback()
+      target.read = true
       readRequests.push(report)
-      headers.find((row) => row.id === report)!.read = true
       revision++
       return route.fulfill({
         json: {
