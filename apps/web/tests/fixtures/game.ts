@@ -148,7 +148,11 @@ export async function installGameFixture(
   let signedIn = true
   // Fixtures own initial auth/data even when this suite runs against production HTML.
   await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback()
+    if (
+      route.request().resourceType() !== 'document' ||
+      new URL(route.request().url()).pathname.startsWith('/api/')
+    )
+      return route.fallback()
     // The local HTML connection can reset during reload. Retry only safe GET
     // transport resets; Playwright still exposes HTTP errors and exhausted retries.
     const response = await route.fetch({

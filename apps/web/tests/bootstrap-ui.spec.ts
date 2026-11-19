@@ -472,7 +472,7 @@ test(`explicit login records presence after retry; reload and cached-page restor
             },
       })
     }
-    if (request.method() === 'POST' && path === '/api/v1/session') {
+    if (request.method() === 'POST' && path === '/api/v1/session' && new URL(request.url()).searchParams.get('bootstrap') === 'true') {
       signedIn = true
       const failed = structuredClone(payload)
       if (failed.result.status === 'authenticated')
@@ -554,7 +554,7 @@ test('a populated HTML payload renders without a bootstrap request', { tag: '@jo
   if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
   await installGameFixture(page, { protocol: 3 })
   await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback()
+    if (route.request().resourceType() !== 'document' || new URL(route.request().url()).pathname.startsWith('/api/')) return route.fallback()
     const response = await route.fetch()
     const html = (await response.text()).replace(
       '<script id="orbit-bootstrap" type="application/json"></script>',

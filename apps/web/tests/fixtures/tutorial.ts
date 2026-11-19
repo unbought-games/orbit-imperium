@@ -1,3 +1,4 @@
+import { unexpectedFixtureApi } from './api-diagnostics'
 import type { Page, Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
 import {
@@ -397,7 +398,9 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
     sampled_at: Date.now(),
     as_of_ms: Date.now(),
   })
-  await page.route('**/world', async (route) => {
+  const prefix = `/api/v4/universes/${binding.universe}`
+  await page.route(`**${prefix}/world`, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
     state.worldQueries.push(q.type)
     if (state.hold) await state.hold(route)
@@ -495,9 +498,15 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
       },
     })
   })
-  await page.route('**/commands', (route) => {
+  await page.route(`**${prefix}/commands`, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     const pair = route.request().postDataJSON()
-    const command: S['Command4'] = pair.gameplay.command
+    const command: S['Command4'] | undefined = pair?.gameplay?.command
+    if (command?.type !== 'StartUpgrade' && !(command?.type === 'World' &&
+        ['ReviewProductionSettings', 'SetTutorialPresentation', 'OpenTutorial', 'LaunchFleet', 'MarkReportRead'].includes(command.action.type)))
+      return route.fallback()
+    if (command.type === 'World' && command.action.type === 'MarkReportRead' && command.action.report !== state.report.header.id)
+      return unexpectedFixtureApi(route)
     state.commands.push(command)
     revision++
     if (command.type === 'World') {
@@ -540,7 +549,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
         command_id: pair.gameplay.command_id,
         admitted_at: Date.now(),
         executed_at: Date.now(),
-        ...(state.launchError
+        ...(command.type === 'World' && command.action.type === 'LaunchFleet' && state.launchError
           ? { status: 'Rejected', code: 'InsufficientResources' }
           : {
               status: 'Committed',
@@ -550,7 +559,8 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
       },
     })
   })
-  await page.route('**/api/v4/**/reports', (route) => {
+  await page.route(`**${prefix}/reports`, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
     return route.fulfill({
       json: {
@@ -566,7 +576,8 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
       },
     })
   })
-  await page.route('**/api/v4/**/reports/*', (route) => {
+  await page.route(`**${prefix}/reports/${state.report.header.id}`, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
     return route.fulfill({
       json: { ...envelope(q.request_id), data: state.report },

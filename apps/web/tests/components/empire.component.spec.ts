@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixture'
+import { withFixtureResponse } from '../fixtures/responses'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { empireFixture, body, id, binding } from '../../src/test-support/empire'
 import type { components } from '../../src/contracts'
@@ -874,39 +875,50 @@ for (const width of [1440, 390]) {
       title_choices: [],
     }
     await page.route('**/api/v1/session', (route) =>
-      route.fulfill({
-        json: {
-          account: binding.account,
-          csrf: 'fixture',
-          expires_at: Date.now() + 3600000,
-          memberships: [],
-        },
-      }),
+      route.request().method() !== 'GET'
+        ? route.fallback()
+        : route.fulfill({
+            json: {
+              account: binding.account,
+              csrf: 'fixture',
+              expires_at: Date.now() + 3600000,
+              memberships: [],
+            },
+          }),
     )
     let release!: () => void
     const held = new Promise<void>((resolve) => {
       release = resolve
     })
-    await page.route('**/api/v4/empire-profiles/**', async (route) => {
+    const profileUrl = (url: URL) =>
+      url.pathname === `/api/v4/empire-profiles/${binding.player}` &&
+      url.searchParams.get('library') === 'false'
+    await page.route(profileUrl, async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
       await held
       await route.fulfill({ json: data })
     })
-    await mountEmpire(page, empireFixture())
     const pencil = page.getByRole('button', {
       name: 'Rename empire',
       exact: true,
     })
-    await pencil.click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('status')).toHaveText(
-      'Loading empire identity…',
-    )
-    const delivered = page.waitForEvent('requestfinished', {
-      predicate: (request) =>
-        request.url().includes('/api/v4/empire-profiles/'),
-    })
-    release()
-    await delivered
+    try {
+      await mountEmpire(page, empireFixture())
+      await pencil.click()
+      await expect(dialog.getByRole('status')).toHaveText(
+        'Loading empire identity…',
+      )
+      await withFixtureResponse(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          profileUrl(new URL(response.url())),
+        async () => release(),
+      )
+    } finally {
+      release()
+    }
     const input = dialog.getByRole('textbox', { name: 'Empire name' })
     await expect(input).toBeFocused()
     await expect(input).toHaveValue('Roman Empire')
