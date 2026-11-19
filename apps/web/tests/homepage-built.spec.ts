@@ -108,14 +108,22 @@ for (const signup of [true, false]) {
                 },
               }),
         )
-        await page.route('**/', async (route) => {
-          const response = await context.request.get(`/${filename}`)
-          const html = (await response.text()).replace(
-            '<script id="orbit-bootstrap" type="application/json"></script>',
-            `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
-          )
-          await route.fulfill({ contentType: 'text/html', body: html })
-        })
+        await page.route(
+          (url) => url.pathname === '/',
+          async (route) => {
+            if (
+              route.request().method() !== 'GET' ||
+              route.request().resourceType() !== 'document'
+            )
+              return route.fallback()
+            const response = await context.request.get(`/${filename}`)
+            const html = (await response.text()).replace(
+              '<script id="orbit-bootstrap" type="application/json"></script>',
+              `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
+            )
+            await route.fulfill({ contentType: 'text/html', body: html })
+          },
+        )
         try {
           await page.goto('/')
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(
