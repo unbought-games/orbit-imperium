@@ -29,7 +29,7 @@ try{
  await admin.query(`CREATE DATABASE ${db}`);
  cli(['db-init']);
  const created=JSON.parse(cli(['universe','create','--universe',universe,'--max-players','2']));
- assert.equal(created.configuration.immutable.speed,5);
+ assert.equal(created.configuration.immutable.speed,3);
  // Race real starts against the explicitly prepared, account-free universe.
  await peerLease.release();
  twin=spawn(process.env.ORBIT_TEST_SERVER_BINARY??'target/debug/orbit',['serve'],{env:{...env,ORBIT_BIND:`127.0.0.1:${peerLease.port}`},stdio:'pipe'});
