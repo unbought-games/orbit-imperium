@@ -623,6 +623,11 @@ export async function installGameFixture(
     if (is('GET', '/api/v1/rewards'))
       return route.fulfill({ json: { enabled: false } })
     if (is('GET', '/api/v1/session')) return route.fulfill({ json: session })
+    if (
+      (post('settings') || post('overview')) &&
+      !matchesFixtureContext(context)
+    )
+      return unexpectedFixtureApi(route)
     if (post('settings')) return route.fulfill({ json: settings })
     if (post('overview'))
       return route.fulfill({ json: view, headers: options.snapshotHeaders?.() })

@@ -350,3 +350,23 @@ it('report fixtures bind direct detail and nested list/read requests before invo
       'Unexpected fixture API operation',
     )
 })
+
+it.each(['overview', 'settings'])(
+  '%s requires the query context at the wire root',
+  async (resource) => {
+    const { page, handlers } = ports()
+    await installGameFixture(page, { protocol: 4 })
+    const handle = handlers.get('**/api/**')!
+    const path = prefix + '/' + resource
+    const wrong = call('POST', path, { context })
+    await expect(handle(wrong.route)).rejects.toThrow(
+      'Unexpected fixture API operation',
+    )
+    expect(wrong.fulfill).not.toHaveBeenCalled()
+    const right = call('POST', path, context)
+    await handle(right.route)
+    expect(right.fulfill.mock.calls[0][0].json.request_id).toBe(
+      context.request_id,
+    )
+  },
+)
