@@ -42,14 +42,11 @@ test('fixture document loading recovers connection resets without retrying HTTP 
 })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/analytics', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  )
   await page.route('**/api/auth/config', (route) =>
-    route.fulfill({ json: { mode: 'local', universes: [] } }),
+    route.request().method() === 'GET' ? route.fulfill({ json: { mode: 'local', universes: [] } }) : route.fallback(),
   )
-  await page.route('**/api/auth/entry*', (route) =>
-    route.fulfill({
+  await page.route(url => url.pathname === '/api/auth/entry', (route) =>
+    route.request().method() !== 'GET' ? route.fallback() : route.fulfill({
       status: 303,
       headers: {
         location: new URL(route.request().url()).searchParams.get('signup') === 'true'

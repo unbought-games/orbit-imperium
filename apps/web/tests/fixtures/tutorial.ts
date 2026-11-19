@@ -1,3 +1,4 @@
+import { sameBinding } from '../../src/client-model/commands'
 import { unexpectedFixtureApi } from './api-diagnostics'
 import type { Page, Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
@@ -7,7 +8,7 @@ import {
 } from '../../src/test-support/tutorial'
 import { validateTutorialFixture as validate } from '../../src/test-support/tutorial'
 import { progressionTarget } from '../../src/features/tutorial/model'
-import { installGameFixture, body, binding, id } from './game'
+import { installGameFixture, matchesFixtureContext, body, binding, id } from './game'
 import { productionFixture } from '../../src/test-support/production'
 import { routeProgressionOptions } from './progression-options'
 type S = components['schemas']
@@ -402,6 +403,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
   await page.route(`**${prefix}/world`, async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
+    if (!matchesFixtureContext(q?.context)) return unexpectedFixtureApi(route)
     state.worldQueries.push(q.type)
     if (state.hold) await state.hold(route)
     if (q.type === 'Tutorial') {
@@ -501,7 +503,12 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
   await page.route(`**${prefix}/commands`, (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     const pair = route.request().postDataJSON()
-    const command: S['Command4'] | undefined = pair?.gameplay?.command
+    const gameplay = pair?.gameplay, presence = pair?.presence
+    if (gameplay?.protocol !== 4 || !gameplay.binding || !sameBinding(gameplay.binding, binding) ||
+        typeof gameplay.command_id !== 'string' || presence?.protocol !== 4 || !presence.binding ||
+        !sameBinding(presence.binding, binding) || typeof presence.command_id !== 'string' ||
+        presence.command?.action?.paired_command_id !== gameplay.command_id) return unexpectedFixtureApi(route)
+    const command: S['Command4'] | undefined = gameplay.command
     if (command?.type !== 'StartUpgrade' && !(command?.type === 'World' &&
         ['ReviewProductionSettings', 'SetTutorialPresentation', 'OpenTutorial', 'LaunchFleet', 'MarkReportRead'].includes(command.action.type)))
       return route.fallback()
@@ -562,6 +569,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
   await page.route(`**${prefix}/reports`, (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
+    if (!matchesFixtureContext(q?.context)) return unexpectedFixtureApi(route)
     return route.fulfill({
       json: {
         ...envelope(q.context.request_id),
@@ -579,6 +587,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
   await page.route(`**${prefix}/reports/${state.report.header.id}`, (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
+    if (!matchesFixtureContext(q)) return unexpectedFixtureApi(route)
     return route.fulfill({
       json: { ...envelope(q.request_id), data: state.report },
     })

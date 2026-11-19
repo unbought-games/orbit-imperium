@@ -16,7 +16,7 @@ export const binding = {
 const boundApi = (version: number, name: string) =>
   `/api/v${version}/universes/${binding.universe}/${name}`
 
-function matchesContext(
+export function matchesFixtureContext(
   context: components['schemas']['QueryContext'] | undefined,
 ) {
   return (
@@ -58,7 +58,16 @@ export const body: components['schemas']['BodyV3'] = {
   energy: { supply: '48400000', demand: '22000000', utilization: '1000000' },
   inventories: [{ item: { kind: 'Ship', id: 'SmallCargo' }, count: '2' }],
 }
-const fixtureWorldRevisions = new WeakMap<Page, () => string>()
+const installedGames = new WeakMap<
+  Page,
+  { protocol: number; revision?: () => string }
+>()
+export function fixtureApiPath(page: Page, resource: string) {
+  const game = installedGames.get(page)
+  if (!game)
+    throw Error('Install the game fixture before sending bound API requests')
+  return boundApi(game.protocol, resource)
+}
 export function inactiveTutorial(route: Route, revision: string) {
   const query = route.request().postDataJSON()
   return route.fulfill({
@@ -97,9 +106,9 @@ export function routeWorld(
     (route) => {
       if (route.request().method() !== 'POST') return route.fallback()
       const query = route.request().postDataJSON()
-      if (!matchesContext(query?.context)) return route.fallback()
+      if (!matchesFixtureContext(query?.context)) return route.fallback()
       return query.type === 'Tutorial'
-        ? inactiveTutorial(route, fixtureWorldRevisions.get(page)?.() ?? '1')
+        ? inactiveTutorial(route, installedGames.get(page)?.revision?.() ?? '1')
         : handler(route)
     },
     options,
@@ -159,8 +168,8 @@ export async function installGameFixture(
     >
   } = {},
 ) {
-  fixtureWorldRevisions.set(page, options.viewerRevision ?? (() => '1'))
   const protocol = options.protocol ?? 3
+  installedGames.set(page, { protocol, revision: options.viewerRevision })
   let purchases = 0
   let signedIn = true
   // Fixtures own initial auth/data even when this suite runs against production HTML.
@@ -595,8 +604,27 @@ export async function playerProfilesFixture(
 ) {
   await page.route(`**${boundApi(1, 'player-profiles')}`, async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
-    const { context } = route.request().postDataJSON()
-    if (!matchesContext(context)) return route.fallback()
+    const { context, source } = route.request().postDataJSON()
+    if (!matchesFixtureContext(context)) return route.fallback()
+    // These prepared observations cover the owned account, the requested
+    // rankings players, or the installed home system. Other sources use the
+    // game's empty observation or a more specific scenario handler.
+    const matches = (player: { player: string }) => {
+      if (source.type === 'SelfAccount') return player.player === binding.player
+      if (source.type === 'Rankings')
+        return source.players.includes(player.player)
+      return true
+    }
+    if (
+      !(
+        source?.type === 'SelfAccount' ||
+        (source?.type === 'Rankings' && Array.isArray(source.players)) ||
+        (source?.type === 'Galaxy' &&
+          source.galaxy === body.coordinates.galaxy &&
+          source.system === body.coordinates.system)
+      )
+    )
+      return route.fallback()
     const players = profiles()
     if (players === null) return route.fulfill({ status: 503 })
     const now = Math.floor(Date.now() / 1000)
@@ -604,7 +632,7 @@ export async function playerProfilesFixture(
       json: {
         binding: context.binding,
         request_id: context.request_id,
-        players: players.map((p) => ({
+        players: players.filter(matches).map((p) => ({
           observed_at: now,
           expires_at: now + 300,
           ...p,
