@@ -48,7 +48,6 @@ const shared = {
 }
 test(
   'public report is readable without game initialization',
-
   async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 1000 })
     const requests: string[] = []

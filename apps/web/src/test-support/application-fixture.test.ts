@@ -413,8 +413,8 @@ it('the installed document handler retries a reset GET, strips embedded observat
           url: () => href,
           method: () => 'GET',
         }),
-        fetch: (options: Parameters<typeof api.fetch>[1]) =>
-          api.fetch(href, options),
+        fetch: (options: Parameters<typeof api.get>[1]) =>
+          api.get(href, options),
         fulfill,
       } as unknown as Route)
       expect(counts.get(path)).toBe(count)

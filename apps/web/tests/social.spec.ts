@@ -113,7 +113,6 @@ async function installThread(page: Page, bodies: (typeof body)[]) {
 // Isolated components own layout, draft editing, menus and keyboard permutations.
 test(
   'submits a direct message from its deep link and returns to the conversation list',
-
   async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     const selectedBody = { ...structuredClone(body), id: id(6), name: 'Beta' }

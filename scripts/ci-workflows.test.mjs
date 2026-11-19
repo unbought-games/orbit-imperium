@@ -36,7 +36,11 @@ test('every workflow job uses an explicitly approved disposable runner', () => {
 test('browser jobs configure Ubuntu mirrors before installing Linux dependencies', () => {
   for (const { file, workflow } of workflows) {
     const browserJobs = Object.values(workflow.jobs).filter((job) =>
-      job.steps.some((step) => /make test-(ui|explicit)/.test(step.run ?? '')),
+      job.steps.some(
+        (step) =>
+          step.run === 'make test-${{ matrix.suite }}' ||
+          /make test-explicit/.test(step.run ?? ''),
+      ),
     )
     if (file === 'ci.yml' || file === 'explicit-tests.yml')
       assert.ok(browserJobs.length > 0, file)

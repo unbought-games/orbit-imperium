@@ -33,7 +33,6 @@ async function anonymous(page: import('@playwright/test').Page, signup = true) {
 
 test(
   'returning players go straight to their empire without loading marketing images',
-
   async ({ page }) => {
     const images: string[] = []
     page.on('request', (request) => {

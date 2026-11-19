@@ -18,7 +18,6 @@ import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 // This journey retains real route focus, body history, reload and server refresh wiring.
 test(
   'desktop navigation preserves body history, reload and report refresh',
-
   async ({ page }) => {
     refuseFixtureReads(page, { progression: ['Upgrade'] })
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -160,7 +159,6 @@ test('touch sidebar opens Settings and Facilities in the application', async ({
 for (const width of [390]) {
   test(
     `menu page preserves tab navigation, history and settings access at ${width}px`,
-
     async ({ page }) => {
       await page.setViewportSize({ width, height: 844 })
       await page.emulateMedia({ reducedMotion: 'reduce' })

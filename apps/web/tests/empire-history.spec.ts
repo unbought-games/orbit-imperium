@@ -227,7 +227,6 @@ async function capture(page: Page, name: string, width: number) {
 for (const width of [390]) {
   test(
     `public overview and closed campaign stay readable without game bootstrap at ${width}px`,
-
     async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 })
       const now = Date.now()

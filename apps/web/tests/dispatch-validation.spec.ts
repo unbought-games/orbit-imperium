@@ -240,7 +240,6 @@ const dispatchResult = (page: Page) =>
 
 test(
   'successful dispatch resets ship and cargo quantities after preserving edits through review',
-
   async ({ page }) => {
     const state = await setup(page)
     state.launchError = null
@@ -416,7 +415,6 @@ for (const width of [390]) {
 
 test(
   'browser Back restores only the active review and waits for fresh fleet terms',
-
   async ({ page }) => {
     const state = await setup(page)
     const metal = page.getByRole('textbox', { name: 'Metal', exact: true })

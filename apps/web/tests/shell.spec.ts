@@ -37,7 +37,6 @@ import {
 
 test(
   'cold Defense navigation retains named universe and planet through preloading, switching and direct loads',
-
   async ({ page }) => {
     refuseFixtureReads(page, { progression: ['Upgrade'] })
     test.skip(
@@ -190,7 +189,6 @@ test('touch energy navigation and resource details remain usable with enlarged t
 
 test(
   'navigation keeps shell identity mounted through rapid route changes',
-
   async ({ browser }) => {
     const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
