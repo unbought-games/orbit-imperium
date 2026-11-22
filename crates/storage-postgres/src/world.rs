@@ -786,7 +786,8 @@ pub(crate) async fn save(
     s: &GameState,
     c: &WorldChanges,
 ) -> Result<(), StoreError> {
-    let old = &s.world.as_ref().ok_or(StoreError::CorruptData)?.records;
+    let world = s.world.as_ref().ok_or(StoreError::CorruptData)?;
+    let old = &world.records;
     let u = i.universe;
     crate::objectives::save(tx, i, old, &c.records).await?;
     crate::tutorial::save(tx, i, old, &c.records).await?;
@@ -903,10 +904,7 @@ pub(crate) async fn save(
         }
     }
     if old.lots != c.records.lots {
-        let owners: Vec<_> = s
-            .world
-            .as_ref()
-            .ok_or(StoreError::CorruptData)?
+        let owners: Vec<_> = world
             .covered_players
             .iter()
             .map(ToString::to_string)
@@ -935,6 +933,8 @@ pub(crate) async fn save(
             .execute(&mut **tx)
             .await
             .map_err(db_error)?;
+        crate::ranking_scores::save_current_scores(tx, u, &world.covered_players, &c.records.lots)
+            .await?;
     }
     for (id, f) in &c.records.missiles {
         if old.missiles.get(id) != Some(f) {

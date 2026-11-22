@@ -48,8 +48,9 @@ APIs; existing in-game views retain their current freshness.
 Read each observation from one consistent, committed database snapshot without
 settling gameplay or recording player/bot participation. It represents committed
 facts at the sample time, not a promise that all due gameplay has been processed.
-Preserve publication source facts and derive scores/ranks with existing domain
-logic; do not persist derived totals, ranks or duplicate authoritative game state.
+The hourly player publisher ranks the cached per-player values with the same
+rules used by High Scores. It stores the completed public rows for that edition.
+The API reads those rows without loading inventories.
 
 Transient publication failures receive bounded retries with backoff. After retry
 exhaustion, wait for the next scheduled boundary. Emit structured diagnostics and

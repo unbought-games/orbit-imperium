@@ -10,6 +10,8 @@ mod lab_support;
 mod logging;
 mod metrics;
 mod public_universe;
+mod ranking_snapshots;
+mod rankings_cli;
 mod request_metrics;
 mod restart;
 mod rules_cli;
@@ -119,6 +121,10 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         println!("{}", bots_cli::HELP);
         return Ok(());
     }
+    if args.len() == 3 && args[1] == "rankings" && args[2] == "--help" {
+        println!("{}", rankings_cli::HELP);
+        return Ok(());
+    }
     let selected = command(&args)?;
     let setup = (selected == "setup")
         .then(|| setup_cli::parse(&args, |key| env::var(key).ok()))
@@ -159,6 +165,7 @@ async fn run_main() -> Result<(), Box<dyn Error>> {
         duration_ms = connection_started.elapsed().as_millis() as u64
     );
     match selected {
+        "rankings" => rankings_cli::run(&store, rankings_cli::parse(&args[2..])?).await?,
         "bots" => bots_cli::run(&store, bots_cli::parse(&args)?).await?,
         "setup" => setup_cli::run(&store, setup.ok_or("missing setup options")?).await?,
         "universe" => {
@@ -248,6 +255,7 @@ fn command(args: &[String]) -> Result<&str, Box<dyn Error>> {
         "bots" => { bots_cli::parse(args)?; Ok(name) },
         "universe" | "setup" => Ok(name),
         "runtime" => { runtime_cli::parse(args)?; Ok(name) },
+        "rankings" => { rankings_cli::parse(&args[2..])?; Ok(name) },
         "rules" => { rules_cli::parse_rules_cli(args)?; Ok(name) },
         "audit" => { audit_cli::parse(args)?; Ok(name) },
         "serve" | "db-init" | "db-init-progression" | "db-init-fleets" | "db-init-raids" if args.len() <= 2 => Ok(name),

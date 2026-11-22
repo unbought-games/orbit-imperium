@@ -1,0 +1,11 @@
+groups:
+  - name: orbit-high-scores
+    rules:
+      - alert: OrbitDailyRankingSnapshotMissing
+        expr: orbit_ranking_snapshot_missing == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Daily High Scores snapshot missing for {{ $labels.universe }}'
+          description: 'Check the Orbit worker and score backfill, then run orbit rankings snapshot --universe {{ $labels.universe }}.'

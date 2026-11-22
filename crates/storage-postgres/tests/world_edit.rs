@@ -1091,3 +1091,135 @@ async fn research_network_uses_remote_labs_in_both_runtimes_and_operator_imports
         restarted.audit_universe(u).await.unwrap();
     }
 }
+
+/// A live inventory commit can race a retained player's initial score calculation.
+/// Both the writer and the online backfill must publish the exact paid value.
+#[tokio::test]
+async fn current_scores_follow_inventory_and_a_backfill_cannot_overwrite_a_newer_commit() {
+    let (store, pool) = fresh().await;
+    let u = UniverseId(Uuid::new_v4());
+    let setup = document(json!([
+        {"op":"add-player","user":"alice","password":"password","planet":"1:1:8"},
+        {"op":"add-player","user":"bob","password":"password","planet":"1:2:8"},
+        {"op":"set","user":"alice","planet":"1:1:8","ships":{"smallcargo":2}}
+    ]));
+    store
+        .apply_world_scenario(u, &setup, ScenarioMode::Create, Uuid::new_v4())
+        .await
+        .unwrap();
+    let players: Vec<(Uuid, i64)> = sqlx::query_as(
+        "SELECT p.id,p.current_score_micro FROM players p JOIN bodies b ON b.owner=p.id
+         WHERE p.universe=$1 ORDER BY b.system",
+    )
+    .bind(u.0)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let alice = players[0].0;
+    assert_eq!((players[0].1, players[1].1), (8_000 * SCALE, 0));
+    // Simulate rows from before the migration, including a member without lots.
+    sqlx::query("UPDATE players SET current_score_micro=NULL WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(store.backfill_ranking_scores(u, 1).await.unwrap(), 1);
+    assert_eq!(store.backfill_ranking_scores(u, 1).await.unwrap(), 1);
+    assert_eq!(store.backfill_ranking_scores(u, 1).await.unwrap(), 0);
+    let after: Vec<(Uuid, i64)> = sqlx::query_as(
+        "SELECT p.id,p.current_score_micro FROM players p JOIN bodies b ON b.owner=p.id
+         WHERE p.universe=$1 ORDER BY b.system",
+    )
+    .bind(u.0)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(after, players);
+
+    sqlx::query("UPDATE players SET current_score_micro=NULL WHERE id=$1")
+        .bind(alice)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut writer = pool.begin().await.unwrap();
+    let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *writer)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE asset_lots SET data=jsonb_set(data,'{unit_value_micro}','6000000000') WHERE universe=$1 AND data->>'owner'=$2")
+        .bind(u.0).bind(alice.to_string()).execute(&mut *writer).await.unwrap();
+    sqlx::query("UPDATE players SET current_score_micro=$2 WHERE id=$1")
+        .bind(alice)
+        .bind(12_000 * SCALE)
+        .execute(&mut *writer)
+        .await
+        .unwrap();
+    let background = store.clone();
+    let backfill = tokio::spawn(async move { background.backfill_ranking_scores(u, 1).await });
+    // Wait for the stale calculation to reach the row held by the real SQL
+    // writer, then release it. There is no timing assumption in this schedule.
+    loop {
+        let waiting: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)))",
+        )
+        .bind(pid)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        if waiting {
+            break;
+        }
+        assert!(
+            !backfill.is_finished(),
+            "backfill did not reach the locked score"
+        );
+        tokio::task::yield_now().await;
+    }
+    writer.commit().await.unwrap();
+    assert_eq!(backfill.await.unwrap().unwrap(), 1);
+    let won: i64 = sqlx::query_scalar("SELECT current_score_micro FROM players WHERE id=$1")
+        .bind(alice)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(won, 12_000 * SCALE);
+
+    let remove =
+        document(json!([{"op":"set","user":"alice","planet":"1:1:8","ships":{"smallcargo":0}}]));
+    store
+        .apply_world_scenario(u, &remove, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap();
+    let empty: i64 = sqlx::query_scalar("SELECT current_score_micro FROM players WHERE id=$1")
+        .bind(alice)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(empty, 0);
+    let give =
+        document(json!([{"op":"give","user":"alice","planet":"1:1:8","ships":{"smallcargo":1}}]));
+    store
+        .apply_world_scenario(u, &give, ScenarioMode::Patch, Uuid::new_v4())
+        .await
+        .unwrap();
+
+    // Invalid retained paid quantities must stop the batch, rather than erasing
+    // an invalid contribution or publishing a plausible zero score.
+    sqlx::query("UPDATE asset_lots SET data=jsonb_set(data,'{quantity}','-1') WHERE universe=$1 AND data->>'owner'=$2")
+        .bind(u.0).bind(alice.to_string()).execute(&pool).await.unwrap();
+    sqlx::query("UPDATE players SET current_score_micro=NULL WHERE id=$1")
+        .bind(alice)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.backfill_ranking_scores(u, 1).await,
+        Err(StoreError::CorruptData)
+    ));
+    assert!(matches!(
+        store
+            .backfill_ranking_scores(UniverseId(Uuid::new_v4()), 1)
+            .await,
+        Err(StoreError::NotFound)
+    ));
+}
