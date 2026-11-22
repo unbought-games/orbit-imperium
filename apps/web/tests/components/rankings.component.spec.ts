@@ -225,9 +225,12 @@ test('rank movement is accessible, stable through filters and paging, and refres
   const baseline = Date.UTC(2026, 9, 21)
   await prepare(page, mount, { players, baseline_at: baseline })
   const table = page.getByRole('table')
-  await expect(
-    page.getByText('Rank change since', { exact: false }).locator('time'),
-  ).toHaveAttribute('datetime', new Date(baseline).toISOString())
+  const comparison = page.getByText(/^Rank change since 10\/21\/2026,/)
+  await expect(comparison).toBeVisible()
+  await expect(comparison.locator('time')).toHaveAttribute(
+    'datetime',
+    new Date(baseline).toISOString(),
+  )
   await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText(
     '(+2)',
   )
@@ -276,6 +279,9 @@ test('rank movement is accessible, stable through filters and paging, and refres
   await expect(
     page.getByRole('dialog').getByLabel('Up 2 places since the baseline'),
   ).toHaveText('+2')
+  await expect(page.getByRole('dialog')).toContainText(
+    'Compared with the daily snapshot from 10/21/2026,',
+  )
   await page.keyboard.press('Escape')
   await expect(
     table.getByRole('button', {
