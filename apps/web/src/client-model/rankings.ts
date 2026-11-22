@@ -13,7 +13,7 @@ export function rankMovement(row: RankedRow, baselineAt?: number | null) {
   if (baselineAt == null)
     return {
       text: '—',
-      label: 'Rank change unavailable: no snapshot from yesterday',
+      label: 'Rank change unavailable without an earlier snapshot',
       direction: 'unknown',
     }
   if (row.previous_rank == null)

@@ -19,6 +19,7 @@ mod moon_removal;
 mod moons;
 mod public_universe;
 pub use public_universe::PublicationClaim;
+mod ranking_scores;
 mod rankings;
 mod report_sharing;
 mod social;

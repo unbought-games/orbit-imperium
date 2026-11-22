@@ -880,6 +880,14 @@ async fn membership_join_upgrade_preserves_unknowns_and_old_writers() {
         .unwrap(),
         2
     );
+    // The score rollout must distinguish a retained player awaiting backfill
+    // from a newly created player with no assets.
+    let scores: Vec<Option<i64>> =
+        sqlx::query_scalar("SELECT current_score_micro FROM players ORDER BY id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(scores, [None, Some(0)]);
     // The new preference defaults for retained memberships and old binaries' inserts.
     assert_eq!(
         sqlx::query_scalar::<_, i64>(

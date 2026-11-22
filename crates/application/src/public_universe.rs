@@ -1,8 +1,7 @@
-//! Independent, anonymous publication contracts. Only source observations are durable.
+//! Independent, anonymous publication contracts.
 use crate::*;
-use orbit_engine::{AssetLot, BodyId, Coordinates};
+use orbit_engine::{BodyId, Coordinates};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -95,14 +94,8 @@ pub enum PublicUniverseResponse {
 /// Historical facts at a publication boundary, never authoritative gameplay state.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum PublicSource {
-    Players {
-        names: PublicPlayerNames,
-        lots: Vec<AssetLot>,
-        alliances: Vec<AllianceRankingObservation>,
-    },
-    Planets {
-        planets: Vec<PublicPlanet>,
-    },
+    Players { players: Vec<PublicPlayer> },
+    Planets { planets: Vec<PublicPlanet> },
 }
 #[derive(Clone, Debug)]
 pub struct PublicObservation {
@@ -122,38 +115,14 @@ impl PublicObservation {
             source,
         } = self;
         Ok(match source {
-            PublicSource::Players {
-                names,
-                lots,
-                alliances,
-            } => {
-                let affiliations: BTreeMap<_, _> = alliances
-                    .iter()
-                    .flat_map(|a| a.members.iter().map(move |p| (*p, &a.alliance)))
-                    .collect();
-                let players = rank_players(names, lots)?
-                    .into_iter()
-                    .map(|p| PublicPlayer {
-                        player_id: p.player,
-                        username: p.username,
-                        points: p.points,
-                        rank: p.rank,
-                        alliance: affiliations.get(&p.player).map(|a| PublicFeedAlliance {
-                            id: a.id,
-                            name: a.name.clone(),
-                            tag: a.tag.clone(),
-                        }),
-                    })
-                    .collect();
-                PublicUniverseResponse::Players(PublicPlayers {
-                    schema_version: 1,
-                    universe,
-                    epoch,
-                    sampled_at,
-                    next_refresh_at: PublicFeed::Players.next_boundary(boundary),
-                    players,
-                })
-            }
+            PublicSource::Players { players } => PublicUniverseResponse::Players(PublicPlayers {
+                schema_version: 1,
+                universe,
+                epoch,
+                sampled_at,
+                next_refresh_at: PublicFeed::Players.next_boundary(boundary),
+                players,
+            }),
             PublicSource::Planets { planets } => PublicUniverseResponse::Planets(PublicPlanets {
                 schema_version: 1,
                 universe,

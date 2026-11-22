@@ -271,6 +271,15 @@ async fn scrape(State(state): State<MetricsState>) -> impl IntoResponse {
             )
             .unwrap();
         }
+        text.push_str("# TYPE orbit_ranking_snapshot_missing gauge\n");
+        for (universe, complete) in state.store.ranking_snapshot_status().await? {
+            writeln!(
+                text,
+                "orbit_ranking_snapshot_missing{{universe=\"{universe}\"}} {}",
+                u8::from(!complete)
+            )
+            .unwrap();
+        }
         for health in state.store.public_feed_health().await? {
             let universe = health.universe;
             let feed = health.feed.name();

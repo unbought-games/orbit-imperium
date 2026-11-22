@@ -204,6 +204,12 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
             drain_rx.clone(),
         )))
     });
+    let _ranking_snapshots = serve.role.runs_worker().then(|| {
+        BackgroundTask(tokio::spawn(crate::ranking_snapshots::run(
+            store.clone(),
+            drain_rx.clone(),
+        )))
+    });
     let wake = Arc::new(Notify::new());
     let scheduler = if serve.role.runs_worker() {
         Some(Scheduler(tokio::spawn(runtime::run(

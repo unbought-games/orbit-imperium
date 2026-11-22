@@ -5,7 +5,6 @@ use axum::{
 };
 use http_body_util::BodyExt;
 use orbit_application::*;
-use orbit_engine::{AssetLocation, AssetLot, CatalogKey, OperationId, Ruleset, ShipType};
 use orbit_storage_postgres::{MvpAccount, PgStore};
 use orbit_transport_http::{HttpConfig, router};
 use serde_json::{Value, json};
@@ -177,6 +176,15 @@ async fn public_feeds_publish_atomic_committed_facts_on_independent_schedules() 
             .is_none()
     );
     store.set_test_time(3_600_000).await.unwrap();
+    // Upgrades retain legacy hourly player observations on disk, but an
+    // unfiltered payload must never be loaded or treated as a completed edition.
+    sqlx::query("INSERT INTO public_feed_observations(universe,feed,epoch,boundary,sampled_at,source)
+                 SELECT id,'players',epoch,3600000,3600000,jsonb_build_object('Players', jsonb_build_object('lots', '[]'::jsonb)) FROM universes WHERE id=$1"
+    ).bind(u.0).execute(&pool).await.unwrap();
+    assert_eq!(
+        request(&app, &players_url, &[]).await.0,
+        StatusCode::SERVICE_UNAVAILABLE
+    );
     let (a, b) = tokio::join!(
         store.claim_publication(u, PublicFeed::Players),
         store.claim_publication(u, PublicFeed::Players)
@@ -242,35 +250,22 @@ async fn public_feeds_publish_atomic_committed_facts_on_independent_schedules() 
         assert!(player["alliance"].is_null());
     }
     assert_eq!(initial, game_facts(&pool).await);
-    let PublicSource::Players { names, lots, .. } = source.source else {
+    let PublicSource::Players { players } = source.source else {
         panic!()
     };
-    let ranked = rank_players(names, lots).unwrap();
-    assert_eq!(first["players"][0]["player_id"], json!(ranked[0].player));
+    assert_eq!(
+        first["players"][0]["player_id"],
+        json!(players[0].player_id)
+    );
 
     // An in-flight transaction is absent as a whole; the next sample sees both
     // identity and valuation committed together, never half of this change.
     let player: PlayerId =
         serde_json::from_value(first["players"][0]["player_id"].clone()).unwrap();
-    let lot = AssetLot {
-        id: OperationId(Uuid::new_v4()),
-        owner: player,
-        item: CatalogKey::Ship(ShipType::SmallCargo),
-        level: None,
-        location: AssetLocation::Player,
-        quantity: 2,
-        unit_value_micro: 3_000_000_000,
-        rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
-        source_operation: OperationId(Uuid::new_v4()),
-        acquired_at: 1000,
-        acquired_sequence: 1,
-    };
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("UPDATE accounts SET name='Renamed' WHERE id=(SELECT account FROM universe_memberships WHERE universe=$1 AND player=$2)").bind(u.0).bind(player.0).execute(&mut *tx).await.unwrap();
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-        .bind(u.0)
-        .bind(lot.id.to_string())
-        .bind(json!(lot))
+    sqlx::query("UPDATE players SET current_score_micro=6000000000 WHERE id=$1")
+        .bind(player.0)
         .execute(&mut *tx)
         .await
         .unwrap();
@@ -292,20 +287,18 @@ async fn public_feeds_publish_atomic_committed_facts_on_independent_schedules() 
     );
     tx.commit().await.unwrap();
     let sampled = store.sample_publication(&claim).await.unwrap();
-    let PublicSource::Players { names, lots, .. } = &sampled.source else {
-        panic!()
-    };
-    let expected = rank_players(names.clone(), lots.clone()).unwrap();
     let unchanged = game_facts(&pool).await;
     store.commit_publication(&claim, &sampled).await.unwrap();
     let (_, headers, second) = request(&app, &players_url, &[("if-none-match", &etag)]).await;
     assert_ne!(headers["etag"], etag);
     assert_eq!(second["players"][0]["username"], "Renamed");
     assert_eq!(second["players"][0]["points"], "6");
-    for (actual, expected) in second["players"].as_array().unwrap().iter().zip(expected) {
-        assert_eq!(actual["points"], expected.points);
-        assert_eq!(actual["rank"], expected.rank);
-    }
+    assert_eq!(second["players"][0]["rank"], 1);
+    assert!(
+        second["players"].as_array().unwrap()[1..]
+            .iter()
+            .all(|r| r["rank"] == 2 && r["points"] == "0")
+    );
     assert_eq!(
         second,
         request(
@@ -644,31 +637,23 @@ async fn expired_claims_rollback_failures_and_public_identity_changes() {
         .unwrap();
     assert_eq!(replaced["name"], "New Colony");
     assert_eq!(replaced["owner_player_id"], players[3].to_string());
-    // A nontransient invalid snapshot must not replace a valid publication.
+    // An incomplete score backfill cannot replace a valid published edition.
     let claim = store
         .claim_publication(u, PublicFeed::Players)
         .await
         .unwrap()
         .unwrap();
-    sqlx::query("UPDATE asset_lots SET data='{}' WHERE universe=$1")
-        .bind(u.0)
+    sqlx::query("UPDATE players SET current_score_micro=NULL WHERE id=$1")
+        .bind(players[0])
         .execute(&pool)
         .await
         .unwrap();
-    // Seed fixtures can have no valued lots: explicitly inject invalid source data.
-    sqlx::query(
-        "INSERT INTO asset_lots(universe,key,data) VALUES($1,'corrupt-publication-fixture','{}')",
-    )
-    .bind(u.0)
-    .execute(&pool)
-    .await
-    .unwrap();
     assert!(matches!(
         store.sample_publication(&claim).await,
-        Err(StoreError::CorruptData)
+        Err(StoreError::Unavailable)
     ));
     store
-        .fail_publication(&claim, &StoreError::CorruptData)
+        .fail_publication(&claim, &StoreError::Unavailable)
         .await
         .unwrap();
     assert!(

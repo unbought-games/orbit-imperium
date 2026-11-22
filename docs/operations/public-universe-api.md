@@ -130,7 +130,7 @@ actual sample time.
 
 ## Operation and observability
 
-Apply migration `0027_public_universe.sql` through the normal migration workflow.
+Apply the pending schema migrations through the normal upgrade workflow.
 The publisher runs in `worker` and combined server roles; API-only replicas serve
 the shared PostgreSQL observations. Keep at least one worker running. Worker
 polling is once per second; publication is scheduled on UTC boundaries but can
@@ -140,9 +140,15 @@ PostgreSQL claims coordinate replicas and persist the retry budget across
 restarts. Each attempt has a 120-second lease and a 60-second I/O guard. An
 abandoned lease consumes an attempt and becomes retryable after expiry; stale
 claim tokens cannot overwrite a newer observation. Publication atomically
-replaces source facts after validation and checks epoch and boundary at commit.
-Only the latest observation of each feed is retained; point totals and ranks are
-derived using existing domain logic, never stored.
+replaces the previous edition after checking its epoch and boundary at commit.
+Only the latest observation of each feed is retained. The hourly player publisher
+reads the cached scores and stores public point totals and ranks computed with
+the same rules as High Scores. API reads are independent of inventory size.
+
+When upgrading from a version that published inventory lots, the public players
+endpoint returns 503 until a worker publishes a compact edition. The normal
+hourly schedule and retry policy apply. Complete the [High Scores backfill](high-scores.md)
+so that every current member can be ranked.
 
 The existing private metrics listener (`ORBIT_METRICS_BIND`) exposes:
 

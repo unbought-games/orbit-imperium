@@ -222,13 +222,15 @@ test('rank movement is accessible, stable through filters and paging, and refres
     previous_rank:
       i === 0 ? 3 : i === 1 ? 1 : i === 2 ? null : i === 5 ? 86 : i + 1,
   }))
-  await prepare(page, mount, { players, baseline_at: 1792800000000 })
+  const baseline = Date.UTC(2026, 9, 21)
+  await prepare(page, mount, { players, baseline_at: baseline })
   const table = page.getByRole('table')
-  await expect(
-    page.getByText('Rank change since yesterday’s first snapshot', {
-      exact: false,
-    }),
-  ).toBeVisible()
+  const comparison = page.getByText(/^Rank change since 10\/21\/2026,/)
+  await expect(comparison).toBeVisible()
+  await expect(comparison.locator('time')).toHaveAttribute(
+    'datetime',
+    new Date(baseline).toISOString(),
+  )
   await expect(table.getByLabel('Up 2 places since the baseline')).toHaveText(
     '(+2)',
   )
@@ -277,6 +279,9 @@ test('rank movement is accessible, stable through filters and paging, and refres
   await expect(
     page.getByRole('dialog').getByLabel('Up 2 places since the baseline'),
   ).toHaveText('+2')
+  await expect(page.getByRole('dialog')).toContainText(
+    'Compared with the daily snapshot from 10/21/2026,',
+  )
   await page.keyboard.press('Escape')
   await expect(
     table.getByRole('button', {
@@ -309,10 +314,10 @@ test('rank movement is accessible, stable through filters and paging, and refres
   await expect(
     table
       .locator('tr[data-self]')
-      .getByLabel('Rank change unavailable: no snapshot from yesterday'),
+      .getByLabel('Rank change unavailable without an earlier snapshot'),
   ).toHaveText('(—)')
   await expect(
-    page.getByText('Rank changes unavailable:', { exact: false }),
+    page.getByText('Rank changes will appear', { exact: false }),
   ).toBeVisible()
 })
 test('alliance standings share one snapshot, search names and tags, and navigate around my alliance', async ({
@@ -406,7 +411,7 @@ test('alliance standings share one snapshot, search names and tags, and navigate
   ).toBeDisabled()
   await expect(table.locator('tr[data-self]')).toHaveCount(0)
   await expect(
-    table.getByLabel('Rank change unavailable: no snapshot from yesterday'),
+    table.getByLabel('Rank change unavailable without an earlier snapshot'),
   ).toHaveCount(50)
   await page.getByRole('searchbox').fill('no such alliance')
   await expect(
@@ -433,7 +438,7 @@ test('legacy rankings responses retain players and show an honest empty alliance
     page.getByRole('button', { name: 'Around my alliance' }),
   ).toBeDisabled()
   await expect(
-    page.getByText('Rank changes unavailable:', { exact: false }),
+    page.getByText('Rank changes will appear', { exact: false }),
   ).toBeVisible()
 })
 

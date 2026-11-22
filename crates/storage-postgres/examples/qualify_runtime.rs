@@ -157,6 +157,12 @@ async fn main() {
                 .await
                 .unwrap();
         }
+        sqlx::query("UPDATE players SET current_score_micro=$2 WHERE id=$1")
+            .bind(binding.player.0)
+            .bind(lots_per_player as i64 * 4_000 * SCALE)
+            .execute(&pool)
+            .await
+            .unwrap();
     }
     // Retained terminal operations live in a separate fixture universe. The
     // recent/older split models retry saturation and a cleanup backlog, without

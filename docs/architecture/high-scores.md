@@ -1,119 +1,58 @@
 # High Scores
 
-High Scores ranks players and alliances by total completed-asset value in their
-current universe. Both views support search, paging and navigation around the
-viewer. Player rows link alliance tags to public recruitment pages; player
-details show the score from the selected ranking response and public identity.
+High Scores ranks current players and alliances by the value of completed assets.
+The API reads one compact row per player in a repeatable-read transaction.
+Opening the page and pressing Refresh both read the current committed standings.
 
-The owner selected fresh snapshots on entry and explicit refresh on 2026-10-24,
-superseding the historical G17 proposal for shared five-minute cuts. Each request
-reads universe and alliance membership, names and asset lots in one PostgreSQL repeatable-read, read-only
-transaction. It does not settle work, write totals, record presence, or use a
-background snapshot publisher. After reading, the first request of a UTC day
-records the source observation separately for historical rank comparisons. It exposes its sample time and whether due work
-was still pending. This is a snapshot of committed state, not a claim that the
-entire universe has settled through a particular logical deadline.
+## Current scores
 
-`value_completed_assets` remains the valuation owner. Ranking groups existing
-lots by player, sums their exact paid values, then divides by 1,000,000,000 micro
-units per point. The browser receives decimal point strings, never asset lots.
-Equal displayed whole points share rank: 1, 1, 3. Canonical player UUID order makes
-ties stable. Current members with zero points, vacation or inactivity remain in
-the list; players without current membership do not. Asset values include ships
-in flight and exclude balances, cargo, fuel and unfinished work.
+Each player's `current_score_micro` is the exact sum of quantity times paid unit
+value across their asset lots. Inventory commits write that absolute value in
+the same transaction as the lots. A player who loses their last asset scores
+zero. A change in location preserves paid value. Resources, cargo, fuel and
+unfinished work are excluded. Asset lots remain the authority for rebuilding
+the score.
 
-`POST /api/v4/universes/{universe}/rankings` takes `QueryContext`, requires the
-existing session/Origin/CSRF and membership/epoch checks, and returns `Rankings`
-with `Cache-Control: no-store`. The response contains the full public roster so
-50-row pages, case-insensitive substring search and Around me all use the same
-observation. Filters preserve universe ranks. This choice avoids persisted derived
-totals and page drift; it is not a capacity claim for large universes. Query cost
-is proportional to current asset lots and the response to current members.
+Existing players can have an uninitialized score during an upgrade. The online
+backfill only writes rows that remain uninitialized, including when gameplay
+commits concurrently. Rankings become available when every current member has
+an initialized score. The [operator guide](../operations/high-scores.md) covers
+rollout, retry, capture and monitoring.
 
-Names are the universe's account labels observed with the score snapshot.
-Visible rows also use the existing current public-profile integration for names
-and expiring supporter badges; those identities can refresh separately from
-scores. Search uses the snapshot labels. A `Rankings` profile source accepts at
-most 50 player IDs and resolves only current members of the bound universe. It
-never exposes provider subjects, private account records or inventories.
-
-The client retains one response in a screen-scoped Zustand controller. Search,
-offset and selected player ID are local interactions; ranks and pages are not
-stored separately. Refresh failure preserves the previous observation with an
-error, while authentication/epoch changes follow the game session's existing
-invalidation behavior. Request generations prevent abandoned or superseded
-responses from replacing the list.
-
-Validation lives in application ranking unit tests, the PostgreSQL `rankings`
-suite (including HTTP authorization), client selectors/controller tests, and
-`high-scores.spec.ts` browser fixtures. Run them through the existing Make/npm
-entry points described in the project README.
+One displayed point is 1,000,000,000 micro-units. The API computes alliance totals
+and averages from the exact values of their current members before rounding
+down. Equal whole points share a rank (1, 1, 3), with UUID ordering for stable
+display. Members with zero points remain ranked. Alliance summaries and the
+hourly public player feed use the same scores and ranking rules.
 
 ## Daily rank movement
 
-Movement compares the current response with the previous UTC calendar day's
-first recorded observation. The exact timestamp is shown; this is deliberately
-not labeled as a rolling 24-hour change or a midnight cut. If nobody opened High
-Scores yesterday, or history has just started, movement is unavailable. New means
-a current member was absent from a valid baseline. Zero means the shared rank is
-unchanged, including ties. Positive values mean climbing toward rank one.
+A worker captures standings independently of page traffic on the first
+successful run each UTC day. A snapshot records the universe and epoch, actual
+sample time, and the ID, exact value and rank of every current player and
+alliance. Workers and the manual operator command share the same unique daily
+key. A retry preserves the completed observation.
 
-`ranking_observations` stores historical source facts: the observed member IDs and
-asset lots, plus the observation timestamp. It never stores point totals, ranks,
-or deltas. `value_completed_assets` and the same competition-ranking function
-value and rank both observations on read. Former members remain in the historical
-roster when computing historical ranks, but only current members are returned.
-The private lot data never leaves the server. The public additions are
-`baseline_at` and each member's nullable `previous_rank`; optional contract fields
-allow an older server response to display an unavailable comparison.
+Movement compares live rank with the newest snapshot from an earlier UTC day.
+A late capture uses the real time it ran. When a day is missed, the previous
+available snapshot supplies the comparison, with its date visible on the page.
+The two latest completed captures cover today and the preceding available day.
+A missing baseline shows unavailable movement. A missing member of a valid
+baseline shows New. Historical alliance ranks retain the memberships at capture.
 
-The game read remains repeatable-read and read-only. A separate short transaction
-inserts the daily observation with `ON CONFLICT DO NOTHING`; concurrent requests
-cannot replace the winning observation. History is scoped by universe and epoch.
-Each daily insertion prunes observations older than yesterday for that universe,
-so there is no unbounded daily archive or new background scheduler. Inactive
-universes keep their last observations until their next request. Recording does
-not settle gameplay, admit commands or update activity. Read/record failures use
-the existing refresh error behavior and retain the last complete client response.
+## Request and presentation
 
-The browser derives signed movement from the response. Search, paging and Around
-me retain the global comparison. Table and detail indicators include accessible
-text, visible signs, and distinct labels for missing history and new players.
+`POST /api/v4/universes/{universe}/rankings` keeps the existing session,
+Origin, CSRF, membership and epoch checks. Its no-store response carries the
+sample time, queued-work indicator, player and alliance rows, baseline time
+and previous ranks. Asset lots and private rosters stay on the server.
 
-## Alliance standings
-
-The same response includes `alliances` and `alliance_baseline_at`. Each public
-row contains alliance identity, member count, total and average point strings,
-rank and nullable previous rank. It never includes a current or historical
-roster. Player rows carry their current observed optional alliance identity.
-
-Alliance valuation sums each member's exact completed-asset value before
-rounding. Totals use an i128 accumulator over validated i64 member values;
-points divide that total by 1,000,000,000, and average points divide the exact
-total by member count and 1,000,000,000. Both round down. Summing already rounded
-player points would lose small members' contributions and is not used. Alliance
-ranking shares the player competition rules (1, 1, 3), with alliance UUID order
-making equal rows deterministic. Zero-point alliances remain ranked.
-
-Daily source observations include alliance identity and member IDs alongside
-asset lots in the same repeatable-read snapshot. Membership changes, renames and
-disband do not rewrite yesterday's facts. Disbanded alliances still participate
-in yesterday's rank calculation but are omitted from today's rows. An absent
-`alliances` key in legacy observations means alliance history is unavailable;
-an observed empty list means history is valid and all current alliances are new.
-An alliance baseline can therefore be unavailable while the player baseline is
-available. The first observation of a day is never replaced to fill legacy gaps.
-
-`alliance_scores_in_snapshot` derives the same scores and movement inside an
-existing repeatable-read transaction for public/private alliance summaries.
-It returns only public score DTOs and does not record daily observations. There
-are no stored score, average, count or rank columns.
-
-The Players/Alliances switch is local interaction state. Search, pagination and
-own-alliance rows derive directly from the retained response. Alliance search
-matches normalized names or tags; own alliance comes from the viewer's player
-row in that observation. Refresh updates all of these together. An alliance row
-links to its public recruitment page, where private roster information is absent.
+The page retains the response in its screen-scoped controller. Search, 50-row
+paging, Around me and switching between players and alliances operate on this
+observation. Filtering preserves global rank. Visible player details use the
+existing scoped public-profile source. A refresh failure preserves the last
+complete response. The [database suite](../../crates/storage-postgres/tests/rankings.rs)
+covers the read and history boundaries.
 
 ## Validation record — 2026-10-24
 

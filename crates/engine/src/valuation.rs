@@ -29,18 +29,34 @@ pub struct ScoreLedgerDelta {
     pub delta: i64,
     pub valuation_hash: Hash,
 }
-pub fn value_completed_assets(lots: &[AssetLot], owner: PlayerId) -> Result<i64, InvariantError> {
-    let mut sum = 0i128;
-    for l in lots.iter().filter(|l| l.owner == owner) {
-        if l.quantity < 0 || l.unit_value_micro < 0 {
-            return Err(InvariantError("invalid valuation lot".into()));
-        }
-        sum = sum
-            .checked_add(i128::from(l.quantity) * i128::from(l.unit_value_micro))
-            .ok_or_else(|| InvariantError("score overflow".into()))?;
+fn add_lot_value(sum: i64, lot: &AssetLot) -> Result<i64, InvariantError> {
+    if lot.quantity < 0 || lot.unit_value_micro < 0 {
+        return Err(InvariantError("invalid valuation lot".into()));
     }
-    i64::try_from(sum).map_err(|_| InvariantError("score overflow".into()))
+    lot.quantity
+        .checked_mul(lot.unit_value_micro)
+        .and_then(|value| sum.checked_add(value))
+        .ok_or_else(|| InvariantError("score overflow".into()))
 }
+
+pub fn value_completed_assets(lots: &[AssetLot], owner: PlayerId) -> Result<i64, InvariantError> {
+    lots.iter()
+        .filter(|lot| lot.owner == owner)
+        .try_fold(0, add_lot_value)
+}
+
+/// Compute the exact committed values for all owners of the supplied lots in one pass.
+pub fn value_completed_assets_by_owner(
+    lots: &[AssetLot],
+) -> Result<std::collections::BTreeMap<PlayerId, i64>, InvariantError> {
+    let mut totals = std::collections::BTreeMap::new();
+    for lot in lots {
+        let total = totals.entry(lot.owner).or_default();
+        *total = add_lot_value(*total, lot)?;
+    }
+    Ok(totals)
+}
+
 /// Select the oldest acquisition lineage; preserve source IDs and paid values when splitting.
 pub fn take_asset_lots(
     lots: &mut Vec<AssetLot>,

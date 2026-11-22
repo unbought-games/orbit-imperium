@@ -44,7 +44,7 @@ impl PgStore {
             attempts = 0;
             retry_at = boundary;
         }
-        let completed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM public_feed_observations WHERE universe=$1 AND feed=$2 AND epoch=$3 AND boundary=$4)")
+        let completed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM public_feed_observations WHERE universe=$1 AND feed=$2 AND epoch=$3 AND boundary=$4 AND (feed<>'players' OR compact_players))")
             .bind(universe.0).bind(feed.name()).bind(epoch).bind(boundary).fetch_one(&mut *tx).await.map_err(db_error)?;
         if at < boundary || at < retry_at || completed || attempts >= PUBLICATION_ATTEMPTS {
             tx.commit().await.map_err(db_error)?;
@@ -83,18 +83,27 @@ impl PgStore {
         }
         let source = match claim.feed {
             PublicFeed::Players => {
-                let names: Vec<(Uuid, String)> = sqlx::query_as("SELECT p.id,a.name FROM players p JOIN universe_memberships m ON m.universe=p.universe AND m.player=p.id JOIN accounts a ON a.id=m.account WHERE p.universe=$1 ORDER BY p.id")
-                    .bind(claim.universe.0).fetch_all(&mut *tx).await.map_err(db_error)?;
-                let (lots, alliances) =
-                    crate::rankings::source_facts(&mut tx, claim.universe, claim.epoch).await?;
-                PublicSource::Players {
-                    names: names
-                        .into_iter()
-                        .map(|(id, name)| (PlayerId(id), name))
-                        .collect(),
-                    lots,
-                    alliances,
-                }
+                let roster = crate::rankings::score_roster(&mut tx, claim.universe, claim.epoch)
+                    .await?
+                    .ok_or(StoreError::Unavailable)?;
+                let ranked = roster
+                    .player_rows(None)
+                    .map_err(|_| StoreError::CorruptData)?;
+                let players = ranked
+                    .into_iter()
+                    .map(|p| PublicPlayer {
+                        player_id: p.player,
+                        username: p.username,
+                        rank: p.rank,
+                        points: p.points,
+                        alliance: p.alliance.map(|a| PublicFeedAlliance {
+                            id: a.id,
+                            name: a.name,
+                            tag: a.tag,
+                        }),
+                    })
+                    .collect();
+                PublicSource::Players { players }
             }
             PublicFeed::Planets => {
                 let rows = sqlx::query("SELECT id,name,galaxy,system,position,owner FROM bodies WHERE universe=$1 AND kind='Planet' ORDER BY galaxy,system,position,id")
@@ -138,11 +147,6 @@ impl PgStore {
             sampled_at,
             source,
         };
-        // Reject invalid source facts before making them the only published observation.
-        observation
-            .clone()
-            .project()
-            .map_err(|_| StoreError::CorruptData)?;
         Ok(observation)
     }
 
@@ -171,9 +175,9 @@ impl PgStore {
         if changed != 1 || at >= claim.feed.next_boundary(claim.boundary) {
             return Err(StoreError::StaleClaim);
         }
-        sqlx::query("INSERT INTO public_feed_observations(universe,feed,epoch,boundary,sampled_at,source) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(universe,feed) DO UPDATE SET epoch=EXCLUDED.epoch,boundary=EXCLUDED.boundary,sampled_at=EXCLUDED.sampled_at,source=EXCLUDED.source")
+        sqlx::query("INSERT INTO public_feed_observations(universe,feed,epoch,boundary,sampled_at,source,compact_players) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(universe,feed) DO UPDATE SET epoch=EXCLUDED.epoch,boundary=EXCLUDED.boundary,sampled_at=EXCLUDED.sampled_at,source=EXCLUDED.source,compact_players=EXCLUDED.compact_players")
             .bind(claim.universe.0).bind(claim.feed.name()).bind(claim.epoch.0).bind(claim.boundary).bind(observation.sampled_at)
-            .bind(serde_json::to_value(&observation.source).map_err(|_| StoreError::CorruptData)?)
+            .bind(sqlx::types::Json(&observation.source)).bind(claim.feed == PublicFeed::Players)
             .execute(&mut *tx).await.map_err(db_error)?;
         tx.commit().await.map_err(db_error)
     }
@@ -199,7 +203,7 @@ impl PgStore {
         feed: PublicFeed,
     ) -> Result<PublicObservation, StoreError> {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
-        let row = sqlx::query("SELECT u.epoch,o.boundary,o.sampled_at,o.source FROM universes u LEFT JOIN public_feed_observations o ON o.universe=u.id AND o.epoch=u.epoch AND o.feed=$2 WHERE u.id=$1")
+        let row = sqlx::query("SELECT u.epoch,o.boundary,o.sampled_at,o.source FROM universes u LEFT JOIN public_feed_observations o ON o.universe=u.id AND o.epoch=u.epoch AND o.feed=$2 AND (o.feed<>'players' OR o.compact_players) WHERE u.id=$1")
             .bind(universe.0).bind(feed.name()).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
         let source: Option<serde_json::Value> = row.try_get("source").map_err(db_error)?;
         let observation = PublicObservation {
@@ -240,7 +244,7 @@ impl PgStore {
     pub async fn public_feed_health(&self) -> Result<Vec<PublicFeedHealth>, StoreError> {
         let mut tx = crate::snapshots::begin(self, &self.pool).await?;
         let at = now(&mut tx).await?;
-        let rows = sqlx::query("SELECT u.id,f.feed,o.sampled_at,o.boundary AS published_boundary,j.boundary,j.attempts FROM universes u CROSS JOIN (VALUES ('players'),('planets')) f(feed) LEFT JOIN public_feed_jobs j ON j.universe=u.id AND j.epoch=u.epoch AND j.feed=f.feed LEFT JOIN public_feed_observations o ON o.universe=u.id AND o.epoch=u.epoch AND o.feed=f.feed ORDER BY u.id,f.feed")
+        let rows = sqlx::query("SELECT u.id,f.feed,o.sampled_at,o.boundary AS published_boundary,j.boundary,j.attempts FROM universes u CROSS JOIN (VALUES ('players'),('planets')) f(feed) LEFT JOIN public_feed_jobs j ON j.universe=u.id AND j.epoch=u.epoch AND j.feed=f.feed LEFT JOIN public_feed_observations o ON o.universe=u.id AND o.epoch=u.epoch AND o.feed=f.feed AND (o.feed<>'players' OR o.compact_players) ORDER BY u.id,f.feed")
             .fetch_all(&mut *tx).await.map_err(db_error)?;
         let health = rows
             .iter()
