@@ -118,6 +118,34 @@ test('phone balance rows keep a billion and small amounts intact in both resourc
   }
 })
 
+test('a resource update keeps the mobile overview at the player’s scroll position', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const fixture = empireFixture()
+  const planet = fixture.bodies[0]
+  planet.amounts.metal = '9999000000'
+  await mountEmpire(page, {
+    bodies: [planet],
+    missions: { ...fixture.missions, fleets: [], incoming: [] },
+  })
+  const metal = page
+    .getByRole('group', { name: 'Metal wealth' })
+    .locator('strong')
+  await expect(metal).toHaveText('9,999')
+  const position = await page
+    .getByRole('group', { name: 'Deuterium wealth' })
+    .evaluate((row) => {
+      window.scrollBy(0, row.getBoundingClientRect().top)
+      return window.scrollY
+    })
+  expect(position).toBeGreaterThan(0)
+  planet.amounts.metal = '10000000000'
+  await deliverEmpire(page)
+  await expect(metal).toHaveText('10,000')
+  expect(await page.evaluate(() => window.scrollY)).toBe(position)
+})
+
 test('resource columns respond to changing balances and panel width at a fixed viewport', async ({
   page,
 }) => {
