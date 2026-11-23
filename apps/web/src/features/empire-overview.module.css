@@ -60,6 +60,15 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(max-content, 1fr));
   container-type: inline-size;
+  font-variant-numeric: tabular-nums;
+}
+.wealthResources[data-measure-columns],
+.resources[data-measure-columns] {
+  position: absolute;
+  inset: 0 auto auto 0;
+  height: 0;
+  overflow: clip;
+  visibility: hidden;
 }
 .wealthResources[data-rows],
 .resources[data-rows] {
