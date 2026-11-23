@@ -2,7 +2,7 @@ import { routeTarget } from '../../src/shell/route-target'
 import type { Page } from '../../src/shell/routes'
 import shellStyles from '../../src/shell/game-shell.module.css'
 import { ScreenContext } from '../../src/shell/screen-context'
-import { PlanetRename } from '../../src/features/planet-rename'
+import { BodyRename } from '../../src/features/body-rename'
 import { PlanetActions } from '../../src/features/planet-actions'
 import { VacationSettings } from '../../src/features/vacation'
 import { EmpireDeletion } from '../../src/features/empire-deletion'
@@ -160,7 +160,7 @@ function Surface() {
             {window.empireInput?.surface === 'rename' ? (
               <>
                 <ErrorBanner model={model} />
-                <PlanetRename model={model} body={body} />
+                <BodyRename model={model} body={body} />
               </>
             ) : window.empireInput?.surface === 'settings' ? (
               <>
@@ -190,7 +190,12 @@ function Surface() {
                 item={fleetRoute?.[1] ?? window.empireInput?.fleetId ?? null}
               />
             ) : screen === 'overview' || screen === 'fleets' ? (
-              <EmpireOverview model={model} view={view} body={body} />
+              <>
+                {window.empireInput?.showActionStatus && (
+                  <ErrorBanner model={model} />
+                )}
+                <EmpireOverview model={model} view={view} body={body} />
+              </>
             ) : (
               <WorkSummaries
                 view={view}

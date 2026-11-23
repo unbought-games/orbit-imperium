@@ -5,17 +5,19 @@ import type { BoundView } from '../client-model/commands'
 import { Button } from '../ui/button'
 import { Input } from '../ui/form'
 import { bodyName, coordinates } from '../ui/format'
-import { usePlanetRename } from './use-planet-rename'
-import styles from './planet-rename.module.css'
+import { useBodyRename } from './use-body-rename'
+import styles from './body-rename.module.css'
 
-export function PlanetRename({
+export function BodyRename({
   model,
   body,
 }: {
   model: Coordinator
   body: BoundView['bodies'][number]
 }) {
-  const rename = usePlanetRename(model, body)
+  const rename = useBodyRename(model, body)
+  const action = `Rename ${body.kind.toLowerCase()}`
+  const actionLabel = `${action} ${coordinates(body)}`
   const id = useId()
   const opener = useRef<HTMLButtonElement>(null)
   const editing = rename.draft !== null && !rename.saved
@@ -35,17 +37,17 @@ export function PlanetRename({
             ref={opener}
             type="button"
             variant="ghost"
-            size="icon"
+            size="icon-touch"
             onClick={rename.edit}
-            aria-label={`Rename planet ${coordinates(body)}`}
-            title="Rename planet"
+            aria-label={actionLabel}
+            title={action}
           >
-            <Pencil size={14} aria-hidden="true" />
+            <Pencil size={16} aria-hidden="true" />
           </Button>
         </div>
       ) : (
         <form
-          aria-label={`Rename planet ${coordinates(body)}`}
+          aria-label={actionLabel}
           onSubmit={(event) => {
             event.preventDefault()
             if (rename.canSave) void rename.save()
@@ -60,7 +62,7 @@ export function PlanetRename({
           <div className={styles.nameRow}>
             <Input
               id={id}
-              aria-label="Planet name"
+              aria-label={`${body.kind} name`}
               autoFocus
               onFocus={(event) => event.currentTarget.select()}
               value={rename.draft ?? ''}
@@ -71,22 +73,22 @@ export function PlanetRename({
             <Button
               type="submit"
               variant="ghost"
-              size="icon"
+              size="icon-touch"
               disabled={!rename.canSave}
               aria-label="Save name"
               title="Save name"
             >
-              <Check size={14} aria-hidden="true" />
+              <Check size={16} aria-hidden="true" />
             </Button>
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="icon-touch"
               onClick={cancel}
               aria-label="Cancel"
               title="Cancel"
             >
-              <X size={14} aria-hidden="true" />
+              <X size={16} aria-hidden="true" />
             </Button>
           </div>
           <small id={`${id}-help`} className={styles.srOnly}>

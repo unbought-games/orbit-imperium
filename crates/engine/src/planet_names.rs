@@ -12,7 +12,7 @@ pub fn normalize_planet_name(name: &str) -> Result<String, GameError> {
     Ok(name.to_owned())
 }
 
-pub(crate) fn rename_planet(
+pub(crate) fn rename_body(
     state: &GameState,
     actor: Actor,
     id: BodyId,
@@ -21,9 +21,6 @@ pub(crate) fn rename_planet(
     let body = state.bodies.get(&id).ok_or(GameError::NotOwned)?;
     if actor != Actor::Player(body.owner) {
         return Err(GameError::NotOwned);
-    }
-    if body.kind != BodyKind::Planet {
-        return Err(GameError::InvalidInput);
     }
     let mut renamed = body.clone();
     renamed.name = Some(normalize_planet_name(name)?);

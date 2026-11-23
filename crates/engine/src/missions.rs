@@ -936,7 +936,7 @@ pub(crate) fn resolve(
         Input::Command(Command::World {
             action: WorldAction::RenamePlanet { body, name },
         }) => {
-            let renamed = crate::planet_names::rename_planet(s, i.actor, *body, name)?;
+            let renamed = crate::planet_names::rename_body(s, i.actor, *body, name)?;
             c.affected_viewers.insert(renamed.owner);
             c.bodies.push(renamed);
         }
