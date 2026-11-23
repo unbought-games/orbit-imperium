@@ -17,6 +17,7 @@ import { hasOrderNotice, type Attempt } from '../client-model/commands'
 
 export function ActionStatus({ model }: { model: Coordinator }) {
   const state = useStore(model.store)
+  const bodies = state.view?.bodies
   const connection = connectionStatus(state)
   const attempts = [...state.attempts]
     .filter(
@@ -28,13 +29,17 @@ export function ActionStatus({ model }: { model: Coordinator }) {
   const previous = useRef<Map<string, string> | null>(null)
   // Existing results are already visible on mount; announce only later changes.
   if (!previous.current)
-    previous.current = changedAnnouncements(new Map(), attempts).current
+    previous.current = changedAnnouncements(new Map(), attempts, bodies).current
   const [announcement, setAnnouncement] = useState('')
   const signature = attempts
     .map((a) => `${a.envelope.command_id}:${a.status}:${a.reconciled}`)
     .join('|')
   useEffect(() => {
-    const change = changedAnnouncements(previous.current ?? new Map(), attempts)
+    const change = changedAnnouncements(
+      previous.current ?? new Map(),
+      attempts,
+      bodies,
+    )
     previous.current = change.current
     setAnnouncement(change.message)
   }, [signature])
@@ -125,8 +130,10 @@ function OrderError({
   return (
     <div role="group" aria-label="Order status">
       <p role="alert">
-        <strong>{actionLabel(attempt.envelope.command)}</strong> ·{' '}
-        {actionMessage(attempt)}
+        <strong>
+          {actionLabel(attempt.envelope.command, state.view?.bodies)}
+        </strong>{' '}
+        · {actionMessage(attempt)}
       </p>
       {attempt.status === 'uncertain' ? (
         <Button

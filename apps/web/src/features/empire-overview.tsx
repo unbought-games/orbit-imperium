@@ -13,7 +13,7 @@ import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlanetActions } from './planet-actions'
-import { PlanetRename } from './planet-rename'
+import { BodyRename } from './body-rename'
 import { EmpireName } from './empire-name'
 import { EmpireEmblemLink } from './empire-emblem-link'
 import type { Coordinator } from '../client-model/coordinator'
@@ -556,8 +556,8 @@ function PlanetDossier({
               : body.kind}
             {selected && <b>Command focus</b>}
           </span>
-          {view.protocol === 4 && body.kind === 'Planet' ? (
-            <PlanetRename model={model} body={body} />
+          {view.protocol === 4 ? (
+            <BodyRename model={model} body={body} />
           ) : (
             <h3 className={styles.planetName}>{bodyName(body)}</h3>
           )}

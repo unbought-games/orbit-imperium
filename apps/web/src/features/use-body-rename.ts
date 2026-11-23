@@ -9,7 +9,7 @@ import {
   trimmedPlanetName,
 } from './planet-name'
 
-export function usePlanetRename(
+export function useBodyRename(
   model: Coordinator,
   body: BoundView['bodies'][number],
 ) {
@@ -25,12 +25,12 @@ export function usePlanetRename(
     // Retire the edit before the coordinator prunes its successful command.
     if (saved) setDraft(null)
   }, [saved])
-  const error = draft === null ? '' : planetNameError(draft)
+  const error = draft === null ? '' : planetNameError(draft, body.kind)
   const status =
     pending && pending.status !== 'uncertain'
       ? actionMessage(pending)
       : submitted?.status === 'committed' && submitted.reconciled
-        ? 'Planet renamed.'
+        ? `${body.kind} renamed.`
         : ''
   return {
     saved,

@@ -2,76 +2,6 @@ use super::*;
 
 const AT: i64 = 1_790_000_000_000;
 
-// Seed only body creation. All paid facilities, fleet commitments, and ordered
-// completions below use the game command and worker paths.
-async fn seed_moon(pool: &PgPool, b: Binding, parent: BodyId) -> BodyId {
-    let input = InputId(Uuid::new_v4());
-    let id = BodyId(derived_id(input, "moon:0"));
-    let mut tx = pool.begin().await.unwrap();
-    insert_body(&mut tx, parent.0, id.0).await;
-    sqlx::query("INSERT INTO building_levels(body,building,level) SELECT $2,building,0 FROM building_levels WHERE body=$1")
-        .bind(parent.0).bind(id.0).execute(&mut *tx).await.unwrap();
-    sqlx::query("INSERT INTO production_settings(body,revision,data) SELECT $2,0,jsonb_set(jsonb_set(data,'{body}',to_jsonb($2::text)),'{revision}','0') FROM production_settings WHERE body=$1")
-        .bind(parent.0).bind(id.0).execute(&mut *tx).await.unwrap();
-    for kind in [
-        "constructions".to_owned(),
-        "manufacturing".into(),
-        "production".into(),
-        format!("inventory:{}", b.player),
-    ] {
-        sqlx::query("INSERT INTO collection_heads(universe,kind,key) VALUES($1,$2,$3)")
-            .bind(b.universe.0)
-            .bind(kind)
-            .bind(id.0)
-            .execute(&mut *tx)
-            .await
-            .unwrap();
-    }
-    let genesis = MoonGenesis {
-        body: id,
-        parent,
-        diameter_km: 8100,
-        input,
-        created_at: AT,
-        profile: MOON_PROFILE.into(),
-    };
-    sqlx::query("INSERT INTO moon_genesis(universe,id,parent,data) VALUES($1,$2,$3,$4)")
-        .bind(b.universe.0)
-        .bind(id.0)
-        .bind(parent.0)
-        .bind(sqlx::types::Json(genesis))
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
-    id
-}
-
-async fn player(
-    store: &PgStore,
-    u: UniverseId,
-    username: &str,
-    pool: &PgPool,
-) -> (Binding, BodyId) {
-    let account = SessionService::new(store.clone())
-        .login(username, "password", None)
-        .await
-        .unwrap()
-        .session
-        .account;
-    let b = GameService::new(store.clone())
-        .current_binding(account, u, Uuid::new_v4())
-        .await
-        .unwrap()
-        .binding;
-    let id: Uuid = sqlx::query_scalar("SELECT id FROM bodies WHERE owner=$1 AND kind='Planet'")
-        .bind(b.player.0)
-        .fetch_one(pool)
-        .await
-        .unwrap();
-    (b, BodyId(id))
-}
-
 async fn launch(store: &PgStore, binding: Binding, intent: FleetIntent) -> i64 {
     let result = GameService::new(store.clone())
         .world_query(
@@ -132,7 +62,7 @@ async fn destruction_retires_paid_lunar_jobs_before_their_deadlines_without_touc
         .unwrap();
     let (attacker, origin) = player(&store, u, "siege-attacker", &pool).await;
     let (defender, parent) = player(&store, u, "lunar-builder", &pool).await;
-    let moon = seed_moon(&pool, defender, parent).await;
+    let moon = seed_moon(&pool, defender, parent, AT).await;
     store.prepare_scoped_runtime(u, 100).await.unwrap();
     store.activate_scoped_runtime(u).await.unwrap();
     for building in [

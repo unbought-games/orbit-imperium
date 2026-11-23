@@ -2750,7 +2750,7 @@ mod heavy_fighter;
 mod espionage_returns;
 
 #[test]
-fn planet_renaming_is_public_free_repeatable_and_owner_only() {
+fn body_renaming_is_public_free_repeatable_and_owner_only() {
     let (mut s, r, p, b, target) = fixture();
     let original = s.bodies[&b].clone();
     let rename = |body, name: &str| {
@@ -2822,10 +2822,15 @@ fn planet_renaming_is_public_free_repeatable_and_owner_only() {
         s.bodies[&target].name, s.bodies[&b].name,
         "duplicate names are permitted"
     );
-    s.bodies.get_mut(&b).unwrap().kind = BodyKind::Moon;
+    let moon = moons::add_moon(&mut s, b, 5012);
+    let result = run(&mut s, &r, p, moon, 1000, 5013, rename(moon, "  Luna  "));
+    let change = apply(&mut s, result);
+    assert_eq!(s.bodies[&moon].name.as_deref(), Some("Luna"));
+    assert_eq!(s.bodies[&b].name.as_deref(), Some("世界"));
+    assert_eq!(change.affected_viewers, BTreeSet::from([p]));
     assert!(matches!(
-        run(&mut s, &r, p, b, 1000, 5012, rename(b, "Moon")),
-        TransitionResult::Rejected(GameError::InvalidInput)
+        run(&mut s, &r, other, moon, 1000, 5014, rename(moon, "Stolen")),
+        TransitionResult::Rejected(GameError::NotOwned)
     ));
 }
 

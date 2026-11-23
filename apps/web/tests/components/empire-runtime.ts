@@ -19,6 +19,7 @@ export type EmpireSceneInput = {
   manufacturing?: S['ManufacturingBatchDto'][]
   production?: S['ProductionDto'][]
   surface?: 'rename' | 'settings' | 'abandonment' | 'simulation'
+  showActionStatus?: boolean
   simulationSamples?: S['SimulationResponse']['samples']
   simulationReport?: S['EspionagePayload4']
   deliveredReport?: Extract<S['ReportPayload4'], { kind: 'Delivered' }>

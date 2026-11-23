@@ -3,6 +3,82 @@ import { body, id } from '../../src/test-support/empire'
 import type {} from './empire.scenarios'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 
+test('Empire saves a moon name without changing its parent at the same coordinates', async ({
+  page,
+  mount,
+}) => {
+  const mobile = { width: 390, height: 900 }
+  await page.setViewportSize(mobile)
+  const moon = {
+    ...body,
+    id: id(80),
+    kind: 'Moon' as const,
+    name: undefined,
+    amounts: { metal: '0', crystal: '0', deuterium: '0' },
+    levels: Object.fromEntries(Object.keys(body.levels).map((key) => [key, 0])),
+    fields: 1,
+    fields_used: 0,
+    fields_reserved: 0,
+    energy: { supply: '0', demand: '0', utilization: '1000000' },
+    inventories: [],
+    diameter_km: 8366,
+    moon: { parent: body.id, created_at: 1793667600000 },
+  }
+  await page.addInitScript(
+    (bodies) => {
+      window.empireInput = { bodies, showActionStatus: true }
+    },
+    [{ ...body, name: 'Terra' }, moon],
+  )
+  await mount('empire')
+  const open = page.getByRole('button', { name: 'Rename moon [1:371:12]' })
+  const renamePlanet = page.getByRole('button', {
+    name: 'Rename planet [1:371:12]',
+  })
+  await open.click()
+  const draft = page.getByRole('textbox', { name: 'Moon name' })
+  await expect(draft).toBeFocused()
+  await draft.fill('  Selene  ')
+
+  async function capture(state: string) {
+    if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
+    const dossier = page.getByRole('article', {
+      name: `${state === 'editing' ? 'Moon' : 'Selene'} [1:371:12] dossier`,
+    })
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await dossier.getByText('8,366 km diameter').scrollIntoViewIfNeeded()
+      await diagnosticScreenshot(page, {
+        path: `test-results/moon-rename-${state}-${width}x900.png`,
+      })
+    }
+  }
+
+  await capture('editing')
+  await draft.press('Enter')
+  await expect(open).toBeFocused()
+  const lunarDossier = page.getByRole('article').filter({ has: open })
+  const planetDossier = page.getByRole('article').filter({ has: renamePlanet })
+  await expect(
+    lunarDossier.getByRole('heading', { name: 'Selene', exact: true }),
+  ).toBeVisible()
+  await expect(
+    planetDossier.getByRole('heading', { name: 'Terra', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByTestId('order-announcement')).toHaveText(
+    'Rename moon: Action confirmed.',
+  )
+  expect(
+    await page.evaluate(() =>
+      window.empireScene.sent.map((envelope) => envelope.command),
+    ),
+  ).toContainEqual({
+    type: 'World',
+    action: { type: 'RenamePlanet', body: moon.id, name: 'Selene' },
+  })
+  await capture('saved')
+})
+
 for (const width of [1280, 390]) {
   test(`rename keeps a local draft across authoritative updates and uncertain delivery at ${width}px`, async ({
     page,
