@@ -8316,6 +8316,7 @@ export interface components {
             request_id: string;
             candidate: components["schemas"]["GameBindingCandidate"];
             view: components["schemas"]["GameView"];
+            tutorial?: components["schemas"]["TutorialView4"];
             settings: components["schemas"]["GameSettings"];
         };
         BootstrapGame: {
