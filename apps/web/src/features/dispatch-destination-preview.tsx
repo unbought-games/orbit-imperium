@@ -25,6 +25,8 @@ export function DispatchDestinationPreview({
   kind,
   target,
   lookup,
+  salvageDetail,
+  salvageProblem,
   player,
   playerNames,
   value,
@@ -40,6 +42,8 @@ export function DispatchDestinationPreview({
   kind: LocationKind
   target: ReturnType<typeof destinationBody>
   lookup: 'loading' | 'ready' | 'unavailable'
+  salvageDetail?: string
+  salvageProblem?: string
   player: string
   playerNames: PlayerNames
   value: string
@@ -71,11 +75,13 @@ export function DispatchDestinationPreview({
     : target
       ? `${target.kind} · ${target.owner === player ? (target.source === 'empire' ? (target.kind === 'Moon' ? 'Your moon' : target.homeworld ? 'Your Homeworld' : target.colony ? 'Your colony' : 'Your planet') : 'Last known owner: you') : playerLabel(target.owner, playerNames)}`
       : kind === 'debris'
-        ? lookup === 'loading'
-          ? 'Checking for salvage…'
-          : lookup === 'unavailable'
-            ? 'Salvage unknown. Review will check again.'
-            : 'Debris field selected.'
+        ? salvageProblem ||
+          salvageDetail ||
+          (lookup === 'loading'
+            ? 'Checking for salvage…'
+            : lookup === 'unavailable'
+              ? 'Salvage unknown. Review will check again.'
+              : 'Debris field selected.')
         : lookup === 'loading'
           ? 'Checking destination.'
           : lookup === 'unavailable'
@@ -158,7 +164,12 @@ export function DispatchDestinationPreview({
             {title}
           </LocationSummaryTitle>
         )}
-        <LocationSummaryDescription aria-live="polite" aria-atomic="true">
+        <LocationSummaryDescription
+          aria-live="polite"
+          aria-atomic="true"
+          role={salvageProblem ? 'status' : undefined}
+          data-salvage-unavailable={salvageProblem ? '' : undefined}
+        >
           <span className={styles.destinationAnnouncement}>{title}. </span>
           {detail}
         </LocationSummaryDescription>

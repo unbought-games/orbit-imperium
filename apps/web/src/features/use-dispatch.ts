@@ -32,6 +32,7 @@ import {
 } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
 import { dispatchShips } from '../client-model/dispatch-timing'
+import { recyclerSuggestion } from '../client-model/galaxy-harvest'
 import { useDispatchTiming } from './use-dispatch-timing'
 import type { DispatchDraft } from './missions'
 import { colonizationStatus } from '../client-model/colonization'
@@ -83,7 +84,9 @@ export function useDispatch({
       NonNullable<S['FleetIntent4']['hold_hours']>
     >(initialReview?.terms.intent.hold_hours ?? 1),
     [speed, setSpeed] = useState(draft?.speed ?? 100),
-    [ships, setShips] = useState<Record<string, string>>(draft?.ships ?? {}),
+    [shipSelection, setShips] = useState<Record<string, string> | null>(
+      draft?.ships ?? (draft?.suggestRecyclers ? null : {}),
+    ),
     [editor, setEditor] = useState<{
       draft: CargoDraft
       estimate?: Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>
@@ -172,6 +175,30 @@ export function useDispatch({
       ? ''
       : observedMissionWarning(mission, observedTarget ?? undefined)
   const types = dispatchableShipTypes(view.catalog, body.inventories)
+  const reportHarvest =
+    draft?.suggestRecyclers &&
+    mission === 'Harvest' &&
+    targetKind === 'debris' &&
+    destinationText === coordinateText(draft.coordinates)
+  const reportSalvage =
+    reportHarvest && !destination.problem && destination.currentDebris
+      ? recyclerSuggestion(
+          view.catalog,
+          body.inventories,
+          destination.currentDebris,
+        )
+      : null
+  // A null selection is an untouched report draft awaiting its first lookup.
+  // Ship edits, changing the destination, and completed lookups consume it.
+  let ships = shipSelection ?? {}
+  if (
+    shipSelection === null &&
+    (!reportHarvest || destination.observationSettled)
+  ) {
+    if (reportSalvage && reportSalvage.suggested !== '0')
+      ships = { Recycler: reportSalvage.suggested }
+    setShips(ships)
+  }
   const quoteRef = useRef<HTMLElement>(null)
   let timingShips: S['FleetIntent4']['ships'] = []
   let invalidShips = false
@@ -507,10 +534,13 @@ export function useDispatch({
           : 'Calculating capacity…',
     timingMessage: !coordinatesValid
       ? 'Enter a valid destination to see flight times.'
-      : targetProblem ||
-        (timingShips.length === 0
+      : targetProblem
+        ? mission === 'Harvest' && targetProblem === destination.problem
+          ? 'Choose a debris field to see flight times.'
+          : targetProblem
+        : timingShips.length === 0
           ? 'Select ships to see flight times.'
-          : timing?.error),
+          : timing?.error,
     addAllCargo: () => review('all'),
     maxCargo: (resource: (typeof resourceNames)[number]) => review(resource),
     destinationText,
@@ -518,6 +548,7 @@ export function useDispatch({
     targetKind,
     setTargetKind,
     destination,
+    reportSalvage,
     destinationCoordinates,
     colony,
     coordinateProblems,

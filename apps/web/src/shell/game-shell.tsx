@@ -210,6 +210,7 @@ function GameShellContent() {
           speed: draft.speed,
           target: draft.target,
           observedAt: draft.observedAt,
+          suggestRecyclers: draft.suggestRecyclers,
         },
       },
     })

@@ -23,7 +23,7 @@ declare module '@tanstack/react-router' {
     destroyedMoon?: string
     dispatchObservation?: Pick<
       DispatchDraft,
-      'observedAt' | 'target' | 'ships' | 'speed'
+      'observedAt' | 'target' | 'ships' | 'speed' | 'suggestRecyclers'
     >
   }
 
