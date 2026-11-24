@@ -72,6 +72,7 @@ export function ManufacturingSummary({
             }
             percent={percent}
             progressLabel={`${label(current.item.id)} next unit estimated progress`}
+            progressCycle={`${current.id}:${current.remaining}`}
             moving={producing && !waiting}
           >
             <WorkTimers>
