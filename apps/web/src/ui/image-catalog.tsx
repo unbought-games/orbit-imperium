@@ -156,7 +156,8 @@ export function ImageTile({
   locked,
   unaffordable,
   countLabel = 'Level',
-  compactCaption,
+  compactCaption = false,
+  summary,
   inspectable = false,
   disabledReason = 'unavailable',
   className,
@@ -174,7 +175,8 @@ export function ImageTile({
   locked?: boolean
   unaffordable?: boolean
   countLabel?: string
-  compactCaption?: { summary: ReactNode }
+  compactCaption?: boolean
+  summary?: ReactNode
   inspectable?: boolean
   disabledReason?: string
   action?: ReactNode
@@ -186,8 +188,34 @@ export function ImageTile({
     status: string
   } | null
 }) {
-  const progressId = useId()
+  const descriptionId = useId()
   const Tile = href ? 'a' : 'button'
+  const levelDetail = progress ? (
+    <strong
+      id={compactCaption || summary ? undefined : descriptionId}
+      role="group"
+      aria-label={
+        progress.kind === 'research'
+          ? 'Research progress'
+          : 'Construction progress'
+      }
+    >
+      {compactCaption ? '→ ' : `${countLabel} ${level} → `}
+      <b aria-label={`Target level ${progress.targetLevel}`}>
+        {compactCaption ? 'Lvl' : countLabel} {progress.targetLevel}
+      </b>
+      <VisuallyHidden>
+        {' '}
+        · {progress.status} · {progress.countdown}
+      </VisuallyHidden>
+    </strong>
+  ) : (
+    !compactCaption && (
+      <strong>
+        {countLabel} {level}
+      </strong>
+    )
+  )
   return (
     <div className={styles.tileContainer} data-touch-control="">
       <Tile
@@ -205,7 +233,9 @@ export function ImageTile({
         )}
         aria-pressed={href ? undefined : selected}
         aria-current={href && selected ? 'page' : undefined}
-        aria-describedby={progress || compactCaption ? progressId : undefined}
+        aria-describedby={
+          progress || compactCaption || summary ? descriptionId : undefined
+        }
         title={
           props.disabled
             ? `${title} · ${disabledReason}`
@@ -223,7 +253,7 @@ export function ImageTile({
         </span>
         <span
           className={styles.caption}
-          id={compactCaption ? progressId : undefined}
+          id={compactCaption || summary ? descriptionId : undefined}
         >
           <span
             className={
@@ -237,33 +267,18 @@ export function ImageTile({
               </strong>
             )}
           </span>
-          {progress ? (
-            <strong
-              id={compactCaption ? undefined : progressId}
-              role="group"
-              aria-label={
-                progress.kind === 'research'
-                  ? 'Research progress'
-                  : 'Construction progress'
-              }
-            >
-              {compactCaption ? '→ ' : `${countLabel} ${level} → `}
-              <b aria-label={`Target level ${progress.targetLevel}`}>
-                {compactCaption ? 'Lvl' : countLabel} {progress.targetLevel}
-              </b>
-              <VisuallyHidden>
-                {' '}
-                · {progress.status} · {progress.countdown}
-              </VisuallyHidden>
-            </strong>
-          ) : compactCaption ? (
-            compactCaption.summary
+          {summary && levelDetail ? (
+            <span className={styles.details}>
+              {levelDetail}
+              {summary}
+            </span>
           ) : (
-            <strong>
-              {countLabel} {level}
-            </strong>
+            <>
+              {levelDetail}
+              {summary}
+            </>
           )}
-          {compactCaption && (props.disabled || unaffordable) && (
+          {(compactCaption || summary) && (props.disabled || unaffordable) && (
             <span className={hidden.hidden}>
               {props.disabled ? disabledReason : 'Not enough resources'}
             </span>
