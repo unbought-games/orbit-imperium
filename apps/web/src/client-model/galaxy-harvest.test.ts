@@ -149,6 +149,7 @@ it('sizes current deuterium-only debris from the origin’s Recycler stock', () 
       '0',
     )
   }
+  expect(hasHarvestableDebris()).toBe(false)
 })
 it('rejects malformed, empty, zero and excessive edits without rounding', () => {
   for (const count of ['', '0', '-1', '1.5', '1e2', ' 2', '6'])

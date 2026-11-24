@@ -11,7 +11,7 @@ export type HarvestPosition = Pick<
   'coordinates' | 'debris'
 >
 
-export function hasHarvestableDebris(debris: HarvestPosition['debris']) {
+export function hasHarvestableDebris(debris?: HarvestPosition['debris']) {
   return (
     !!debris &&
     (BigInt(debris.metal) > 0n ||
