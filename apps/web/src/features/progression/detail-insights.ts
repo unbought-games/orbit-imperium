@@ -5,17 +5,16 @@ import { currentResourceRates } from '../../ui/resource-rates'
 import { formatRemaining } from '../../client-model/clock'
 import { label } from '../../ui/format'
 import type { ProgressionProps } from './shared'
+import { buildingDemandChange, mineProductionSettings } from './building-energy'
 
 type S = components['schemas']
 type Resource = keyof S['Resources']
 const million = 1000000n
-const productionSetting = {
-  MetalMine: 'metal_mine',
-  CrystalMine: 'crystal_mine',
-  DeuteriumSynthesizer: 'deuterium_synthesizer',
+const productionSetting: typeof mineProductionSettings = {
+  ...mineProductionSettings,
   SolarPlant: 'solar_plant',
   FusionReactor: 'fusion_reactor',
-} as const
+}
 const buildingResource: Record<string, Resource> = {
   MetalMine: 'metal',
   MetalStorage: 'metal',
@@ -74,7 +73,7 @@ export function buildingInsights(
   const production = view.progression.production.find(
     (entry) => entry.body === body.id,
   )
-  const setting = productionSetting[id as keyof typeof productionSetting]
+  const setting = productionSetting[id]
   const percent = BigInt(
     setting && production ? production.settings[setting] : 100,
   )
@@ -97,10 +96,7 @@ export function buildingInsights(
   const benefit = proposal?.building_benefit
   const energy = proposal?.building_energy
   const consumptionChange = energy
-    ? ((BigInt(energy.target_consumption) -
-        BigInt(energy.current_consumption)) *
-        percent) /
-      100n
+    ? buildingDemandChange(energy, percent)
     : null
   const supplyChange =
     benefit?.kind === 'Energy'

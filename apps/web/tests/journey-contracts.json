@@ -665,7 +665,7 @@
     "titlePath": [
       "cancellation restores eligible detail actions at 390px with old options delivered before confirmation"
     ],
-    "risk": "After confirmed cancellation the funded inspector must invalidate stale options, restore eligibility and submit the next upgrade with the new quote hash."
+    "risk": "During an active mine upgrade, the catalog can preview energy demand while quick build stays unavailable through pending cancellation. After confirmed cancellation the funded inspector must invalidate stale options, restore eligibility and submit the next upgrade with the new quote hash."
   },
   {
     "file": "recruitment.spec.ts",
