@@ -4,7 +4,7 @@ import { useDispatchSession } from './dispatch-session-context'
 import { GameShellFrame } from './game-shell-frame'
 import { ArrivalScene } from '../features/arrival/arrival-scene'
 import { TutorialExperienceAction } from '../features/tutorial/experience-action'
-import { TutorialSync } from '../features/tutorial/use-tutorial'
+import { ConnectionScreen } from '../features/connection-screen'
 import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
@@ -40,8 +40,25 @@ import { pageTitles } from './navigation-model'
 import { ArrowLeft } from 'lucide-react'
 import { developmentActivity, developmentBlockers } from './navigation-activity'
 export function GameShell() {
-  const { model, view } = useGameSession()
+  const { model, view, logout } = useGameSession()
+  const needsTutorial = view.protocol === 4 && !view.arrival_pending
+  const hasTutorial = useStore(model.store, (state) => !!state.tutorial.data)
+  const tutorialError = useStore(model.store, (state) => state.tutorial.error)
+  useEffect(() => {
+    if (needsTutorial) void model.tutorial.ensure()
+  }, [model, needsTutorial, view.viewer_revision])
+
   if (view.protocol === 4 && view.arrival_pending) return <ArrivalScene />
+  if (needsTutorial && !hasTutorial)
+    return (
+      <ConnectionScreen
+        message={
+          tutorialError ? 'Unable to load your game preferences.' : undefined
+        }
+        retry={() => void model.tutorial.ensure(true)}
+        logout={logout}
+      />
+    )
   return (
     <ErrorBannerProvider model={model}>
       <GameShellContent />
@@ -299,7 +316,6 @@ function GameShellContent() {
       }
       footer={<CommandHud body={body?.id} onDraft={prepareDispatch} />}
     >
-      <TutorialSync />
       <ContentColumn
         as="main"
         width={

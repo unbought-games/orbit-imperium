@@ -1,4 +1,4 @@
-use super::{HttpState, bootstrap::prepare_bootstrap, bootstrap_html::render_bootstrap_html};
+use super::{HttpState, bootstrap::prepare_bootstrap_for, bootstrap_html::render_bootstrap_html};
 use axum::{
     Router,
     body::Body,
@@ -9,8 +9,11 @@ use axum::{
 use orbit_application::{Bootstrap, GameStore, IdentityStore};
 use std::{future::Future, path::PathBuf, pin::Pin, sync::Arc};
 use tower_http::services::ServeDir;
-type Prepare =
-    Arc<dyn Fn(HeaderMap) -> Pin<Box<dyn Future<Output = Bootstrap> + Send>> + Send + Sync>;
+type Prepare = Arc<
+    dyn Fn(HeaderMap, Option<String>) -> Pin<Box<dyn Future<Output = Bootstrap> + Send>>
+        + Send
+        + Sync,
+>;
 #[derive(Clone)]
 struct StaticAssets {
     files: ServeDir,
@@ -27,9 +30,11 @@ pub(super) fn router<S: GameStore + IdentityStore + Send + Sync + 'static>(
     router_with(
         assets,
         state.config.origin.clone(),
-        Arc::new(move |headers| {
+        Arc::new(move |headers, universe| {
             let state = state.clone();
-            Box::pin(async move { prepare_bootstrap(&state, &headers).await })
+            Box::pin(
+                async move { prepare_bootstrap_for(&state, &headers, universe.as_deref()).await },
+            )
         }),
     )
 }
@@ -114,7 +119,11 @@ async fn serve(State(mut assets): State<StaticAssets>, request: Request) -> Resp
                     result: orbit_application::BootstrapResult::Anonymous,
                 }
             } else {
-                (assets.prepare)(request.headers().clone()).await
+                let universe = path
+                    .strip_prefix("/u/")
+                    .and_then(|route| route.split('/').next())
+                    .map(str::to_owned);
+                (assets.prepare)(request.headers().clone(), universe).await
             };
             if entry
                 && matches!(
@@ -200,7 +209,7 @@ mod tests {
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
             "https://community.example".into(),
-            Arc::new(|_| panic!("discovery must not initialize sessions")),
+            Arc::new(|_, _| panic!("discovery must not initialize sessions")),
         );
         for (path, content_type) in [
             ("/robots.txt", "text/plain; charset=utf-8"),
@@ -284,7 +293,7 @@ mod tests {
                 let app = router_with(
                     assets.0.to_string_lossy().into_owned(),
                     "https://community.example".into(),
-                    Arc::new(move |_| {
+                    Arc::new(move |_, _| {
                         let result = result.clone();
                         Box::pin(async move {
                             Bootstrap {
@@ -391,7 +400,7 @@ mod tests {
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
             "https://community.example".into(),
-            Arc::new(|_| panic!("public document must not initialize the reader's game")),
+            Arc::new(|_, _| panic!("public document must not initialize the reader's game")),
         );
         for path in [
             "/reports/shared/00000000-0000-4000-8000-000000000001",
@@ -463,7 +472,7 @@ mod tests {
             router_with(
                 self.0.to_str().unwrap().to_owned(),
                 "https://community.example".into(),
-                Arc::new(|_| Box::pin(async { guest() })),
+                Arc::new(|_, _| Box::pin(async { guest() })),
             )
         }
     }
@@ -699,7 +708,7 @@ mod tests {
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
             "https://community.example".into(),
-            Arc::new(|_| panic!("must not authenticate")),
+            Arc::new(|_, _| panic!("must not authenticate")),
         );
         for (method, path) in [
             (Method::GET, "/assets/app.js"),
@@ -729,7 +738,7 @@ mod tests {
         let app = router_with(
             assets.0.to_string_lossy().into_owned(),
             "https://community.example".into(),
-            Arc::new(|_| panic!("asset must not authenticate")),
+            Arc::new(|_, _| panic!("asset must not authenticate")),
         );
         let response = app
             .oneshot(Request::get("/manifest").body(Body::empty()).unwrap())

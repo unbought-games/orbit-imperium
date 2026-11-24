@@ -933,7 +933,7 @@
     "titlePath": [
       "Empire briefing icon opens by keyboard or touch and remembers acknowledged progress at 1440px"
     ],
-    "risk": "The desktop Empire header must fit the animated unread Briefing icon. Keyboard entry must acknowledge it on the real route, preserve that state after reload and leave the full document within the viewport at peak glow without issuing an order."
+    "risk": "The desktop Empire header must fit the animated unread Briefing icon. With a personalized document, the first paint must show full navigation and Overview without a splash or separate startup reads. Keyboard entry must acknowledge the icon on the real route, preserve that state after reload and leave the full document within the viewport at peak glow without issuing an order."
   },
   {
     "file": "tutorial.spec.ts",
@@ -941,7 +941,7 @@
     "titlePath": [
       "full experience confirmation preserves progress and rewards across reload"
     ],
-    "risk": "After confirming the full-experience preference, a freshly bootstrapped document must restore that preference with prior tutorial progress and rewards intact."
+    "risk": "After confirming the full-experience preference, a freshly bootstrapped document must restore that preference with prior tutorial progress and rewards intact. If the first guidance read fails, Retry connection must open the requested Overview."
   },
   {
     "file": "vacation.spec.ts",

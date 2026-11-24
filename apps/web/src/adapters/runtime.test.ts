@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { body } from '../test-support/empire'
+import { tutorialFixture } from '../test-support/tutorial'
 import { productionFixture } from '../test-support/production'
 import { it, expect, vi } from 'vitest'
 import {
@@ -68,6 +69,36 @@ it('adopts embedded data without requesting startup data or retaining a second s
     expect(runtime.game.model.view?.binding.account).toBe(id(1))
     expect('snapshot' in runtime.game).toBe(false)
   }
+})
+it('hydrates completed guidance from the bound document before the shell requests it', async () => {
+  const deps = dependencies()
+  const payload = bootstrapFixture(4)
+  if (
+    payload.result.status !== 'authenticated' ||
+    payload.result.game.status !== 'ready'
+  )
+    throw Error('fixture')
+  const snapshot = payload.result.game.snapshot
+  snapshot.tutorial = tutorialFixture(true)
+  payload.result.session.memberships.unshift({
+    universe: id(93),
+    player: id(94),
+    universe_name: 'Other',
+  })
+  deps.readEmbedded = () => payload
+  const world = vi.fn()
+  const port = { ...deps.createPort('csrf', snapshot.candidate), world }
+  deps.createPort = () => port
+  const pendingScreen = vi.fn()
+  const runtime = await loadInitialRuntime(deps, false, pendingScreen)
+  if (runtime.status !== 'authenticated' || runtime.game.status !== 'ready')
+    throw Error('runtime')
+  const { model } = runtime.game
+  expect(model.store.getState().tutorial.data).toEqual(snapshot.tutorial)
+  await model.tutorial.ensure()
+  expect(world).not.toHaveBeenCalled()
+  expect(deps.fetchBootstrap).not.toHaveBeenCalled()
+  expect(pendingScreen).not.toHaveBeenCalled()
 })
 it('fetches once for a missing payload and retains uncertainty on failure', async () => {
   const deps = dependencies()
