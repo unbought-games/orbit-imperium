@@ -269,6 +269,21 @@
   align-items: baseline;
   gap: 3px 8px;
 }
+.fleetEnRoute {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding-inline: 4px 6px;
+  border-radius: 4px;
+  background: var(--surface-selected);
+  color: var(--ice-light);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fleetEnRoute svg {
+  align-self: center;
+}
 .identity {
   min-width: 0;
   max-width: 100%;
