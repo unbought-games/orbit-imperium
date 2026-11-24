@@ -168,6 +168,7 @@ export function Reports({
             coordinates: combat.target,
             mission: 'Harvest',
             observedAt: detail!.header.observed_at,
+            suggestRecyclers: true,
           })
         }
       >
