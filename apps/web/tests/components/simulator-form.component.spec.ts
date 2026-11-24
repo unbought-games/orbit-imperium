@@ -49,6 +49,45 @@ async function expectLayout(page: Page) {
   }
 }
 
+test('the phone simulator fits every digit of a four-digit Start count', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 })
+  await prepare(page, mount)
+  const start = page.getByRole('textbox', { name: 'Defender Light Fighter' })
+  await start.fill('1000')
+  await expect(start).toBeFocused()
+  await expect(start).toHaveValue('1000')
+  await page.evaluate(() => document.fonts.ready)
+
+  const expectDigitsToFit = async () => {
+    const { available, required } = await start.evaluate((input) => {
+      const style = getComputedStyle(input)
+      const text = document.createElement('span')
+      text.style.position = 'absolute'
+      text.style.font = style.font
+      text.style.fontVariantNumeric = style.fontVariantNumeric
+      text.textContent = (input as HTMLInputElement).value
+      document.body.append(text)
+      const required = text.getBoundingClientRect().width
+      text.remove()
+      const available =
+        input.clientWidth -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight)
+      return { available, required }
+    })
+    expect(available).toBeGreaterThan(required)
+  }
+
+  await expectDigitsToFit()
+  await start.fill('2000')
+  await start.blur()
+  await expect(start).toHaveValue('2000')
+  await expectDigitsToFit()
+})
+
 test('adding an allied attacker preserves separate technology levels and editing it invalidates the results', async ({
   page,
   mount,

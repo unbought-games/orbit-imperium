@@ -56,6 +56,9 @@
 .field input {
   width: 100%;
   min-width: 0;
+  padding-inline: 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .field label {
   overflow-wrap: anywhere;
@@ -102,7 +105,7 @@
 }
 @media (max-width: 760px) {
   .fieldWithOutcome {
-    grid-template-columns: minmax(0, 1fr) 60px 80px;
+    grid-template-columns: minmax(0, 1fr) repeat(2, 4rem);
   }
 }
 @media (max-width: 620px) {
@@ -143,6 +146,10 @@
 @media (max-width: 620px) {
   .sides {
     grid-template-columns: 1fr;
+  }
+  .dialog .sides fieldset,
+  .dialog .contingent {
+    padding-inline: 6px;
   }
   .outcomes {
     grid-template-columns: repeat(2, minmax(0, 1fr));
