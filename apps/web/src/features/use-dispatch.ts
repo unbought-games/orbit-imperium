@@ -524,7 +524,7 @@ export function useDispatch({
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,
-    cargoCapacity: dispatchCargoCapacity(quote ?? timing?.terms, cargo),
+    cargoCapacity: dispatchCargoCapacity(timing?.terms, cargo),
     cargoCapacityMessage: invalidShips
       ? 'Enter valid ship counts to see capacity.'
       : timingShips.length === 0

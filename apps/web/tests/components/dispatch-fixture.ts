@@ -249,13 +249,14 @@ export async function createDispatchFixture(
               ? options.quoteError
               : options.estimateError
           if (failure) throw Error(failure)
+          const liveQuote =
+            query.type === 'FleetQuote' && query.intent.cargo_fill
+              ? options.liveQuote
+              : undefined
           result = {
-            intent:
-              query.type === 'FleetQuote' &&
-              query.intent.cargo_fill &&
-              options.liveQuote
-                ? { ...query.intent, cargo: { ...options.liveQuote.cargo } }
-                : query.intent,
+            intent: liveQuote
+              ? { ...query.intent, cargo: { ...liveQuote.cargo } }
+              : query.intent,
             profile_hash: source.profile_hash,
             ...(query.type === 'FleetEstimate'
               ? { estimate: true as const }
@@ -272,16 +273,15 @@ export async function createDispatchFixture(
                         },
                       }
                     : {}),
-                  terms_hash:
-                    (query.intent.cargo_fill && options.liveQuote?.hash) ||
-                    'b'.repeat(64),
+                  terms_hash: liveQuote?.hash || 'b'.repeat(64),
                 }),
             duration_ms: Math.floor(
               (options.duration * 100) / query.intent.speed_percent,
             ),
             fuel: options.fuel,
-            capacity: options.capacity,
-            maximum_payload: options.maximumPayload,
+            capacity: liveQuote?.capacity ?? options.capacity,
+            maximum_payload:
+              liveQuote?.maximumPayload ?? options.maximumPayload,
           }
         } else return fail(query.type)
         return {

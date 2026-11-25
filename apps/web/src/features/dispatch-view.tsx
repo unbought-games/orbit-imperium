@@ -1,4 +1,5 @@
 import { DispatchLoot } from './dispatch-loot'
+import { quotedCargoSpace } from '../client-model/dispatch-cargo'
 import {
   DispatchCargoControls,
   DispatchFlightControls,
@@ -505,8 +506,8 @@ export function DispatchView({
                     : target
                 }
                 revision={view.viewer_revision}
-                space={cargoCapacity}
-                hasShips={hasShips}
+                space={quotedCargoSpace(quote)}
+                hasShips={quote.intent.ships.length > 0}
                 universeName={universeName}
                 origin={body.id}
               />

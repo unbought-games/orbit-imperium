@@ -8,6 +8,7 @@ import {
   projectDispatchCargo,
   prepareCargoFill,
   dispatchCargoCapacity,
+  quotedCargoSpace,
   type CargoDraft,
 } from './dispatch-cargo'
 
@@ -71,6 +72,21 @@ it('leaves unknown or invalid cargo space unknown without hiding valid capacity'
       remaining: null,
     })
   }
+})
+
+it('deducts server-quoted cargo from payload already reduced for fuel', () => {
+  expect(
+    quotedCargoSpace({
+      maximum_payload: '188613000000',
+      intent: {
+        cargo: {
+          metal: '500000000',
+          crystal: '400000000',
+          deuterium: '100000000',
+        },
+      },
+    }),
+  ).toEqual({ remaining: 187_613n })
 })
 
 it('uses authoritative payload for fuel-only ships and preserves large exact counts', () => {

@@ -51,7 +51,12 @@ export const originBody: S['BodyV3'] = {
 }
 export type DispatchFixtureOptions = {
   resourceVisibility?: 'Known' | 'Unknown' | 'Missing' | 'Error'
-  liveQuote?: { cargo: S['Resources']; hash: string }
+  liveQuote?: {
+    cargo: S['Resources']
+    hash: string
+    capacity?: string
+    maximumPayload?: string
+  }
   launchOutcome?: 'Committed' | 'Pending' | 'Rejected' | 'RateLimited'
   rejectionCode?: S['GameError4']
   missileRules?: S['MissileRules4']
