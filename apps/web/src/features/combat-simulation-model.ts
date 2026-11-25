@@ -1,6 +1,7 @@
 import { compareShips } from './ship-order'
 import type { components } from '../contracts'
 import { resourceNames } from '../client-model/resources'
+import { requiredRaidCapacity } from '../client-model/raid-loot'
 type S = components['schemas']
 export type Espionage = S['EspionagePayload4']
 export type SimulationInputs = S['SimulationInputs']
@@ -152,16 +153,18 @@ export function simulationInputs(
   return { inputs, error: null }
 }
 export function simulationSummary(response: SimulationResponse) {
-  const outcomes = [
-    'AttackerVictory',
-    'DefenderVictory',
-    'Draw',
-    'MutualDestruction',
-  ] as const
-  return outcomes.map((outcome) => ({
-    outcome,
-    count: response.samples.filter((s) => s.outcome === outcome).length,
-  }))
+  const counts = {
+    AttackerVictory: 0,
+    DefenderVictory: 0,
+    Draw: 0,
+    MutualDestruction: 0,
+  }
+  for (const sample of response.samples) counts[sample.outcome]++
+  return {
+    victories: counts.AttackerVictory,
+    defeats: counts.DefenderVictory,
+    draws: counts.Draw + counts.MutualDestruction,
+  }
 }
 export function averageSurvivors(
   response: SimulationResponse,
@@ -189,13 +192,6 @@ export function blankSimulationEdits(
   )
 }
 
-export function attackerLosses(
-  response: SimulationResponse,
-  unit: S['SimulationUnit'],
-) {
-  return unit.count - averageSurvivors(response, 'attacker', unit.item)
-}
-
 /** Aggregate the independently calculated battle samples, never an average fleet.
  * Keep micro-unit sums exact even above JavaScript's safe integer range. */
 export function sampledAmounts(values: string[]) {
@@ -211,6 +207,23 @@ function totalResources(resources: S['Resources']) {
   return resourceNames.reduce((sum, name) => sum + BigInt(resources[name]), 0n)
 }
 
+function winningCargoShortfall(response: SimulationResponse) {
+  if (!response.loot_rules_enabled || !response.available_loot) return null
+  const available = response.available_loot
+  const required = requiredRaidCapacity(
+    resourceNames.map((resource) => BigInt(available[resource]) / 1_000_000n),
+  )
+  // A loss or draw yields no haul for reasons other than cargo capacity.
+  let maximum: bigint | null = null
+  for (const sample of response.samples) {
+    if (sample.outcome !== 'AttackerVictory') continue
+    const free = BigInt(sample.surviving_cargo_capacity) / 1_000_000n
+    const shortfall = free < required ? required - free : 0n
+    if (maximum === null || shortfall > maximum) maximum = shortfall
+  }
+  return maximum
+}
+
 export function planningSummary(response: SimulationResponse) {
   const known =
     response.samples.length > 0 &&
@@ -219,6 +232,7 @@ export function planningSummary(response: SimulationResponse) {
     potentialLoot: response.available_loot
       ? totalResources(response.available_loot)
       : null,
+    winningCargoShortfall: winningCargoShortfall(response),
     debris: response.samples.length
       ? resourceNames.map((resource) => ({
           resource,
@@ -257,20 +271,21 @@ export function simulationGroupSummary(
   edits: Record<string, string>,
 ) {
   let total = 0n
-  let types = 0
   let unknown = 0
   let invalid = 0
   for (const field of fields) {
     const raw = edits[field.key] ?? field.value
     if (raw === null && field.source === 'Report') unknown++
     const value = raw || '0'
-    if (!/^(0|[1-9][0-9]*)$/.test(value) || BigInt(value) > 2000n) invalid++
-    else if (BigInt(value) > 0n) {
-      total += BigInt(value)
-      types++
+    if (!/^(0|[1-9][0-9]*)$/.test(value)) {
+      invalid++
+      continue
     }
+    const count = BigInt(value)
+    if (count > 2000n) invalid++
+    else total += count
   }
-  return { total, types, unknown, invalid }
+  return { total, unknown, invalid }
 }
 
 export function battleEstimates(
@@ -320,7 +335,6 @@ export function battleEstimates(
           maximum:
             (debris.reduce((a, b) => (a > b ? a : b)) + wholeCapacity - 1n) /
             wholeCapacity,
-          capacity: wholeCapacity,
         }
       : null
   return { averageRounds, moon, recyclers }

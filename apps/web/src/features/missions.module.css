@@ -777,6 +777,9 @@
   margin-top: 0;
   font-size: inherit;
 }
+.lootFit small strong {
+  color: var(--text);
+}
 
 .reviewRisk {
   padding: var(--space-3);

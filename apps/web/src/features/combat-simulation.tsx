@@ -1,11 +1,7 @@
 import { SimulationDisclosure } from './simulation-disclosure'
-import {
-  allyFields,
-  withSimulationAllies,
-  combinedSimulationUnits,
-} from './simulation-allies'
+import { allyFields, withSimulationAllies } from './simulation-allies'
 import { useEffect, useRef, useState } from 'react'
-import { Swords, ScanEye, X, CornerDownRight } from 'lucide-react'
+import { Swords, ScanEye, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../client-model/coordinator'
@@ -13,7 +9,7 @@ import { Link } from '../ui/link'
 import { routeTarget } from '../shell/route-target'
 import { SimulationLocation } from './simulation-location'
 import { Button } from '../ui/button'
-import { bodyName, coordinates, label } from '../ui/format'
+import { bodyName, coordinates } from '../ui/format'
 import { useGameScreen } from '../shell/screen-context'
 import { ownedDefenderImport } from './simulation-import'
 import { SimulationFields } from './simulation-fields'
@@ -25,17 +21,34 @@ import {
   blankSimulationEdits,
   simulationInputs,
   simulationSummary,
-  averageSurvivors,
-  attackerLosses,
   unsupportedReportUnits,
   type Espionage,
   type MoonTarget,
+  type SimulationResponse,
 } from './combat-simulation-model'
 import { useCombatSimulation } from './use-combat-simulation'
 import { reportAge } from './report-preview'
 import { currentServerTime } from '../client-model/game-projection'
 import styles from './combat-simulation.module.css'
 const sideNames = { attacker: 'Attacker', defender: 'Defender' }
+
+function SimulationOutcomes({ result }: { result: SimulationResponse }) {
+  const { victories, defeats, draws } = simulationSummary(result)
+  return (
+    <div className={styles.outcomes}>
+      <p className={styles.win}>
+        <strong>{victories}</strong> Attacker {victories === 1 ? 'win' : 'wins'}
+      </p>
+      <p className={styles.loss}>
+        <strong>{defeats}</strong> Defender {defeats === 1 ? 'win' : 'wins'}
+      </p>
+      <p>
+        <strong>{draws}</strong> {draws === 1 ? 'Draw' : 'Draws'}
+      </p>
+    </div>
+  )
+}
+
 export function ReportSimulation({
   model,
   report,
@@ -199,7 +212,10 @@ function SimulationForm({
   return (
     <div className={styles.content}>
       {activeReport && (
-        <div className={styles.matchup}>
+        <div
+          className={styles.matchup}
+          data-paired={body && view ? '' : undefined}
+        >
           {body && view && (
             <>
               <SimulationLocation
@@ -207,61 +223,62 @@ function SimulationForm({
                 owner={view.binding.player}
                 owned
                 label="Origin"
+                featured
               />
-              <span className={styles.versus}>versus</span>
+              <span className={styles.versus} role="img" aria-label="versus">
+                VS
+              </span>
             </>
           )}
-          <div className={styles.reportContext}>
-            <SimulationLocation
-              body={{
-                id: activeReport.target.body,
-                name: activeReport.target.name ?? undefined,
-                kind: activeReport.target.kind,
-                coordinates: activeReport.target.coordinates,
+          <SimulationLocation
+            body={{
+              id: activeReport.target.body,
+              name: activeReport.target.name ?? undefined,
+              kind: activeReport.target.kind,
+              coordinates: activeReport.target.coordinates,
+            }}
+            owner={activeReport.target.owner}
+            label="Target"
+            featured
+          />
+          <div className={styles.reportLink}>
+            <ScanEye size={16} aria-hidden="true" />
+            <Link
+              {...routeTarget(universeName, 'reports', body?.id, reportId)}
+              onClick={onClose}
+            >
+              Espionage report ·{' '}
+              <time
+                dateTime={new Date(activeReport.observed_at).toISOString()}
+                title={new Date(activeReport.observed_at).toLocaleString()}
+              >
+                {reportAge(activeReport.observed_at, now)}
+              </time>
+            </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-touch"
+              aria-label="Clear espionage report"
+              title="Keep entered fleets and clear report context"
+              onClick={() => {
+                replaceDefender(
+                  Object.fromEntries(
+                    fields
+                      .filter((field) => field.side === 'defender')
+                      .map((field) => [
+                        field.key,
+                        edits[field.key] ?? field.value ?? '0',
+                      ]),
+                  ),
+                  defenderSource,
+                )
+                setReportAttached(false)
+                if (!defenderSource) setMoonTarget('Unknown')
               }}
-              owner={activeReport.target.owner}
-              label="Target"
-            />
-            <div className={styles.reportLink}>
-              <CornerDownRight size={16} aria-hidden="true" />
-              <ScanEye size={16} aria-hidden="true" />
-              <Link
-                {...routeTarget(universeName, 'reports', body?.id, reportId)}
-                onClick={onClose}
-              >
-                Espionage report ·{' '}
-                <time
-                  dateTime={new Date(activeReport.observed_at).toISOString()}
-                  title={new Date(activeReport.observed_at).toLocaleString()}
-                >
-                  {reportAge(activeReport.observed_at, now)}
-                </time>
-              </Link>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-touch"
-                aria-label="Clear espionage report"
-                title="Keep entered fleets and clear report context"
-                onClick={() => {
-                  replaceDefender(
-                    Object.fromEntries(
-                      fields
-                        .filter((field) => field.side === 'defender')
-                        .map((field) => [
-                          field.key,
-                          edits[field.key] ?? field.value ?? '0',
-                        ]),
-                    ),
-                    defenderSource,
-                  )
-                  setReportAttached(false)
-                  if (!defenderSource) setMoonTarget('Unknown')
-                }}
-              >
-                <X size={16} aria-hidden="true" />
-              </Button>
-            </div>
+            >
+              <X size={16} aria-hidden="true" />
+            </Button>
           </div>
         </div>
       )}
@@ -358,13 +375,6 @@ function SimulationForm({
           {(['attacker', 'defender'] as const).map((side) => (
             <fieldset key={side} disabled={running}>
               <legend>{sideNames[side]}</legend>
-              <p className={styles.outcomeNote}>
-                Average remaining units
-                {allies.some((ally) => ally.side === side)
-                  ? ' across all fleets on this side'
-                  : ''}
-                .{side === 'defender' && ' Before defense repairs.'}
-              </p>
               <SimulationFields
                 key={`${side}-${defenderReport ? 'report' : 'manual'}`}
                 fields={fields.filter((f) => f.side === side)}
@@ -397,7 +407,7 @@ function SimulationForm({
             />
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               onClick={() => removeAlly(ally.id)}
             >
               Remove allied fleet
@@ -439,7 +449,7 @@ function SimulationForm({
             type="submit"
             disabled={!prepared.inputs || running || !!unsupported.length}
           >
-            {running ? 'Simulating…' : 'Run 10 battles'}
+            {running ? 'Simulating…' : 'Simulate'}
           </Button>
           {prepared.error && <p role="status">{prepared.error}</p>}
           {error && <p role="alert">{error}</p>}
@@ -447,74 +457,8 @@ function SimulationForm({
       </form>
       {result && (
         <section aria-label="Simulation results" aria-live="polite">
-          <h3>Sample results · attacker perspective</h3>
-          <div className={styles.outcomes}>
-            {simulationSummary(result).map((row) => (
-              <p
-                key={row.outcome}
-                className={
-                  row.outcome === 'AttackerVictory'
-                    ? styles.win
-                    : row.outcome === 'DefenderVictory'
-                      ? styles.loss
-                      : undefined
-                }
-              >
-                <strong>
-                  {row.count} / {result.samples.length}
-                </strong>{' '}
-                {row.outcome === 'AttackerVictory'
-                  ? 'Victory'
-                  : row.outcome === 'DefenderVictory'
-                    ? 'Defeat'
-                    : label(row.outcome)}
-              </p>
-            ))}
-          </div>
+          <SimulationOutcomes result={result} />
           <SimulationPlanning result={result} moonTarget={moonTarget} />
-          <SimulationDisclosure
-            section="survivors"
-            className={styles.resultDetails}
-            summary="Losses and survivors"
-          >
-            {(['attacker', 'defender'] as const).map((side) => (
-              <div key={side}>
-                <h4>
-                  {side === 'attacker'
-                    ? 'Attacker · average losses and survivors'
-                    : 'Defender · average survivors before repairs'}
-                </h4>
-                <dl className={styles.survivors}>
-                  {combinedSimulationUnits(prepared.inputs, side, fields).map(
-                    (unit) => (
-                      <div key={`${unit.item.kind}:${unit.item.id}`}>
-                        <dt>{label(unit.item.id)}</dt>
-                        <dd>
-                          {side === 'attacker' && (
-                            <strong>
-                              {attackerLosses(result, unit).toLocaleString(
-                                undefined,
-                                { maximumFractionDigits: 1 },
-                              )}{' '}
-                              lost ·{' '}
-                            </strong>
-                          )}
-                          {averageSurvivors(
-                            result,
-                            side,
-                            unit.item,
-                          ).toLocaleString(undefined, {
-                            maximumFractionDigits: 1,
-                          })}{' '}
-                          surviving
-                        </dd>
-                      </div>
-                    ),
-                  )}
-                </dl>
-              </div>
-            ))}
-          </SimulationDisclosure>
         </section>
       )}
       {activeReport && (

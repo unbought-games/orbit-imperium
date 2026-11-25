@@ -30,6 +30,17 @@ export function dispatchCargoCapacity(
 }
 
 type S = components['schemas']
+export function quotedCargoSpace(quote: {
+  maximum_payload: S['FleetTerms4']['maximum_payload']
+  intent: Pick<S['FleetIntent4'], 'cargo'>
+}) {
+  const loaded = resourceNames.reduce(
+    (sum, resource) => sum + BigInt(quote.intent.cargo[resource]),
+    0n,
+  )
+  return { remaining: (BigInt(quote.maximum_payload) - loaded) / 1_000_000n }
+}
+
 type Fill = S['FleetCargoFill4']
 type Space = Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>
 const kinds = ['Metal', 'Crystal', 'Deuterium'] as const

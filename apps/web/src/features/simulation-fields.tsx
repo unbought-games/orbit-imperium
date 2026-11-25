@@ -48,7 +48,32 @@ function FieldGroup({
 }: Props & { group: string }) {
   const defender = fields[0].side === 'defender'
   const collapsible = defender && group !== 'Technologies'
-  const summary = simulationGroupSummary(fields, edits)
+  const summary =
+    group === 'Technologies' ? null : simulationGroupSummary(fields, edits)
+  const heading = (
+    <>
+      {group}
+      {summary && (
+        <>
+          {' '}
+          <span className={styles.groupSummary}>
+            {formatWholeNumber(summary.total)}{' '}
+            {summary.total === 1n ? 'unit' : 'units'}
+            {summary.unknown > 0 && (
+              <span> · {summary.unknown} not observed; assumed zero</span>
+            )}
+            {summary.invalid > 0 && (
+              <strong role="alert">
+                {' '}
+                · {summary.invalid} invalid values
+                {collapsible && ' — expand to edit'}
+              </strong>
+            )}
+          </span>
+        </>
+      )}
+    </>
+  )
   const groups =
     group === 'Ships'
       ? shipGroups.map((name) => ({
@@ -103,30 +128,13 @@ function FieldGroup({
           }
           className={styles.fieldGroup}
           summaryClassName={styles.groupHeading}
-          summary={
-            <>
-              {group}
-              <span className={styles.groupSummary}>
-                {formatWholeNumber(summary.total)} units · {summary.types}{' '}
-                {summary.types === 1 ? 'type' : 'types'}
-                {summary.unknown > 0 && (
-                  <span> · {summary.unknown} not observed; assumed zero</span>
-                )}
-                {summary.invalid > 0 && (
-                  <strong role="alert">
-                    {' '}
-                    · {summary.invalid} invalid values — expand to edit
-                  </strong>
-                )}
-              </span>
-            </>
-          }
+          summary={heading}
         >
           {contents}
         </SimulationDisclosure>
       ) : (
         <>
-          <h3 className={styles.groupHeading}>{group}</h3>
+          <h3 className={styles.groupHeading}>{heading}</h3>
           {contents}
         </>
       )}

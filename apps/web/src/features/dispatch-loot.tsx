@@ -58,7 +58,11 @@ export function DispatchLoot({
           </div>
           <div
             className={styles.lootFit}
-            data-fits={hasShips && plan.carried !== null ? allFits : undefined}
+            data-fits={
+              hasShips && plan.total > 0n && plan.carried !== null
+                ? allFits
+                : undefined
+            }
             aria-live="polite"
           >
             {plan.total === 0n ? (
@@ -67,7 +71,7 @@ export function DispatchLoot({
               'Select ships to see how much loot they can carry.'
             ) : !space ? (
               'Calculating cargo space…'
-            ) : plan.carried === null ? (
+            ) : plan.carried === null || plan.capacity === null ? (
               'Enter valid cargo amounts to see what fits.'
             ) : (
               <>
@@ -77,20 +81,24 @@ export function DispatchLoot({
                   <PackagePlus size={16} aria-hidden="true" />
                 )}
                 <span>
-                  {allFits ? (
+                  {plan.shortfall === null ? (
                     <>
-                      Capturing all <NumberValue value={plan.total} />
+                      All loot fits · <NumberValue value={plan.total} />
                     </>
                   ) : (
                     <>
-                      Capturing <NumberValue value={plan.carried} /> of{' '}
+                      Estimated haul · <NumberValue value={plan.carried} /> of{' '}
                       <NumberValue value={plan.total} />
                       <small>
-                        Needs{' '}
-                        <NumberValue
-                          value={plan.required - (space.remaining ?? 0n)}
-                        />{' '}
-                        more cargo space
+                        <NumberValue value={plan.capacity} /> free after fuel
+                        and cargo
+                      </small>
+                      <small>
+                        <strong>
+                          <NumberValue value={plan.shortfall} /> more cargo
+                          space
+                        </strong>{' '}
+                        for a full haul. Raid rules split space by resource.
                       </small>
                     </>
                   )}

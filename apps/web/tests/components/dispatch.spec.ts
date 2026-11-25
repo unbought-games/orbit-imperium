@@ -2396,7 +2396,8 @@ test('raid planning follows cargo space below the cargo controls and links back 
 }) => {
   await setup(page, mount, { variant: 'historical' })
   const planning = page.getByRole('region', { name: 'Raid cargo planning' })
-  await expect(planning).toContainText('Capturing 4,999 of 10,000')
+  await expect(planning).toContainText('Estimated haul · 4,999 of 10,000')
+  await expect(planning).toContainText('4,999 free after fuel and cargo')
   await expect(
     planning.getByRole('link', { name: 'Report', exact: true }),
   ).toHaveAttribute('href', new RegExp(`/reports/${id(90)}$`))
@@ -2417,10 +2418,11 @@ test('raid planning follows cargo space below the cargo controls and links back 
     capacity: '15001000000',
   })
   await page.getByLabel('Small Cargo · 2 available').fill('2')
-  await expect(planning).toContainText('Capturing all 10,000')
+  await expect(planning).toContainText('All loot fits · 10,000')
   await expect(review(page)).toBeEnabled()
   await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('5000')
-  await expect(planning).toContainText('more cargo space')
+  await expect(planning).toContainText('10,000 free after fuel and cargo')
+  await expect(planning).toContainText('2,000 more cargo space')
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     const aligned = await planning
@@ -2435,6 +2437,7 @@ test('raid planning follows cargo space below the cargo controls and links back 
           }
         }),
       )
+    expect(aligned).toHaveLength(3)
     for (const { icon, amount } of aligned)
       expect(Math.abs(icon - amount)).toBeLessThanOrEqual(1)
     expect(
@@ -2443,6 +2446,25 @@ test('raid planning follows cargo space below the cargo controls and links back 
       ),
     ).toBe(true)
   }
+  await page.getByRole('button', { name: 'Max metal', exact: true }).click()
+  await expect(planning).toContainText('8,339 free after fuel and cargo')
+  // Review can resolve Max to different cargo and payload than the estimate.
+  await configure(page, {
+    liveQuote: {
+      cargo: { metal: '5000000000', crystal: '0', deuterium: '0' },
+      hash: 'a'.repeat(64),
+      maximumPayload: '14000000000',
+      capacity: '14001000000',
+    },
+  })
+  await expect(planning).toContainText('8,339 free after fuel and cargo')
+  await review(page).click()
+  const quotePlanning = page
+    .getByRole('region', { name: 'Fleet quote' })
+    .getByRole('region', { name: 'Raid cargo planning' })
+  await expect(quotePlanning).toContainText('Estimated haul · 8,000 of 10,000')
+  await expect(quotePlanning).toContainText('9,000 free after fuel and cargo')
+  await expect(quotePlanning).toContainText('3,000 more cargo space')
 })
 
 test('holding duration has a visible field surface and supports keyboard selection', async ({
