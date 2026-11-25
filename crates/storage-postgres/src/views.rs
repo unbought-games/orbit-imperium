@@ -476,6 +476,8 @@ impl GameStore for PgStore {
         self.claim_head(u, worker).await
     }
     async fn load_claim(&self, claim: &Claim) -> Result<ClaimSnapshot, StoreError> {
+        let _facts =
+            crate::worker_observation::Timer::start(crate::worker_observation::Phase::FactLoad);
         self.claim_facts(claim).await
     }
     async fn renew_claim(&self, claim: &Claim) -> Result<Claim, StoreError> {

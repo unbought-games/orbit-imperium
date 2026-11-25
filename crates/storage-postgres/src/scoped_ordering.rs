@@ -320,6 +320,8 @@ impl ScopedOrderStore for PgStore {
     }
 
     async fn load_scoped(&self, claim: &ScopedClaim) -> Result<ClaimSnapshot, StoreError> {
+        let _facts =
+            crate::worker_observation::Timer::start(crate::worker_observation::Phase::FactLoad);
         let mut tx = crate::snapshots::begin(self, self.worker_pool()?).await?;
         if !valid(&mut tx, claim).await? {
             return Err(StoreError::StaleClaim);

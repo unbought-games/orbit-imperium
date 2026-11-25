@@ -22,6 +22,7 @@ mod setup_cli;
 mod ship_appearances;
 mod universe_cli;
 mod universe_serving;
+mod worker_metrics;
 mod world_cli;
 #[cfg(feature = "test-support")]
 use orbit_engine::parse_speed;

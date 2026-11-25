@@ -2464,6 +2464,24 @@ call using the extracted SQL. Bind the optional parent ID and exercise both the
 ordinary lookup and parent lookup with the existing buffer bound. All 18
 migration tests passed locally in 10.472 seconds.
 
+## November 25, 2026 — worker timing validation
+
+On `9f7a46f0` with the worker observability changes, adding an observed
+`GameService::step` to
+`planet_names_survive_restart_publish_to_other_players_and_retry_once` exhausted
+the native test stack (SIGABRT at 2.049 s). The original fixture on the same
+application code passed in 3.222 s. Moving the extra resolution into a boxed
+helper still overflowed at 2.536 s. Removed the added timing scenario and
+retained the original planet-name regression. No timeout or stack-size change.
+
+The focused inventory transaction test in `jump_gates` covers serial/scoped
+commit phases, affected rows, rollback and replay. Separately, a disposable
+API/worker run admitted and applied four fleet dispatches across both sources
+and modes, with an independently held advisory lock. PostgreSQL confirmed a
+waiting backend before release at admission and again at worker commit. Both
+endpoints exported the separate wait and hold phases, and the admission-cohort
+report recovered all four pairs and their phase durations.
+
 ### November 23, 2026 — single-read bootstrap fixture
 
 PR #500 run 45307445108 at `300b6620` failed the epoch-restart and

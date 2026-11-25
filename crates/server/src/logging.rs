@@ -213,6 +213,7 @@ mod tests {
                     CommandId(uuid::Uuid::from_u128(5)),
                     i.id,
                     diagnostics::action(&i.payload),
+                    diagnostics::AdmissionLog::unpaired(),
                 );
                 diagnostics::engine_decision(
                     &i,
@@ -271,6 +272,52 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn info_records_join_a_machine_order_to_its_claim_and_terminal_without_payloads() {
+        use crate::worker_metrics::{ObservedClaim, WorkerMetrics};
+        use orbit_storage_postgres::worker_observation::WorkerSample;
+        let input = input();
+        let presence = InputId(uuid::Uuid::from_u128(55));
+        let mut sample = WorkerSample::default();
+        sample.terminal = Some("rejected");
+        sample.commit_ack_us = Some(500);
+        sample.fact_lots_read = 8;
+        let records = capture(LevelFilter::INFO, || {
+            let (order, _) = diagnostics::AdmissionLog::pair(true, presence, input.id);
+            diagnostics::admitted(
+                input.universe,
+                CommandId(uuid::Uuid::nil()),
+                input.id,
+                "rename_planet",
+                order,
+            );
+            let claim = ObservedClaim::new(&input, "serial", WorkerId(uuid::Uuid::from_u128(7)));
+            claim.finish(
+                &WorkerMetrics::default(),
+                &sample,
+                &Ok(StepOutcome::Committed { input_id: input.id }),
+            );
+        });
+        assert_eq!(records.len(), 3);
+        assert_eq!(records[0]["source"], "machine");
+        assert_eq!(records[0]["paired_input_id"], presence.to_string());
+        assert!(records[0]["admission_ack_us"].is_u64());
+        assert_eq!(records[1]["event"], "worker_input_claimed");
+        assert_eq!(records[2]["event"], "worker_input_attempt");
+        assert!(records[1]["claim_ack_us"].is_u64());
+        assert_eq!(records[1]["claim_ack_us"], records[2]["claim_ack_us"]);
+        assert_eq!(records[2]["commit_ack_us"], 500);
+        assert_eq!(records[2]["outcome"], "rejected");
+        assert_eq!(records[2]["fact_lots_read"], 8);
+        assert!(records[2].get("cpu_execution_us").is_none());
+        for record in records {
+            assert_eq!(record["input_id"], input.id.to_string());
+            let text = record.to_string();
+            assert!(!text.contains("private-"));
+            assert!(!text.contains("credential"));
+        }
+    }
+
     #[test]
     fn gameplay_rejections_are_debug_decisions_not_application_errors() {
         let i = input();
@@ -427,6 +474,7 @@ mod tests {
                         CommandId(uuid::Uuid::from_u128(5)),
                         i.id,
                         "rename_planet",
+                        diagnostics::AdmissionLog::unpaired(),
                     );
                     diagnostics::engine_decision(
                         &i,
@@ -460,6 +508,7 @@ mod tests {
                         CommandId(uuid::Uuid::from_u128(6)),
                         presence.id,
                         "presence",
+                        diagnostics::AdmissionLog::unpaired(),
                     );
                     diagnostics::engine_decision(
                         &presence,
