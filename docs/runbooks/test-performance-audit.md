@@ -2463,3 +2463,13 @@ for the seven-parameter production fleet query. This was its only test-side
 call using the extracted SQL. Bind the optional parent ID and exercise both the
 ordinary lookup and parent lookup with the existing buffer bound. All 18
 migration tests passed locally in 10.472 seconds.
+
+### November 23, 2026 — single-read bootstrap fixture
+
+PR #500 run 45307445108 at `300b6620` failed the epoch-restart and
+incompatible-data assertions in `crates/application/tests/bootstrap.rs`.
+Both injected faults on a second world read that bootstrap no longer makes.
+The fixture now returns EpochChanged from the bound read on the selected
+attempts, retaining restart and three-attempt exhaustion coverage. Each
+protocol must use exactly one world read and return matching view/settings
+speed and profile. A foreign binding must fail before any world read.

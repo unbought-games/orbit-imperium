@@ -11,9 +11,9 @@ import {
   currentProgressionOptions,
   progressionContext,
   catalogCostContext,
-  currentCatalogCost,
   type ProgressionRequest,
 } from './options'
+import { catalogPreview } from './catalog-tile-model'
 
 function useServerProgressionOptions(
   model: Coordinator,
@@ -59,8 +59,8 @@ export function useProgressionOptions(
   }
 }
 
-/** Cost data is reusable across queue changes; action eligibility is not. */
-export function useCatalogCost(
+/** Cost and full-output demand are reusable across queue and throttle changes. */
+export function useCatalogPreview(
   model: Coordinator,
   view: ProgressionProps['view'],
   request: ProgressionRequest | null,
@@ -71,5 +71,5 @@ export function useCatalogCost(
     priced,
     catalogCostContext(view, priced),
   )
-  return currentCatalogCost(proposal, view)
+  return catalogPreview(view, proposal)
 }

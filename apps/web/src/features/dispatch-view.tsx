@@ -38,6 +38,7 @@ import { DispatchFeedback } from './dispatch-feedback'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { bodyName } from '../ui/format'
+import { formatWholeNumber } from '../ui/whole-number'
 type S = components['schemas']
 export type DispatchViewProps = {
   model: Coordinator
@@ -81,6 +82,7 @@ export function DispatchView({
     targetKind,
     setTargetKind,
     destination,
+    reportSalvage,
     destinationCoordinates,
     speed,
     setSpeed,
@@ -112,6 +114,19 @@ export function DispatchView({
     submittedAttempt,
     submittedCoordinates,
   } = dispatch
+  const salvageProblem =
+    mission === 'Harvest' && targetKind === 'debris' ? destination.problem : ''
+  const salvageDetail = !reportSalvage
+    ? undefined
+    : reportSalvage.available === '0'
+      ? 'No recyclers available at this origin.'
+      : reportSalvage.needed === '0'
+        ? 'Recycler capacity unavailable. Enter a count to continue.'
+        : reportSalvage.suggested !== reportSalvage.needed
+          ? `${formatWholeNumber(reportSalvage.available)} of ${formatWholeNumber(reportSalvage.needed)} recyclers available here.`
+          : `${formatWholeNumber(reportSalvage.needed)} ${reportSalvage.needed === '1' ? 'recycler' : 'recyclers'} needed to clear this field.`
+  const destinationNotice =
+    (targetProblem !== salvageProblem ? targetProblem : '') || attackWarning
   return (
     <Section className={styles.screen}>
       <header className={styles.dispatchHeader} aria-label="Dispatch header">
@@ -296,6 +311,8 @@ export function DispatchView({
                 kind={targetKind}
                 target={target}
                 lookup={destination.lookup}
+                salvageDetail={salvageDetail}
+                salvageProblem={salvageProblem || undefined}
                 player={view.binding.player}
                 playerNames={playerNames}
                 value={destinationText}
@@ -348,13 +365,13 @@ export function DispatchView({
                 </Button>
               </Text>
             )}
-            {(targetProblem || attackWarning) && (
+            {destinationNotice && (
               <Text
                 className={styles.destinationNotice}
                 tone="danger"
                 role="status"
               >
-                {targetProblem || attackWarning}
+                {destinationNotice}
               </Text>
             )}
           </fieldset>

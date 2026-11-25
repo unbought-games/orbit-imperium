@@ -5,6 +5,24 @@ import {
 import type { CSSProperties } from 'react'
 import type { InsigniaAppearance } from '../adapters/insignias'
 import styles from './insignia.module.css'
+
+const polygonVertices = {
+  diamond: [
+    [50, 0],
+    [100, 50],
+    [50, 100],
+    [0, 50],
+  ],
+  hexagon: [
+    [25, 0],
+    [75, 0],
+    [100, 50],
+    [75, 100],
+    [25, 100],
+    [0, 50],
+  ],
+}
+
 export function EmpireInsignia({
   appearance,
   size = 'small',
@@ -14,12 +32,15 @@ export function EmpireInsignia({
   size?: 'inline' | 'small' | 'compact' | 'medium' | 'large'
   label?: string
 }) {
+  const shape = appearance.recipe.shape ?? 'shield'
+  const vertices =
+    shape === 'diamond' || shape === 'hexagon' ? polygonVertices[shape] : null
   const rendering = appearance.rendering
   const motion = useTreatmentInteraction(rendering?.effect, size !== 'large')
   return (
     <span
       className={`${styles.insignia} ${styles[size]}`}
-      data-shape={appearance.recipe.shape ?? 'shield'}
+      data-shape={shape}
       data-treatment-pattern={rendering?.effect?.parameters.pattern}
       data-treatment-active={motion.active || undefined}
       data-still={motion.still || undefined}
@@ -39,6 +60,9 @@ export function EmpireInsignia({
           '--insignia-background':
             rendering?.background ?? appearance.recipe.background,
           '--insignia-mask': `url("${appearance.asset_url}")`,
+          clipPath: vertices
+            ? `polygon(${vertices.map(([x, y]) => `${x}% ${y}%`).join(', ')})`
+            : undefined,
         } as CSSProperties
       }
     >
@@ -70,6 +94,19 @@ export function EmpireInsignia({
           quiet={motion.still}
           active={motion.active}
         />
+      )}
+      {vertices && (
+        <svg
+          className={styles.polygonOutline}
+          aria-hidden="true"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          <polygon
+            points={vertices.map(([x, y]) => `${x},${y}`).join(' ')}
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
       )}
     </span>
   )

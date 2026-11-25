@@ -18,12 +18,16 @@ export function BuildingQuickBuild({
   tile,
   unavailable,
   cost,
+  showDesktopCosts,
+  energyDemand,
 }: {
   model: ProgressionProps['coordinator']
   view: ProgressionProps['view']
   request: Extract<ProgressionRequest, { type: 'Upgrade' }>
   tile: ComponentProps<typeof ImageTile>
   cost: components['schemas']['Resources'] | null
+  showDesktopCosts: boolean
+  energyDemand: bigint | null
   unavailable: string
 }) {
   const mobile = useMobileLayout()
@@ -42,10 +46,11 @@ export function BuildingQuickBuild({
     <div>
       <ImageTile
         {...tile}
-        compactCaption={
-          mobile
-            ? { summary: cost && <ResourceCostPreview cost={cost} /> }
-            : undefined
+        compactCaption={mobile}
+        summary={
+          (energyDemand !== null || (cost && (mobile || showDesktopCosts))) && (
+            <ResourceCostPreview cost={cost} energyDemand={energyDemand} />
+          )
         }
         action={
           <div

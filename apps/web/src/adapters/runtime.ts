@@ -117,10 +117,13 @@ export async function prepareRuntime(
 export async function loadInitialRuntime(
   deps: RuntimeDependencies,
   freshSession = false,
+  onFetch?: () => void,
 ): Promise<AppRuntime> {
   try {
+    const embedded = freshSession ? null : deps.readEmbedded()
+    if (!embedded) onFetch?.()
     return await prepareRuntime(
-      (!freshSession && deps.readEmbedded()) || (await deps.fetchBootstrap()),
+      embedded ?? (await deps.fetchBootstrap()),
       'document',
       deps,
     )

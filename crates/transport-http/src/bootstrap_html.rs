@@ -11,7 +11,21 @@ pub(super) fn render_bootstrap_html(
     {
         return Err(ServiceError::InvariantFailure);
     }
-    let json = serde_json::to_string(bootstrap).map_err(|_| ServiceError::InvariantFailure)?;
+    // Older installed bundles validate the original snapshot with a closed schema.
+    let json = if template.contains("data-bootstrap-tutorial") {
+        serde_json::to_string(bootstrap)
+    } else {
+        let mut value =
+            serde_json::to_value(bootstrap).map_err(|_| ServiceError::InvariantFailure)?;
+        if let Some(snapshot) = value
+            .pointer_mut("/result/game/snapshot")
+            .and_then(|v| v.as_object_mut())
+        {
+            snapshot.remove("tutorial");
+        }
+        serde_json::to_string(&value)
+    }
+    .map_err(|_| ServiceError::InvariantFailure)?;
     let safe = json
         .replace('<', "\\u003c")
         .replace('>', "\\u003e")

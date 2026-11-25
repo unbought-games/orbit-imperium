@@ -21,6 +21,7 @@ export type DispatchDraft = {
   coordinates: S['Coordinates']
   mission: S['Mission4']
   observedAt?: number
+  suggestRecyclers?: boolean
   target?: S['MissionDestination4']
 }
 export { MissionFleets } from './mission-fleets'

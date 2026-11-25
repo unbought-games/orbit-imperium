@@ -83,6 +83,7 @@ export function ResourcesPage(props: ProgressionProps) {
                   key={building.id}
                   model={model}
                   view={view}
+                  showDesktopCosts
                   request={{
                     type: 'Upgrade',
                     body: body.id,

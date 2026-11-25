@@ -79,6 +79,7 @@ export async function request(
   }
 }
 const bootstrapHeaders = {
+  'X-Orbit-Bootstrap-Tutorial': '1',
   'X-Orbit-View-Metadata': '1',
   'X-Orbit-Debris-Settings': '1',
 }

@@ -36,7 +36,6 @@ export function validateInitialGame(
     !session.memberships.some(
       (m) => m.universe === b.universe && m.player === b.player,
     ) ||
-    session.memberships[0]?.universe !== b.universe ||
     [candidate, view, settings].some((v) => v.request_id !== request_id)
   )
     throw Error('Bootstrap identity mismatch')
