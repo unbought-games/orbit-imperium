@@ -47,12 +47,13 @@ pub(crate) async fn inventory(
     tx: &mut Tx<'_>,
     bodies: &[uuid::Uuid],
 ) -> Result<Vec<InventoryStack>, StoreError> {
-    sqlx::query("SELECT * FROM inventories WHERE body=ANY($1) ORDER BY body,owner,item")
+    let rows = sqlx::query("SELECT * FROM inventories WHERE body=ANY($1) ORDER BY body,owner,item")
         .bind(bodies)
         .fetch_all(&mut **tx)
         .await
-        .map_err(db_error)?
-        .into_iter()
+        .map_err(db_error)?;
+    crate::worker_observation::read_stacks(rows.len());
+    rows.into_iter()
         .map(|r| {
             Ok(InventoryStack {
                 body: BodyId(r.try_get("body").map_err(db_error)?),

@@ -113,6 +113,8 @@ These are operational objectives, not measurements already achieved. Adding API 
 
 See [request and command latency](request-latency.md) for per-route/action
 histograms, durable admission outcomes and private recent-slow-request diagnostics.
+The [worker latency guide](request-latency.md#worker-latency-after-durable-acceptance)
+covers admission-to-claim cohorts, inventory I/O and active scheduler waits.
 
 ## Rules, repair, rollback, and retention
 

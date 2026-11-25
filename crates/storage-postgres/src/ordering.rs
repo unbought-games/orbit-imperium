@@ -347,6 +347,7 @@ impl PgStore {
             envelope.command_id,
             id,
             orbit_application::diagnostics::action(&input.payload),
+            orbit_application::diagnostics::AdmissionLog::unpaired(),
         );
         Ok(receipt)
     }

@@ -221,6 +221,7 @@ pub async fn serve(store: PgStore, mut serve: ServeConfig) -> ServeResult {
             drain_rx.clone(),
             serve.max_in_flight,
             serve.drain_timeout,
+            metrics.clone(),
         ))))
     } else {
         None

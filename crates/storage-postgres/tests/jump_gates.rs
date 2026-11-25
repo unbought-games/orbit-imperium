@@ -668,3 +668,83 @@ async fn paid_gate_construction_completes_and_the_new_gate_can_jump_after_restar
     ));
     assert_eq!(counts(&f).await, vec![13, 7]);
 }
+
+#[tokio::test]
+async fn worker_attempt_measures_actual_inventory_io_and_only_acknowledges_a_new_commit() {
+    use orbit_storage_postgres::worker_observation::{Phase, collect};
+
+    for scoped in [false, true] {
+        let f = setup(scoped).await;
+        let pair = action(&f, quote(&f, intent(&f, false)).await);
+        let game = GameService::new(f.store.clone());
+        game.world_submit(principal(f.b), pair).await.unwrap();
+        let worker = WorkerId(Uuid::new_v4());
+        if scoped {
+            game.step_scoped(f.u, worker, &InlineEngine).await.unwrap();
+        } else {
+            game.step(f.u, worker).await.unwrap();
+        }
+        let count_lots = || {
+            sqlx::query_scalar::<_, i64>(
+                "SELECT count(*) FROM asset_lots WHERE universe=$1 AND data->>'owner'=$2",
+            )
+            .bind(f.u.0)
+            .bind(f.b.player.to_string())
+            .fetch_one(&f.pool)
+        };
+        let before = count_lots().await.unwrap() as u64;
+        assert!(before > 0);
+        sqlx::raw_sql("CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text NOT NULL,enabled boolean NOT NULL,seen bigint NOT NULL DEFAULT 0); INSERT INTO orbit_test_fault(stage,mode,enabled) VALUES('before_commit','error',true)").execute(&f.pool).await.unwrap();
+
+        // Repeat the same fenced commit after a known rollback and after acknowledgement.
+        macro_rules! exercise {
+            ($claim:expr, $load:ident, $commit:ident) => {{
+                let claim = $claim.unwrap().unwrap();
+                let (snapshot, loading) = collect(f.store.$load(&claim)).await;
+                let snapshot = snapshot.unwrap();
+                assert!(loading.duration(Phase::FactLoad).is_some());
+                assert_eq!(loading.fact_lots_read, before);
+                let result =
+                    orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
+                assert!(matches!(result, TransitionResult::Applied(_)));
+                let (failed, rolled_back) = collect(f.store.$commit(&claim, result.clone())).await;
+                assert!(matches!(failed, Err(StoreError::Unavailable)));
+                assert_eq!(rolled_back.commit_ack_us, None);
+                assert_eq!(rolled_back.duration(Phase::Commit), None);
+                assert_eq!(count_lots().await.unwrap() as u64, before);
+                let (committed, sample) = collect(f.store.$commit(&claim, result.clone())).await;
+                assert!(matches!(committed, Ok(CommitOutcome::Committed { .. })));
+                assert_eq!(sample.terminal, Some("applied"));
+                assert!(sample.commit_ack_us.is_some());
+                assert!(loading.fact_stacks_read > 0);
+                assert_eq!(loading.fact_stacks_read, sample.revalidation_stacks_read);
+                assert_eq!(sample.stacks_written, 2);
+                assert_eq!(sample.duration(Phase::ScopedFence).is_some(), scoped);
+                assert_eq!(sample.fact_lots_read, 0);
+                assert_eq!(sample.revalidation_lots_read, before);
+                assert_eq!(sample.lots_deleted, before);
+                assert_eq!(sample.lots_inserted, count_lots().await.unwrap() as u64);
+                for phase in [Phase::Revalidation, Phase::Persistence, Phase::Commit] {
+                    assert!(sample.duration(phase).is_some(), "{phase:?}");
+                }
+                let (existing, replay) = collect(f.store.$commit(&claim, result)).await;
+                assert!(matches!(existing, Ok(CommitOutcome::Committed { .. })));
+                assert_eq!(replay.commit_ack_us, None);
+                assert_eq!(replay.lots_inserted, 0);
+            }};
+        }
+        if scoped {
+            exercise!(
+                f.store.claim_scoped(f.u, worker).await,
+                load_scoped,
+                commit_scoped
+            );
+        } else {
+            exercise!(
+                f.store.claim_next(f.u, worker).await,
+                load_claim,
+                commit_claim
+            );
+        }
+    }
+}

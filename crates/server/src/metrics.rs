@@ -58,6 +58,7 @@ pub struct RuntimeMetrics {
     >,
     publication_scan_failures: AtomicU64,
     durations: [Histogram; RuntimeStage::ALL.len()],
+    pub worker: crate::worker_metrics::WorkerMetrics,
     requests: crate::request_metrics::RequestMetrics,
     events: [AtomicU64; 8],
     auth: [[Histogram; orbit_application::AuthOutcome::ALL.len()];
@@ -69,6 +70,7 @@ impl RuntimeMetrics {
         Self {
             publications: Default::default(),
             requests: Default::default(),
+            worker: Default::default(),
             publication_scan_failures: AtomicU64::new(0),
             durations: std::array::from_fn(|_| Histogram::default()),
             events: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -193,6 +195,7 @@ impl RuntimeMetrics {
             writeln!(text, "orbit_public_feed_duration_seconds_count{{universe=\"{universe}\",feed=\"{feed}\"}} {}", metrics.duration_count).unwrap();
         }
         self.requests.render(&mut text);
+        self.worker.render(&mut text);
         text
     }
 }

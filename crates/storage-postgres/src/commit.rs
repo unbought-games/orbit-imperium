@@ -1,4 +1,5 @@
 use crate::ordering::*;
+use crate::worker_observation::{self, Phase, Timer};
 use crate::*;
 use orbit_application::*;
 use orbit_engine::*;
@@ -31,6 +32,7 @@ impl PgStore {
         claim: CommitClaim<'_>,
         outcome: TransitionResult,
     ) -> Result<CommitOutcome, StoreError> {
+        let revalidation = Timer::start(Phase::Revalidation);
         let i = claim.input();
         let mut tx = self.begin_tx(self.worker_pool()?).await?;
         if matches!(claim, CommitClaim::Serial(_)) {
@@ -104,9 +106,15 @@ impl PgStore {
             self.observe_event(RuntimeEvent::StaleCommit);
             return Ok(CommitOutcome::StaleClaim);
         }
-        if crate::holding::requires_lock(&i.payload) {
+        let alliance_hold = if crate::holding::requires_lock(&i.payload) {
+            let wait = Timer::start(Phase::AllianceWait);
             crate::holding::lock(&mut tx, i.universe, i.epoch).await?;
-        }
+            let hold = Timer::start(Phase::AllianceHold);
+            drop(wait);
+            Some(hold)
+        } else {
+            None
+        };
         // Sharing changes recipient protection outside the command stream. Hold
         // its row lock through fact revalidation and persistence, so no share can
         // slip between those steps and have its star overwritten by old facts.
@@ -147,18 +155,21 @@ impl PgStore {
             }
         };
         crate::facts::validate_rule_references(&mut tx, &facts).await?;
+        if let TransitionResult::Applied(change) = &outcome
+            && (change.input != i.id
+                || change.profile_hash != facts.profile_hash
+                || change.expected_facts_hash != hash(&facts)
+                || change.expected_collection_revisions != facts.collection_revisions)
+        {
+            return Ok(CommitOutcome::Conflict);
+        }
+        drop(revalidation);
+        let persistence = Timer::start(Phase::Persistence);
         let mut result_ids = Vec::new();
         match &outcome {
             TransitionResult::InvalidState(_) => return Err(StoreError::CorruptData),
             TransitionResult::Rejected(_) => {}
             TransitionResult::Applied(change) => {
-                if change.input != i.id
-                    || change.profile_hash != facts.profile_hash
-                    || change.expected_facts_hash != hash(&facts)
-                    || change.expected_collection_revisions != facts.collection_revisions
-                {
-                    return Ok(CommitOutcome::Conflict);
-                }
                 match persist_changes(
                     &mut tx,
                     i,
@@ -247,6 +258,7 @@ impl PgStore {
                 sqlx::query("UPDATE universe_runtime SET cursor=$2,claim_input=NULL,claim_owner=NULL,claim_token=NULL,lease_until=NULL WHERE universe=$1").bind(i.universe.0).bind(cursor).execute(&mut *tx).await.map_err(db_error)?;
             }
             CommitClaim::Scoped(c) => {
+                let fence = Timer::start(Phase::ScopedFence);
                 let waiting = std::time::Instant::now();
                 crate::scoped_ordering::control(&mut tx, i.universe).await?;
                 crate::scoped_ordering::lock_scopes(&mut tx, i.universe, &c.scopes, false).await?;
@@ -257,6 +269,7 @@ impl PgStore {
                     self.observe_event(RuntimeEvent::StaleCommit);
                     return Ok(CommitOutcome::StaleClaim);
                 }
+                drop(fence);
                 sqlx::query("UPDATE execution_scopes SET claim_input=NULL,claim_owner=NULL,claim_token=NULL,lease_until=NULL,resolved_at=$3,resolved_phase=$4,resolved_ordinal=$5 WHERE universe=$1 AND key=ANY($2)")
                     .bind(i.universe.0).bind(crate::admission::scope_keys(&c.scopes)).bind(i.at).bind(i.phase).bind(i.sequence).execute(&mut *tx).await.map_err(db_error)?;
             }
@@ -276,7 +289,12 @@ impl PgStore {
             crate::community_rewards::capture_command(&mut tx, i).await?;
         }
         let committed_at = now(&mut tx).await?;
+        drop(persistence);
+        let commit = Timer::start(Phase::Commit);
         tx.commit().await.map_err(db_error)?;
+        worker_observation::acknowledged(&outcome);
+        drop(alliance_hold);
+        drop(commit);
         drop(_final_hold);
         self.observe_event(RuntimeEvent::Committed);
         self.observer.duration(
@@ -375,11 +393,12 @@ pub(crate) async fn persist_changes(
                 .bind(ships.body.0).bind(ships.owner.0).bind(sqlx::types::Json(ships.item))
                 .bind(ships.count).bind(ships.revision).bind(previous.revision).bind(legacy)
                 .execute(&mut **tx).await.map_err(db_error)?;
+            worker_observation::wrote_stacks(n.rows_affected());
             if n.rows_affected() != 1 {
                 return Err(StoreError::Conflict);
             }
         } else {
-            sqlx::query(
+            let inserted = sqlx::query(
                 "INSERT INTO inventories(body,owner,item,count,revision) VALUES($1,$2,$3,$4,$5)",
             )
             .bind(ships.body.0)
@@ -390,6 +409,7 @@ pub(crate) async fn persist_changes(
             .execute(&mut **tx)
             .await
             .map_err(db_error)?;
+            worker_observation::wrote_stacks(inserted.rows_affected());
         }
         changed_collections.insert((format!("inventory:{}", ships.owner), ships.body.0));
     }

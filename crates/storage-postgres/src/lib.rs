@@ -34,6 +34,7 @@ mod migrations;
 pub use migrations::MigrationError;
 mod activity;
 mod analytics;
+pub mod worker_observation;
 pub use activity::with_activity_collection;
 mod identity;
 mod oidc;

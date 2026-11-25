@@ -3,7 +3,9 @@ use orbit_application::{
     RuntimeStage, RuntimeTimer, ServiceError,
 };
 use orbit_engine::{OrderedInput, TransitionResult};
+use orbit_storage_postgres::worker_observation::{self, Phase};
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::Semaphore;
 
 #[derive(Clone)]
@@ -29,6 +31,7 @@ impl BoundedEngine {
         &self,
         work: impl FnOnce() -> T + Send + 'static,
     ) -> Result<T, ServiceError> {
+        let enqueued = Instant::now();
         let waiting = RuntimeTimer::new(self.observer.clone(), RuntimeStage::EngineQueue);
         let permit = self
             .permits
@@ -38,15 +41,21 @@ impl BoundedEngine {
             .map_err(|_| ServiceError::Unavailable)?;
         drop(waiting);
         let observer = self.observer.clone();
-        tokio::task::spawn_blocking(move || {
+        let (result, queue, execution) = tokio::task::spawn_blocking(move || {
+            let queue = enqueued.elapsed();
             let _held = permit;
             observer.event(RuntimeEvent::EngineStarted);
             let _active = EngineActivity(observer.clone());
             let _duration = RuntimeTimer::new(observer, RuntimeStage::Engine);
-            work()
+            let started = Instant::now();
+            let result = work();
+            (result, queue, started.elapsed())
         })
         .await
-        .map_err(|_| ServiceError::Unavailable)
+        .map_err(|_| ServiceError::Unavailable)?;
+        worker_observation::duration(Phase::CpuQueue, queue);
+        worker_observation::duration(Phase::CpuExecution, execution);
+        Ok(result)
     }
 }
 impl EngineExecutor for BoundedEngine {
@@ -95,12 +104,11 @@ mod tests {
         let (second_tx, mut second_rx) = tokio::sync::oneshot::channel();
         let second = executor.clone();
         let queued = tokio::spawn(async move {
-            second
-                .blocking(move || {
-                    second_tx.send(()).unwrap();
-                    2
-                })
-                .await
+            worker_observation::collect(second.blocking(move || {
+                second_tx.send(()).unwrap();
+                2
+            }))
+            .await
         });
         tokio::task::yield_now().await;
         assert!(second_rx.try_recv().is_err());
@@ -108,7 +116,10 @@ mod tests {
         // This async task runs while the CPU lane is held by a blocking job.
         assert_eq!(tokio::spawn(async { 42 }).await.unwrap(), 42);
         release_tx.send(()).unwrap();
-        assert_eq!(queued.await.unwrap().unwrap(), 2);
+        let (result, sample) = queued.await.unwrap();
+        assert_eq!(result.unwrap(), 2);
+        assert!(sample.duration(Phase::CpuQueue).is_some());
+        assert!(sample.duration(Phase::CpuExecution).is_some());
         second_rx.await.unwrap();
         assert_eq!(executor.permits.available_permits(), 1);
     }

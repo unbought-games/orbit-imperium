@@ -172,6 +172,65 @@ pub fn engine_decision(input: &OrderedInput, result: &TransitionResult) {
         proposed_deuterium = changed_body.map(|b| b.checkpoint.amounts.deuterium));
 }
 
+#[derive(Clone, Copy)]
+pub struct AdmissionLog {
+    ack_us: Option<u64>,
+    source: &'static str,
+    alliance_lock_us: Option<(u64, u64)>,
+    paired_input: Option<orbit_engine::InputId>,
+}
+
+impl AdmissionLog {
+    pub fn unpaired() -> Self {
+        Self {
+            ack_us: wall_time_us(),
+            source: "unpaired",
+            alliance_lock_us: None,
+            paired_input: None,
+        }
+    }
+
+    pub fn with_alliance_lock(
+        mut self,
+        wait: std::time::Duration,
+        hold: std::time::Duration,
+    ) -> Self {
+        self.alliance_lock_us = Some((wait.as_micros() as u64, hold.as_micros() as u64));
+        self
+    }
+
+    pub fn pair(
+        machine: bool,
+        presence: orbit_engine::InputId,
+        gameplay: orbit_engine::InputId,
+    ) -> (Self, Self) {
+        let admission = Self {
+            ack_us: wall_time_us(),
+            source: if machine { "machine" } else { "foreground" },
+            alliance_lock_us: None,
+            paired_input: Some(presence),
+        };
+        (
+            admission,
+            Self {
+                paired_input: Some(gameplay),
+                ..admission
+            },
+        )
+    }
+}
+
+/// UTC microseconds for correlated acknowledgement records across processes.
+pub fn wall_time_us() -> Option<u64> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()?
+        .as_micros()
+        .try_into()
+        .ok()
+}
+
 /// Call only after admission COMMIT is acknowledged. Input IDs are unrelated to
 /// client command IDs: this record is the explicit join between them.
 pub fn admitted(
@@ -179,13 +238,20 @@ pub fn admitted(
     command: orbit_engine::CommandId,
     input: orbit_engine::InputId,
     action: &'static str,
+    admission: AdmissionLog,
 ) {
+    let AdmissionLog {
+        ack_us,
+        source,
+        paired_input,
+        alliance_lock_us,
+    } = admission;
     if action == "presence" {
         crate::orbit_log!(DEBUG, event = "command_admitted", command_id = %command,
-            input_id = %input, universe = %universe, action, stage = "admission", outcome = "accepted", commit_outcome = "acknowledged");
+            input_id = %input, universe = %universe, action, source, admission_ack_us = ack_us, admission_alliance_wait_us = alliance_lock_us.map(|v| v.0), admission_alliance_hold_us = alliance_lock_us.map(|v| v.1), paired_input_id = paired_input.map(|id| id.to_string()), stage = "admission", outcome = "accepted", commit_outcome = "acknowledged");
     } else {
         crate::orbit_log!(INFO, event = "command_admitted", command_id = %command,
-            input_id = %input, universe = %universe, action, stage = "admission", outcome = "accepted", commit_outcome = "acknowledged");
+            input_id = %input, universe = %universe, action, source, admission_ack_us = ack_us, admission_alliance_wait_us = alliance_lock_us.map(|v| v.0), admission_alliance_hold_us = alliance_lock_us.map(|v| v.1), paired_input_id = paired_input.map(|id| id.to_string()), stage = "admission", outcome = "accepted", commit_outcome = "acknowledged");
     }
 }
 
