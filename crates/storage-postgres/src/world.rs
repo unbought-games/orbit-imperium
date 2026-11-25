@@ -199,6 +199,7 @@ pub(crate) async fn load_selected(
         .map(decode)
         .collect::<Result<Vec<AssetLot>, _>>()?
     };
+    crate::worker_observation::read_lots(lots.len());
     normalize_asset_lots(&mut lots).map_err(|_| StoreError::CorruptData)?;
     let debris: Vec<DebrisField> = if selected.all {
         records(tx, u, "debris_fields").await?
@@ -909,12 +910,14 @@ pub(crate) async fn save(
             .iter()
             .map(ToString::to_string)
             .collect();
-        sqlx::query("DELETE FROM asset_lots WHERE universe=$1 AND data->>'owner'=ANY($2)")
-            .bind(u.0)
-            .bind(owners)
-            .execute(&mut **tx)
-            .await
-            .map_err(db_error)?;
+        let result =
+            sqlx::query("DELETE FROM asset_lots WHERE universe=$1 AND data->>'owner'=ANY($2)")
+                .bind(u.0)
+                .bind(owners)
+                .execute(&mut **tx)
+                .await
+                .map_err(db_error)?;
+        crate::worker_observation::deleted_lots(result.rows_affected());
         // One round trip: a mature player holds hundreds of lots.
         let keys: Vec<String> = (0..c.records.lots.len())
             .map(|index| format!("{}:{index}", i.id))
@@ -926,13 +929,14 @@ pub(crate) async fn save(
             .map(serde_json::to_value)
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| StoreError::CorruptData)?;
-        sqlx::query("INSERT INTO asset_lots(universe,key,data) SELECT $1,k,d FROM unnest($2::text[],$3::jsonb[]) AS t(k,d)")
+        let result = sqlx::query("INSERT INTO asset_lots(universe,key,data) SELECT $1,k,d FROM unnest($2::text[],$3::jsonb[]) AS t(k,d)")
             .bind(u.0)
             .bind(keys)
             .bind(data)
             .execute(&mut **tx)
             .await
             .map_err(db_error)?;
+        crate::worker_observation::inserted_lots(result.rows_affected());
         crate::ranking_scores::save_current_scores(tx, u, &world.covered_players, &c.records.lots)
             .await?;
     }
@@ -1095,9 +1099,16 @@ impl PgStore {
         }
         // Social actions authorize under the alliance lock before charging bot
         // participation. Fleet admission must acquire those locks in that order too.
-        if crate::holding::requires_lock(&Input::Command(g.clone())) {
+        let alliance_lock = if crate::holding::requires_lock(&Input::Command(g.clone())) {
+            let wait = self.timer(RuntimeStage::AdmissionAllianceWait);
             crate::holding::lock(&mut tx, b.universe, b.epoch).await?;
-        }
+            let hold = self.timer(RuntimeStage::AdmissionAllianceHold);
+            let elapsed = wait.elapsed();
+            drop(wait);
+            Some((elapsed, hold))
+        } else {
+            None
+        };
         crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         let pair_hash = hash(&pair);
         if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
@@ -1298,6 +1309,12 @@ impl PgStore {
         self.test_fault("before_pair_admission").await?;
         let commit_timing = self.timer(RuntimeStage::AdmissionCommit);
         tx.commit().await.map_err(db_error)?;
+        let (gameplay_log, presence_log) =
+            orbit_application::diagnostics::AdmissionLog::pair(machine, pi, gi);
+        let gameplay_log = match alliance_lock {
+            Some((wait, hold)) => gameplay_log.with_alliance_lock(wait, hold.elapsed()),
+            None => gameplay_log,
+        };
         drop(commit_timing);
         timing.finish(AdmissionOutcome::Committed);
         orbit_application::diagnostics::admitted(
@@ -1305,12 +1322,14 @@ impl PgStore {
             pair.gameplay.command_id,
             gi,
             log_action,
+            gameplay_log,
         );
         orbit_application::diagnostics::admitted(
             b.universe,
             pair.presence.command_id,
             pi,
             "presence",
+            presence_log,
         );
         #[cfg(feature = "test-support")]
         self.test_fault("after_pair_admission").await?;

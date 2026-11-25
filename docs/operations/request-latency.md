@@ -39,11 +39,13 @@ it is never proof the order was rolled back. Recover with the original command I
 `source=foreground|machine` describes the admission entry point, not unique people.
 
 Phases are `authentication`, `pool_wait`, `ordering_wait`, `ordering_hold`,
-`admission_commit` and `admission`. They are nested and can overlap: **do not add
+`admission_commit`, `admission_alliance_wait`, `admission_alliance_hold` and
+`admission`. They are nested and can overlap: **do not add
 them together**. Authentication timing covers the shared HTTP authentication helper;
 not every specialized auth/bootstrap endpoint uses that helper. Pool waits are
 observed checkouts, not every SQL round-trip. Ordering waits cover the existing
-scope-stamp instrumentation; other lock/query time remains inside admission.
+scope-stamp instrumentation. The two admission alliance phases cover the
+universe/epoch advisory lock when the admitted action requires it.
 A phase with no observation is absent, not a measured zero. Child/background tasks
 are not attributed to the request; no task context crosses process boundaries.
 
@@ -128,3 +130,184 @@ response failure, and replay without a second committed observation. HTTP tests
 cover concurrent task isolation, cancellation, malformed commands, authentication
 failures, matched route templates and bounded method labels. Exporter tests cover
 exact SLO bucket boundaries, outcomes, phases, bounded retention and series overflow.
+
+## Worker latency after durable acceptance
+
+On November 24, 2026, the serial production worker took up to **19.53 seconds**
+to acknowledge a fleet outcome after the API acknowledged admission. In the
+six-hour admission cohort, 121 foreground dispatches had a p95 of 13.02 seconds.
+The 114 machine dispatches had a p95 of 0.71 seconds. The historical records
+establish those intervals. They do not contain the phase breakdown of that
+19.53-second launch.
+
+### Reconstruct a dispatch
+
+1. Find the API's `command_admitted` record by command ID. Take its universe,
+   input ID, `admission_ack_us`, and `source`. V4 pair admission labels the
+   actual entry point `foreground` or `machine` and supplies `paired_input_id`
+   for the presence command. Single admissions use `unpaired`. Both members of a
+   pair share one admission acknowledgement. A receipt replay produces no fresh
+   admission record. For a dispatch, the gameplay admission record also carries
+   `admission_alliance_wait_us` and `admission_alliance_hold_us` for its admission
+   transaction.
+2. Find `worker_input_claimed` and `worker_input_attempt` by universe and
+   input ID. Subtract admission acknowledgement from the **first observed
+   claim** to measure the wait through the successful claim transaction.
+   The separate claim record can survive a worker that never finishes.
+   Each attempt names the executing mode (`serial` includes preparation for
+   cutover), worker instance, and its own `claim_ack_us`. A recovered input
+   can have multiple claims.
+3. On the terminal attempt, subtract `admission_ack_us` from `commit_ack_us`
+   for wall time to durable outcome. Only a newly acknowledged transaction
+   supplies the latter. Both applied and game-rule rejected orders have terminal
+   receipts. Existing receipts, retries and failures can have timing samples,
+   but cannot supply another terminal acknowledgement.
+4. Read the attempt's phase durations and row counts below. To explain time
+   before claim, inspect the paired presence input, earlier committed inputs in
+   the universe, and `worker_active_wait` records from the same worker instance
+   during that interval. Overlapping a scheduler wait establishes that the loop
+   waited. Establishing that a specific pending input was eligible throughout
+   also requires its ordering dependencies.
+
+| Attempt field | Measured boundary |
+| --- | --- |
+| `fact_load_us` | Worker snapshot checkout, validation, fact reads and snapshot transaction completion |
+| `cpu_queue_us` | Request for a CPU lane through entry to the blocking closure, including blocking-thread scheduling |
+| `cpu_execution_us` | Wall duration spent in the blocking calculation and engine decision diagnostics |
+| `commit_revalidation_us` | Commit entry through pool checkout, initial locks, claim checks, fact reload and change-set hash/revision checks |
+| `alliance_wait_us` | Round trip to acquire the universe/epoch alliance advisory lock during worker revalidation |
+| `alliance_hold_us` | Successful acquisition response through worker COMMIT acknowledgement or exit from the attempted transaction |
+| `persistence_us` | Subsequent state/receipt/update work, including the final scoped publication fence, through the last pre-commit statement |
+| `scoped_fence_us` | Time within persistence spent acquiring final scoped gates and checking ownership. Included in `persistence_us`; present only in scoped execution |
+| `commit_round_trip_us` | Sending COMMIT through its return to the worker. A failed call can have a duration and unknown disposition |
+| `attempt_us` | Monotonic wall time from the scheduler receiving the claim through resolution return, including task scheduling and application overhead |
+| `fact_lots_read`, `revalidation_lots_read`, `lots_deleted`, `lots_inserted` | Asset-lot rows loaded before normalization at each read and rows affected by the bulk delete and insert |
+| `fact_stacks_read`, `revalidation_stacks_read`, `stacks_written` | Rows returned by the inventory stack loader at each read and rows affected by stack inserts and updates during change-set persistence |
+
+A fleet launch acquires this alliance lock twice, once in each transaction.
+Compare its admission and worker wait/hold distributions separately. Worker wait
+is part of revalidation. Worker hold overlaps the remaining revalidation,
+persistence and COMMIT. The database grants/releases the lock inside those
+round trips. Hold on an early return ends when the application leaves the
+transaction path, and can exclude an asynchronous rollback. For observed waits
+across independent orders, inspect both transactions and other users of the
+same advisory lock. To estimate dispatch lock occupancy during a burst in one
+universe and epoch, reconstruct each acknowledged hold interval as
+`[ack_us - hold_us, ack_us]` on its own API or worker clock. Clip to the burst
+window and divide the duration of the **union** by the window length. State
+clock uncertainty and coverage. Other alliance/social transactions may hold
+the same lock without a dispatch record.
+
+A missing phase means the worker did not return a measurement for it. SQL row
+counts describe work performed even on a later rollback. They exclude database
+pages scanned, triggers and cascading deletes. The existing aggregate
+`engine_queue` stage ends at semaphore acquisition. CPU execution here measures
+elapsed time on the blocking thread, which includes preemption.
+
+Wall timestamps are UTC microseconds on the acknowledging API or worker host.
+Verify host clock synchronization and bound clock uncertainty before using
+cross-host differences. A worker can see committed work before the API process
+resumes from COMMIT. A claim timestamp earlier than the API acknowledgement
+is reported separately and omitted from the queue distribution. An independently
+ordered admission-to-terminal interval still contributes. Phase durations
+use monotonic clocks within a worker. `logical_at_ms`, receipt timestamps,
+`settlement`, and `dependency_wait` use game ordering or its logical frontier.
+An update row's creation time precedes COMMIT. Client receipt and rendering
+have separate boundaries.
+
+The backend objective ends at the worker's acknowledged terminal commit. To
+measure player-visible launch confirmation, record browser-monotonic milestones
+for submission, receipt of the terminal SSE event **before queuing it for
+processing**, application of that event to the authoritative client state, and
+the first rendered confirmation. A previously queued overview refresh can delay
+applying an event the browser already has. Record that refresh start/completion
+and show receive-to-apply separately from apply-to-render. Distinguish SSE,
+receipt polling and reconnect/replay when joining by command ID. Worker logs
+cannot supply these browser timings. Do not subtract browser and server clocks.
+
+### Private worker metrics
+
+| Family | Labels and use |
+| --- | --- |
+| `orbit_worker_phase_seconds` | Histogram by bounded engine action, execution mode and phase. Includes observed phases of returned attempts, including retries |
+| `orbit_worker_asset_lot_rows_total` | Counter by action, mode and operation (`fact_read`, `revalidation_read`, `insert`, `delete`) |
+| `orbit_worker_inventory_stack_rows_total` | Counter by action, mode and operation (`fact_read`, `revalidation_read`, `write`) |
+| `orbit_worker_scheduler_wait_seconds` | Histogram by `reason`, whether unjoined input tasks existed (`active_inputs`), and `wake`. Measures actual elapsed 100 ms no-progress backoffs, including early notifications/drain, and 25 ms poll timers that fired |
+
+For example, this query estimates p95 fact-load time for dispatches by mode.
+Sum bucket deltas across worker instances before computing percentiles.
+
+```promql
+histogram_quantile(0.95,
+  sum by (le, mode) (rate(orbit_worker_phase_seconds_bucket{
+    action="fleet_dispatch",phase="fact_load"
+  }[1h]))
+)
+```
+
+For the scheduler issue, inspect the count and sum for
+`reason="barrier_no_progress",active_inputs="true"`. Compare with
+`input_no_progress` and `poll_interval`. Active includes inputs whose results
+are waiting to be joined. The scheduler can sleep concurrently with useful
+work. Adding those seconds to phase durations double-counts overlapping time.
+
+### Admission cohorts and a candidate SLO
+
+A candidate worker objective is **99% of newly accepted foreground fleet
+dispatches receive an authoritative terminal outcome within one second over a
+rolling 28 days**. This threshold is proposed for evaluation. Keep machine
+traffic, other actions, and API response/client confirmation objectives separate.
+
+Export private application JSON records (one object per line) for
+`command_admitted`, `worker_input_claimed`, and `worker_input_attempt` from
+every API and worker. Include terminal and recovery records after the window
+closes. Set `START_UTC` and `END_UTC` to UTC timestamps ending in `Z` for a
+window covered by the instrumented release, then run the report:
+
+```sh
+node scripts/worker-latency.mjs "$START_UTC" "$END_UTC" fleet_dispatch < events.jsonl
+```
+
+The report selects by admission acknowledgement in the half-open interval and
+joins by universe and input ID. It reports cumulative histogram buckets in
+milliseconds, exact nearest-rank p50/p95/p99 and maximum for observed times by source and executor mode. Phase distributions use
+the newly committed attempt per order. The worker Prometheus phase histograms also
+include earlier attempts. Admission lock distributions use the fresh admission
+record and can include orders with a missing terminal. INFO records cover fast and slow gameplay orders.
+Scheduled inputs and presence have per-attempt INFO detail after 250 ms of
+worker execution or logical lateness, and on nonterminal outcomes. Active
+scheduler waits of at least 50 ms carry an INFO record. Faster waits remain in
+the histogram. Input and worker IDs are confined to private logs.
+
+For the candidate SLO, sum `within_1s` across **all** foreground mode groups
+and divide by the sum of `admitted`, including the unknown-mode group. Each
+new admission counts once across duplicate deliveries and retries. Timely
+game-rule rejection counts as a timely resolution. Report applied, rejected,
+missing-terminal and invalid-terminal-clock counts alongside latency. Missing terminal
+evidence and invalid timing get no success credit. Reconcile fresh admission
+counts by action/source with the API admission counters and durable receipts.
+The report separately flags terminal records in the window whose admission is
+absent from the export. Look back across the start boundary to distinguish an
+earlier admission from a lost log.
+An incomplete export, clock uncertainty near the threshold, or missing
+admission evidence prevents certification of a complete SLO window.
+
+### Production retention and collection
+
+At the time of the investigation, production retained INFO gameplay admission
+and terminal logs in its private gameplay log group (configured for 14 days),
+host/database pressure metrics, due lag, blocked scopes, and allowlisted
+auth/bootstrap/pool snapshots. The private endpoints also exposed cumulative
+process-local runtime and HTTP histograms. A point-in-time scrape cannot
+reconstruct their history. PostgreSQL commit timestamp tracking and statement
+statistics were disabled in the investigated deployment.
+
+The worker families and explicit acknowledgement fields require a release
+containing this instrumentation. Existing INFO forwarding can carry the new
+records after rollout. Verify ingestion from both roles, configured retention,
+clock offsets, writer/collector drops, duplicates and restarts. The current
+allowlisted metrics collection needs explicit coverage for these worker families
+on every worker and fresh admission counters on every API. Retain reset-aware
+bucket/count/sum deltas or joined, deduplicated cohorts and their coverage
+evidence for at least 28 days plus the completion lookahead. A 14-day log
+window alone cannot establish the proposed objective.

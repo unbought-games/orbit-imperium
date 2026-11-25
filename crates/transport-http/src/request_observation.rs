@@ -28,6 +28,8 @@ impl RuntimeObserver for RequestTimingObserver {
             RuntimeStage::OrderingWait => RequestPhase::OrderingWait,
             RuntimeStage::OrderingHold => RequestPhase::OrderingHold,
             RuntimeStage::AdmissionCommit => RequestPhase::AdmissionCommit,
+            RuntimeStage::AdmissionAllianceWait => RequestPhase::AdmissionAllianceWait,
+            RuntimeStage::AdmissionAllianceHold => RequestPhase::AdmissionAllianceHold,
             _ => return,
         };
         let _ = CURRENT.try_with(|sample| add_phase(sample, phase, elapsed));

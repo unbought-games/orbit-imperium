@@ -148,15 +148,19 @@ pub enum RequestPhase {
     OrderingWait,
     OrderingHold,
     AdmissionCommit,
+    AdmissionAllianceWait,
+    AdmissionAllianceHold,
     Admission,
 }
 impl RequestPhase {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 8] = [
         Self::Authentication,
         Self::PoolWait,
         Self::OrderingWait,
         Self::OrderingHold,
         Self::AdmissionCommit,
+        Self::AdmissionAllianceWait,
+        Self::AdmissionAllianceHold,
         Self::Admission,
     ];
     pub fn name(self) -> &'static str {
@@ -166,6 +170,8 @@ impl RequestPhase {
             Self::OrderingWait => "ordering_wait",
             Self::OrderingHold => "ordering_hold",
             Self::AdmissionCommit => "admission_commit",
+            Self::AdmissionAllianceWait => "admission_alliance_wait",
+            Self::AdmissionAllianceHold => "admission_alliance_hold",
             Self::Admission => "admission",
         }
     }
