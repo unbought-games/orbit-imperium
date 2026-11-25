@@ -65,8 +65,8 @@ facts and retry receipts commit together. Reusing a command ID with different
 content rejects; retrying the same ID returns its original result without another
 message. No social plaintext is copied into command receipts. The client retains
 an uncertain command until retry resolves it and clears private state on session
-or epoch changes. Visible conversations poll incrementally every five seconds;
-background tabs pause polling. Paging older messages preserves scroll position.
+or epoch changes. Visible conversations refresh on a recipient revision or window focus.
+A two-minute incremental read recovers missed changes while the tab is visible. Paging older messages preserves scroll position.
 
 Player reporting and moderation remain deferred. There are no report buttons,
 intake records, automatic sanctions, or moderation workers.

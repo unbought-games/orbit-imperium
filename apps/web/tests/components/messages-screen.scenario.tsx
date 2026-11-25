@@ -48,6 +48,7 @@ async function prepare() {
   const messages = [message(1), message(2)],
     requests: S['SocialQuery'][] = []
   const commands: S['SocialCommandRequest']['action'][] = []
+  let viewerRevision = BigInt(view.viewer_revision)
   let sequence = 100,
     hidden = false,
     read = 0,
@@ -60,7 +61,12 @@ async function prepare() {
   const port: GamePort = {
     currentBinding: unexpected,
     settings: unexpected,
-    view: unexpected,
+    view: async (context) =>
+      structuredClone({
+        ...view,
+        ...context,
+        viewer_revision: String(viewerRevision),
+      }),
     quote: unexpected,
     submit: unexpected,
     receipt: unexpected,
@@ -134,6 +140,17 @@ async function prepare() {
     view,
     requests,
     commands,
+    async invalidate() {
+      viewerRevision++
+      await model.onUpdate({
+        binding: view.binding,
+        cursor: String(viewerRevision),
+        event: {
+          type: 'Invalidate',
+          minimum_viewer_revision: String(viewerRevision),
+        },
+      })
+    },
     incoming() {
       messages.push(message(messages.length + 1))
     },

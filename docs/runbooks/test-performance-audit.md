@@ -2535,3 +2535,22 @@ blob `d1e84f973aa94a98d25c6d5974cc8bf685520031`. The one-case run finished
 in 1.6 seconds. All four independent review packets were read-only. The last
 packet's SHA-256 was
 `e1b61d7f520dfaa1f5bd1c567200e5ee08ca21602a2742d17cf2ae98da8e6544`.
+
+### November 25, 2026 — idle Messages recovery
+
+On `0656fc2d`, PR 506 CI run `45626381108` attempt 1 passed 735 of
+736 component cases. The Messages screen test still expected its third
+history request at five seconds. The recipient-driven implementation correctly
+kept the count at two. Its original migration in #490 used that interval
+to check that a passive refresh preserved the thread and composer.
+
+The updated case keeps the original initial refusal, explicit retry, held
+incremental read, focus and draft assertions. It checks that idle history and inbox reads stay quiet until the two-minute fallback, drives a recipient invalidation through the coordinator, and
+exercises the two-minute fallback after a later message has no wake. PostgreSQL
+coverage checks that a send wakes exactly its participants and read receipts
+only wake their owner. Other fake-clock advances in the component suite do not
+assert this Messages polling contract. The two focused Messages cases passed
+with 3.117 s bundle preparation and 1.0 s execution. Independent review of
+patch `7064fb8e62657c9429489114a3264359fba04689ba56906598a7c6aad324eb01`
+passed both cases after tightening the idle boundary and checking both request
+counts. All eight PostgreSQL social cases passed in 19.684 s.

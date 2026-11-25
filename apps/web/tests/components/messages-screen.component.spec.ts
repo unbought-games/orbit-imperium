@@ -2,7 +2,7 @@ import { test, expect } from './fixture'
 import { id } from '../../src/test-support/bootstrap'
 import type {} from './messages-screen.scenario'
 const epoch = new Date('2026-10-31T14:20:00Z')
-test('the real Messages screen retries its initial refusal and polls a settled open thread every five seconds', async ({
+test('Messages refreshes an open thread on invalidation and recovers a missed wake without losing the draft', async ({
   page,
 }) => {
   await page.clock.pauseAt(epoch)
@@ -40,34 +40,35 @@ test('the real Messages screen retries its initial refusal and polls a settled o
     .toBe(1)
   await expect(composer).toBeEnabled()
   await composer.fill('Keep this draft')
-  const before = await page.evaluate(
-    () =>
-      window.messagesScreen.requests.filter((q) => q.type === 'Messages')
-        .length,
-  )
+  const counts = () =>
+    page.evaluate(() => ({
+      history: window.messagesScreen.requests.filter(
+        (q) => q.type === 'Messages',
+      ).length,
+      inbox: window.messagesScreen.requests.filter(
+        (q) => q.type === 'Conversations',
+      ).length,
+    }))
+  const lastCursor = () =>
+    page.evaluate(
+      () =>
+        window.messagesScreen.requests
+          .filter((q) => q.type === 'Messages')
+          .at(-1)?.after,
+    )
+  const before = await counts()
   await page.evaluate(() => {
     window.messagesScreen.hold()
     window.messagesScreen.fail()
   })
   try {
-    await page.clock.runFor(4999)
-    expect(
-      await page.evaluate(
-        () =>
-          window.messagesScreen.requests.filter((q) => q.type === 'Messages')
-            .length,
-      ),
-    ).toBe(before)
-    await page.clock.runFor(1)
+    await page.clock.fastForward(119_999)
+    expect(await counts()).toEqual(before)
+    await page.evaluate(() => window.messagesScreen.invalidate())
     await expect
-      .poll(() =>
-        page.evaluate(
-          () =>
-            window.messagesScreen.requests.filter((q) => q.type === 'Messages')
-              .length,
-        ),
-      )
-      .toBe(before + 1)
+      .poll(counts)
+      .toEqual({ history: before.history + 1, inbox: before.inbox + 1 })
+    expect(await lastCursor()).toBe(id(1002))
     await expect(history.getByText('Message 2', { exact: true })).toBeVisible()
     await expect(
       page.getByText('Loading messages…', { exact: true }),
@@ -83,14 +84,27 @@ test('the real Messages screen retries its initial refusal and polls a settled o
   await expect(page.getByRole('alert')).toHaveCount(0)
   await expect(history.getByText('Message 3', { exact: true })).toBeVisible()
   await expect(composer).toHaveValue('Keep this draft')
-  expect(
-    await page.evaluate(
-      () =>
-        window.messagesScreen.requests
-          .filter((q) => q.type === 'Messages')
-          .at(-1)?.after,
-    ),
-  ).toBe(id(1002))
+  expect(await lastCursor()).toBe(id(1002))
+  // The next delivery has no invalidation. After the prior read has settled,
+  // the fallback must fetch only new messages and leave the composer alone.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          window.messagesScreen.commands.filter((c) => c.type === 'Read')
+            .length,
+      ),
+    )
+    .toBe(2)
+  const settled = await counts()
+  await page.evaluate(() => window.messagesScreen.incoming())
+  await page.clock.runFor(1)
+  await expect
+    .poll(counts)
+    .toEqual({ history: settled.history + 1, inbox: settled.inbox + 1 })
+  await expect(history.getByText('Message 4', { exact: true })).toBeVisible()
+  await expect(composer).toHaveValue('Keep this draft')
+  expect(await lastCursor()).toBe(id(1003))
 })
 
 test('reading the delivered conversation clears its accessible unread action and hiding removes the list row', async ({
@@ -102,7 +116,9 @@ test('reading the delivered conversation clears its accessible unread action and
     'messages-screen',
   )
   const open = page.getByRole('button', { name: /Open conversation with Nova/ })
-  await expect(open).toHaveAccessibleName('Open conversation with Nova · Unread')
+  await expect(open).toHaveAccessibleName(
+    'Open conversation with Nova · Unread',
+  )
   await open.click()
   await expect(
     page.getByLabel('Message history').getByText('Message 2', { exact: true }),
