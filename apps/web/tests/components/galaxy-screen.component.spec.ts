@@ -1,7 +1,7 @@
 import type { components as Contract } from '../../src/contracts'
 import { test, expect, type Page } from './fixture'
 import type {} from './galaxy-screen.scenario'
-import { id, player, now } from './dispatch-data'
+import { id, originBody, player, now } from './dispatch-data'
 
 type Input = NonNullable<Window['galaxyInput']>
 async function open(page: Page, input: Input = {}) {
@@ -36,6 +36,56 @@ const baseBody = {
   vacation: false,
   espionage_eligible: true,
 }
+
+test('a moon without a phalanx can spy from the row while the planet menu disables scanning', async ({
+  page,
+}) => {
+  const moon = {
+    ...originBody,
+    id: id(80),
+    kind: 'Moon' as const,
+    moon: { parent: originBody.id, created_at: now },
+    diameter_km: 8366,
+  }
+  await open(page)
+  await page.evaluate(async (moon) => {
+    const { view } = window.galaxyScene.snapshot()
+    await window.galaxyScene.configure({
+      view: {
+        bodies: [...view.bodies, moon],
+        capabilities: [
+          ...view.capabilities,
+          {
+            capability: 'ScanPlanet',
+            enabled: true,
+            reason: 'Available',
+          },
+        ],
+      },
+    })
+    await window.setGalaxyOrigin(moon.id)
+  }, moon)
+  await row(page)
+    .getByRole('button', { name: /^Actions for \[/ })
+    .press('Enter')
+  const menu = page.getByRole('menu')
+  const scan = menu.getByRole('menuitem', { name: 'Scan planet', exact: true })
+  await expect(scan).toBeDisabled()
+  await expect(scan).not.toHaveAttribute('title')
+  await expect(menu).not.toContainText(/phalanx/i)
+  await page.keyboard.press('Escape')
+  await spy(page).click()
+  await expect
+    .poll(() => page.evaluate(() => window.galaxyScene.snapshot().lastLaunch))
+    .toMatchObject({
+      type: 'LaunchFleet',
+      intent: {
+        origin: moon.id,
+        destination: { type: 'Body', id: id(20), expected_kind: 'Planet' },
+        mission: 'Espionage',
+      },
+    })
+})
 
 test('viewed Galaxy badges and open action menus follow newly delivered protection', async ({
   page,

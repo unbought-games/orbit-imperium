@@ -44,14 +44,11 @@
   display: grid;
   grid-template-columns:
     40px minmax(0, min(26%, 28ch)) 44px 128px 72px minmax(0, 1fr)
-    var(--galaxy-actions-width, 76px);
+    76px;
   column-gap: 10px;
   row-gap: 0;
   margin: 0;
   padding: 0 12px;
-}
-.positionList:has([data-missile-launch]) {
-  --galaxy-actions-width: 76px;
 }
 .positionList > li {
   display: grid;
@@ -641,30 +638,11 @@
     width: 28px;
     height: 28px;
   }
-  .quickActions:has(.scanAction) > .spyButton {
-    display: none;
-  }
 }
 @media (max-width: 359px) {
   .toolbar {
     padding-inline: 2px;
   }
-  .positionList {
-    grid-template-columns: 26px minmax(0, 1fr) 44px 68px 54px 0 0;
-  }
-  .quickActions > .spyButton {
-    display: none;
-  }
-  .quickActions:has(.scanAction) {
-    flex-direction: row;
-  }
-}
-
-.scanAction {
-  display: contents;
-}
-.positionList[data-scan-capable] {
-  --galaxy-actions-width: 124px;
 }
 
 .planetTarget {
@@ -703,11 +681,6 @@
   pointer-events: auto;
   width: fit-content;
   max-width: 100%;
-}
-@media (max-width: 359px) {
-  .positionList[data-scan-capable] {
-    grid-template-columns: 26px minmax(0, 1fr) 44px 68px 54px 0 44px;
-  }
 }
 
 /* A dim limb and a slow ice-blue sweep echo the lighting of the planet art. */

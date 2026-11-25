@@ -45,7 +45,7 @@ export function GalaxyPosition({
   missileAction,
   scanAction,
 }: {
-  scanAction?: ReactNode
+  scanAction?: ComponentProps<typeof GalaxyActionMenu>['scanAction']
   readOnly?: boolean
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
@@ -123,12 +123,13 @@ export function GalaxyPosition({
                   <span className={styles.srOnly}>Actions for {target}</span>
                 </Button>
               }
-              missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
+              actionIdentity={`${origin}:${body?.id}:${body?.owner}`}
               target={target}
               coordinates={coordinates}
               actions={actions}
               details={body?.name}
               missileAction={missileAction}
+              scanAction={scanAction}
               quickSpy={
                 canTarget && !owned
                   ? {
@@ -287,9 +288,6 @@ export function GalaxyPosition({
                     : onDraft(coordinates, 'Espionage')
                 }
               />
-            )}
-            {scanAction && (
-              <span className={styles.scanAction}>{scanAction}</span>
             )}
           </div>
         )}

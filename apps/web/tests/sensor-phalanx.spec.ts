@@ -14,6 +14,7 @@ const moon: S['BodyV3'] = {
   id: id(80),
   kind: 'Moon',
   diameter_km: 8366,
+  inventories: [{ item: { kind: 'Ship', id: 'EspionageProbe' }, count: '1' }],
   levels: { ...body.levels, LunarBase: 1, SensorPhalanx: 3 },
   amounts: {
     metal: '100000000000',
@@ -60,10 +61,10 @@ for (const width of [390]) {
           score_value_micro: '0',
           fleet_slots: '1',
         },
-        extraCapabilities: ['Reports', 'ScanPlanet'],
+        extraCapabilities: ['Reports', 'ScanPlanet', 'Espionage'],
       })
       const target = {
-        coordinates: body.coordinates,
+        coordinates: { ...body.coordinates, position: 3 },
         body: {
           id: id(81),
           kind: 'Planet' as const,
@@ -72,7 +73,7 @@ for (const width of [390]) {
           activity: { type: 'None' as const },
           inactivity: 'Active' as const,
           vacation: false,
-          espionage_eligible: false,
+          espionage_eligible: true,
         },
         debris: null,
       }
@@ -84,7 +85,7 @@ for (const width of [390]) {
             system: 371,
             observed_at: now,
             positions: Array.from({ length: 15 }, (_, i) =>
-              i === 11
+              i === 2
                 ? target
                 : {
                     coordinates: { galaxy: 1, system: 371, position: i + 1 },
@@ -143,7 +144,7 @@ for (const width of [390]) {
         body: moon.id,
       }
       const destination = {
-        coordinates: body.coordinates,
+        coordinates: target.coordinates,
         kind: 'Planet',
         body: id(81),
       }
@@ -205,8 +206,17 @@ for (const width of [390]) {
       await expect(
         page.getByRole('region', { name: 'Galaxy browser' }),
       ).toBeVisible()
+      const spy = page.getByRole('button', { name: 'Spy on Quiet Horizon' })
+      await expect(spy).toBeVisible()
+      await expect(spy).toBeEnabled()
+      await expect(
+        page.getByRole('button', { name: 'Scan planet', exact: true }),
+      ).toHaveCount(0)
       await page
-        .getByRole('button', { name: 'Scan planet', exact: true })
+        .getByRole('button', { name: 'Actions for [1:371:3]', exact: true })
+        .press('Enter')
+      await page
+        .getByRole('menuitem', { name: 'Scan planet', exact: true })
         .click()
       const dialog = page.getByRole('dialog', {
         name: 'Sensor Phalanx',

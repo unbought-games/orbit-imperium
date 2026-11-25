@@ -1,19 +1,33 @@
 import { label } from '../ui/format'
-import { Crosshair, Eclipse, Eye, Recycle, Rocket, Truck } from 'lucide-react'
+import {
+  Crosshair,
+  Eclipse,
+  Eye,
+  Radar,
+  Recycle,
+  Rocket,
+  Truck,
+} from 'lucide-react'
 import {
   useEffect,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
   type ReactElement,
 } from 'react'
-import type { MissileLaunchPresentation } from './missile-launch-action'
 import { Menu } from '@base-ui/react/menu'
 import { GalaxyActionsTrigger } from './galaxy-actions-trigger'
 import type { components } from '../contracts'
 import type { DispatchDraft } from './missions'
 import type { galaxyMissionActions } from './galaxy-mission-actions'
 import styles from './galaxy.module.css'
+
+export type GalaxyActionPresentation = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  opener: RefObject<HTMLButtonElement | null>
+}
 
 const icons = {
   Transport: Truck,
@@ -30,7 +44,8 @@ export function GalaxyActionMenu({
   actions,
   colonyNote,
   missileAction,
-  missileIdentity,
+  scanAction,
+  actionIdentity,
   onDraft,
   quickSpy,
   triggerElement,
@@ -50,28 +65,42 @@ export function GalaxyActionMenu({
   coordinates: components['schemas']['Coordinates']
   actions: ReturnType<typeof galaxyMissionActions>
   colonyNote?: string | null
-  missileIdentity: string
-  missileAction?: (presentation: MissileLaunchPresentation) => ReactNode
+  scanAction?: {
+    disabled: boolean
+    render: (presentation: GalaxyActionPresentation) => ReactNode
+  }
+  actionIdentity: string
+  missileAction?: (presentation: GalaxyActionPresentation) => ReactNode
   onDraft: (
     coordinates: components['schemas']['Coordinates'],
     mission: DispatchDraft['mission'],
     opener?: HTMLElement | null,
   ) => void
 }) {
-  const [missileSelection, setMissileSelection] = useState<string | null>(null)
-  const availableMissileIdentity = missileAction ? missileIdentity : null
-  // Invalidate only the launch selection; Harvest still needs this row's trigger.
+  const [selection, setSelection] = useState<{
+    identity: string
+    action: 'scan' | 'missile'
+    open: boolean
+  } | null>(null)
+  const renderAction =
+    selection?.action === 'scan' ? scanAction?.render : missileAction
+  const selected =
+    selection && selection.identity === actionIdentity && !!renderAction
+  // A replacement target must require a new gesture, even if the old target returns.
   useEffect(() => {
-    setMissileSelection((selection) =>
-      selection === availableMissileIdentity ? selection : null,
-    )
-  }, [availableMissileIdentity])
+    if (!selected) setSelection(null)
+  }, [selected])
   const trigger = useRef<HTMLButtonElement>(null)
   const handingOff = useRef(false)
+  const openAction = (action: 'scan' | 'missile') => {
+    handingOff.current = true
+    setSelection({ identity: actionIdentity, action, open: true })
+  }
   const enabled =
     !!details ||
     !!quickSpy ||
     !!missileAction ||
+    !!scanAction ||
     actions.some((action) => !action.reason)
   return (
     <>
@@ -137,13 +166,20 @@ export function GalaxyActionMenu({
                   </Menu.Item>
                 )
               })}
+              {scanAction && (
+                <Menu.Item
+                  className={styles.menuItem}
+                  disabled={scanAction.disabled}
+                  onClick={() => openAction('scan')}
+                >
+                  <Radar size={16} aria-hidden="true" />
+                  Scan planet
+                </Menu.Item>
+              )}
               {missileAction && (
                 <Menu.Item
                   className={styles.menuItem}
-                  onClick={() => {
-                    handingOff.current = true
-                    setMissileSelection(missileIdentity)
-                  }}
+                  onClick={() => openAction('missile')}
                 >
                   <Rocket size={15} aria-hidden="true" />
                   Launch missiles
@@ -170,12 +206,12 @@ export function GalaxyActionMenu({
           </Menu.Positioner>
         </Menu.Portal>
       </Menu.Root>
-      {missileAction?.({
-        open: missileSelection === missileIdentity,
-        onOpenChange: (open) =>
-          setMissileSelection(open ? missileIdentity : null),
-        opener: trigger,
-      })}
+      {selected &&
+        renderAction({
+          open: selection.open,
+          onOpenChange: (open) => setSelection({ ...selection, open }),
+          opener: trigger,
+        })}
     </>
   )
 }

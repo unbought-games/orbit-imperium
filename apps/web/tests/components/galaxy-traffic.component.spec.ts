@@ -32,11 +32,12 @@ for (const width of [320, 390, 1280]) {
             return { x, y, width, height }
           }),
         ),
-        spy: width < 360 ? null : await spy.boundingBox(),
+        spy: await spy.boundingBox(),
         actions: await target
           .getByRole('button', { name: /^Actions for \[/ })
           .boundingBox(),
       })
+      await expect(spy).toBeVisible()
       const initial = await geometry()
       expect(new Set(initial.rows.map((row) => row.height)).size).toBe(1)
       await expect(page.getByText('Clear', { exact: true })).toHaveCount(0)
@@ -64,8 +65,7 @@ for (const width of [320, 390, 1280]) {
         path: `test-results/galaxy-traffic/empty-${width}x844.png`,
       })
       for (let count = 1; count <= 3; count++) {
-        if (width < 360) {
-          await expect(spy).toBeHidden()
+        if (width === 320 && count === 2) {
           await target
             .getByRole('button', { name: /^Actions for \[/ })
             .press('Enter')

@@ -75,7 +75,7 @@ export function GalaxyHarvestScenario() {
           target="[1:371:2]"
           coordinates={position.coordinates}
           actions={[{ mission: 'Harvest' }]}
-          missileIdentity="stable-row"
+          actionIdentity="stable-row"
           onDraft={(_at, _mission, element) => {
             opener.current = element ?? null
             setOpen(true)
