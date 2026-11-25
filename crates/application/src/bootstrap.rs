@@ -41,6 +41,8 @@ pub struct InitialGameSnapshot {
     pub candidate: BindingCandidate,
     pub view: InitialGameView,
     pub settings: BoundSettings,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tutorial: Option<TutorialView>,
 }
 #[derive(Clone, Debug, Serialize)]
 #[serde(untagged)]
@@ -98,10 +100,7 @@ impl<S: GameStore> GameService<S> {
                 session
                     .memberships
                     .iter()
-                    .find(|m| {
-                        m.universe.0.to_string() == target
-                            || universe_route_key(&m.universe_name) == target
-                    })
+                    .find(|m| m.matches_universe(target))
                     .ok_or(ServiceError::Forbidden)?,
             )
         } else {
@@ -128,10 +127,7 @@ impl<S: GameStore> GameService<S> {
         p: Principal,
         request_id: Uuid,
     ) -> Result<InitialGameSnapshot, ServiceError> {
-        let candidate = self
-            .current_binding(p.account, p.universe, request_id)
-            .await?;
-        let b = candidate.binding;
+        let (b, sampled_at) = self.store.current_binding(p.account, p.universe).await?;
         if b.account != p.account || b.player != p.player || b.universe != p.universe {
             return Err(ServiceError::InvariantFailure);
         }
@@ -139,25 +135,39 @@ impl<S: GameStore> GameService<S> {
             binding: b,
             request_id,
         };
-        let view = match candidate.protocol {
+        let facts = self.read_viewer_snapshot(p, b).await?;
+        let candidate = BindingCandidate {
+            binding: b,
+            request_id,
+            sampled_at,
+            protocol: facts.rules.protocol(),
+        };
+        let settings = BoundSettings::from_rules(&facts.rules, &c);
+        let (view, tutorial) = match candidate.protocol {
             2 => {
-                let mut read = self.bound_view(p, c.clone()).await?;
+                let mut read = facts.try_map(|facts| Self::project_bound_view(facts, c))?;
                 read.facts.view.sampled_at = read.progress.sampled_at;
-                InitialGameView::V2(read)
+                (InitialGameView::V2(read), None)
             }
             3 => {
-                let mut read = self.progression_view(p, c.clone()).await?;
+                let mut read =
+                    facts.try_map(|facts| crate::progression::progression_projection(&facts, c))?;
                 read.facts.sampled_at = read.progress.sampled_at;
-                InitialGameView::V3(read)
+                (InitialGameView::V3(read), None)
             }
             4 => {
-                let mut read = self.world_view(p, c.clone()).await?;
+                let tutorial = tutorial_view(
+                    facts.world.as_ref().ok_or(ServiceError::InvariantFailure)?,
+                    &facts.rules,
+                    p.player,
+                    facts.at,
+                )?;
+                let mut read = self.project_world_snapshot(p, c, facts).await?;
                 read.facts.progression.sampled_at = read.progress.sampled_at;
-                InitialGameView::V4(Box::new(read))
+                (InitialGameView::V4(Box::new(read)), Some(tutorial))
             }
             _ => return Err(ServiceError::UnsupportedProtocol),
         };
-        let settings = self.bound_settings(p, c).await?;
         let (protocol, binding, id, profile, speed) = view.identity();
         if protocol != candidate.protocol
             || binding != b
@@ -175,6 +185,7 @@ impl<S: GameStore> GameService<S> {
             candidate,
             view,
             settings,
+            tutorial,
         })
     }
 }

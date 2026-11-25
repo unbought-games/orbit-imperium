@@ -6,8 +6,6 @@ type Section =
   | 'defender-ships'
   | 'defender-defenses'
   | `allied-fleet-${number}-ships`
-  | 'ranges'
-  | 'survivors'
   | 'plan-attack'
 
 export function SimulationDisclosure({

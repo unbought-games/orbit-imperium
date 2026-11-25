@@ -2481,3 +2481,13 @@ and modes, with an independently held advisory lock. PostgreSQL confirmed a
 waiting backend before release at admission and again at worker commit. Both
 endpoints exported the separate wait and hold phases, and the admission-cohort
 report recovered all four pairs and their phase durations.
+
+### November 23, 2026 — single-read bootstrap fixture
+
+PR #500 run 45307445108 at `300b6620` failed the epoch-restart and
+incompatible-data assertions in `crates/application/tests/bootstrap.rs`.
+Both injected faults on a second world read that bootstrap no longer makes.
+The fixture now returns EpochChanged from the bound read on the selected
+attempts, retaining restart and three-attempt exhaustion coverage. Each
+protocol must use exactly one world read and return matching view/settings
+speed and profile. A foreign binding must fail before any world read.

@@ -1,7 +1,7 @@
 import type { StoreApi } from 'zustand'
 import type { components } from '../contracts'
 import type { GameState } from './game-store'
-import { bindingKey, sameBinding } from './commands'
+import { bindingKey, sameBinding, type BoundView } from './commands'
 
 type S = components['schemas']
 export type TutorialData = S['TutorialView4']
@@ -32,6 +32,17 @@ export class TutorialEngine {
     this.key = null
     this.pending = null
     this.store.setState({ tutorial: emptyTutorial() })
+  }
+  hydrate(data: TutorialData, view: BoundView) {
+    this.key = `${bindingKey(view.binding)}:${view.viewer_revision}`
+    this.store.setState({
+      tutorial: {
+        data,
+        revision: view.viewer_revision,
+        loading: false,
+        error: null,
+      },
+    })
   }
   ensure(force = false): Promise<void> {
     const state = this.store.getState()

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { phalanxRange, scanAttempts, scanBlocker } from './phalanx-model'
+import {
+  phalanxRange,
+  scanAttempts,
+  scanBlocker,
+  scanTargetBlocker,
+} from './phalanx-model'
 import type { components } from '../contracts'
 type S = components['schemas']
 const source = {
@@ -13,6 +18,34 @@ const target = {
   body: { kind: 'Planet', owner: 'other', vacation: false },
 } as S['GalaxyPosition4']
 describe('phalanx eligibility hints', () => {
+  it('requires a completed phalanx on the selected moon and a planet in this galaxy', () => {
+    const local = { ...target, coordinates: source.coordinates }
+    expect(scanTargetBlocker({ ...source, levels: {} }, local, 'me')).toContain(
+      'level 1',
+    )
+    const levelOne = { ...source, levels: { SensorPhalanx: 1 } }
+    expect(scanTargetBlocker(levelOne, local, 'me')).toBeNull()
+    expect(
+      scanTargetBlocker(
+        levelOne,
+        {
+          ...local,
+          coordinates: { ...source.coordinates, galaxy: 2 },
+        },
+        'me',
+      ),
+    ).toContain('outside')
+    expect(scanTargetBlocker(source, { ...local, body: null }, 'me')).toContain(
+      'occupied planet',
+    )
+    expect(
+      scanTargetBlocker(
+        source,
+        { ...local, body: { ...target.body!, kind: 'Moon' } },
+        'me',
+      ),
+    ).toContain('occupied planet')
+  })
   it('includes exact range and local fuel boundaries', () => {
     expect(phalanxRange(1)).toBe(0n)
     expect(scanBlocker(source, target, 'me')).toBeNull()

@@ -35,6 +35,12 @@ pub struct Membership {
     pub universe_name: String,
     pub player: PlayerId,
 }
+impl Membership {
+    pub fn matches_universe(&self, target: &str) -> bool {
+        self.universe.0.to_string() == target
+            || crate::universe_route_key(&self.universe_name) == target
+    }
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UniverseSummary {
     pub universe: UniverseId,

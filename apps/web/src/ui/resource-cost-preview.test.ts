@@ -25,11 +25,34 @@ it('keeps the affordability status in the compact caption used as the link descr
       href: '/mine',
       art: { src: '/mine.webp' },
       unaffordable: true,
-      compactCaption: { summary: 'Next level costs 299,273 Metal' },
+      compactCaption: true,
+      summary: 'Next level costs 299,273 Metal',
     }),
   )
   expect(html).toContain('aria-describedby=')
   expect(html).toMatch(
     /Next level costs 299,273 Metal<span[^>]*>Not enough resources<\/span>/,
   )
+})
+
+it('labels additional energy draw separately from the material price', () => {
+  const html = renderToStaticMarkup(
+    createElement(ResourceCostPreview, {
+      cost: { metal: '60000000', crystal: '0', deuterium: '0' },
+      energyDemand: 13200000n,
+    }),
+  )
+  expect(html).toContain('title="60 Metal"')
+  expect(html).toContain('title="Next level draws 13 more energy"')
+  expect(html).toContain('data-resource="energy"')
+  expect(html).toContain('>13<')
+})
+
+it('shows sub-unit draw beside an active upgrade without adding a price', () => {
+  const html = renderToStaticMarkup(
+    createElement(ResourceCostPreview, { cost: null, energyDemand: 500000n }),
+  )
+  expect(html).toContain('title="Next level draws less than 1 more energy"')
+  expect(html).toContain('>&lt;1<')
+  expect(html).not.toContain('Next level costs')
 })

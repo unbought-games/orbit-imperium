@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import type { GalaxyActionPresentation } from './galaxy-action-menu'
 import { Button } from '../ui/button'
 import { Field, NumberInput } from '../ui/form'
 import { ActionSheet } from '../ui/action-sheet'
@@ -11,11 +11,6 @@ import type { components } from '../contracts'
 import { useMissileAction } from './use-missile-action'
 import styles from './missiles.module.css'
 type S = components['schemas']
-export type MissileLaunchPresentation = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  opener: RefObject<HTMLButtonElement | null>
-}
 export function MissileLaunchAction({
   model,
   origin,
@@ -27,7 +22,7 @@ export function MissileLaunchAction({
   model: Coordinator
   origin: string
   position: S['GalaxyPosition4']
-} & MissileLaunchPresentation) {
+} & GalaxyActionPresentation) {
   const mobile = useMobileLayout()
   const body = position.body
   const target = body

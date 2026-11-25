@@ -9,7 +9,7 @@ import { ResourceMark } from './resource-mark'
 import { Popover } from './popover'
 import { resourceDecision } from './resource-cost-values'
 import { formatWholeNumber } from './whole-number'
-import { formatCompactCost } from './compact-resource'
+import { formatCompactCost, formatCompactResource } from './compact-resource'
 import hidden from './visually-hidden.module.css'
 import styles from './resource-costs.module.css'
 const materials = [
@@ -20,24 +20,46 @@ const materials = [
 /** A noninteractive preview inside a link; full prices remain available to assistive technology. */
 export function ResourceCostPreview({
   cost,
+  energyDemand = null,
 }: {
-  cost: components['schemas']['Resources']
+  cost: components['schemas']['Resources'] | null
+  energyDemand?: bigint | null
 }) {
-  const priced = materials.filter(({ name }) => BigInt(cost[name]) > 0n)
-  if (!priced.length) return null
+  const priced = cost
+    ? materials.filter(({ name }) => BigInt(cost[name]) > 0n)
+    : []
+  if (!priced.length && energyDemand === null) return null
   return (
     <span className={styles.preview}>
-      <span className={hidden.hidden}>Next level costs </span>
-      {priced.map(({ name, title }) => {
-        const exact = formatWholeNumber(cost[name], 1_000_000) + ' ' + title
-        return (
-          <span key={name} className={styles.previewAmount} title={exact}>
-            <ResourceMark resource={name} width={16} height={16} />
-            <span aria-hidden="true">{formatCompactCost(cost[name])}</span>
-            <span className={hidden.hidden}>{exact} </span>
-          </span>
-        )
-      })}
+      {priced.length > 0 && (
+        <span className={hidden.hidden}>Next level costs </span>
+      )}
+      {cost &&
+        priced.map(({ name, title }) => {
+          const exact = formatWholeNumber(cost[name], 1_000_000) + ' ' + title
+          return (
+            <span key={name} className={styles.previewAmount} title={exact}>
+              <ResourceMark resource={name} width={16} height={16} />
+              <span aria-hidden="true">{formatCompactCost(cost[name])}</span>
+              <span className={hidden.hidden}>{exact} </span>
+            </span>
+          )
+        })}
+      {energyDemand !== null && <EnergyDemandPreview demand={energyDemand} />}
+    </span>
+  )
+}
+
+function EnergyDemandPreview({ demand }: { demand: bigint }) {
+  const partial = demand > 0n && demand < 1_000_000n
+  const label = partial ? 'less than 1' : formatWholeNumber(demand, 1_000_000)
+  const description = `Next level draws ${label} more energy`
+  const amount = partial ? '<1' : formatCompactResource(demand)
+  return (
+    <span className={styles.previewAmount} title={description}>
+      <ResourceMark resource="energy" width={16} height={16} />
+      <span aria-hidden="true">{amount}</span>
+      <span className={hidden.hidden}>{description}</span>
     </span>
   )
 }

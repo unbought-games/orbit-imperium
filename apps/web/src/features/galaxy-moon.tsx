@@ -83,7 +83,7 @@ export function GalaxyMoon({
           {illustration}
         </Button>
       }
-      missileIdentity={`${origin}:${body.id}`}
+      actionIdentity={`${origin}:${body.id}`}
       quickSpy={
         body.owner !== player && body.id !== origin
           ? {

@@ -104,7 +104,7 @@ pub(super) async fn page<S: GameStore + IdentityStore + Send + Sync + 'static>(
             Ok(t) => t,
             Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
         };
-    let bootstrap = bootstrap::prepare_bootstrap(&s, &headers).await;
+    let bootstrap = bootstrap::prepare_bootstrap_for(&s, &headers, Some(&universe)).await;
     let html = match bootstrap_html::render_bootstrap_html(&template, &bootstrap) {
         Ok(h) => h,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),

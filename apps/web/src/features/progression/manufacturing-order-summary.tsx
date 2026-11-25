@@ -25,6 +25,9 @@ export function ManufacturingOrderSummary({
 }) {
   const unit = source?.terms?.type === 'Manufacture' ? source.terms : null
   const cost = preview?.terms.paid ?? unit?.unit_cost
+  const estimates = preview?.estimates
+  // Only the time ahead of this draft can elapse before submission.
+  const wait = Math.max(0, (estimates?.first_start_at ?? now) - now)
   return (
     <dl className={styles.summary}>
       <DetailRow label="Production duration per unit">
@@ -34,15 +37,12 @@ export function ManufacturingOrderSummary({
         {preview ? `${preview.terms.quantity} × ${title}` : '—'}
       </DetailRow>
       <DetailRow label="Estimated start">
-        {preview?.estimates ? (
-          preview.estimates.first_start_at <= now ? (
+        {estimates ? (
+          wait === 0 ? (
             'Now'
           ) : (
             <>
-              In{' '}
-              <DurationValue
-                milliseconds={preview.estimates.first_start_at - now}
-              />
+              In <DurationValue milliseconds={wait} />
             </>
           )
         ) : (
@@ -50,11 +50,13 @@ export function ManufacturingOrderSummary({
         )}
       </DetailRow>
       <DetailRow label="Order complete">
-        {preview?.estimates ? (
+        {estimates ? (
           <>
             In{' '}
             <DurationValue
-              milliseconds={Math.max(0, preview.estimates.final_due_at - now)}
+              milliseconds={
+                wait + (estimates.final_due_at - estimates.first_start_at)
+              }
             />
           </>
         ) : (

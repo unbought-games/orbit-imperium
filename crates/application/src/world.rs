@@ -546,10 +546,17 @@ impl<S: GameStore> GameService<S> {
         p: Principal,
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView4>, ServiceError> {
-        Self::principal(p, c.binding)?;
-        self.store.bot_observe(c.binding).await?;
+        let snapshot = self.read_viewer_snapshot(p, c.binding).await?;
+        self.project_world_snapshot(p, c, snapshot).await
+    }
+
+    pub(crate) async fn project_world_snapshot(
+        &self,
+        p: Principal,
+        c: QueryContext,
+        snapshot: ReadSnapshot<ViewerSnapshot>,
+    ) -> Result<ReadSnapshot<BoundView4>, ServiceError> {
         let binding = c.binding;
-        let snapshot = self.store.bound_view(binding).await?;
         let mut projected =
             snapshot.try_map(|snapshot| projection::world_projection(&snapshot, p.player, c))?;
         // Current labels are presentation metadata; never rewrite immutable fleet terms.

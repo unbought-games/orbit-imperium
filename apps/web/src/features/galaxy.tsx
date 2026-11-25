@@ -1,5 +1,6 @@
 import { probePreferenceReason } from '../client-model/player-preferences'
 import { usePlayerPreferences } from '../shell/player-preferences-context'
+import { scanTargetBlocker } from './phalanx-model'
 import { PhalanxAction } from './phalanx-action'
 import { publicMoonBody } from './galaxy-body'
 import { useProfileSource } from '../shell/player-profiles-context'
@@ -68,12 +69,10 @@ export function Galaxy({
   const [harvestOpen, setHarvestOpen] = useState(false)
   const originBody = model.view?.bodies.find((body) => body.id === origin)
   const home = originBody?.coordinates
-  const canScan =
-    originBody?.kind === 'Moon' &&
-    model.view?.capabilities.some(
-      (capability) =>
-        capability.capability === 'ScanPlanet' && capability.enabled,
-    )
+  const scansEnabled = model.view?.capabilities.some(
+    (capability) =>
+      capability.capability === 'ScanPlanet' && capability.enabled,
+  )
   const slotCount = model.settings?.positions_per_system ?? 15
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
@@ -267,10 +266,7 @@ export function Galaxy({
             aria-label="Galaxy positions"
             aria-busy={loading}
           >
-            <ul
-              className={styles.positionList}
-              data-scan-capable={canScan || undefined}
-            >
+            <ul className={styles.positionList}>
               {(data?.positions ?? Array<null>(slotCount).fill(null)).map(
                 (position, index) => {
                   const coordinates = position?.coordinates ?? {
@@ -292,18 +288,26 @@ export function Galaxy({
                         <GalaxyPosition
                           position={position}
                           scanAction={
-                            canScan &&
+                            scansEnabled &&
                             position.body?.kind === 'Planet' &&
-                            position.body.owner !== model.binding?.player ? (
-                              <PhalanxAction
-                                compact
-                                key={`${origin}:${position.body.id}`}
-                                model={model}
-                                origin={origin}
-                                position={position}
-                                universe={universe}
-                              />
-                            ) : undefined
+                            position.body.owner !== model.binding?.player
+                              ? {
+                                  disabled: !!scanTargetBlocker(
+                                    originBody,
+                                    position,
+                                    model.binding?.player,
+                                  ),
+                                  render: (presentation) => (
+                                    <PhalanxAction
+                                      model={model}
+                                      origin={origin}
+                                      position={position}
+                                      universe={universe}
+                                      {...presentation}
+                                    />
+                                  ),
+                                }
+                              : undefined
                           }
                           missileAction={
                             originBody?.kind === 'Planet' &&

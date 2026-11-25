@@ -629,6 +629,9 @@
 .destinationPreview {
   margin-block: 8px;
 }
+.destinationPreview [data-salvage-unavailable] {
+  color: var(--danger);
+}
 .destinationWorld {
   width: 100%;
   height: 100%;
@@ -776,6 +779,9 @@
   color: var(--text-muted);
   margin-top: 0;
   font-size: inherit;
+}
+.lootFit small strong {
+  color: var(--text);
 }
 
 .reviewRisk {

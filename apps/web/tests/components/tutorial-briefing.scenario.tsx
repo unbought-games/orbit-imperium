@@ -25,8 +25,8 @@ import { readyFixture } from '../../src/test-support/bootstrap'
 import { Link } from '../../src/ui/link'
 
 export type TutorialSceneInput = {
-  data: TutorialData | null
-  refused?: boolean
+  data: TutorialData
+  retryData?: TutorialData
   body: string
   page: 'briefing' | 'overview' | 'resources' | 'menu'
 }
@@ -41,7 +41,7 @@ const unexpected = async (): Promise<never> => {
   throw new Error('Viewing a briefing must not issue a game request')
 }
 
-async function prepare({ body, data, refused }: TutorialSceneInput) {
+async function prepare({ body, data, retryData }: TutorialSceneInput) {
   const { session, snapshot } = readyFixture(4)
   const view = snapshot.view
   if (view.protocol !== 4) throw Error('Protocol 4 required')
@@ -70,6 +70,7 @@ async function prepare({ body, data, refused }: TutorialSceneInput) {
       inventories: [],
     },
   ]
+  let refuseRefresh = !!retryData
   const model = new Coordinator(
     {
       currentBinding: unexpected,
@@ -79,15 +80,18 @@ async function prepare({ body, data, refused }: TutorialSceneInput) {
       submit: unexpected,
       receipt: unexpected,
       world: async (context, request) => {
-        if (!refused || request.type !== 'Tutorial' || !data)
-          return unexpected()
+        if (!retryData || request.type !== 'Tutorial') return unexpected()
+        if (refuseRefresh) {
+          refuseRefresh = false
+          throw new Error('Guidance unavailable')
+        }
         return {
           protocol: 4,
           ...context,
           viewer_revision: view.viewer_revision,
           sampled_at: view.sampled_at,
           as_of_ms: view.as_of_ms,
-          data,
+          data: retryData,
         }
       },
     },
@@ -97,7 +101,7 @@ async function prepare({ body, data, refused }: TutorialSceneInput) {
       isOnline: () => true,
     },
   )
-  if (refused) {
+  if (retryData) {
     view.bodies[0].levels = { ...preparedPlanet.levels }
     view.progression.production = view.bodies.map((b) => productionFixture(b))
     await model.initialize(session, snapshot)
@@ -107,14 +111,13 @@ async function prepare({ body, data, refused }: TutorialSceneInput) {
     view,
     binding: view.binding,
     tutorial: {
-      data: refused ? null : data,
-      loading: !data && !refused,
+      data,
+      loading: false,
       revision: view.viewer_revision,
-      error: refused
-        ? 'Unable to load guidance. Your orders and earned rewards are safe. Retry guidance.'
-        : null,
+      error: null,
     },
   })
+  if (retryData) await model.tutorial.ensure()
   return { model, view }
 }
 

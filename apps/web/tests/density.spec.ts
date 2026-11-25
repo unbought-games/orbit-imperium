@@ -4,7 +4,13 @@ import {
   fixtureReportPath,
 } from './fixtures/game'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
-import { test, expect, type Locator, type Page } from './fixtures/test'
+import {
+  test,
+  expect,
+  type Locator,
+  type Page,
+  type Response,
+} from './fixtures/test'
 import type { components } from '../src/contracts'
 import {
   refuseFixtureReads,
@@ -19,6 +25,7 @@ import {
 import {
   withBootstrapResponse,
   withReportResponse,
+  withReportListResponse,
   withFixtureResponse,
 } from './fixtures/responses'
 
@@ -205,10 +212,32 @@ test(`combat outcome and follow-up lead the first viewport across supported view
     id: id(6),
     name: 'Second colony',
     coordinates: { galaxy: 1, system: 371, position: 13 },
+    inventories: [
+      { item: { kind: 'Ship', id: 'Recycler' } as const, count: '5' },
+    ],
   }
   await installGameFixture(page, {
     bodies: [body, funding],
     protocol: 4,
+    catalog: [
+      {
+        key: { kind: 'Ship', id: 'Recycler' },
+        enabled: true,
+        mobile: true,
+        body_kinds: ['Planet'],
+        requirements: [],
+        ship_statistics: {
+          combat: null,
+          propulsion: {
+            cargo_capacity: '20000',
+            base_speed: '2000',
+            fuel_consumption: '300',
+            drive: 'CombustionDrive',
+            impulse_upgrade: null,
+          },
+        },
+      },
+    ],
     extraCapabilities: ['Reports', 'Harvest'],
     missions: {
       fleets: [],
@@ -280,8 +309,45 @@ test(`combat outcome and follow-up lead the first viewport across supported view
       })
     },
   )
+  const field = {
+    type: 'Debris',
+    coordinates: destination,
+    field_identity: id(61),
+  } as const
   await routeWorld(page, async (route) => {
-    const { type, galaxy, system, context } = route.request().postDataJSON()
+    const { type, galaxy, system, context, selection, intent } = route
+      .request()
+      .postDataJSON()
+    const respond = (
+      data: S['GalaxySystem4'] | S['MissionDestination4'] | S['FleetEstimate4'],
+    ) =>
+      route.fulfill({
+        json: {
+          protocol: 4,
+          ...context,
+          viewer_revision: '1',
+          sampled_at: now,
+          as_of_ms: now,
+          data,
+        },
+      })
+    if (type === 'ResolveDestination' && selection.type === 'DebrisAt') {
+      expect(selection.coordinates).toEqual(destination)
+      return respond(field)
+    }
+    if (type === 'FleetEstimate' && intent.mission === 'Harvest') {
+      expect(intent.origin).toBe(funding.id)
+      const capacity = BigInt(intent.ships[0].count) * 20_000_000_000n
+      return respond({
+        intent,
+        estimate: true,
+        profile_hash: 'a'.repeat(64),
+        duration_ms: 120000,
+        fuel: '1000000',
+        capacity: capacity.toString(),
+        maximum_payload: (capacity - 1_000_000n).toString(),
+      })
+    }
     if (type !== 'Galaxy' || galaxy !== 1 || system !== 372)
       return route.fallback()
     const data: S['GalaxySystem4'] = {
@@ -294,24 +360,15 @@ test(`combat outcome and follow-up lead the first viewport across supported view
         debris:
           i + 1 === 10
             ? {
-                field_identity: id(61),
+                field_identity: field.field_identity,
                 metal: '0',
                 crystal: '0',
-                deuterium: '60000',
+                deuterium: '20001',
               }
             : null,
       })),
     }
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        ...context,
-        viewer_revision: '1',
-        sampled_at: now,
-        as_of_ms: now,
-        data,
-      },
-    })
+    await respond(data)
   })
   await withReportResponse(page, header.id, () =>
     page.goto(`/u/andromeda/b/${funding.id}/reports/${header.id}`),
@@ -397,23 +454,42 @@ test(`combat outcome and follow-up lead the first viewport across supported view
   await expect(
     debrisPanel.getByRole('img', { name: 'Deuterium', exact: true }),
   ).toBeVisible()
-  await withFixtureResponse(
-    page,
-    (response) => {
-      if (
-        response.request().method() !== 'POST' ||
-        new URL(response.url()).pathname !==
-          `/api/v4/universes/${binding.universe}/world`
-      )
-        return false
-      const q = response.request().postDataJSON()
-      return q.type === 'Galaxy' && q.galaxy === 1 && q.system === 372
-    },
-    () =>
-      page
-        .getByRole('button', { name: 'Prepare harvest', exact: true })
-        .click(),
-  )
+  const worldQuery = (response: Response) =>
+    response.request().method() === 'POST' &&
+    new URL(response.url()).pathname ===
+      `/api/v4/universes/${binding.universe}/world`
+      ? response.request().postDataJSON()
+      : null
+  const harvestEstimate = (count: string) => (response: Response) => {
+    const query = worldQuery(response)
+    if (query?.type !== 'FleetEstimate') return false
+    const { intent } = query
+    return (
+      intent.mission === 'Harvest' &&
+      intent.origin === funding.id &&
+      intent.destination.type === 'Debris' &&
+      intent.destination.field_identity === field.field_identity &&
+      intent.ships.length === 1 &&
+      intent.ships[0].ship_type === 'Recycler' &&
+      intent.ships[0].count === count
+    )
+  }
+  const recyclers = page.getByLabel('Recycler · 5 available', { exact: true })
+  await withFixtureResponse(page, harvestEstimate('2'), async () => {
+    await withFixtureResponse(
+      page,
+      (response) => {
+        const q = worldQuery(response)
+        return q?.type === 'Galaxy' && q.galaxy === 1 && q.system === 372
+      },
+      () =>
+        page
+          .getByRole('button', { name: 'Prepare harvest', exact: true })
+          .click(),
+    )
+    await expect(recyclers).toHaveValue('2')
+    await expect(page.getByText('40,000 total capacity')).toBeVisible()
+  })
   await expect(page).toHaveURL(
     (url) =>
       url.pathname === `/u/andromeda/b/${funding.id}/dispatch` &&
@@ -425,10 +501,20 @@ test(`combat outcome and follow-up lead the first viewport across supported view
   await expect(
     page.getByLabel('Destination coordinates', { exact: true }),
   ).toHaveValue('1:372:10')
+  await withFixtureResponse(page, harvestEstimate('1'), async () => {
+    await recyclers.fill('1')
+    await expect(recyclers).toHaveValue('1')
+    await expect(page.getByText('20,000 total capacity')).toBeVisible()
+  })
   await withReportResponse(page, header.id, () =>
     page.goto(`/u/andromeda/b/${funding.id}/reports/${header.id}`),
   )
-  await page.getByRole('link', { name: 'Back to reports' }).click()
+  await withReportListResponse(page, () =>
+    page.getByRole('link', { name: 'Back to reports' }).click(),
+  )
+  await expect(page).toHaveURL(
+    (url) => url.pathname === `/u/andromeda/b/${funding.id}/reports`,
+  )
   await checkFirstFold(page, [
     page.getByRole('link', { name: 'Combat', exact: true }),
     page.getByRole('button', { name: 'Archive report' }),

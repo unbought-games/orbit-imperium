@@ -278,7 +278,7 @@
     "titlePath": [
       "combat outcome and follow-up lead the first viewport across supported viewports"
     ],
-    "risk": "The full combat route must keep its outcome and toolbar usable at three viewport sizes. Activating Harvest for deuterium-only debris from a non-default planet must fund that same planet, deliver the reported Galaxy field and preserve return navigation."
+    "risk": "The full combat route must keep its outcome and toolbar usable at three viewport sizes. Prepare harvest from a non-default planet must size an editable Recycler selection from the current deuterium-only field, fund the same planet and preserve return navigation."
   },
   {
     "file": "density.spec.ts",
@@ -665,7 +665,7 @@
     "titlePath": [
       "cancellation restores eligible detail actions at 390px with old options delivered before confirmation"
     ],
-    "risk": "After confirmed cancellation the funded inspector must invalidate stale options, restore eligibility and submit the next upgrade with the new quote hash."
+    "risk": "During an active mine upgrade, the catalog can preview energy demand while quick build stays unavailable through pending cancellation. After confirmed cancellation the funded inspector must invalidate stale options, restore eligibility and submit the next upgrade with the new quote hash."
   },
   {
     "file": "recruitment.spec.ts",
@@ -933,7 +933,7 @@
     "titlePath": [
       "Empire briefing icon opens by keyboard or touch and remembers acknowledged progress at 1440px"
     ],
-    "risk": "The desktop Empire header must fit the animated unread Briefing icon. Keyboard entry must acknowledge it on the real route, preserve that state after reload and leave the full document within the viewport at peak glow without issuing an order."
+    "risk": "The desktop Empire header must fit the animated unread Briefing icon. With a personalized document, the first paint must show full navigation and Overview without a splash or separate startup reads. Keyboard entry must acknowledge the icon on the real route, preserve that state after reload and leave the full document within the viewport at peak glow without issuing an order."
   },
   {
     "file": "tutorial.spec.ts",
@@ -941,7 +941,7 @@
     "titlePath": [
       "full experience confirmation preserves progress and rewards across reload"
     ],
-    "risk": "After confirming the full-experience preference, a freshly bootstrapped document must restore that preference with prior tutorial progress and rewards intact."
+    "risk": "After confirming the full-experience preference, a freshly bootstrapped document must restore that preference with prior tutorial progress and rewards intact. If the first guidance read fails, Retry connection must open the requested Overview."
   },
   {
     "file": "vacation.spec.ts",

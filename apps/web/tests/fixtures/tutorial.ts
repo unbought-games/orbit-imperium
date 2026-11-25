@@ -586,3 +586,41 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
   })
   return state
 }
+
+/** Serve one personalized HTML document. Other fixture navigations deliberately
+ * use the separately fetched bootstrap for older servers and recovery. */
+export async function embedTutorialOnNextReload(
+  page: Page,
+  tutorial: S['TutorialView4'],
+) {
+  const payload = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/bootstrap')
+    if (!response.ok) throw new Error('Unable to prepare the fixture snapshot')
+    return (await response.json()) as S['Bootstrap']
+  })
+  if (
+    payload.result.status !== 'authenticated' ||
+    payload.result.game.status !== 'ready'
+  )
+    throw new Error('Expected a ready game')
+  payload.result.game.snapshot.tutorial = tutorial
+  const json = JSON.stringify(payload).replaceAll('<', '\\u003c')
+  await page.route(
+    page.url(),
+    async (route) => {
+      const response = await route.fetch()
+      const html = await response.text()
+      const placeholder =
+        '<script id="orbit-bootstrap" type="application/json"></script>'
+      if (!html.includes(placeholder))
+        throw new Error('Missing document bootstrap')
+      await route.fulfill({
+        response,
+        body: html.replace(placeholder, () =>
+          placeholder.replace('</script>', () => json + '</script>'),
+        ),
+      })
+    },
+    { times: 1 },
+  )
+}

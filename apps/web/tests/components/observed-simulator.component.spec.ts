@@ -116,14 +116,14 @@ for (const hidden of [false, true])
         exact: true,
       }),
     ).toBeVisible()
-    await expect(
-      dialog.getByRole('region', { name: 'Defender defenses', exact: true }),
-    ).toBeAttached()
-    await expect(
-      dialog
-        .getByRole('region', { name: 'Defender defenses', exact: true })
-        .locator('details'),
-    ).toHaveJSProperty('open', true)
+    const defenderDefenses = dialog.getByRole('region', {
+      name: 'Defender defenses',
+      exact: true,
+    })
+    await expect(defenderDefenses.locator('details')).toHaveJSProperty(
+      'open',
+      true,
+    )
     const defenderShips = dialog.getByRole('region', {
       name: 'Defender ships',
       exact: true,
@@ -133,9 +133,20 @@ for (const hidden of [false, true])
       true,
     )
     if (!hidden) {
-      await expect(defenderShips.locator('summary')).toContainText(
-        '12 units · 1 type',
+      await expect(defenderShips.locator('summary')).toHaveText(
+        'Ships 12 units',
       )
+      const launcher = defenderDefenses.getByLabel('Defender Rocket Launcher', {
+        exact: true,
+      })
+      await expect(defenderDefenses.locator('summary')).toHaveText(
+        'Defenses 11 units',
+      )
+      await launcher.fill('2')
+      await expect(defenderDefenses.locator('summary')).toHaveText(
+        'Defenses 13 units',
+      )
+      await launcher.fill('0')
       await defenderShips.locator('summary').focus()
       await page.keyboard.press('Enter')
       await expect(
@@ -153,7 +164,7 @@ for (const hidden of [false, true])
         '1 invalid values',
       )
       await expect(
-        dialog.getByRole('button', { name: 'Run 10 battles' }),
+        dialog.getByRole('button', { name: 'Simulate' }),
       ).toBeDisabled()
       await defenderShips.locator('summary').click()
       await dialog
@@ -199,11 +210,16 @@ for (const hidden of [false, true])
       .fill('10')
     await dialog.getByLabel('Attacker Bomber', { exact: true }).fill('2')
     await expect(
+      dialog
+        .getByRole('region', { name: 'Attacker ships', exact: true })
+        .getByRole('heading', { name: 'Ships 12 units', exact: true }),
+    ).toBeVisible()
+    await expect(
       dialog.getByLabel('Defender Bomber', { exact: true }),
     ).toHaveValue('0')
     if (hidden) {
       await expect(
-        dialog.getByRole('button', { name: 'Run 10 battles' }),
+        dialog.getByRole('button', { name: 'Simulate' }),
       ).toBeEnabled()
       await expect(
         dialog.getByRole('button', {
@@ -244,8 +260,7 @@ for (const hidden of [false, true])
           dialog.getByRole('button', { name: 'Review attack' }),
         ).toBeDisabled()
       }
-    const run = () =>
-      dialog.getByRole('button', { name: 'Run 10 battles' }).click()
+    const run = () => dialog.getByRole('button', { name: 'Simulate' }).click()
     if (hidden) {
       await run()
       await expect(dialog.getByRole('alert')).toContainText('Simulation failed')
@@ -264,26 +279,38 @@ for (const hidden of [false, true])
         ),
       ),
     ).toBe(true)
-    await expect(results).toContainText('Light Fighter2 lost · 8 surviving')
-    await expect(results).toContainText('Bomber2 lost · 0 surviving')
+    await expect(
+      dialog.getByRole('group', {
+        name: 'Attacker Light Fighter average outcome',
+      }),
+    ).toHaveText('8 remaining')
+    await expect(
+      dialog.getByRole('group', { name: 'Attacker Bomber average outcome' }),
+    ).toHaveText('0 remaining')
     const cargo = results.getByRole('region', { name: 'Cargo and loot' })
     await expect(
       cargo
-        .getByText('Average surviving cargo capacity', { exact: true })
+        .getByText('Avg. surviving capacity', { exact: true })
         .locator('..')
         .getByRole('definition'),
     ).toHaveText('400')
-    await expect(results).toContainText('1 average battle round')
     await expect(
-      results.getByRole('region', { name: 'Moon creation chance' }),
-    ).toContainText('0%')
+      results.getByText('Average Rounds: 1', { exact: true }),
+    ).toBeVisible()
+    await expect(results.getByText(/sampled battles/)).toHaveCount(0)
+    await expect(
+      results.getByRole('row', { name: /^Moon creation/ }).getByRole('cell'),
+    ).toHaveText(hidden ? '20%' : '0%')
     if (hidden) {
       await expect(cargo).not.toContainText(/unknown|not observed/i)
       await expect(
-        cargo.getByRole('table', { name: 'Average gross haul' }),
+        cargo.getByRole('table', { name: 'Haul', exact: true }),
       ).toHaveCount(0)
       await expect(
         cargo.getByText('Potential loot', { exact: false }),
+      ).toHaveCount(0)
+      await expect(
+        cargo.getByText('Extra space for full haul', { exact: true }),
       ).toHaveCount(0)
     } else {
       await expect(
@@ -292,7 +319,7 @@ for (const hidden of [false, true])
           .locator('..')
           .getByRole('definition'),
       ).toHaveText('15,000')
-      const haul = cargo.getByRole('table', { name: 'Average gross haul' })
+      const haul = cargo.getByRole('table', { name: 'Haul', exact: true })
       await expect(haul.getByRole('rowheader')).toHaveText([
         'Metal',
         'Crystal',
@@ -306,6 +333,12 @@ for (const hidden of [false, true])
         '316',
       ])
       await expect(cargo).not.toContainText('attacker victories')
+      await expect(
+        cargo
+          .getByText('Extra space for full haul', { exact: true })
+          .locator('..')
+          .getByRole('definition'),
+      ).toHaveText('22,025')
     }
     if (!hidden) {
       for (const name of ['Metal', 'Crystal', 'Deuterium'])
@@ -339,29 +372,20 @@ for (const hidden of [false, true])
         ),
       ).toBe(true)
     }
+    const debris = results.getByRole('region', {
+      name: 'Debris and moon creation',
+    })
     await expect(
-      results.locator('details').filter({
-        has: page.locator('summary', { hasText: 'Losses and survivors' }),
-      }),
-    ).toHaveJSProperty('open', true)
-    await expect(results.getByText('Bomber', { exact: true })).toBeVisible()
+      debris.getByRole('row', { name: /^Recyclers/ }).getByRole('cell'),
+    ).toHaveText('1')
+    await expect(debris).not.toContainText('max')
+    await expect(results).not.toContainText(/mutual destruction/i)
     await expect(
-      results.locator('details').filter({
-        has: page.locator('summary', {
-          hasText: 'Estimate ranges and assumptions',
-        }),
-      }),
-    ).toHaveJSProperty('open', true)
-    await expect(
-      results.getByText('Generated debris · metal', { exact: true }),
-    ).toBeVisible()
-    await expect(
-      results.getByText('10 / 10 Victory', { exact: true }),
+      results.getByText('10 Attacker wins', { exact: true }),
     ).toHaveCSS('color', 'rgb(145, 201, 172)')
-    await expect(results.getByText('0 / 10 Defeat', { exact: true })).toHaveCSS(
-      'color',
-      'rgb(227, 152, 133)',
-    )
+    await expect(
+      results.getByText('0 Defender wins', { exact: true }),
+    ).toHaveCSS('color', 'rgb(227, 152, 133)')
     expect(
       (await page.evaluate(() => window.empireScene.simulations.at(-1)!))
         .defender.units,
@@ -382,10 +406,6 @@ for (const hidden of [false, true])
       { item: { kind: 'Ship', id: 'Bomber' }, count: 2 },
       { item: { kind: 'Ship', id: 'LightFighter' }, count: 10 },
     ])
-    const survivors = results.locator('details').filter({
-      has: page.locator('summary', { hasText: 'Losses and survivors' }),
-    })
-    if (!hidden) await survivors.locator('summary').press('Space')
     await dialog
       .getByLabel('Attacker Light Fighter', { exact: true })
       .fill('20')
@@ -406,19 +426,21 @@ for (const hidden of [false, true])
     await expect(
       dialog.getByLabel('Attacker Light Fighter', { exact: true }),
     ).toHaveValue('20')
-    await dialog.getByRole('button', { name: 'Run 10 battles' }).click()
+    await dialog.getByRole('button', { name: 'Simulate' }).click()
     await expect(results).toBeVisible()
     expect(
       (await page.evaluate(() => window.empireScene.simulations.at(-1)!))
         .observed_resources,
     ).toBeUndefined()
     if (!hidden) {
-      await expect(survivors).toHaveJSProperty('open', false)
       await expect(
-        cargo.getByRole('table', { name: 'Average gross haul' }),
+        cargo.getByRole('table', { name: 'Haul', exact: true }),
       ).toHaveCount(0)
       await expect(
         cargo.getByText('Potential loot', { exact: true }),
+      ).toHaveCount(0)
+      await expect(
+        cargo.getByText('Extra space for full haul', { exact: true }),
       ).toHaveCount(0)
     }
     await dialog
@@ -463,15 +485,15 @@ for (const hidden of [false, true])
     await expect(
       dialog.getByLabel('Attacker Light Fighter', { exact: true }),
     ).toHaveValue('20')
-    await dialog.getByRole('button', { name: 'Run 10 battles' }).click()
+    await dialog.getByRole('button', { name: 'Simulate' }).click()
     expect(
       (await page.evaluate(() => window.empireScene.simulations.at(-1)!))
         .observed_resources,
     ).toBeUndefined()
     if (hidden)
       await expect(
-        results.getByRole('region', { name: 'Moon creation chance' }),
-      ).toContainText('0%')
+        results.getByRole('row', { name: /^Moon creation/ }).getByRole('cell'),
+      ).toHaveText('0%')
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
     await expect(trigger).toBeFocused()

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import observation from '../../../../contracts/fixtures/espionage-expanded.json'
 import missileDefenses from '../../../../contracts/fixtures/espionage-missile-defenses.json'
 import {
-  attackerLosses,
   battleEstimates,
   simulationGroupSummary,
+  simulationSummary,
   averageSurvivors,
   planningSummary,
   sampledAmounts,
@@ -313,7 +313,7 @@ const sampleResponse = {
     },
   ],
 } satisfies SimulationResponse
-it('derives losses and aggregates per-battle loot including non-wins and absent survivors', () => {
+it('aggregates survivors and per-battle loot including non-wins and absent survivors', () => {
   const unit = {
     item: { kind: 'Ship', id: 'LightFighter' },
     count: 10,
@@ -321,7 +321,6 @@ it('derives losses and aggregates per-battle loot including non-wins and absent 
   expect(averageSurvivors(sampleResponse, 'attacker', unit.item)).toBeCloseTo(
     10 / 3,
   )
-  expect(attackerLosses(sampleResponse, unit)).toBeCloseTo(20 / 3)
   const summary = planningSummary(sampleResponse)
   expect(summary.cargo).toEqual({
     average: 166666666n,
@@ -496,7 +495,6 @@ it('rounds recyclers up from the average harvestable field using supplied capaci
   expect(battleEstimates(response, 'Unknown').recyclers).toEqual({
     estimate: 2n,
     maximum: 4n,
-    capacity: 10n,
   })
   expect(
     battleEstimates({ ...response, recycler_capacity: '3000000' }, 'Unknown')
@@ -529,6 +527,86 @@ it('sums the unlimited-cargo benchmark exactly and distinguishes zero from unava
   ).toBe(0n)
   expect(planningSummary(sampleResponse).potentialLoot).toBeNull()
 })
+
+it('counts mutual destruction once as a draw without changing any sample outcome', () => {
+  const samples = [
+    ...sampleResponse.samples,
+    { ...sampleResponse.samples[2], outcome: 'MutualDestruction' as const },
+  ]
+  expect(simulationSummary({ ...sampleResponse, samples })).toEqual({
+    victories: 1,
+    defeats: 1,
+    draws: 2,
+  })
+  expect(samples.map((sample) => sample.outcome)).toEqual([
+    'AttackerVictory',
+    'Draw',
+    'DefenderVictory',
+    'MutualDestruction',
+  ])
+})
+
+it('compares the observed loot mix against each winning fleet and preserves the actual sampled haul', () => {
+  const winner = {
+    ...sampleResponse.samples[0],
+    outcome: 'AttackerVictory' as const,
+    surviving_cargo_capacity: '190000000000',
+    estimated_loot: {
+      metal: '100194000000',
+      crystal: '48645000000',
+      deuterium: '4299000000',
+    },
+  }
+  const battle = {
+    ...sampleResponse,
+    available_loot: {
+      metal: '125520000000',
+      crystal: '48645000000',
+      deuterium: '4299000000',
+    },
+  }
+  const twoOutcomes = planningSummary({
+    ...battle,
+    samples: [winner, sampleResponse.samples[2]],
+  })
+  expect(twoOutcomes.potentialLoot).toBe(178_464_000_000n)
+  expect(twoOutcomes.total).toEqual({
+    average: 76_569_000_000n,
+    minimum: 0n,
+    maximum: 153_138_000_000n,
+  })
+  expect(twoOutcomes.winningCargoShortfall).toBe(37_988n)
+  const fullHaul = {
+    ...winner,
+    surviving_cargo_capacity: '227988000000',
+    estimated_loot: battle.available_loot,
+  }
+  expect(
+    planningSummary({
+      ...battle,
+      samples: [
+        winner,
+        fullHaul,
+        {
+          ...winner,
+          surviving_cargo_capacity: '180000000000',
+          estimated_loot: { ...winner.estimated_loot, metal: '93528000000' },
+        },
+      ],
+    }).winningCargoShortfall,
+  ).toBe(47_988n)
+  expect(
+    planningSummary({ ...battle, samples: [fullHaul] }).winningCargoShortfall,
+  ).toBe(0n)
+  expect(
+    planningSummary({ ...battle, samples: sampleResponse.samples.slice(1) })
+      .winningCargoShortfall,
+  ).toBeNull()
+  expect(
+    planningSummary({ ...battle, available_loot: null, samples: [winner] })
+      .winningCargoShortfall,
+  ).toBeNull()
+})
 it('keeps unknown and invalid force values discoverable in collapsed summaries', () => {
   const fields = simulationFields(
     {
@@ -549,7 +627,7 @@ it('keeps unknown and invalid force values discoverable in collapsed summaries',
   ).toMatchObject({ invalid: 1 })
   expect(
     simulationGroupSummary(fields, { [fields[0].key]: '23' }),
-  ).toMatchObject({ total: 23n, types: 1 })
+  ).toMatchObject({ total: 23n })
 })
 it('shares canonical ship ordering on both sides without mutating the catalog', () => {
   const ships = ['ColonyShip', 'SmallCargo', 'Cruiser', 'LightFighter'].map(

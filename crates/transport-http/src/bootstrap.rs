@@ -140,6 +140,14 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
     s: &HttpState<S>,
     h: &HeaderMap,
 ) -> Bootstrap {
+    prepare_bootstrap_for(s, h, None).await
+}
+
+pub(super) async fn prepare_bootstrap_for<S: GameStore + IdentityStore>(
+    s: &HttpState<S>,
+    h: &HeaderMap,
+    document_universe: Option<&str>,
+) -> Bootstrap {
     let deadline = Deadline::now() + BUDGET;
     let target = h
         .get("x-orbit-universe")
@@ -158,9 +166,12 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
                 if s.oidc.is_some() {
                     let _ = s.updates.capture_community_history(session.account).await;
                 }
+                let target = document_universe
+                    .filter(|slug| session.memberships.iter().any(|m| m.matches_universe(slug)))
+                    .or(target.as_deref());
                 read_game_when_available(|| {
                     s.game
-                        .initial_game_for(&session, uuid::Uuid::new_v4(), target.as_deref())
+                        .initial_game_for(&session, uuid::Uuid::new_v4(), target)
                 })
                 .await
             },
@@ -224,6 +235,16 @@ pub(super) fn private_response(headers: &HeaderMap, value: impl serde::Serialize
         Ok(value) => value,
         Err(_) => return Problem(ServiceError::InvariantFailure).into_response(),
     };
+    if headers
+        .get("x-orbit-bootstrap-tutorial")
+        .and_then(|h| h.to_str().ok())
+        != Some("1")
+        && let Some(snapshot) = value
+            .pointer_mut("/result/game/snapshot")
+            .and_then(|v| v.as_object_mut())
+    {
+        snapshot.remove("tutorial");
+    }
     if !wants_debris_settings(headers)
         && let Some(settings) = value
             .pointer_mut("/result/game/snapshot/settings")

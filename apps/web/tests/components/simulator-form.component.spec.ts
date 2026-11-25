@@ -49,6 +49,45 @@ async function expectLayout(page: Page) {
   }
 }
 
+test('the phone simulator fits every digit of a four-digit Start count', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 })
+  await prepare(page, mount)
+  const start = page.getByRole('textbox', { name: 'Defender Light Fighter' })
+  await start.fill('1000')
+  await expect(start).toBeFocused()
+  await expect(start).toHaveValue('1000')
+  await page.evaluate(() => document.fonts.ready)
+
+  const expectDigitsToFit = async () => {
+    const { available, required } = await start.evaluate((input) => {
+      const style = getComputedStyle(input)
+      const text = document.createElement('span')
+      text.style.position = 'absolute'
+      text.style.font = style.font
+      text.style.fontVariantNumeric = style.fontVariantNumeric
+      text.textContent = (input as HTMLInputElement).value
+      document.body.append(text)
+      const required = text.getBoundingClientRect().width
+      text.remove()
+      const available =
+        input.clientWidth -
+        parseFloat(style.paddingLeft) -
+        parseFloat(style.paddingRight)
+      return { available, required }
+    })
+    expect(available).toBeGreaterThan(required)
+  }
+
+  await expectDigitsToFit()
+  await start.fill('2000')
+  await start.blur()
+  await expect(start).toHaveValue('2000')
+  await expectDigitsToFit()
+})
+
 test('adding an allied attacker preserves separate technology levels and editing it invalidates the results', async ({
   page,
   mount,
@@ -77,7 +116,7 @@ test('adding an allied attacker preserves separate technology levels and editing
   await ally.getByLabel('Attacker Armour Technology', { exact: true }).fill('7')
   await ally.getByLabel('Attacker Light Fighter', { exact: true }).fill('3')
   await expectLayout(page)
-  await page.getByRole('button', { name: 'Run 10 battles' }).click()
+  await page.getByRole('button', { name: 'Simulate' }).click()
   await expect(
     page.getByRole('region', { name: 'Simulation results' }),
   ).toBeVisible()
@@ -132,7 +171,7 @@ for (const width of [390, 1440])
       page.getByRole('region', { name: 'Attack planning', exact: true }),
     ).toHaveCount(0)
     const runButton = page.getByRole('button', {
-      name: 'Run 10 battles',
+      name: 'Simulate',
       exact: true,
     })
     await runButton.scrollIntoViewIfNeeded()
@@ -154,9 +193,7 @@ for (const width of [390, 1440])
       }),
     ).toBe(true)
     await page.getByLabel('Attacker Light Fighter', { exact: true }).fill('10')
-    await expect(
-      page.getByRole('button', { name: 'Run 10 battles' }),
-    ).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Simulate' })).toBeEnabled()
     await page.getByLabel('Defender Light Fighter', { exact: true }).fill('2')
     await page
       .getByLabel('Defender Weapons Technology', { exact: true })
@@ -197,8 +234,8 @@ for (const width of [390, 1440])
     })
     await expect(attackerOutcome).toHaveText('— remaining')
     await expect(
-      page.getByRole('group', { name: 'Defender', exact: true }),
-    ).toContainText('across all fleets on this side')
+      page.getByText(/Average remaining units|Before defense repairs/),
+    ).toHaveCount(0)
     // Results must fill reserved space without moving any draft row or input.
     const draftGeometry = () =>
       page.locator('input[id^="simulation-"]').evaluateAll((inputs) =>
@@ -216,7 +253,7 @@ for (const width of [390, 1440])
         }),
       )
     const beforeResults = await draftGeometry()
-    await page.getByRole('button', { name: 'Run 10 battles' }).click()
+    await page.getByRole('button', { name: 'Simulate' }).click()
     await expect(
       page.getByRole('region', { name: 'Simulation results' }),
     ).toBeVisible()
@@ -266,10 +303,10 @@ for (const width of [390, 1440])
     const results = page.getByRole('region', { name: 'Simulation results' })
     const cargo = results.getByRole('region', { name: 'Cargo and loot' })
     await expect(
-      cargo.getByText('Average surviving cargo capacity', { exact: true }),
+      cargo.getByText('Avg. surviving capacity', { exact: true }),
     ).toBeVisible()
     await expect(
-      cargo.getByRole('table', { name: 'Average gross haul' }),
+      cargo.getByRole('table', { name: 'Haul', exact: true }),
     ).toHaveCount(0)
     expect(submitted.defender).toEqual({
       technology: [7, 0, 0],
@@ -326,9 +363,13 @@ test('switching worlds preserves a manually edited defender until the new moon i
   const moon = {
     ...home,
     id: id(80),
+    coordinates: {
+      ...home.coordinates,
+      position: home.coordinates.position + 1,
+    },
     kind: 'Moon' as const,
     name: 'Watchtower',
-    moon: { parent: body.id, created_at: 1000 },
+    moon: { parent: id(81), created_at: 1000 },
     inventories: [
       { item: { kind: 'Ship', id: 'LightFighter' } as const, count: '8' },
       { item: { kind: 'Defense', id: 'RocketLauncher' } as const, count: '7' },
@@ -338,10 +379,26 @@ test('switching worlds preserves a manually edited defender until the new moon i
   const prepared: EmpireSceneInput = {
     surface: 'simulation',
     catalog: observationCatalog,
-    bodies: [home, moon],
+    bodies: [
+      home,
+      {
+        ...home,
+        id: moon.moon.parent,
+        name: 'Outpost',
+        coordinates: moon.coordinates,
+      },
+      moon,
+    ],
     research: [{ research: 'WeaponsTechnology', level: 4 }],
     simulationSamples: Array.from({ length: 10 }, (_, i) => ({
-      outcome: i < 5 ? 'AttackerVictory' : 'DefenderVictory',
+      outcome:
+        i < 5
+          ? 'AttackerVictory'
+          : i < 7
+            ? 'DefenderVictory'
+            : i < 9
+              ? 'Draw'
+              : 'MutualDestruction',
       rounds: 2,
       moon_chance_percent: 20,
       surviving_cargo_capacity: '0',
@@ -437,7 +494,7 @@ test('switching worlds preserves a manually edited defender until the new moon i
   await expect(
     page.getByText('Defender imported from', { exact: false }),
   ).toContainText('Moon · Watchtower')
-  await page.getByRole('button', { name: 'Run 10 battles' }).click()
+  await page.getByRole('button', { name: 'Simulate' }).click()
   await expect(
     page.getByRole('region', { name: 'Simulation results' }),
   ).toBeVisible()
@@ -459,30 +516,47 @@ test('switching worlds preserves a manually edited defender until the new moon i
   await expect(
     page.getByLabel('Moon creation target', { exact: false }),
   ).toHaveCount(0)
+  const debris = page
+    .getByRole('region', {
+      name: 'Debris and moon creation',
+      exact: true,
+    })
+    .getByRole('table', { name: 'Debris', exact: true })
   await expect(
-    page.getByRole('region', { name: 'Moon creation chance' }),
-  ).toContainText('0%')
-  const debris = page.getByRole('region', {
-    name: 'New debris field',
-    exact: true,
-  })
-  await expect(debris).toContainText('9,000 average')
+    debris.getByRole('row', { name: /^Moon creation/ }).getByRole('cell'),
+  ).toHaveText('0%')
+  const results = page.getByRole('region', { name: 'Simulation results' })
+  await expect(results.getByText('3 Draws', { exact: true })).toBeVisible()
   await expect(
-    page.locator('details').filter({
-      has: page.locator('summary', {
-        hasText: 'Estimate ranges and assumptions',
-      }),
-    }),
-  ).toHaveJSProperty('open', true)
+    results.getByText('Average Rounds: 2', { exact: true }),
+  ).toBeVisible()
+  await expect(results.getByText(/mutual destruction/i)).toHaveCount(0)
   await expect(
-    page.getByRole('region', { name: 'Simulation results' }),
-  ).toContainText('0–18,000')
-  await expect(debris).toContainText('450 average')
-  for (const resource of ['Metal', 'Crystal', 'Deuterium'])
+    results.getByText(/^(Sample ranges|Losses and survivors)$/),
+  ).toHaveCount(0)
+  for (const [resource, value] of [
+    ['Metal', '9,000'],
+    ['Crystal', '4,500'],
+    ['Deuterium', '450'],
+  ]) {
+    const row = debris.getByRole('row').filter({
+      has: page.getByRole('rowheader', { name: resource, exact: true }),
+    })
+    await expect(row.getByRole('cell')).toHaveText(value)
     await expect(
-      debris.getByRole('img', { name: resource, exact: true }),
+      row.getByRole('img', { name: resource, exact: true }),
     ).toHaveCount(1)
-  await expect(debris).toContainText('collection is not simulated')
+  }
+  await expect(
+    debris.getByRole('row', { name: /^Recyclers/ }).getByRole('cell'),
+  ).toHaveText('1 average · 2 max')
+  await expect(debris.getByRole('rowheader')).toHaveText([
+    'Metal',
+    'Crystal',
+    'Deuterium',
+    'Recyclers',
+    'Moon creation',
+  ])
   await expectLayout(page)
   await defender
     .getByLabel('Defender Rocket Launcher', { exact: true })

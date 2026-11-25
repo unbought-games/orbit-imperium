@@ -1,7 +1,13 @@
 import { test, expect } from './fixtures/test'
-import { installTutorialFixture } from './fixtures/tutorial'
+import {
+  embedTutorialOnNextReload,
+  installTutorialFixture,
+} from './fixtures/tutorial'
 import { body } from './fixtures/game'
-import { withFixtureResponse } from './fixtures/responses'
+import {
+  withFixtureResponse,
+  withFixtureResponseStatus,
+} from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 const briefing = `/u/andromeda/b/${body.id}/briefing`
 const tutorial = (r: import('@playwright/test').Response) =>
@@ -15,6 +21,7 @@ for (const width of [1440]) {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     const state = await installTutorialFixture(page)
     state.data.beginner = false
+    state.data.preference = { beginner: false }
     const overview = `/u/andromeda/b/${body.id}/overview`
     const icon = page.getByRole('link', { name: /^Open briefing/ })
     await withFixtureResponse(page, tutorial, () => page.goto(overview))
@@ -144,9 +151,94 @@ for (const width of [1440]) {
     await diagnosticScreenshot(page, {
       path: `test-results/briefing-read-${width}x900.png`,
     })
-    state.earnMine()
-    await withFixtureResponse(page, tutorial, () => page.reload())
+    state.setStage('complete')
+    const documentUrl = page.url()
+    await embedTutorialOnNextReload(page, state.data)
+    await page.addInitScript(() => {
+      // Record even a splash that is removed before the first Playwright assertion.
+      Reflect.set(window, 'startupFlash', null)
+      function firstGameFrame() {
+        const visible = (selector: string) =>
+          [...document.querySelectorAll(selector)].some(
+            (el) =>
+              !!el.getClientRects().length &&
+              el.checkVisibility({
+                visibilityProperty: true,
+                opacityProperty: true,
+              }),
+          )
+        if (
+          !visible(
+            '#root :is(header, main, aside, nav, [aria-label="Planet and resources"], [aria-label="Live command HUD"])',
+          )
+        ) {
+          requestAnimationFrame(firstGameFrame)
+          return
+        }
+        Reflect.set(window, 'firstGameFrame', {
+          fullNavigation: visible('aside a[href$="/high-scores"]'),
+          overview: visible('[aria-label="Empire overview"]'),
+        })
+      }
+      requestAnimationFrame(firstGameFrame)
+      const learnerContent =
+        '[aria-label="Briefing status"], [aria-label="Your advisor"], [aria-label="Briefing progress"]'
+      const selector = `h1, ${learnerContent}, aside[aria-label="Game navigation"]`
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (!(node instanceof Element)) continue
+            const surfaces = [node, ...node.querySelectorAll(selector)]
+            for (const surface of surfaces) {
+              if (
+                surface.matches(learnerContent) ||
+                (surface.matches('h1') &&
+                  surface.textContent === 'Opening your universe.') ||
+                (surface.matches('aside') &&
+                  surface.querySelector('a[href$="/briefing"]'))
+              )
+                Reflect.set(window, 'startupFlash', surface.textContent)
+            }
+          }
+        }
+      }).observe(document, { childList: true, subtree: true })
+    })
+    const startupReads: string[] = []
+    const observe = (request: import('@playwright/test').Request) => {
+      if (
+        new URL(request.url()).pathname === '/api/v1/bootstrap' ||
+        (request.url().endsWith('/world') &&
+          request.postDataJSON()?.type === 'Tutorial')
+      )
+        startupReads.push(request.url())
+    }
+    page.on('request', observe)
+    await withFixtureResponse(
+      page,
+      (response) =>
+        response.request().isNavigationRequest() &&
+        response.url() === documentUrl,
+      () => page.reload(),
+    )
+    const navigation = page.getByLabel('Game navigation', { exact: true })
+    await expect(
+      navigation.getByRole('link', { name: 'High Scores' }),
+    ).toBeVisible()
+    await expect(
+      navigation.getByRole('link', { name: 'Briefing', exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('region', { name: 'Empire overview' }),
+    ).toBeVisible()
     await expect(icon).toHaveAttribute('data-attention', 'true')
+    expect(
+      await page.evaluate(() => Reflect.get(window, 'startupFlash')),
+    ).toBeNull()
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, 'firstGameFrame')))
+      .toEqual({ fullNavigation: true, overview: true })
+    expect(startupReads).toEqual([])
+    page.off('request', observe)
     await icon.click()
     await expect(page).toHaveURL(briefing)
     await withFixtureResponse(page, tutorial, () => page.goto(overview))
@@ -252,9 +344,23 @@ test(
         page.getByRole('link', { name: 'Fleets', exact: true }),
       ).toBeVisible()
     }
-    await withFixtureResponse(page, tutorial, () =>
-      page.goto(`/u/andromeda/b/${body.id}/overview`),
+    state.error = true
+    await withFixtureResponseStatus(
+      page,
+      tutorial,
+      () => page.goto(`/u/andromeda/b/${body.id}/overview`),
+      500,
     )
+    await expect(page.getByRole('alert')).toHaveText(
+      'Unable to load your game preferences.',
+    )
+    state.error = false
+    await withFixtureResponse(page, tutorial, () =>
+      page.getByRole('button', { name: 'Retry connection' }).click(),
+    )
+    await expect(
+      page.getByRole('region', { name: 'Empire overview' }),
+    ).toBeVisible()
     const book = page.getByRole('link', { name: /^Open briefing/ })
     await expect(book).toBeVisible()
     await expect(sidebarBriefing).toHaveCount(0)

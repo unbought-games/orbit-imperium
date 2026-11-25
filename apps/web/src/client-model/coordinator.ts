@@ -385,6 +385,7 @@ export class Coordinator {
       snapshot.view,
       snapshot.settings,
       this.generation,
+      snapshot.tutorial,
     )
   }
   private async activate(
@@ -392,11 +393,13 @@ export class Coordinator {
     next: BoundView,
     settings: BoundSettings,
     g: number,
+    tutorial?: InitialGameSnapshot['tutorial'],
   ) {
     const b = candidate.binding
     this.protocol = candidate.protocol
     if (g !== this.generation) return
     this.binding = structuredClone(b)
+    if (next.protocol === 4 && tutorial) this.tutorial.hydrate(tutorial, next)
     this.view = next
     this.settings = settings
     await this.reconcile()

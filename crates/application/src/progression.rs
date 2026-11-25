@@ -401,9 +401,7 @@ impl<S: GameStore> GameService<S> {
         p: Principal,
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView3>, ServiceError> {
-        Self::principal(p, c.binding)?;
-        self.store.bot_observe(c.binding).await?;
-        let facts = self.store.bound_view(c.binding).await?;
+        let facts = self.read_viewer_snapshot(p, c.binding).await?;
         if !facts.rules.progression() {
             return Err(ServiceError::UnsupportedProtocol);
         }
