@@ -239,7 +239,7 @@ pub(crate) fn colony_arrival(
     )?;
     ship.count -= 1;
     f.ships.retain(|s| s.count > 0);
-    take_asset_lots(
+    take_asset_quantity(
         &mut w.lots,
         f.owner,
         CatalogKey::Ship(ShipType::ColonyShip),

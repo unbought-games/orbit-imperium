@@ -37,7 +37,7 @@ test('Enter reviews the fleet, then sends once from the focused review panel', a
   await page.keyboard.press('Enter')
   await expect(
     page.getByRole('group', { name: 'Fleet dispatch result' }),
-  ).toContainText('Fleet sent.')
+  ).toContainText('Fleet dispatched.')
   await expect(quote).toHaveCount(0)
   expect((await counts(page)).launches).toBe(1)
 })
@@ -73,7 +73,7 @@ test('Enter respects a disabled review action and the send button retains native
   await page.keyboard.press('Enter')
   await expect(
     page.getByRole('group', { name: 'Fleet dispatch result' }),
-  ).toContainText('Fleet sent.')
+  ).toContainText('Fleet dispatched.')
   expect((await counts(page)).launches).toBe(1)
 })
 
@@ -439,7 +439,8 @@ test('coordinate errors appear beside entry before review, including pasted emoj
   await page.clock.runFor(1000)
   await expect.poll(async () => (await counts(page)).resolves).toBe(1)
   await expect.poll(async () => (await counts(page)).estimates).toBe(1)
-  expect((await counts(page)).quotes).toBe(0)
+  await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
+  expect((await counts(page)).launches).toBe(0)
 })
 
 test('own-planet attack is actionable, while transport to another owned planet and own-position harvest stay available', async ({
@@ -956,7 +957,12 @@ test('explicit moon links retain their body intent through coordinate edits and 
   page,
   mount,
 }) => {
-  await setup(page, mount)
+  const fixture = await setup(page, mount)
+  fixture.bodies.push({
+    ...fixture.bodies[1], id: id(71), kind: 'Moon', name: 'Quiet Tide',
+    coordinates: { galaxy: 1, system: 1, position: 3 },
+  })
+  await refreshDispatch(page)
   const input = page.getByLabel('Destination coordinates', { exact: true })
   const preview = page.getByLabel('Destination preview')
   await input.evaluate((element) => {
@@ -978,11 +984,13 @@ test('explicit moon links retain their body intent through coordinate edits and 
   await input.press('Space')
   await input.pressSequentially('1 3')
   await expect(input).toHaveValue('1:1:3')
-  await expect(preview).toContainText('Moon unavailable')
+  await expect(preview).toContainText('Quiet Tide')
   await expect(review(page)).toBeEnabled()
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-  expect((await counts(page)).quotes).toBe(1)
+  await expect(page.getByRole('region', {name: 'Fleet quote'}).getByRole('button', {
+    name: 'Transport to Quiet Tide [1:1:3]',
+  })).toBeEnabled()
   expect((await counts(page)).launches).toBe(0)
   await page
     .getByRole('button', { name: 'Back to edit mission', exact: true })
@@ -1440,7 +1448,6 @@ for (const width of [320, 390, 1440]) {
     await fillCargo.focus()
     await fillCargo.press('Enter')
     await expect(smallCargo).toHaveValue('2')
-    expect((await counts(page)).quotes).toBe(0)
     await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
       0,
     )
@@ -1486,7 +1493,6 @@ for (const width of [320, 390, 1440]) {
     await addAll.click()
     await expect(smallCargo).toHaveValue('2')
     await expect(page.getByLabel('Metal', { exact: true })).toHaveValue('42')
-    expect((await counts(page)).quotes).toBe(0)
     await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
       0,
     )
@@ -1501,24 +1507,10 @@ for (const width of [320, 390, 1440]) {
       ),
     ).toBe(true)
     await review(page).click()
-    const request = await lastQuote(page)
-    expect((await counts(page)).quotes).toBe(1)
-    expect(
-      Object.fromEntries(
-        request.intent.ships.map(
-          (ship: { ship_type: string; count: string }) => [
-            ship.ship_type,
-            ship.count,
-          ],
-        ),
-      ),
-    ).toEqual({
-      LightFighter: '7',
-      EspionageProbe: '1',
-      SmallCargo: '2',
-      Recycler: '1',
-      ColonyShip: '1',
-    })
+    const manifest = page.getByRole('region', {name:'Fleet quote'}).getByRole('list', {name:'Ship composition'}).getByRole('listitem')
+    await expect(manifest).toHaveCount(5)
+    for (const stack of ['Light Fighter 7','Espionage Probe 1','Small Cargo 2','Recycler 1','Colony Ship 1'])
+      await expect(manifest.filter({hasText:stack})).toHaveText(stack)
     expect((await counts(page)).launches).toBe(0)
   })
 }
@@ -1642,7 +1634,7 @@ for (const width of [390, 1440]) {
     await refreshDispatch(page)
     await expect(page.getByLabel('Light Fighter · 3 available')).toBeVisible()
     await expect(toggle).toHaveCount(0)
-    expect((await counts(page)).quotes).toBe(0)
+    await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
     expect((await counts(page)).launches).toBe(0)
     // Expansion is local to the selected origin; the colony has no ships.
     state.bodies[1].inventories = []
@@ -1685,10 +1677,11 @@ test('Dispatch retains unavailable edited rows until corrected without hiding a 
   const selected = page.getByLabel('Small Cargo · 0 available')
   await expect(selected).toHaveValue('1')
   await selected.fill('invalid')
+  const quotesBeforeInvalidReview = (await counts(page)).quotes
   await expect(selected).toBeVisible()
   await review(page).click()
   await expect(page.getByRole('alert')).toContainText('Enter whole nonnegative')
-  expect((await counts(page)).quotes).toBe(0)
+  expect((await counts(page)).quotes).toBe(quotesBeforeInvalidReview)
   await selected.fill('000')
   await expect(selected).toHaveCount(0)
   await page.getByRole('button', { name: 'Show all ships (2 more)' }).click()
@@ -1930,9 +1923,8 @@ for (const width of [390]) {
       await expect
         .poll(async () => (await counts(page)).quotes)
         .toBe(quotes + 1)
-      await expect(
-        page.getByRole('button', { name: 'Launch fleet', exact: true }),
-      ).toHaveCount(0)
+      await expect(page.getByRole('alert')).toContainText('There are not enough resources for cargo and fuel.')
+      await expect(page.getByRole('region', {name: 'Fleet quote'})).toHaveCount(0)
       expect((await counts(page)).launches).toBe(0)
     } finally {
       await release(page)
@@ -2083,7 +2075,7 @@ test('editing a new draft clears the previous launch receipt', async ({
       name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
     })
     .click()
-  await expect(dispatchResult(page)).toContainText('Fleet sent.')
+  await expect(dispatchResult(page)).toContainText('Fleet dispatched.')
   await page.getByLabel('Small Cargo · 2 available').fill('2')
   await expect(dispatchResult(page)).toHaveCount(0)
   await review(page).click()
@@ -2153,7 +2145,7 @@ for (const outcome of ['Pending', 'Rejected'] as const) {
     try {
       await page.getByRole('button', { name: /^Transport to/ }).click()
       await expect(dispatchResult(page)).toContainText('Sending fleet order…')
-      await expect(dispatchResult(page)).not.toContainText('Fleet sent.')
+      await expect(dispatchResult(page)).not.toContainText('Fleet dispatched.')
       expect((await counts(page)).launches).toBe(1)
     } finally {
       await release(page)
@@ -2171,13 +2163,34 @@ for (const outcome of ['Pending', 'Rejected'] as const) {
         ? 'Order accepted. Waiting for launch confirmation…'
         : 'Fleet not sent: Beginner protection prevents',
     )
-    await expect(feedback).not.toContainText('Fleet sent.')
+    await expect(feedback).not.toContainText('Fleet dispatched.')
     await expect(page.getByLabel(/Small Cargo · \d+ available/)).toHaveValue(
-      '1',
+      outcome === 'Pending' ? '0' : '1',
     )
     expect((await counts(page)).launches).toBe(1)
   })
 }
+
+test('a fleet rejected after acceptance can be prepared separately without replacing a newer draft', async ({page, mount}) => {
+  await setup(page, mount)
+  await configure(page, {launchOutcome:'Pending'})
+  const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
+  await metal.fill('42')
+  await review(page).click()
+  await page.getByRole('button', {name:/^Transport to/}).click()
+  await expect(dispatchResult(page)).toContainText('Order accepted.')
+  await expect(metal).toHaveValue('0')
+  await metal.fill('17')
+  await page.evaluate(() => window.dispatchScene!.settleLaunch('Rejected'))
+  await page.getByRole('button', {name:'Prepare fleet again'}).click()
+  const recovery = page.getByRole('dialog', {name:'Prepare failed fleet'})
+  await expect(recovery.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
+  await expect(recovery.getByRole('textbox',{name:'Metal',exact:true})).toHaveValue('42')
+  await recovery.getByRole('button', {name:'Dismiss sheet'}).click()
+  await expect(recovery).toHaveCount(0)
+  await expect(metal).toHaveValue('17')
+  expect((await counts(page)).launches).toBe(1)
+})
 
 for (const failure of ['PositionOccupied', 'PrerequisiteMissing'] as const) {
   test(`colony ${failure} remains actionable after the advisory read settles`, async ({
@@ -2213,9 +2226,8 @@ for (const failure of ['PositionOccupied', 'PrerequisiteMissing'] as const) {
     )
     await expect(page.getByRole('alert')).toHaveText(message)
     expect((await counts(page)).launches).toBe(0)
-    expect((await counts(page)).quotes).toBe(
-      failure === 'PositionOccupied' ? 0 : 1,
-    )
+    const colonyQuotes = (await snapshot(page)).calls.filter(query => query.type === 'FleetQuote' && query.intent.mission === 'Colonize')
+    expect(colonyQuotes).toHaveLength(failure === 'PositionOccupied' ? 0 : 1)
   })
 }
 
@@ -2240,7 +2252,7 @@ test('known locked colony positions disable review and an eligible position rest
   await expect(review(page)).toBeDisabled()
   await page.getByLabel('Colony Ship · 1 available').fill('1')
   await expect(review(page)).toBeEnabled()
-  expect((await counts(page)).quotes).toBe(0)
+  await expect(page.getByRole('region', {name:'Fleet quote'})).toHaveCount(0)
   expect((await counts(page)).launches).toBe(0)
   const { view } = await snapshot(page)
   const bodies = structuredClone(view.bodies)
@@ -2292,7 +2304,8 @@ test('prepared attack opens final review with carried fleet and speed, without l
     page.getByRole('region', { name: 'Raid cargo planning' }),
   ).toContainText('6,000')
   await expect(review(page)).toBeVisible()
-  expect((await counts(page)).quotes).toBe(1)
+  await expect(quote).toHaveCount(0)
+  expect((await counts(page)).launches).toBe(0)
 })
 
 test('prepared attack with unavailable fleet slot keeps editable draft and final confirmation closed', async ({
@@ -2559,7 +2572,7 @@ test('returning to Review refreshes Max cargo and confirms a material shipment a
     .click()
   await expect(
     page.getByRole('group', { name: 'Fleet dispatch result' }),
-  ).toContainText('Fleet sent.')
+  ).toContainText('Fleet dispatched.')
   expect((await snapshot(page)).lastLaunch).toMatchObject({
     type: 'LaunchFleet',
     intent: { cargo: stock(3300) },

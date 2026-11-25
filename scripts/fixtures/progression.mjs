@@ -37,7 +37,7 @@ const inventory = {
 }
 const SCALE = 1_000_000
 const sum = (values) => values.reduce((a, b) => a + b, 0)
-// Fixture paid lineage uses the pinned rule artifact. Assertions still use real engine quotes.
+// Fixture prices use the pinned rule artifact. Assertions still use real engine quotes.
 function levelValue(base, growth, level) {
   const n = BigInt(growth[0]) ** BigInt(level - 1),
     d = BigInt(growth[1]) ** BigInt(level - 1)
@@ -99,7 +99,8 @@ export async function prepareProgression(client, universe, players) {
     )
     assert.ok(rules?.profile.artifact.progression)
     const artifact = rules.profile.artifact
-    const world = (
+    const world = Boolean(artifact.world)
+    const legacyPurchases = (
       await client.query("SELECT to_regclass('asset_lots') IS NOT NULL present")
     ).rows[0].present
     const at = Number(
@@ -122,6 +123,7 @@ export async function prepareProgression(client, universe, players) {
       const addLot = (item, level, quantity, value) => {
         if (!world) return
         scoreMicro += BigInt(quantity) * BigInt(value)
+        if (!legacyPurchases) return
         const id = randomUUID()
         lots.push({
           id,

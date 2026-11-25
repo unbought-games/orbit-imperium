@@ -64,7 +64,6 @@ export type DispatchSubmitPorts = {
   attempts: () => ReadonlyMap<string, unknown>
   send: Coordinator['send']
   submitted: (submission: DispatchSubmission | null) => void
-  closeReview: () => void
 }
 export type DispatchCargoFill = 'all' | (typeof resourceNames)[number]
 
@@ -84,7 +83,7 @@ export class DispatchRequests {
   ) {
     return (
       !!submitted &&
-      status === 'committed' &&
+      (status === 'pending' || status === 'committed') &&
       this.isCurrent(submitted.generation)
     )
   }
@@ -116,7 +115,6 @@ export class DispatchRequests {
     ports: DispatchSubmitPorts,
   ) {
     const generation = this.invalidate()
-    ports.closeReview()
     const previousAttempts = ports.attempts()
     const sending = ports.send(command, quote)
     // Coordinator registers before its first await. Never attach another invocation's receipt.

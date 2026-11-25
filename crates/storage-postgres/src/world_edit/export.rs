@@ -1,5 +1,4 @@
 use super::*;
-use orbit_engine::world_edit::WorldAssetValue;
 use std::collections::BTreeMap;
 fn portable(value: &Value, refs: &BTreeMap<String, Value>, at: i64, key: &str) -> Value {
     match value {
@@ -67,28 +66,6 @@ pub(super) async fn import_payload(
     }
     for(id,name)in sqlx::query_as::<_,(Uuid,String)>("SELECT m.player,a.name FROM universe_memberships m JOIN accounts a ON a.id=m.account WHERE m.universe=$1").bind(i.universe.0).fetch_all(&mut **tx).await?{refs.insert(format!("user:{name}"),id.to_string());}
     unportable(value, &refs, i.at)
-}
-fn values(lots: &[AssetLot], owner: PlayerId, location: AssetLocation) -> Vec<WorldAssetValue> {
-    lots.iter()
-        .filter(|l| l.owner == owner && l.location == location)
-        .map(|l| {
-            let (category, item) = match l.item {
-                CatalogKey::Building(k) => ("building", format!("{k:?}")),
-                CatalogKey::Research(k) => ("research", format!("{k:?}")),
-                CatalogKey::Ship(k) => ("ship", format!("{k:?}")),
-                CatalogKey::Defense(k) => ("defense", format!("{k:?}")),
-                CatalogKey::Missile(k) => ("missile", format!("{k:?}")),
-            };
-            WorldAssetValue {
-                category: category.into(),
-                item,
-                level: l.level,
-                quantity: l.quantity,
-                unit_value_micro: l.unit_value_micro,
-                rules_hash: l.rules_hash.clone(),
-            }
-        })
-        .collect()
 }
 impl PgStore {
     pub async fn export_world_scenario(&self, u: UniverseId) -> Result<WorldScenario> {
@@ -159,7 +136,6 @@ impl PgStore {
                     .iter()
                     .map(|(k, v)| (format!("{k:?}"), i64::from(*v)))
                     .collect(),
-                valuation: Some(values(&w.lots, p, AssetLocation::Player)),
                 vacation: Some(w.policies[&p].vacation.is_active()),
                 presence_age_ms: Some(at.saturating_sub(w.policies[&p].last_presence_at)),
                 ..Default::default()
@@ -190,7 +166,6 @@ impl PgStore {
                         .map(|(k, v)| (format!("{k:?}"), i64::from(*v)))
                         .collect(),
                     stock: Some(settle_production(&s, b, at, &rules)?.amounts),
-                    valuation: Some(values(&w.lots, p, AssetLocation::Body(b.id))),
                     ..Default::default()
                 };
                 for item in s.inventories.iter().filter(|x| x.body == b.id) {
@@ -381,7 +356,6 @@ impl PgStore {
                 return_reason: f.return_reason,
                 travel_time: Some(format!("{}ms", f.terms.duration_ms)),
                 arrives_in: Some(format!("{}ms", (f.due_at - at).max(1))),
-                valuation: Some(values(&w.lots, f.owner, AssetLocation::Fleet(f.id))),
                 ..Default::default()
             });
         }
@@ -431,21 +405,7 @@ impl PgStore {
                 ..Default::default()
             });
         }
-        // Mission recreation moves the oldest source lots. Restore the source's
-        // original paid values after all launches so historical costs stay intact.
-        for body in s.bodies.values() {
-            edits.push(WorldEdit {
-                op: "set".into(),
-                user: Some(names[&body.owner].clone()),
-                planet: Some(coordinate_label(body.coordinates)),
-                valuation: Some(values(&w.lots, body.owner, AssetLocation::Body(body.id))),
-                ..Default::default()
-            });
-        }
         let mut hashes = std::collections::BTreeSet::new();
-        for l in &w.lots {
-            hashes.insert(l.rules_hash.0.clone());
-        }
         for c in s.constructions.values() {
             hashes.insert(c.profile_hash.0.clone());
         }

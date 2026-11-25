@@ -179,28 +179,7 @@ async fn planet_names_survive_restart_publish_to_other_players_and_retry_once() 
         .execute(&pool)
         .await
         .unwrap();
-    let lot_id = OperationId(Uuid::new_v4());
-    let lot = AssetLot {
-        id: lot_id,
-        owner: other.player,
-        item: CatalogKey::Ship(ShipType::SmallCargo),
-        level: None,
-        location: AssetLocation::Body(origin),
-        quantity: 1,
-        unit_value_micro: 4000 * SCALE,
-        rules_hash: Ruleset::mvp_fleets().unwrap().hash.clone(),
-        source_operation: lot_id,
-        acquired_at: 1000,
-        acquired_sequence: 1,
-    };
-    sqlx::query(
-        "INSERT INTO asset_lots(universe,key,data) VALUES($1,'rename-transport-fixture',$2)",
-    )
-    .bind(universe.0)
-    .bind(sqlx::types::Json(lot))
-    .execute(&pool)
-    .await
-    .unwrap();
+
     pool.close().await;
     let intent = FleetIntent {
         cargo_fill: None,

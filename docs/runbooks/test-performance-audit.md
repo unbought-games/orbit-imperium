@@ -2491,3 +2491,47 @@ The fixture now returns EpochChanged from the bound read on the selected
 attempts, retaining restart and three-attempt exhaustion coverage. Each
 protocol must use exactly one world read and return matching view/settings
 speed and profile. A foreign binding must fail before any world read.
+
+### November 25, 2026 — fleet Review and launch feedback
+
+Local validation used `71e766e94dec452fdbbc95b1cdfa75ae74155485` plus the dispatch
+performance changes. The first 85-case Dispatch component run finished with
+84 passing cases. Its coordinate-validation case expected zero quote requests
+after the player had restored a valid destination. Preparing terms for that
+valid draft is now intended. The replacement checks that no review opened
+and no launch occurred. The invalid-coordinate cases still require zero
+reads. Auditing the other quote-count assertions found cases depending on
+prefetch timing. They now check the reviewed ship manifest, destination
+identity, or the exact held request, as appropriate.
+
+Separate application coverage holds the overview at a newer revision while
+the player receives a confirmed launch. It checks the visible HUD, inline
+feedback and the observation POST for the actual command. Browser Back
+revalidates the saved review. A normal warm Review checks the original quote
+count and reuse observation. A mounted recovery case retains the next draft
+while the player reopens a rejected order. Existing uncertainty coverage
+retains its original command ID and single submission.
+
+Independent reviews identified a stale quote after an A–B–A edit/refusal
+and missing gesture timing for Galaxy quick launches. Controlled controller
+tests now exercise those paths. The mobile Harvest application test then
+recorded acceptance and receipt delivery while its confirmation visibility
+observation was missing. The Harvest sheet covered the initial paint and
+its close did not change viewport intersection. The client now checks again
+when the native dialog closes and releases fleet submission after applying
+the receipt. The unchanged case passed in 3.4 seconds, with 4.2 seconds of
+bundle preparation and 4.1 seconds of suite execution. This was a product
+failure. The test and its existing repair history were retained.
+
+The full component run took 1.4 minutes, including the failed case, after
+6.8 seconds of bundle preparation. Affected component cases and application
+journeys were run again as each fix landed. The independent moon target case
+now reviews a named second moon with its own ID. Captures cover the Dispatch
+flow and quick launches in the running application at 1440 × 900 and 390 × 844.
+
+The final focused moon review passed. Playwright reported generated line 1064.
+Its cached source map contains the exact reviewed file at source line 956,
+blob `d1e84f973aa94a98d25c6d5974cc8bf685520031`. The one-case run finished
+in 1.6 seconds. All four independent review packets were read-only. The last
+packet's SHA-256 was
+`e1b61d7f520dfaa1f5bd1c567200e5ee08ca21602a2742d17cf2ae98da8e6544`.

@@ -72,6 +72,9 @@ pub struct Construction {
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FactCoverage {
+    /// Consecutive overdue units proven to precede other ordered observations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manufacturing_due_count: Option<i64>,
     /// Complete active fleet membership at each moon being removed.
     #[serde(default, skip_serializing_if = "std::collections::BTreeSet::is_empty")]
     pub moon_removal_bodies: std::collections::BTreeSet<BodyId>,

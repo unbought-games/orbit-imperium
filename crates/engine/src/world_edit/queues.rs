@@ -11,7 +11,7 @@ fn world(s: &GameState) -> EditResult<WorldRecords> {
 fn apply(s: &mut GameState, r: &Ruleset, i: &OrderedInput) -> EditResult<ChangeSet> {
     let mut c = crate::progression::resolve(s, i, r).map_err(fault)?;
     let mut w = world(s)?;
-    crate::valuation::progression_valuation(s, i, &c, &mut w).map_err(error)?;
+    crate::valuation::progression_valuation(s, r, &c, &mut w, None).map_err(error)?;
     c.world = Some(WorldChanges {
         records: w,
         score_deltas: vec![],
@@ -168,7 +168,7 @@ pub(super) fn finish(
         )
         .map_err(fault)?;
         let mut records = world(&working)?;
-        crate::valuation::progression_valuation(&working, &input, &change, &mut records)
+        crate::valuation::progression_valuation(&working, r, &change, &mut records, None)
             .map_err(error)?;
         change.world = Some(WorldChanges {
             records,

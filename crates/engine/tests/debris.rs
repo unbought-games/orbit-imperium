@@ -68,7 +68,7 @@ fn apply(state: &mut GameState, input: &OrderedInput) -> ChangeSet {
         panic!("{result:?}")
     };
     changes.apply_to(state).unwrap();
-    validate_asset_lineage(state).unwrap();
+    validate_completed_assets(state).unwrap();
     *changes
 }
 
@@ -292,7 +292,7 @@ fn active_fleets_require_existing_visible_marker() {
         } else {
             debris.values_mut().next().unwrap().marker_present = false;
         }
-        assert!(validate_asset_lineage(&s).is_err());
+        assert!(validate_completed_assets(&s).is_err());
     }
 }
 
@@ -427,7 +427,7 @@ fn deuterium_balances_survive_serialization_and_obey_invariants() {
     let wire = serde_json::to_value(&state).unwrap();
     let decoded: GameState = serde_json::from_value(wire).unwrap();
     assert_eq!(decoded, state);
-    validate_asset_lineage(&decoded).unwrap();
+    validate_completed_assets(&decoded).unwrap();
     for invalid in [-SCALE, 1] {
         state
             .world
@@ -439,7 +439,7 @@ fn deuterium_balances_survive_serialization_and_obey_invariants() {
             .next()
             .unwrap()
             .deuterium = invalid;
-        assert!(validate_asset_lineage(&state).is_err());
+        assert!(validate_completed_assets(&state).is_err());
     }
 }
 
@@ -560,4 +560,36 @@ fn deuterium_harvest_returns_once_even_with_generation_disabled() {
     let delivered = state.clone();
     assert!(apply(&mut state, &returning).world.is_none());
     assert_eq!(state, delivered);
+}
+
+#[test]
+fn paid_journal_launch_selects_oldest_recycler_even_when_stored_last() {
+    let (mut facts, input, _) = historical_case(0);
+    let lots = facts["world"]["records"]["lots"].as_array_mut().unwrap();
+    let newer = lots
+        .iter_mut()
+        .find(|lot| {
+            lot["item"]["id"] == "Recycler"
+                && lot["location"]["Body"] == "00000000-0000-0000-0000-000000000002"
+        })
+        .unwrap();
+    newer["quantity"] = 1.into();
+    newer["acquired_at"] = 1.into();
+    let newer_id = newer["id"].clone();
+    let mut older = newer.clone();
+    let older_id = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+    older["id"] = older_id.into();
+    older["acquired_at"] = 0.into();
+    older["source_operation"] = older_id.into();
+    older["unit_value_micro"] = 7.into();
+    lots.push(older);
+    let output = replay_legacy_debris_transition(&facts, &input, &historical_rules()).unwrap();
+    let world = &output["Applied"]["world"];
+    assert_eq!(world["score_deltas"], serde_json::json!([]));
+    let lots = world["records"]["lots"].as_array().unwrap();
+    let departed = lots.iter().find(|lot| lot["id"] == older_id).unwrap();
+    assert_eq!(departed["unit_value_micro"], 7);
+    assert!(departed["location"]["Fleet"].is_string());
+    let stationed = lots.iter().find(|lot| lot["id"] == newer_id).unwrap();
+    assert!(stationed["location"]["Body"].is_string());
 }

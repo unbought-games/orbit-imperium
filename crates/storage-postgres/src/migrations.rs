@@ -92,7 +92,10 @@ fn migration_error(source: MigrateError) -> MigrationError {
 
 impl PgStore {
     pub async fn migrate(&self) -> Result<(), MigrationError> {
-        self.run_migrations(active_migrations()).await
+        self.run_migrations(active_migrations()).await?;
+        self.finish_catalog_score_upgrades().await.map_err(|_|error(
+            "catalog score upgrade incomplete; inspect stored rules and completed assets, then restart db-init"
+        ))
     }
 
     #[cfg(feature = "test-support")]

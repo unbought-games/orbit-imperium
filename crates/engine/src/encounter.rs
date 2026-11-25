@@ -30,7 +30,8 @@ pub struct EncounterSettlement {
     pub debris: Resources,
     pub recovery: Vec<BattleCounts>,
     pub recovery_cursor: (u64, u8),
-    pub recovery_indices: Vec<(BattleOrigin, ManufacturedItem, Vec<i64>)>,
+    // Old receipts record exactly which differently priced defense units survived.
+    journal_recovery: BTreeMap<(BattleOrigin, ManufacturedItem), Vec<i64>>,
 }
 pub fn settle_encounter(
     s: &GameState,
@@ -137,7 +138,8 @@ fn settle_encounters(
     let battle = resolve_battle(&input, rules, &mut rng)?;
     let mut recovery_rng = RandomStream::new(&facts.secret, s.universe, s.epoch, i.id, "recovery")?;
     let mut recovery = vec![];
-    let mut recovery_indices = vec![];
+    let historical = crate::valuation_replay::has_acquisitions(&facts.records.lots);
+    let mut journal_recovery = BTreeMap::new();
     let debris = destroyed_ship_debris(&battle.destroyed, rules)?;
     for origin in &battle.destroyed {
         let mut restored = origin.clone();
@@ -147,17 +149,21 @@ fn settle_encounters(
                 ManufacturedItem::Ship(_) => {}
                 ManufacturedItem::Defense(_) => {
                     let [a, b] = rules.defense_recovery_probability;
-                    let mut indices = vec![];
+                    let mut n = 0;
                     for index in 0..count {
                         if recovery_rng.bernoulli(&a.into(), &b.into())? {
-                            indices.push(index);
+                            n += 1;
+                            if historical {
+                                journal_recovery
+                                    .entry((origin.origin, item))
+                                    .or_insert_with(Vec::new)
+                                    .push(index);
+                            }
                         }
                     }
-                    let n = indices.len() as i64;
                     if n > 0 {
                         restored.units.push((item, n));
                     }
-                    recovery_indices.push((origin.origin, item, indices));
                 }
                 _ => return Err(InvariantError("missile in ordinary battle".into())),
             }
@@ -169,7 +175,7 @@ fn settle_encounters(
         debris,
         recovery,
         recovery_cursor: recovery_rng.cursor(),
-        recovery_indices,
+        journal_recovery,
     })
 }
 fn public_counts(counts: &[BattleCounts]) -> serde_json::Value {
@@ -458,25 +464,20 @@ fn combat_encounters(
                 BattleOrigin::Fleet(id) => AssetLocation::Fleet(id),
                 BattleOrigin::Stationed(id) => AssetLocation::Body(id),
             };
-            // Oldest paid lots are the casualty pool; restored units keep that pool's lineage.
-            let mut lost = take_asset_lots(&mut w.lots, losses.owner, key, &location, count, None)?;
-            let recovered_indices = result
-                .recovery_indices
-                .iter()
-                .find(|(origin, item, _)| *origin == losses.origin && *item == unit)
-                .map(|(_, _, indices)| indices);
-            let mut offset = 0;
-            for lot in &mut lost {
-                let end = offset + lot.quantity;
-                lot.quantity = recovered_indices.map_or(0, |indices| {
-                    indices
-                        .iter()
-                        .filter(|&&index| index >= offset && index < end)
-                        .count() as i64
-                });
-                offset = end;
+            if let Some(indices) = result.journal_recovery.get(&(losses.origin, unit)) {
+                let lost =
+                    take_asset_quantity(&mut w.lots, losses.owner, key, &location, count, None)?;
+                crate::valuation_replay::restore_defenses(lost, indices, &mut w.lots);
+            } else {
+                take_asset_quantity(
+                    &mut w.lots,
+                    losses.owner,
+                    key,
+                    &location,
+                    count - restored,
+                    None,
+                )?;
             }
-            w.lots.extend(lost.into_iter().filter(|l| l.quantity > 0));
             if let BattleOrigin::Stationed(body) = losses.origin {
                 let old = s
                     .inventories
@@ -688,7 +689,7 @@ fn combat_encounters(
             if attempt.fleet_lost {
                 add_cargo_loss(cargo_losses.entry(f.owner).or_default(), f.cargo);
                 for ship in &f.ships {
-                    take_asset_lots(
+                    take_asset_quantity(
                         &mut w.lots,
                         f.owner,
                         CatalogKey::Ship(ship.ship_type),

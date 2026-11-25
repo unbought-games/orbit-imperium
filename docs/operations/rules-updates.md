@@ -248,7 +248,8 @@ Other universes retain their own configuration. Restarts never replace the activ
 - Flights keep their paid fuel and committed travel/return terms.
 - Battles use the combat rules active at arrival, for both sides.
 - Production before activation uses old rates; production afterward uses new rates.
-- Accounts, sessions, universe identity/epoch, receipts, historical reports, and paid asset values are preserved.
+- Existing accounts, sessions, universe identity and epoch, receipts, reports and historical standings keep their original records.
+- An intentional catalog reprice recalculates completed asset values and live standings in the activation transaction. Ships at home and in active fleets use the same unit price.
 
 Existing algorithms normally change with a code deployment. A particular behavior that needs to remain off until activation uses an explicit feature setting; there is no general algorithm-version system.
 

@@ -437,7 +437,7 @@ fn lunar_transport_all_body_pairs_preserve_stock_lineage_and_return_once() {
         let mut request = lunar_intent(&s, p, origin, target, Mission::Transport);
         request.ships[0].ship_type = ShipType::LargeCargo;
         request.cargo = Resources::from_values([20_000 * SCALE, 0, 0]);
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         let q = quote_fleet(&s, p, &request, 1000, &r).unwrap();
         assert!(estimate_fleet(&s, p, &request, &r).is_ok());
         assert!(q.duration_ms > 0);
@@ -463,7 +463,7 @@ fn lunar_transport_all_body_pairs_preserve_stock_lineage_and_return_once() {
         due(&mut s, &r, p, origin, returning, 28103);
         due(&mut s, &r, p, origin, returning, 28104);
         assert_eq!(ships(&s, origin, ShipType::LargeCargo), 1);
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         validate_moons(&s).unwrap();
         if s.bodies[&target].kind == BodyKind::Moon {
             assert_eq!(
@@ -506,7 +506,7 @@ fn lunar_deploy_stations_without_shipyard_and_credits_fuel_once() {
             1,
         );
         let request = lunar_intent(&s, p, origin, target, Mission::Deploy);
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         let q = quote_fleet(&s, p, &request, 1000, &r).unwrap();
         let event = launch_raid(&mut s, &r, p, origin, request, 1000, 28300);
         let before = settle_production(&s, &s.bodies[&target], event.at, &r)
@@ -533,7 +533,7 @@ fn lunar_deploy_stations_without_shipyard_and_credits_fuel_once() {
                 .values()
                 .any(|f| f.active())
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 

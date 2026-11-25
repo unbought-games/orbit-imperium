@@ -293,7 +293,7 @@ impl PgStore {
         let change = orbit_engine::world_edit::edit_world(&facts, rules, input, &edit, owner)?;
         let mut next = facts.clone();
         change.apply_to(&mut next)?;
-        validate_asset_lineage(&next)?;
+        validate_completed_assets(&next)?;
         crate::facts::validate_rule_references(tx, &next).await?;
         for body in next.bodies.values() {
             validate_body(&next, body.id, rules)?;

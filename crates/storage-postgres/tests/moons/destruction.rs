@@ -206,11 +206,11 @@ async fn destruction_retires_paid_lunar_jobs_before_their_deadlines_without_touc
     assert_eq!(historical.status, ManufacturingStatus::BodyDestroyed);
     assert_eq!(historical.completed_prefix, 0);
     assert_eq!(historical.commitment, batch.commitment);
-    let assets: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE id=$1) OR EXISTS(SELECT 1 FROM inventories WHERE body=$1) OR EXISTS(SELECT 1 FROM asset_lots WHERE universe=$2 AND data->'location'->>'Body'=$1::uuid::text)")
-        .bind(moon.0).bind(u.0).fetch_one(&pool).await.unwrap();
+    let assets: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bodies WHERE id=$1) OR EXISTS(SELECT 1 FROM inventories WHERE body=$1)")
+        .bind(moon.0).fetch_one(&pool).await.unwrap();
     assert!(!assets);
     let (after, _) = reopened.bound_world(defender).await.unwrap().facts;
-    validate_asset_lineage(&after.state).unwrap();
+    validate_completed_assets(&after.state).unwrap();
     assert_eq!(
         after
             .state

@@ -1,3 +1,4 @@
+import { DispatchObservations } from './dispatch-observations'
 import { matchesCargoInstruction } from './dispatch-cargo'
 import { TutorialEngine } from './tutorial-engine'
 import {
@@ -160,11 +161,29 @@ export class Coordinator {
   private protocol: 2 | 3 | 4 = 2
   private loginPresenceWork: Promise<void> | null = null
   private universe = ''
+  readonly dispatchObservations: DispatchObservations
+  startReviewObservation(prepared: boolean) {
+    const id = this.platform.newId()
+    this.dispatchObservations.start(
+      id,
+      prepared ? 'review_started_warm' : 'review_started_cold',
+      this.platform.monotonicNowMs(),
+    )
+    return id
+  }
+  dispatchClickTime() {
+    return this.platform.monotonicNowMs()
+  }
   constructor(
     private port: GamePort,
     private platform: ClientPlatform,
     private updates?: GameUpdatesPort,
-  ) {}
+  ) {
+    this.dispatchObservations = new DispatchObservations(platform, (sample) => {
+      if (this.binding)
+        this.port.observeDispatch?.(this.binding.universe, sample)
+    })
+  }
   subscribe = this.store.subscribe
   startDelivery(): () => void {
     this.delivery?.stop()
@@ -175,7 +194,7 @@ export class Coordinator {
       binding,
       platform: this.platform,
       updates: this.updates,
-      onUpdate: (update) => this.onUpdate(update),
+      onUpdate: (update) => this.onUpdate(update, true),
       reconcile: () => this.poll(),
       hasPending: () =>
         [...this.attempts.values()].some(
@@ -203,6 +222,7 @@ export class Coordinator {
     const previous = this.store.getState()
     const foreground = this.platform.isVisible?.() ?? true
     const online = this.platform.isOnline()
+    if (!foreground) this.dispatchObservations.suspend()
     const resumed =
       foreground &&
       online &&
@@ -269,6 +289,7 @@ export class Coordinator {
     )
   }
   invalidate() {
+    this.dispatchObservations.clear()
     this.tutorial.invalidate()
     this.reports.invalidate()
     this.mailboxReads.clear()
@@ -848,6 +869,12 @@ export class Coordinator {
     for (let attempt = 0; attempt < 3; attempt++) {
       const previous = this.view
       try {
+        if (
+          captured.type === 'FleetQuote' ||
+          captured.type === 'ResolveDestination' ||
+          captured.type === 'ResolveMissionSite'
+        )
+          this.dispatchObservations.requestedFleetTerms()
         const result = validate<import('./commands').BoundWorld>(
           'BoundWorld4',
           await this.port.world(context, captured),
@@ -1031,7 +1058,14 @@ export class Coordinator {
     )
     return this.responseMatches(pending, result) ? result : null
   }
-  async send(command: Command, quote?: SubmittedQuote) {
+  async send(
+    command: Command,
+    quote?: SubmittedQuote,
+    dispatch?: {
+      clickedAt: number
+      coordinates: import('../contracts').components['schemas']['Coordinates']
+    },
+  ) {
     const b = this.binding,
       g = this.generation
     if (!b || !this.ready || !this.platform.isOnline()) {
@@ -1055,6 +1089,7 @@ export class Coordinator {
     const intent: SubmittedIntent = {
       quote: quote ? structuredClone(quote) : undefined,
       submittedAt: Math.floor(currentServerTime(state)),
+      ...(dispatch ? { dispatchCoordinates: dispatch.coordinates } : {}),
       ...(parent ? { dependsOn: parent.envelope.command_id } : {}),
       baseRevision: state.view?.viewer_revision ?? '0',
     }
@@ -1118,6 +1153,12 @@ export class Coordinator {
       intents: new Map(state.intents).set(key, structuredClone(intent)),
     })
     if (!this.current(g, b)) return
+    if (dispatch)
+      this.dispatchObservations.start(
+        commandId,
+        'send_started',
+        dispatch.clickedAt,
+      )
     if (!(await this.deliver(a, g, true))) return
     return commandId
   }
@@ -1127,6 +1168,7 @@ export class Coordinator {
     const current = this.attempts.get(key)
     // A receipt is stronger evidence than a conflicting transport response.
     if (!current || current.receipt || terminal(current)) return false
+    this.dispatchObservations.mark(a.envelope.command_id, 'not_admitted')
     this.removeAttempt(key)
     return true
   }
@@ -1154,6 +1196,9 @@ export class Coordinator {
         a,
         g,
         await this.port.submit(structuredClone(a.envelope)),
+        firstDelivery,
+        a.envelope.command.type === 'World' &&
+          a.envelope.command.action.type === 'LaunchFleet',
       )
     } catch (e) {
       const rejected = failure(e)
@@ -1211,10 +1256,17 @@ export class Coordinator {
       ...current,
       status: 'uncertain',
     })
+    this.dispatchObservations.mark(a.envelope.command_id, 'uncertain')
     this.saveAttempt(key, next)
     this.delivery?.pending()
   }
-  private async receive(a: Attempt, g: number, raw: BoundReceipt) {
+  private async receive(
+    a: Attempt,
+    g: number,
+    raw: BoundReceipt,
+    fromFirstSubmit = false,
+    deferSnapshot = false,
+  ) {
     const r = validate<BoundReceipt>('GameReceipt', raw),
       b = a.envelope.binding
     if (
@@ -1224,6 +1276,12 @@ export class Coordinator {
       r.protocol !== a.envelope.protocol
     )
       return
+    if (fromFirstSubmit && r.status !== 'Rejected')
+      this.dispatchObservations.mark(r.command_id, 'accepted')
+    if (r.status === 'Committed')
+      this.dispatchObservations.mark(r.command_id, 'outcome_received')
+    if (r.status === 'Rejected')
+      this.dispatchObservations.mark(r.command_id, 'rejected')
     const key = attemptKey(b, r.command_id),
       current = this.attempts.get(key)
     if (!current || terminal(current)) return
@@ -1254,7 +1312,10 @@ export class Coordinator {
     if (r.status === 'Committed') {
       if (next.reconciled) await this.pruneAttempts()
       this.requestMinimum(r.minimum_viewer_revision)
-      if (!this.refreshWork && !this.recoveryWork) await this.refresh()
+      if (!this.refreshWork && !this.recoveryWork) {
+        const refresh = this.refresh()
+        if (!deferSnapshot) await refresh
+      }
     }
   }
   /** Explicit player retry; receipt checks alone never authorize another send. */
@@ -1341,7 +1402,7 @@ export class Coordinator {
       if (this.recoveryWork === work) this.recoveryWork = null
     }
   }
-  async onUpdate(raw: GameUpdate): Promise<void> {
+  async onUpdate(raw: GameUpdate, deferSnapshot = false): Promise<void> {
     const update = validate<GameUpdate>('GameUpdate', raw)
     if (
       !this.binding ||
@@ -1350,29 +1411,42 @@ export class Coordinator {
     )
       return
     if (update.event.type === 'Reset') {
-      await this.reconcilePending()
-      await this.refresh()
+      // Reconcile missed receipts and the view on the recovery path. Keep the
+      // stream free to apply later outcomes while that HTTP work is pending.
+      const recovery = this.poll()
+      if (!deferSnapshot) await recovery
       return
     }
     if (update.event.type === 'Invalidate') {
       if (
         BigInt(update.event.minimum_viewer_revision) >
         BigInt(this.view?.viewer_revision ?? '0')
-      )
-        await this.refresh(update.event.minimum_viewer_revision)
+      ) {
+        const refresh = this.refresh(update.event.minimum_viewer_revision)
+        if (!deferSnapshot) await refresh
+      }
       return
     }
     const receipt = update.event.receipt
     const attempt = this.attempts.get(
       attemptKey(update.binding, receipt.command_id),
     )
-    if (attempt) await this.receive(attempt, this.generation, receipt)
+    if (attempt)
+      await this.receive(
+        attempt,
+        this.generation,
+        receipt,
+        false,
+        deferSnapshot,
+      )
     if (
       receipt.status === 'Committed' &&
       BigInt(receipt.minimum_viewer_revision) >
         BigInt(this.view?.viewer_revision ?? '0')
-    )
-      await this.refresh(receipt.minimum_viewer_revision)
+    ) {
+      const refresh = this.refresh(receipt.minimum_viewer_revision)
+      if (!deferSnapshot) await refresh
+    }
   }
   async poll() {
     if (this.platform.monotonicNowMs() < this.retryAt) return

@@ -112,28 +112,6 @@ async fn setup(scoped: bool) -> Fixture {
             .execute(&pool)
             .await
             .unwrap();
-        sqlx::query("UPDATE asset_lots SET data=jsonb_set(data,'{location,Body}',to_jsonb($2::text)) WHERE universe=$3 AND data->'location'->>'Body'=$1 AND data->'item'->>'kind'='Ship'")
-            .bind(parent.to_string()).bind(moon.0).bind(u.0).execute(&pool).await.unwrap();
-        let lot = AssetLot {
-            id: OperationId(Uuid::new_v4()),
-            owner: b.player,
-            item: CatalogKey::Building(Building::JumpGate),
-            level: Some(1),
-            location: AssetLocation::Body(moon),
-            quantity: 1,
-            unit_value_micro: 8_000_000 * SCALE,
-            rules_hash: rules.hash.clone(),
-            source_operation: OperationId(input.0),
-            acquired_at: AT,
-            acquired_sequence: 0,
-        };
-        sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-            .bind(u.0)
-            .bind(lot.id.to_string())
-            .bind(sqlx::types::Json(lot))
-            .execute(&pool)
-            .await
-            .unwrap();
         moons.push(moon);
     }
     if scoped {
@@ -571,8 +549,6 @@ async fn paid_gate_construction_completes_and_the_new_gate_can_jump_after_restar
     let source = f.moons[0];
     // Begin with a completed Lunar Base and no gate, retaining valid asset lineage.
     sqlx::query("UPDATE building_levels SET level=CASE WHEN building='LunarBase' THEN 1 ELSE 0 END WHERE body=$1").bind(source.0).execute(&f.pool).await.unwrap();
-    sqlx::query("UPDATE asset_lots SET data=jsonb_set(jsonb_set(data,'{item,id}','\"LunarBase\"'),'{unit_value_micro}',to_jsonb($3::bigint)) WHERE universe=$1 AND data->'location'->>'Body'=$2 AND data->'item'->>'id'='JumpGate'")
-        .bind(f.u.0).bind(source.to_string()).bind(80000*SCALE).execute(&f.pool).await.unwrap();
     sqlx::query("UPDATE bodies SET amounts=$2 WHERE id=$1")
         .bind(source.0)
         .bind(sqlx::types::Json(Resources::all(10_000_000 * SCALE)))
@@ -679,21 +655,7 @@ async fn worker_attempt_measures_actual_inventory_io_and_only_acknowledges_a_new
         let game = GameService::new(f.store.clone());
         game.world_submit(principal(f.b), pair).await.unwrap();
         let worker = WorkerId(Uuid::new_v4());
-        if scoped {
-            game.step_scoped(f.u, worker, &InlineEngine).await.unwrap();
-        } else {
-            game.step(f.u, worker).await.unwrap();
-        }
-        let count_lots = || {
-            sqlx::query_scalar::<_, i64>(
-                "SELECT count(*) FROM asset_lots WHERE universe=$1 AND data->>'owner'=$2",
-            )
-            .bind(f.u.0)
-            .bind(f.b.player.to_string())
-            .fetch_one(&f.pool)
-        };
-        let before = count_lots().await.unwrap() as u64;
-        assert!(before > 0);
+        let before = counts(&f).await;
         sqlx::raw_sql("CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text NOT NULL,enabled boolean NOT NULL,seen bigint NOT NULL DEFAULT 0); INSERT INTO orbit_test_fault(stage,mode,enabled) VALUES('before_commit','error',true)").execute(&f.pool).await.unwrap();
 
         // Repeat the same fenced commit after a known rollback and after acknowledgement.
@@ -703,7 +665,7 @@ async fn worker_attempt_measures_actual_inventory_io_and_only_acknowledges_a_new
                 let (snapshot, loading) = collect(f.store.$load(&claim)).await;
                 let snapshot = snapshot.unwrap();
                 assert!(loading.duration(Phase::FactLoad).is_some());
-                assert_eq!(loading.fact_lots_read, before);
+                assert_eq!(loading.fact_lots_read, 0);
                 let result =
                     orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
                 assert!(matches!(result, TransitionResult::Applied(_)));
@@ -711,7 +673,7 @@ async fn worker_attempt_measures_actual_inventory_io_and_only_acknowledges_a_new
                 assert!(matches!(failed, Err(StoreError::Unavailable)));
                 assert_eq!(rolled_back.commit_ack_us, None);
                 assert_eq!(rolled_back.duration(Phase::Commit), None);
-                assert_eq!(count_lots().await.unwrap() as u64, before);
+                assert_eq!(counts(&f).await, before);
                 let (committed, sample) = collect(f.store.$commit(&claim, result.clone())).await;
                 assert!(matches!(committed, Ok(CommitOutcome::Committed { .. })));
                 assert_eq!(sample.terminal, Some("applied"));
@@ -721,9 +683,9 @@ async fn worker_attempt_measures_actual_inventory_io_and_only_acknowledges_a_new
                 assert_eq!(sample.stacks_written, 2);
                 assert_eq!(sample.duration(Phase::ScopedFence).is_some(), scoped);
                 assert_eq!(sample.fact_lots_read, 0);
-                assert_eq!(sample.revalidation_lots_read, before);
-                assert_eq!(sample.lots_deleted, before);
-                assert_eq!(sample.lots_inserted, count_lots().await.unwrap() as u64);
+                assert_eq!(sample.revalidation_lots_read, 0);
+                assert_eq!(sample.lots_deleted, 0);
+                assert_eq!(sample.lots_inserted, 0);
                 for phase in [Phase::Revalidation, Phase::Persistence, Phase::Commit] {
                     assert!(sample.duration(phase).is_some(), "{phase:?}");
                 }

@@ -148,7 +148,7 @@ pub(crate) fn arrive(
         .find(|p| p.origin == BattleOrigin::Fleet(f.id))
         .ok_or_else(|| invariant("attacker losses"))?;
     for (item, count) in &losses.units {
-        take_asset_lots(
+        take_asset_quantity(
             &mut w.lots,
             f.owner,
             item.catalog_key(),

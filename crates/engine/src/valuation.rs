@@ -1,37 +1,41 @@
-//! Immutable paid-value lots. Location changes never revalue a completed asset.
+//! Exact catalog values derived from completed inventory, buildings, research and active fleets.
 use crate::*;
 use serde::{Deserialize, Serialize};
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AssetLocation {
     Body(BodyId),
     Fleet(FleetId),
     Player,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AssetLot {
-    pub id: OperationId,
+pub struct CatalogHolding {
     pub owner: PlayerId,
     pub item: CatalogKey,
     pub level: Option<u32>,
     pub location: AssetLocation,
     pub quantity: i64,
     pub unit_value_micro: i64,
-    pub rules_hash: Hash,
-    pub source_operation: OperationId,
-    pub acquired_at: Timestamp,
-    pub acquired_sequence: i64,
+    /// Only archived journal records carry paid acquisition metadata.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub acquisition: Option<Box<JournalAcquisition>>,
+}
+impl CatalogHolding {
+    fn key(&self) -> (PlayerId, CatalogKey, AssetLocation, Option<u32>) {
+        (self.owner, self.item, self.location, self.level)
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreLedgerDelta {
     pub input: InputId,
     pub player: PlayerId,
-    pub lot: OperationId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lot: Option<OperationId>,
     pub delta: i64,
     pub valuation_hash: Hash,
 }
-fn add_lot_value(sum: i64, lot: &AssetLot) -> Result<i64, InvariantError> {
+fn add_lot_value(sum: i64, lot: &CatalogHolding) -> Result<i64, InvariantError> {
     if lot.quantity < 0 || lot.unit_value_micro < 0 {
-        return Err(InvariantError("invalid valuation lot".into()));
+        return Err(InvariantError("invalid catalog holding".into()));
     }
     lot.quantity
         .checked_mul(lot.unit_value_micro)
@@ -39,7 +43,10 @@ fn add_lot_value(sum: i64, lot: &AssetLot) -> Result<i64, InvariantError> {
         .ok_or_else(|| InvariantError("score overflow".into()))
 }
 
-pub fn value_completed_assets(lots: &[AssetLot], owner: PlayerId) -> Result<i64, InvariantError> {
+pub fn value_completed_assets(
+    lots: &[CatalogHolding],
+    owner: PlayerId,
+) -> Result<i64, InvariantError> {
     lots.iter()
         .filter(|lot| lot.owner == owner)
         .try_fold(0, add_lot_value)
@@ -47,7 +54,7 @@ pub fn value_completed_assets(lots: &[AssetLot], owner: PlayerId) -> Result<i64,
 
 /// Compute the exact committed values for all owners of the supplied lots in one pass.
 pub fn value_completed_assets_by_owner(
-    lots: &[AssetLot],
+    lots: &[CatalogHolding],
 ) -> Result<std::collections::BTreeMap<PlayerId, i64>, InvariantError> {
     let mut totals = std::collections::BTreeMap::new();
     for lot in lots {
@@ -57,63 +64,143 @@ pub fn value_completed_assets_by_owner(
     Ok(totals)
 }
 
-/// Select the oldest acquisition lineage; preserve source IDs and paid values when splitting.
-pub fn take_asset_lots(
-    lots: &mut Vec<AssetLot>,
+/// Move or consume a quantity. All units of a type have the same catalog price.
+pub fn take_asset_quantity(
+    lots: &mut Vec<CatalogHolding>,
     owner: PlayerId,
     item: CatalogKey,
     from: &AssetLocation,
     quantity: i64,
     to: Option<AssetLocation>,
-) -> Result<Vec<AssetLot>, InvariantError> {
+) -> Result<Vec<CatalogHolding>, InvariantError> {
     if quantity < 0 {
-        return Err(InvariantError("negative lot selection".into()));
+        return Err(InvariantError("negative inventory quantity".into()));
     }
-    let mut indices: Vec<_> = lots
+    if quantity == 0 {
+        return Ok(Vec::new());
+    }
+    if crate::valuation_replay::has_acquisitions(lots) {
+        return crate::valuation_replay::take(lots, owner, item, from, quantity, to);
+    }
+    let matches = |s: &CatalogHolding| s.owner == owner && s.item == item && s.location == *from;
+    let available = lots
         .iter()
-        .enumerate()
-        .filter(|(_, l)| l.owner == owner && l.item == item && &l.location == from)
-        .map(|(i, _)| i)
-        .collect();
-    indices.sort_by_key(|i| {
-        (
-            lots[*i].acquired_at,
-            lots[*i].acquired_sequence,
-            lots[*i].source_operation,
-            lots[*i].id,
-        )
-    });
-    let available = indices
-        .iter()
-        .try_fold(0i64, |sum, i| sum.checked_add(lots[*i].quantity))
-        .ok_or_else(|| InvariantError("lot count overflow".into()))?;
+        .filter(|stack| matches(stack))
+        .try_fold(0i64, |sum, stack| {
+            sum.checked_add(stack.quantity)
+                .ok_or_else(|| InvariantError("inventory quantity overflow".into()))
+        })?;
     if available < quantity {
-        return Err(InvariantError("missing asset valuation lineage".into()));
+        return Err(InvariantError("insufficient completed inventory".into()));
     }
     let mut remaining = quantity;
-    let mut taken = vec![];
-    for index in indices {
+    let mut taken = Vec::new();
+    for stack in lots.iter_mut().filter(|stack| matches(stack)) {
+        let count = remaining.min(stack.quantity);
+        let mut moved = stack.clone();
+        moved.quantity = count;
+        moved.location = to.unwrap_or(*from);
+        stack.quantity -= count;
+        remaining -= count;
+        taken.push(moved);
         if remaining == 0 {
             break;
         }
-        let lot = &mut lots[index];
-        let n = remaining.min(lot.quantity);
-        if n == 0 {
-            continue;
-        }
-        let mut part = lot.clone();
-        part.quantity = n;
-        if let Some(to) = &to {
-            part.location = to.clone();
-        }
-        lot.quantity -= n;
-        remaining -= n;
-        taken.push(part);
     }
-    lots.retain(|l| l.quantity > 0);
+    lots.retain(|stack| stack.quantity > 0);
     Ok(taken)
 }
-pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
+
+/// These quantities are a working projection. Only the underlying levels, stationed
+/// inventories and fleet manifests persist. Incoming foreign fleets are outside the
+/// selected owner's score coverage.
+pub fn catalog_holdings(
+    state: &GameState,
+    rules: &Ruleset,
+) -> Result<Vec<CatalogHolding>, InvariantError> {
+    let world = world_facts(state)?;
+    let mut assets = Vec::new();
+    let mut prices = std::collections::BTreeMap::new();
+    let mut push = |owner, item, level, location, quantity| -> Result<(), InvariantError> {
+        if quantity < 0 {
+            return Err(InvariantError("negative inventory quantity".into()));
+        }
+        if quantity == 0 {
+            return Ok(());
+        }
+        let value = match prices.entry((item, level)) {
+            std::collections::btree_map::Entry::Occupied(price) => *price.get(),
+            std::collections::btree_map::Entry::Vacant(price) => *price.insert(
+                catalog_asset_value(rules, item, level)
+                    .map_err(|_| InvariantError("invalid catalog price".into()))?,
+            ),
+        };
+        assets.push(CatalogHolding {
+            acquisition: None,
+            owner,
+            item,
+            level,
+            location,
+            quantity,
+            unit_value_micro: value,
+        });
+        Ok(())
+    };
+    for body in state.bodies.values() {
+        for (&building, &level) in &body.levels {
+            for increment in 1..=level {
+                push(
+                    body.owner,
+                    CatalogKey::Building(building),
+                    Some(increment),
+                    AssetLocation::Body(body.id),
+                    1,
+                )?;
+            }
+        }
+    }
+    for (&owner, research) in &state.research {
+        for (&item, &level) in &research.levels {
+            for increment in 1..=level {
+                push(
+                    owner,
+                    CatalogKey::Research(item),
+                    Some(increment),
+                    AssetLocation::Player,
+                    1,
+                )?;
+            }
+        }
+    }
+    for stack in &state.inventories {
+        push(
+            stack.owner,
+            stack.item.catalog_key(),
+            None,
+            AssetLocation::Body(stack.body),
+            stack.count,
+        )?;
+    }
+    for fleet in world
+        .records
+        .fleets
+        .values()
+        .filter(|f| f.active() && world.covered_players.contains(&f.owner))
+    {
+        for ship in &fleet.ships {
+            push(
+                fleet.owner,
+                CatalogKey::Ship(ship.ship_type),
+                None,
+                AssetLocation::Fleet(fleet.id),
+                ship.count,
+            )?;
+        }
+    }
+    assets.sort_unstable_by_key(CatalogHolding::key);
+    Ok(assets)
+}
+pub fn validate_completed_assets(s: &GameState) -> Result<(), InvariantError> {
     let w = world_facts(s)?;
     validate_colonies(s)?;
     validate_moons(s)?;
@@ -211,9 +298,9 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
         }
     }
 
-    let mut expected = std::collections::BTreeMap::<String, i64>::new();
+    let mut expected = std::collections::BTreeMap::new();
     let key = |owner: PlayerId, item: CatalogKey, location: &AssetLocation, level: Option<u32>| {
-        serde_json::to_string(&(owner, item, location, level)).expect("asset key")
+        (owner, item, *location, level)
     };
     for b in s.bodies.values() {
         if !w.covered_players.contains(&b.owner) || !w.records.policies.contains_key(&b.owner) {
@@ -279,21 +366,21 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
             );
         }
     }
-    let mut actual = std::collections::BTreeMap::<String, i64>::new();
+    let mut actual = std::collections::BTreeMap::<_, i64>::new();
     for lot in &w.records.lots {
         if lot.quantity <= 0 || lot.unit_value_micro < 0 {
-            return Err(InvariantError("invalid asset lot".into()));
+            return Err(InvariantError("invalid asset quantity".into()));
         }
         let v = actual
             .entry(key(lot.owner, lot.item, &lot.location, lot.level))
             .or_default();
         *v = v
             .checked_add(lot.quantity)
-            .ok_or_else(|| InvariantError("lot total overflow".into()))?;
+            .ok_or_else(|| InvariantError("inventory quantity overflow".into()))?;
     }
     if actual != expected {
         return Err(InvariantError(
-            "completed assets lack exact valuation lineage".into(),
+            "completed quantities disagree with assets".into(),
         ));
     }
     for owner in &w.covered_players {
@@ -301,59 +388,110 @@ pub fn validate_asset_lineage(s: &GameState) -> Result<(), InvariantError> {
     }
     Ok(())
 }
-pub(crate) fn progression_valuation(
-    s: &GameState,
-    i: &OrderedInput,
-    c: &ChangeSet,
-    w: &mut WorldRecords,
-) -> Result<(), InvariantError> {
-    let mut add = |owner: PlayerId,
-                   item: CatalogKey,
-                   location: AssetLocation,
-                   level: Option<u32>,
-                   quantity: i64,
-                   paid: Resources,
-                   source: OperationId,
-                   tag: String,
-                   paid_profile: &Hash|
-     -> Result<(), InvariantError> {
-        let value = paid
-            .values()
-            .into_iter()
-            .try_fold(0i64, |a, n| a.checked_add(n))
-            .ok_or_else(|| InvariantError("paid valuation overflow".into()))?;
-        w.lots.push(AssetLot {
-            id: OperationId(derived_id(i.id, &tag)),
+#[derive(Clone, Copy)]
+enum CompletedOperation<'a> {
+    Building(&'a Construction),
+    Research(&'a ResearchOperation),
+    Manufacture(&'a ManufacturingBatch, i64),
+}
+impl CompletedOperation<'_> {
+    fn holding(
+        self,
+        rules: &Ruleset,
+        journal: Option<&OrderedInput>,
+    ) -> Result<CatalogHolding, InvariantError> {
+        let (item, owner, location, level, quantity) = match self {
+            Self::Building(op) => (
+                CatalogKey::Building(op.building),
+                op.owner,
+                AssetLocation::Body(op.body),
+                Some(op.target_level),
+                1,
+            ),
+            Self::Research(op) => (
+                CatalogKey::Research(op.research),
+                op.owner,
+                AssetLocation::Player,
+                Some(op.target_level),
+                1,
+            ),
+            Self::Manufacture(op, n) => (
+                op.item.catalog_key(),
+                op.owner,
+                AssetLocation::Body(op.body),
+                None,
+                n,
+            ),
+        };
+        let (unit_value_micro, acquisition) = if let Some(input) = journal {
+            let (cost, profile, operation, tag) = match self {
+                Self::Building(op) => (
+                    op.paid,
+                    &op.profile_hash,
+                    op.id,
+                    "building-value".to_owned(),
+                ),
+                Self::Research(op) => (
+                    op.commitment.paid,
+                    &op.commitment.profile_hash,
+                    op.id,
+                    "research-value".to_owned(),
+                ),
+                Self::Manufacture(op, _) => (
+                    op.commitment.unit_cost,
+                    &op.commitment.profile_hash,
+                    op.id,
+                    format!("manufactured-value:{}", op.completed_prefix),
+                ),
+            };
+            let price = cost
+                .values()
+                .into_iter()
+                .try_fold(0i64, i64::checked_add)
+                .ok_or_else(|| InvariantError("paid valuation overflow".into()))?;
+            (
+                price,
+                Some(Box::new(JournalAcquisition {
+                    id: OperationId(derived_id(input.id, &tag)),
+                    rules_hash: profile.clone(),
+                    source_operation: operation,
+                    acquired_at: input.at,
+                    acquired_sequence: input.sequence,
+                })),
+            )
+        } else {
+            (
+                catalog_asset_value(rules, item, level)
+                    .map_err(|_| InvariantError("invalid catalog price".into()))?,
+                None,
+            )
+        };
+        Ok(CatalogHolding {
             owner,
             item,
-            location,
             level,
+            location,
             quantity,
-            unit_value_micro: value,
-            rules_hash: paid_profile.clone(),
-            source_operation: source,
-            acquired_at: i.at,
-            acquired_sequence: i.sequence,
-        });
-        Ok(())
-    };
+            unit_value_micro,
+            acquisition,
+        })
+    }
+}
+pub(crate) fn progression_valuation(
+    s: &GameState,
+    rules: &Ruleset,
+    c: &ChangeSet,
+    w: &mut WorldRecords,
+    journal: Option<&OrderedInput>,
+) -> Result<(), InvariantError> {
     for op in &c.research_operations {
         if op.status == ResearchStatus::Completed
             && s.research_operations
                 .get(&op.id)
-                .is_some_and(|p| p.status == ResearchStatus::Active)
+                .is_some_and(|old| old.status == ResearchStatus::Active)
         {
-            add(
-                op.owner,
-                CatalogKey::Research(op.research),
-                AssetLocation::Player,
-                Some(op.target_level),
-                1,
-                op.commitment.paid,
-                op.id,
-                "research-value".into(),
-                &op.commitment.profile_hash,
-            )?;
+            w.lots
+                .push(CompletedOperation::Research(op).holding(rules, journal)?);
         }
     }
     for op in &c.manufacturing_batches {
@@ -362,22 +500,10 @@ pub(crate) fn progression_valuation(
             .get(&op.id)
             .map_or(0, |p| p.completed_prefix);
         if op.completed_prefix > old {
-            let item = match op.item {
-                ManufacturedItem::Ship(k) => CatalogKey::Ship(k),
-                ManufacturedItem::Defense(k) => CatalogKey::Defense(k),
-                ManufacturedItem::Missile(k) => CatalogKey::Missile(k),
-            };
-            add(
-                op.owner,
-                item,
-                AssetLocation::Body(op.body),
-                None,
-                op.completed_prefix - old,
-                op.commitment.unit_cost,
-                op.id,
-                format!("manufactured-value:{}", op.completed_prefix),
-                &op.commitment.profile_hash,
-            )?;
+            w.lots.push(
+                CompletedOperation::Manufacture(op, op.completed_prefix - old)
+                    .holding(rules, journal)?,
+            );
         }
     }
     for op in &c.constructions {
@@ -385,7 +511,7 @@ pub(crate) fn progression_valuation(
             || !s
                 .constructions
                 .get(&op.id)
-                .is_some_and(|p| p.status == ConstructionStatus::Active)
+                .is_some_and(|old| old.status == ConstructionStatus::Active)
         {
             continue;
         }
@@ -395,25 +521,8 @@ pub(crate) fn progression_valuation(
             .ok_or_else(|| InvariantError("valuation body missing".into()))?
             .levels[&op.building];
         if op.target_level > old {
-            let value = op
-                .paid
-                .values()
-                .into_iter()
-                .try_fold(0i64, |a, n| a.checked_add(n))
-                .ok_or_else(|| InvariantError("building valuation overflow".into()))?;
-            w.lots.push(AssetLot {
-                id: OperationId(derived_id(i.id, "building-value")),
-                owner: op.owner,
-                item: CatalogKey::Building(op.building),
-                location: AssetLocation::Body(op.body),
-                level: Some(op.target_level),
-                quantity: 1,
-                unit_value_micro: value,
-                rules_hash: op.profile_hash.clone(),
-                source_operation: op.id,
-                acquired_at: i.at,
-                acquired_sequence: i.sequence,
-            });
+            w.lots
+                .push(CompletedOperation::Building(op).holding(rules, journal)?);
         } else {
             let before = w.lots.len();
             w.lots.retain(|l| {
@@ -429,27 +538,25 @@ pub(crate) fn progression_valuation(
     }
     Ok(())
 }
-/// Merge reunited portions without changing the acquisition identity or paid value.
-pub fn normalize_asset_lots(lots: &mut Vec<AssetLot>) -> Result<(), InvariantError> {
-    let mut merged = std::collections::BTreeMap::<String, AssetLot>::new();
+/// Combine quantities at the same location, independent of acquisition history.
+pub fn combine_asset_quantities(lots: &mut Vec<CatalogHolding>) -> Result<(), InvariantError> {
+    if crate::valuation_replay::has_acquisitions(lots) {
+        return crate::valuation_replay::combine(lots);
+    }
+    let mut merged = std::collections::BTreeMap::new();
     for lot in lots.drain(..) {
-        let key = serde_json::to_string(&(lot.id, &lot.location))
-            .map_err(|_| InvariantError("lot key".into()))?;
-        if let Some(old) = merged.get_mut(&key) {
-            let mut a = old.clone();
-            let mut b = lot.clone();
-            a.quantity = 0;
-            b.quantity = 0;
-            if a != b {
-                return Err(InvariantError("conflicting valuation lineage".into()));
-            }
-            old.quantity = old
-                .quantity
-                .checked_add(lot.quantity)
-                .ok_or_else(|| InvariantError("lot overflow".into()))?;
-        } else {
-            merged.insert(key, lot);
+        let key = lot.key();
+        let entry: &mut CatalogHolding = merged.entry(key).or_insert_with(|| CatalogHolding {
+            quantity: 0,
+            ..lot.clone()
+        });
+        if entry.unit_value_micro != lot.unit_value_micro {
+            return Err(InvariantError("inconsistent catalog price".into()));
         }
+        entry.quantity = entry
+            .quantity
+            .checked_add(lot.quantity)
+            .ok_or_else(|| InvariantError("inventory quantity overflow".into()))?;
     }
     *lots = merged.into_values().collect();
     Ok(())
@@ -460,6 +567,7 @@ pub(crate) fn validate_committed_value_capacity(
     s: &GameState,
     c: &ChangeSet,
     w: &WorldRecords,
+    rules: Option<&Ruleset>,
 ) -> Result<(), GameError> {
     let mut construction = s.constructions.clone();
     construction.extend(c.constructions.iter().map(|x| (x.id, x.clone())));
@@ -467,35 +575,80 @@ pub(crate) fn validate_committed_value_capacity(
     research.extend(c.research_operations.iter().map(|x| (x.id, x.clone())));
     let mut manufacture = s.manufacturing_batches.clone();
     manufacture.extend(c.manufacturing_batches.iter().map(|x| (x.id, x.clone())));
-    for owner in w.policies.keys() {
-        let mut total = i128::from(
-            value_completed_assets(&w.lots, *owner).map_err(|_| GameError::NumericRange)?,
-        );
-        let value = |r: Resources| r.values().into_iter().map(i128::from).sum::<i128>();
+    check_capacity(
+        &w.lots,
+        rules,
+        &construction,
+        &research,
+        &manufacture,
+        w.policies.keys().copied(),
+    )
+}
+
+/// An activation can change the value of already-paid work that will complete later.
+pub fn validate_catalog_capacity(
+    state: &GameState,
+    rules: &Ruleset,
+    assets: &[CatalogHolding],
+) -> Result<(), GameError> {
+    check_capacity(
+        assets,
+        Some(rules),
+        &state.constructions,
+        &state.research_operations,
+        &state.manufacturing_batches,
+        state.players.keys().copied(),
+    )
+}
+fn check_capacity(
+    assets: &[CatalogHolding],
+    rules: Option<&Ruleset>,
+    construction: &std::collections::BTreeMap<OperationId, Construction>,
+    research: &std::collections::BTreeMap<OperationId, ResearchOperation>,
+    manufacture: &std::collections::BTreeMap<OperationId, ManufacturingBatch>,
+    owners: impl Iterator<Item = PlayerId>,
+) -> Result<(), GameError> {
+    let price = |item, level, paid: Resources| -> Result<i128, GameError> {
+        match rules {
+            Some(rules) => Ok(i128::from(catalog_asset_value(rules, item, level)?)),
+            None => Ok(paid.values().into_iter().map(i128::from).sum()),
+        }
+    };
+    for owner in owners {
+        let mut total =
+            i128::from(value_completed_assets(assets, owner).map_err(|_| GameError::NumericRange)?);
         for op in construction
             .values()
-            .filter(|op| op.owner == *owner && op.status == ConstructionStatus::Active)
+            .filter(|op| op.owner == owner && op.status == ConstructionStatus::Active)
         {
             if matches!(op.progression,Some(ProgressionMaterial::Building{source_level,target_level,..}) if target_level>source_level)
             {
                 total = total
-                    .checked_add(value(op.paid))
+                    .checked_add(price(
+                        CatalogKey::Building(op.building),
+                        Some(op.target_level),
+                        op.paid,
+                    )?)
                     .ok_or(GameError::NumericRange)?;
             }
         }
         for op in research
             .values()
-            .filter(|op| op.owner == *owner && op.status == ResearchStatus::Active)
+            .filter(|op| op.owner == owner && op.status == ResearchStatus::Active)
         {
             total = total
-                .checked_add(value(op.commitment.paid))
+                .checked_add(price(
+                    CatalogKey::Research(op.research),
+                    Some(op.target_level),
+                    op.commitment.paid,
+                )?)
                 .ok_or(GameError::NumericRange)?;
         }
         for batch in manufacture
             .values()
-            .filter(|op| op.owner == *owner && op.status == ManufacturingStatus::Active)
+            .filter(|op| op.owner == owner && op.status == ManufacturingStatus::Active)
         {
-            let future = value(batch.commitment.unit_cost)
+            let future = price(batch.item.catalog_key(), None, batch.commitment.unit_cost)?
                 .checked_mul(i128::from(batch.quantity - batch.completed_prefix))
                 .ok_or(GameError::NumericRange)?;
             total = total.checked_add(future).ok_or(GameError::NumericRange)?;

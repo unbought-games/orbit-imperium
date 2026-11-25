@@ -44,7 +44,10 @@ export function useGalaxyEspionage(
       context.current = {}
     }
   }, [model, origin])
-  const send = async (target: Target) => {
+  const send = async (
+    target: Target,
+    coordinates: components['schemas']['Coordinates'],
+  ) => {
     if (unavailable || locks.current.has(target.id)) return
     const token = context.current
     const held = locks.current
@@ -57,6 +60,7 @@ export function useGalaxyEspionage(
         model,
         origin,
         target,
+        coordinates,
         () => context.current === token,
         count,
       )
@@ -97,8 +101,11 @@ export function useGalaxyEspionage(
   const reason = unavailable ?? probeAvailability(state, origin, count)
   return {
     state,
-    forTarget: (target: Target) => ({
-      send: () => void send(target),
+    forTarget: (
+      target: Target,
+      coordinates: components['schemas']['Coordinates'],
+    ) => ({
+      send: () => void send(target, coordinates),
       count,
       paused: state.rateLimited,
       busy: sending.has(target.id) || pendingProbe(state, origin, target.id),

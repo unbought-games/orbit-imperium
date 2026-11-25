@@ -343,6 +343,19 @@ pub trait GameStore: Send + Sync {
     > + Send {
         async { Ok(None) }
     }
+    /// Revalidate a long-lived stream and bound how long it may wait without a wake.
+    fn update_stream_recheck(
+        &self,
+        b: Binding,
+    ) -> impl Future<Output = Result<std::time::Duration, StoreError>> + Send {
+        async move {
+            if self.current_binding(b.account, b.universe).await?.0 != b {
+                return Err(StoreError::EpochChanged);
+            }
+            self.bot_observe(b).await?;
+            Ok(std::time::Duration::from_secs(1))
+        }
+    }
     fn bot_observe(
         &self,
         _b: Binding,
@@ -648,6 +661,16 @@ pub trait GameStore: Send + Sync {
         universe: UniverseId,
         request: &QuoteRequest,
     ) -> impl std::future::Future<Output = Result<QuoteSnapshot, StoreError>> + Send;
+    fn member_protocol(
+        &self,
+        account: AccountId,
+        universe: UniverseId,
+    ) -> impl Future<Output = Result<i32, StoreError>> + Send {
+        async move {
+            self.current_binding(account, universe).await?;
+            Ok(self.load_rules(universe).await?.protocol())
+        }
+    }
     fn load_rules(
         &self,
         universe: UniverseId,

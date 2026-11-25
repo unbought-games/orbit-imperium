@@ -99,17 +99,6 @@ impl Drop for Timer {
     }
 }
 
-pub(crate) fn read_lots(count: usize) {
-    let _ = SAMPLE.try_with(|s| {
-        let mut s = s.borrow_mut();
-        match s.read_phase {
-            Some(Phase::FactLoad) => s.fact_lots_read += count as u64,
-            Some(Phase::Revalidation) => s.revalidation_lots_read += count as u64,
-            _ => {}
-        }
-    });
-}
-
 pub(crate) fn read_stacks(count: usize) {
     let _ = SAMPLE.try_with(|s| {
         let mut s = s.borrow_mut();
@@ -123,14 +112,6 @@ pub(crate) fn read_stacks(count: usize) {
 
 pub(crate) fn wrote_stacks(count: u64) {
     let _ = SAMPLE.try_with(|s| s.borrow_mut().stacks_written += count);
-}
-
-pub(crate) fn deleted_lots(count: u64) {
-    let _ = SAMPLE.try_with(|s| s.borrow_mut().lots_deleted += count);
-}
-
-pub(crate) fn inserted_lots(count: u64) {
-    let _ = SAMPLE.try_with(|s| s.borrow_mut().lots_inserted += count);
 }
 
 pub(crate) fn acknowledged(outcome: &orbit_engine::TransitionResult) {

@@ -1,6 +1,7 @@
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { commandId } from '../adapters/command-id'
+import { restoredCargoDraft } from '../client-model/dispatch-cargo'
 import { flightConditions } from './dispatch-review-model'
 import { canonical } from '../client-model/commands'
 import { dispatchSelection } from '../client-model/dispatch-timing'
@@ -60,12 +61,23 @@ export class DispatchReviewSession {
 }
 
 export function reviewedDraft(review: ReviewedFleet): DispatchDraft {
-  const { intent } = review.terms
+  return {
+    ...draftFromFleetIntent(review.terms.intent, review.coordinates),
+    observedAt: review.source?.observedAt,
+  }
+}
+
+export function draftFromFleetIntent(
+  intent: S['FleetIntent4'],
+  coordinates: S['Coordinates'],
+): DispatchDraft {
   return {
     mission: intent.mission,
-    coordinates: review.coordinates,
+    coordinates,
+    origin: intent.origin,
+    cargo: restoredCargoDraft(intent),
+    holdHours: intent.hold_hours ?? undefined,
     target: intent.destination,
-    observedAt: review.source?.observedAt,
     targetKind:
       intent.destination.type === 'Debris'
         ? 'debris'

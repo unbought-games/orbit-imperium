@@ -119,6 +119,16 @@ impl Drop for Completion {
                 self.observer.event(RuntimeEvent::HttpFailure);
             }
         }
+        if sample.action == RequestAction::FleetDispatch
+            && sample.route == "/api/v4/universes/{id}/commands"
+            && let Some((universe, command)) =
+                *self.correlation.lock().unwrap_or_else(|e| e.into_inner())
+        {
+            orbit_application::orbit_log!(INFO, event = "dispatch_api_response", request_id = %uuid::Uuid::new_v4(),
+                universe = %universe, command_id = %command, status = sample.status,
+                outcome = sample.outcome(), admission = sample.admission.map(|value| value.name()),
+                elapsed_us = sample.elapsed.as_micros() as u64);
+        }
         if sample.status.is_some_and(|s| s >= 500)
             || tracing::enabled!(target: "orbit", tracing::Level::DEBUG)
         {

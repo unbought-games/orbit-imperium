@@ -238,7 +238,7 @@ fn paid_warship_roundtrip(
             .count,
         1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let blocked = inspect_progression(
         &s,
         Actor::Player(p),
@@ -333,7 +333,7 @@ fn paid_warship_roundtrip(
             .values()
             .all(|f| f.leg == MissionLeg::Returned)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -446,7 +446,7 @@ fn destroyer_batch_credits_each_unit_once_and_keeps_paid_terms_after_price_chang
             settle_production(&s, &s.bodies[&b], event.at, &current).unwrap(),
             expected_resources
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         let duplicate = run(
             &mut s,
             &current,

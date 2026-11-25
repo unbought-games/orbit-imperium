@@ -237,6 +237,15 @@ export function installSessionRenewal(
   })
 }
 
+export async function captureDispatchObservations(page: Page) {
+  const samples: components['schemas']['DispatchObservation'][] = []
+  await page.route('**/dispatch-observations', async route => {
+    samples.push(...route.request().postDataJSON().observations)
+    await route.fallback()
+  })
+  return samples
+}
+
 /** Install HTTP fixtures before navigating directly to the page under test. */
 export async function installGameFixture(
   page: Page,
@@ -329,6 +338,8 @@ export async function installGameFixture(
       request.method() === method && url.pathname === path
     const post = (name: string, version: number = protocol) =>
       is('POST', boundApi(version, name))
+    if (post('dispatch-observations', 1) && signedIn && request.headers()['x-csrf-token'] === csrf)
+      return route.fulfill({ status: 204 })
     if (
       is('DELETE', '/api/v1/session') &&
       request.headers()['x-csrf-token'] === csrf

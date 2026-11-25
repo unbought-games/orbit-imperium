@@ -1414,20 +1414,27 @@ describe('galaxy fleet actions', () => {
     }
   })
 
+  const spyGesture = { clickedAt: 10, coordinates: at.coordinates }
   it('sends one probe at full speed with no cargo using the server quote and durable command path', async () => {
     const store = createGameStore()
     store.setState(spyState())
+    const world = vi.fn(async () => terms)
     const model = {
       store,
-      world: vi.fn(async () => terms),
+      dispatchClickTime: () => (world.mock.calls.length ? 500 : 10),
+      world,
       send: vi.fn(async () => 'command'),
     }
-    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    await sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true)
     expect(model.world).toHaveBeenCalledExactlyOnceWith({
       type: 'FleetQuote',
       intent: spyIntent,
     })
-    expect(model.send).toHaveBeenCalledExactlyOnceWith(command, terms)
+    expect(model.send).toHaveBeenCalledExactlyOnceWith(
+      command,
+      terms,
+      spyGesture,
+    )
   })
 
   it('quick espionage preserves a moon target at its parent coordinates', async () => {
@@ -1445,10 +1452,11 @@ describe('galaxy fleet actions', () => {
     const moonTerms = { ...terms, intent: moonIntent }
     const model = {
       store,
+      dispatchClickTime: () => 10,
       world: vi.fn(async () => moonTerms),
       send: vi.fn(async () => 'command'),
     }
-    await sendGalaxyProbe(model, 'body', moon, () => true)
+    await sendGalaxyProbe(model, 'body', moon, at.coordinates, () => true)
     expect(model.world).toHaveBeenCalledExactlyOnceWith({
       type: 'FleetQuote',
       intent: moonIntent,
@@ -1463,6 +1471,7 @@ describe('galaxy fleet actions', () => {
         },
       },
       moonTerms,
+      spyGesture,
     )
   })
 
@@ -1471,10 +1480,18 @@ describe('galaxy fleet actions', () => {
     store.setState(spyState())
     const model = {
       store,
+      dispatchClickTime: () => 10,
       world: vi.fn(async () => terms),
       send: vi.fn(async () => 'command'),
     }
-    await sendGalaxyProbe(model, 'body', at.body!, () => true, '2')
+    await sendGalaxyProbe(
+      model,
+      'body',
+      at.body!,
+      at.coordinates,
+      () => true,
+      '2',
+    )
     expect(model.world.mock.calls[0]).toEqual([
       {
         type: 'FleetQuote',
@@ -1509,12 +1526,20 @@ describe('galaxy fleet actions', () => {
         },
       },
       terms,
+      spyGesture,
     ])
     model.world.mockClear()
     model.send.mockClear()
     for (const count of ['3', '9007199254740993', '0', '-1', '1.5']) {
       await expect(
-        sendGalaxyProbe(model, 'body', at.body!, () => true, count),
+        sendGalaxyProbe(
+          model,
+          'body',
+          at.body!,
+          at.coordinates,
+          () => true,
+          count,
+        ),
       ).rejects.toThrow()
     }
     expect(model.world).not.toHaveBeenCalled()
@@ -1529,6 +1554,7 @@ describe('galaxy fleet actions', () => {
       store.setState({ rateLimited: when === 'before' })
       const model = {
         store,
+        dispatchClickTime: () => 10,
         world: vi.fn(async () => terms),
         send: vi.fn(async () => {
           store.setState({ rateLimited: true })
@@ -1536,7 +1562,7 @@ describe('galaxy fleet actions', () => {
         }),
       }
       await expect(
-        sendGalaxyProbe(model, 'body', at.body!, () => true),
+        sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true),
       ).resolves.toBeUndefined()
       expect(model.send).toHaveBeenCalledTimes(when === 'before' ? 0 : 1)
     },
@@ -1548,13 +1574,20 @@ describe('galaxy fleet actions', () => {
     let current = true
     const model = {
       store,
+      dispatchClickTime: () => 10,
       world: vi.fn(async () => {
         current = false
         return terms
       }),
       send: vi.fn(async () => 'command'),
     }
-    await sendGalaxyProbe(model, 'body', at.body!, () => current)
+    await sendGalaxyProbe(
+      model,
+      'body',
+      at.body!,
+      at.coordinates,
+      () => current,
+    )
     expect(model.send).not.toHaveBeenCalled()
     current = true
     model.world.mockImplementation(async () => {
@@ -1563,7 +1596,7 @@ describe('galaxy fleet actions', () => {
       })
       return terms
     })
-    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    await sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true)
     expect(model.send).not.toHaveBeenCalled()
   })
 
@@ -1573,28 +1606,29 @@ describe('galaxy fleet actions', () => {
     store.setState(s)
     const model = {
       store,
+      dispatchClickTime: () => 10,
       world: vi.fn(async () => terms),
       send: vi.fn(async () => 'command'),
     }
     s.view!.bodies[0].inventories.at(-1)!.count = '0'
     await expect(
-      sendGalaxyProbe(model, 'body', at.body!, () => true),
+      sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true),
     ).rejects.toThrow('No espionage probes')
     expect(model.world).not.toHaveBeenCalled()
     s.view!.bodies[0].inventories.at(-1)!.count = '2'
     ;(s.view as S['BoundView4']).missions.fleet_slots = '0'
     await expect(
-      sendGalaxyProbe(model, 'body', at.body!, () => true),
+      sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true),
     ).rejects.toThrow('All fleet slots')
     ;(s.view as S['BoundView4']).missions.fleet_slots = '3'
     intent(s, command, terms)
     store.setState(s)
-    await sendGalaxyProbe(model, 'body', at.body!, () => true)
+    await sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true)
     expect(model.world).not.toHaveBeenCalled()
     store.setState(spyState())
     model.world.mockRejectedValue(new Error('InsufficientResources'))
     await expect(
-      sendGalaxyProbe(model, 'body', at.body!, () => true),
+      sendGalaxyProbe(model, 'body', at.body!, at.coordinates, () => true),
     ).rejects.toThrow('not enough resources')
     expect(model.send).not.toHaveBeenCalled()
   })

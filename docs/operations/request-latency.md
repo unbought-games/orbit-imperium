@@ -51,7 +51,7 @@ are not attributed to the request; no task context crosses process boundaries.
 
 Response creation excludes delivery over the network and response-body streaming.
 An open SSE measures time to producing its headers, not the lifetime of the stream.
-No new browser timing is installed. Process death and failures before the API
+Dispatch also records browser-monotonic milestones at the boundaries below. Process death and failures before the API
 cannot be completely counted by in-memory metrics; retain proxy and collector
 health evidence alongside application measurements.
 
@@ -147,7 +147,7 @@ establish those intervals. They do not contain the phase breakdown of that
    actual entry point `foreground` or `machine` and supplies `paired_input_id`
    for the presence command. Single admissions use `unpaired`. Both members of a
    pair share one admission acknowledgement. A receipt replay produces no fresh
-   admission record. For a dispatch, the gameplay admission record also carries
+   admission record. When the mission depends on defenders or social relationships, its admission record also carries
    `admission_alliance_wait_us` and `admission_alliance_hold_us` for its admission
    transaction.
 2. Find `worker_input_claimed` and `worker_input_attempt` by universe and
@@ -163,11 +163,11 @@ establish those intervals. They do not contain the phase breakdown of that
    receipts. Existing receipts, retries and failures can have timing samples,
    but cannot supply another terminal acknowledgement.
 4. Read the attempt's phase durations and row counts below. To explain time
-   before claim, inspect the paired presence input, earlier committed inputs in
+   before claim, inspect earlier committed inputs in
    the universe, and `worker_active_wait` records from the same worker instance
    during that interval. Overlapping a scheduler wait establishes that the loop
    waited. Establishing that a specific pending input was eligible throughout
-   also requires its ordering dependencies.
+   also requires its ordering dependencies. New paired gestures complete in the gameplay transaction. A pending pair from an earlier release can still produce a separate presence attempt.
 
 | Attempt field | Measured boundary |
 | --- | --- |
@@ -181,10 +181,10 @@ establish those intervals. They do not contain the phase breakdown of that
 | `scoped_fence_us` | Time within persistence spent acquiring final scoped gates and checking ownership. Included in `persistence_us`; present only in scoped execution |
 | `commit_round_trip_us` | Sending COMMIT through its return to the worker. A failed call can have a duration and unknown disposition |
 | `attempt_us` | Monotonic wall time from the scheduler receiving the claim through resolution return, including task scheduling and application overhead |
-| `fact_lots_read`, `revalidation_lots_read`, `lots_deleted`, `lots_inserted` | Asset-lot rows loaded before normalization at each read and rows affected by the bulk delete and insert |
+| `fact_lots_read`, `revalidation_lots_read`, `lots_deleted`, `lots_inserted` | Legacy asset-lot I/O. After migration 0055, these fields stay zero. |
 | `fact_stacks_read`, `revalidation_stacks_read`, `stacks_written` | Rows returned by the inventory stack loader at each read and rows affected by stack inserts and updates during change-set persistence |
 
-A fleet launch acquires this alliance lock twice, once in each transaction.
+A Hold, Attack, Espionage or Destroy Moon launch acquires this alliance lock at admission and at commit. An ordinary Transport or Deploy uses its player and location ordering only.
 Compare its admission and worker wait/hold distributions separately. Worker wait
 is part of revalidation. Worker hold overlaps the remaining revalidation,
 persistence and COMMIT. The database grants/releases the lock inside those
@@ -232,7 +232,7 @@ cannot supply these browser timings. Do not subtract browser and server clocks.
 | `orbit_worker_phase_seconds` | Histogram by bounded engine action, execution mode and phase. Includes observed phases of returned attempts, including retries |
 | `orbit_worker_asset_lot_rows_total` | Counter by action, mode and operation (`fact_read`, `revalidation_read`, `insert`, `delete`) |
 | `orbit_worker_inventory_stack_rows_total` | Counter by action, mode and operation (`fact_read`, `revalidation_read`, `write`) |
-| `orbit_worker_scheduler_wait_seconds` | Histogram by `reason`, whether unjoined input tasks existed (`active_inputs`), and `wake`. Measures actual elapsed 100 ms no-progress backoffs, including early notifications/drain, and 25 ms poll timers that fired |
+| `orbit_worker_scheduler_wait_seconds` | Histogram by `reason`, whether unjoined input tasks existed (`active_inputs`), and `wake`. Measures elapsed idle waits through notification, due deadline, recovery check or drain, and 25 ms in-flight poll timers that fired |
 
 For example, this query estimates p95 fact-load time for dispatches by mode.
 Sum bucket deltas across worker instances before computing percentiles.
@@ -311,3 +311,59 @@ on every worker and fresh admission counters on every API. Retain reset-aware
 bucket/count/sum deltas or joined, deduplicated cohorts and their coverage
 evidence for at least 28 days plus the completion lookahead. A 14-day log
 window alone cannot establish the proposed objective.
+
+## Verify dispatch during busy play
+
+All three measurements use the installed INFO JSON log sink. The browser posts
+bounded batches to the authenticated dispatch-observations route, independently
+of the gameplay request. The route accepts UUIDs, fixed phase names, visibility
+and elapsed milliseconds. API completion records use the middleware's monotonic
+timer and include the durable admission disposition. Neither record carries a
+draft, destination, cookie or authentication token. Count a terminal launch only
+after the worker committed it. A client-reported milestone is performance
+evidence, never an authoritative receipt.
+
+Choose a continuous UTC window after both roles are on the candidate release.
+Include a lookback for admissions spanning the start and a lookahead for late
+receipts and browser batches. Record release identity, workload (including fleet
+arrivals and manufacturing), clock health, actual start/end and coverage. Use
+the existing private log collector's paginated export. For example, with an
+authorized AWS CLI session, LOG_GROUP identifying that sink, and FROM_MS/TO_MS
+covering the extended interval, save the following privately:
+
+```sh
+umask 077
+aws logs filter-log-events --log-group-name "$LOG_GROUP" \
+  --start-time "$FROM_MS" --end-time "$TO_MS" \
+  --filter-pattern '{ ($.event = "dispatch_client_observation") || ($.event = "dispatch_api_response") || ($.event = "command_admitted" && $.action = "fleet_dispatch") || ($.event = "game_transition_committed") }' \
+  --output json > dispatch-log-export.json
+jq -r '.events[].message' dispatch-log-export.json > dispatch-events.jsonl
+node scripts/dispatch-performance.mjs "$START_UTC" "$END_UTC" < dispatch-events.jsonl
+```
+
+- **Review.** Cohort by ingestion of the foreground Review start. Warm means
+  that the exact draft already had valid terms. Success requires an actionable
+  review within 100 ms and zero further destination/quote reads. A repeated
+  read, a lost observation or leaving the foreground before readiness earns no
+  success. Cold reviews have their own distribution.
+- **API.** Cohort by estimated middleware entry time (completion timestamp
+  minus monotonic duration). A 202 with committed or replayed admission must
+  complete within 250 ms. Each HTTP retry is a new request. Separate definitive
+  client refusals. Capacity-limited, server-error and cancelled requests receive
+  no success credit. The browser's click-to-acceptance distribution additionally
+  includes the network and client processing.
+- **Visible launch.** Cohort by fresh durable foreground admission, or by the
+  first submitted click/HTTP request for an order with no admission record.
+  Require a committed gameplay outcome and foreground launch feedback measured
+  from the original click through a paint opportunity. Count an admitted order
+  without client timings as missing. Report rejected orders, uncertain orders,
+  retries, missing starts and missing confirmations alongside the fraction within
+  one second. A fast rejection cannot satisfy the launch target.
+
+The fields in the report use milliseconds. The browser batches for 250 ms and
+may flush on page exit. A Review on the window boundary can enter an adjacent
+cohort. Human-initiated orders from older clients may lack browser evidence.
+Compare server counts against durable command/outcome counts and the private
+request histograms. Check API and worker role coverage, asynchronous logger
+drops and collector health. A missing export page, missing server response
+records, or an idle or empty window cannot establish the production targets.

@@ -222,7 +222,7 @@ async fn restart_checks_metadata_without_gameplay_locks_or_reads() {
         .execute(&mut *tx)
         .await
         .unwrap();
-    sqlx::raw_sql("LOCK TABLE players, bodies, inventories, commands, scheduled_events, asset_lots IN ACCESS EXCLUSIVE MODE").execute(&mut *tx).await.unwrap();
+    sqlx::raw_sql("LOCK TABLE players, bodies, inventories, commands, scheduled_events IN ACCESS EXCLUSIVE MODE").execute(&mut *tx).await.unwrap();
     // Held locks prove isolation; production lock timeouts reject forbidden access.
     // Do not impose an aggregate wall-clock budget on otherwise successful queries.
     let result = async {

@@ -9,7 +9,17 @@ pub fn replay_with_recall_reports(
     input: &OrderedInput,
     rules: &Ruleset,
 ) -> TransitionResult {
-    transition_with_recall_reports(state, input, rules, RecallReports::LegacyReplay)
+    transition_in_format(state, input, rules, TransitionFormat::LegacyRecallReports)
+}
+
+/// Replay journals produced after recall reports were retired and before asset
+/// values moved to universe catalog prices. This is an offline format selection.
+pub fn replay_with_paid_assets(
+    state: &GameState,
+    input: &OrderedInput,
+    rules: &Ruleset,
+) -> TransitionResult {
+    transition_in_format(state, input, rules, TransitionFormat::PaidAssets)
 }
 
 /// Select explicitly by the journal's producing release. Original facts, outcomes

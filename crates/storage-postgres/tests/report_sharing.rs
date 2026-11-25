@@ -44,11 +44,9 @@ async fn run_preference(game: &GameService<PgStore>, pair: ForegroundAction) -> 
     let actor = pair.gameplay.binding;
     let id = pair.gameplay.command_id;
     game.world_submit(principal(actor), pair).await.unwrap();
-    for _ in 0..2 {
-        game.step(actor.universe, WorkerId(Uuid::new_v4()))
-            .await
-            .unwrap();
-    }
+    game.step(actor.universe, WorkerId(Uuid::new_v4()))
+        .await
+        .unwrap();
     game.bound_receipt(principal(actor), actor, id)
         .await
         .unwrap()
@@ -180,7 +178,6 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
     )
     .await
     .unwrap();
-    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
     let claim = store
         .claim_next(u, WorkerId(Uuid::new_v4()))
         .await
@@ -669,7 +666,6 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
     game.world_submit(principal(a), unconfirmed.clone())
         .await
         .unwrap();
-    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
     let claim = store
         .claim_next(u, WorkerId(Uuid::new_v4()))
         .await

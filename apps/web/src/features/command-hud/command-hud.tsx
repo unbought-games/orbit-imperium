@@ -48,6 +48,7 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
         aria-label="Live command HUD"
       >
         <HudToasts
+          model={model}
           notices={hudToastViews(hud.state, hud.toasts)}
           onOpen={hud.select}
           onDismiss={hud.dismiss}

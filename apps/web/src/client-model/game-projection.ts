@@ -25,7 +25,9 @@ export type SubmittedQuote =
   | S['DepotSupplyQuote4']
   | S['JumpQuote4']
 // These are submission inputs and server facts, never a second resource balance.
-export type SubmittedIntent = S['SubmittedIntent']
+export type SubmittedIntent = S['SubmittedIntent'] & {
+  dispatchCoordinates?: S['Coordinates']
+}
 
 export function currentServerTime(state: GameState) {
   return state.view

@@ -11,7 +11,7 @@ import { observedBody } from './galaxy-body'
 import { useDispatchDestination } from './use-dispatch-destination'
 import { coordinateFields } from '../ui/coordinate-input-model'
 import { coordinateText, type LocationKind } from '../shell/location-address'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
@@ -33,6 +33,11 @@ import {
 import { resourceNames } from '../client-model/resources'
 import { dispatchShips } from '../client-model/dispatch-timing'
 import { recyclerSuggestion } from '../client-model/galaxy-harvest'
+import { useDispatchPaint } from './use-dispatch-paint'
+import {
+  preparedIntent,
+  usePreparedFleetQuote,
+} from './use-prepared-fleet-quote'
 import { useDispatchTiming } from './use-dispatch-timing'
 import type { DispatchDraft } from './missions'
 import { colonizationStatus } from '../client-model/colonization'
@@ -82,7 +87,7 @@ export function useDispatch({
     ),
     [holdHours, setHoldHours] = useState<
       NonNullable<S['FleetIntent4']['hold_hours']>
-    >(initialReview?.terms.intent.hold_hours ?? 1),
+    >(initialReview?.terms.intent.hold_hours ?? draft?.holdHours ?? 1),
     [speed, setSpeed] = useState(draft?.speed ?? 100),
     [shipSelection, setShips] = useState<Record<string, string> | null>(
       draft?.ships ?? (draft?.suggestRecyclers ? null : {}),
@@ -93,7 +98,7 @@ export function useDispatch({
     }>(() => ({
       draft: initialReview
         ? restoredCargoDraft(initialReview.terms.intent)
-        : emptyCargoDraft(),
+        : (draft?.cargo ?? emptyCargoDraft()),
       estimate: initialReview?.terms,
     })),
     [error, setError] = useState(
@@ -236,6 +241,19 @@ export function useDispatch({
     !busy && !quote,
     true,
   )
+  const preparedQuote = usePreparedFleetQuote(
+    model,
+    view.viewer_revision,
+    preparedIntent(
+      timing?.revision === view.viewer_revision ? timing.terms : undefined,
+      editor.draft,
+      draft,
+      destinationCoordinates,
+      targetKind === 'moon' ? 'Moon' : 'Planet',
+      view.binding.player,
+    ),
+  )
+  const reviewTrace = useRef<string | undefined>(undefined)
   const reviewButtonRef = useRef<HTMLButtonElement>(null)
   const wasReviewing = useRef(false)
   const cargo = displayedCargo(
@@ -299,26 +317,22 @@ export function useDispatch({
   const submittedStatus = submittedAttempt?.status
   useEffect(() => {
     if (requests.shouldResetDraft(submitted, submittedStatus)) {
+      requests.invalidate()
       setShips({})
       setEditor({ draft: emptyCargoDraft() })
       setQuote(null)
-      if (
-        submittedAttempt?.envelope.command.type === 'World' &&
-        submittedAttempt.envelope.command.action.type === 'LaunchFleet' &&
-        submittedAttempt.envelope.command.action.intent.cargo_fill
-      )
-        navigation?.finishSend()
+      navigation?.finishSend()
     }
   }, [submitted, submittedStatus, requests, setQuote])
   const receipt = submittedAttempt?.receipt
   useEffect(() => {
-    if (
-      !submitted ||
-      !requests.isCurrent(submitted.generation) ||
-      !quote?.intent.cargo_fill
-    )
+    if (!submitted || !requests.isCurrent(submitted.generation) || !quote)
       return
-    if (receipt?.status === 'Rejected' && receipt.code === 'QuoteChanged') {
+    if (
+      quote.intent.cargo_fill &&
+      receipt?.status === 'Rejected' &&
+      receipt.code === 'QuoteChanged'
+    ) {
       setSubmitted(null)
       if (reviewPanel.state)
         navigation?.open(reviewPanel.state.reviewed, submitted.coordinates)
@@ -341,9 +355,7 @@ export function useDispatch({
     setQuote,
   ])
   const sending =
-    !!submitted &&
-    requests.isCurrent(submitted.generation) &&
-    !!quote?.intent.cargo_fill
+    !!submitted && requests.isCurrent(submitted.generation) && !!quote
   const canSend =
     !checkingReview &&
     !!command &&
@@ -352,6 +364,15 @@ export function useDispatch({
     !reviewPanel.state?.refreshing &&
     !reviewPanel.state?.problem &&
     canSubmitQuote(model.store.getState(), command, authorization)
+  const measuredReview = reviewTrace.current
+  const markReviewReady = useCallback(() => {
+    if (measuredReview) model.dispatchObservations.ready(measuredReview)
+  }, [model, measuredReview])
+  useDispatchPaint(
+    quoteRef,
+    canSend && measuredReview ? markReviewReady : undefined,
+    false,
+  )
   const preparedReview = useRef(!!draft?.reviewOnOpen)
   useEffect(() => {
     if (!preparedReview.current) return
@@ -363,7 +384,7 @@ export function useDispatch({
         if (!state.ready || state.stale || state.connectionInterrupted)
           throw Error('Fleet availability could not be refreshed')
       },
-      () => review(),
+      () => review(undefined, false),
       {
         busy: setBusy,
         error: setError,
@@ -427,6 +448,7 @@ export function useDispatch({
     setError('')
   }
   async function send() {
+    const clickedAt = model.dispatchClickTime()
     if (
       checkingReview ||
       !command ||
@@ -435,37 +457,33 @@ export function useDispatch({
       !canSend
     )
       return
-    const flexible = !!authorization.intent.cargo_fill
-    if (
-      navigation &&
-      !(flexible ? navigation.claimSend() : navigation.close('send'))
-    )
-      return
-    const id = await requests.submit(
-      command,
-      authorization,
-      {
-        galaxy: Number(galaxy),
-        system: Number(system),
-        position: Number(position),
-      },
-      {
-        attempts: () => model.store.getState().attempts,
-        send: (command, quote) => model.send(command, quote),
-        submitted: setSubmitted,
-        closeReview: () =>
-          setQuote(authorization.intent.cargo_fill ? authorization : null),
-      },
-    )
-    if (!id && flexible)
-      navigation?.open(authorization, {
-        galaxy: Number(galaxy),
-        system: Number(system),
-        position: Number(position),
-      })
+    if (navigation && !navigation.claimSend()) return
+    const coordinates = {
+      galaxy: Number(galaxy),
+      system: Number(system),
+      position: Number(position),
+    }
+    const id = await requests.submit(command, authorization, coordinates, {
+      attempts: () => model.store.getState().attempts,
+      send: (command, quote) =>
+        model.send(command, quote, { clickedAt, coordinates }),
+      submitted: setSubmitted,
+    })
+    if (!id) navigation?.open(authorization, coordinates)
   }
 
-  function review(fillCargo?: DispatchCargoFill) {
+  function review(fillCargo?: DispatchCargoFill, manual = true) {
+    const prepared = !fillCargo ? preparedQuote() : null
+    if (!fillCargo && manual)
+      reviewTrace.current = model.startReviewObservation(!!prepared)
+    if (prepared && !targetProblem && destinationCoordinates) {
+      requests.invalidate()
+      setError('')
+      setSubmitted(null)
+      setQuote(prepared)
+      navigation?.open(prepared, destinationCoordinates)
+      return Promise.resolve()
+    }
     return requests.review(
       {
         coordinateProblems,

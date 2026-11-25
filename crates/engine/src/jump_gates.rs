@@ -193,7 +193,7 @@ pub(crate) fn jump(
     for ship in &quote.intent.ships {
         crate::missions::inventory(c, s, intent.source, owner, ship.ship_type, -ship.count)?;
         crate::missions::inventory(c, s, intent.destination, owner, ship.ship_type, ship.count)?;
-        let lots = take_asset_lots(
+        let lots = take_asset_quantity(
             &mut w.lots,
             owner,
             CatalogKey::Ship(ship.ship_type),

@@ -162,7 +162,7 @@ fn independent_rolls_account_for_loot_escorts_debris_and_committed_flights_after
             assert_eq!(fleet.cargo, Resources::all(60 * SCALE));
             assert_eq!(report["return_at"], fleet.due_at);
         }
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 

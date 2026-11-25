@@ -609,7 +609,20 @@ async fn retained_runtime_indexes_require_online_preparation_before_migration() 
     };
     store.migrate_with_for_test(&older).await.unwrap();
     sqlx::raw_sql("INSERT INTO rulesets VALUES('fixture','fixture','{}'); INSERT INTO universes(id,epoch,development,speed,started_at,profile_hash) VALUES('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',true,1,0,'fixture'); INSERT INTO asset_lots VALUES('00000000-0000-4000-8000-000000000001','retained','{\"marker\":\"kept\"}')").execute(&pool).await.unwrap();
-    let error = store.migrate().await.unwrap_err();
+    let with_indexes = sqlx::migrate::Migrator {
+        migrations: all
+            .migrations
+            .iter()
+            .take(3)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into(),
+        ..sqlx::migrate::Migrator::DEFAULT
+    };
+    let error = store
+        .migrate_with_for_test(&with_indexes)
+        .await
+        .unwrap_err();
     assert!(
         error.to_string().contains("prepare-runtime-indexes.sql"),
         "online preparation failure must tell the operator how to proceed: {error}"
@@ -619,7 +632,7 @@ async fn retained_runtime_indexes_require_online_preparation_before_migration() 
             sqlx::query(statement).execute(&pool).await.unwrap();
         }
     }
-    store.migrate().await.unwrap();
+    store.migrate_with_for_test(&with_indexes).await.unwrap();
     let retained: serde_json::Value =
         sqlx::query_scalar("SELECT data FROM asset_lots WHERE key='retained'")
             .fetch_one(&pool)
@@ -1160,5 +1173,101 @@ async fn journal_removal_preserves_prefix_data_and_refuses_external_dependencies
             .fetch_one(&fresh_pool)
             .await
             .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn catalog_upgrade_keeps_stationed_and_flying_counts_and_resumes_paid_work() {
+    use orbit_engine::{Ruleset, SCALE, UniverseId};
+    use uuid::Uuid;
+    let (store, pool) = fresh().await;
+    let retained = sqlx::migrate::Migrator {
+        migrations: sqlx::migrate!("./migrations")
+            .iter()
+            .filter(|m| m.version <= 54)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into(),
+        ..sqlx::migrate::Migrator::DEFAULT
+    };
+    store.migrate_with_for_test(&retained).await.unwrap();
+    let rules = Ruleset::mvp_fleets().unwrap();
+    sqlx::query("INSERT INTO rulesets VALUES($1,$2,$3)")
+        .bind(&rules.hash.0)
+        .bind(&rules.artifact.id)
+        .bind(sqlx::types::Json(&rules))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let universe = Uuid::new_v4();
+    sqlx::query("INSERT INTO universes(id,epoch,development,speed,started_at,profile_hash) VALUES($1,gen_random_uuid(),false,$2,0,$3)")
+        .bind(universe).bind(rules.speed).bind(&rules.hash.0).execute(&pool).await.unwrap();
+    sqlx::raw_sql(r#"
+        INSERT INTO accounts VALUES(gen_random_uuid(),'retained','hash');
+        INSERT INTO players(id,universe,current_score_micro) SELECT gen_random_uuid(),id,123 FROM universes;
+        INSERT INTO universe_memberships(universe,account,player) SELECT p.universe,a.id,p.id FROM players p,accounts a;
+        INSERT INTO world_heads(universe) SELECT id FROM universes;
+        INSERT INTO bodies(id,universe,owner,kind,galaxy,system,position,fields,max_temperature,amounts,carry,checkpoint_at)
+            SELECT gen_random_uuid(), universe,id,'Planet',1,1,8,20,0,'{}','{}',0 FROM players;
+        INSERT INTO inventories SELECT id,owner,'{"kind":"Ship","id":"SmallCargo"}',3,4 FROM bodies;
+        INSERT INTO mission_fleets SELECT universe,gen_random_uuid(),owner,
+            '{"leg":"Returning","ships":[{"ship_type":"SmallCargo","count":2}],"due_at":5000}' FROM bodies;
+        INSERT INTO building_levels SELECT id,'MetalMine',2 FROM bodies;
+        INSERT INTO research_levels SELECT id,'CombustionDrive',1,0 FROM players;
+        INSERT INTO asset_lots SELECT universe,batch::text,jsonb_build_object(
+            'owner',owner,'item',jsonb_build_object('kind','Ship','id','SmallCargo'),
+            'location',jsonb_build_object('Body',id),'quantity',1,'unit_value_micro',batch*1000000)
+            FROM bodies CROSS JOIN generate_series(1,3) batch;
+        INSERT INTO manufacturing_batches SELECT gen_random_uuid(),universe,owner,id,1,
+            '{"status":"Active","revision":1,"completed_prefix":1,"quantity":3,"unit_duration_ms":100,"next_due_at":3000,"final_due_at":3100,"commitment":{"unit_cost":{"metal":1900000000,"crystal":1800000000,"deuterium":0}}}' FROM bodies;
+        INSERT INTO scheduled_events(id,universe,at_ms,sequence,input,event)
+            SELECT gen_random_uuid(),universe,3000,8,'{}','{"expected_prefix":1}' FROM bodies;
+        INSERT INTO commands(universe,epoch,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt)
+            SELECT u.id,u.epoch,p.id,gen_random_uuid(),gen_random_uuid(),'retained',2500,7,'{}','{"status":"Accepted"}' FROM universes u,players p;
+    "#).execute(&pool).await.unwrap();
+    let snapshot = || {
+        sqlx::query_scalar::<_,serde_json::Value>(
+        "SELECT jsonb_build_array((SELECT to_jsonb(i) FROM inventories i),(SELECT data FROM mission_fleets),
+            (SELECT data FROM manufacturing_batches),(SELECT to_jsonb(e) FROM scheduled_events e),
+            (SELECT jsonb_build_array(command_id,input_id,intent_hash,sequence,input,receipt,done) FROM commands))")
+        .fetch_one(&pool)
+    };
+    let before = snapshot().await.unwrap();
+    // Interrupt between transactional DDL and backfill, as during a migrator restart.
+    store
+        .migrate_with_for_test(&sqlx::migrate!("./migrations"))
+        .await
+        .unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, Option<i64>>("SELECT current_score_micro FROM players")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        None
+    );
+    store.migrate().await.unwrap();
+    store.migrate().await.unwrap();
+    assert_eq!(snapshot().await.unwrap(), before);
+    // (3 stationed + 2 returning) × 4000 + mine increments 75 and 112 + 1000 research.
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT current_score_micro FROM players")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        21_187 * SCALE
+    );
+    assert_eq!(
+        store
+            .backfill_ranking_scores(UniverseId(universe), 1)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM catalog_score_upgrades")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
     );
 }

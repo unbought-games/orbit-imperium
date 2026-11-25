@@ -99,6 +99,53 @@ pub(crate) async fn resolve_command(
     Ok((resolved, scopes))
 }
 
+/// A launch may add a participant to an already-declared deletion or lunar
+/// destruction. Pair discovery at admission with extension at launch commit.
+/// Owner and lunar endpoint keys are independent of alliance membership.
+pub(crate) async fn lock_fleet_dependencies(
+    tx: &mut Tx<'_>,
+    actor: PlayerId,
+    action: &WorldAction,
+    committing: bool,
+) -> Result<(), StoreError> {
+    let owner = match action {
+        WorldAction::EnterVacation
+        | WorldAction::ExitVacation
+        | WorldAction::RequestEmpireDeletion
+        | WorldAction::CancelEmpireDeletion => Some(actor),
+        WorldAction::LaunchFleet { .. } if committing => Some(actor),
+        _ => None,
+    };
+    if let Some(owner) = owner {
+        lock_fleet_owner(tx, owner).await?;
+    }
+    if let WorldAction::LaunchFleet { intent, .. } = action
+        && (committing || intent.mission == Mission::DestroyMoon)
+        && let MissionDestination::Body {
+            id,
+            expected_kind: BodyKind::Moon,
+            ..
+        } = intent.destination
+    {
+        // Every caller takes the owner key before the moon key.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 381431))")
+            .bind(id.to_string())
+            .execute(&mut **tx)
+            .await
+            .map_err(db_error)?;
+    }
+    Ok(())
+}
+
+pub(crate) async fn lock_fleet_owner(tx: &mut Tx<'_>, player: PlayerId) -> Result<(), StoreError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 381430))")
+        .bind(player.to_string())
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
+    Ok(())
+}
+
 pub(crate) async fn load(
     tx: &mut Tx<'_>,
     u: UniverseId,

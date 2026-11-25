@@ -56,15 +56,13 @@ async fn start_mine(store: &PgStore, binding: Binding) {
         })
         .await
         .unwrap();
-    for _ in 0..2 {
-        assert!(matches!(
-            GameService::new(store.clone())
-                .step(binding.universe, WorkerId(Uuid::new_v4()))
-                .await
-                .unwrap(),
-            StepOutcome::Committed { .. }
-        ));
-    }
+    assert!(matches!(
+        GameService::new(store.clone())
+            .step(binding.universe, WorkerId(Uuid::new_v4()))
+            .await
+            .unwrap(),
+        StepOutcome::Committed { .. }
+    ));
 }
 
 #[tokio::test]

@@ -117,12 +117,13 @@ export function harvestCountError(count: string, available: string) {
 
 /** Quote on the explicit Send gesture, then recheck inventory, slots, context and binding. */
 export async function sendGalaxyHarvest(
-  model: Pick<Coordinator, 'store' | 'world' | 'send'>,
+  model: Pick<Coordinator, 'store' | 'world' | 'send' | 'dispatchClickTime'>,
   origin: string,
   position: HarvestPosition,
   count: string,
   current: () => boolean,
 ) {
+  const clickedAt = model.dispatchClickTime()
   const state = model.store.getState(),
     binding = state.binding
   if (state.rateLimited) return
@@ -169,6 +170,7 @@ export async function sendGalaxyHarvest(
       },
     },
     terms,
+    { coordinates: position.coordinates, clickedAt },
   )
   // The shared cooldown banner owns throttled-send feedback.
   if (!id && model.store.getState().rateLimited) return

@@ -11,7 +11,6 @@ fn amount(old: i64, n: i64, give: bool) -> EditResult<i64> {
 }
 fn lot(
     s: &mut GameState,
-    i: &OrderedInput,
     owner: PlayerId,
     item: CatalogKey,
     location: AssetLocation,
@@ -25,22 +24,14 @@ fn lot(
         .try_fold(0i64, |s, n| s.checked_add(n))
         .ok_or("valuation overflow")?;
     let w = &mut s.world.as_mut().ok_or("missing world")?.records;
-    let id = OperationId(derived_id(
-        i.id,
-        &format!("world-lot:{owner:?}:{item:?}:{location:?}:{level:?}"),
-    ));
-    w.lots.push(AssetLot {
-        id,
+    w.lots.push(CatalogHolding {
+        acquisition: None,
         owner,
         item,
         location,
         level,
         quantity,
         unit_value_micro: value,
-        rules_hash: s.profile_hash.clone(),
-        source_operation: OperationId(i.id.0),
-        acquired_at: i.at,
-        acquired_sequence: i.sequence,
     });
     Ok(())
 }
@@ -101,7 +92,6 @@ pub(super) fn edit_body(
                 .paid();
             lot(
                 s,
-                i,
                 b.owner,
                 CatalogKey::Building(key),
                 AssetLocation::Body(id),
@@ -153,7 +143,6 @@ pub(super) fn edit_body(
             let paid = manufacture_terms(&b, item, 1, r).map_err(error)?.paid();
             lot(
                 s,
-                i,
                 b.owner,
                 key,
                 AssetLocation::Body(id),
@@ -162,7 +151,7 @@ pub(super) fn edit_body(
             )?;
         }
         if target < old {
-            take_asset_lots(
+            take_asset_quantity(
                 &mut s.world.as_mut().unwrap().records.lots,
                 b.owner,
                 key,
@@ -231,7 +220,6 @@ pub(super) fn edit_research(
             let paid = research_payment(&research, key, r).map_err(error)?;
             lot(
                 s,
-                i,
                 owner,
                 CatalogKey::Research(key),
                 AssetLocation::Player,
@@ -272,14 +260,14 @@ pub(super) fn restore_values(
 pub(super) fn restore_values_at(
     s: &mut GameState,
     r: &Ruleset,
-    i: &OrderedInput,
+    _i: &OrderedInput,
     owner: PlayerId,
     location: AssetLocation,
     values: &[WorldAssetValue],
 ) -> EditResult<()> {
     let lots = &mut s.world.as_mut().ok_or("missing world")?.records.lots;
     lots.retain(|l| l.owner != owner || l.location != location);
-    for (index, v) in values.iter().enumerate() {
+    for v in values {
         if v.quantity <= 0 || v.unit_value_micro < 0 {
             return Err("invalid asset value".into());
         }
@@ -303,18 +291,14 @@ pub(super) fn restore_values_at(
             )?),
             _ => return Err("unknown valuation category".into()),
         };
-        lots.push(AssetLot {
-            id: OperationId(derived_id(i.id, &format!("restored-value:{index}"))),
+        lots.push(CatalogHolding {
+            acquisition: None,
             owner,
             item: key,
             level: v.level,
-            location: location.clone(),
+            location,
             quantity: v.quantity,
-            unit_value_micro: v.unit_value_micro,
-            rules_hash: v.rules_hash.clone(),
-            source_operation: OperationId(i.id.0),
-            acquired_at: i.at,
-            acquired_sequence: i.sequence,
+            unit_value_micro: catalog_asset_value(r, key, v.level).map_err(error)?,
         });
     }
     Ok(())

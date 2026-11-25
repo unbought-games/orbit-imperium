@@ -172,7 +172,7 @@ fn completed_satellites_power_each_interval_and_survive_disabled_manufacturing_a
         value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap(),
         before_score + 5000 * SCALE
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     assert!(
         mobile_inventory(&s, b, p, &r)
             .unwrap()
@@ -298,7 +298,7 @@ fn raid_destroys_satellites_without_recovery_and_changes_production_only_after_a
             .iter()
             .any(|i| i.item == SAT && i.count > 0)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]

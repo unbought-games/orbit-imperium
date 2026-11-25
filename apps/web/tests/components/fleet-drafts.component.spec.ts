@@ -65,14 +65,19 @@ test('a changed funding body discards pending review, ships and cargo while pres
   mount,
 }) => {
   await setup(page, mount)
-  await page.getByRole('radio', { name: 'Espionage', exact: true }).check()
+  await hold(page, 'FleetQuote')
+  try {
+    await page.getByRole('radio', { name: 'Espionage', exact: true }).check()
   await setDestination(page, { galaxy: '1', system: '1', position: '1' })
   await page.getByLabel('Espionage Probe · 1 available').fill('1')
   await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
-  await hold(page, 'FleetQuote')
-  try {
     await review(page).click()
-    await expect.poll(async () => (await counts(page)).quotes).toBe(1)
+    await expect(review(page)).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'Reviewing…'})).toBeDisabled()
+    await expect.poll(async () => (await snapshot(page)).calls.some(query =>
+      query.type === 'FleetQuote' && query.intent.origin === originId && query.intent.mission === 'Espionage' &&
+      query.intent.cargo.metal === '42000000' && query.intent.ships.some(stack => stack.ship_type === 'EspionageProbe' && stack.count === '1')
+    )).toBe(true)
     await selectBody(page, id(6))
     await expect(
       page.getByRole('radio', { name: 'Espionage', exact: true }),

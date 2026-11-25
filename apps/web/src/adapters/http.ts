@@ -1,3 +1,4 @@
+import { dispatchObservationPort } from './dispatch-observations'
 import { bootstrapTarget } from '../client-model/bootstrap-target'
 import { progressionOptionsLoader } from './progression-options'
 import { checkClientBuild } from './client-update'
@@ -202,6 +203,7 @@ export function gamePort(
     },
   )
   return {
+    observeDispatch: dispatchObservationPort(csrf),
     socialQuery: (context, query) =>
       socialQuery(context.binding, csrf, query, context.request_id),
     socialCommand: (context, command) =>

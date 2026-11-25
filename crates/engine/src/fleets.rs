@@ -82,7 +82,7 @@ pub(crate) fn resolve_fleet(
     i: &OrderedInput,
     r: &Ruleset,
     change: &mut ChangeSet,
-    recall_reports: RecallReports,
+    format: TransitionFormat,
 ) -> Result<(), Fault> {
     match &i.payload {
         Input::Command(Command::LaunchTransport {
@@ -220,7 +220,7 @@ pub(crate) fn resolve_fleet(
                     fleet: fleet.id,
                     generation: original.generation,
                 });
-            if recall_reports == RecallReports::LegacyReplay {
+            if format == TransitionFormat::LegacyRecallReports {
                 change.reports.push(report(
                     i,
                     &fleet,

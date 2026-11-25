@@ -18,11 +18,16 @@ every current member has a score, open High Scores to verify player and alliance
 standings. The snapshot command captures today's standings at the actual UTC
 sample time. A worker may already have completed it; either outcome is success.
 
-If an older worker resumes inventory writes after rollback, its writes do not
-maintain the score field. Before resuming the new readers, stop the old writers
-and mark affected players' scores uninitialized. If the affected players are
-unknown, mark that universe's scores uninitialized and rerun the backfill.
-Keeping the new schema during a rollback preserves the original asset lots.
+Migration 0055 retires historical purchase lots. Stop all previous API and
+worker writers before applying it and use the coordinated schema-upgrade path.
+Stationed counts, active fleet manifests, building and research levels,
+scheduled work, receipts and previously observed standings stay in their
+original tables. The migration marks live scores for rebuilding at the active
+catalog prices. The coordinated `db-init` command and serving startup finish the batched
+rebuild before the new roles become ready. An interruption preserves completed
+batches and the next startup resumes. Buy prices saved on active orders still determine refunds. A previous
+binary requires the retired table, so a release using this migration requires a
+forward fix unless a separate rollback has been qualified.
 
 ## Daily operation
 

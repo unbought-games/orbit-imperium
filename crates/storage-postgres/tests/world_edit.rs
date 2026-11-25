@@ -276,7 +276,7 @@ async fn rich_playground_is_playable_atomic_and_retryable() {
             .count,
         30
     );
-    validate_asset_lineage(state).unwrap();
+    validate_completed_assets(state).unwrap();
     let mixed = document(
         json!([{"op":"set","user":"user","planet":"1:53:8","buildings":{"metalmine":13},"ships":{"lightfighter":0,"smallcargo":101}}]),
     );
@@ -295,7 +295,7 @@ async fn rich_playground_is_playable_atomic_and_retryable() {
         .unwrap()
         .records
         .lots;
-    normalize_asset_lots(&mut lots).unwrap();
+    combine_asset_quantities(&mut lots).unwrap();
     let wrong =
         document(json!([{"op":"set","user":"rival","planet":"1:50:8","ships":{"cruiser":5}}]));
     assert!(
@@ -333,7 +333,7 @@ async fn queue_controls_and_scoped_edits_preserve_world_invariants() {
         .unwrap()
         .binding;
     let view = store.bound_world(binding).await.unwrap();
-    validate_asset_lineage(&view.facts.0.state).unwrap();
+    validate_completed_assets(&view.facts.0.state).unwrap();
     let doc = document(
         json!([{"op":"queue","planet":"1:50:8","ships":{"cruiser":5},"arrives_in":"1m"},{"op":"clear","planet":"1:50:8"}]),
     );
@@ -431,7 +431,13 @@ async fn editable_export_round_trips_planets_valuation_and_activity() {
     assert!(saved.edits.iter().any(|e| e.op == "queue"));
     assert!(saved.edits.iter().any(|e| e.op == "alliance"));
     let before:Vec<(String,i64,i32)>=sqlx::query_as("SELECT galaxy||':'||system||':'||position,fields,max_temperature FROM bodies WHERE universe=$1 ORDER BY galaxy,system,position").bind(u.0).fetch_all(&pool).await.unwrap();
-    let value_before:i64=sqlx::query_scalar("SELECT sum((data->>'quantity')::bigint*(data->>'unit_value_micro')::bigint)::bigint FROM asset_lots WHERE universe=$1").bind(u.0).fetch_one(&pool).await.unwrap();
+    let value_before: i64 = sqlx::query_scalar(
+        "SELECT sum(current_score_micro)::bigint FROM players WHERE universe=$1",
+    )
+    .bind(u.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     store
         .apply_world_scenario(u, &saved, ScenarioMode::Replace, Uuid::new_v4())
         .await
@@ -449,7 +455,13 @@ async fn editable_export_round_trips_planets_valuation_and_activity() {
     assert_eq!(before, after);
     let due_after:Vec<i64>=sqlx::query_scalar("SELECT (data->>'next_due_at')::bigint FROM manufacturing_batches WHERE universe=$1 AND data->>'status'='Active' ORDER BY queue_sequence").bind(u.0).fetch_all(&pool).await.unwrap();
     assert_eq!(due_before, due_after);
-    let value_after:i64=sqlx::query_scalar("SELECT sum((data->>'quantity')::bigint*(data->>'unit_value_micro')::bigint)::bigint FROM asset_lots WHERE universe=$1").bind(u.0).fetch_one(&pool).await.unwrap();
+    let value_after: i64 = sqlx::query_scalar(
+        "SELECT sum(current_score_micro)::bigint FROM players WHERE universe=$1",
+    )
+    .bind(u.0)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert_eq!(value_before, value_after);
     let auth = SessionService::new(store.clone())
         .login("user", "password", None)
@@ -641,7 +653,7 @@ async fn mission_hashes_and_timing_work_with_defaults_and_overrides() {
             .unwrap();
         let snapshot = store.bound_world(binding).await.unwrap();
         let state = &snapshot.facts.0.state;
-        validate_asset_lineage(state).unwrap();
+        validate_completed_assets(state).unwrap();
         let fleets: Vec<sqlx::types::Json<MissionFleet>> =
             sqlx::query_scalar("SELECT data FROM mission_fleets WHERE universe=$1")
                 .bind(u.0)
@@ -826,7 +838,7 @@ async fn ordinary_demolition_survives_scenario_export_replace_and_completion() {
         .await
         .unwrap()
         .binding;
-    validate_asset_lineage(&store.bound_world(binding).await.unwrap().facts.0.state).unwrap();
+    validate_completed_assets(&store.bound_world(binding).await.unwrap().facts.0.state).unwrap();
 }
 
 #[tokio::test]
@@ -1093,7 +1105,7 @@ async fn research_network_uses_remote_labs_in_both_runtimes_and_operator_imports
 }
 
 /// A live inventory commit can race a retained player's initial score calculation.
-/// Both the writer and the online backfill must publish the exact paid value.
+/// Both the writer and the online backfill must publish the exact catalog value.
 #[tokio::test]
 async fn current_scores_follow_inventory_and_a_backfill_cannot_overwrite_a_newer_commit() {
     let (store, pool) = fresh().await;
@@ -1146,8 +1158,11 @@ async fn current_scores_follow_inventory_and_a_backfill_cannot_overwrite_a_newer
         .fetch_one(&mut *writer)
         .await
         .unwrap();
-    sqlx::query("UPDATE asset_lots SET data=jsonb_set(data,'{unit_value_micro}','6000000000') WHERE universe=$1 AND data->>'owner'=$2")
-        .bind(u.0).bind(alice.to_string()).execute(&mut *writer).await.unwrap();
+    sqlx::query("UPDATE inventories SET count=3 WHERE owner=$1")
+        .bind(alice)
+        .execute(&mut *writer)
+        .await
+        .unwrap();
     sqlx::query("UPDATE players SET current_score_micro=$2 WHERE id=$1")
         .bind(alice)
         .bind(12_000 * SCALE)
@@ -1203,10 +1218,13 @@ async fn current_scores_follow_inventory_and_a_backfill_cannot_overwrite_a_newer
         .await
         .unwrap();
 
-    // Invalid retained paid quantities must stop the batch, rather than erasing
+    // Unrepresentable inventory quantities must stop the batch, rather than erasing
     // an invalid contribution or publishing a plausible zero score.
-    sqlx::query("UPDATE asset_lots SET data=jsonb_set(data,'{quantity}','-1') WHERE universe=$1 AND data->>'owner'=$2")
-        .bind(u.0).bind(alice.to_string()).execute(&pool).await.unwrap();
+    sqlx::query("UPDATE inventories SET count=9223372036854775807 WHERE owner=$1")
+        .bind(alice)
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("UPDATE players SET current_score_micro=NULL WHERE id=$1")
         .bind(alice)
         .execute(&pool)
@@ -1222,4 +1240,59 @@ async fn current_scores_follow_inventory_and_a_backfill_cannot_overwrite_a_newer
             .await,
         Err(StoreError::NotFound)
     ));
+}
+
+#[tokio::test]
+async fn deliberate_reprice_updates_live_scores_for_ships_at_home_and_in_flight() {
+    let (store, pool) = fresh().await;
+    let universe = UniverseId(Uuid::new_v4());
+    let setup = document(json!([
+        {"op":"add-player","user":"pilot","password":"password","planet":"1:1:8"},
+        {"op":"add-player","user":"neighbor","password":"password","planet":"1:2:8"},
+        {"op":"set","user":"pilot","planet":"1:1:8","ships":{"smallcargo":5}},
+        {"op":"transport","from":"1:1:8","planet":"1:2:8","ships":{"smallcargo":2},"arrives_in":"3m"}
+    ]));
+    store
+        .apply_world_scenario(universe, &setup, ScenarioMode::Create, Uuid::new_v4())
+        .await
+        .unwrap();
+    let score = || {
+        sqlx::query_scalar::<_,i64>("SELECT current_score_micro FROM players WHERE id=(SELECT owner FROM mission_fleets WHERE universe=$1)")
+        .bind(universe.0).fetch_one(&pool)
+    };
+    assert_eq!(score().await.unwrap(), 20_000 * SCALE);
+    let service = RulesService::new(store.clone());
+    let mut next = service.export(universe).await.unwrap();
+    let item = ManufacturedItem::Ship(ShipType::SmallCargo);
+    next.artifact
+        .progression
+        .as_mut()
+        .unwrap()
+        .unit_costs
+        .iter_mut()
+        .find(|u| u.item == item)
+        .unwrap()
+        .cost
+        .metal = 3_000;
+    if let Some(unit) = next
+        .artifact
+        .world
+        .as_mut()
+        .and_then(|w| w.combat.units.iter_mut().find(|u| u.item == item))
+    {
+        unit.cost[0] = 3_000;
+    }
+    let fleet = || {
+        sqlx::query_scalar::<_, Value>("SELECT data FROM mission_fleets WHERE universe=$1")
+            .bind(universe.0)
+            .fetch_one(&pool)
+    };
+    let before = fleet().await.unwrap();
+    assert!(matches!(
+        service.apply(&next).await.unwrap(),
+        RulesApplyOutcome::Applied { .. }
+    ));
+    assert_eq!(score().await.unwrap(), 25_000 * SCALE);
+    assert_eq!(fleet().await.unwrap(), before);
+    assert_eq!(store.backfill_ranking_scores(universe, 1).await.unwrap(), 0);
 }

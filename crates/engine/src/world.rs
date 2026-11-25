@@ -344,7 +344,7 @@ pub struct WorldRecords {
     pub colonies: BTreeMap<BodyId, ColonyGenesis>,
     pub policies: BTreeMap<PlayerId, PlayerPolicy>,
     pub activity: BTreeMap<BodyId, BodyActivity>,
-    pub lots: Vec<AssetLot>,
+    pub lots: Vec<CatalogHolding>,
     pub fleets: BTreeMap<FleetId, MissionFleet>,
     pub debris: BTreeMap<OperationId, DebrisField>,
     pub reports: BTreeMap<ReportId, MissionReport>,

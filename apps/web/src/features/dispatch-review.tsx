@@ -346,14 +346,18 @@ export function DispatchReview({
           </Button>
         </Text>
       )}
-      <div className={styles.actions}>
+      <div
+        className={styles.actions}
+        role={sending ? 'group' : undefined}
+        aria-label={sending ? 'Fleet dispatch result' : undefined}
+      >
         <QuoteAction
           className={styles.sendFleet}
           disabled={disabled}
           onClick={onSend}
         >
           {sending
-            ? 'Sending fleet…'
+            ? 'Sending fleet order…'
             : reviewState.differences?.changed
               ? 'Confirm changes and launch'
               : dispatchSendLabel(quote.intent, destination)}

@@ -433,7 +433,7 @@ it.each([
   'rejected',
   'committed',
 ] as const)(
-  'only a committed current submission resets the draft: %s',
+  'only a durably accepted current submission resets the draft: %s',
   (status) => {
     const requests = new DispatchRequests()
     const submitted = {
@@ -443,7 +443,7 @@ it.each([
     }
     expect(requests.shouldResetDraft(null, status)).toBe(false)
     expect(requests.shouldResetDraft(submitted, status)).toBe(
-      status === 'committed',
+      status === 'pending' || status === 'committed',
     )
     requests.invalidate()
     expect(requests.shouldResetDraft(submitted, status)).toBe(false)
@@ -472,7 +472,6 @@ it.each([false, true])(
       },
     }
     const submitted = vi.fn()
-    const closeReview = vi.fn()
     const send = vi.fn<
       import('./dispatch-requests').DispatchSubmitPorts['send']
     >(() => {
@@ -483,13 +482,11 @@ it.each([false, true])(
       attempts: () => attempts,
       send,
       submitted,
-      closeReview,
     })
     expect(submitted.mock.calls).toEqual([
       [{ key: 'new-order', generation: 1, coordinates: at }],
     ])
     expect(send).toHaveBeenCalledExactlyOnceWith(command, quote)
-    expect(closeReview).toHaveBeenCalledOnce()
     if (edited) requests.invalidate()
     held.resolve('new-order')
     await pending
@@ -525,7 +522,6 @@ it.each([false, true])(
       attempts: () => new Map(),
       send: () => held.promise,
       submitted,
-      closeReview: () => {},
     })
     expect(submitted).not.toHaveBeenCalled()
     if (edited) requests.invalidate()
@@ -650,4 +646,28 @@ it('requires a Dreadnought in a destruction draft before requesting its binding 
   expect(ports.world.mock.calls.map(([query]) => query.type)).toEqual([
     'ResolveDestination',
   ])
+})
+
+it('a refused replacement quote cannot reopen earlier terms at the same revision', async () => {
+  const { createFleetPreparation } = await import('./use-prepared-fleet-quote')
+  const preparation = createFleetPreparation()
+  const valid = terms({
+    origin: 'home',
+    destination,
+    mission: 'Deploy',
+    ships: [],
+    cargo: { metal: '0', crystal: '0', deuterium: '0' },
+    speed_percent: 100,
+  })
+  await preparation.load(async () => valid)
+  expect(preparation.valid('profile')).toEqual(valid)
+  const old = deferred<S['FleetTerms4']>()
+  const outstanding = preparation.load(() => old.promise)
+  preparation.cancel()
+  await preparation.load(async () => {
+    throw Error('NoFleetSlot')
+  })
+  old.resolve(valid)
+  await outstanding
+  expect(preparation.valid('profile')).toBeNull()
 })
