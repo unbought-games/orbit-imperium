@@ -56,7 +56,7 @@ pub(super) fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
         903,
         serde_json::json!({"op":"set","missiles":{"AntiBallisticMissile":6},"defenses":{"RocketLauncher":100}}),
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     (s, r, p, b, t)
 }
 fn intent(s: &GameState, b: BodyId, t: BodyId, n: i64) -> MissileIntent {
@@ -154,7 +154,7 @@ fn interception_permanent_losses_private_reports_and_retries() {
     assert_eq!(report.payloads[&owner]["interceptors_remaining"], "0");
     assert!(w.debris.is_empty());
     assert!(impact.events.is_empty());
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let result = run(&mut s, &r, p, b, event.at, 1002, Input::Event(event.event));
     let retry = apply(&mut s, result);
     assert!(retry.inventories.is_empty());
@@ -412,7 +412,7 @@ fn scrap_releases_capacity_without_refund_and_rules_remain_snapshotted() {
         Input::Event(c.events[0].event.clone()),
     );
     apply(&mut s, result);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn launch_guards_and_quotes_do_not_reveal_target_inventory() {
@@ -609,7 +609,7 @@ fn espionage_discloses_both_missiles_only_with_defenses() {
         }
         assert_eq!(payload["counterespionage"]["probability_ppm"], 0);
         assert_eq!(payload["counterespionage"]["detected"], false);
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 
@@ -752,7 +752,7 @@ fn accepted_missile_wire_survives_restart_and_rejects_tampering() {
     tampered["world"]["records"]["missiles"][&id]["terms"]["duration_ms"] = serde_json::json!(1);
     assert!(serde_json::from_value::<GameState>(tampered).is_err());
     s = serde_json::from_value(saved).unwrap();
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let event = &launch.events[0];
     let result = run(
         &mut s,

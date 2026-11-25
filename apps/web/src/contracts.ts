@@ -6282,6 +6282,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/universes/{universe}/dispatch-observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record bounded browser timing milestones for the signed-in universe member. Requires a same-origin session and CSRF token. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        observations: components["schemas"]["DispatchObservation"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description Timings received */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11302,6 +11344,14 @@ export interface components {
         FleetCargoFill4: {
             minimum: components["schemas"]["WholeResources"];
             groups: ("Metal" | "Crystal" | "Deuterium")[][];
+        };
+        DispatchObservation: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            phase: "review_started_warm" | "review_started_cold" | "review_ready_reused" | "review_ready_fetched" | "send_started" | "accepted" | "outcome_received" | "confirmed_visible" | "rejected" | "uncertain" | "not_admitted";
+            elapsed_ms: number;
+            foreground: boolean;
         };
     };
     responses: never;

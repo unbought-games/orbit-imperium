@@ -415,7 +415,7 @@ pub fn edit_world(
             values,
         )?;
     }
-    validate_asset_lineage(&next).map_err(|e| e.to_string())?;
+    validate_completed_assets(&next).map_err(|e| e.to_string())?;
     for body in next.bodies.values() {
         validate_body(&next, body.id, rules).map_err(|e| e.to_string())?;
         let used: u64 = body.levels.values().map(|n| u64::from(*n)).sum();

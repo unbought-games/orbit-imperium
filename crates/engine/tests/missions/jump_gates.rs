@@ -29,19 +29,15 @@ fn setup(speed: i32) -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
             .unwrap()
             .levels
             .insert(Building::JumpGate, 1);
-        let lot = OperationId(derived_id(InputId(id.0), "gate"));
-        s.world.as_mut().unwrap().records.lots.push(AssetLot {
-            id: lot,
+
+        s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+            acquisition: None,
             owner: p,
             item: CatalogKey::Building(Building::JumpGate),
             level: Some(1),
             location: AssetLocation::Body(id),
             quantity: 1,
             unit_value_micro: 8_000_000 * SCALE,
-            rules_hash: r.hash.clone(),
-            source_operation: lot,
-            acquired_at: 0,
-            acquired_sequence: 0,
         });
     }
     for body in s.bodies.values() {
@@ -56,7 +52,7 @@ fn setup(speed: i32) -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
         ManufacturedItem::Ship(ShipType::SmallCargo),
         20,
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     (s, r, p, source, destination)
 }
 fn selection(p: PlayerId, source: BodyId, destination: BodyId) -> JumpIntent {
@@ -119,7 +115,7 @@ fn jump_moves_inventory_and_value_without_resources_flight_events_or_score_chang
         value
     );
     assert_eq!(c.affected_viewers, BTreeSet::from([p]));
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     for body in [a, b] {
         assert_eq!(jump_gate_status(&s, body, &r).unwrap().ready_at, 3_601_000);
     }
@@ -487,5 +483,5 @@ fn lunar_dreadnoughts_require_a_local_shipyard_and_transfer_on_the_normal_gate()
             .collect::<Vec<_>>(),
         [(destination, 1)]
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }

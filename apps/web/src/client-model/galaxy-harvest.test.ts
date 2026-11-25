@@ -85,7 +85,13 @@ function fixture(count = '5') {
     }
   })
   const send = vi.fn<Coordinator['send']>().mockResolvedValue(id(50))
-  return { store, world, send, view }
+  return {
+    store,
+    world,
+    send,
+    view,
+    dispatchClickTime: () => (world.mock.calls.length ? 500 : 10),
+  }
 }
 it('rounds up whole debris exactly and caps the suggestion by inventory', () => {
   expect(harvestSuggestion('20000', '0', '20000', '5')).toEqual({
@@ -189,6 +195,7 @@ it('sends only recyclers, empty cargo and the exact debris identity after a fres
       },
     },
     expect.objectContaining({ terms_hash: 'b'.repeat(64) }),
+    { clickedAt: 10, coordinates: position.coordinates },
   )
 })
 it('rechecks ships and fleet slots after the asynchronous quote', async () => {

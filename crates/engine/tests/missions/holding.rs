@@ -165,7 +165,7 @@ fn holding_keeps_ownership_cargo_slot_and_original_return_then_stales_departure(
     assert_eq!(f.due_at, event.at + 2 * HOLD_HOUR_MS);
     assert_eq!(f.cargo, intent.cargo);
     assert!(quote_fleet(&s, p, &intent, event.at, &r).is_err());
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let result = run(
         &mut s,
         &r,
@@ -190,7 +190,7 @@ fn holding_keeps_ownership_cargo_slot_and_original_return_then_stales_departure(
         s.world.as_ref().unwrap().records.fleets[&f.id].leg,
         MissionLeg::Returned
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn zero_hour_hold_never_defends_and_relationship_revocation_preserves_paid_hold() {
@@ -559,7 +559,7 @@ fn held_combat(lunar: bool) {
     }
     assert_eq!(records.fleets[&held.id].leg, MissionLeg::Holding);
     assert_eq!(records.fleets[&held.id].due_at, held.due_at);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -746,7 +746,7 @@ fn lunar_hold_uses_its_parent_depot_budget_and_keeps_body_inventories_separate()
         &s.world.as_ref().unwrap().records.fleets[&planetary],
         t
     ));
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]

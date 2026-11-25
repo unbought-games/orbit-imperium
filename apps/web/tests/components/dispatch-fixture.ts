@@ -36,6 +36,7 @@ export async function createDispatchFixture(
   }
   let sequence = 100
   let launches = 0
+  let lastCommandId: string | undefined
   let lastLaunch: Extract<S['WorldAction4'], { type: 'LaunchFleet' }> | null =
     null
   const port: GamePort = {
@@ -103,6 +104,7 @@ export async function createDispatchFixture(
         envelope.command.action.type !== 'LaunchFleet'
       )
         return fail('non-fleet command')
+      lastCommandId = envelope.command_id
       lastLaunch = structuredClone(envelope.command.action)
       launches++
       const work = (async () => {
@@ -309,6 +311,13 @@ export async function createDispatchFixture(
   await model.initialize(data.ready.session, data.ready.snapshot)
   return {
     model,
+    settleLaunch: async (status: 'Committed' | 'Rejected') => {
+      if (!lastCommandId) throw Error('No launch submitted')
+      await model.onUpdate({binding: source.binding, cursor: 'launch-outcome', event: {type: 'Outcome', receipt: {
+        binding: source.binding, command_id: lastCommandId, protocol: 4, admitted_at: now, executed_at: now,
+        ...(status === 'Rejected' ? {status, code: 'NoFleetSlot'} : {status, result_ids: [id(80)], minimum_viewer_revision: source.viewer_revision}),
+      }}})
+    },
     snapshot: () => ({
       view: structuredClone(source),
       options: { ...options },

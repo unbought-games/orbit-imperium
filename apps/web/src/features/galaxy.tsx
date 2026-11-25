@@ -354,12 +354,18 @@ export function Galaxy({
                           now={currentServerTime(espionage.state)}
                           espionage={
                             position.body
-                              ? espionage.forTarget(position.body)
+                              ? espionage.forTarget(
+                                  position.body,
+                                  position.coordinates,
+                                )
                               : undefined
                           }
                           moonEspionage={
                             publicMoonBody(position)
-                              ? espionage.forTarget(publicMoonBody(position)!)
+                              ? espionage.forTarget(
+                                  publicMoonBody(position)!,
+                                  position.coordinates,
+                                )
                               : undefined
                           }
                         />

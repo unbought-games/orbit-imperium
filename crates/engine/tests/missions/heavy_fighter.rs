@@ -180,7 +180,7 @@ fn manufactured_heavy_fighter_flies_fights_and_returns_after_new_production_is_d
             .count,
         1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let blocked = inspect_progression(
         &s,
         Actor::Player(p),
@@ -275,5 +275,5 @@ fn manufactured_heavy_fighter_flies_fights_and_returns_after_new_production_is_d
             .values()
             .all(|f| f.leg == MissionLeg::Returned)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }

@@ -307,7 +307,7 @@ fn quote_inner(
         return Err(GameError::NotOwned.into());
     }
     let w = world_facts(s)?;
-    validate_asset_lineage(s)?;
+    validate_completed_assets(s)?;
     if !s.coverage.inventory_owners.contains(&(b.id, owner))
         || !s.coverage.research_players.contains(&owner)
         || !w.covered_players.contains(&owner)
@@ -527,6 +527,66 @@ fn credit(
     c.bodies.push(b);
     Ok(())
 }
+/// Policy and public body activity produced by one authenticated gesture.
+pub enum ForegroundActivity {
+    Recorded {
+        policy: PlayerPolicy,
+        activity: Option<BodyActivity>,
+    },
+    Rejected(GameError),
+}
+
+pub fn foreground_activity(
+    s: &GameState,
+    owner: PlayerId,
+    signal_body: Option<BodyId>,
+    id: InputId,
+    at: Timestamp,
+    rules: &Ruleset,
+) -> Result<ForegroundActivity, InvariantError> {
+    let records = &world_facts(s)?.records;
+    let mut policy = records
+        .policies
+        .get(&owner)
+        .ok_or_else(|| InvariantError("missing player policy".into()))?
+        .clone();
+    if policy.lifecycle == PlayerLifecycle::Removed {
+        return Ok(ForegroundActivity::Rejected(GameError::NotFound));
+    }
+    let mut activity = None;
+    if let Some(body) = signal_body {
+        if s.coverage.owned_body_players.contains(&owner)
+            && s.bodies.get(&body).is_none_or(|b| b.owner != owner)
+        {
+            return Ok(ForegroundActivity::Rejected(GameError::NotOwned));
+        }
+        let Some(b) = validate_body(s, body, rules)? else {
+            return Ok(ForegroundActivity::Rejected(GameError::NotFound));
+        };
+        if b.owner != owner {
+            return Ok(ForegroundActivity::Rejected(GameError::NotOwned));
+        }
+        if records
+            .activity
+            .get(&body)
+            .is_none_or(|prior| prior.last_signal_at <= at)
+        {
+            activity = Some(BodyActivity {
+                body,
+                last_signal_at: at,
+                cause: ActivityCause::Foreground,
+                input: id,
+            });
+        }
+    }
+    policy.last_presence_at = policy.last_presence_at.max(at);
+    let Some(revision) = policy.revision.checked_add(1) else {
+        return Ok(ForegroundActivity::Rejected(GameError::NumericRange));
+    };
+    policy.revision = revision;
+    Ok(ForegroundActivity::Recorded { policy, activity })
+}
+
 pub(crate) fn signal(w: &mut WorldRecords, id: BodyId, i: &OrderedInput, cause: ActivityCause) {
     if w.activity.get(&id).is_none_or(|a| a.last_signal_at <= i.at) {
         w.activity.insert(
@@ -648,7 +708,7 @@ fn terminal_return(
     credit(c, s, home.id, f.cargo, i.at, r)?;
     for x in &f.ships {
         inventory(c, s, home.id, f.owner, x.ship_type, x.count)?;
-        let lots = take_asset_lots(
+        let lots = take_asset_quantity(
             &mut w.lots,
             f.owner,
             item(x.ship_type),
@@ -680,7 +740,7 @@ pub(crate) fn resolve(
     s: &GameState,
     i: &OrderedInput,
     r: &Ruleset,
-    recall_reports: RecallReports,
+    format: TransitionFormat,
 ) -> Result<ChangeSet, Fault> {
     if i.schema_version != 4
         || i.protocol != 4
@@ -708,8 +768,9 @@ pub(crate) fn resolve(
     {
         return crate::phalanx_command::resolve(s, i, r, *source_moon, *target_planet);
     }
+    let historical_prices = format != TransitionFormat::Current;
     let facts = world_facts(s)?;
-    validate_asset_lineage(s)?;
+    validate_completed_assets(s)?;
     let mut w = facts.records.clone();
     let mut c = ChangeSet::new(s, i, r);
     let mut audits = vec![];
@@ -949,23 +1010,15 @@ pub(crate) fn resolve(
             let Actor::Player(owner) = i.actor else {
                 return Err(invariant("presence actor"));
             };
-            if let Some(id) = signal_body {
-                // A complete owned-body collection proves this stale/foreign ID
-                // is not owned. It is a game rejection, not missing engine facts.
-                if s.coverage.owned_body_players.contains(&owner) && !s.bodies.contains_key(id) {
-                    return Err(GameError::NotOwned.into());
+            match foreground_activity(s, owner, *signal_body, i.id, i.at, r)? {
+                ForegroundActivity::Recorded { policy, activity } => {
+                    w.policies.insert(owner, policy);
+                    if let Some(activity) = activity {
+                        w.activity.insert(activity.body, activity);
+                    }
                 }
-                if body(s, *id, r)?.owner != owner {
-                    return Err(GameError::NotOwned.into());
-                }
-                signal(&mut w, *id, i, ActivityCause::Foreground);
+                ForegroundActivity::Rejected(error) => return Err(error.into()),
             }
-            let p = w
-                .policies
-                .get_mut(&owner)
-                .ok_or_else(|| invariant("missing player policy"))?;
-            p.last_presence_at = p.last_presence_at.max(i.at);
-            p.revision = p.revision.checked_add(1).ok_or(GameError::NumericRange)?;
             if let Some(link) = &facts.requested_pair {
                 if link.presence != i.id
                     || link.player != owner
@@ -1018,7 +1071,7 @@ pub(crate) fn resolve(
             c.bodies.push(b);
             for x in &q.intent.ships {
                 inventory(&mut c, s, origin.id, owner, x.ship_type, -x.count)?;
-                let lots = take_asset_lots(
+                let lots = take_asset_quantity(
                     &mut w.lots,
                     owner,
                     item(x.ship_type),
@@ -1118,7 +1171,7 @@ pub(crate) fn resolve(
                 f.due_at = deadline(i.at, return_duration)?;
                 schedule(&mut c, i, &f);
             }
-            if recall_reports == RecallReports::LegacyReplay
+            if format == TransitionFormat::LegacyRecallReports
                 && (return_duration != 0 || is_probe_only_espionage(&f))
             {
                 own_report(s, &mut w, i, &f, "Recalled");
@@ -1190,7 +1243,7 @@ pub(crate) fn resolve(
                                 credit(&mut c, s, id, cargo, i.at, r)?;
                                 for ship in &f.ships {
                                     inventory(&mut c, s, id, f.owner, ship.ship_type, ship.count)?;
-                                    let lots = take_asset_lots(
+                                    let lots = take_asset_quantity(
                                         &mut w.lots,
                                         f.owner,
                                         item(ship.ship_type),
@@ -1463,27 +1516,29 @@ pub(crate) fn resolve(
         }
         _ => {
             c = crate::progression::resolve(s, i, r)?;
-            progression_valuation(s, i, &c, &mut w)?;
+            progression_valuation(s, r, &c, &mut w, historical_prices.then_some(i))?;
         }
     }
-    normalize_asset_lots(&mut w.lots)?;
-    validate_committed_value_capacity(s, &c, &w)?;
-    let mut values = std::collections::BTreeMap::<(PlayerId, OperationId), i128>::new();
+    combine_asset_quantities(&mut w.lots)?;
+    validate_committed_value_capacity(s, &c, &w, (!historical_prices).then_some(r))?;
+    let mut values = std::collections::BTreeMap::<(PlayerId, Option<OperationId>), i128>::new();
     for lot in &facts.records.lots {
-        *values.entry((lot.owner, lot.id)).or_default() -=
-            i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
+        *values
+            .entry((lot.owner, lot.acquisition.as_ref().map(|a| a.id)))
+            .or_default() -= i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
     }
     for lot in &w.lots {
-        *values.entry((lot.owner, lot.id)).or_default() +=
-            i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
+        *values
+            .entry((lot.owner, lot.acquisition.as_ref().map(|a| a.id)))
+            .or_default() += i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
     }
     let mut deltas = vec![];
     for ((player, lot), delta) in values {
         if delta != 0 {
             deltas.push(ScoreLedgerDelta {
+                lot,
                 input: i.id,
                 player,
-                lot,
                 delta: i64::try_from(delta).map_err(|_| invariant("score delta overflow"))?,
                 valuation_hash: r.hash.clone(),
             });

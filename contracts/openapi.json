@@ -8699,6 +8699,52 @@
           }
         }
       }
+    },
+    "/api/v1/universes/{universe}/dispatch-observations": {
+      "post": {
+        "description": "Record bounded browser timing milestones for the signed-in universe member. Requires a same-origin session and CSRF token.",
+        "x-bot-category": "recovery-or-metadata",
+        "parameters": [
+          {
+            "name": "universe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "observations"
+                ],
+                "properties": {
+                  "observations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 24,
+                    "items": {
+                      "$ref": "#/components/schemas/DispatchObservation"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Timings received"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -30609,6 +30655,46 @@
                 ]
               }
             }
+          }
+        }
+      },
+      "DispatchObservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "phase",
+          "elapsed_ms",
+          "foreground"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "review_started_warm",
+              "review_started_cold",
+              "review_ready_reused",
+              "review_ready_fetched",
+              "send_started",
+              "accepted",
+              "outcome_received",
+              "confirmed_visible",
+              "rejected",
+              "uncertain",
+              "not_admitted"
+            ]
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "foreground": {
+            "type": "boolean"
           }
         }
       }

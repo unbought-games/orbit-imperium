@@ -86,51 +86,12 @@ async fn delayed_espionage_preserves_event_affiliation_through_rename_disband_an
     let origin = *snapshot.state.bodies.keys().next().unwrap();
     let (snapshot, _) = store.bound_world(target).await.unwrap().facts;
     let destination = snapshot.state.bodies.values().next().unwrap().clone();
-    // Deterministic fleet fixture, with the exact matching asset value.
-    let rules = store.load_rules(u).await.unwrap();
+    // The stationed quantities also determine each owner’s score.
     sqlx::query("UPDATE bodies SET amounts=jsonb_set(amounts,'{deuterium}',to_jsonb(1000000000::bigint)) WHERE id=$1").bind(origin.0).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO inventories(body,owner,item,count,revision) VALUES($1,$2,$3,1,0) ON CONFLICT(body,owner,item) DO UPDATE SET count=1")
         .bind(origin.0).bind(sender.player.0).bind(sqlx::types::Json(ManufacturedItem::Ship(ShipType::EspionageProbe))).execute(&pool).await.unwrap();
-    let lot = AssetLot {
-        id: OperationId(Uuid::new_v4()),
-        owner: sender.player,
-        item: CatalogKey::Ship(ShipType::EspionageProbe),
-        level: None,
-        location: AssetLocation::Body(origin),
-        quantity: 1,
-        unit_value_micro: 1000 * SCALE,
-        rules_hash: rules.hash.clone(),
-        source_operation: OperationId(Uuid::new_v4()),
-        acquired_at: 1000,
-        acquired_sequence: 1,
-    };
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,'alliance-spy',$2)")
-        .bind(u.0)
-        .bind(sqlx::types::Json(lot))
-        .execute(&pool)
-        .await
-        .unwrap();
     sqlx::query("INSERT INTO inventories(body,owner,item,count,revision) VALUES($1,$2,$3,1,0) ON CONFLICT(body,owner,item) DO UPDATE SET count=1")
         .bind(destination.id.0).bind(target.player.0).bind(sqlx::types::Json(ManufacturedItem::Ship(ShipType::EspionageProbe))).execute(&pool).await.unwrap();
-    let defender_lot = AssetLot {
-        id: OperationId(Uuid::new_v4()),
-        owner: target.player,
-        item: CatalogKey::Ship(ShipType::EspionageProbe),
-        level: None,
-        location: AssetLocation::Body(destination.id),
-        quantity: 1,
-        unit_value_micro: 1000 * SCALE,
-        rules_hash: rules.hash.clone(),
-        source_operation: OperationId(Uuid::new_v4()),
-        acquired_at: 1000,
-        acquired_sequence: 1,
-    };
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,'alliance-defender-spy',$2)")
-        .bind(u.0)
-        .bind(sqlx::types::Json(defender_lot))
-        .execute(&pool)
-        .await
-        .unwrap();
     store.prepare_scoped_runtime(u, 100).await.unwrap();
     store.activate_scoped_runtime(u).await.unwrap();
     let intent = FleetIntent {

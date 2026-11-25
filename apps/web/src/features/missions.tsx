@@ -12,6 +12,8 @@ import type { DispatchNavigation } from './routed-dispatch'
 import { DispatchView } from './dispatch-view'
 type S = components['schemas']
 export type DispatchDraft = {
+  cargo?: import('../client-model/dispatch-cargo').CargoDraft
+  holdHours?: NonNullable<S['FleetIntent4']['hold_hours']>
   reviewOnOpen?: boolean
   attackGroup?: string
   ships?: Record<string, string>
@@ -31,6 +33,7 @@ export function Dispatch(props: {
   body: S['BodyV3']
   draft: DispatchDraft | null
   navigation?: DispatchNavigation
+  embedded?: boolean
 }) {
   const universeName = useUniverseName()
   const occupiedSlots = useStore(props.model.store, occupiedFleetSlots)

@@ -519,7 +519,7 @@ fn same_time_group_recall_returns_inline_and_cancels_its_only_event() {
             .iter()
             .any(|e| matches!(e, ScheduledEvent::AttackGroupDue { .. }))
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]

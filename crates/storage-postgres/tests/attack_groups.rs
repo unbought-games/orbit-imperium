@@ -155,7 +155,6 @@ async fn assert_presentation_preserves_flight(
         sqlx::query_scalar(
             "SELECT jsonb_build_object(
                 'bodies', (SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM bodies b WHERE universe=$1),
-                'lots', (SELECT jsonb_agg(to_jsonb(l) ORDER BY key) FROM asset_lots l WHERE universe=$1),
                 'objectives', (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM objective_runs r WHERE universe=$1),
                 'sites', (SELECT jsonb_agg(to_jsonb(s) ORDER BY id) FROM mission_sites s WHERE universe=$1),
                 'fleets', (SELECT jsonb_agg(to_jsonb(f) ORDER BY id) FROM mission_fleets f WHERE universe=$1)

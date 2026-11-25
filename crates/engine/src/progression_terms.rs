@@ -412,12 +412,12 @@ pub fn building_terms(
         .buildings
         .get(&building)
         .ok_or(GameError::UnavailableContent)?;
-    let growth = if target == 0 {
-        ratio(r.growth[1], r.growth[0])?
+    let raw = if target == 0 {
+        let inverse = ratio(r.growth[1], r.growth[0])?;
+        std::array::from_fn(|i| integer(r.base[i]) * inverse.clone())
     } else {
-        power(ratio(r.growth[0], r.growth[1])?, target - 1)?
+        level_cost(r, target)?
     };
-    let raw: [Rational; 3] = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
     let robotics = level(body, Building::RoboticsFactory)?;
     let nanite = nanite_level(body, rules)?;
     let b = floor(
@@ -477,6 +477,71 @@ fn astrophysics_payment(raw: &[Rational; 3]) -> Result<Resources, GameError> {
     Ok(Resources::from_values(values))
 }
 
+/// Price an owned asset even when its catalog entry is disabled for new orders.
+pub fn catalog_asset_value(
+    rules: &Ruleset,
+    item: CatalogKey,
+    level: Option<u32>,
+) -> Result<i64, GameError> {
+    let progression = rules
+        .artifact
+        .progression
+        .as_ref()
+        .ok_or(GameError::UnavailableContent)?;
+    let cost = match (item, level) {
+        (CatalogKey::Building(building), Some(level)) => {
+            let terms = rules
+                .artifact
+                .buildings
+                .get(&building)
+                .ok_or(GameError::UnavailableContent)?;
+            paid(&level_cost(terms, level)?)?
+        }
+        (CatalogKey::Research(research), Some(level)) => {
+            research_level_payment(progression, research, level)?
+        }
+        (_, None) => {
+            let cost = progression
+                .unit_costs
+                .iter()
+                .find(|u| u.item.catalog_key() == item)
+                .ok_or(GameError::UnavailableContent)?
+                .cost;
+            return cost
+                .values()
+                .into_iter()
+                .try_fold(0i64, add)?
+                .checked_mul(SCALE)
+                .ok_or(GameError::NumericRange);
+        }
+        _ => return Err(GameError::InvalidInput),
+    };
+    cost.values().into_iter().try_fold(0i64, add)
+}
+fn level_cost(terms: &BuildingRule, level: u32) -> Result<[Rational; 3], GameError> {
+    let source = level.checked_sub(1).ok_or(GameError::InvalidInput)?;
+    let growth = power(ratio(terms.growth[0], terms.growth[1])?, source)?;
+    Ok(std::array::from_fn(|i| {
+        integer(terms.base[i]) * growth.clone()
+    }))
+}
+fn research_level_payment(
+    progression: &ProgressionRules,
+    research: ResearchId,
+    level: u32,
+) -> Result<Resources, GameError> {
+    let terms = progression
+        .research
+        .get(&research)
+        .ok_or(GameError::UnavailableContent)?;
+    let raw = level_cost(terms, level)?;
+    if research == ResearchId::Astrophysics {
+        astrophysics_payment(&raw)
+    } else {
+        paid(&raw)
+    }
+}
+
 /// The payment depends only on completed research and the saved rules, never labs.
 pub fn research_payment(
     levels: &ResearchLevels,
@@ -500,20 +565,15 @@ fn research_requirements(
     if research == ResearchId::GravitonTechnology {
         return Ok((Resources::default(), graviton_required_energy(source)?));
     }
-    let r = &rules
+    let progression = rules
         .artifact
         .progression
         .as_ref()
-        .ok_or(GameError::UnavailableContent)?
-        .research[&research];
-    let growth = power(ratio(r.growth[0], r.growth[1])?, source)?;
-    let raw = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
-    let payment = if research == ResearchId::Astrophysics {
-        astrophysics_payment(&raw)?
-    } else {
-        paid(&raw)?
-    };
-    Ok((payment, 0))
+        .ok_or(GameError::UnavailableContent)?;
+    Ok((
+        research_level_payment(progression, research, source + 1)?,
+        0,
+    ))
 }
 
 /// Single-lab formula primitive for legacy formula fixtures. Gameplay must select

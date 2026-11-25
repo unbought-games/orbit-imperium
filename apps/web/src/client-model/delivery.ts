@@ -47,7 +47,9 @@ export function startGameDelivery(options: Options): DeliveryController {
     const delay =
       (!connected && options.hasPending()) || options.needsSnapshot?.()
         ? 1000 + Math.floor(random() * 1000)
-        : idleDelay()
+        : connected && !options.hasPending()
+          ? 300_000 + Math.floor(random() * 60_000)
+          : idleDelay()
     // Reconcile at due work even on a healthy stream. If the server still
     // reports it active, retry with a one-second floor rather than a busy loop.
     return Math.min(

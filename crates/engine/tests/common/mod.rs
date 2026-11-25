@@ -67,6 +67,7 @@ pub fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
         )]),
         constructions: BTreeMap::new(),
         coverage: FactCoverage {
+            manufacturing_due_count: None,
             moon_removal_bodies: Default::default(),
             production_bodies: Default::default(),
             research_operation_ids: Default::default(),

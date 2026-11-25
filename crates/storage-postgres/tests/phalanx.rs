@@ -142,26 +142,6 @@ async fn setup(scoped: bool, fuel: i64) -> Fixture {
         .execute(&pool)
         .await
         .unwrap();
-    let lot = AssetLot {
-        id: OperationId(Uuid::new_v4()),
-        owner: b.player,
-        item: CatalogKey::Building(Building::SensorPhalanx),
-        level: Some(1),
-        location: AssetLocation::Body(moon),
-        quantity: 1,
-        unit_value_micro: 80000 * SCALE,
-        rules_hash: rules.hash.clone(),
-        source_operation: OperationId(input.0),
-        acquired_at: AT,
-        acquired_sequence: 0,
-    };
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-        .bind(u.0)
-        .bind(lot.id.to_string())
-        .bind(sqlx::types::Json(lot))
-        .execute(&pool)
-        .await
-        .unwrap();
     Fixture {
         store,
         pool,
@@ -365,9 +345,6 @@ async fn membership_revalidation_and_atomic_fault_recovery_do_not_duplicate_obse
     game.world_submit(principal(f.b), pair.clone())
         .await
         .unwrap();
-    game.step_scoped(f.u, WorkerId(Uuid::new_v4()), &InlineEngine)
-        .await
-        .unwrap(); // paired presence
     let claim = f
         .store
         .claim_scoped(f.u, WorkerId(Uuid::new_v4()))
@@ -1008,9 +985,6 @@ async fn endpoint_loader_observes_group_initiator_delays_hold_extensions_and_sep
     game.world_submit(principal(f.b), pair.clone())
         .await
         .unwrap();
-    game.step_scoped(f.u, WorkerId(Uuid::new_v4()), &InlineEngine)
-        .await
-        .unwrap();
     let claim = f
         .store
         .claim_scoped(f.u, WorkerId(Uuid::new_v4()))
@@ -1069,9 +1043,6 @@ async fn endpoint_loader_observes_group_initiator_delays_hold_extensions_and_sep
     // A missile becoming terminal invalidates a tentative scan too.
     let next = scan(&f);
     game.world_submit(principal(f.b), next.clone())
-        .await
-        .unwrap();
-    game.step_scoped(f.u, WorkerId(Uuid::new_v4()), &InlineEngine)
         .await
         .unwrap();
     let claim = f
@@ -1138,9 +1109,6 @@ async fn pending_deactivation_fences_new_scan_admission_but_preserves_prior_clai
     let game = GameService::new(f.store.clone());
     let pair = scan(&f);
     game.world_submit(principal(f.b), pair.clone())
-        .await
-        .unwrap();
-    game.step_scoped(f.u, WorkerId(Uuid::new_v4()), &InlineEngine)
         .await
         .unwrap();
     let claim = f

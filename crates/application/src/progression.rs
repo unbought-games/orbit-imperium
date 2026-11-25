@@ -303,8 +303,7 @@ impl<S: GameStore> GameService<S> {
         u: UniverseId,
         protocol: i32,
     ) -> Result<(), ServiceError> {
-        self.store.current_binding(account, u).await?;
-        if self.store.load_rules(u).await?.protocol() != protocol {
+        if self.store.member_protocol(account, u).await? != protocol {
             return Err(ServiceError::UnsupportedProtocol);
         }
         Ok(())

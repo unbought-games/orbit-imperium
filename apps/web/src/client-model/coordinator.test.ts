@@ -2019,3 +2019,74 @@ it('explains an action blocked by an earlier quiet session refresh without queue
   expect(sent).toHaveLength(0)
   expect(c.ledger.size).toBe(0)
 })
+
+it.each(['Invalidate', 'Reset'] as const)(
+  'delivers the next stream outcome while %s is fetching the overview',
+  async (eventType) => {
+    const { c, port } = setup()
+    await c.connect(binding.account, binding.universe)
+    const commandId = await c.send({
+      type: 'CancelConstruction',
+      operation: id(50),
+    })
+    let release!: () => void
+    let reconciled!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const refreshed = new Promise<void>((resolve) => {
+      reconciled = resolve
+    })
+    port.view = async (context, minimum) => {
+      await gate
+      return view(context.request_id, minimum ?? '2')
+    }
+    const key = attemptKey(binding, commandId!)
+    const unsubscribe = c.subscribe((state) => {
+      if (state.attempts.get(key)?.reconciled) reconciled()
+    })
+    try {
+      await c.onUpdate(
+        {
+          binding,
+          cursor: 'first',
+          event:
+            eventType === 'Reset'
+              ? { type: 'Reset' }
+              : { type: 'Invalidate', minimum_viewer_revision: '2' },
+        },
+        true,
+      )
+      await c.onUpdate(
+        {
+          binding,
+          cursor: 'next',
+          event: {
+            type: 'Outcome',
+            receipt: {
+              protocol: 2,
+              binding,
+              command_id: commandId!,
+              admitted_at: 1000,
+              executed_at: 1000,
+              status: 'Committed',
+              result_ids: [],
+              minimum_viewer_revision: '2',
+            },
+          },
+        },
+        true,
+      )
+      expect(c.ledger.get(key)).toMatchObject({
+        status: 'committed',
+        reconciled: false,
+      })
+      release()
+      await refreshed
+      expect(c.view?.viewer_revision).toBe('2')
+    } finally {
+      release()
+      unsubscribe()
+    }
+  },
+)

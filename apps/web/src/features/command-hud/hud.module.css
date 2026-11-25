@@ -439,6 +439,10 @@
   animation: toastLife 7s both !important;
   transform-origin: right bottom;
 }
+.toast[data-fleet-launch] {
+  --toast-entry-opacity: 1;
+  --toast-entry-transform: none;
+}
 .toast::after {
   content: '';
   position: absolute;
@@ -966,8 +970,8 @@
 }
 @keyframes toastLife {
   0% {
-    opacity: 0;
-    transform: translateX(24px) scale(0.9);
+    opacity: var(--toast-entry-opacity, 0);
+    transform: var(--toast-entry-transform, translateX(24px) scale(0.9));
   }
   6%,
   87% {

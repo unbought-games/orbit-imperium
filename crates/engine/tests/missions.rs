@@ -96,14 +96,11 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
                 revision: 0,
             },
         );
-        for (index, ship) in [
+        for ship in [
             ShipType::SmallCargo,
             ShipType::Recycler,
             ShipType::EspionageProbe,
-        ]
-        .into_iter()
-        .enumerate()
-        {
+        ] {
             s.inventories.push(InventoryStack {
                 body: body.id,
                 owner: body.owner,
@@ -121,19 +118,14 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
                 .find(|u| u.item == ManufacturedItem::Ship(ship))
                 .unwrap()
                 .cost;
-            let id = OperationId(derived_id(InputId(body.id.0), &format!("seed-{index}")));
-            w.lots.push(AssetLot {
-                id,
+            w.lots.push(CatalogHolding {
+                acquisition: None,
                 owner: body.owner,
                 item: CatalogKey::Ship(ship),
                 level: None,
                 location: AssetLocation::Body(body.id),
                 quantity: 2,
                 unit_value_micro: cost.values().iter().sum::<i64>() * SCALE,
-                rules_hash: r.hash.clone(),
-                source_operation: id,
-                acquired_at: 0,
-                acquired_sequence: index as i64,
             });
         }
     }
@@ -160,7 +152,7 @@ fn fixture_with_rules(r: Ruleset) -> (GameState, Ruleset, PlayerId, BodyId, Body
         requested_pair: None,
         revision: 0,
     });
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     (s, r, p, b, target)
 }
 fn intent(s: &GameState, p: PlayerId, b: BodyId, t: BodyId) -> FleetIntent {
@@ -298,7 +290,7 @@ fn transport_restart(r: Ruleset) {
     assert_eq!(accepted, &q);
     assert_eq!(accepted.profile_hash, r.hash);
 
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     assert_eq!(
         value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap(),
         value
@@ -356,7 +348,7 @@ fn transport_restart(r: Ruleset) {
     let event = c.events[0].clone();
     let result = run(&mut s, &r, p, b, event.at, 103, Input::Event(event.event));
     apply(&mut s, result);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     assert_eq!(
         s.inventories
             .iter()
@@ -426,7 +418,7 @@ fn zero_elapsed_recall_is_inline_and_never_refunds_fuel() {
             ..before
         }
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn absent_lineage_and_unpaired_gameplay_fail_closed() {
@@ -737,19 +729,14 @@ fn equal_time_collectors_serialize_and_empty_marker_remains_eligible() {
         .unwrap()
         .levels
         .insert(ResearchId::ComputerTechnology, 1);
-    let lot = OperationId(Uuid::from_u128(801));
-    s.world.as_mut().unwrap().records.lots.push(AssetLot {
-        id: lot,
+    s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+        acquisition: None,
         owner: p,
         item: CatalogKey::Research(ResearchId::ComputerTechnology),
         level: Some(1),
         location: AssetLocation::Player,
         quantity: 1,
         unit_value_micro: 1000 * SCALE,
-        rules_hash: r.hash.clone(),
-        source_operation: lot,
-        acquired_at: 0,
-        acquired_sequence: 0,
     });
     let field = OperationId(Uuid::from_u128(802));
     let coordinates = s.bodies[&b].coordinates;
@@ -862,7 +849,7 @@ fn equal_time_collectors_serialize_and_empty_marker_remains_eligible() {
             debris_reference_count(field, s.world.as_ref().unwrap().records.fleets.values()),
             1 - n
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 #[test]
@@ -917,7 +904,6 @@ fn unrepresentable_return_blocks_instead_of_consuming_the_obligation() {
 #[test]
 fn unrepresentable_future_score_rejects_prepaid_work_before_debit() {
     let (mut s, r, p, b, _) = fixture();
-    let mut n = 900u128;
     for (key, levels) in [
         (CatalogKey::Building(Building::RoboticsFactory), 2),
         (CatalogKey::Building(Building::Shipyard), 2),
@@ -933,10 +919,8 @@ fn unrepresentable_future_score_rejects_prepaid_work_before_debit() {
             _ => unreachable!(),
         }
         for level in 1..=levels {
-            n += 1;
-            let id = OperationId(Uuid::from_u128(n));
-            s.world.as_mut().unwrap().records.lots.push(AssetLot {
-                id,
+            s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+                acquisition: None,
                 owner: p,
                 item: key,
                 level: Some(level),
@@ -947,10 +931,6 @@ fn unrepresentable_future_score_rejects_prepaid_work_before_debit() {
                 },
                 quantity: 1,
                 unit_value_micro: SCALE,
-                rules_hash: r.hash.clone(),
-                source_operation: id,
-                acquired_at: 0,
-                acquired_sequence: n as i64,
             });
         }
     }
@@ -991,9 +971,6 @@ fn raid_fixture() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b, t) = fixture();
     let r = Ruleset::mvp_raids().unwrap();
     s.profile_hash = r.hash.clone();
-    for lot in &mut s.world.as_mut().unwrap().records.lots {
-        lot.rules_hash = r.hash.clone();
-    }
     for policy in s.world.as_mut().unwrap().records.policies.values_mut() {
         policy.policy_hash = r.hash.clone();
     }
@@ -1174,7 +1151,7 @@ fn attack_empty_contact_loots_once_retains_fractions_and_original_return() {
         value_completed_assets(&s.world.as_ref().unwrap().records.lots, p).unwrap(),
         invested_before
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn attack_is_unavailable_in_retained_fleet_profile() {
@@ -1213,10 +1190,6 @@ fn set_units(s: &mut GameState, r: &Ruleset, body: BodyId, item: ManufacturedIte
         count,
         revision: 0,
     });
-    let id = OperationId(derived_id(
-        InputId(body.0),
-        &format!("raid-fixture:{item:?}"),
-    ));
     let cost = r
         .artifact
         .progression
@@ -1231,18 +1204,14 @@ fn set_units(s: &mut GameState, r: &Ruleset, body: BodyId, item: ManufacturedIte
         .iter()
         .sum::<i64>()
         * SCALE;
-    s.world.as_mut().unwrap().records.lots.push(AssetLot {
-        id,
+    s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+        acquisition: None,
         owner,
         item: key,
         level: None,
         location: AssetLocation::Body(body),
         quantity: count,
         unit_value_micro: cost,
-        rules_hash: r.hash.clone(),
-        source_operation: id,
-        acquired_at: 0,
-        acquired_sequence: 0,
     });
 }
 fn clear_units(s: &mut GameState, t: BodyId) {
@@ -1459,7 +1428,7 @@ fn first_round_loss(lunar: bool) {
             .iter()
             .any(|a| a["kind"] == "AttackEvidence")
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn missing_or_reowned_target_returns_without_combat_loot_or_contact_evidence() {
@@ -1647,7 +1616,7 @@ fn all_attack_outcomes_share_settlement_and_only_victory_plunders() {
             evidence,
             usize::from(matches!(outcome, "AttackerVictory" | "Draw"))
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         if outcomes.len() == 4 {
             break;
         }
@@ -1735,7 +1704,7 @@ fn loaded_fleet_losses_trim_only_overflow_before_plunder_and_preserve_paid_lots(
             if cap < 24000 * SCALE && cap > 100 * SCALE {
                 saw_loss = true;
             }
-            validate_asset_lineage(&s).unwrap();
+            validate_completed_assets(&s).unwrap();
         }
         if saw_loss {
             break;
@@ -2030,19 +1999,14 @@ fn competing_attacks_cannot_double_spend_last_ship_resources_or_slot() {
                 .unwrap()
                 .levels
                 .insert(ResearchId::ComputerTechnology, 1);
-            let id = OperationId(Uuid::from_u128(2000));
-            s.world.as_mut().unwrap().records.lots.push(AssetLot {
-                id,
+            s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+                acquisition: None,
                 owner: p,
                 item: CatalogKey::Research(ResearchId::ComputerTechnology),
                 level: Some(1),
                 location: AssetLocation::Player,
                 quantity: 1,
                 unit_value_micro: 1000 * SCALE,
-                rules_hash: r.hash.clone(),
-                source_operation: id,
-                acquired_at: 0,
-                acquired_sequence: 0,
             });
         }
         if guard == GameError::InsufficientResources {
@@ -2086,23 +2050,18 @@ fn competing_attacks_cannot_double_spend_last_ship_resources_or_slot() {
     }
 }
 
-fn fixture_building(s: &mut GameState, r: &Ruleset, b: BodyId, k: Building, levels: u32) {
+fn fixture_building(s: &mut GameState, _r: &Ruleset, b: BodyId, k: Building, levels: u32) {
     let owner = s.bodies[&b].owner;
     s.bodies.get_mut(&b).unwrap().levels.insert(k, levels);
     for level in 1..=levels {
-        let id = OperationId(derived_id(InputId(b.0), &format!("fixture:{k:?}:{level}")));
-        s.world.as_mut().unwrap().records.lots.push(AssetLot {
-            id,
+        s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+            acquisition: None,
             owner,
             item: CatalogKey::Building(k),
             level: Some(level),
             location: AssetLocation::Body(b),
             quantity: 1,
             unit_value_micro: 1000 * SCALE,
-            rules_hash: r.hash.clone(),
-            source_operation: id,
-            acquired_at: 0,
-            acquired_sequence: 0,
         });
     }
 }
@@ -2261,7 +2220,7 @@ fn equal_millisecond_research_manufacture_and_contact_use_supplied_durable_order
             s.world.as_ref().unwrap().records.reports[&report.id],
             report
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 
@@ -2363,19 +2322,14 @@ fn simultaneous_attack_arrivals_debit_remaining_stock_once_in_sequence() {
         .unwrap()
         .levels
         .insert(ResearchId::ComputerTechnology, 1);
-    let id = OperationId(Uuid::from_u128(2300));
-    s.world.as_mut().unwrap().records.lots.push(AssetLot {
-        id,
+    s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+        acquisition: None,
         owner: p,
         item: CatalogKey::Research(ResearchId::ComputerTechnology),
         level: Some(1),
         location: AssetLocation::Player,
         quantity: 1,
         unit_value_micro: 1000 * SCALE,
-        rules_hash: r.hash.clone(),
-        source_operation: id,
-        acquired_at: 0,
-        acquired_sequence: 0,
     });
     let mut intent = intent(&s, p, b, t);
     intent.mission = Mission::Attack;
@@ -2647,7 +2601,7 @@ fn impulse_switch_mixed_fuel_stale_quote_and_committed_return() {
         Input::Event(returned.event.clone()),
     );
     apply(&mut s, result);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     s.research
         .get_mut(&p)
         .unwrap()
@@ -2659,7 +2613,13 @@ fn impulse_switch_mixed_fuel_stale_quote_and_committed_return() {
     );
 }
 
-fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: ResearchId, level: u32) {
+fn fixture_research(
+    s: &mut GameState,
+    _r: &Ruleset,
+    p: PlayerId,
+    research: ResearchId,
+    level: u32,
+) {
     let previous = s.research[&p].levels[&research];
     s.research
         .get_mut(&p)
@@ -2667,22 +2627,14 @@ fn fixture_research(s: &mut GameState, r: &Ruleset, p: PlayerId, research: Resea
         .levels
         .insert(research, level);
     for increment in previous + 1..=level {
-        let id = OperationId(derived_id(
-            InputId(p.0),
-            &format!("fixture:{research:?}:{increment}"),
-        ));
-        s.world.as_mut().unwrap().records.lots.push(AssetLot {
-            id,
+        s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+            acquisition: None,
             owner: p,
             item: CatalogKey::Research(research),
             level: Some(increment),
             location: AssetLocation::Player,
             quantity: 1,
             unit_value_micro: 1000 * SCALE,
-            rules_hash: r.hash.clone(),
-            source_operation: id,
-            acquired_at: 0,
-            acquired_sequence: 0,
         });
     }
 }
@@ -3237,7 +3189,7 @@ fn large_shield_dome_raid_reports_destruction_and_recovery_without_defense_debri
         assert_eq!(counts("recovered"), recover.to_string());
         assert_eq!(report["debris"]["metal"], "0");
         assert_eq!(report["debris"]["crystal"], "0");
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 

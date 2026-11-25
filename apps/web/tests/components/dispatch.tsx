@@ -34,7 +34,7 @@ type Variant =
   | 'prepared-blocked'
 export type DispatchSceneControl = Pick<
   DispatchFixture,
-  'snapshot' | 'hold' | 'release' | 'configure'
+  'snapshot' | 'hold' | 'release' | 'configure' | 'settleLaunch'
 > & {
   setOrigin: (id: string) => void
 }

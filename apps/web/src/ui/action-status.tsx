@@ -1,3 +1,4 @@
+import { FailedDispatch } from '../features/failed-dispatch'
 import { connectionStatus } from '../client-model/connection-status'
 import { ConnectionNotice } from './connection-notice'
 import styles from './action-status.module.css'
@@ -135,19 +136,26 @@ function OrderError({
         </strong>{' '}
         · {actionMessage(attempt)}
       </p>
-      {attempt.status === 'uncertain' ? (
-        <Button
-          type="button"
-          disabled={state.now < state.retryAt}
-          onClick={() => void model.retryOrder(attempt.envelope.command_id)}
-        >
-          Retry order
-        </Button>
-      ) : (
-        <Button onClick={() => void model.dismiss(attempt.envelope.command_id)}>
-          Dismiss notice
-        </Button>
-      )}
+      <div className={styles.orderActions}>
+        {attempt.status === 'rejected' && (
+          <FailedDispatch model={model} attempt={attempt} />
+        )}
+        {attempt.status === 'uncertain' ? (
+          <Button
+            type="button"
+            disabled={state.now < state.retryAt}
+            onClick={() => void model.retryOrder(attempt.envelope.command_id)}
+          >
+            Retry order
+          </Button>
+        ) : (
+          <Button
+            onClick={() => void model.dismiss(attempt.envelope.command_id)}
+          >
+            Dismiss notice
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

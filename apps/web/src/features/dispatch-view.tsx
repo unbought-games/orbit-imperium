@@ -41,6 +41,7 @@ import { bodyName } from '../ui/format'
 import { formatWholeNumber } from '../ui/whole-number'
 type S = components['schemas']
 export type DispatchViewProps = {
+  embedded?: boolean
   model: Coordinator
   view: S['BoundView4']
   body: S['BodyV3']
@@ -60,6 +61,7 @@ export function DispatchView({
   universeName,
   occupiedSlots,
   recentlyCopied,
+  embedded,
   dispatch,
 }: DispatchViewProps) {
   const {
@@ -127,41 +129,54 @@ export function DispatchView({
           : `${formatWholeNumber(reportSalvage.needed)} ${reportSalvage.needed === '1' ? 'recycler' : 'recyclers'} needed to clear this field.`
   const destinationNotice =
     (targetProblem !== salvageProblem ? targetProblem : '') || attackWarning
+  const feedback = (
+    <DispatchFeedback
+      model={model}
+      attempt={submittedAttempt}
+      destination={submittedCoordinates}
+      origin={body.id}
+    />
+  )
   return (
     <Section className={styles.screen}>
-      <header className={styles.dispatchHeader} aria-label="Dispatch header">
-        <div className={styles.dispatchTitle}>
-          {quote ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon-small"
-              aria-label="Back to edit mission"
-              title="Back to edit mission"
-              disabled={dispatch.sending}
-              onClick={dispatch.editReview}
-            >
-              <ArrowLeft size={18} aria-hidden="true" />
-            </Button>
-          ) : (
-            <ButtonLink
-              variant="secondary"
-              size="icon-small"
-              aria-label="Back to fleets"
-              title="Back to fleets"
-              {...routeTarget(universeName, 'fleets', body.id)}
-            >
-              <ArrowLeft size={18} aria-hidden="true" />
-            </ButtonLink>
-          )}
-          <Heading level={2} className={styles.dispatchHeading}>
-            Dispatch
-          </Heading>
-        </div>
-        <div className={styles.dispatchHeaderActions}>
-          <FleetSlots used={occupiedSlots} total={view.missions.fleet_slots} />
-        </div>
-      </header>
+      {(!embedded || quote) && (
+        <header className={styles.dispatchHeader} aria-label="Dispatch header">
+          <div className={styles.dispatchTitle}>
+            {quote ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon-small"
+                aria-label="Back to edit mission"
+                title="Back to edit mission"
+                disabled={dispatch.sending}
+                onClick={dispatch.editReview}
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+              </Button>
+            ) : (
+              <ButtonLink
+                variant="secondary"
+                size="icon-small"
+                aria-label="Back to fleets"
+                title="Back to fleets"
+                {...routeTarget(universeName, 'fleets', body.id)}
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+              </ButtonLink>
+            )}
+            <Heading level={2} className={styles.dispatchHeading}>
+              {embedded ? 'Fleet review' : 'Dispatch'}
+            </Heading>
+          </div>
+          <div className={styles.dispatchHeaderActions}>
+            <FleetSlots
+              used={occupiedSlots}
+              total={view.missions.fleet_slots}
+            />
+          </div>
+        </header>
+      )}
       {entryNotice && error && (
         <Text tone="danger" role="alert">
           {error}
@@ -464,12 +479,7 @@ export function DispatchView({
               </ButtonLink>
             </div>
           )}
-          <DispatchFeedback
-            model={model}
-            attempt={submittedAttempt}
-            destination={submittedCoordinates}
-            origin={body.id}
-          />
+          {feedback}
           <Button
             ref={reviewButtonRef}
             disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}

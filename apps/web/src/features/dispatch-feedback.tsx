@@ -1,3 +1,5 @@
+import { useCallback, useRef } from 'react'
+import { useDispatchPaint } from './use-dispatch-paint'
 import { label } from '../ui/format'
 import { useStore } from 'zustand'
 import { siteContext } from './tutorial/model'
@@ -20,6 +22,17 @@ export function DispatchFeedback({
   origin: string
 }) {
   const tutorial = useStore(model.store, (s) => s.tutorial.data)
+  const messageRef = useRef<HTMLParagraphElement>(null)
+  const commandId = attempt?.envelope.command_id
+  const confirmVisible = useCallback(() => {
+    if (commandId)
+      model.dispatchObservations.mark(commandId, 'confirmed_visible')
+  }, [model, commandId])
+  useDispatchPaint(
+    messageRef,
+    attempt?.status === 'committed' ? confirmVisible : undefined,
+    true,
+  )
   const command = attempt?.envelope.command
   if (
     !attempt ||
@@ -36,9 +49,9 @@ export function DispatchFeedback({
     attempt.status === 'committed'
       ? attempt.reconciled
         ? command.action.intent.destination.type === 'Site'
-          ? 'Fleet sent. Follow its journey in Fleets.'
-          : 'Fleet sent. You can prepare another fleet.'
-        : 'Fleet sent. Updating ships, resources and fleet activity…'
+          ? 'Fleet dispatched. Follow its journey in Fleets.'
+          : 'Fleet dispatched. You can prepare another fleet.'
+        : 'Fleet dispatched. Updating ships, resources and fleet activity…'
       : attempt.status === 'submitting'
         ? 'Sending fleet order…'
         : 'Order accepted. Waiting for launch confirmation…'
@@ -76,7 +89,7 @@ export function DispatchFeedback({
             />
           )}
         </strong>
-        <p>{message}</p>
+        <p ref={messageRef}>{message}</p>
       </div>
     </div>
   )

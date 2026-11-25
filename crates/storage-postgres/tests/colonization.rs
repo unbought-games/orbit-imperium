@@ -87,46 +87,13 @@ async fn setup() -> (PgStore, PgPool, Binding, Binding) {
 }
 async fn equip(store: &PgStore, pool: &PgPool, b: Binding) -> BodyId {
     let (snapshot, _) = store.bound_world(b).await.unwrap().facts;
-    let mut state = snapshot.state;
-    let rules = snapshot.rules;
+    let state = snapshot.state;
     let body = state.bodies.values().next().unwrap().clone();
     for (key, value) in [
         (ResearchId::ImpulseDrive, 3),
         (ResearchId::Astrophysics, 1),
         (ResearchId::ComputerTechnology, 3),
     ] {
-        for n in 1..=value {
-            state
-                .research
-                .get_mut(&b.player)
-                .unwrap()
-                .levels
-                .insert(key, n - 1);
-            let paid = research_terms(&body, &state.research[&b.player], key, &rules)
-                .unwrap()
-                .paid();
-            let id = OperationId(Uuid::new_v4());
-            let lot = AssetLot {
-                id,
-                owner: b.player,
-                item: CatalogKey::Research(key),
-                level: Some(n),
-                location: AssetLocation::Player,
-                quantity: 1,
-                unit_value_micro: paid.values().iter().sum(),
-                rules_hash: rules.hash.clone(),
-                source_operation: id,
-                acquired_at: 1000,
-                acquired_sequence: 0,
-            };
-            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-                .bind(b.universe.0)
-                .bind(id.to_string())
-                .bind(sqlx::types::Json(lot))
-                .execute(pool)
-                .await
-                .unwrap();
-        }
         sqlx::query("UPDATE research_levels SET level=$3 WHERE owner=$1 AND research=$2")
             .bind(b.player.0)
             .bind(format!("{key:?}"))
@@ -135,28 +102,7 @@ async fn equip(store: &PgStore, pool: &PgPool, b: Binding) -> BodyId {
             .await
             .unwrap();
     }
-    let id = OperationId(Uuid::new_v4());
     let item = ManufacturedItem::Ship(ShipType::ColonyShip);
-    let lot = AssetLot {
-        id,
-        owner: b.player,
-        item: CatalogKey::Ship(ShipType::ColonyShip),
-        level: None,
-        location: AssetLocation::Body(body.id),
-        quantity: 3,
-        unit_value_micro: 40000 * SCALE,
-        rules_hash: rules.hash.clone(),
-        source_operation: id,
-        acquired_at: 1000,
-        acquired_sequence: 0,
-    };
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-        .bind(b.universe.0)
-        .bind(id.to_string())
-        .bind(sqlx::types::Json(lot))
-        .execute(pool)
-        .await
-        .unwrap();
     sqlx::query("INSERT INTO inventories(body,owner,item,count,revision) VALUES($1,$2,$3,3,0)")
         .bind(body.id.0)
         .bind(b.player.0)
@@ -279,14 +225,12 @@ async fn launch(
     store.bound_admit4(pair.clone()).await.unwrap();
     store.bound_admit4(pair).await.unwrap();
     let game = GameService::new(store.clone());
-    for _ in 0..2 {
-        assert!(matches!(
-            game.step_scoped(b.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
-                .await
-                .unwrap(),
-            StepOutcome::Committed { .. }
-        ));
-    }
+    assert!(matches!(
+        game.step_scoped(b.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
+            .await
+            .unwrap(),
+        StepOutcome::Committed { .. }
+    ));
     let receipt = store.bound_receipt(b, id).await.unwrap();
     assert!(
         matches!(receipt.status, ReceiptStatus::Committed { .. }),
@@ -401,7 +345,7 @@ async fn colony_creation_is_atomic_replayable_private_and_usable_after_restart()
         snap.state.production_settings[&colony.id].settings,
         ProductionSettings::default()
     );
-    validate_asset_lineage(&snap.state).unwrap();
+    validate_completed_assets(&snap.state).unwrap();
     let game = GameService::new(reopened.clone());
     let principal = Principal {
         account: first.account,
@@ -753,11 +697,9 @@ async fn submit_local(
     };
     store.bound_admit4(pair.clone()).await.unwrap();
     let game = GameService::new(store.clone());
-    for _ in 0..2 {
-        game.step_scoped(b.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
-            .await
-            .unwrap();
-    }
+    game.step_scoped(b.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
+        .await
+        .unwrap();
     let receipt = store.bound_receipt(b, id).await.unwrap();
     assert!(
         matches!(receipt.status, ReceiptStatus::Committed { .. }),

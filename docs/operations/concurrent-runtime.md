@@ -16,13 +16,20 @@ flowchart LR
   Worker --> CPU[Bounded CPU threads]
   CPU -->|atomic fenced result| DB
   DB -->|durable recipient updates| API
-  DB -. LISTEN / NOTIFY wakeup .-> API
+  DB -. recipient wakeup .-> API
+  DB -. work and deadline wakeup .-> Worker
   API -->|authenticated SSE and replay| Client
 ```
 
 API instances serve committed snapshots during catch-up. Workers claim complete player/location scopes, renew their 15-second leases every five seconds, compute without holding a database connection, and validate ownership immediately before publication. Independent scopes execute concurrently; overlapping work retains chronological order. A contested player remains a genuine sequential dependency.
 
 One PostgreSQL listener per API process wakes recipient-specific stream subscribers. Notifications are hints; committed update rows and receipts are the recovery path. Session revocation wakes the affected account's streams so they reauthorize and close. Reconnection works through any healthy API instance without affinity.
+
+A worker with no running tasks borrows a worker-pool connection to listen for committed orders, events and barriers. It checks durable heads after subscribing, sleeps until the next event or notification, and checks again within one second after a missed wakeup. Active tasks retain the control pool for claim fencing and renewal.
+
+New V4 pairs retain both command IDs and receipts. The worker evaluates the gesture before gameplay at their common ordered instant and commits both outcomes together. A valid gesture updates the player's activity even when the order fails. Standalone visits and pairs already queued by an earlier release keep their own turns.
+
+Workers settle consecutive overdue manufacturing units up to the next pending input or rules boundary. A claim's ordering frontier bounds the catch-up interval. The worker keeps each solar satellite and each unit needed for a pending manufacture objective on its individual deadline, and splits batches at UTC-hour boundaries.
 
 ## Configuration and connection budget
 
@@ -123,6 +130,15 @@ Scoped rules activation is a durable global boundary. Earlier inputs settle firs
 For a stranded scope, inspect its persisted diagnostic, the original pending input and declared scopes, and the relevant authoritative facts. Deploy a compatible engine fix or make a reviewed repair backed by authoritative evidence. Reconcile with the explicit audit where appropriate. Only then clear the affected diagnostic and increment/fence its ownership metadata in canonical scope order. Preserve the accepted input, ID, logical timestamp, randomness, and receipt. Never turn an engine fault into a gameplay rejection, delete the command to clear lag, or skip it to run a later conflicting command.
 
 After scoped activation, rollback is limited to binaries that understand scoped claims, fences, rules, and the retained schema. Do not set the executor back to serial or run a pre-bridge binary. Roll forward when the older executable cannot interpret the authority. A deliberate restore is a separate epoch-changing operation, never part of a rolling deployment.
+
+A connected update stream subscribes before its initial cursor read. Recipient
+and revocation notifications prompt immediate replay and authorization checks.
+The server checks for a missed wake every minute for human players. Machine participants retain one-second eligibility checks because their sleep window can begin without a write. An unchanged cursor reads
+the membership and head together and skips history and receipt queries. An idle
+foreground client with a healthy connection reconciles its snapshot every
+five to six minutes. Focus, reconnect, stale revisions, pending work and due
+deadlines retain their own recovery paths. Inbox and message views follow
+recipient changes and retain a two-minute fallback.
 
 Update notifications retain seven days and are pruned in bounded batches. Expired cursors reset to snapshots plus durable receipts; another device consuming a stream never deletes its history. Command receipts and scheduled-event terminal rows independently protect retries. This bridge retains them without introducing expiry or cleanup; notification pruning is not permission to discard accepted-order identity. Full-state transition history is no longer written. Diagnostics have finite configured retention and are not retry or replay authority. See [journal removal and staged retention](journal-removal.md).
 

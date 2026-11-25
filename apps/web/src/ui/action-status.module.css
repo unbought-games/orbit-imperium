@@ -14,3 +14,9 @@
 .older summary {
   cursor: pointer;
 }
+
+.orderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

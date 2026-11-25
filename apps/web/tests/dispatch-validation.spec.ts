@@ -1,4 +1,4 @@
-import { routeWorld } from './fixtures/game'
+import { routeWorld, captureDispatchObservations } from './fixtures/game'
 import { withFixtureResponse } from './fixtures/responses'
 
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
@@ -92,6 +92,8 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
     quotes: 0,
     estimates: 0,
     launches: 0,
+    observations: await captureDispatchObservations(page),
+    lastLaunchId: '',
     hold: null as ((route: Route) => Promise<void>) | null,
   }
   await routeWorld(page, async (route) => {
@@ -187,6 +189,8 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
   await page.route('**/commands', async (route) => {
     const pair = route.request().postDataJSON()
     state.launches++
+    state.lastLaunchId = pair.gameplay.command_id
+    if (!state.launchError) revision++
     await route.fulfill({
       json: {
         protocol: 4,
@@ -199,7 +203,7 @@ async function setup(page: Page, options: { beforeNavigation?: () => Promise<voi
           : {
               status: 'Committed',
               result_ids: [id(80)],
-              minimum_viewer_revision: '1',
+              minimum_viewer_revision: String(revision),
             }),
       },
     })
@@ -319,11 +323,28 @@ test(
     await expect(ship).toHaveValue('1')
     for (const field of cargo) await expect(field).toHaveValue('42')
     await review(page).click()
-    await page
-      .getByRole('button', {
-        name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-      })
-      .click()
+    let overviewStarted = false
+    let releaseOverview!: () => void
+    const heldOverview = new Promise<void>(resolve => {releaseOverview = resolve})
+    await page.route('**/overview', async route => {
+      if (route.request().headers()['x-orbit-minimum-revision'] === '2') {
+        overviewStarted = true
+        await heldOverview
+      }
+      await route.fallback()
+    })
+    try {
+      await page.getByRole('button', {name:/^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /}).click()
+      await expect.poll(() => overviewStarted).toBe(true)
+      const hud = page.getByLabel('Recent game events').getByRole('button', {name:/Fleet dispatched/})
+      await expect(hud).toBeInViewport()
+      await expect(dispatchResult(page)).toContainText('Updating ships, resources and fleet activity')
+      await expect.poll(() => state.observations.filter(o => o.id === state.lastLaunchId && o.foreground).map(o => o.phase)).toEqual(
+        expect.arrayContaining(['send_started', 'accepted', 'outcome_received', 'confirmed_visible']))
+      await withFixtureResponse(page, response => response.url().endsWith('/overview') && response.request().headers()['x-orbit-minimum-revision'] === '2', async () => releaseOverview())
+    } finally {
+      releaseOverview()
+    }
     await expect(ship).toHaveValue('0')
     await expect(page.getByLabel('Light Fighter · 0 available')).toHaveCount(0)
     await page.getByRole('button', { name: /^Show all ships/ }).click()
@@ -336,7 +357,7 @@ test(
     ).toHaveText('Select ships to see flight times.')
     expect(state.launches).toBe(1)
     await expect(dispatchResult(page)).toContainText('Transport to [1:1:1]')
-    await expect(dispatchResult(page)).toContainText('Fleet sent.')
+    await expect(dispatchResult(page)).toContainText('Fleet dispatched.')
     for (const width of [320, 390, 1440]) {
       await page.setViewportSize({ width, height: 900 })
       await review(page).scrollIntoViewIfNeeded()
@@ -427,16 +448,24 @@ test(
   async ({ page }) => {
     const state = await setup(page)
     const metal = page.getByRole('textbox', { name: 'Metal', exact: true })
-    await metal.fill('42')
     const fleetQuote = (response: import('@playwright/test').Response) =>
       response.url().endsWith('/world') &&
       response.request().postDataJSON().type === 'FleetQuote'
-    await withFixtureResponse(page, fleetQuote, () => review(page).click())
+    await withFixtureResponse(page,
+      response => fleetQuote(response) && response.request().postDataJSON().intent.cargo.metal === '42000000',
+      () => metal.fill('42'))
+    const preparedCount = state.quotes
+    await review(page).click()
     const reviewPath = `/u/andromeda/b/${body.id}/dispatch/review`
     await expect(page).toHaveURL(reviewPath)
     const quote = page.getByRole('region', { name: 'Fleet quote' })
     const send = quote.getByRole('button', { name: /Transport to/ })
     await expect(send).toBeEnabled()
+    expect(state.quotes).toBe(preparedCount)
+    await expect.poll(() => {
+      const start = state.observations.find(o => o.phase === 'review_started_warm' && o.foreground)
+      return !!start && state.observations.some(o => o.id === start.id && o.phase === 'review_ready_reused' && o.foreground)
+    }).toBe(true)
 
     const leave = () =>
       page.getByRole('link', { name: 'Fleets', exact: true }).click()
@@ -509,12 +538,14 @@ test('a launch-time cargo change preserves the routed review and Edit cargo reop
   }
   await page.getByRole('radio', {name:'Deploy',exact:true}).check()
   await selectDestinationPlanet(page, id(6))
-  await page.getByRole('button', {name:'Max deuterium', exact:true}).click()
-  const field = page.getByRole('textbox', {name:'Deuterium', exact:true})
-  await expect(field).toHaveValue('3121')
   const original = terms(3000, 'a')
   state.liveQuote = original
-  await withFixtureResponse(page, fleetQuote, () => review(page).click())
+  await withFixtureResponse(page,
+    response => fleetQuote(response) && !!response.request().postDataJSON().intent.cargo_fill,
+    () => page.getByRole('button', {name:'Max deuterium', exact:true}).click())
+  const field = page.getByRole('textbox', {name:'Deuterium', exact:true})
+  await expect(field).toHaveValue('3121')
+  await review(page).click()
   const panel = page.getByRole('region', {name:'Fleet quote'})
   const cargo = panel.getByRole('region', {name:'Fleet and cargo'})
   await expect(page).toHaveURL(dispatchPath + '/review')
@@ -549,8 +580,10 @@ test('a launch-time cargo change preserves the routed review and Edit cargo reop
 
   await panel.getByRole('button', {name:'Edit cargo'}).click()
   await expect(page).toHaveURL(dispatchPath)
-  await field.fill('1000')
-  await withFixtureResponse(page, fleetQuote, () => review(page).click())
+  await withFixtureResponse(page,
+    response => fleetQuote(response) && response.request().postDataJSON().intent.cargo.deuterium === '1000000000',
+    () => field.fill('1000'))
+  await review(page).click()
   await expect(page).toHaveURL(dispatchPath + '/review')
   await expect(cargo).toContainText('1,000')
   state.launchError = null
@@ -559,6 +592,6 @@ test('a launch-time cargo change preserves the routed review and Edit cargo reop
   const intent = (await exact).postDataJSON().gameplay.command.action.intent
   expect(intent.cargo.deuterium).toBe('1000000000')
   expect(intent.cargo_fill).toBeUndefined()
-  await expect(dispatchResult(page)).toContainText('Fleet sent.')
+  await expect(dispatchResult(page)).toContainText('Fleet dispatched.')
   await expect(page).toHaveURL(dispatchPath)
 })

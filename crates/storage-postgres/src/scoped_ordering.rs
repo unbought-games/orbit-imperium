@@ -6,8 +6,6 @@ use sqlx::{Row, postgres::PgRow};
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
-const LEASE_MS: i64 = 15_000;
-
 // Ephemeral scheduler continuation, shared by clones in this process. It changes
 // only where a bounded probe starts; SQL still enforces every dependency.
 type ScanPosition = (i64, i32, i64);
@@ -49,7 +47,7 @@ fn candidate_branch(table: &str, id: &str, phase: i32, live: &str) -> String {
             WHERE s.universe=p.universe AND s.input_id=p.{id} AND (e.blocked IS NOT NULL OR e.lease_until>$2))
         AND NOT EXISTS(SELECT 1 FROM input_scopes mine JOIN input_scopes other ON other.universe=mine.universe AND other.scope_key=mine.scope_key
             WHERE mine.universe=p.universe AND mine.input_id=p.{id} AND (
-                EXISTS(SELECT 1 FROM commands c WHERE c.input_id=other.input_id AND c.universe=other.universe AND NOT c.done AND (c.at_ms,1,c.sequence)<{at})
+                EXISTS(SELECT 1 FROM commands c WHERE c.input_id=other.input_id AND c.universe=other.universe AND NOT c.done AND NOT c.inline_presence AND (c.at_ms,1,c.sequence)<{at})
                 OR EXISTS(SELECT 1 FROM scheduled_events e WHERE e.id=other.input_id AND e.universe=other.universe AND NOT e.done AND NOT e.cancelled AND (e.at_ms,0,e.sequence)<{at})))
         AND NOT EXISTS(SELECT 1 FROM runtime_barriers b WHERE b.universe=p.universe AND NOT b.done AND (b.at_ms,1,b.sequence)<={at})
         ORDER BY p.at_ms,p.sequence LIMIT 1)")
@@ -63,7 +61,12 @@ static CANDIDATE: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
             0,
             "NOT p.done AND NOT p.cancelled"
         ),
-        candidate_branch("commands", "input_id", 1, "NOT p.done"),
+        candidate_branch(
+            "commands",
+            "input_id",
+            1,
+            "NOT p.done AND NOT p.inline_presence"
+        ),
     )
 });
 async fn candidate(
@@ -346,8 +349,16 @@ impl ScopedOrderStore for PgStore {
         if !required.is_subset(&claim.scopes) {
             return Err(StoreError::CorruptData);
         }
-        let snapshot =
+        let mut snapshot =
             crate::scoped_facts::load_execution(&mut tx, &claim.input, &claim.scopes).await?;
+        crate::paired_activity::project(&mut snapshot.state, &claim.input, &snapshot.rules)?;
+        crate::facts::manufacturing_window(
+            &mut tx,
+            &mut snapshot.state,
+            &claim.input,
+            claim.lease_until,
+        )
+        .await?;
         crate::facts::validate_rule_references(&mut tx, &snapshot.state).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(snapshot)

@@ -6,12 +6,17 @@ Opening the page and pressing Refresh both read the current committed standings.
 
 ## Current scores
 
-Each player's `current_score_micro` is the exact sum of quantity times paid unit
-value across their asset lots. Inventory commits write that absolute value in
-the same transaction as the lots. A player who loses their last asset scores
-zero. A change in location preserves paid value. Resources, cargo, fuel and
-unfinished work are excluded. Asset lots remain the authority for rebuilding
-the score.
+Each player's `current_score_micro` is the value of their completed building
+and research levels, stationed units and surviving ships in active fleets at
+the universe's current catalog prices. Each level contributes its own catalog
+upgrade price. Disabled items retain their catalog price. Moving ships between
+locations leaves their owner's score unchanged. Inventory and score changes
+commit together. Resources, cargo, fuel and unfinished work are excluded.
+
+Activating a changed economy recalculates standings in the rules transaction.
+Existing orders keep their paid costs, refunds and deadlines. Their completed
+assets use the catalog in effect when scored. Historical standings keep the
+values observed on their recorded dates.
 
 Existing players can have an uninitialized score during an upgrade. The online
 backfill only writes rows that remain uninitialized, including when gameplay
@@ -45,7 +50,7 @@ baseline shows New. Historical alliance ranks retain the memberships at capture.
 `POST /api/v4/universes/{universe}/rankings` keeps the existing session,
 Origin, CSRF, membership and epoch checks. Its no-store response carries the
 sample time, queued-work indicator, player and alliance rows, baseline time
-and previous ranks. Asset lots and private rosters stay on the server.
+and previous ranks. Individual holdings and private rosters stay on the server.
 
 The page retains the response in its screen-scoped controller. Search, 50-row
 paging, Around me and switching between players and alliances operate on this

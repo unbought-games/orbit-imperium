@@ -1,5 +1,5 @@
 
-import { routeWorld } from './fixtures/game'
+import { routeWorld, captureDispatchObservations } from './fixtures/game'
 import { focusPlayerDetails } from './fixtures/profile-navigation'
 
 import { coordinatePattern } from './fixtures/coordinates'
@@ -304,6 +304,8 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
     fleet_slots: '3',
   }
   await setup(page, null, { missions, viewerRevision: () => String(revision) })
+  const observations = await captureDispatchObservations(page)
+  let commandId = ''
   const slots = page.getByRole('button', { name: /^Fleet slots: \d+ used \/ 3 total$/ })
   await expect(slots).toHaveText('Fleet slots0 / 3')
   let quotes = 0,
@@ -348,6 +350,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   await page.route('**/commands', async (route) => {
     launches++
     const { gameplay, presence } = route.request().postDataJSON()
+    commandId = gameplay.command_id
     expect(presence.command.action.paired_command_id).toBe(gameplay.command_id)
     expect(gameplay.command.action.intent).toEqual(intents[0])
     await launchGate
@@ -452,6 +455,7 @@ test('one-click espionage stays in Galaxy, reserves one departure and tracks the
   const probeToast = page.getByLabel('Recent game events').getByRole('button', { name: /Probe away/ })
   await expect(probeToast.locator('time')).toHaveAttribute('datetime', new Date(missions.fleets[0].due_at).toISOString())
   await expect(probeToast).toContainText('2 fleet slots available')
+  await expect.poll(() => observations.filter(s => s.id === commandId && s.foreground).map(s => s.phase)).toEqual(expect.arrayContaining(['send_started','accepted','confirmed_visible']))
   await diagnosticScreenshot(page, { path: 'test-results/live-hud/probe-390x844.png' })
   await expect(slots).toHaveText('Fleet slots1 / 3')
   await expect(
@@ -527,6 +531,8 @@ function harvestTerms(intent: components['schemas']['FleetIntent4']) {
 
 test('mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots', async ({ page }) => {
   await setupHarvest(page)
+  const observations = await captureDispatchObservations(page)
+  let commandId = ''
   let quotes = 0, launches = 0
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
@@ -542,6 +548,7 @@ test('mobile harvest quotes and sends one departure, stays in Galaxy and reserve
     const { gameplay } = route.request().postDataJSON()
     if (gameplay.command.type !== 'World' || gameplay.command.action.type !== 'LaunchFleet') return route.fallback()
     launches++
+    commandId = gameplay.command_id
     await route.fulfill({ json: { protocol: 4, binding, command_id: gameplay.command_id, admitted_at: Date.now(), executed_at: Date.now(), status: 'Committed', result_ids: [id(90)], minimum_viewer_revision: '2' } })
   })
   const sheet = await openHarvest(page)
@@ -553,6 +560,7 @@ test('mobile harvest quotes and sends one departure, stays in Galaxy and reserve
   await expect(page).toHaveURL(/\/galaxy$/)
   expect(launches).toBe(1)
   await expect(page.getByLabel('Recent game events').getByRole('button', { name: /Fleet dispatched/ })).toContainText('2 fleet slots available')
+  await expect.poll(() => observations.filter(s => s.id === commandId && s.foreground).map(s => s.phase)).toEqual(expect.arrayContaining(['send_started','accepted','confirmed_visible']))
   await diagnosticScreenshot(page, { path: 'test-results/live-hud/fleet-390x844.png' })
   await expect(page.getByRole('button', { name: 'Fleet slots: 1 used / 3 total', exact: true })).toBeVisible()
   const reopened = await openHarvest(page)

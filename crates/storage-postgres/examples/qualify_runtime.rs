@@ -118,10 +118,9 @@ async fn main() {
             .unwrap();
         players.push((b, token_digest(&token), BodyId(body)));
     }
-    // Explicit synthetic mature live inventory, with exact paid lineage. These
+    // Explicit synthetic mature stationed inventory. These
     // are isolated fixture edits, not a production retention or backfill path.
-    let lots_per_player = number("QUALIFY_ASSET_LOTS", 1, 10000);
-    let rules = store.load_rules(universe).await.unwrap();
+    let ships_per_player = number("QUALIFY_ASSET_LOTS", 1, 10000);
     for (binding, _, body) in &players {
         let item = ManufacturedItem::Ship(ShipType::SmallCargo);
         sqlx::query(
@@ -130,36 +129,13 @@ async fn main() {
         .bind(body.0)
         .bind(binding.player.0)
         .bind(sqlx::types::Json(item))
-        .bind(lots_per_player as i64)
+        .bind(ships_per_player as i64)
         .execute(&pool)
         .await
         .unwrap();
-        for n in 0..lots_per_player {
-            let id = OperationId(Uuid::new_v4());
-            let lot = AssetLot {
-                id,
-                owner: binding.player,
-                item: CatalogKey::Ship(ShipType::SmallCargo),
-                level: None,
-                location: AssetLocation::Body(*body),
-                quantity: 1,
-                unit_value_micro: 4_000 * SCALE,
-                rules_hash: rules.hash.clone(),
-                source_operation: id,
-                acquired_at: 0,
-                acquired_sequence: n as i64,
-            };
-            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-                .bind(universe.0)
-                .bind(id.to_string())
-                .bind(sqlx::types::Json(lot))
-                .execute(&pool)
-                .await
-                .unwrap();
-        }
         sqlx::query("UPDATE players SET current_score_micro=$2 WHERE id=$1")
             .bind(binding.player.0)
-            .bind(lots_per_player as i64 * 4_000 * SCALE)
+            .bind(ships_per_player as i64 * 4_000 * SCALE)
             .execute(&pool)
             .await
             .unwrap();
@@ -258,7 +234,12 @@ async fn main() {
         .execute(&pool)
         .await
         .unwrap();
-    let live_bytes: i64 = sqlx::query_scalar("SELECT pg_total_relation_size('asset_lots') + pg_total_relation_size('inventories') + pg_total_relation_size('bodies')").fetch_one(&pool).await.unwrap();
+    let live_bytes: i64 = sqlx::query_scalar(
+        "SELECT pg_total_relation_size('inventories') + pg_total_relation_size('bodies')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     let completed_bytes: i64 = sqlx::query_scalar(
         "SELECT pg_total_relation_size('commands') + pg_total_relation_size('scheduled_events')",
     )
@@ -477,6 +458,6 @@ async fn main() {
     assert!(minimum_spacing >= Duration::from_millis(250));
     println!(
         "{}",
-        json!({"bots":bots,"action_units_per_day":allowance,"max_charged_units_per_actor":max_units,"command_interval_ms":command_interval_ms,"command_rows":command_rows,"command_classes":classes,"logical_client_requests":pacer.starts.len(),"minimum_request_spacing_ms":minimum_spacing.as_millis(),"workload_version":2,"retained_completed_pairs":history,"asset_lots_per_player":lots_per_player,"live_state_relation_bytes":live_bytes,"completed_operation_relation_bytes":completed_bytes,"recent_completed_payload_bytes":recent_bytes,"cleanup_backlog_payload_bytes":backlog_bytes,"emitted_log_bytes":0,"provider_history_pairs":provider_history,"preparation_ms":preparation_ms,"duration_ms":started.elapsed().as_millis(),"game_iterations":requests,"latency":{"machine_auth":latency(machine_times),"bot_status":latency(status_times),"world_view":latency(read_times),"admission_settlement":latency(commit_times)},"commands_committed":committed,"commands_rejected":rejected,"auth":auth,"limitations":"direct game services without a logging subscriber (zero emitted log bytes); synthetic terminal rows, no cleanup or expiry policy; local PostgreSQL cannot certify RDS burst capacity"})
+        json!({"bots":bots,"action_units_per_day":allowance,"max_charged_units_per_actor":max_units,"command_interval_ms":command_interval_ms,"command_rows":command_rows,"command_classes":classes,"logical_client_requests":pacer.starts.len(),"minimum_request_spacing_ms":minimum_spacing.as_millis(),"workload_version":3,"retained_completed_pairs":history,"ships_per_player":ships_per_player,"live_state_relation_bytes":live_bytes,"completed_operation_relation_bytes":completed_bytes,"recent_completed_payload_bytes":recent_bytes,"cleanup_backlog_payload_bytes":backlog_bytes,"emitted_log_bytes":0,"provider_history_pairs":provider_history,"preparation_ms":preparation_ms,"duration_ms":started.elapsed().as_millis(),"game_iterations":requests,"latency":{"machine_auth":latency(machine_times),"bot_status":latency(status_times),"world_view":latency(read_times),"admission_settlement":latency(commit_times)},"commands_committed":committed,"commands_rejected":rejected,"auth":auth,"limitations":"direct game services without a logging subscriber (zero emitted log bytes); synthetic terminal rows, no cleanup or expiry policy; local PostgreSQL cannot certify RDS burst capacity"})
     );
 }

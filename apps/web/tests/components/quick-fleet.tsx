@@ -51,7 +51,7 @@ function Controls({ fixture }: { fixture: DispatchFixture }) {
         </Button>
         {[target, { ...target, id: id(21), kind: 'Moon' as const }].map(
           (body) => {
-            const spy = espionage.forTarget(body)
+            const spy = espionage.forTarget(body, position.coordinates)
             return (
               <GalaxySpyButton
                 key={body.id}

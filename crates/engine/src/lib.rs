@@ -60,6 +60,8 @@ mod policy;
 pub use policy::*;
 mod empire_deletion;
 pub use empire_deletion::*;
+mod valuation_replay;
+pub use valuation_replay::JournalAcquisition;
 mod valuation;
 pub use valuation::*;
 mod movement;

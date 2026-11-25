@@ -45,6 +45,16 @@ impl PgStore {
             if status.mode == ExecutorMode::Scoped {
                 return Ok(status);
             }
+            if status.mode == ExecutorMode::Serial {
+                // Older serial workers sometimes added partial declarations to
+                // future lifecycle checks. Rebuild those dynamic memberships
+                // from live fleets and planets during the ordinary batch scan.
+                sqlx::query("DELETE FROM input_scopes s USING pending_inputs p WHERE s.universe=$1
+                    AND p.universe=s.universe AND p.input_id=s.input_id AND
+                    (p.input#>>'{payload,Event,type}'='EmpireDeletionDue' OR p.input#>>'{payload,Command,action,type}' IN
+                    ('EnterVacation','ExitVacation','RequestEmpireDeletion','CancelEmpireDeletion'))")
+                    .bind(u.0).execute(&mut *tx).await.map_err(db_error)?;
+            }
             sqlx::query("UPDATE universe_runtime SET executor_mode='preparing' WHERE universe=$1 AND executor_mode='serial'")
                 .bind(u.0).execute(&mut *tx).await.map_err(db_error)?;
             let pending: Vec<serde_json::Value> = sqlx::query_scalar("SELECT input FROM pending_inputs p WHERE p.universe=$1 AND NOT EXISTS(SELECT 1 FROM input_scopes s WHERE s.universe=p.universe AND s.input_id=p.input_id) ORDER BY at_ms,phase,sequence LIMIT $2")

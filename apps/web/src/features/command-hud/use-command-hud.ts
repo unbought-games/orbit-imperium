@@ -51,7 +51,7 @@ export function useCommandHud(model: Coordinator) {
     refresh.current = load
     load()
     const stop = watchIntelligenceScope(model.store, load)
-    const timer = window.setInterval(() => void load(), 15_000)
+    const timer = window.setInterval(() => void load(), 120_000)
     const wake = () => void load()
     window.addEventListener('focus', wake)
     document.addEventListener('visibilitychange', wake)

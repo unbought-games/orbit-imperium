@@ -1,6 +1,6 @@
 # Global Rules
 
-- Derive state from its source of truth. High Scores has one documented exception: maintain each player’s exact completed-asset value in the inventory transaction, and publish compact standings at their daily or hourly observation boundaries. Keep the cache rebuildable from asset lots. See [High Scores](docs/architecture/high-scores.md).
+- Derive state from its source of truth. High Scores has one documented exception: maintain each player’s exact completed-asset value in the inventory transaction, and publish compact standings at their daily or hourly observation boundaries. Keep the cache rebuildable from inventory quantities, active fleet manifests, completed levels and the universe catalog. See [High Scores](docs/architecture/high-scores.md).
 - React components should be light-weight with no heavy inline logic. Simple value transformations are acceptable. Heavy logic should be extracted into custom hooks and functions and thoroughly tested.
 - Server functions, API routes should be treated the same way - no heavy logic. All logic should be pulled out into functions and either thoroughly tested with unit or integration tests.
 

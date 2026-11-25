@@ -439,7 +439,7 @@ test('an uncertain fleet launch recovers from its committed receipt without send
           })
           .click()
         await expect(result).toContainText('Sending fleet order…')
-        await expect(result).not.toContainText('Fleet sent.')
+        await expect(result).not.toContainText('Fleet dispatched.')
         await expect.poll(() => sent).toBe(1)
       } finally {
         release()
@@ -538,7 +538,7 @@ test('an uncertain fleet launch recovers from its committed receipt without send
   await withFixtureResponse(page, receipt, () =>
     recovery.getByRole('button', { name: 'Retry order', exact: true }).click(),
   )
-  await expect(result).toContainText('Fleet sent.')
+  await expect(result).toContainText('Fleet dispatched.')
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('0')
   await expect(recovery).toHaveCount(0)
   expect(sent).toBe(1)

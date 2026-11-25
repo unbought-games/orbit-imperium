@@ -124,16 +124,14 @@ pub(crate) async fn ensure_scopes(
     if keys.is_empty() {
         return Err(StoreError::CorruptData);
     }
-    for key in &keys {
-        sqlx::query(
-            "INSERT INTO execution_scopes(universe,key) VALUES($1,$2) ON CONFLICT DO NOTHING",
-        )
-        .bind(u.0)
-        .bind(key)
-        .execute(&mut **tx)
-        .await
-        .map_err(db_error)?;
-    }
+    sqlx::query(
+        "INSERT INTO execution_scopes(universe,key) SELECT $1,k FROM unnest($2::text[]) k ORDER BY k ON CONFLICT DO NOTHING",
+    )
+    .bind(u.0)
+    .bind(&keys)
+    .execute(&mut **tx)
+    .await
+    .map_err(db_error)?;
     Ok(keys)
 }
 pub(crate) async fn stamp(
@@ -177,10 +175,9 @@ pub(crate) async fn register(
 ) -> Result<(), StoreError> {
     let mut scopes = scopes.clone();
     crate::admission::expand_player_scopes(tx, input.universe, &mut scopes).await?;
-    for key in ensure_scopes(tx, input.universe, &scopes).await? {
-        sqlx::query("INSERT INTO input_scopes(universe,input_id,scope_key) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
-            .bind(input.universe.0).bind(input.id.0).bind(key).execute(&mut **tx).await.map_err(db_error)?;
-    }
+    let keys = ensure_scopes(tx, input.universe, &scopes).await?;
+    sqlx::query("INSERT INTO input_scopes(universe,input_id,scope_key) SELECT $1,$2,k FROM unnest($3::text[]) k ORDER BY k ON CONFLICT DO NOTHING")
+        .bind(input.universe.0).bind(input.id.0).bind(keys).execute(&mut **tx).await.map_err(db_error)?;
     Ok(())
 }
 

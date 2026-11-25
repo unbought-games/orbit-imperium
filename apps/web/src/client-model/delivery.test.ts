@@ -124,6 +124,36 @@ it('healthy streams use local ticks and a 30–60 second idle reconciliation, th
   await vi.advanceTimersByTimeAsync(60000)
   expect(reconcile).toHaveBeenCalledTimes(3)
 })
+it('skips full snapshots on an idle healthy stream and still reconciles a missed wake', async () => {
+  vi.useFakeTimers()
+  const reconcile = vi.fn(async () => {})
+  const delivery = startGameDelivery({
+    binding,
+    platform,
+    reconcile,
+    onUpdate: async () => {},
+    hasPending: () => false,
+    isCurrent: () => true,
+    updates: {
+      async subscribe(_, __, options) {
+        options.onConnect?.()
+        await new Promise<void>((resolve) =>
+          options.signal.addEventListener('abort', () => resolve(), {
+            once: true,
+          }),
+        )
+      },
+    },
+  })
+  try {
+    await vi.advanceTimersByTimeAsync(299_999)
+    expect(reconcile).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(reconcile).toHaveBeenCalledTimes(2)
+  } finally {
+    delivery.stop()
+  }
+})
 it('reconnects from the applied cursor and quietly reconciles while an old endpoint is unavailable', async () => {
   vi.useFakeTimers()
   const cursors: (string | null)[] = []

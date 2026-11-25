@@ -144,7 +144,7 @@ fn inbound_missions_keep_their_paid_deadline_and_their_own_authorized_target() {
                 );
             }
         }
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 
@@ -211,5 +211,5 @@ fn recalling_a_lunar_deployment_before_destruction_keeps_it_hidden_until_landing
             .count,
         before + 1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
