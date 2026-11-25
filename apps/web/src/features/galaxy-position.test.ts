@@ -11,7 +11,7 @@ it('keeps moon information accessible when no missions are available', () => {
       coordinates: { galaxy: 1, system: 371, position: 2 },
       actions: [],
       details: 'Diameter: 8,774 km',
-      missileIdentity: 'moon',
+      actionIdentity: 'moon',
       onDraft: () => {},
     }),
   )

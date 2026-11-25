@@ -103,7 +103,7 @@ infer causes from timing or reports.
 ## Player flow
 
 Open Sensor Phalanx in lunar Facilities for construction and range guidance.
-Choose a planet in Galaxy with the source moon selected, then select **Scan planet**.
+With the source moon selected, open the target planet’s menu in Galaxy and choose **Scan planet**.
 The confirmation shows the local fuel balance and exact 5,000 deuterium charge.
 A scan uses the ordinary command ledger and recovery; **Check scan status** recovers
 an uncertain command instead of purchasing a second observation. **Open saved scan**

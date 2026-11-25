@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react'
-import { Radar } from 'lucide-react'
+import type { GalaxyActionPresentation } from './galaxy-action-menu'
 import { usePhalanxScan } from './use-phalanx-scan'
 import type { Coordinator } from '../client-model/coordinator'
 import type { components } from '../contracts'
@@ -15,16 +14,15 @@ export function PhalanxAction({
   origin,
   position,
   universe,
-  compact = false,
+  open,
+  onOpenChange,
+  opener,
 }: {
-  compact?: boolean
   model: Coordinator
   origin: string
   position: components['schemas']['GalaxyPosition4']
   universe: string
-}) {
-  const [open, setOpen] = useState(false)
-  const opener = useRef<HTMLButtonElement>(null)
+} & GalaxyActionPresentation) {
   const {
     source,
     attempt,
@@ -37,84 +35,72 @@ export function PhalanxAction({
     error,
   } = usePhalanxScan(model, origin, position)
   return (
-    <>
+    <ActionSheet
+      initialSnap={90}
+      open={open}
+      onOpenChange={onOpenChange}
+      returnFocusRef={opener}
+      title="Sensor Phalanx"
+      description={`${position.body?.name ?? 'Planet'} · ${coordinates(position)}`}
+    >
+      <p>
+        Source: Moon {source && coordinates(source)} · Level{' '}
+        {source?.levels.SensorPhalanx ?? 0} · Range{' '}
+        {String(
+          phalanxRange(source?.levels.SensorPhalanx ?? 0) < 0n
+            ? 0n
+            : phalanxRange(source?.levels.SensorPhalanx ?? 0),
+        )}{' '}
+        systems in this galaxy.
+      </p>
+      <p>
+        Spend <ResourceQuantity resource="deuterium" value={scanCost} /> from
+        this moon. Empty scans cost the same. Saved reports never update; fresh
+        information requires another paid scan.
+      </p>
+      <p>
+        Available locally:{' '}
+        <ResourceQuantity
+          resource="deuterium"
+          value={source?.amounts.deuterium ?? '0'}
+        />
+      </p>
+      {reason && <p role="status">{reason}</p>}
+      {(error || receipt?.status === 'Rejected') && (
+        <p role="alert">
+          {error ||
+            (receipt?.status === 'Rejected'
+              ? receipt.code === 'InsufficientResources'
+                ? 'This moon needs 5,000 deuterium locally.'
+                : dispatchFailure(receipt.code)
+              : '')}
+        </p>
+      )}
+      {report && (
+        <p>
+          <ButtonLink {...routeTarget(universe, 'reports', origin, report)}>
+            Open saved scan
+          </ButtonLink>
+        </p>
+      )}
       <Button
-        ref={opener}
-        variant={compact ? 'ghost' : 'secondary'}
-        size={compact ? 'icon-touch' : undefined}
-        aria-label="Scan planet"
-        title="Scan planet"
-        onClick={() => setOpen(true)}
+        disabled={busy || !!pending || !!reason}
+        onClick={() => void scan()}
       >
-        {compact ? <Radar size={16} aria-hidden="true" /> : 'Scan planet'}
+        {busy || pending
+          ? 'Confirming scan…'
+          : report
+            ? 'Scan again — spend 5,000 deuterium'
+            : 'Scan — spend 5,000 deuterium'}
       </Button>
-      <ActionSheet
-        initialSnap={90}
-        open={open}
-        onOpenChange={setOpen}
-        returnFocusRef={opener}
-        title="Sensor Phalanx"
-        description={`${position.body?.name ?? 'Planet'} · ${coordinates(position)}`}
-      >
-        <p>
-          Source: Moon {source && coordinates(source)} · Level{' '}
-          {source?.levels.SensorPhalanx ?? 0} · Range{' '}
-          {String(
-            phalanxRange(source?.levels.SensorPhalanx ?? 0) < 0n
-              ? 0n
-              : phalanxRange(source?.levels.SensorPhalanx ?? 0),
-          )}{' '}
-          systems in this galaxy.
-        </p>
-        <p>
-          Spend <ResourceQuantity resource="deuterium" value={scanCost} /> from
-          this moon. Empty scans cost the same. Saved reports never update;
-          fresh information requires another paid scan.
-        </p>
-        <p>
-          Available locally:{' '}
-          <ResourceQuantity
-            resource="deuterium"
-            value={source?.amounts.deuterium ?? '0'}
-          />
-        </p>
-        {reason && <p role="status">{reason}</p>}
-        {(error || receipt?.status === 'Rejected') && (
-          <p role="alert">
-            {error ||
-              (receipt?.status === 'Rejected'
-                ? receipt.code === 'InsufficientResources'
-                  ? 'This moon needs 5,000 deuterium locally.'
-                  : dispatchFailure(receipt.code)
-                : '')}
-          </p>
-        )}
-        {report && (
-          <p>
-            <ButtonLink {...routeTarget(universe, 'reports', origin, report)}>
-              Open saved scan
-            </ButtonLink>
-          </p>
-        )}
+      {attempt?.status === 'uncertain' && (
         <Button
-          disabled={busy || !!pending || !!reason}
-          onClick={() => void scan()}
+          variant="secondary"
+          onClick={() => void model.recover(attempt.envelope.command_id)}
         >
-          {busy || pending
-            ? 'Confirming scan…'
-            : report
-              ? 'Scan again — spend 5,000 deuterium'
-              : 'Scan — spend 5,000 deuterium'}
+          Check scan status
         </Button>
-        {attempt?.status === 'uncertain' && (
-          <Button
-            variant="secondary"
-            onClick={() => void model.recover(attempt.envelope.command_id)}
-          >
-            Check scan status
-          </Button>
-        )}
-      </ActionSheet>
-    </>
+      )}
+    </ActionSheet>
   )
 }
