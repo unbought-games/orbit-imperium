@@ -31,3 +31,12 @@ test('game updates build without Git or any Unbought service and omit drafts',()
     assert.throws(()=>readNote('no metadata'))
   }finally{rmSync(root,{recursive:true,force:true})}
 })
+
+test('seasonal build notes preserve their audience and legacy notes are general updates', () => {
+  const note = "id: mission\ntitle: First contact\ndate: '2030-01-02T00:00:00Z'"
+  const read = (extra = '') => readNote(`---\n${note}\n${extra}---\nMessage`)
+  assert.equal(read().audience, 'game')
+  assert.equal(read('audience: game\n').audience, 'game')
+  assert.equal(read('audience: S001\n').audience, 'S001')
+  assert.throws(() => read('audience: prod/S001\n'), /Invalid news audience/)
+})

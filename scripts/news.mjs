@@ -10,7 +10,9 @@ export function readNote(source) {
   if (!match) throw new Error('News needs YAML frontmatter')
   const note=load(match[1],{schema:JSON_SCHEMA})
   if (!note || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(note.id) || typeof note.title!=='string' || !Number.isFinite(Date.parse(note.date))) throw new Error('Invalid news identity/title/date')
-  return {...note,body:match[2]}
+  if (note.audience !== undefined && !['game', 'S001'].includes(note.audience))
+    throw new Error(`Invalid news audience for ${note.id}`)
+  return {...note, audience: note.audience ?? 'game', body:match[2]}
 }
 export function buildNews(root=process.cwd()) {
   const notes=[]
