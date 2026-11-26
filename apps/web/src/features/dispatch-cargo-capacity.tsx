@@ -4,9 +4,11 @@ import styles from './missions.module.css'
 
 export function DispatchCargoCapacity({
   space,
+  total,
   message,
 }: {
   space: ReturnType<typeof dispatchCargoCapacity>
+  total: bigint | null
   message: string
 }) {
   return (
@@ -15,11 +17,15 @@ export function DispatchCargoCapacity({
       role="group"
       aria-label="Cargo capacity"
     >
-      {space ? (
+      {total === null ? (
+        message
+      ) : (
+        <span>
+          <NumberValue value={total} /> total capacity
+        </span>
+      )}
+      {space && (
         <>
-          <span>
-            <NumberValue value={space.capacity} /> total capacity
-          </span>
           {space.payload !== space.capacity && (
             <span>
               <NumberValue value={space.payload} /> after fuel
@@ -37,8 +43,6 @@ export function DispatchCargoCapacity({
             </span>
           ) : null}
         </>
-      ) : (
-        message
       )}
     </span>
   )

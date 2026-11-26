@@ -1999,7 +1999,7 @@ for (const width of [390, 1440]) {
       await expect
         .poll(async () => (await counts(page)).estimates)
         .toBeGreaterThan(before)
-      await expect(capacity).toHaveText('Calculating capacity…')
+      await expect(capacity).toHaveText('10,000 total capacity')
     } finally {
       await release(page)
     }
@@ -2018,7 +2018,10 @@ for (const width of [390, 1440]) {
 
     await configure(page, { estimateError: 'NotFound' })
     await setSpeed(page, 40)
-    await expect(capacity).toHaveText('Capacity unavailable.')
+    await expect(
+      page.getByRole('region', { name: 'Flight timing' }),
+    ).toContainText('The destination is no longer available.')
+    await expect(capacity).toHaveText('10,000 total capacity')
     await expect(metal).toHaveValue('100')
     await configure(page, { estimateError: null })
     await page.getByLabel('Small Cargo · 2 available').fill('0')
@@ -2027,10 +2030,9 @@ for (const width of [390, 1440]) {
     await expect(capacity).toHaveText(
       'Enter valid ship counts to see capacity.',
     )
+    await page.getByLabel('Destination coordinates', { exact: true }).fill('')
     await page.getByLabel('Small Cargo · 2 available').fill('1')
-    await expect(capacity).toContainText('total capacity')
-    await setDestination(page, { system: '0' })
-    await expect(capacity).toHaveText('Capacity unavailable.')
+    await expect(capacity).toHaveText('5,000 total capacity')
     await expect(review(page)).toBeDisabled()
     expect((await counts(page)).launches).toBe(0)
     expect(

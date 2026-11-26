@@ -138,7 +138,16 @@ export function dispatchData() {
         ? {}
         : {
             ship_statistics: {
-              propulsion: null,
+              propulsion:
+                id === 'SmallCargo'
+                  ? {
+                      cargo_capacity: '5000',
+                      base_speed: '5000',
+                      fuel_consumption: '10',
+                      drive: 'CombustionDrive',
+                      impulse_upgrade: null,
+                    }
+                  : null,
               combat: null,
               cost: catalogCosts[id],
             },

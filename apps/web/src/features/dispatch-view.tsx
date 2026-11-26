@@ -90,6 +90,7 @@ export function DispatchView({
     setShips,
     cargo,
     cargoCapacity,
+    totalCapacity,
     cargoCapacityMessage,
     editCargo,
     addAllCargo,
@@ -394,6 +395,7 @@ export function DispatchView({
           <DispatchCargoControls
             cargo={cargo}
             space={cargoCapacity}
+            total={totalCapacity}
             message={cargoCapacityMessage}
             disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
             onNormalize={editCargo}
