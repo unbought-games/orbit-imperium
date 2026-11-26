@@ -28,6 +28,7 @@ import {
   editDispatchCargo,
   emptyCargoDraft,
   restoredCargoDraft,
+  selectedFleetCapacity,
   type CargoDraft,
 } from '../client-model/dispatch-cargo'
 import { resourceNames } from '../client-model/resources'
@@ -534,6 +535,7 @@ export function useDispatch({
       fillCargo,
     )
   }
+  const cargoCapacity = dispatchCargoCapacity(timing?.terms, cargo)
   return {
     site,
     siteId,
@@ -542,7 +544,10 @@ export function useDispatch({
     submittedAttempt,
     submittedCoordinates: submitted?.coordinates,
     timing: timing?.terms,
-    cargoCapacity: dispatchCargoCapacity(timing?.terms, cargo),
+    cargoCapacity,
+    totalCapacity:
+      cargoCapacity?.capacity ??
+      selectedFleetCapacity(view.catalog, timingShips),
     cargoCapacityMessage: invalidShips
       ? 'Enter valid ship counts to see capacity.'
       : timingShips.length === 0

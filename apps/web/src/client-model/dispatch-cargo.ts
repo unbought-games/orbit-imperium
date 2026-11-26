@@ -4,6 +4,25 @@ import { resourceNames } from './resources'
 
 type Resource = (typeof resourceNames)[number]
 
+type S = components['schemas']
+
+export function selectedFleetCapacity(
+  catalog: S['CatalogEntry3'][],
+  ships: S['FleetIntent4']['ships'],
+): bigint | null {
+  if (!ships.length) return null
+  let total = 0n
+  for (const { ship_type, count } of ships) {
+    const entry = catalog.find(
+      ({ key }) => key.kind === 'Ship' && key.id === ship_type,
+    )
+    const capacity = entry?.ship_statistics?.propulsion?.cargo_capacity
+    if (capacity === undefined) return null
+    total += BigInt(capacity) * BigInt(count)
+  }
+  return total
+}
+
 /** Advisory whole-unit space from the current server estimate, never ship rules. */
 export function dispatchCargoCapacity(
   terms:
@@ -29,7 +48,6 @@ export function dispatchCargoCapacity(
   return { capacity, payload, loaded, remaining: payload - loaded }
 }
 
-type S = components['schemas']
 export function quotedCargoSpace(quote: {
   maximum_payload: S['FleetTerms4']['maximum_payload']
   intent: Pick<S['FleetIntent4'], 'cargo'>

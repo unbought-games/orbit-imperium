@@ -5,6 +5,7 @@ import {
   editDispatchCargo,
   materialCargoChanges,
   selectDispatchCargo,
+  selectedFleetCapacity,
   projectDispatchCargo,
   prepareCargoFill,
   dispatchCargoCapacity,
@@ -41,6 +42,37 @@ function maxDispatchCargo(
     fuel,
   })
 }
+
+it('totals exact catalog capacities for the selected ships and rejects a partial total', () => {
+  const entry = (id: 'SmallCargo' | 'Recycler', capacity: string) => ({
+    key: { kind: 'Ship' as const, id },
+    body_kinds: [],
+    enabled: true,
+    mobile: true,
+    requirements: [],
+    ship_statistics: {
+      combat: null,
+      propulsion: {
+        drive: 'CombustionDrive' as const,
+        base_speed: '5000',
+        fuel_consumption: '10',
+        impulse_upgrade: null,
+        cargo_capacity: capacity,
+      },
+    },
+  })
+  const fleet = [
+    {
+      ship_type: 'SmallCargo' as const,
+      owner: 'owner',
+      count: '9007199254740993',
+    },
+    { ship_type: 'Recycler' as const, owner: 'owner', count: '2' },
+  ]
+  const catalog = [entry('SmallCargo', '7'), entry('Recycler', '13')]
+  expect(selectedFleetCapacity(catalog, fleet)).toBe(63050394783186977n)
+  expect(selectedFleetCapacity(catalog.slice(0, 1), fleet)).toBeNull()
+})
 
 it('derives empty, loaded, full and excessive cargo space from server terms', () => {
   const terms = { capacity: '5000000000', maximum_payload: '4998500000' }

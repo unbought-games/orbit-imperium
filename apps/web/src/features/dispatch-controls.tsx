@@ -11,6 +11,7 @@ import styles from './missions.module.css'
 export function DispatchCargoControls({
   cargo,
   space,
+  total,
   message,
   disabled,
   onNormalize,
@@ -19,6 +20,7 @@ export function DispatchCargoControls({
 }: {
   cargo: string[]
   space: ComponentProps<typeof DispatchCargoCapacity>['space']
+  total: bigint | null
   message: string
   disabled: boolean
   onNormalize: (index: number, value: string) => void
@@ -29,7 +31,7 @@ export function DispatchCargoControls({
     <fieldset className={styles.cargoFields} aria-label="Cargo">
       <div className={styles.cargoHeader}>
         <span>Cargo</span>
-        <DispatchCargoCapacity space={space} message={message} />
+        <DispatchCargoCapacity space={space} total={total} message={message} />
       </div>
       <div className={styles.cargoInputs}>
         {resourceNames.map((resource, i) => (
