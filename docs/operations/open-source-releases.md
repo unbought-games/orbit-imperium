@@ -184,7 +184,8 @@ website API, external account, or Unbought service is required at runtime. These
 pages describe the installed build, not the official server's deployment history.
 
 The optional build-note field `audience` defaults to `game`. Campaign-specific
-notes use `audience: S001` and identify Andromeda and Season 1 in their titles.
+notes use `audience: S001`. The update index and article display “Andromeda ·
+Season 1” alongside the date.
 Give each audience its own note when one deployment delivers both kinds of
 change. A general fix merged into the season keeps its general audience.
 Keep each build-note ID stable across branches.

@@ -14,6 +14,9 @@ export function readNote(source) {
     throw new Error(`Invalid news audience for ${note.id}`)
   return {...note, audience: note.audience ?? 'game', body:match[2]}
 }
+function audiencePrefix(note) {
+  return note.audience === 'S001' ? 'Andromeda · Season 1 · ' : ''
+}
 export function buildNews(root=process.cwd()) {
   const notes=[]
   for (const section of ['changes','releases']) {
@@ -38,11 +41,11 @@ export function buildNews(root=process.cwd()) {
   const ids=new Set()
   for (const note of notes) {
     if(ids.has(note.id))throw new Error(`Duplicate note ${note.id}`);ids.add(note.id)
-    writeFileSync(join(output,note.id+'.html'),page(note.title,`<article><p class="meta">${note.version?'Version '+escape(note.version):'Build update'} · <time datetime="${escape(note.date)}">${escape(note.date.slice(0,10))}</time></p><h1>${escape(note.title)}</h1>${md.render(note.body)}</article>`))
+    writeFileSync(join(output,note.id+'.html'),page(note.title,`<article><p class="meta">${audiencePrefix(note)}${note.version?'Version '+escape(note.version):'Build update'} · <time datetime="${escape(note.date)}">${escape(note.date.slice(0,10))}</time></p><h1>${escape(note.title)}</h1>${md.render(note.body)}</article>`))
   }
   const historyFile=join(root,'docs/news/history.json')
   const history=existsSync(historyFile)?JSON.parse(readFileSync(historyFile,'utf8')):[]
-  writeFileSync(join(output,'index.html'),page("What's new",`<h1>What's new</h1><p>Changes and release notes included in this build.</p>${notes.map(n=>`<article><p class="meta">${escape(n.date.slice(0,10))}${n.version?' · Version '+escape(n.version):''}</p><h2><a href="/updates/${n.id}.html">${escape(n.title)}</a></h2>${n.summary?`<p>${escape(n.summary)}</p>`:''}</article>`).join('')}${history.length?'<p><a href="/updates/history-1.html">Browse the full change history →</a></p>':''}`))
+  writeFileSync(join(output,'index.html'),page("What's new",`<h1>What's new</h1><p>Changes and release notes included in this build.</p>${notes.map(n=>`<article><p class="meta">${audiencePrefix(n)}${escape(n.date.slice(0,10))}${n.version?' · Version '+escape(n.version):''}</p><h2><a href="/updates/${n.id}.html">${escape(n.title)}</a></h2>${n.summary?`<p>${escape(n.summary)}</p>`:''}</article>`).join('')}${history.length?'<p><a href="/updates/history-1.html">Browse the full change history →</a></p>':''}`))
   for(let start=0;start<history.length;start+=30){
     const pageNumber=start/30+1,total=Math.ceil(history.length/30)
     const rows=history.slice(start,start+30).map(entry=>{

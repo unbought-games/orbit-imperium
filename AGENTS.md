@@ -49,7 +49,7 @@ version before it is applied. Preserve dependencies and include it once. Review
 and test upgrades from the last seasonal release as well as fresh installs.
 
 For player-facing campaign changes, add a build note on the season branch with
-`audience: S001` and name Andromeda and Season 1 in the title. Shared notes
+`audience: S001` so readers see the universe and season beside the date. Shared notes
 use `audience: game` (the default) even when delivered via a seasonal build.
 
 ## Changelog
