@@ -43,6 +43,7 @@
     "test:ship-appearance": "node --test tools/ship-appearance/*.test.mjs",
     "ship-renderer": "node tools/ship-appearance/server.mjs",
     "ship-renderer:build": "node tools/ship-appearance/build.mjs",
+    "art:orbit-base:proof": "node tools/ship-appearance/proof-orbit-base.mjs",
     "art:orbit-base": "node tools/ship-appearance/compile-orbit-base.mjs",
     "art:orbit-base-heavy-fighter": "npm run art:orbit-base -- heavy-fighter",
     "art:orbit-base-battlecruiser": "npm run art:orbit-base -- battlecruiser",

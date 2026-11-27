@@ -1,9 +1,8 @@
 # Authoring one recolorable asset
 
-Status: repeatable creative workflow established from the Concord experiments;
-generic production packaging is proposed in [the package contract](../architecture/recolorable-asset-packages.md).
-Start from the [delivery plan](../plans/asset-customization/README.md) for project
-scope and integration status. This guide covers one skin revision at a time.
+The local Hangar uses installed, fixed-view packages. The [runtime contract](../../packages/ship-appearance/README.md)
+covers package format and rendering. The [four-ship handoff](../verification/orbit-base-builder.md)
+identifies the current masters, revisions and review decisions.
 
 ## Ownership and scope
 
@@ -206,10 +205,30 @@ useful handoff, not an approved canonical release.
 
 ## Package and hand off
 
-Follow the [proposed package contract](../architecture/recolorable-asset-packages.md)
-and, once W1 lands, its real schema and Make/npm commands. Current prototype commands
-such as `npm run art:livery:finish` demonstrate Concord only; no generic production
-CLI is claimed by this document.
+For an Orbit Base ship, start with the accepted master, its two calibration
+swatches in `paint.json`, the material drawing in `livery.svg`, and the projected
+surfaces in `emblem-slots.json`. A preliminary study's raster mask is a reference
+for the drawing. The active compiler reads the SVG. Each entry in
+`tools/ship-appearance/compile-orbit-base.mjs` binds one study to its game class,
+package revision and emblem material. The [shared skin registry](../../crates/application/assets/ship-skins.json)
+binds the installed ID and revision to the same game class for both the API and
+renderer. Preserve an installed revision's bytes when preparing a successor.
+
+From the repository root, install the locked dependencies with `npm ci`. For
+example, the Heavy Fighter can be rebuilt and inspected with:
+
+```sh
+npm run art:orbit-base -- heavy-fighter
+npm run art:orbit-base:proof -- heavy-fighter
+npm run test:ship-appearance
+```
+
+The compiler writes to `apps/web/public/art/ship-skins/<id>/<revision>/`.
+The proof command prints the local sheet path and saves eight native PNGs beside
+it for close inspection. Inspect both paint changes independently, thumbnail
+silhouettes, protected mechanisms and the native edges. Rebuilding the same
+inputs should leave the package byte-identical. Use the handoff's explicit
+live check to verify the real emblem, saved art and both viewport sizes.
 
 Preserve authoring sources and publishable runtime files separately. Runtime maps
 are generated/rebuildable artifacts, but must be included in an immutable release
