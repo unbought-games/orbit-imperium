@@ -20,7 +20,8 @@ assert.ok(process.env.ORBIT_TEST_DB_PORT, 'Set the disposable database port')
 const started = performance.now(),
   timings = {}
 const database = `orbit_ship_${randomUUID().replaceAll('-', '')}`
-const output = resolve('test-results/ship-customization/live')
+const output = resolve('test-results/ship-customization/live', database)
+console.log('Acceptance artifacts:', output)
 const assets = await mkdtemp(join(tmpdir(), 'orbit-ship-assets-'))
 const binary = resolve(
   process.env.ORBIT_TEST_SERVER_BINARY ?? 'target/debug/orbit',
@@ -270,55 +271,110 @@ try {
       await notice.waitForElementState('hidden')
     }
   }
-  // Compare a painted hull plate, an accent panel and a fixed part against the
-  // lossless artifact the player actually receives. Decode both in Chromium
-  // to use the same straight/premultiplied-alpha conversion.
+  // Compare two paint channels and a protected part outside the emblem slots.
+  // Pass the decoded native artifact through the same ImageData conversion as
+  // the live canvas so premultiplication uses the same rounding on both sides.
   async function comparePreview(editor, artwork, points) {
     assert.ok(artwork.variants.length > 0)
     const native = artwork.variants.reduce((a, b) =>
       a.width > b.width ? a : b,
     )
-    const samples = await editor.locator('canvas').evaluate(
-      async (canvas, { native, points }) => {
-        const image = new Image()
-        image.src = native.url
-        await image.decode()
-        if (
-          image.naturalWidth !== canvas.width ||
-          image.naturalHeight !== canvas.height
-        )
-          throw Error(
-            'Saved image and live preview have different native dimensions',
-          )
-        const saved = new OffscreenCanvas(
-          canvas.width,
-          canvas.height,
-        ).getContext('2d')
-        saved.drawImage(image, 0, 0)
-        const live = canvas.getContext('2d')
-        return points.map(([x, y]) => ({
-          live: [...live.getImageData(x, y, 1, 1).data],
-          saved: [...saved.getImageData(x, y, 1, 1).data],
-        }))
-      },
-      { native, points },
+    const media = await page.request.get(origin + native.url)
+    assert.equal(media.status(), 200)
+    const { data, info } = await sharp(await media.body())
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    assert.deepEqual(
+      [info.width, info.height, info.channels],
+      [native.width, native.height, 4],
     )
-    for (const { live, saved } of samples) {
-      assert.ok(live[3] > 240)
-      assert.deepEqual(live, saved)
-    }
+    const samples = points.map(([x, y]) => {
+      const i = 4 * (y * info.width + x)
+      return { x, y, rgba: [...data.subarray(i, i + 4)] }
+    })
+    const matches = await editor.locator('canvas').evaluate(
+      (canvas, { samples, width, height }) => {
+        if (canvas.width !== width || canvas.height !== height) return false
+        const live = canvas.getContext('2d')
+        const pixel = new OffscreenCanvas(1, 1).getContext('2d')
+        return samples.every(({ x, y, rgba }) => {
+          pixel.putImageData(
+            new ImageData(new Uint8ClampedArray(rgba), 1, 1),
+            0,
+            0,
+          )
+          const expected = pixel.getImageData(0, 0, 1, 1).data
+          return (
+            rgba[3] > 240 &&
+            live
+              .getImageData(x, y, 1, 1)
+              .data.every((value, c) => value === expected[c])
+          )
+        })
+      },
+      { samples, width: info.width, height: info.height },
+    )
+    assert.ok(
+      matches,
+      'Saved and preview pixels differ at the hull, accent or protected sample',
+    )
   }
-  async function shipImageReady() {
-    const image = page
-      .getByRole('figure', { name: 'Light Fighter illustration' })
-      .locator('img')
-    await expect(image).toHaveAttribute('src', /api\/media\/ship-appearances/)
+  async function readySnapshot(target) {
+    let snapshot
+    await expect
+      .poll(
+        async () => {
+          snapshot = await act({ type: 'Load' })
+          return snapshot.equipment.find((row) => row.target === target)?.render
+            ?.stage
+        },
+        { timeout: 60_000 },
+      )
+      .toBe('ready')
+    return snapshot
+  }
+  function checkDesign(snapshot, target, slug, revision, primary, accent) {
+    const equipment = snapshot.equipment.find((row) => row.target === target)
+    const design = snapshot.library.find(
+      (row) =>
+        row.id === equipment?.design_id &&
+        row.revision === equipment.design_revision,
+    )
+    assert.ok(design, 'Expected an equipped design for ' + target)
+    assert.deepEqual(
+      [
+        design.target,
+        design.recipe.skin_id,
+        design.recipe.package_revision,
+        design.recipe.primary,
+        design.recipe.accent,
+      ],
+      [
+        target,
+        'orbit-base-' + slug,
+        revision,
+        'free-' + primary.toLowerCase(),
+        'free-' + accent.toLowerCase(),
+      ],
+    )
+  }
+  async function imageReady(image, artwork) {
+    const urls = artwork.variants.map((v) => new URL(v.url, origin).href)
     await expect
       .poll(() =>
-        image.evaluate((node) => node.complete && node.naturalWidth > 0),
+        image.evaluate(
+          (img, urls) =>
+            img.complete &&
+            img.naturalWidth > 0 &&
+            urls.includes(img.currentSrc),
+          urls,
+        ),
       )
       .toBe(true)
   }
+  const lightImage = page
+    .getByRole('figure', { name: 'Light Fighter illustration' })
+    .locator('img')
   await navigate(route)
   await page.getByRole('button', { name: 'Customize', exact: true }).click()
   const dialog = page.getByRole('dialog', {
@@ -361,19 +417,18 @@ try {
   const response = await saved
   assert.equal(response.status(), 200)
   assert.equal(await response.finished(), null)
-  let state
-  await expect
-    .poll(
-      async () => {
-        state = await act({ type: 'Load' })
-        return state.equipment[0].render?.stage
-      },
-      { timeout: 60_000 },
-    )
-    .toBe('ready')
+  checkDesign(
+    await response.json(),
+    'LightFighter',
+    'light-fighter',
+    'v1',
+    'Graphite',
+    'Gold',
+  )
+  let state = await readySnapshot('LightFighter')
   await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Saved')
   await comparePreview(dialog, state.equipment[0].artwork, [
-    [1120, 500],
+    [1220, 505],
     [940, 440],
     [600, 530],
   ])
@@ -394,17 +449,13 @@ try {
     .getByRole('button', { name: 'Back to Shipyard', exact: true })
     .click()
   await expect(dialog).toHaveCount(0)
-  await shipImageReady()
+  await imageReady(lightImage, state.equipment[0].artwork)
   await page.screenshot({
     path: join(output, 'shipyard-equipped-desktop-1440x1000.png'),
     fullPage: true,
   })
   await navigate(route)
-  await expect(
-    page
-      .getByRole('figure', { name: 'Light Fighter illustration' })
-      .locator('img'),
-  ).toHaveAttribute('src', /api\/media\/ship-appearances/)
+  await imageReady(lightImage, state.equipment[0].artwork)
   await stop(api)
   await apiPort.hold()
   await startApi()
@@ -437,7 +488,7 @@ try {
   ]) {
     await page.setViewportSize({ width, height })
     await navigate(route)
-    await shipImageReady()
+    await imageReady(lightImage, state.equipment[0].artwork)
     if (width === 390)
       await page
         .getByRole('figure', { name: 'Light Fighter illustration' })
@@ -482,11 +533,7 @@ try {
       .locator('img[src*="/api/media/ship-appearances/"]')
       .first()
     await expect(ship).toBeVisible()
-    await expect
-      .poll(() =>
-        ship.evaluate((node) => node.complete && node.naturalWidth > 0),
-      )
-      .toBe(true)
+    await imageReady(ship, state.equipment[0].artwork)
     await inventory.screenshot({
       path: join(output, `fleet-inventory-${width}x${height}.png`),
     })
@@ -503,7 +550,7 @@ try {
       'Blue',
       'Ivory',
       [
-        [1200, 444],
+        [1300, 444],
         [1410, 449],
         [700, 415],
       ],
@@ -566,47 +613,12 @@ try {
     const saveResponse = await delivery
     assert.equal(saveResponse.status(), 200)
     const snapshot = await saveResponse.json()
-    const equipped = snapshot.equipment.find((row) => row.target === target)
-    const design = snapshot.library.find(
-      (row) =>
-        row.id === equipped.design_id &&
-        row.revision === equipped.design_revision,
-    )
-    assert.deepEqual(
-      [
-        design.target,
-        design.recipe.skin_id,
-        design.recipe.package_revision,
-        design.recipe.primary,
-        design.recipe.accent,
-      ],
-      [
-        target,
-        'orbit-base-' + slug,
-        revision,
-        'free-' + primary.toLowerCase(),
-        'free-' + accent.toLowerCase(),
-      ],
-    )
+    checkDesign(snapshot, target, slug, revision, primary, accent)
+    const readyState = await readySnapshot(target)
+    const equipment = readyState.equipment.find((row) => row.target === target)
     await expect(editor.locator('li[aria-current="step"]')).toHaveText('Saved')
-    const equipment = (await act({ type: 'Load' })).equipment.find(
-      (row) => row.target === target,
-    )
-    assert.equal(equipment.render.stage, 'ready')
     shipArtifacts[target] = equipment.artwork.id
     await comparePreview(editor, equipment.artwork, points)
-    const variants = equipment.artwork.variants
-    assert.ok(variants.length > 0)
-    const native = variants.reduce((largest, v) =>
-      v.width > largest.width ? v : largest,
-    )
-    const media = await page.request.get(origin + native.url)
-    assert.equal(media.status(), 200)
-    const metadata = await sharp(await media.body()).metadata()
-    assert.deepEqual(
-      [metadata.width, metadata.height, metadata.hasAlpha],
-      [native.width, native.height, true],
-    )
     await editor.screenshot({
       path: join(output, `${slug}-hangar-1440x1000.png`),
     })
@@ -615,19 +627,13 @@ try {
     const art = page
       .getByRole('figure', { name: name + ' illustration' })
       .locator('img')
-    async function equippedImage() {
-      await expect(art).toHaveAttribute('src', new RegExp(equipment.artwork.id))
-      await expect
-        .poll(() => art.evaluate((img) => img.complete && img.naturalWidth > 0))
-        .toBe(true)
-    }
-    await equippedImage()
+    await imageReady(art, equipment.artwork)
     await page.screenshot({
       path: join(output, `${slug}-shipyard-1440x1000.png`),
     })
     await page.setViewportSize({ width: 390, height: 844 })
     await navigate(path, target)
-    await equippedImage()
+    await imageReady(art, equipment.artwork)
     await art.scrollIntoViewIfNeeded()
     await page.screenshot({
       path: join(output, `${slug}-shipyard-390x844.png`),
