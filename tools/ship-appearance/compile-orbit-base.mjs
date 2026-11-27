@@ -11,30 +11,36 @@ const ships = {
     directory: 'light-fighter-cannon-pods',
     target: 'LightFighter',
     revision: 'v1',
-    packageRoot: '../../apps/web/public/art/ship-skins/',
+  },
+  cruiser: {
+    directory: 'cruiser-vents',
+    target: 'Cruiser',
+    revision: 'v1',
+    emblemMaterial: 'accent',
   },
   battlecruiser: {
     directory: 'battlecruiser-foredeck-battery',
     target: 'Battlecruiser',
     revision: 'v1',
-    packageRoot: '../../art/orbit-base/packages/',
     emblemMaterial: 'accent',
   },
   'heavy-fighter': {
     directory: 'heavy-fighter-tandem',
     target: 'HeavyFighter',
     revision: 'v2',
-    packageRoot: '../../art/orbit-base/packages/',
   },
 }
 const ship = process.argv[2] ?? 'light-fighter'
 if (!Object.hasOwn(ships, ship))
   throw Error('Choose one of ' + Object.keys(ships).join(', '))
-const { directory, target, revision, packageRoot, emblemMaterial } = ships[ship]
+const { directory, target, revision, emblemMaterial } = ships[ship]
 const sourceDirectory = 'art/orbit-base/ships/v1/' + directory
 const study = new URL('../../' + sourceDirectory + '/', import.meta.url)
 const id = 'orbit-base-' + ship
-const out = new URL(packageRoot + id + '/' + revision + '/', import.meta.url)
+const out = new URL(
+  '../../apps/web/public/art/ship-skins/' + id + '/' + revision + '/',
+  import.meta.url,
+)
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const read = (name) => readFile(new URL(name, study))
 const [master, svg, slotBytes, calibration] = await Promise.all(

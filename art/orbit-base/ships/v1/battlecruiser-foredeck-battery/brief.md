@@ -6,7 +6,7 @@ Free Orbit Base concept art. The original ImageGen output is saved as `master.pn
 
 ## Authored color controls
 
-Rebuild the offline [Battlecruiser v1 package](../../../packages/orbit-base-battlecruiser/v1/manifest.json) with `npm run art:orbit-base-battlecruiser`. The [material drawing](livery.svg) maps the hull and turret armor to primary paint, and the swept shoulders, inlay and accent fairings to secondary paint. Mechanisms, laser glass, bridge windows and hyperspace exhaust are protected. The two [emblem surfaces](emblem-slots.json) sit on the swept shoulders and receive paint on the accent panels. The package is available for art review outside the Hangar catalog.
+Rebuild the offline [Battlecruiser v1 package](../../../../../apps/web/public/art/ship-skins/orbit-base-battlecruiser/v1/manifest.json) with `npm run art:orbit-base-battlecruiser`. The [material drawing](livery.svg) maps the hull and turret armor to primary paint, and the swept shoulders, inlay and accent fairings to secondary paint. Mechanisms, laser glass, bridge windows and hyperspace exhaust are protected. The two [emblem surfaces](emblem-slots.json) sit on the swept shoulders and receive paint on the accent panels. The local development Hangar uses this revision.
 
 [Reference and three named-dye finishes](customization-palettes.webp) · [Paired Wayfinder emblems](paired-wayfinder.webp)
 
