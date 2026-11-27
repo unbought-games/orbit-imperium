@@ -1,4 +1,4 @@
-// Compile the approved cannon-pod master and its artist-authored selections.
+// Compile an approved Orbit Base ship and its own material selections.
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import sharp from 'sharp'
@@ -6,22 +6,42 @@ import { linear } from '../../packages/ship-appearance/math.mjs'
 import { validateManifest } from '../../packages/ship-appearance/validation.mjs'
 import { compileDecalResponse } from '../ship-livery/emblem-authoring.mjs'
 
-const study = new URL(
-  '../../art/orbit-base/ships/v1/light-fighter-cannon-pods/',
-  import.meta.url,
-)
-const id = 'orbit-base-light-fighter',
-  revision = 'v1'
-const out = new URL(
-  '../../apps/web/public/art/ship-skins/' + id + '/' + revision + '/',
-  import.meta.url,
-)
+const ships = {
+  'light-fighter': {
+    directory: 'light-fighter-cannon-pods',
+    target: 'LightFighter',
+    revision: 'v1',
+    packageRoot: '../../apps/web/public/art/ship-skins/',
+  },
+  battlecruiser: {
+    directory: 'battlecruiser-foredeck-battery',
+    target: 'Battlecruiser',
+    revision: 'v1',
+    packageRoot: '../../art/orbit-base/packages/',
+    emblemMaterial: 'accent',
+  },
+  'heavy-fighter': {
+    directory: 'heavy-fighter-tandem',
+    target: 'HeavyFighter',
+    revision: 'v2',
+    packageRoot: '../../art/orbit-base/packages/',
+  },
+}
+const ship = process.argv[2] ?? 'light-fighter'
+if (!Object.hasOwn(ships, ship))
+  throw Error('Choose one of ' + Object.keys(ships).join(', '))
+const { directory, target, revision, packageRoot, emblemMaterial } = ships[ship]
+const sourceDirectory = 'art/orbit-base/ships/v1/' + directory
+const study = new URL('../../' + sourceDirectory + '/', import.meta.url)
+const id = 'orbit-base-' + ship
+const out = new URL(packageRoot + id + '/' + revision + '/', import.meta.url)
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const read = (name) => readFile(new URL(name, study))
 const [master, svg, slotBytes, calibration] = await Promise.all(
   ['master.png', 'livery.svg', 'emblem-slots.json', 'paint.json'].map(read),
 )
-const { masterSha256, width, height, reference } = JSON.parse(calibration)
+const { masterSha256, width, height, reference, backgroundAlphaFloor } =
+  JSON.parse(calibration)
 if (digest(master) !== masterSha256)
   throw Error('Authoring selections belong to a different master')
 const raw = { width, height, channels: 4 }
@@ -36,6 +56,30 @@ async function rgba(bytes) {
 }
 const source = await rgba(master),
   guide = await rgba(svg)
+// Some generated cutouts contain a faint matte across the empty canvas.
+// Keep antialiasing adjacent to silhouette pixels, clearing isolated haze.
+if (backgroundAlphaFloor !== undefined) {
+  const alpha = await sharp(master).extractChannel('alpha').raw().toBuffer()
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x
+      if (alpha[index] > backgroundAlphaFloor) continue
+      let boundary = false
+      for (
+        let row = Math.max(0, y - 2);
+        row <= Math.min(height - 1, y + 2) && !boundary;
+        row++
+      ) {
+        const start = row * width + Math.max(0, x - 2)
+        const end = row * width + Math.min(width - 1, x + 2) + 1
+        boundary = alpha
+          .subarray(start, end)
+          .some((value) => value > backgroundAlphaFloor)
+      }
+      if (!boundary) source.fill(0, index * 4, index * 4 + 4)
+    }
+  }
+}
 const material = Buffer.alloc(source.length),
   response = Buffer.alloc(source.length),
   receiver = Buffer.alloc(source.length)
@@ -61,6 +105,9 @@ for (let i = 0; i < source.length; i += 4) {
     const gold = limits((-chroma - 0.082) / 0.07) * limits((g - 48) / 34)
     coverage = Math.round(255 * Math.max(cool, gold))
   }
+  // The blue guide channel explicitly locks glass and lights, even where
+  // boundary refinement would mistake a warm reflection for accent paint.
+  coverage = Math.round(coverage * (1 - guide[i + 2] / 255))
   if (!coverage) continue
   let accent = guide[i + 1] / Math.max(guidePaint, 1)
   if (edges[i + 1] > 2 && edges[i + 1] < 253)
@@ -79,7 +126,9 @@ for (let i = 0; i < source.length; i += 4) {
     0.94 * Math.min(commonDiffuse, 1 + 0.28 * Math.max(0, commonDiffuse - 1))
   response.writeUInt16BE(Math.round((Math.min(5, diffuse) * 65535) / 5), i)
   response[i + 3] = 255
-  receiver[i + 3] = Math.round(coverage * (1 - accent))
+  receiver[i + 3] = Math.round(
+    coverage * (emblemMaterial === 'accent' ? accent : 1 - accent),
+  )
 }
 const slots = JSON.parse(slotBytes)
 const png = (bytes) => sharp(bytes, { raw }).png().toBuffer()
@@ -90,7 +139,9 @@ async function save(role, file, bytes) {
   await writeFile(new URL(file, out), bytes)
   maps[role] = { file, sha256: digest(bytes), bytes: bytes.length }
 }
-await save('source', 'source.png', master)
+const runtimeMaster =
+  backgroundAlphaFloor === undefined ? master : await png(source)
+await save('source', 'source.png', runtimeMaster)
 await save('material', 'material-mask.png', await png(material))
 await save('response', 'response-map.png', await png(response))
 await save('receiver', 'receiver.png', await png(receiver))
@@ -100,7 +151,7 @@ const manifest = validateManifest({
   id,
   revision,
   renderer: 'finish-decal-v1',
-  target: { kind: 'Ship', id: 'LightFighter' },
+  target: { kind: 'Ship', id: target },
   collection_id: 'orbit-standard',
   view: 'front-three-quarter-left',
   channels: ['primary', 'accent'],
@@ -121,7 +172,7 @@ const manifest = validateManifest({
   attribution: 'Orbit Imperium contributors / Unbought Games, LLC',
   provenance: {
     authoring: 'tools/ship-appearance/compile-orbit-base.mjs',
-    sourceDirectory: 'art/orbit-base/ships/v1/light-fighter-cannon-pods',
+    sourceDirectory,
     inputs: Object.fromEntries(
       [
         ['master.png', master],
@@ -133,7 +184,7 @@ const manifest = validateManifest({
     versions: { sharp: sharp.versions.sharp },
   },
 })
-await sharp(master)
+await sharp(runtimeMaster)
   .resize(768)
   .webp({ lossless: true })
   .toFile(new URL('preview.webp', out).pathname)
