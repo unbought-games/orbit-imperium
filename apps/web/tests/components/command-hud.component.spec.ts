@@ -88,6 +88,35 @@ test('orb boots from its center, types the complete label and clears it without 
   })
 })
 
+test('the first signal glitch visibly distorts the live orb and stops when reduced motion is enabled', async ({
+  page,
+  mount,
+}) => {
+  await page.clock.pauseAt(baseTime)
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await mountHud(page, mount)
+  const face = page.getByTestId('command-orb').locator('[data-orb-face]')
+  await expect(face).toBeVisible()
+  await expect(face).toHaveCSS('animation-name', 'none')
+  await expect(face).toHaveCSS('transform', 'none')
+  await page.clock.runFor(1850)
+  await expect
+    .poll(() =>
+      face.evaluate((el) => {
+        const animation = el.getAnimations()[0]
+        if (!animation || getComputedStyle(el).animationPlayState !== 'running')
+          return false
+        animation.pause()
+        animation.currentTime = 350
+        return !new DOMMatrix(getComputedStyle(el).transform).isIdentity
+      }),
+    )
+    .toBe(true)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(face).toHaveCSS('transform', 'none')
+  await expect(face).toHaveCSS('animation-name', 'none')
+})
+
 test('every orb surface blends through the shared palette, including rapid retargets and reduced motion', async ({
   page,
   mount,
@@ -111,10 +140,12 @@ test('every orb surface blends through the shared palette, including rapid retar
   for (const tone of ['red', 'green', 'ice', 'champagne'] as const) {
     const frames = await orb.evaluate(async (el, tone) => {
       const dock = el.parentElement!
-      const outer = el.children[0],
-        inner = el.children[1],
-        core = el.children[2]
-      const shimmer = core.children[0],
+      const outer = el.querySelector(
+          '[data-orb-face] [data-orb-part="outer"]',
+        )!,
+        inner = el.querySelector('[data-orb-face] [data-orb-part="inner"]')!,
+        core = el.querySelector('[data-orb-face] [data-orb-part="core"]')!
+      const shimmer = core.querySelector('[data-orb-part="shimmer"]')!,
         icon = core.querySelector('svg')!
       const badge = el.querySelector('[data-testid="unread-count"]')!
       const slots = el.nextElementSibling!
@@ -270,10 +301,22 @@ test('orb hover charges every layer, preserves its hit area and palette, and sup
   await expect(page.getByTestId('orb-charge')).toHaveCSS('opacity', '1')
   expect(await orb.boundingBox()).toEqual(bounds)
   expect(
-    await orb.evaluate((el) => Number(getComputedStyle(el.children[0]).scale)),
+    await orb.evaluate((el) =>
+      Number(
+        getComputedStyle(
+          el.querySelector('[data-orb-face] [data-orb-part="outer"]')!,
+        ).scale,
+      ),
+    ),
   ).toBeGreaterThan(1)
   expect(
-    await orb.evaluate((el) => Number(getComputedStyle(el.children[2]).scale)),
+    await orb.evaluate((el) =>
+      Number(
+        getComputedStyle(
+          el.querySelector('[data-orb-face] [data-orb-part="core"]')!,
+        ).scale,
+      ),
+    ),
   ).toBeGreaterThan(1)
   expect(
     await orb.evaluate(
@@ -304,7 +347,13 @@ test('orb hover charges every layer, preserves its hit area and palette, and sup
   await page.mouse.down()
   await expect.poll(() => channel('press')).toBe(1)
   expect(
-    await orb.evaluate((el) => Number(getComputedStyle(el.children[2]).scale)),
+    await orb.evaluate((el) =>
+      Number(
+        getComputedStyle(
+          el.querySelector('[data-orb-face] [data-orb-part="core"]')!,
+        ).scale,
+      ),
+    ),
   ).toBeLessThan(1)
   expect(await orb.boundingBox()).toEqual(bounds)
   await diagnosticScreenshot(page, {
@@ -335,10 +384,20 @@ test('orb hover charges every layer, preserves its hit area and palette, and sup
   await orb.hover()
   await expect.poll(() => channel('charge')).toBe(1)
   expect(
-    await orb.evaluate((el) => getComputedStyle(el.children[2]).scale),
+    await orb.evaluate(
+      (el) =>
+        getComputedStyle(
+          el.querySelector('[data-orb-face] [data-orb-part="core"]')!,
+        ).scale,
+    ),
   ).toBe('1')
   expect(
-    await orb.evaluate((el) => getComputedStyle(el.children[2]).translate),
+    await orb.evaluate(
+      (el) =>
+        getComputedStyle(
+          el.querySelector('[data-orb-face] [data-orb-part="core"]')!,
+        ).translate,
+    ),
   ).toBe('none')
   expect(
     await orb.evaluate(
@@ -396,7 +455,11 @@ test.describe('orb touch feedback', () => {
     await expect.poll(() => channel('press')).toBe(1)
     expect(
       await orb.evaluate((el) =>
-        Number(getComputedStyle(el.children[2]).scale),
+        Number(
+          getComputedStyle(
+            el.querySelector('[data-orb-face] [data-orb-part="core"]')!,
+          ).scale,
+        ),
       ),
     ).toBeLessThan(1)
     await diagnosticScreenshot(page, {

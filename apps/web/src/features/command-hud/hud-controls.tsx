@@ -18,14 +18,21 @@ import {
   type HudIcon,
 } from './model'
 import type { CommandHudState } from './use-command-hud'
+import { useOrbGlitch } from './use-orb-glitch'
+import { glitchDurationMs } from './orb-glitch'
+import glitch from './orb-glitch.module.css'
 import styles from './hud.module.css'
-function OrbSymbol({ kind }: { kind: HudIcon | null }) {
-  const reduced = useReducedMotion()
-  const icon = kind ? (
+function OrbGlyph({ kind }: { kind: HudIcon | null }) {
+  return kind ? (
     <HudIconMark kind={kind} size={28} />
   ) : (
     <Orbit size={30} strokeWidth={1.25} />
   )
+}
+
+function OrbSymbol({ kind }: { kind: HudIcon | null }) {
+  const reduced = useReducedMotion()
+  const icon = <OrbGlyph kind={kind} />
   if (reduced)
     return (
       <span
@@ -57,13 +64,44 @@ function OrbSymbol({ kind }: { kind: HudIcon | null }) {
 function OrbFace({ symbol }: { symbol: ReactNode }) {
   return (
     <>
-      <span className={styles.outerOrbit} />
-      <span className={styles.innerOrbit} />
-      <span className={styles.orbCore}>
-        <span className={styles.coreShimmer} />
+      <span data-orb-part="outer" className={styles.outerOrbit} />
+      <span data-orb-part="inner" className={styles.innerOrbit} />
+      <span data-orb-part="core" className={styles.orbCore}>
+        <span data-orb-part="shimmer" className={styles.coreShimmer} />
         {symbol}
       </span>
     </>
+  )
+}
+
+function CommandOrbFace({ kind }: { kind: HudIcon | null }) {
+  const effect = useOrbGlitch()
+  const echo = (
+    <OrbFace
+      symbol={
+        <span className={styles.orbSymbol}>
+          <OrbGlyph kind={kind} />
+        </span>
+      }
+    />
+  )
+  return (
+    <span
+      aria-hidden="true"
+      className={glitch.signal}
+      data-glitch={effect ?? undefined}
+      style={{ '--glitch-duration': `${glitchDurationMs}ms` } as CSSProperties}
+    >
+      <span className={glitch.face} data-orb-face="">
+        <OrbFace symbol={<OrbSymbol kind={kind} />} />
+      </span>
+      {(effect === 'tear' || effect === 'chroma' || effect === 'roll') && (
+        <span className={glitch.echo}>{echo}</span>
+      )}
+      {(effect === 'tear' || effect === 'chroma') && (
+        <span className={glitch.trail}>{echo}</span>
+      )}
+    </span>
   )
 }
 
@@ -169,7 +207,7 @@ export function CommandOrb({
             <span />
           </span>
         )}
-        <OrbFace symbol={<OrbSymbol kind={appearance.icon} />} />
+        <CommandOrbFace kind={appearance.icon} />
         <span
           className={styles.orbCharge}
           data-testid="orb-charge"

@@ -1,0 +1,178 @@
+.signal,
+.face,
+.echo,
+.trail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.face,
+.echo,
+.trail {
+  padding: 8px;
+}
+
+/* The HUD opts its short bursts into motion above the game-wide reset. */
+@media (prefers-reduced-motion: no-preference) {
+  .signal[data-glitch] {
+    isolation: isolate;
+  }
+  .signal[data-glitch] > span {
+    animation-duration: var(--glitch-duration) !important;
+    animation-timing-function: steps(1, end) !important;
+    animation-fill-mode: both !important;
+  }
+
+  /* Three bands of the same transmission fall out of horizontal sync. */
+  [data-glitch='tear'] .face {
+    animation-name: shear !important;
+    --offset: -9%;
+    clip-path: inset(-15% -20% 61%);
+  }
+  [data-glitch='tear'] .echo {
+    animation-name: shear !important;
+    --offset: 19%;
+    clip-path: inset(39% -20% 31%);
+    --hud-rgb: 121, 244, 255;
+    --hud: rgb(var(--hud-rgb));
+  }
+  [data-glitch='tear'] .trail {
+    animation-name: shear !important;
+    --offset: -13%;
+    clip-path: inset(69% -20% -15%);
+  }
+
+  /* Misregistered phosphors leave two colored copies of the live glyph. */
+  [data-glitch='chroma'] .face {
+    animation-name: phaseSlip !important;
+  }
+  [data-glitch='chroma'] .echo,
+  [data-glitch='chroma'] .trail {
+    animation-name: channelDrift !important;
+    --offset: -13%;
+    filter: grayscale(1) sepia(1) saturate(9) hue-rotate(134deg);
+    mix-blend-mode: screen;
+  }
+  [data-glitch='chroma'] .trail {
+    --offset: 14%;
+    filter: grayscale(1) sepia(1) saturate(7) hue-rotate(266deg);
+  }
+
+  /* The raster compresses to a hot horizontal trace, then regains height. */
+  [data-glitch='collapse'] .face {
+    animation-name: verticalHold !important;
+  }
+
+  /* A second field follows the first through the circular display aperture. */
+  .signal[data-glitch='roll'] {
+    clip-path: circle(50% at center);
+    background: repeating-linear-gradient(0deg, #091924 0 2px, #427082 3px);
+  }
+  [data-glitch='roll'] .face,
+  [data-glitch='roll'] .echo {
+    animation-name: rollField !important;
+    --field: 0%;
+    mask-image: repeating-linear-gradient(#000 0 2px, #0007 2px 3px);
+  }
+  [data-glitch='roll'] .echo {
+    --field: 100%;
+  }
+}
+@keyframes shear {
+  0%,
+  90%,
+  100% {
+    transform: none;
+  }
+  9%,
+  52% {
+    transform: translateX(var(--offset));
+  }
+  31% {
+    transform: translateX(calc(-0.8 * var(--offset)));
+  }
+  72% {
+    transform: translateX(calc(0.4 * var(--offset)));
+  }
+}
+@keyframes phaseSlip {
+  0%,
+  85%,
+  100% {
+    transform: none;
+  }
+  12%,
+  65% {
+    transform: skewX(-9deg);
+  }
+  40% {
+    transform: skewX(7deg);
+  }
+}
+@keyframes channelDrift {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  62% {
+    opacity: 0.9;
+    transform: translate(var(--offset), -3%);
+  }
+  34% {
+    opacity: 0.8;
+    transform: translate(calc(-0.65 * var(--offset)), 6%);
+  }
+  80% {
+    opacity: 0.55;
+    transform: translate(calc(0.4 * var(--offset)), 1%);
+  }
+}
+@keyframes verticalHold {
+  0%,
+  94%,
+  100% {
+    transform: none;
+  }
+  10% {
+    transform: scale(1.08, 0.65);
+  }
+  22% {
+    transform: scale(1.17, 0.055);
+    filter: brightness(2.5);
+  }
+  48% {
+    transform: translateY(-4%) scale(0.8, 0.12);
+    filter: brightness(2);
+  }
+  61% {
+    transform: scale(0.94, 1.14);
+  }
+  76% {
+    transform: scale(1.04, 0.89);
+  }
+}
+@keyframes rollField {
+  0%,
+  100% {
+    transform: translateY(var(--field));
+  }
+  13% {
+    transform: translateY(calc(var(--field) - 19%));
+  }
+  29% {
+    transform: translateY(calc(var(--field) - 42%));
+  }
+  48% {
+    transform: translateY(calc(var(--field) - 54%));
+  }
+  56% {
+    transform: translateY(calc(var(--field) - 47%));
+  }
+  72% {
+    transform: translateY(calc(var(--field) - 81%));
+  }
+  88% {
+    transform: translateY(calc(var(--field) - 98%));
+  }
+}
