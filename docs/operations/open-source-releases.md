@@ -183,9 +183,19 @@ pages included in every application build. No Git checkout,
 website API, external account, or Unbought service is required at runtime. These
 pages describe the installed build, not the official server's deployment history.
 
-A few changes also deserve an in-game announcement that opens from the command
-orb. These are curated React components, not generated from notes; see the
-[announcement guide](../../apps/web/src/features/announcements/README.md).
+The optional build-note field `audience` defaults to `game`. Campaign-specific
+notes use `audience: S001`. The update index and article display “Andromeda ·
+Season 1” alongside the date.
+Give each audience its own note when one deployment delivers both kinds of
+change. A general fix merged into the season keeps its general audience.
+Keep each build-note ID stable across branches.
+
+A few changes also deserve a curated in-game announcement that opens from the
+command orb. Publish it in the corresponding server feed after activation.
+See the [announcement guide](announcements.md).
+
+Numbered releases require a commit in `main` history, including manual tag
+backfills. Seasonal branches publish deployment images independently.
 
 ## Website integration
 
@@ -198,8 +208,10 @@ GitHub publication timestamp. That push starts the normal website build and depl
 The website imports Markdown from the recorded commit, never from moving `main`.
 
 Official deployment records are written by the infra workflow only after readiness
-succeeds. `www` builds a dated summary of player-facing Conventional Commits between
-successful deployment revisions. Author a separate announcement in `www` for editorial about a hosted update.
+succeeds. Seasonal deployment news uses the new build notes from the deployed
+revision, including notes brought in from `main`. Group them by each note's
+audience. Legacy deployment news uses player-facing Conventional Commits.
+Author a separate announcement in `www` for editorial about a hosted update.
 The first recorded deployment establishes a baseline.
 
 The build also bundles player-facing Conventional Commit history into paginated

@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import yaml from 'js-yaml'
 import { verifyRelease, verifyReleaseFromGitHub } from './release-gate.mjs'
 
-function fixture() {
+function fixture(branch = 'main') {
   const sha = 'a'.repeat(40)
   const run = {
     id: 123,
@@ -13,7 +13,7 @@ function fixture() {
     repository: { id: 1427640162 },
     head_repository: { id: 1427640162 },
     event: 'push',
-    head_branch: 'main',
+    head_branch: branch,
     status: 'completed',
     conclusion: 'success',
     head_sha: sha,
@@ -36,7 +36,7 @@ function fixture() {
         conclusion: 'success',
       },
     ],
-    mainSha: sha,
+    branchSha: sha,
     comparison: {
       base_commit: { sha },
       merge_base_commit: { sha },
@@ -47,7 +47,7 @@ function fixture() {
 
 test('releases the selected revision with its successful aggregate check and main ancestry', () => {
   const input = fixture()
-  assert.equal(verifyRelease(input), input.mainSha)
+  assert.equal(verifyRelease(input), input.branchSha)
 })
 
 test('rejects forks, other branches/events/workflows, unrelated revisions, reruns and incomplete CI', () => {
@@ -162,29 +162,48 @@ test('release workflow keeps PRs and explicit suites outside the privileged publ
   assert.deepEqual(release.on.workflow_run, {
     workflows: ['CI'],
     types: ['completed'],
-    branches: ['main'],
+    branches: ['main', 'prod/S001'],
   })
   assert.equal(release.concurrency['cancel-in-progress'], false)
   assert.equal(
     release.concurrency.group,
-    'release-image-${{ inputs.commit || github.event.workflow_run.head_sha }}',
+    'release-image-${{ inputs.source_branch || github.event.workflow_run.head_branch }}-${{ inputs.commit || github.event.workflow_run.head_sha }}',
   )
   assert.deepEqual(release.permissions, { contents: 'read' })
   assert.equal(release.jobs.trusted.permissions['id-token'], undefined)
-  assert.equal(release.jobs.publish.needs, 'trusted')
+  assert.deepEqual(
+    release.on.workflow_dispatch.inputs.source_branch.options,
+    release.on.workflow_run.branches,
+  )
+  assert.equal(
+    release.on.workflow_dispatch.inputs.source_branch.default,
+    'main',
+  )
+  assert.equal(release.jobs.build.permissions['id-token'], undefined)
+  assert.equal(release.jobs.build.needs, 'trusted')
+  assert.deepEqual(release.jobs.publish.needs, ['trusted', 'build'])
+  const buildSteps = release.jobs.build.steps
+  assert.equal(buildSteps[0].with.ref, '${{ needs.trusted.outputs.sha }}')
+  assert.ok(
+    buildSteps.some((step) => step.run === 'make inspect-release-image'),
+  )
+  assert.equal(
+    release.jobs.build.outputs.image_artifact,
+    '${{ steps.save.outputs.artifact-id }}',
+  )
   const steps = release.jobs.publish.steps
-  assert.equal(steps[0].with.ref, '${{ needs.trusted.outputs.sha }}')
-  assert.equal(steps[0].with.path, 'source')
-  assert.equal(steps[1].with.ref, '${{ github.sha }}')
-  assert.equal(steps[1].with.path, 'release-tools')
-  assert.equal(release.jobs.publish.defaults.run['working-directory'], 'source')
-  const inspect = steps.findIndex(
-    (step) => step.run === 'make inspect-release-image',
+  assert.equal(steps[0].with.ref, '${{ github.sha }}')
+  assert.equal(
+    steps[1].with['artifact-ids'],
+    '${{ needs.build.outputs.image_artifact }}',
+  )
+  assert.equal(
+    release.jobs.publish.env.ORBIT_SOURCE_BRANCH,
+    '${{ needs.trusted.outputs.source_branch }}',
   )
   const auth = steps.findIndex((step) => step.uses?.startsWith('aws-actions/'))
-  assert.ok(inspect > 0 && auth > inspect)
+  assert.ok(auth > 1)
   assert.equal(steps[auth - 1].run, 'node scripts/release-gate.mjs')
-  assert.equal(steps[auth - 1]['working-directory'], 'release-tools')
   assert.equal(
     release.jobs.publish.env.ORBIT_CI_RUN_ID,
     '${{ needs.trusted.outputs.ci_run }}',
@@ -193,7 +212,7 @@ test('release workflow keeps PRs and explicit suites outside the privileged publ
     release.jobs.publish.env.ORBIT_CI_RUN_ATTEMPT,
     '${{ needs.trusted.outputs.ci_attempt }}',
   )
-  assert.equal(steps.at(-1).with.path, 'source/release-image.json')
+  assert.equal(steps.at(-1).with.path, 'release-image.json')
   for (const job of Object.values(release.jobs)) {
     assert.equal(job['runs-on'], 'ubuntu-24.04')
     for (const step of job.steps) {
@@ -210,6 +229,17 @@ test('release workflow keeps PRs and explicit suites outside the privileged publ
     'workflow_dispatch',
   ])
   const ci = read('ci')
+  assert.deepEqual(ci.on.push.branches, release.on.workflow_run.branches)
+  const numbered = read('publish-release')
+  assert.deepEqual(numbered.on.workflow_run.branches, ['main'])
+  const prepare = numbered.jobs.prepare.steps
+  const ancestry = prepare.findIndex(
+    (step) =>
+      step.run === 'git merge-base --is-ancestor HEAD refs/remotes/origin/main',
+  )
+  const select = prepare.findIndex((step) => step.id === 'select')
+  assert.ok(ancestry >= 0 && ancestry < select)
+  assert.equal(prepare[ancestry]['working-directory'], 'source')
   assert.deepEqual(ci.permissions, { contents: 'read' })
   assert.equal(
     ci.concurrency['cancel-in-progress'],
@@ -217,7 +247,7 @@ test('release workflow keeps PRs and explicit suites outside the privileged publ
   )
   assert.equal(
     ci.concurrency.group,
-    "${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}",
+    "${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ github.event_name != 'pull_request' && github.sha || '' }}",
   )
   for (const job of Object.values(ci.jobs))
     assert.equal(job.permissions?.['id-token'], undefined)
@@ -231,8 +261,8 @@ test('new main commits do not supersede the selected automatic or manual publica
       delete input.event.workflow_run
       input.event.inputs = { commit: sha }
     }
-    for (const mainSha of ['b'.repeat(40), 'c'.repeat(40)]) {
-      input.mainSha = mainSha
+    for (const branchSha of ['b'.repeat(40), 'c'.repeat(40)]) {
+      input.branchSha = branchSha
       input.comparison.status = 'ahead'
       assert.equal(verifyRelease(input), sha)
     }
@@ -258,13 +288,13 @@ function apiFixture(input, overrides = {}) {
       value = { workflow_runs: [input.run] }
     else if (path === `actions/runs/${input.run.id}`) value = input.run
     else if (path === 'actions/workflows/ci.yml') value = input.workflow
-    else if (path === 'git/ref/heads/main')
-      value = { object: { sha: input.mainSha } }
+    else if (path.startsWith('git/ref/heads/'))
+      value = { object: { sha: input.branchSha } }
     else if (
       path === `actions/runs/${input.run.id}/attempts/1/jobs?per_page=100`
     )
       value = { total_count: input.jobs.length, jobs: input.jobs }
-    else if (path === `compare/${input.run.head_sha}...${input.mainSha}`)
+    else if (path === `compare/${input.run.head_sha}...${input.branchSha}`)
       value = input.comparison
     else throw Error('Unexpected API request: ' + path)
     if (Object.hasOwn(overrides, path)) value = overrides[path]
@@ -281,16 +311,17 @@ test('manual dispatch discovers CI once and pins the same run and attempt across
   const input = fixture()
   delete input.event.workflow_run
   input.event.inputs = { commit: input.run.head_sha }
-  input.mainSha = 'b'.repeat(40)
+  input.branchSha = 'b'.repeat(40)
   input.comparison.status = 'ahead'
   const api = apiFixture(input)
   const selected = await verifyReleaseFromGitHub(input.event, 'fixture', api)
   assert.deepEqual(selected, {
     sha: input.run.head_sha,
+    branch: 'main',
     ciRun: 123,
     ciAttempt: 1,
   })
-  input.mainSha = 'c'.repeat(40)
+  input.branchSha = 'c'.repeat(40)
   const recheck = apiFixture(input)
   assert.deepEqual(
     await verifyReleaseFromGitHub(input.event, 'fixture', {
@@ -321,12 +352,12 @@ test('API gate fails closed on missing CI, partial job evidence, changed attempt
       },
     },
     {
-      [`compare/${input.run.head_sha}...${input.mainSha}`]: {
+      [`compare/${input.run.head_sha}...${input.branchSha}`]: {
         ...input.comparison,
         status: 'diverged',
       },
     },
-    { [`compare/${input.run.head_sha}...${input.mainSha}`]: null },
+    { [`compare/${input.run.head_sha}...${input.branchSha}`]: null },
   ])
     await assert.rejects(
       verifyReleaseFromGitHub(
@@ -335,4 +366,34 @@ test('API gate fails closed on missing CI, partial job evidence, changed attempt
         apiFixture(input, overrides),
       ),
     )
+})
+
+test('seasonal publication binds CI and ancestry to the exact branch even when main has the same commit', async () => {
+  for (const manual of [false, true]) {
+    const input = fixture('prod/S001')
+    if (manual) {
+      delete input.event.workflow_run
+      input.event.inputs = {
+        commit: input.run.head_sha,
+        source_branch: 'prod/S001',
+      }
+    }
+    const api = apiFixture(input)
+    const result = await verifyReleaseFromGitHub(input.event, 'fixture', api)
+    assert.equal(result.branch, 'prod/S001')
+    assert.ok(api.calls.includes('git/ref/heads/prod/S001'))
+    if (manual)
+      assert.ok(api.calls.some((path) => path.includes('branch=prod%2FS001&')))
+    input.run.head_branch = 'main'
+    await assert.rejects(verifyReleaseFromGitHub(input.event, 'fixture', api))
+  }
+  for (const branch of ['prod/S002', 'prod/s001', 'feature']) {
+    const input = fixture(branch)
+    const api = apiFixture(input)
+    await assert.rejects(
+      verifyReleaseFromGitHub(input.event, 'fixture', api),
+      /Untrusted source branch/,
+    )
+    assert.equal(api.calls.length, 0)
+  }
 })

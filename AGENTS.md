@@ -27,7 +27,30 @@ implementation details are needed.
 
 # Pull requests
 
-All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests are squash-merged, so the PR title becomes the commit title. Verify the title before creating or updating a PR.
+All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests into `main` are squash-merged, so their PR title becomes the commit title. Verify the title before creating or updating a PR.
+
+## Season branches
+
+Shared fixes and features target `main`. Andromeda campaign work branches from
+and targets `prod/S001`. Fetch the intended PR base before starting work and
+check the base again before enqueueing. Use a merge commit when bringing
+`main` into `prod/S001` so future syncs retain both parents. The season queue
+uses merge commits. Campaign code stays on its season branch for its lifetime.
+
+Once Andromeda switches to `prod/S001`, all subsequent Andromeda deployments
+use an image published from that branch. Bring shared fixes in through the sync
+PR. New universes may start on `main`. Numbered open-source releases use
+`main`. See [image releases](docs/operations/image-releases.md).
+
+During a sync, keep every migration already applied to the season database at
+its original number and checksum. If an incoming migration would collide with
+or precede the applied history, give the incoming SQL the next unused season
+version before it is applied. Preserve dependencies and include it once. Review
+and test upgrades from the last seasonal release as well as fresh installs.
+
+For player-facing campaign changes, add a build note on the season branch with
+`audience: S001` so readers see the universe and season beside the date. Shared notes
+use `audience: game` (the default) even when delivered via a seasonal build.
 
 ## Changelog
 

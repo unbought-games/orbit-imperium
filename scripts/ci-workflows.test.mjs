@@ -116,7 +116,7 @@ test('merge queue checks use the complete integration group without cancelling o
   )
   assert.equal(
     ci.concurrency.group,
-    "${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}",
+    "${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ github.event_name != 'pull_request' && github.sha || '' }}",
   )
   assert.equal(
     ci.concurrency['cancel-in-progress'],

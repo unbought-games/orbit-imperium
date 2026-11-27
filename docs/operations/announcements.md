@@ -46,6 +46,12 @@ Link your laboratories so your planets research together.
 - **Research finishes faster.**
 ```
 
+For the Andromeda ending, publish campaign highlights to Andromeda's feed with
+“Andromeda · Season 1” in the title. Publish shared game updates with their
+ordinary titles. A release containing both can publish two entries with distinct
+IDs after the corresponding content is active. Audience metadata belongs to the
+build note; the runtime announcement uses the title and target server feed.
+
 Use your actual publication date and only links/artwork served by your deployment.
 `until`, `href`, and `image` are optional. Without `until`, the window is 30 days.
 The ID, title, date and body are required. Unknown metadata and duplicate IDs are
