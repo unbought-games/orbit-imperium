@@ -212,29 +212,39 @@
     scroll-margin-top: calc(54px + env(safe-area-inset-top));
   }
 }
-/* The pulse only paints the resource row. Its lower edge always meets the
-   solid warning color, including at the dimmest point of the cycle. */
-.header[data-warning='world'] .worldBar {
+/* Both layers finish at the solid warning color throughout the pulse. */
+.header [data-attack-pulse] {
   position: relative;
   isolation: isolate;
 }
-.header[data-warning='world'] .worldBar::before,
-.header[data-warning='world'] .worldBar::after {
+.header [data-attack-pulse]::before,
+.header [data-attack-pulse]::after {
   content: '';
   position: absolute;
-  grid-row-end: 2;
   inset: 0;
   z-index: -1;
   pointer-events: none;
 }
-.header[data-warning='world'] .worldBar::before {
+.worldBar[data-attack-pulse]::before,
+.worldBar[data-attack-pulse]::after {
+  grid-row-end: 2;
+}
+/* Alliance pages omit resources. Keep the pulse along the warning's upper edge. */
+.threatBar[data-attack-pulse] {
+  padding-block-start: var(--space-3);
+}
+.threatBar[data-attack-pulse]::before,
+.threatBar[data-attack-pulse]::after {
+  height: var(--space-3);
+}
+.header [data-attack-pulse]::before {
   background: linear-gradient(
     to bottom,
     var(--surface-page),
     var(--attack-surface)
   );
 }
-.header[data-warning='world'] .worldBar::after {
+.header [data-attack-pulse]::after {
   background: linear-gradient(to bottom, rgb(210 62 72 / 45%), transparent);
   animation: hostile-pulse 3.2s ease-in-out infinite !important;
 }
@@ -249,7 +259,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .worldBar.hostile::after,
-  .header[data-warning='world'] .worldBar::after {
+  .header [data-attack-pulse]::after {
     animation: none !important;
     opacity: 0.7;
   }

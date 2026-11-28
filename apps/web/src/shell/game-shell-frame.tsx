@@ -55,12 +55,14 @@ export function GameShellFrame({
   const pinned = usePinnedHeader()
   const threat = incomingThreatKind(view)
   const allianceArea = page.startsWith('alliance')
-  const showWarning = threat && (threat !== 'espionage' || allianceArea)
+  const attack = threat === 'attack' || threat === 'missile'
+  const showWarning = attack || (allianceArea && threat === 'espionage')
   const ThreatIcon = threat === 'espionage' ? Radar : ShieldAlert
   const warning = (
     <div
       className={showWarning ? styles.threatBar : styles.hostileStatus}
       data-threat={threat ?? undefined}
+      data-attack-pulse={(allianceArea && attack) || undefined}
       role="status"
     >
       {threat && (
@@ -123,6 +125,7 @@ export function GameShellFrame({
               ) : (
                 <div
                   className={`${styles.worldBar} ${threat ? styles.hostile : ''}`}
+                  data-attack-pulse={attack || undefined}
                   role="group"
                   aria-label="Planet and resources"
                 >
