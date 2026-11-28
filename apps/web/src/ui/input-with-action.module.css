@@ -13,3 +13,14 @@
   right: 4px;
   bottom: 4px;
 }
+.labeledAction {
+  max-inline-size: 100%;
+  gap: var(--space-1);
+  padding-inline: 0;
+  text-align: start;
+}
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .labeledAction {
+    min-block-size: var(--control-size);
+  }
+}

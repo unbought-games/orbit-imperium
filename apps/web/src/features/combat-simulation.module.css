@@ -170,11 +170,8 @@
   color: var(--champagne-light);
 }
 .available {
-  display: block;
-  padding: 0;
-  min-height: 24px;
+  display: flex;
   font-size: 0.75rem;
-  text-align: left;
 }
 
 .outcomes .win,

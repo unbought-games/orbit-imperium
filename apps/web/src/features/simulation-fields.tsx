@@ -1,6 +1,6 @@
 import { SimulationDisclosure } from './simulation-disclosure'
 import { Fragment } from 'react'
-import { Button } from '../ui/button'
+import { FillButton } from '../ui/input-with-action'
 import { NumberInput } from '../ui/form'
 import { VisuallyHidden } from '../ui/visually-hidden'
 import { shipGroup, shipGroups } from './ship-order'
@@ -185,17 +185,13 @@ function SimulationFieldInput({
           {label(field.label)}
         </label>
         {field.available !== undefined ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="small"
+          <FillButton
+            visibleLabel={`${formatWholeNumber(field.available)} available`}
             className={styles.available}
             aria-label={`Use all ${formatWholeNumber(field.available)} available ${label(field.label)}`}
-            title={`${source}. Fill with ships stationed at this origin`}
+            title={`Add all ${formatWholeNumber(field.available)} available ${label(field.label)}`}
             onClick={() => edit({ [field.key]: field.available! })}
-          >
-            {formatWholeNumber(field.available)} available
-          </Button>
+          />
         ) : (
           source && <small>{source}</small>
         )}

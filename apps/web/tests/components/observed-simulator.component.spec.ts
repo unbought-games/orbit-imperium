@@ -100,13 +100,18 @@ for (const hidden of [false, true])
     await expect(
       dialog.getByRole('link', { name: /Espionage report/ }),
     ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/reports/${header.id}`)
-    await expect(
-      dialog.getByRole('button', { name: 'Use all 3 available Light Fighter' }),
-    ).toBeVisible()
-    await dialog
-      .getByRole('button', { name: 'Use all 3 available Light Fighter' })
-      .focus()
-    await page.keyboard.press('Enter')
+    const fill = dialog.getByRole('button', {
+      name: 'Use all 3 available Light Fighter',
+    })
+    const arrow = fill.locator('svg')
+    await expect(arrow).toBeVisible()
+    if (hidden) {
+      await fill.focus()
+      await page.keyboard.press('Enter')
+    } else {
+      await expect(fill.getByText('3 available', { exact: true })).toBeVisible()
+      await arrow.click()
+    }
     await expect(
       dialog.getByLabel('Attacker Light Fighter', { exact: true }),
     ).toHaveValue('3')
