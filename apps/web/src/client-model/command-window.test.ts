@@ -573,3 +573,75 @@ it.each(['social', 'alliance'] as const)(
     expect(run).not.toHaveBeenCalled()
   },
 )
+
+it('alliance recovery invalidates a mailbox read begun before the recovered join', async () => {
+  const { emptySocialView } = await import('./social')
+  const f = recovery()
+  const run = vi
+    .fn()
+    .mockRejectedValueOnce(Error('lost acknowledgement'))
+    .mockResolvedValue({ status: 'ok' })
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let circularReads = 0
+  const circular = {
+    id: id(90),
+    alliance: id(88),
+    alliance_name: 'New alliance',
+    alliance_tag: 'NEW',
+    sender: id(91),
+    sender_name: 'Pilot',
+    body: 'Fresh circular',
+    sent_at: 1000,
+    read: false,
+  }
+  const port: GamePort = {
+    ...f.port,
+    allianceCommand: run,
+    socialQuery: async (context, query) => {
+      const response = { ...context, ...emptySocialView() }
+      if (query.type === 'Circulars') {
+        circularReads++
+        if (circularReads === 1) await held
+        else response.circulars = [circular]
+      }
+      return response
+    },
+  }
+  const first = new Coordinator(port, f.platform)
+  await first.initialize(f.session, f.snapshot)
+  await expect(
+    first.allianceCommand({
+      command_id: await first.newCommandId(),
+      expected_revision: null,
+      action: { type: 'Join', alliance: id(88) },
+    }),
+  ).rejects.toThrow()
+  const restored = new Coordinator(port, f.platform)
+  await restored.initialize(f.session, f.snapshot)
+  const old = restored.refreshMailbox()
+  expect(circularReads).toBe(1)
+  let notified!: () => void
+  const notification = new Promise<void>((resolve) => {
+    notified = resolve
+  })
+  const stop = restored.store.subscribe((next, previous) => {
+    if (
+      next.recoveredMutations.alliance !== previous.recoveredMutations.alliance
+    )
+      notified()
+  })
+  const recovering = restored.poll()
+  try {
+    await notification
+    release()
+    await Promise.all([old, recovering])
+    expect(circularReads).toBe(2)
+    expect(restored.store.getState().mailbox?.circulars).toEqual([circular])
+  } finally {
+    release()
+    stop()
+  }
+})

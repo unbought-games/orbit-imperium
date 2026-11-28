@@ -7,6 +7,7 @@ import {
   RouterProvider,
   useRouterState,
 } from '@tanstack/react-router'
+import { AllianceArrival } from '../../src/features/arrival/alliance-arrival'
 import { AllianceScreen } from '../../src/features/alliances/screen'
 import { Coordinator } from '../../src/client-model/coordinator'
 import { PlayerProfilesController } from '../../src/client-model/player-profiles'
@@ -32,8 +33,9 @@ const { alliance, applicant, member, summary, own } = allianceMembershipFixture(
   view.binding,
 )
 const mode = new URLSearchParams(location.search).get('mode')
+const recovering = mode === 'recover-join' || mode === 'recover-arrival'
 const membership = own()
-let joined = !['join', 'apply', 'ordinary-apply', 'withdraw', 'recover-join'].includes(
+let joined = !['join', 'apply', 'ordinary-apply', 'withdraw', 'recover-join', 'recover-arrival'].includes(
   mode ?? '',
 )
 const applications: components['schemas']['AllianceApplication'][] = []
@@ -54,7 +56,7 @@ const port: GamePort = {
     return {...snapshot.candidate, request_id}
   },
   settings: unexpected,
-  view: async (context) => mode === 'recover-join' ? {...view, ...context} : unexpected(),
+  view: async (context) => recovering ? {...view, ...context} : unexpected(),
   quote: unexpected,
   submit: unexpected,
   receipt: unexpected,
@@ -90,7 +92,7 @@ const port: GamePort = {
   allianceCommand: async (context, request) => {
     const { action, command_id } = request
     const allowed =
-      mode === 'join' || mode === 'recover-join'
+      mode === 'join' || recovering
         ? ['Join']
         : mode === 'apply' || mode === 'ordinary-apply'
           ? ['Apply']
@@ -147,7 +149,7 @@ const platform = {
 }
 let model = new Coordinator(port, platform)
 await model.initialize(session, snapshot)
-if (mode === 'recover-join') {
+if (recovering) {
   try { await model.allianceCommand({command_id: await model.newCommandId(), expected_revision: null, action: {type: 'Join', alliance}}) }
   catch { /* Preserve the saved request for the reconstructed coordinator. */ }
   model = new Coordinator(port, platform)
@@ -249,7 +251,9 @@ function Surface() {
           }}
         >
           <PlayerProfilesContext.Provider value={profiles}>
-            <AllianceScreen discovering={path.endsWith('/discover')} />
+            {mode === 'recover-arrival'
+              ? <AllianceArrival alliance={alliance} onContinue={() => {}} onDismiss={() => {}} />
+              : <AllianceScreen discovering={path.endsWith('/discover')} />}
           </PlayerProfilesContext.Provider>
         </ScreenContext.Provider>
       </SessionContext.Provider>

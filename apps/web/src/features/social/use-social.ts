@@ -39,13 +39,22 @@ export function useSocial(player: string | undefined) {
     const stopRecovery = watchRecoveredMutations(model.store, 'social', () => {
       // Recovery can settle while a newer send is pending. Reads preserve its draft.
       void controller.history('newer')
-      void controller.pollList()
+      void controller.refreshList()
     })
+    const stopAllianceRecovery = watchRecoveredMutations(
+      model.store,
+      'alliance',
+      () => {
+        void controller.loadAlliance()
+        void controller.refreshList()
+      },
+    )
     const timer = setInterval(refresh, 120_000)
     window.addEventListener('focus', refresh)
     return () => {
       stop()
       stopRecovery()
+      stopAllianceRecovery()
       clearInterval(timer)
       window.removeEventListener('focus', refresh)
     }
