@@ -46,12 +46,14 @@ test('alliance pages retain a visible attack warning without the planet bar on d
       return {
         animation: pulse.animationName,
         image: pulse.backgroundImage,
+        top: pulse.top,
         height: parseFloat(pulse.height),
         barHeight: element.clientHeight,
       }
     })
     expectPulsingGradient(edge.image)
     expect(edge.animation).toContain('hostile-pulse')
+    expect(edge.top).toBe('0px')
     expect(edge.height).toBeGreaterThan(0)
     expect(edge.height).toBeLessThan(edge.barHeight)
     if (width === 768) {
