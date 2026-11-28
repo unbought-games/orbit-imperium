@@ -310,6 +310,7 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
     `/u/andromeda/b/${id(6)}/overview#fleet-movements`,
   )
   const board = page.getByRole('region', { name: 'Fleet movements' })
+  await expect(board).toBeFocused()
   await expect(
     board.getByRole('listitem', { name: 'Incoming attack fleet' }),
   ).toBeInViewport()
