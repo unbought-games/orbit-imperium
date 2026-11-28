@@ -38,10 +38,10 @@ export function InputAccessory({
   )
 }
 
-function pasteGroupedQuantity(event: ClipboardEvent<HTMLInputElement>) {
+function pasteQuantityWithoutCommas(event: ClipboardEvent<HTMLInputElement>) {
   const input = event.currentTarget
   const text = event.clipboardData.getData('text/plain')
-  if (!/^\d{1,3}(?:,\d{3})+$/.test(text)) return
+  if (!text.includes(',')) return
 
   // Use the native edit so selection, undo and the caller's input events
   // behave the same as when the player types digits.
@@ -57,14 +57,14 @@ function pasteGroupedQuantity(event: ClipboardEvent<HTMLInputElement>) {
 
 // Keep text selection and exact string values, with a numeric keyboard on mobile.
 export function NumberInput({
-  allowGroupedPaste = true,
+  stripPastedCommas = true,
   onPaste,
   onFocus,
   onPointerDown,
   onClick,
   ...props
 }: Omit<ComponentPropsWithRef<'input'>, 'type'> & {
-  allowGroupedPaste?: boolean
+  stripPastedCommas?: boolean
 }) {
   const selectOnClick = useRef(false)
   return (
@@ -74,8 +74,8 @@ export function NumberInput({
       type="text"
       onPaste={(event) => {
         onPaste?.(event)
-        if (allowGroupedPaste && !event.defaultPrevented)
-          pasteGroupedQuantity(event)
+        if (stripPastedCommas && !event.defaultPrevented)
+          pasteQuantityWithoutCommas(event)
       }}
       onFocus={(event) => {
         event.currentTarget.select()

@@ -119,7 +119,7 @@ test.describe('numeric field paste', () => {
     await input.press('ControlOrMeta+v')
   }
 
-  test('a grouped quantity replaces the selection and leaves the caret after the inserted digits', async ({
+  test('quantity paste removes commas and preserves selection and caret editing', async ({
     page,
     mount,
   }) => {
@@ -127,7 +127,8 @@ test.describe('numeric field paste', () => {
     const input = page.getByRole('textbox', { name: 'Quantity' })
     const submitted = page.getByLabel('Submitted quantity')
     await paste(input, '12,50')
-    await expect(input).toHaveValue('12,50')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('1250')
     await input.fill('456')
     await input.press('ArrowLeft')
     await input.press('Shift+ArrowLeft')
