@@ -131,7 +131,7 @@ async function prepare() {
   }
   const model = new Coordinator(port, {
     newId: () => id(sequence++),
-    monotonicNowMs: () => 0,
+    monotonicNowMs: () => performance.now(),
     isOnline: () => true,
   })
   await model.initialize(session, snapshot)

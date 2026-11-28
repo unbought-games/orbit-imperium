@@ -35,6 +35,7 @@ import {
 } from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
 import { AlliancesController } from '../../client-model/alliances'
+import { watchRecoveredMutations } from '../../client-model/bound-command-recovery'
 import type { Coordinator } from '../../client-model/coordinator'
 import { useGameSession } from '../../shell/session-context'
 import { Button, ButtonLink } from '../../ui/button'
@@ -141,6 +142,13 @@ function AllianceWorkspace({
     void controller.refresh()
     return () => controller.clear()
   }, [controller])
+  useEffect(
+    () =>
+      watchRecoveredMutations(model.store, 'alliance', () => {
+        void controller.refresh()
+      }),
+    [controller, model],
+  )
   const detail = state.view?.alliance
   const publicAlliance = usePublicAlliance(
     universe,
