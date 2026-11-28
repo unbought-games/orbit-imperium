@@ -68,8 +68,11 @@ export function GameShellFrame({
           {showWarning && <ThreatIcon size={20} aria-hidden="true" />}
           <strong>{threatMessages[threat]}</strong>
           {showWarning && body && (
-            <Link {...routeTarget(universeName, 'fleets', body.id)}>
-              View fleets <ArrowRight size={15} aria-hidden="true" />
+            <Link
+              {...routeTarget(universeName, 'overview', body.id)}
+              hash="fleet-movements"
+            >
+              View movements <ArrowRight size={15} aria-hidden="true" />
             </Link>
           )}
         </>

@@ -539,6 +539,7 @@
   color: var(--ice-light);
 }
 .fleetBoard {
+  scroll-margin-top: calc(var(--shell-header-height, 64px) + 8px);
   display: flex;
   flex-direction: column;
   min-width: 0;

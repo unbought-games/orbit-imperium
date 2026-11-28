@@ -18,13 +18,18 @@ test('alliance pages retain a visible attack warning without the planet bar on d
     const warning = page
       .getByRole('status')
       .filter({ hasText: 'Incoming attack' })
-    await expect(warning).toBeVisible()
+    await expect(warning.getByText('Incoming attack')).toBeInViewport({
+      ratio: 1,
+    })
+    await expect(
+      warning.getByRole('link', { name: 'View movements' }),
+    ).toBeInViewport({ ratio: 1 })
     await expect(
       page.getByRole('group', { name: 'Planet and resources' }),
     ).toHaveCount(0)
     await expect(
-      warning.getByRole('link', { name: 'View fleets' }),
-    ).toHaveAttribute('href', /\/fleets$/)
+      warning.getByRole('link', { name: 'View movements' }),
+    ).toHaveAttribute('href', /\/overview#fleet-movements$/)
     const bounds = await warning.boundingBox()
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
@@ -806,7 +811,9 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
   await expect(
     bar.getByText('Incoming attack', { exact: true }),
   ).toBeInViewport({ ratio: 1 })
-  await expect(bar.getByRole('link', { name: 'View fleets' })).toBeInViewport({
+  await expect(
+    bar.getByRole('link', { name: 'View movements' }),
+  ).toBeInViewport({
     ratio: 1,
   })
   await page.setViewportSize({ width: 390, height: 844 })

@@ -269,9 +269,6 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
   await expect(
     bar.getByRole('status').getByText('Incoming attack', { exact: true }),
   ).toBeVisible()
-  await expect(
-    bar.getByRole('link', { name: 'View fleets' }),
-  ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/fleets`)
   const threat = page
     .getByLabel('Recent game events')
     .getByRole('button', { name: /Hostile fleet inbound/ })
@@ -304,6 +301,23 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
     .click()
   await expect(page).toHaveURL(/\/fleets\/?$/)
   await expect(orb).toHaveAttribute('data-tone', 'red')
+  await page.getByRole('button', { name: 'Yours', exact: true }).click()
+  await expect(
+    page.getByRole('article', { name: 'Incoming attack fleet' }),
+  ).toHaveCount(0)
+  await bar.getByRole('link', { name: 'View movements' }).click()
+  await expect(page).toHaveURL(
+    `/u/andromeda/b/${id(6)}/overview#fleet-movements`,
+  )
+  const board = page.getByRole('region', { name: 'Fleet movements' })
+  await expect(
+    board.getByRole('listitem', { name: 'Incoming attack fleet' }),
+  ).toBeInViewport()
+  await page.goBack()
+  await expect(page).toHaveURL(`/u/andromeda/b/${id(6)}/fleets`)
+  await expect(
+    page.getByRole('region', { name: 'Empire fleet traffic' }),
+  ).toBeVisible()
   f.missions.incoming.pop()
   await deliver()
   await expect(orb).toHaveAttribute('data-tone', 'ice')
