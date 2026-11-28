@@ -3,14 +3,23 @@ import { RichSelect } from '../ui/rich-select'
 import { bodyName, coordinates } from '../ui/format'
 import { resolveBodyArt } from '../ui/artwork'
 import { useBodyAppearance } from '../features/body-appearance'
+import { groupPickerBodies, type PickerBody } from './body-picker-groups'
+import hidden from '../ui/visually-hidden.module.css'
 import styles from './body-selector.module.css'
 
-function BodyLabel({ body }: { body: BoundView['bodies'][number] }) {
+function BodyLabel({
+  body,
+  parent,
+}: {
+  body: PickerBody
+  parent?: PickerBody
+}) {
   const appearance = useBodyAppearance(body.id)
   return (
     <span
       className={styles.body}
-      title={`${bodyName(body)} ${coordinates(body)}`}
+      data-nested={parent ? '' : undefined}
+      title={pickerLabel(body, parent)}
     >
       <img
         key={body.id}
@@ -28,9 +37,25 @@ function BodyLabel({ body }: { body: BoundView['bodies'][number] }) {
       <span className={styles.description}>
         <span className={styles.bodyName}>{bodyName(body)}</span>{' '}
         <span className={styles.bodyCoordinates}>{coordinates(body)}</span>
+        {parent && (
+          <span className={hidden.hidden}>moon of {bodyName(parent)}</span>
+        )}
       </span>
     </span>
   )
+}
+
+function pickerLabel(body: PickerBody, parent?: PickerBody) {
+  const label = `${bodyName(body)} ${coordinates(body)}`
+  return parent ? `${label}, moon of ${bodyName(parent)}` : label
+}
+
+function pickerOption(body: PickerBody, parent?: PickerBody) {
+  return {
+    value: body.id,
+    label: pickerLabel(body, parent),
+    content: <BodyLabel body={body} parent={parent} />,
+  }
 }
 
 export function BodySelector({
@@ -48,11 +73,10 @@ export function BodySelector({
       label="Selected body"
       value={body?.id}
       className={styles.selector}
-      options={bodies.map((entry) => ({
-        value: entry.id,
-        label: `${bodyName(entry)} ${coordinates(entry)}`,
-        content: <BodyLabel body={entry} />,
-      }))}
+      options={groupPickerBodies(bodies).flatMap(({ body, moons }) => [
+        pickerOption(body),
+        ...moons.map((moon) => pickerOption(moon, body)),
+      ])}
       onValueChange={onSelect}
     >
       {body ? <BodyLabel body={body} /> : 'Choose a planet'}

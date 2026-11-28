@@ -52,12 +52,6 @@ const worlds = [
   },
   {
     ...body,
-    id: id(10),
-    kind: 'Moon' as const,
-    coordinates: { galaxy: 1, system: 19, position: 6 },
-  },
-  {
-    ...body,
     id: id(8),
     name: 'Nova Roma',
     coordinates: { galaxy: 1, system: 1, position: 3 },
@@ -67,6 +61,14 @@ const worlds = [
     id: id(9),
     name: 'A long planet name that wraps safely',
     coordinates: { galaxy: 1, system: 1, position: 4 },
+  },
+  {
+    ...body,
+    id: id(10),
+    kind: 'Moon' as const,
+    name: 'Themis',
+    moon: { parent: body.id, created_at: 1000 },
+    coordinates: { galaxy: 1, system: 19, position: 6 },
   },
 ]
 const roster = Array.from({ length: 12 }, (_, i) => ({

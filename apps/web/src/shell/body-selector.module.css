@@ -9,6 +9,9 @@
   gap: 10px;
   min-width: 0;
 }
+.body[data-nested] {
+  padding-inline-start: 24px;
+}
 .body img {
   flex-shrink: 0;
   width: 40px;
