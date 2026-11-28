@@ -9,6 +9,7 @@ import {
   profileEditReview,
   ProfileEditPending,
   ProfileEditReview,
+  ProfileEditNotSent,
   type EmpireProfile,
   type ProfileAction,
 } from '../adapters/empire-history'
@@ -27,12 +28,14 @@ export function useArchive<T>(schema: string, path: string) {
       loading: boolean
       busy: boolean
       error: string
+      errorDetails: string
     }>(() => ({
       data: null,
       session: null,
       loading: true,
       busy: false,
       error: '',
+      errorDetails: '',
     })),
   )
   const state = useStore(store)
@@ -41,7 +44,7 @@ export function useArchive<T>(schema: string, path: string) {
   useEffect(() => {
     const current = ++generation.current
     const controller = new AbortController()
-    store.setState({ loading: true, error: '' })
+    store.setState({ loading: true, error: '', errorDetails: '' })
     void Promise.all([
       readArchive<T>(schema, path, controller.signal),
       http.session().catch(() => null),
@@ -105,7 +108,7 @@ export function useArchive<T>(schema: string, path: string) {
     if (!state.session || store.getState().busy || store.getState().loading)
       return false
     const current = ++generation.current
-    store.setState({ busy: true, error: '' })
+    store.setState({ busy: true, error: '', errorDetails: '' })
     let committed = false
     try {
       await editProfile(
@@ -124,6 +127,11 @@ export function useArchive<T>(schema: string, path: string) {
         store.setState({ data, loading: false })
       return true
     } catch (error) {
+      if (error instanceof ProfileEditNotSent) {
+        if (current === generation.current)
+          store.setState({ error: error.message, errorDetails: error.details })
+        return false
+      }
       if (error instanceof ProfileEditPending) {
         if (current === generation.current)
           store.setState({ error: error.message })

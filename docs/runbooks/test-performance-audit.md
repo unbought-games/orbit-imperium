@@ -2554,3 +2554,48 @@ with 3.117 s bundle preparation and 1.0 s execution. Independent review of
 patch `7064fb8e62657c9429489114a3264359fba04689ba56906598a7c6aad324eb01`
 passed both cases after tightening the idle boundary and checking both request
 counts. All eight PostgreSQL social cases passed in 19.684 s.
+
+## November 28, 2026: exhausted observed-planet simulator journey
+
+Season sync PR522, head6b2da9c6, CI46167749284 attempt1, journey
+job141049037556 failed the final `withFixtureResponseStatus` at line391:
+expected422, received200. The saved failure DOM already shows “All fleet slots
+are occupied” in Dispatch and no confirmation. `usePreparedFleetQuote` can issue
+a background FleetQuote for the previous three-ship intent; the test's matcher
+selects only type/speed and can mistake that200 for the edited two-ship review.
+This is a test ordering defect, not evidence of an accepted invalid launch.
+The other120 journeys passed. No unchanged retry was run.
+
+This exact sequence already used its repair in the November2 creation-only moon
+entry above. Retired `combat-simulation.spec.ts` and its journey contract under
+the one-repair rule, without renaming/recreating it. Its case identity remains
+`5733571b35c1f6571f07-e7de8e2284af4666f891` in the historical migration inventory;
+this entry supersedes that inventory's retained disposition.
+
+Retained deterministic protection: `dispatch-requests.test.ts` checks occupied
+slots, stale/cancelled preparations, draft changes and fresh review;
+`dispatch-review-session.test.ts` checks binding review/commit;
+`dispatch-reads.test.ts` checks advisory read ordering. Mounted
+`observed-simulator.component.spec.ts` retains the actual report reader/modal,
+observed/unknown intelligence and editable simulation;
+`fleet-drafts.component.spec.ts` retains edited historical draft submission.
+The lost browser-specific coverage is the combined report → simulator → routed
+Dispatch handoff and its cross-screen focus/width checks. It is an explicit gap,
+not claimed replaced by unit tests. Shared response helpers remain unchanged;
+callers must match request identity/full intent when background reads overlap.
+
+The same follow-up fixes a real profile error: failed persistence before a new
+POST is now “not sent”, while prior uncertain commands remain uncertain. The
+new mounted storage-refusal case failed against the old product with the exact
+misleading message before the product repair; this is a regression demonstration,
+not a defective-test repair. No request is sent, the draft stays editable, a
+sanitized report is accessible, and saving works after storage is restored.
+
+Validation on b4322233 plus this follow-up:69 focused deterministic cases pass;
+two mounted profile cases pass (4.870s preparation,2.6s browser), then the affected
+storage case passed after shared Textarea styling (1.9s browser). Desktop1440 and
+mobile390 captures inspected after the final styling. Lint, formatting, component
+typecheck, news generation and both independent browser-inventory policy checks
+pass. Fresh browser_test_reviewer read the patch, original failure artifact and
+prior repair, and found no blockers. Runners cleaned up their own servers and
+ports. No unchanged simulator rerun, timeout increase or second repair was used.

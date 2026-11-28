@@ -169,14 +169,6 @@
     "risk": "Opening the small combat report must render its force and round observations and let its contextual coordinate action reach the correct Galaxy position."
   },
   {
-    "file": "combat-simulation.spec.ts",
-    "project": "",
-    "titlePath": [
-      "prepares an editable observed-planet attack with advisory hypothetical estimates and authoritative launch validation"
-    ],
-    "risk": "The report must hand the chosen target, fleet and speed to routed Dispatch. A refused advisory estimate must not turn into launch authority, and a later occupied-slot FleetQuote must block confirmation without issuing a launch."
-  },
-  {
     "file": "command-hud.spec.ts",
     "project": "",
     "titlePath": [
