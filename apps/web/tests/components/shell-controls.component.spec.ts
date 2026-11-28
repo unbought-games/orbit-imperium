@@ -20,10 +20,22 @@ for (const width of [320, 390, 1440]) {
     const options = page.getByRole('option')
     await expect(options).toHaveText([
       'Martialis [1:19:6]',
-      'Moon [1:19:6]',
+      /Themis \[1:19:6\]/,
       'Nova Roma [1:1:3]',
       'A long planet name that wraps safely [1:1:4]',
     ])
+    const moon = list.getByRole('option', {
+      name: 'Themis [1:19:6] moon of Martialis',
+      exact: true,
+    })
+    await expect(moon).toBeVisible()
+    const [planetX, moonX, nextPlanetX] = await options
+      .locator('img')
+      .evaluateAll((images) =>
+        images.map((image) => image.getBoundingClientRect().x),
+      )
+    expect(moonX).toBeGreaterThan(planetX)
+    expect(nextPlanetX).toBe(planetX)
     await expect(options.first()).toHaveAttribute('aria-selected', 'true')
     await expect(options.first().locator('svg')).toHaveClass(/lucide-check/)
     for (const option of await options.all()) {
@@ -50,6 +62,7 @@ for (const width of [320, 390, 1440]) {
     await trigger.press('Enter')
     await expect(options.first()).toBeFocused()
     await page.keyboard.press('ArrowDown')
+    await expect(moon).toBeFocused()
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
     await expect(trigger).toHaveAttribute('data-value', id(8))
