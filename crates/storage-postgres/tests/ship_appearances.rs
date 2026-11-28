@@ -219,7 +219,9 @@ async fn stage(f: &Fixture, id: Uuid) -> String {
 #[tokio::test]
 async fn http_auth_replay_revision_and_account_namespaces() {
     let f = Fixture::new().await;
-    let d = design();
+    let mut d = design();
+    d.recipe.skin_id = "orbit-base-light-fighter".into();
+    d.recipe.package_revision = "v1".into();
     let request = Uuid::new_v4();
     let action = serde_json::to_value(save(d.clone(), 0)).unwrap();
     assert_eq!(
@@ -247,6 +249,18 @@ async fn http_auth_replay_revision_and_account_namespaces() {
     let (status, first) = f.http(f.b, request, action.clone(), true).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(first["library"][0]["revision"], 1);
+    assert_eq!(first["library"][0]["recipe"]["skin_id"], d.recipe.skin_id);
+    let skin = first["catalog"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|skin| skin["id"] == d.recipe.skin_id)
+        .unwrap();
+    assert_eq!(skin["package_revision"], d.recipe.package_revision);
+    assert_eq!(
+        skin["package_url"],
+        "/art/ship-skins/orbit-base-light-fighter/v1/manifest.json"
+    );
     let (status, replay) = f.http(f.b, request, action, true).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(first, replay);
@@ -708,13 +722,12 @@ async fn lost_dye_access_refreshes_to_free_paint_without_mutating_revision() {
     let (expired, choices) = ship_render_environment(&f.store, f.b, &restricted, None)
         .await
         .unwrap();
-    assert_eq!(
-        choices
-            .iter()
-            .find(|d| d["id"] == "fixture-copper")
-            .unwrap()["availability"],
-        "unavailable"
-    );
+    let copper = choices
+        .iter()
+        .find(|d| d["id"] == "fixture-copper")
+        .unwrap();
+    assert_eq!(copper["availability"], "unavailable");
+    assert_eq!(copper["access"], "membership");
     f.store
         .change_ship_appearance(f.b, Uuid::new_v4(), ShipAppearanceAction::Load, expired)
         .await
@@ -958,5 +971,82 @@ async fn access_expiring_during_publication_preserves_artwork_and_refreshes_curr
     );
     assert_eq!(state.library[0].recipe.primary, "fixture-earned-dye");
     assert_eq!(state.equipment[0].design_revision, Some(2));
+    f.stop_jobs().await;
+}
+
+#[tokio::test]
+async fn equipment_revisions_and_render_retries_belong_to_one_ship_class() {
+    let f = Fixture::new().await;
+    let light = design();
+    let mut heavy = design();
+    heavy.target = "HeavyFighter".into();
+    heavy.recipe.skin_id = "orbit-base-heavy-fighter".into();
+    heavy.recipe.package_revision = "v2".into();
+    for d in [&light, &heavy] {
+        f.change(f.b, Uuid::new_v4(), save(d.clone(), 0))
+            .await
+            .unwrap();
+    }
+    let initial = f.state(f.b).await;
+    let equipped = |state: &ShipAppearanceSnapshot, target: &str| {
+        state
+            .equipment
+            .iter()
+            .find(|row| row.target == target)
+            .unwrap()
+            .clone()
+    };
+    let light_job = equipped(&initial, "LightFighter").render.unwrap().id;
+    let heavy_job = equipped(&initial, "HeavyFighter").render.unwrap().id;
+    assert_ne!(light_job, heavy_job);
+    let mut wrong_class = heavy.clone();
+    wrong_class.target = light.target.clone();
+    assert!(matches!(
+        f.change(f.b, Uuid::new_v4(), save(wrong_class, 1)).await,
+        Err(ServiceError::Malformed)
+    ));
+    let mut retargeted = heavy.clone();
+    retargeted.id = light.id;
+    retargeted.revision = 1;
+    assert!(matches!(
+        f.change(f.b, Uuid::new_v4(), save(retargeted, 1)).await,
+        Err(ServiceError::Conflict)
+    ));
+    for action in [
+        ShipAppearanceAction::Cancel {
+            request_id: heavy_job,
+        },
+        ShipAppearanceAction::Retry {
+            request_id: heavy_job,
+        },
+    ] {
+        f.change(f.b, Uuid::new_v4(), action).await.unwrap();
+    }
+    let retried = f.state(f.b).await;
+    assert_eq!(
+        equipped(&retried, "LightFighter").render.unwrap().id,
+        light_job
+    );
+    assert_ne!(
+        equipped(&retried, "HeavyFighter").render.unwrap().id,
+        heavy_job
+    );
+    f.change(
+        f.b,
+        Uuid::new_v4(),
+        ShipAppearanceAction::Reset {
+            target: "HeavyFighter".into(),
+            expected_equipment_revision: 1,
+        },
+    )
+    .await
+    .unwrap();
+    let state = f.state(f.b).await;
+    let light_equipment = equipped(&state, "LightFighter");
+    assert_eq!(light_equipment.design_id, Some(light.id));
+    assert_eq!(light_equipment.revision, 1);
+    assert_eq!(light_equipment.render.unwrap().id, light_job);
+    assert_eq!(equipped(&state, "HeavyFighter").design_id, None);
+    assert_eq!(equipped(&state, "HeavyFighter").revision, 2);
     f.stop_jobs().await;
 }

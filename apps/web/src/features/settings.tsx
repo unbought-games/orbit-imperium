@@ -18,6 +18,7 @@ import {
 } from '../shell/settings-navigation-model'
 import { SettingsIdentity } from './settings-identity'
 import { SupportLinks } from './support-links'
+import { shipDebrisRule } from './ship-debris-rule'
 
 export function SettingsScreen() {
   const { route } = useGameScreen()
@@ -40,28 +41,7 @@ export function SettingsScreen() {
       </SettingsPane>
       <SettingsPane section="support" selected={selected}>
         <SupportLinks />
-        <Section aria-label="Community">
-          <Heading level={2}>Community</Heading>
-          <Text>
-            Meet other players and keep up with Orbit Imperium on Discord.
-          </Text>
-          <DiscordLink />
-        </Section>
-        <Section aria-label="Help and conduct reports">
-          <Heading level={2}>Help & conduct reports</Heading>
-          <Text>
-            Email{' '}
-            <a
-              className={styles.supportLink}
-              href="mailto:support@unbought.games"
-            >
-              support@unbought.games
-            </a>{' '}
-            for help or to report a conduct concern. Support is best effort: we
-            aim to respond within 24 hours, but response times are not
-            guaranteed.
-          </Text>
-        </Section>
+        <SupportContacts />
         <UniverseSettings />
       </SettingsPane>
       <SettingsPane section="session" selected={selected}>
@@ -99,6 +79,7 @@ function SettingsPane({
 function UniverseSettings() {
   const { view, model } = useGameScreen()
   const settings = model.settings
+  const debrisRule = shipDebrisRule(settings)
   return (
     <>
       <Heading level={2}>Universe settings</Heading>
@@ -111,6 +92,7 @@ function UniverseSettings() {
       ) : (
         <Text>Universe settings unavailable. Reconnect to try again.</Text>
       )}
+      {debrisRule && <Text>{debrisRule}</Text>}
       {view.capabilities.some(
         (c) => c.capability === 'Attack' && c.enabled,
       ) && (
@@ -172,6 +154,34 @@ function SessionSettings() {
           Sign out
         </Button>
       </section>
+    </>
+  )
+}
+
+export function SupportContacts() {
+  return (
+    <>
+      <Section aria-label="Community">
+        <Heading level={2}>Community</Heading>
+        <Text>
+          Meet other players and keep up with Orbit Imperium on Discord.
+        </Text>
+        <DiscordLink />
+      </Section>
+      <Section aria-label="Help and conduct reports">
+        <Heading level={2}>Help & conduct reports</Heading>
+        <Text>
+          Email{' '}
+          <a
+            className={styles.supportLink}
+            href="mailto:support@unbought.games"
+          >
+            support@unbought.games
+          </a>{' '}
+          for help or to report a conduct concern. Support is best effort: we
+          aim to respond within 24 hours, but response times are not guaranteed.
+        </Text>
+      </Section>
     </>
   )
 }

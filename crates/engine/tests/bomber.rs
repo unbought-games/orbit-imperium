@@ -127,7 +127,15 @@ fn bomber_combat_derives_stats_and_applies_only_its_six_rapid_fire_pairs() {
             assert!(shots.iter().any(|n| *n > 1));
         }
     }
-    assert!(combat.rapid_fire.iter().all(|rf| rf.target != BOMBER));
+    assert_eq!(
+        combat
+            .rapid_fire
+            .iter()
+            .filter(|rf| rf.target == BOMBER)
+            .map(|rf| (rf.shooter, rf.factor))
+            .collect::<Vec<_>>(),
+        vec![(ManufacturedItem::Ship(ShipType::Dreadnought), 25)]
+    );
 }
 
 #[test]

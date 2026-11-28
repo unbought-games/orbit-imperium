@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { body } from '../test-support/empire'
+import { tutorialFixture } from '../test-support/tutorial'
+import { productionFixture } from '../test-support/production'
 import { it, expect, vi } from 'vitest'
 import {
   prepareRuntime,
@@ -67,6 +71,36 @@ it('adopts embedded data without requesting startup data or retaining a second s
     expect('snapshot' in runtime.game).toBe(false)
   }
 })
+it('hydrates completed guidance from the bound document before the shell requests it', async () => {
+  const deps = dependencies()
+  const payload = bootstrapFixture(4)
+  if (
+    payload.result.status !== 'authenticated' ||
+    payload.result.game.status !== 'ready'
+  )
+    throw Error('fixture')
+  const snapshot = payload.result.game.snapshot
+  snapshot.tutorial = tutorialFixture(true)
+  payload.result.session.memberships.unshift({
+    universe: id(93),
+    player: id(94),
+    universe_name: 'Other',
+  })
+  deps.readEmbedded = () => payload
+  const world = vi.fn()
+  const port = { ...deps.createPort('csrf', snapshot.candidate), world }
+  deps.createPort = () => port
+  const pendingScreen = vi.fn()
+  const runtime = await loadInitialRuntime(deps, false, pendingScreen)
+  if (runtime.status !== 'authenticated' || runtime.game.status !== 'ready')
+    throw Error('runtime')
+  const { model } = runtime.game
+  expect(model.store.getState().tutorial.data).toEqual(snapshot.tutorial)
+  await model.tutorial.ensure()
+  expect(world).not.toHaveBeenCalled()
+  expect(deps.fetchBootstrap).not.toHaveBeenCalled()
+  expect(pendingScreen).not.toHaveBeenCalled()
+})
 it('fetches once for a missing payload and retains uncertainty on failure', async () => {
   const deps = dependencies()
   deps.readEmbedded = () => null
@@ -109,4 +143,33 @@ it('reload restores only the unresolved envelope alongside the authoritative ser
   expect(fresh.game.model.ready).toBe(true)
   expect(port.receipt).toHaveBeenCalledOnce()
   expect(port.submit).toHaveBeenCalledOnce()
+})
+
+it('prepares protocol 3 bootstrap with all published building level keys on the funded planet', async () => {
+  const payload = bootstrapFixture(3)
+  if (
+    payload.result.status !== 'authenticated' ||
+    payload.result.game.status !== 'ready' ||
+    payload.result.game.snapshot.view.protocol !== 3
+  )
+    throw Error('Expected a ready protocol 3 snapshot')
+  const view = payload.result.game.snapshot.view
+  const keys: string[] = JSON.parse(
+    readFileSync('contracts/openapi.json', 'utf8'),
+  ).components.schemas.BuildingId3.enum
+  const planet = {
+    ...body,
+    levels: { ...body.levels, ...Object.fromEntries(keys.map((k) => [k, 0])) },
+  }
+  view.bodies = [planet]
+  view.progression.production = [productionFixture(planet)]
+  const runtime = await prepareRuntime(payload, 'document', dependencies())
+  expect(runtime.status).toBe('authenticated')
+  if (runtime.status !== 'authenticated' || runtime.game.status !== 'ready')
+    throw Error('Expanded building levels prevented startup')
+  expect(runtime.game.model.view?.bodies[0].levels).toMatchObject({
+    Terraformer: 0,
+    NaniteFactory: 0,
+    ResearchLab: 0,
+  })
 })

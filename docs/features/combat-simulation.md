@@ -24,7 +24,7 @@ has no connection to the universe's secret random stream. It does not admit a
 command, mutate gameplay, consult target facts, or return player/body identifiers
 from a battle. It is available to every protocol-4 player.
 
-The initial interactive service supports 2,000 total units and technology 0–100,
+The interactive service supports 20,000 total units and technology 0–100,
 with two CPU workers and no unbounded queue. Excess values are rejected, never
 clamped. Empty known defenses are supported. Results are sample outcomes and mean
 attacker losses alongside survivors, and defender survivors before repairs.
@@ -53,6 +53,22 @@ loot and Dispatch assumptions are available in optional help. Report time/age,
 unknown-resource status, stale inventory and server eligibility errors remain
 visible where relevant. Authoritative Dispatch review remains required.
 
+## Large-fleet measurements
+
+The opt-in Rust measurements run a full battle report and a ten-sample simulator
+request at the 20,000-unit boundary. Run them serially in release mode:
+
+```sh
+cargo test --release --locked -p orbit-application --lib at_simulation_limit -- --ignored --test-threads=1 --nocapture
+```
+
+On an Apple M2 Pro, using the standard rules and a fixed seed, 10,000 Light
+Fighters per side fought six rounds in 7 ms (68 ms for ten samples). For 19,000
+Dreadnoughts against 1,000 Solar Satellites, the first battle fired 23,645,300
+attacker shots in 0.52 s (5.24 s for ten samples). The tests check the original
+random-stream cursors and combat outcomes. Timing varies by machine and fleet
+composition.
+
 ## Community simulator investigation
 
 On 2026-10-25, the published Orbit Combat Desk page and its `app.mjs` module at
@@ -71,7 +87,7 @@ on submission, request contents, result invalidation, mobile widths and
 Escape/focus restoration.
 
 Allied contingents can be added to either side with separately entered technology
-and mobile ships. The 2,000-unit limit applies to all forces combined. Results
+and mobile ships. The 20,000-unit limit applies to all forces combined. Results
 combine surviving unit counts only after resolving each contingent with its own
 stats. Changing or removing a contingent invalidates previous results; report
 attack planning still dispatches the primary attacking fleet only.

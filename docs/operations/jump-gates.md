@@ -31,6 +31,5 @@ without this command vocabulary, deactivate it and settle already admitted work;
 follow the existing rollback compatibility policy for supported live state and accepted terms.
 Do not run old writers after activation.
 
-This feature does not implement moon destruction or standalone moon abandonment.
-Existing parent-planet abandonment and empire deletion remove gate state with the
-moon. A new moon never inherits a previous moon's cooldown.
+[Moon destruction](moon-destruction.md), parent-planet abandonment and empire
+deletion remove gate state with the moon. A new moon never inherits a previous moon's cooldown.

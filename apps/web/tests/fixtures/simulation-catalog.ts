@@ -11,6 +11,7 @@ import satellite from '../../../../rules/content/solar-satellite.json' with { ty
 import battleship from '../../../../rules/content/battleship.json' with { type: 'json' }
 import battlecruiser from '../../../../rules/content/battlecruiser.json' with { type: 'json' }
 import bomber from '../../../../rules/content/bomber.json' with { type: 'json' }
+import dreadnought from '../../../../rules/content/dreadnought.json' with { type: 'json' }
 import destroyer from '../../../../rules/content/destroyer.json' with { type: 'json' }
 
 type Entry = components['schemas']['CatalogEntry3']
@@ -20,7 +21,7 @@ const combat = { attack_ticks: '5000000', shield_ticks: '1000000', hull_ticks: '
 export const simulationCatalog: Entry[] = rules.catalog.map(raw => {
   const entry = raw as Entry
   const unit = rules.world.combat.units.find(unit => unit.item.kind === entry.key.kind && unit.item.id === entry.key.id)
-  const extensions: Record<string, { cost: { metal: number; crystal: number; deuterium: number } }> = { HeavyLaser, IonCannon, GaussCannon, PlasmaTurret, LargeShieldDome, Cruiser: cruiser, LargeCargo: largeCargo, SolarSatellite: satellite, Battleship: battleship, Battlecruiser: battlecruiser, Bomber: bomber, Destroyer: destroyer }
+  const extensions: Record<string, { cost: { metal: number; crystal: number; deuterium: number } }> = { HeavyLaser, IonCannon, GaussCannon, PlasmaTurret, LargeShieldDome, Cruiser: cruiser, LargeCargo: largeCargo, SolarSatellite: satellite, Battleship: battleship, Battlecruiser: battlecruiser, Bomber: bomber, Destroyer: destroyer, Dreadnought: dreadnought }
   const extension = extensions[entry.key.id]
   const cost = extension ? [extension.cost.metal, extension.cost.crystal, extension.cost.deuterium] : unit?.cost
   if (!cost) return entry

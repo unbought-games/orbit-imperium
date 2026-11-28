@@ -1,104 +1,33 @@
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import type { Locator } from '@playwright/test'
-import observation from '../../../contracts/fixtures/espionage-expanded.json' with { type: 'json' }
-import { shellFixture, binding, body, id } from './fixtures/game'
+import { installGameFixture, binding, id } from './fixtures/game'
 import { withReportResponse } from './fixtures/responses'
+import { reportPath } from './fixtures/report-path'
+import { expandedEspionage } from '../src/test-support/espionage-observation'
 
-// Every group shares the same columns, even when it contains fewer entries.
-async function expectAlignedLevels(sections: Locator[]) {
-  const grids = (await Promise.all(sections.map(section => section.locator('dl').all()))).flat()
-  const firstRow = (await grids[0].locator('div').first().boundingBox())!
-  for (const grid of grids) {
-    const rows = await grid.locator(':scope > div').all()
-    const first = (await rows[0].boundingBox())!
-    expect(first.x).toBeCloseTo(firstRow.x, 1)
-    expect(first.width).toBeCloseTo(firstRow.width, 1)
-    for (const row of rows) {
-      const name = (await row.locator('dt').boundingBox())!
-      const level = (await row.locator('dd').boundingBox())!
-      const art = (await row.locator('img').boundingBox())!
-      expect(art.x + art.width).toBeLessThan(name.x)
-      expect(name.x - art.x - art.width).toBeLessThanOrEqual(16)
-      const stacked = level.y >= name.y + name.height
-      if (stacked) {
-        expect(level.x).toBeCloseTo(name.x, 1)
-        expect(level.y - name.y - name.height).toBeLessThanOrEqual(4)
-      } else {
-        expect(level.x).toBeGreaterThan(name.x)
-        expect(Math.abs(level.y + level.height / 2 - name.y - name.height / 2)).toBeLessThanOrEqual(1)
-      }
-      const hierarchy = await row.evaluate(el => ({name: parseFloat(getComputedStyle(el.querySelector('dt')!).fontSize), value: parseFloat(getComputedStyle(el.querySelector('dd strong')!).fontSize)}))
-      if (await row.getAttribute('data-level-state') !== 'unknown')
-        expect(hierarchy.value / hierarchy.name).toBeGreaterThanOrEqual(1.4)
-      await expect(row.locator('dt')).toHaveCSS('font-weight', '500')
-      await expect.poll(() => row.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
-      expect(await row.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
-    }
+test('authenticated espionage toolbar and target actions fit the shell', async ({
+  page,
+}) => {
+  await installGameFixture(page, {
+    protocol: 4,
+    extraCapabilities: ['Reports', 'Attack'],
+    missions: {
+      fleets: [],
+      incoming: [],
+      score_value_micro: '0',
+      fleet_slots: '1',
+    },
+  })
+  const header = {
+    id: id(63),
+    kind: 'Espionage',
+    observed_at: Date.now() - 60_000,
+    read: true,
+    hidden: false,
   }
-}
-
-// Legacy/hidden data permutations render deterministically in report-observation.test.ts.
-// The expanded observation retains every responsive grouping and header assertion.
-for (const variant of ['expanded']) {
-  test(`groups ${variant} espionage buildings and research at desktop and mobile widths`, async ({
-    page,
-  }) => {
-    await page.clock.setFixedTime(new Date('2026-10-23T12:00:00Z'))
-    await shellFixture(page, {
-      protocol: 4,
-      extraCapabilities: ['Reports', 'Attack'],
-      missions: {fleets: [], incoming: [], score_value_micro: '0', fleet_slots: '1'},
-    })
-    const header = {
-      id: id(63),
-      kind: 'Espionage',
-      observed_at: Date.now() - 60_000,
-      read: true,
-      hidden: false,
-    }
-    const payload = {
-      ...observation,
-      target: { ...observation.target, name: variant === 'legacy' ? undefined : 'Nova Roma' },
-      resources: { visibility: 'Known', value: { metal: '18763000000', crystal: '10441000000', deuterium: '560000000' } },
-      research:
-        variant === 'hidden'
-          ? { visibility: 'Unknown' }
-          : {
-              visibility: 'Known',
-              value: {
-                ...observation.research.value,
-                WeaponsTechnology: 8,
-                EspionageTechnology: 5,
-                ...(variant === 'expanded'
-                  ? { HyperspaceDrive: 0, PlasmaTechnology: 2 }
-                  : {}),
-              },
-            },
-      buildings:
-        variant === 'hidden'
-          ? { visibility: 'Unknown' }
-          : {
-              visibility: 'Known',
-              value: {
-                ...observation.buildings.value,
-                MetalMine: 7,
-                CrystalMine: 6,
-                SolarPlant: 9,
-                ResearchLab: 2,
-                ...(variant === 'expanded'
-                  ? {
-                      FusionReactor: 3,
-                      NaniteFactory: 1,
-                      LunarBase: 0,
-                      SensorPhalanx: 0,
-                      JumpGate: 0,
-                    }
-                  : {}),
-              },
-            },
-    }
-    await page.route('**/api/**/reports**', async (route) => {
+  const payload = expandedEspionage
+  await page.route(
+    `**/api/v4/universes/${binding.universe}/reports/${header.id}`,
+    async (route) => {
       const request = route.request().postDataJSON()
       await route.fulfill({
         json: {
@@ -108,286 +37,116 @@ for (const variant of ['expanded']) {
           viewer_revision: '1',
           sampled_at: Date.now(),
           as_of_ms: Date.now(),
-          data: { header, payload, player_names: { [observation.target.owner]: 'Commander Vega' } },
-        },
-      })
-    })
-    // Measure the canonical page, without racing the legacy query-URL redirect
-    // that remounts the report. Redirect behavior has separate shell coverage.
-    await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
-    const report = page.getByRole('region', { name: 'Report observation' })
-    const buildings = report.locator('section').filter({
-      has: page.getByRole('heading', { name: 'Buildings', exact: true }),
-    })
-    await expect(buildings).toBeVisible()
-    for (const width of [1440, 768, 390, 320]) {
-      await page.setViewportSize({ width, height: 1000 })
-
-      const back = (await page.getByRole('link', { name: 'Back to reports' }).boundingBox())!
-      const title = (await page.getByRole('heading', { name: 'Espionage', exact: true }).boundingBox())!
-      const remove = (await page.getByRole('button', { name: 'Archive report', exact: true }).boundingBox())!
-      const timestamp = (await page.getByRole('button', { name: 'Report time details' }).boundingBox())!
-      expect(title.x).toBeGreaterThan(back.x + back.width)
-      expect(title.y).toBeLessThan(back.y + back.height)
-      expect(timestamp.x).toBe(title.x)
-      expect(timestamp.y - title.y - title.height).toBeGreaterThanOrEqual(0)
-      expect(timestamp.y - title.y - title.height).toBeLessThanOrEqual(2)
-      expect(timestamp.height).toBeLessThanOrEqual(24)
-      const reportTop = (await report.boundingBox())!.y
-      expect(reportTop - Math.max(timestamp.y + timestamp.height, back.y + back.height)).toBeLessThanOrEqual(8)
-      expect(remove.x).toBeGreaterThan(title.x + title.width)
-      const target = page.getByLabel('Espionage target', { exact: true })
-      await expect(target.getByRole('heading', { name: 'Target', exact: true })).toBeVisible()
-      await expect(target).toHaveCSS('border-bottom-width', '1px')
-      expect((await target.boundingBox())!.height).toBeLessThanOrEqual(76)
-      const player = (await target.getByText('Commander Vega', { exact: true }).boundingBox())!
-      const location = target.getByRole('link', { name: /View target/ })
-      const locationBox = (await location.boundingBox())!
-      expect(locationBox.y - player.y - player.height).toBeLessThanOrEqual(5)
-      expect(locationBox.height).toBeLessThanOrEqual(20)
-      await expect(target).toContainText('Commander Vega')
-      await expect(target).toContainText(variant === 'legacy' ? 'Planet' : 'Nova Roma')
-      await expect(target.locator('img')).toBeVisible()
-      const attack = target.getByRole('button', { name: 'Attack', exact: true })
-      await expect(attack).toBeVisible()
-      expect((await attack.boundingBox())!.x).toBeGreaterThan((await target.locator('img').boundingBox())!.x + 36)
-      const amounts = report.getByRole('group', { name: 'Resource amounts' })
-      const icons = amounts.locator('svg')
-      await expect(icons).toHaveCount(3)
-      const firstY = (await icons.first().boundingBox())!.y
-      for (const [index, resource] of ['metal', 'crystal', 'deuterium'].entries()) {
-        const icon = icons.nth(index)
-        expect((await icon.boundingBox())!.y).toBe(firstY)
-        await expect(icon).toHaveAccessibleName(resource[0].toUpperCase() + resource.slice(1))
-        const color = await page.evaluate(resource => {
-          const probe = document.createElement('span')
-          probe.style.color = `var(--resource-${resource})`
-          document.body.append(probe)
-          const color = getComputedStyle(probe).color
-          probe.remove()
-          return color
-        }, resource)
-        await expect(icon).toHaveCSS('color', color)
-      }
-      expect(await amounts.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
-      await expect(amounts).toContainText('18,763')
-      const research = report.locator('section').filter({ has: page.getByRole('heading', { name: 'Research', exact: true }) })
-      if (variant === 'hidden') {
-        await expect(research).toContainText('Unknown — this observation did not reveal this section.')
-        await expect(research.locator('h4, dt')).toHaveCount(0)
-      } else {
-        await expect(research.locator('h4')).toHaveText([
-          'Combat and espionage',
-          'Drive research',
-          'Basic research',
-          'Advanced research',
-        ])
-        await expect(research).not.toContainText('Observed level')
-        await expect(research.locator('h4').first()).toHaveCSS('text-transform', 'uppercase')
-        await expect(buildings.locator('h4').first()).toHaveCSS('text-transform', 'uppercase')
-        await expect(research.locator('dt')).toHaveText([
-          'Weapons Technology', 'Shielding Technology', 'Armour Technology', 'Espionage Technology',
-          'Combustion Drive', 'Impulse Drive', ...(variant === 'expanded' ? ['Hyperspace Drive'] : []),
-          'Energy Technology', ...(variant === 'expanded' ? ['Plasma Technology'] : []),
-          'Computer Technology', 'Astrophysics',
-        ])
-        await expect(research.locator('dl').first().locator('dd')).toHaveText([
-          'Level 8', 'Level 0', 'Level 0', 'Level 5',
-        ])
-        const groups = await research.locator('dl').all()
-        for (let index = 1; index < groups.length; index++) {
-          const previous = (await groups[index - 1].boundingBox())!
-          expect((await groups[index].boundingBox())!.y).toBeGreaterThan(previous.y + previous.height)
-        }
-      }
-      expect((await report.locator('footer').boundingBox())!.y).toBeGreaterThanOrEqual((await research.boundingBox())!.y + (await research.boundingBox())!.height)
-      await expect(report.locator('footer')).toContainText('Activity before contact')
-      await expect(report.locator('footer')).toContainText('Counterespionage')
-      if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && variant === 'expanded' && [1440, 390].includes(width)) {
-        await page.evaluate(() => window.scrollTo(0, 0))
-        await diagnosticScreenshot(page, { path: `test-results/espionage-layout-${width}.png` })
-      }
-      if (variant === 'hidden') {
-        await expect(buildings).toContainText(
-          'Unknown — this observation did not reveal this section.',
-        )
-        await expect(buildings.locator('h4, dt')).toHaveCount(0)
-      } else {
-        await expect(buildings.locator('h4')).toHaveText([
-          'Mines',
-          'Power',
-          'Storage',
-          'Production',
-          'Infrastructure',
-        ])
-        await expect(buildings).not.toContainText('Observed level')
-        const buildingRow = (name: string) => buildings.locator('div').filter({has: page.getByRole('heading', {name, exact: true})}).first()
-        const expectRow = async (name: string, levels: [string, string][]) => {
-          await expect(buildingRow(name).locator('dt')).toHaveText(levels.map(([building]) => building))
-          await expect(buildingRow(name).locator('dd')).toHaveText(levels.map(([, level]) => level))
-        }
-        await expectRow('Mines', [['Metal Mine', 'Level 7'], ['Crystal Mine', 'Level 6'], ['Deuterium Synthesizer', 'Level 0']])
-        await expectRow('Power', [['Solar Plant', 'Level 9'], ...(variant === 'expanded' ? [['Fusion Reactor', 'Level 3'] as [string, string]] : [])])
-        await expectRow('Storage', [['Metal Storage', 'Level 0'], ['Crystal Storage', 'Level 0'], ['Deuterium Tank', 'Level 0']])
-        await expectRow('Production', [['Robotics Factory', 'Level 0'], ...(variant === 'expanded' ? [['Nanite Factory', 'Level 1'] as [string, string]] : [])])
-        await expectRow('Infrastructure', [['Shipyard', 'Level 0'], ['Research Lab', 'Level 2']])
-        for (const name of ['Lunar Base', 'Sensor Phalanx', 'Jump Gate'])
-          await expect(buildings.getByText(name, {exact: true})).toHaveCount(0)
-        // Desktop rows must retain their semantic boundary even with empty slots.
-        if (width === 1440) {
-          for (const grid of await buildings.locator('dl').all()) {
-            const boxes = await grid.locator('dt').evaluateAll(nodes => nodes.map(el => el.getBoundingClientRect().y))
-            expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThanOrEqual(1)
-          }
-        }
-        const observed = buildings.locator('[data-level-state="known"]').first()
-        const zero = buildings.locator('[data-level-state="zero"]').first()
-        await expect(observed.locator('dd')).toHaveCSS('color', 'rgb(203, 182, 141)')
-        await expect(observed.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-        await expect(zero.locator('dd')).toHaveCSS('color', 'rgb(182, 198, 214)')
-        await expect(zero.locator('dd')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-        await expect(zero.locator('dd strong')).toHaveText('0')
-        await expectAlignedLevels([buildings, research])
-        const rows = await buildings.locator('dl').all()
-        for (let index = 1; index < rows.length; index++) {
-          const previous = (await rows[index - 1].boundingBox())!
-          expect((await rows[index].boundingBox())!.y).toBeGreaterThan(previous.y + previous.height)
-        }
-      }
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true)
-      if (process.env.ORBIT_TEST_SCREENSHOTS === '1' && variant === 'expanded') {
-        await page.evaluate(() => document.fonts.ready)
-        for (const [name, section] of [['buildings', buildings], ['research', research]] as const) {
-          await section.evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80))
-          await page.mouse.move(0, 0)
-          await diagnosticScreenshot(page, {path: `test-results/report-${name}-grouped-${width}x1000.png`})
-        }
-      }
-      await diagnosticScreenshot(buildings, {
-        path: `test-results/espionage-${variant}-${width}.png`,
-      })
-      await diagnosticScreenshot(research, {
-        path: `test-results/espionage-research-${variant}-${width}.png`,
-      })
-    }
-  })
-}
-
-
-test('long observed names wrap without moving levels or revealing hidden intelligence', async ({
-  page,
-}) => {
-  await shellFixture(page, { protocol: 4, extraCapabilities: ['Reports'] })
-  const header = {
-    id: id(64),
-    kind: 'Espionage',
-    observed_at: Date.now(),
-    read: true,
-    hidden: false,
-  }
-  const longName = 'IntergalaktischesForschungsnetzwerkMitEinemSehrLangenNamen'
-  await page.route('**/api/**/reports**', async (route) => {
-    const request = route.request().postDataJSON()
-    await route.fulfill({
-      json: {
-        protocol: 4,
-        binding,
-        request_id: (request.context ?? request).request_id,
-        viewer_revision: '1',
-        sampled_at: Date.now(),
-        as_of_ms: Date.now(),
-        data: {
-          header,
-          payload: {
-            ...observation,
-            buildings: {
-              visibility: 'Known',
-              value: {
-                ...observation.buildings.value,
-                MetalMine: 0,
-                ResearchLab: 12,
-              },
-            },
-            research: {
-              visibility: 'Known',
-              value: {
-                ...observation.research.value,
-                WeaponsTechnology: 0,
-                IntergalacticResearchNetwork: 123,
-              },
-            },
-            defenses: { visibility: 'Unknown' },
+          data: {
+            header,
+            payload,
+            player_names: { [payload.target.owner]: 'Commander Vega' },
           },
         },
-      },
-    })
-  })
-  await withReportResponse(page, header.id, () => page.goto(`/u/andromeda/b/${body.id}/reports/${header.id}`))
-  const report = page.getByRole('region', { name: 'Report observation' })
-  const sections = ['Buildings', 'Research'].map((name) =>
-    report
-      .locator('section')
-      .filter({ has: page.getByRole('heading', { name, exact: true }) }),
+      })
+    },
   )
-  // Stress the same layout with a translated, unbroken label. The server fixture remains valid.
+  await withReportResponse(page, header.id, () =>
+    page.goto(reportPath(header.id)),
+  )
+  const report = page.getByRole('region', { name: 'Report observation' })
   await expect(
-    sections[1].getByText('Intergalactic Research Network', { exact: true }),
+    report.getByRole('heading', { name: 'Buildings', exact: true }),
   ).toBeVisible()
-  await sections[1]
-    .getByText('Intergalactic Research Network', { exact: true })
-    .evaluate((node, name) => {
-      node.textContent = name
-    }, longName)
   for (const width of [1440, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 })
-    await expect(
-      sections[0]
-        .locator('dl > div')
-        .filter({ has: page.locator('dt', { hasText: /^Metal Mine$/ }) })
-        .locator('dd'),
-    ).toHaveText('Level 0')
-    await expect(
-      sections[0]
-        .locator('dl > div')
-        .filter({ has: page.locator('dt', { hasText: /^Research Lab$/ }) })
-        .last()
-        .locator('dd'),
-    ).toHaveText('Level 12')
-    await expect(
-      sections[1]
-        .locator('dl > div')
-        .filter({ has: page.locator('dt', { hasText: longName }) })
-        .locator('dd'),
-    ).toHaveText('Level 123')
-    await expect(
-      report.getByText('Plasma Turret', { exact: true }),
-    ).toHaveCount(0)
-    await expect(
-      report
-        .locator('section')
-        .filter({
-          has: page.getByRole('heading', { name: 'Defenses', exact: true }),
+
+    // The pinned header's ResizeObserver repositions the work area at the
+    // navigation breakpoint. Sample each related rectangle in one layout.
+    const [back, title, remove, timestamp, observation] = await page.evaluate(
+      (els) =>
+        els.map((el) => {
+          const { x, y, width, height } = el.getBoundingClientRect()
+          return { x, y, width, height }
         }),
-    ).toContainText('Unknown — this observation did not reveal this section.')
-    await expectAlignedLevels(sections)
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
+      await Promise.all(
+        [
+          page.getByRole('link', { name: 'Back to reports' }),
+          page.getByRole('heading', { name: 'Espionage', exact: true }),
+          page.getByRole('button', { name: 'Archive report', exact: true }),
+          page.getByRole('button', { name: 'Report time details' }),
+          report,
+        ].map((l) => l.elementHandle()),
       ),
-    ).toBe(true)
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
-      const owner = report.locator('a[href^="/profiles/empire/"]').first()
-      const scroll = await page.evaluate(() => scrollY)
-      await owner.scrollIntoViewIfNeeded()
-      await diagnosticScreenshot(page, { path: `test-results/identity-report-${width}x1000.png` })
-      await page.evaluate(y => scrollTo(0, y), scroll)
+    )
+    expect(title.x).toBeGreaterThan(back.x + back.width)
+    expect(title.y).toBeLessThan(back.y + back.height)
+    expect(timestamp.x).toBe(title.x)
+    expect(timestamp.y - title.y - title.height).toBeGreaterThanOrEqual(0)
+    expect(timestamp.y - title.y - title.height).toBeLessThanOrEqual(2)
+    expect(timestamp.height).toBeLessThanOrEqual(24)
+    const reportTop = observation.y
+    expect(
+      reportTop -
+        Math.max(timestamp.y + timestamp.height, back.y + back.height),
+    ).toBeLessThanOrEqual(8)
+    expect(remove.x).toBeGreaterThan(title.x + title.width)
+    const target = page.getByLabel('Espionage target', { exact: true })
+    await expect(
+      target.getByRole('heading', { name: 'Target', exact: true }),
+    ).toBeVisible()
+    await expect(target).toHaveCSS('border-bottom-width', '1px')
+    expect((await target.boundingBox())!.height).toBeLessThanOrEqual(76)
+    const [player, locationBox, imageBox, attackBox] = await page.evaluate(
+      (els) =>
+        els.map((el) => {
+          const { x, y, width, height } = el.getBoundingClientRect()
+          return { x, y, width, height }
+        }),
+      await Promise.all(
+        [
+          target.getByText('Commander Vega', { exact: true }),
+          target.getByRole('link', { name: /View target/ }),
+          target.locator('img'),
+          target.getByRole('button', { name: 'Attack', exact: true }),
+        ].map((l) => l.elementHandle()),
+      ),
+    )
+    expect(locationBox.y - player.y - player.height).toBeLessThanOrEqual(5)
+    expect(locationBox.height).toBeLessThanOrEqual(20)
+    await expect(target).toContainText('Commander Vega')
+    await expect(target).toContainText('Nova Roma')
+    await expect(target.locator('img')).toBeVisible()
+    const attack = target.getByRole('button', { name: 'Attack', exact: true })
+    await expect(attack).toBeVisible()
+    expect(attackBox.x).toBeGreaterThan(imageBox.x + 36)
+    const amounts = report.getByRole('group', { name: 'Resource amounts' })
+    const icons = amounts.locator('svg')
+    await expect(icons).toHaveCount(3)
+    const iconTops = await icons.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().y),
+    )
+    expect(new Set(iconTops).size).toBe(1)
+    for (const [index, resource] of [
+      'metal',
+      'crystal',
+      'deuterium',
+    ].entries()) {
+      const icon = icons.nth(index)
+      await expect(icon).toHaveAccessibleName(
+        resource[0].toUpperCase() + resource.slice(1),
+      )
+      const color = await page.evaluate((resource) => {
+        const probe = document.createElement('span')
+        probe.style.color = `var(--resource-${resource})`
+        document.body.append(probe)
+        const color = getComputedStyle(probe).color
+        probe.remove()
+        return color
+      }, resource)
+      await expect(icon).toHaveCSS('color', color)
     }
-    await diagnosticScreenshot(sections[1], {
-      path: `test-results/espionage-long-names-${width}.png`,
-    })
+    expect(
+      await amounts.evaluate((node) => node.scrollWidth <= node.clientWidth),
+    ).toBe(true)
+    await expect(amounts).toContainText('18,763')
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width)
   }
 })

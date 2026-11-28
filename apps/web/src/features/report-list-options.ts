@@ -36,4 +36,7 @@ export const reportTypes = [
   'MissileImpact',
   'PlanetAbandoned',
   'MoonCreated',
+  'MoonDestroyed',
+  'MoonFleetRedirected',
+  'MoonTargetLost',
 ] as const

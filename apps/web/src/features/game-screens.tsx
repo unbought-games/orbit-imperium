@@ -1,12 +1,11 @@
 import { BriefingWelcome } from './tutorial/briefing-summary'
-import { useSearch, useRouterState } from '@tanstack/react-router'
-import { draftFromSearch } from '../shell/dispatch-location'
+import { RoutedDispatch } from './routed-dispatch'
 import {
   useCatalogSelection,
   type CatalogSelection,
 } from '../shell/use-catalog-selection'
 import { Galaxy } from './galaxy'
-import { Dispatch, MissionFleets } from './missions'
+import { MissionFleets } from './missions'
 import { Reports } from './reports'
 import { bindingKey } from '../client-model/commands'
 import { useGameScreen } from '../shell/screen-context'
@@ -70,12 +69,6 @@ export function OperationsScreen({
 }: { selection?: CatalogSelection } = {}) {
   const { view, body, route, commands, model, prepareDispatch, universeName } =
     useGameScreen()
-  const search = useSearch({ strict: false })
-  const urlDraft = draftFromSearch(search)
-  const observation = useRouterState({
-    select: (state) => state.location.state.dispatchObservation,
-  })
-  const prepared = urlDraft ? { ...urlDraft, ...observation } : null
   const settings = model.settings
   if (!body) return null
   if (view.protocol === 4) {
@@ -92,12 +85,10 @@ export function OperationsScreen({
       )
     if (route.page === 'dispatch')
       return (
-        <Dispatch
-          key={JSON.stringify(search)}
+        <RoutedDispatch
           model={model}
           view={view}
           body={view.bodies.find((b) => b.id === body.id)!}
-          draft={prepared}
         />
       )
     if (route.page === 'fleets')

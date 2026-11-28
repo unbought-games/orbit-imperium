@@ -14,6 +14,7 @@ import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { Coordinator } from '../../client-model/coordinator'
 import { createGameStore } from '../../client-model/game-store'
 import { TechnologyDetails } from './technology-details'
+import { BuildingDetails } from './building-details'
 import { TechnologyTree } from './technology-tree'
 import { progressionFixture } from './progression-test-fixture'
 import { manufacturingPreview } from './manufacturing-preview'
@@ -26,6 +27,16 @@ vi.mock('../../shell/session-context', () => ({
 }))
 type S = components['schemas']
 const examples = [
+  {
+    id: 'LightLaser',
+    art: 'light-laser',
+    prose: 'A compact laser emplacement',
+    rules: 'mvp-v1-slice-8',
+    levels: { Shipyard: 2 },
+    research: { EnergyTechnology: 1, LaserTechnology: 3 },
+    cost: ['1500000000', '500000000', '0'],
+    total: ['4500000000', '1500000000', '0'],
+  },
   {
     id: 'IonCannon',
     art: 'ion-cannon',
@@ -228,6 +239,11 @@ for (const example of examples) {
         createElement(RouterProvider, { router }),
       )
       const build = html.match(/<button[^>]*aria-label="Build"[^>]*>/)?.[0]
+      const max = html.match(
+        /<button[^>]*aria-label="Max [^"]+ quantity"[^>]*>/,
+      )?.[0]
+      expect(max).toBeDefined()
+      expect(max!.includes('disabled')).toBe(gate !== 'ready')
       expect(build).toBeDefined()
       if (gate === 'ready') expect(build).not.toContain('disabled')
       else expect(build).toContain('disabled')
@@ -315,6 +331,58 @@ for (const example of [
     ],
   },
   {
+    id: 'HyperspaceDrive',
+    definition: 'hyperspace-drive',
+    source: 0,
+    lab: 7,
+    gates: { HyperspaceTechnology: 3 },
+    paid: ['10000000000', '20000000000', '6000000000'],
+    duration: 2700000,
+    formula: 'ResearchClassic',
+    notes: ['An engine that reaches beyond ordinary space'],
+  },
+  {
+    id: 'HyperspaceTechnology',
+    definition: 'hyperspace-technology',
+    source: 0,
+    lab: 7,
+    gates: { EnergyTechnology: 5, ShieldingTechnology: 5 },
+    paid: ['0', '4000000000', '2000000000'],
+    duration: 360000,
+    formula: 'ResearchClassic',
+    notes: ['foundations for advanced propulsion'],
+  },
+  {
+    id: 'IonTechnology',
+    definition: 'ion-technology',
+    source: 0,
+    lab: 4,
+    gates: { EnergyTechnology: 4, LaserTechnology: 5 },
+    paid: ['1000000000', '300000000', '100000000'],
+    duration: 187000,
+    formula: 'ResearchClassic',
+    notes: [
+      'The science of charged particles harnessed for war.',
+      'from formidable planetary cannons to the weapons carried into battle by cruisers',
+    ],
+  },
+  {
+    id: 'GravitonTechnology',
+    definition: 'graviton-technology',
+    source: 0,
+    lab: 12,
+    gates: {},
+    paid: ['0', '0', '0'],
+    duration: 1000,
+    formula: 'ResearchClassic',
+    notes: [
+      'Gross energy required to start',
+      'This planet’s gross production',
+      'No materials',
+      '>300,000<',
+    ],
+  },
+  {
     id: 'LaserTechnology',
     definition: 'light-laser',
     source: 0,
@@ -378,7 +446,8 @@ for (const example of [
         formula: example.formula,
         labs: [{ body: body.id, level: example.lab }],
         effective_lab: String(example.lab),
-        required_energy: '0',
+        required_energy:
+          example.id === 'GravitonTechnology' ? '300000000000' : '0',
       },
     }
     const store = createGameStore()
@@ -451,5 +520,189 @@ for (const example of [
       research: example.id,
       expected_terms_hash: 'b'.repeat(64),
     })
+    // A delivered refusal can contain several missing requirements. Inspect
+    // what the real confirmation and blockers render for that receipt.
+    proposal.blockers = entry.requirements.map((requirement) => ({
+      code: 'PrerequisiteMissing',
+      requirement,
+      required: String(requirement.level),
+      actual: String(requirement.level - 1),
+      unit: 'Level',
+      resource: null,
+    }))
+    const blocked = renderToStaticMarkup(
+      createElement(RouterProvider, { router }),
+    )
+    expect(
+      blocked.match(/<button[^>]*aria-label="Confirm research"[^>]*>/)?.[0],
+    ).toContain('disabled')
+    for (const r of entry.requirements) {
+      const subject = r.type === 'BodyBuilding' ? r.building : r.research
+      expect(blocked).toContain(subject.replace(/([a-z])([A-Z])/g, '$1 $2'))
+      expect(blocked).toContain(`requires ${r.level}; current ${r.level - 1}`)
+    }
+  })
+}
+
+// One prepared quote per distinct industrial decision; the engine owns prices,
+// admission and restart. Render the same building inspector used by Facilities.
+for (const [building, cost, blocker, explanation] of [
+  [
+    'Terraformer',
+    ['0', '100000000000', '200000000000'],
+    'EnergyRequired',
+    'mine demand is not subtracted',
+  ],
+  [
+    'Shipyard',
+    ['800000000', '400000000', '200000000'],
+    'YardLocked',
+    'manufacturing',
+  ],
+  [
+    'NaniteFactory',
+    ['1000000000000', '500000000000', '100000000000'],
+    'YardLocked',
+    'manufacturing',
+  ],
+] as const) {
+  it(`${building} displays the quoted industrial decision and its actual refusal`, async () => {
+    const { view, source } = progressionFixture()
+    const body = view.bodies[0]
+    const key = { kind: 'Building', id: building } as const
+    body.levels[building] = 1
+    body.fields = 105
+    body.fields_used = 100
+    body.amounts = {
+      metal: '5000000000000',
+      crystal: '5000000000000',
+      deuterium: '5000000000000',
+    }
+    const content =
+      building === 'Terraformer'
+        ? 'terraformer'
+        : building === 'NaniteFactory'
+          ? 'nanite'
+          : null
+    const entry: S['CatalogEntry3'] = {
+      key,
+      enabled: true,
+      mobile: false,
+      body_kinds: ['Planet'],
+      requirements: [],
+      ...(content
+        ? {
+            technical_data: JSON.parse(
+              readFileSync(
+                `contracts/fixtures/${content}-technical-data.json`,
+                'utf8',
+              ),
+            ),
+          }
+        : {}),
+    }
+    view.catalog = [entry]
+    const request = { type: 'Upgrade', body: body.id, building } as const
+    const [metal, crystal, deuterium] = cost
+    const proposal: BoundProgressionOptions = {
+      ...source,
+      request,
+      terms: {
+        type: 'Building',
+        action: 'Upgrade',
+        body: body.id,
+        building,
+        profile_hash: view.profile_hash,
+        source_level: 1,
+        target_level: 2,
+        paid: { metal, crystal, deuterium },
+        duration_ms: 600000,
+        formula: 'BuildingRedesign2011',
+        facilities: [],
+        required_energy: building === 'Terraformer' ? '2000000000' : '0',
+        reserve_fields: 1,
+      },
+      ...(building === 'Terraformer'
+        ? {
+            building_benefit: {
+              kind: 'FieldCapacity',
+              current: '105',
+              target: '110',
+            },
+          }
+        : {}),
+    }
+    const store = createGameStore()
+    store.setState({ view, binding: view.binding, ready: true })
+    const render = async (quote: BoundProgressionOptions) => {
+      const routeTree = createRootRoute({
+        component: () =>
+          createElement(BuildingDetails, {
+            coordinator: { store, ready: true } as unknown as Coordinator,
+            view,
+            body,
+            page: 'facilities',
+            selection: {
+              selectedId: building,
+              close: vi.fn(),
+              back: {
+                href: '/u/andromeda/b/planet/facilities',
+                'aria-label': 'Back to Facilities',
+                onClick: vi.fn(),
+              },
+              link: () => ({
+                href: '/u/andromeda/b/planet/facilities',
+                'data-catalog-item': building,
+                onClick: vi.fn(),
+              }),
+            },
+            building: catalogContent(key),
+            level: 1,
+            proposal: quote,
+            loading: false,
+            error: '',
+            action: 'Upgrade',
+            onInspect: vi.fn(),
+          }),
+      })
+      const router = createRouter({ routeTree, history: createMemoryHistory() })
+      await router.load()
+      return renderToStaticMarkup(createElement(RouterProvider, { router }))
+    }
+    const ready = await render(proposal)
+    expect(ready).toContain('aria-label="Confirm upgrade"')
+    for (const amount of cost.filter((n) => n !== '0'))
+      expect(ready).toContain(
+        `>${(BigInt(amount) / 1000000n).toLocaleString('en-US')}<`,
+      )
+    if (building === 'Terraformer') {
+      expect(ready).toContain('+5 fields')
+      expect(ready).toContain('Terraformer cannot be demolished')
+      expect(ready).not.toContain('aria-label="Demolish Terraformer"')
+    } else {
+      expect(ready).toContain(
+        `aria-label="Demolish ${building === 'Shipyard' ? 'Shipyard' : 'Nanite Factory'}"`,
+      )
+      if (building === 'NaniteFactory')
+        expect(ready).toContain('Research is unaffected')
+    }
+    const refused = await render({
+      ...proposal,
+      blockers: [
+        {
+          code: blocker,
+          requirement: null,
+          required: blocker === 'EnergyRequired' ? '2000000000' : null,
+          actual: blocker === 'EnergyRequired' ? '1000000000' : null,
+          unit: blocker === 'EnergyRequired' ? 'MicroEnergy' : null,
+          resource: null,
+        },
+      ],
+    })
+    expect(refused).toContain('aria-label="Action blockers"')
+    expect(refused.toLowerCase()).toContain(explanation)
+    expect(
+      refused.match(/<button[^>]*aria-label="Confirm upgrade"[^>]*>/)?.[0],
+    ).toContain('disabled')
   })
 }

@@ -32,6 +32,7 @@ pub(super) fn ready() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
 }
 pub(super) fn hold(s: &GameState, p: PlayerId, b: BodyId, t: BodyId, hours: u32) -> FleetIntent {
     FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         mission: Mission::Hold,
         hold_hours: Some(hours),
@@ -164,7 +165,7 @@ fn holding_keeps_ownership_cargo_slot_and_original_return_then_stales_departure(
     assert_eq!(f.due_at, event.at + 2 * HOLD_HOUR_MS);
     assert_eq!(f.cargo, intent.cargo);
     assert!(quote_fleet(&s, p, &intent, event.at, &r).is_err());
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let result = run(
         &mut s,
         &r,
@@ -189,7 +190,7 @@ fn holding_keeps_ownership_cargo_slot_and_original_return_then_stales_departure(
         s.world.as_ref().unwrap().records.fleets[&f.id].leg,
         MissionLeg::Returned
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn zero_hour_hold_never_defends_and_relationship_revocation_preserves_paid_hold() {
@@ -558,7 +559,7 @@ fn held_combat(lunar: bool) {
     }
     assert_eq!(records.fleets[&held.id].leg, MissionLeg::Holding);
     assert_eq!(records.fleets[&held.id].due_at, held.due_at);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -745,5 +746,39 @@ fn lunar_hold_uses_its_parent_depot_budget_and_keeps_body_inventories_separate()
         &s.world.as_ref().unwrap().records.fleets[&planetary],
         t
     ));
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
+}
+
+#[test]
+fn mixed_dreadnought_hold_uses_slowest_ship_and_rounds_fractional_fuel_once() {
+    let (mut s, r, p, b, t) = ready();
+    fixture_research(&mut s, &r, p, ResearchId::HyperspaceDrive, 7);
+    set_units(
+        &mut s,
+        &r,
+        b,
+        ManufacturedItem::Ship(ShipType::Dreadnought),
+        3,
+    );
+    let mut intent = hold(&s, p, b, t, 2);
+    intent.ships.push(ManifestStack {
+        owner: p,
+        ship_type: ShipType::Dreadnought,
+        count: 3,
+    });
+    let quote = quote_fleet(&s, p, &intent, 0, &r).unwrap();
+    let hold = quote.holding.as_ref().unwrap();
+    assert_eq!(hold.fuel, 3 * SCALE); // One Small Cargo for two hours + 0.6 for the Dreadnoughts.
+    let (duration, flight_fuel) = exact_flight_arithmetic(
+        quote.distance,
+        &[(5000, 10, 1), (310, 1, 3)],
+        100,
+        i64::from(r.speed),
+    )
+    .unwrap();
+    assert_eq!(quote.duration_ms, duration);
+    assert_eq!(
+        quote.maximum_payload,
+        3_005_000 * SCALE - flight_fuel - hold.fuel
+    );
 }

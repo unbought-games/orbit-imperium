@@ -14,16 +14,27 @@
   border-bottom: 1px solid var(--border-accent);
 }
 .header {
-  padding: 0;
+  padding: var(--space-2) 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+.headingGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+}
+.description {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  text-transform: none;
+}
 .header h2 {
   min-width: 0;
   margin: 0;
-  padding: 12px 0;
   font: inherit;
 }
 .headerActions {
@@ -142,7 +153,16 @@
 .caption small {
   font-size: 0.75rem;
 }
-.caption > span {
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.tileHeading,
+.inlineHeading > span {
   font:
     400 1.1rem Georgia,
     serif;
@@ -230,10 +250,42 @@
     gap: 2px;
     padding: 4px 10px;
   }
-  .caption > span {
+  .tileHeading,
+  .inlineHeading > span {
     font-size: 1rem;
   }
   .caption strong {
     font-size: 0.8125rem;
+  }
+}
+
+.compactTile .caption {
+  padding: 3px 8px;
+  gap: 2px;
+}
+.inlineHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 7px;
+  align-items: baseline;
+}
+.inlineHeading strong {
+  white-space: nowrap;
+}
+@media (max-width: 359px) {
+  .compactTile {
+    min-height: 54px;
+  }
+  .compactTile .artwork {
+    width: 44px;
+  }
+  .compactTile .caption {
+    padding: 2px 1px 2px 5px;
+  }
+  .inlineHeading {
+    column-gap: 5px;
+  }
+  .inlineHeading > span {
+    letter-spacing: -0.015em;
   }
 }

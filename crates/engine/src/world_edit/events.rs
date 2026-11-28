@@ -76,6 +76,7 @@ pub(super) fn mission(
         canonical_map(&e.ships, r.artifact.ships.keys().copied())?
     };
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: origin.id,
@@ -161,7 +162,7 @@ pub(super) fn mission(
         inv.count -= count;
         inv.revision += 1;
         c.inventories.push(inv);
-        let moved = take_asset_lots(
+        let moved = take_asset_quantity(
             &mut w.lots,
             origin.owner,
             CatalogKey::Ship(key),

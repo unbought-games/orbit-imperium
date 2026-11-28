@@ -26,7 +26,7 @@ file. `--universe UUID` selects an existing world. Without it, the command uses
 Conflicting CLI/environment IDs and ambiguous selection fail. `orbit rules upgrade
 --help` works without a database. An empty database needs `orbit setup` first.
 
-The bundled content release is currently **0.13.0**. This is the content bundle's
+The bundled content release is currently **0.19.0** and includes [moon destruction missions](moon-destruction.md), the [Dreadnought](dreadnought.md) and [Graviton Technology](#graviton-technology). This is the content bundle's
 version, not a stored universe version or a claim about the deployed application.
 [Terraformer](terraformer.md) adds planetary fields and requires Nanite Factory 1,
 Energy Technology 12 and a start-time gross-energy threshold.
@@ -248,7 +248,8 @@ Other universes retain their own configuration. Restarts never replace the activ
 - Flights keep their paid fuel and committed travel/return terms.
 - Battles use the combat rules active at arrival, for both sides.
 - Production before activation uses old rates; production afterward uses new rates.
-- Accounts, sessions, universe identity/epoch, receipts, historical reports, and paid asset values are preserved.
+- Existing accounts, sessions, universe identity and epoch, receipts, reports and historical standings keep their original records.
+- An intentional catalog reprice recalculates completed asset values and live standings in the activation transaction. Ships at home and in active fleets use the same unit price.
 
 Existing algorithms normally change with a code deployment. A particular behavior that needs to remain off until activation uses an explicit feature setting; there is no general algorithm-version system.
 
@@ -344,3 +345,19 @@ supporting code to all processes before activation. Existing players receive
 level 0; accepted research retains its payment, lab snapshot and deadline.
 See the [network activation guide](intergalactic-research-network.md) for selection,
 locks, customization conflicts and disabling future upgrades.
+
+## Graviton Technology
+
+Standard bundle 0.17.0 adds planetary Graviton research. Fresh worlds include
+it. For retained worlds, deploy the compatible API, workers, operator and web
+client, then preview and apply the standard upgrade. Activation initializes
+existing players at level zero and preserves committed research. A forward
+rules update can disable new starts while retaining the definition and earned
+levels. The existing research storage and protocol support this addition.
+
+Level 1 requires Research Lab 12 and 300,000 gross energy at the initiating
+planet. Each subsequent level triples the power requirement. The check uses
+saved production settings, stationed satellites and fuel-supported fusion
+output before mine demand. A successful start spends zero resources and takes
+one second at every universe speed. Subsequent power loss leaves the project
+and the earned level intact.

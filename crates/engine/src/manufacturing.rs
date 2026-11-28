@@ -46,6 +46,7 @@ pub struct BatchCommitment {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ManufacturingStatus {
     BodyAbandoned,
+    BodyDestroyed,
     Active,
     Completed,
     Cancelled,
@@ -68,4 +69,23 @@ pub struct ManufacturingBatch {
     pub status: ManufacturingStatus,
     pub generation: i64,
     pub revision: i64,
+}
+
+impl ManufacturingBatch {
+    /// Stop short of any other event at the same instant, including hour/day
+    /// score observations. Its phase and ordinal will be decided by the queue.
+    pub fn consecutive_due_units(
+        &self,
+        claimed_at: Timestamp,
+        next_input: Option<Timestamp>,
+    ) -> i64 {
+        let hour_end = self
+            .next_due_at
+            .saturating_add(3_599_999 - self.next_due_at.rem_euclid(3_600_000));
+        let through = claimed_at
+            .min(hour_end)
+            .min(next_input.map_or(i64::MAX, |t| t.saturating_sub(1)));
+        let elapsed = through.saturating_sub(self.next_due_at).max(0);
+        (1 + elapsed / self.unit_duration_ms.max(1)).min(self.quantity - self.completed_prefix)
+    }
 }

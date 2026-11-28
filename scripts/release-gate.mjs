@@ -7,21 +7,30 @@ const repository = 'unbought-games/orbit-imperium'
 const repositoryId = 1427640162
 const shaPattern = /^[a-f0-9]{40}$/
 
+function selectedBranch(event) {
+  const branch = event.workflow_run
+    ? event.workflow_run.head_branch
+    : (event.inputs?.source_branch ?? 'main')
+  assert.ok(['main', 'prod/S001'].includes(branch), 'Untrusted source branch')
+  return branch
+}
+
 export function verifyRelease({
   event,
   run,
   workflow,
   jobs,
-  mainSha,
+  branchSha,
   comparison,
   expectedAttempt,
 }) {
   assert.equal(event.repository.id, repositoryId, 'Unexpected event repository')
   assert.equal(event.repository.full_name, repository)
+  const branch = selectedBranch(event)
   const trigger = event.workflow_run
   const sha = trigger?.head_sha ?? event.inputs?.commit
   assert.match(sha ?? '', shaPattern, 'Select a full commit SHA')
-  assert.match(mainSha, shaPattern)
+  assert.match(branchSha, shaPattern)
   for (const candidate of trigger ? [trigger, run] : [run]) {
     assert.equal(
       candidate.repository.id,
@@ -33,8 +42,8 @@ export function verifyRelease({
       repositoryId,
       'Fork CI is not trusted',
     )
-    assert.equal(candidate.event, 'push', 'Only main push CI can release')
-    assert.equal(candidate.head_branch, 'main')
+    assert.equal(candidate.event, 'push', 'Only push CI can release')
+    assert.equal(candidate.head_branch, branch)
     assert.equal(candidate.status, 'completed')
     assert.equal(candidate.conclusion, 'success')
     assert.equal(candidate.head_sha, sha, 'CI must test the selected revision')
@@ -52,18 +61,18 @@ export function verifyRelease({
     )
   assert.equal(workflow.path, '.github/workflows/ci.yml')
   assert.equal(workflow.state, 'active')
-  // Compare the selected commit to a snapshot of main. Newer merges are allowed;
+  // Compare the selected commit to a snapshot of the selected branch. Newer merges are allowed;
   // unmerged branches, detached PR commits and force-pushed-away history are not.
   assert.equal(comparison.base_commit.sha, sha)
   assert.equal(
     comparison.merge_base_commit.sha,
     sha,
-    'Commit is not in main history',
+    'Commit is not in the selected branch history',
   )
   assert.equal(
     comparison.status,
-    mainSha === sha ? 'identical' : 'ahead',
-    'Commit is not in main history',
+    branchSha === sha ? 'identical' : 'ahead',
+    'Commit is not in the selected branch history',
   )
   const checks = jobs.filter((job) => job.name === 'Build, lint and unit tests')
   assert.equal(checks.length, 1, 'Expected exactly one aggregate CI check')
@@ -90,24 +99,22 @@ export async function verifyReleaseFromGitHub(event, token, options = {}) {
   }
   assert.equal(event.repository.id, repositoryId)
   assert.equal(event.repository.full_name, repository)
+  const branch = selectedBranch(event)
   const sha = event.workflow_run?.head_sha ?? event.inputs?.commit
   assert.match(sha ?? '', shaPattern, 'Select a full commit SHA')
   let selected = event.workflow_run
   if (!selected && !options.ciRun) {
     const result = await get(
-      `actions/workflows/ci.yml/runs?branch=main&event=push&head_sha=${sha}&status=success&per_page=100`,
+      `actions/workflows/ci.yml/runs?branch=${encodeURIComponent(branch)}&event=push&head_sha=${sha}&status=success&per_page=100`,
     )
     selected = result.workflow_runs.find(
       (run) =>
         run.head_sha === sha &&
         run.event === 'push' &&
-        run.head_branch === 'main' &&
+        run.head_branch === branch &&
         run.conclusion === 'success',
     )
-    assert.ok(
-      selected,
-      'Selected commit needs successful main push CI; rerun its CI run before publishing',
-    )
+    assert.ok(selected, `Selected commit needs successful push CI on ${branch}`)
   }
   const id = options.ciRun ?? selected.id
   assert.ok(Number.isSafeInteger(id) && id > 0, 'Invalid CI run ID')
@@ -117,25 +124,25 @@ export async function verifyReleaseFromGitHub(event, token, options = {}) {
     Number.isSafeInteger(expectedAttempt) && expectedAttempt > 0,
     'Invalid CI attempt',
   )
-  const [run, workflow, main, result] = await Promise.all([
+  const [run, workflow, ref, result] = await Promise.all([
     get(`actions/runs/${id}`),
     get('actions/workflows/ci.yml'),
-    get('git/ref/heads/main'),
+    get(`git/ref/heads/${branch}`),
     get(`actions/runs/${id}/attempts/${expectedAttempt}/jobs?per_page=100`),
   ])
   assert.equal(run.id, id)
   assert.equal(result.total_count, result.jobs.length, 'Incomplete CI job list')
-  const comparison = await get(`compare/${sha}...${main.object.sha}`)
+  const comparison = await get(`compare/${sha}...${ref.object.sha}`)
   verifyRelease({
     event,
     run,
     workflow,
     jobs: result.jobs,
-    mainSha: main.object.sha,
+    branchSha: ref.object.sha,
     comparison,
     expectedAttempt,
   })
-  return { sha, ciRun: id, ciAttempt: expectedAttempt }
+  return { sha, branch, ciRun: id, ciAttempt: expectedAttempt }
 }
 
 if (
@@ -163,9 +170,9 @@ if (
   })
   appendFileSync(
     process.env.GITHUB_OUTPUT,
-    `sha=${release.sha}\nci_run=${release.ciRun}\nci_attempt=${release.ciAttempt}\n`,
+    `sha=${release.sha}\nsource_branch=${release.branch}\nci_run=${release.ciRun}\nci_attempt=${release.ciAttempt}\n`,
   )
   console.log(
-    `Trusted main-history revision: ${release.sha}; CI run ${release.ciRun} attempt ${release.ciAttempt}`,
+    `Trusted ${release.branch} revision: ${release.sha}; CI run ${release.ciRun} attempt ${release.ciAttempt}`,
   )
 }

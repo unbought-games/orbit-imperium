@@ -1,0 +1,9 @@
+# Light Fighter
+
+Game ID `LightFighter`. Mass-produced squadron fighter, cheap and nimble.
+
+## Generation prompt
+
+Orbit Imperium, Orbit Base free fleet. Generate exactly ONE original game catalog beauty render of the specified subject, isolated on real transparent alpha. Landscape 3:2, fixed elevated front three-quarter view, bow towards viewer and lower left, stern upper right. Center entire silhouette with 8% clear margin at every edge, no cropping, no ground plane, no scenery or drop shadow. Strong readable silhouette at a 96px thumbnail. Premium photographed physical studio miniature, intentional broad planes, believable construction, restrained edge wear, maintained in everyday service. Classic, understated, imperial science fiction. Shared yard signatures: clipped panel corners, shallow recessed seams, satin ceramic-painted shell and dark inset working hardware. Clear neutral key light from upper left and ample soft fill; readable lower faces. Two independent player-dyeable finishes: primary satin muted powder-blue/slate painted surface, accent a few broad warm ochre-champagne painted panels, material boundaries follow part edges and bevels. Neither dye is bare metal. Keep windows, machinery, optics and specified exhaust physically separate, dark, fixed material. No insignia, logos, heraldry, text, markings, letters, UI, diagrams, borders, weapons firing, long exhaust trails or baked glows outside silhouette. Avoid tiny evenly distributed greebles or repeating stripes. Scale cues appropriate to this particular hull.
+
+Subject: LightFighter. One compact arrowhead interceptor with short swept triangular wings, prominent smoked one-seat canopy forward, narrow center body and tucked twin stern combustion nozzles with subtle red interiors. Open space behind each wing gives a crisp dart outline. Primary wing and fuselage shells; accent wing-root shoulder insets.

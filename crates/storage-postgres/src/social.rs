@@ -60,6 +60,45 @@ async fn message_sequence(
         .map_err(db_error)?
         .ok_or(StoreError::NotFound)
 }
+// A read/hide is private to its actor. A send or relationship change affects
+// both participants. Circular delivery follows the stored recipient list.
+async fn invalidate_social(
+    tx: &mut Tx<'_>,
+    b: Binding,
+    action: &SocialAction,
+    message: Option<Uuid>,
+) -> Result<(), StoreError> {
+    let mut recipients = std::collections::BTreeSet::from([b.player]);
+    match action {
+        SocialAction::Send { player, .. }
+        | SocialAction::RequestFriend { player }
+        | SocialAction::AcceptFriend { player, .. }
+        | SocialAction::RemoveFriend { player, .. }
+        | SocialAction::Block { player }
+        | SocialAction::Unblock { player } => {
+            recipients.insert(*player);
+        }
+        SocialAction::Circular { .. } => {
+            let players: Vec<Uuid> = sqlx::query_scalar(
+                "SELECT player FROM alliance_circular_recipients WHERE circular=$1",
+            )
+            .bind(message.ok_or(StoreError::CorruptData)?)
+            .fetch_all(&mut **tx)
+            .await
+            .map_err(db_error)?;
+            recipients.extend(players.into_iter().map(PlayerId));
+        }
+        SocialAction::Read { .. }
+        | SocialAction::Hide { .. }
+        | SocialAction::ReadCircular { .. }
+        | SocialAction::HideCircular { .. } => {}
+    }
+    for player in recipients {
+        crate::updates::invalidate_viewer(tx, b.universe, b.epoch, player).await?;
+    }
+    Ok(())
+}
+
 impl PgStore {
     pub(crate) async fn commit_social(
         &self,
@@ -89,6 +128,7 @@ impl PgStore {
         crate::bots::charge(&mut tx, b, "social", q.command_id, true).await?;
         let at = now(&mut tx).await?;
         let message = commands::apply(&mut tx, b, &q.action, at).await?;
+        invalidate_social(&mut tx, b, &q.action, message).await?;
         let result = SocialCommandResult {
             command_id: q.command_id,
             message,

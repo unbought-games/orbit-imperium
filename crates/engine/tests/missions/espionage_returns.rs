@@ -70,7 +70,7 @@ fn only_probe_only_espionage_returns_are_silent() {
                 lot.location != AssetLocation::Fleet(fleet.id)
                     || lot.item != CatalogKey::Ship(ShipType::SmallCargo)
             });
-            validate_asset_lineage(&s).unwrap();
+            validate_completed_assets(&s).unwrap();
         }
         let returning = changes.events[0].clone();
         let result = run(
@@ -114,7 +114,7 @@ fn only_probe_only_espionage_returns_are_silent() {
         // changing after the fixture removes the target's ships.
         request.mission = Mission::Transport;
         quote_fleet(&s, p, &request, returning.at, &r).unwrap();
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         let result = run(
             &mut s,
             &r,
@@ -129,7 +129,7 @@ fn only_probe_only_espionage_returns_are_silent() {
 }
 
 #[test]
-fn probe_espionage_recalls_keep_confirmation_without_return_notice() {
+fn probe_espionage_recalls_and_returns_are_silent() {
     for elapsed in [0, 1] {
         let (mut s, r, p, b, t) = raid_fixture();
         let request = probe_intent(&s, p, b, t);
@@ -155,7 +155,7 @@ fn probe_espionage_recalls_keep_confirmation_without_return_notice() {
             }),
         );
         let changes = apply(&mut s, result);
-        assert_eq!(report_kinds(&s, p), BTreeSet::from(["Recalled"]));
+        assert!(report_kinds(&s, p).is_empty());
         if elapsed > 0 {
             let returning = changes.events[0].clone();
             let result = run(
@@ -171,12 +171,12 @@ fn probe_espionage_recalls_keep_confirmation_without_return_notice() {
         } else {
             assert!(changes.events.is_empty());
         }
-        assert_eq!(report_kinds(&s, p), BTreeSet::from(["Recalled"]));
+        assert!(report_kinds(&s, p).is_empty());
         assert_eq!(
             s.world.as_ref().unwrap().records.fleets[&fleet].leg,
             MissionLeg::Returned
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }
 
@@ -222,7 +222,7 @@ fn failed_probe_espionage_keeps_failure_without_return_notice() {
             .leg,
         MissionLeg::Returned
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -265,7 +265,7 @@ fn detected_probe_loss_keeps_espionage_and_combat_reports() {
             .iter()
             .any(|event| matches!(event.event, ScheduledEvent::FleetLegDue { .. }))
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]

@@ -60,7 +60,9 @@ export function withBootstrapResponse(
 ) {
   return withFixtureResponse(
     page,
-    (response) => new URL(response.url()).pathname === '/api/v1/bootstrap',
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/v1/bootstrap',
     navigate,
   )
 }

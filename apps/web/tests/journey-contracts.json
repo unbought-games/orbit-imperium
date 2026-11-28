@@ -1,0 +1,962 @@
+[
+  {
+    "file": "alliances.spec.ts",
+    "project": "",
+    "titlePath": [
+      "lost membership clears private board, roster and administration after an access-denied reload"
+    ],
+    "risk": "Reloading after a membership denial must clear the mounted private board, roster and administration routes before the signed-out member can use them."
+  },
+  {
+    "file": "alliances.spec.ts",
+    "project": "",
+    "titlePath": [
+      "creates an alliance from its route and returns to membership home"
+    ],
+    "risk": "Submitting the reloaded Create Alliance form must replace the create URL with the new member\u2019s actual alliance home."
+  },
+  {
+    "file": "alliances.spec.ts",
+    "project": "",
+    "titlePath": [
+      "alliance presentation previews unsaved edits and publishes them through the real editor"
+    ],
+    "risk": "An unsaved alliance presentation must survive the editor\u2019s navigation guard and preview. Publishing it must change what the public recruitment page renders."
+  },
+  {
+    "file": "alliances.spec.ts",
+    "project": "",
+    "titlePath": [
+      "alliance deep links restore settings and history preserves authored drafts"
+    ],
+    "risk": "A cold nested recruitment-settings URL must select the right section. Browser Back and Forward must preserve edits to another section in the same alliance workspace."
+  },
+  {
+    "file": "alliances.spec.ts",
+    "project": "",
+    "titlePath": [
+      "alliance reading at 390px",
+      "long pinned notices preserve reading, selection and focus through live updates"
+    ],
+    "risk": "A live board refresh must preserve the phone reader\u2019s text selection, scroll position and focused notice link while the long pinned notice remains mounted."
+  },
+  {
+    "file": "arrival.spec.ts",
+    "project": "",
+    "titlePath": [
+      "declining recruitment can finish arrival despite intent failure and retry a failed landing"
+    ],
+    "risk": "Declining recruitment after a failed arrival intent must still permit landing. Retrying a failed landing must use the same new empire."
+  },
+  {
+    "file": "arrival.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a new empire chooses its title, look and name, then lands in Briefing at 1280px"
+    ],
+    "risk": "After selecting a title and appearance, Arrival must keep the new empire on its landing screen while the latest authoritative overview still carries the old homeworld name. It completes once and opens Briefing after that homeworld shows the chosen name."
+  },
+  {
+    "file": "battleship.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Battleship submits the selected build quantity at 390px"
+    ],
+    "risk": "One Battleship batch at the funded Shipyard must submit linked, distinct presence and gameplay command IDs, with quantity two and the terms hash of that batch rather than the unit quote."
+  },
+  {
+    "file": "bootstrap-ui.spec.ts",
+    "project": "",
+    "titlePath": [
+      "content blockers cannot prevent startup, navigation, or logout (scripts)"
+    ],
+    "risk": "Blocking the dynamically loaded analytics script must leave the mobile game navigable and its Menu logout able to end the session and reopen anonymous login."
+  },
+  {
+    "file": "bootstrap-ui.spec.ts",
+    "project": "",
+    "titlePath": [
+      "login and signup preserve the requested game destination"
+    ],
+    "risk": "A protected body-specific Messages URL, including its player query and fragment, must survive login/signup switching and reload, then return to the same conversation after local authentication."
+  },
+  {
+    "file": "bootstrap-ui.spec.ts",
+    "project": "",
+    "titlePath": [
+      "fetched startup uses one bootstrap request and never inserts the sign-in form"
+    ],
+    "risk": "With no embedded runtime, the document must fetch bootstrap exactly once and render the authenticated game without ever inserting a transient sign-in form."
+  },
+  {
+    "file": "bootstrap-ui.spec.ts",
+    "project": "",
+    "titlePath": [
+      "explicit login records presence after retry; reload and cached-page restore do not"
+    ],
+    "risk": "A sign-in delayed by failed preparation must record one presence gesture on recovery. Reload and pageshow must not record it again."
+  },
+  {
+    "file": "bootstrap-ui.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mobile startup automatically recovers from a transient restart without signing in again"
+    ],
+    "risk": "A temporarily unavailable mobile bootstrap must recover into the authenticated game automatically without an intervening credentials form."
+  },
+  {
+    "file": "bootstrap-ui.spec.ts",
+    "project": "",
+    "titlePath": [
+      "automatic outage retries preserve Retry and Sign out focus without manual-error alerts"
+    ],
+    "risk": "Automatic outage retries must keep focus on the same usable Retry or Sign out control without announcing errors reserved for manual retries."
+  },
+  {
+    "file": "catalog-pages.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Defense keeps the item route while submitting and exposes the order on the catalog at 1440px"
+    ],
+    "risk": "A held protocol-3 Defense order must keep its item route usable and expose the accepted batch in the catalog queue after navigation."
+  },
+  {
+    "file": "catalog-pages.spec.ts",
+    "project": "",
+    "titlePath": [
+      "catalogs fit narrow screens and enlarged text without losing controls"
+    ],
+    "risk": "At narrow widths and enlarged text, switching catalogs under the actual shell must leave their actions reachable without horizontal overflow."
+  },
+  {
+    "file": "catalog-pages.spec.ts",
+    "project": "",
+    "titlePath": [
+      "planet changes retain the item, reset edits, and link across prerequisites in the selected context"
+    ],
+    "risk": "Switching the funding planet on a catalog item must retain the item, discard planet-specific edits and take prerequisite navigation to the new body."
+  },
+  {
+    "file": "client-update.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a recent reload keeps the empire visible with an accessible recovery action across widths"
+    ],
+    "risk": "After a recent document refresh, a build mismatch must keep the current empire visible and expose a usable recovery action instead of entering a reload loop."
+  },
+  {
+    "file": "client-update.spec.ts",
+    "project": "",
+    "titlePath": [
+      "offline actions and uncertain orders stay actionable after recovery (390x844)"
+    ],
+    "risk": "Native offline/online events and an uncertain rename must leave the mounted editor\u2019s draft usable through connection recovery."
+  },
+  {
+    "file": "client-update.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a click during quiet session recovery is explicitly refused (390x844)"
+    ],
+    "risk": "During silent session reconciliation a user\u2019s attempted command must receive an explicit refusal without losing the draft or issuing a mutation."
+  },
+  {
+    "file": "combat-reports.spec.ts",
+    "project": "",
+    "titlePath": [
+      "combat small report preserves layout and contextual navigation"
+    ],
+    "risk": "Opening the small combat report must render its force and round observations and let its contextual coordinate action reach the correct Galaxy position."
+  },
+  {
+    "file": "combat-simulation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "prepares an editable observed-planet attack with advisory hypothetical estimates and authoritative launch validation"
+    ],
+    "risk": "The report must hand the chosen target, fleet and speed to routed Dispatch. A refused advisory estimate must not turn into launch authority, and a later occupied-slot FleetQuote must block confirmation without issuing a launch."
+  },
+  {
+    "file": "command-hud.spec.ts",
+    "project": "",
+    "titlePath": [
+      "desktop orb anchors its panel across shell widths and preserves its open report on mobile"
+    ],
+    "risk": "Resizing a live desktop HUD into its mobile placement must preserve the open report and keep the panel anchored within the actual shell."
+  },
+  {
+    "file": "command-hud.spec.ts",
+    "project": "",
+    "titlePath": [
+      "the mobile HUD keeps confirmed hostile traffic across fleet navigation until the server clears it"
+    ],
+    "risk": "A confirmed Attack must reach both the mobile HUD and world bar. Dismissing its toast, switching planets and following the HUD to Fleets must preserve urgency until a refreshed server view clears both surfaces."
+  },
+  {
+    "file": "command-hud.spec.ts",
+    "project": "",
+    "titlePath": [
+      "real quick-build only acknowledges committed orders and leaves rejection visible"
+    ],
+    "risk": "Quick Build must submit the selected colony\u2019s matched Metal Mine quote in its bound paired commands. Only a committed receipt may trigger orb acknowledgement; rejection must remain visible in the shell."
+  },
+  {
+    "file": "command-hud.spec.ts",
+    "project": "",
+    "titlePath": [
+      "HUD espionage attack action prepares the observed target and opens Dispatch"
+    ],
+    "risk": "The HUD\u2019s Attack action must preserve the observed body and coordinates in Dispatch even when the selected system\u2019s current Galaxy read returns 404. The destination must show its unavailable state."
+  },
+  {
+    "file": "command-hud.spec.ts",
+    "project": "",
+    "titlePath": [
+      "shared inbox removes reports deleted elsewhere from the Reports route, badge and open panel"
+    ],
+    "risk": "An inbox refresh after deletion elsewhere must update the Reports list, shell badge and already-open HUD panel together."
+  },
+  {
+    "file": "community-rewards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mobile account navigation opens a reward choice and confirms permanent delivery"
+    ],
+    "risk": "The mobile account Menu must open Rewards for the selected body. Confirming a choice must update the mounted player\u2019s permanent delivery state."
+  },
+  {
+    "file": "coordinate-links.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mission endpoints retain planet context and browser history at 390px"
+    ],
+    "risk": "Switching the funded body on a fleet detail and reloading must retain its fleet ID. Activating an endpoint must focus the requested Galaxy row and preserve browser history."
+  },
+  {
+    "file": "coordinate-links.spec.ts",
+    "project": "",
+    "titlePath": [
+      "fleet card coordinates open Galaxy from the overview and the modal HUD"
+    ],
+    "risk": "A coordinate action inside the modal HUD must escape its portal, close the panel and land on the same Galaxy target as the overview fleet card."
+  },
+  {
+    "file": "coordinate-links.spec.ts",
+    "project": "",
+    "titlePath": [
+      "copy, menus and explicit dispatch actions preserve origin and recent copy"
+    ],
+    "risk": "Copying a coordinate from the live fleet menu must survive navigation into Dispatch and paste back into an edited destination without changing the origin body."
+  },
+  {
+    "file": "coordinate-links.spec.ts",
+    "project": "",
+    "titlePath": [
+      "share URLs highlight deleted moon slots and preserve moon intent through reload and paste"
+    ],
+    "risk": "An externally shared URL for a vanished moon must retain its slot and moon intent after reload and when pasted into Dispatch."
+  },
+  {
+    "file": "coordinate-links.spec.ts",
+    "project": "",
+    "titlePath": [
+      "shared locations show an access error without offering enrollment"
+    ],
+    "risk": "A no-membership bootstrap on a shared Galaxy location must render denied access without presenting enrollment for that location."
+  },
+  {
+    "file": "density.spec.ts",
+    "project": "",
+    "titlePath": [
+      "fleet inventory leads the first viewport and traffic stays reachable across supported viewports"
+    ],
+    "risk": "From the real fleet list the selected flight must open an accessible detail and route schematic. Its original long endpoint labels and decoded artwork must fit the shipping shell at desktop, tablet and phone widths."
+  },
+  {
+    "file": "density.spec.ts",
+    "project": "",
+    "titlePath": [
+      "combat outcome and follow-up lead the first viewport across supported viewports"
+    ],
+    "risk": "The full combat route must keep its outcome and toolbar usable at three viewport sizes. Prepare harvest from a non-default planet must size an editable Recycler selection from the current deuterium-only field, fund the same planet and preserve return navigation."
+  },
+  {
+    "file": "density.spec.ts",
+    "project": "",
+    "titlePath": [
+      "building choices remain visible without colony artwork across supported viewports"
+    ],
+    "risk": "The real Resources route must place its first building above the fold beneath the active shell navigation at desktop and phone heights."
+  },
+  {
+    "file": "density.spec.ts",
+    "project": "",
+    "titlePath": [
+      "legacy fleet details retain navigation from Empire at 390px"
+    ],
+    "risk": "A protocol-2 fleet opened from Empire must address just that flight, return to the complete list and enter a funded legacy Dispatch form with its original destination controls."
+  },
+  {
+    "file": "density.spec.ts",
+    "project": "",
+    "titlePath": [
+      "fleet threats, visible routes and ticking countdowns at 390px"
+    ],
+    "risk": "A failed overview refresh after the clock passes arrival must retain the hostile flight. Its live countdown, phone dock clearance and hostile state must agree between Fleets and Empire."
+  },
+  {
+    "file": "desktop-navigation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "desktop navigation preserves body history, reload and report refresh"
+    ],
+    "risk": "Desktop sidebar keyboard navigation must preserve the selected body through Back and reload, focus the routed heading and update the Reports destination after an unread refresh."
+  },
+  {
+    "file": "desktop-navigation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "touch sidebar opens Settings and Facilities in the application"
+    ],
+    "risk": "Tapping the wide touch sidebar\u2019s account menu must close its portaled menu, enter Settings and leave the actual Facilities route accessible."
+  },
+  {
+    "file": "desktop-navigation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "menu page preserves tab navigation, history and settings access at 390px"
+    ],
+    "risk": "The phone\u2019s Menu key activation must focus the canonical route. Its external account link must open a separate unprivileged tab, and the HUD must leave the dock reachable below 1024px."
+  },
+  {
+    "file": "desktop-navigation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mobile settings menu opens isolated sections and returns through back, history and reload"
+    ],
+    "risk": "An actual mobile Settings section must restore the correct editor and current body after Back, Forward and reload."
+  },
+  {
+    "file": "desktop-navigation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "support links share a recipient-safe destination and keep game context"
+    ],
+    "risk": "A support URL copied from Settings must open on a second player\u2019s own body. The real HUD must leave its actions reachable at intermediate widths."
+  },
+  {
+    "file": "dispatch-validation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "successful dispatch resets ship and cargo quantities after preserving edits through review"
+    ],
+    "risk": "Ship and cargo edits must survive returning from routed fleet review. A confirmed launch must clear the inputs and prevent its success notice from reappearing on a return to the origin."
+  },
+  {
+    "file": "dispatch-validation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Empire retains cargo wealth while launching and restores rejected reservations at 390px"
+    ],
+    "risk": "When a launch is in flight, navigating into Empire must count the same reserved cargo in wealth, then release that reservation on authoritative rejection."
+  },
+  {
+    "file": "dispatch-validation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "browser Back restores only the active review and waits for fresh fleet terms"
+    ],
+    "risk": "Native Back must restore only the still-active Dispatch review and keep launch disabled until the newly requested terms arrive."
+  },
+  {
+    "file": "dispatch-validation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a launch-time cargo change preserves the routed review and Edit cargo reopens its dispatch"
+    ],
+    "risk": "A material cargo change at launch time must preserve the review URL. Edit cargo must reopen the correct source draft with its original input."
+  },
+  {
+    "file": "empire-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "request and cancel empire deletion 390px"
+    ],
+    "risk": "A confirmed deletion schedule must survive reload on the same authenticated empire. Canceling it there must clear the schedule."
+  },
+  {
+    "file": "empire-history.spec.ts",
+    "project": "",
+    "titlePath": [
+      "public overview and closed campaign stay readable without game bootstrap at 390px"
+    ],
+    "risk": "An anonymous personal overview must open the intended closed-campaign empire profile without either page starting private gameplay or exposing owner management controls."
+  },
+  {
+    "file": "empire-identity.spec.ts",
+    "project": "",
+    "titlePath": [
+      "an empire identity save is reflected by its public profile navigation"
+    ],
+    "risk": "A successful public empire identity edit must submit its displayed profile revision and appear when the player follows the native link to their personal profile."
+  },
+  {
+    "file": "empire-identity.spec.ts",
+    "project": "",
+    "titlePath": [
+      "dossier keyboard focus and orb use the same empire identity"
+    ],
+    "risk": "The live HUD\u2019s form of address and the focused Rankings dossier must use the same player\u2019s current empire identity."
+  },
+  {
+    "file": "empire.spec.ts",
+    "project": "",
+    "titlePath": [
+      "research directive opens its host planet and technology from the whole card at 1440px"
+    ],
+    "risk": "The real research directive must fit through intermediate shell widths. Activating the entire card must switch to the research host and its technology detail."
+  },
+  {
+    "file": "empire.spec.ts",
+    "project": "",
+    "titlePath": [
+      "desktop and phone command views keep all information readable without horizontal scrolling"
+    ],
+    "risk": "The full command overview must keep long inventory and account/navigation controls readable without document overflow across desktop-to-phone resizing."
+  },
+  {
+    "file": "empire.spec.ts",
+    "project": "",
+    "titlePath": [
+      "fleet movements stay visible and fit the page with a single outbound flight"
+    ],
+    "risk": "The single-outbound-flight panel must remain visible and contained by the real shell at intermediate widths, including 768px."
+  },
+  {
+    "file": "empire.spec.ts",
+    "project": "",
+    "titlePath": [
+      "fleet movements stay visible and fit the page with long names and manifests"
+    ],
+    "risk": "The real shell must keep long names and large manifests readable without widening the document across tablet and phone layouts."
+  },
+  {
+    "file": "espionage-reports.spec.ts",
+    "project": "",
+    "titlePath": [
+      "authenticated espionage toolbar and target actions fit the shell"
+    ],
+    "risk": "The authenticated espionage toolbar and observed-target Attack action must remain reachable below the live shell header as its ResizeObserver handles four breakpoints."
+  },
+  {
+    "file": "fleet-inventory.spec.ts",
+    "project": "",
+    "titlePath": [
+      "stationed inventory separates exact counts and Shipyard links at 390px"
+    ],
+    "risk": "Switching the funded body must change its stationed/queued inventory without changing empire-wide scope. The wide header and compact row links must fund the correct Shipyard."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "shared columns align all debris and controls; mobile rows reach both edges without horizontal overflow"
+    ],
+    "risk": "Galaxy controls must stick below the active shell navigation, align the debris/action columns and leave the phone rows within the actual document edges."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Galaxy uses the signed-in supporter identity for the owned planet"
+    ],
+    "risk": "The owned Galaxy planet and a protected third player must show their own observed supporter tiers on their actual linked rows and dossiers."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "one-click espionage stays in Galaxy, reserves one departure and tracks the outbound and return legs"
+    ],
+    "risk": "One Spy activation on the map must reserve one departure, publish its HUD feedback and reconcile outbound, returning and completed legs without leaving the system."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mobile harvest quotes and sends one departure, stays in Galaxy and reserves ships and slots"
+    ],
+    "risk": "Mobile Harvest from the actual Galaxy row must stay in the rendered system while the committed launch reserves the selected recyclers and one slot."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Galaxy history closes the active Harvest popup and releases its shortcuts when entering Fleets and Dispatch"
+    ],
+    "risk": "Browser Back and Forward must restore the right Galaxy system, close a departing Harvest popup and stop its keyboard shortcut from acting after entering Fleets or Dispatch."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "desktop Harvest keeps its Actions anchor when the planet changes"
+    ],
+    "risk": "When the planet at an open desktop debris field is replaced, the Harvest popup must preserve its edited quantity and actual Actions anchor and restore focus there."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "probe settings recover from a failed save at 390px"
+    ],
+    "risk": "An authoritative probe-preference rejection must retain the quantity on the Settings route and let the user read the current preference before saving again."
+  },
+  {
+    "file": "galaxy-cards.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Spy with opens an editable planet espionage draft at 1280px"
+    ],
+    "risk": "When one-click Spy would require too many probes, the desktop Spy with action must open editable Dispatch for that planet without launching."
+  },
+  {
+    "file": "game-invitations.spec.ts",
+    "project": "",
+    "titlePath": [
+      "public invitation binds the returned sender and universe to its signup destination"
+    ],
+    "risk": "Opening a personal token must show the returned inviter and bound universe and give the native signup link that same token as its OIDC return, even when another universe is the hosted default."
+  },
+  {
+    "file": "game-invitations.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a refused bound invitation retries the original universe and opens its empire"
+    ],
+    "risk": "After refusal and Retry, the invitation must enroll only its bound universe and token, bypass a different hosted default and reopen the bound empire\u2019s actual Overview without presenting the chooser."
+  },
+  {
+    "file": "home.spec.ts",
+    "project": "",
+    "titlePath": [
+      "returning players go straight to their empire without loading marketing images"
+    ],
+    "risk": "The authenticated root entry must redirect directly to the owned empire, remove public home metadata and issue no marketing-image requests."
+  },
+  {
+    "file": "home.spec.ts",
+    "project": "",
+    "titlePath": [
+      "SPA navigation between authentication and home scopes metadata to home"
+    ],
+    "risk": "Entering Home through the auth page\u2019s brand link must install its canonical metadata. Returning to login must remove that metadata and restore the sign-in title."
+  },
+  {
+    "file": "hosted-auth.spec.ts",
+    "project": "",
+    "titlePath": [
+      "hosted sign-in takes one homepage click and returns to the game at 1440px"
+    ],
+    "risk": "The real home Sign in link must take an existing member to the hosted account document in one click and return them to the named game."
+  },
+  {
+    "file": "hosted-auth.spec.ts",
+    "project": "",
+    "titlePath": [
+      "hosted enrollment failure keeps the account and retries into the game across widths"
+    ],
+    "risk": "A refused hosted enrollment must leave the same account authenticated and let Retry reach the originally requested universe."
+  },
+  {
+    "file": "hosted-auth.spec.ts",
+    "project": "",
+    "titlePath": [
+      "hosted enrollment configuration can be retried without losing the authenticated account"
+    ],
+    "risk": "After an authenticated join document receives a 503 reading hosted configuration, Try again must enter the existing member\u2019s empire without signing out or submitting a manual or automatic enrollment."
+  },
+  {
+    "file": "hosted-auth.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a join return path with a different hosted binding opens universe selection without enrolling"
+    ],
+    "risk": "A hosted return bound to another universe must replace the current document with the chooser without submitting an enrollment."
+  },
+  {
+    "file": "insignias.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Galaxy emblems remain visible during refresh and reload from the persistent cache"
+    ],
+    "risk": "A new Galaxy document must paint stored emblems before the held observation arrives, retain them during refresh and remove them when the authoritative observation clears them."
+  },
+  {
+    "file": "insignias.spec.ts",
+    "project": "",
+    "titlePath": [
+      "an overview emblem opens its anchored editor and the equipped design reaches both Overview and Galaxy"
+    ],
+    "risk": "The selected body\u2019s overview emblem must anchor the actual identity editor despite late content above it. Saving must update both the overview reached by Back and the subsequently opened Galaxy row."
+  },
+  {
+    "file": "jump-gates.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Jump Gates at 390",
+      "build, review and jump preserves moon context and both cooldowns"
+    ],
+    "risk": "The moon\u2019s Jump Gate detail must bind chosen stacks and destination to the reviewed quote. After one submission the source route must reload cooling and the destination option must show its cooldown."
+  },
+  {
+    "file": "missile-warfare.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Galaxy launches two reviewed missiles and opens the new outgoing flight"
+    ],
+    "risk": "Reviewing two missiles against the selected Galaxy planet must send exactly one bound LaunchMissiles command paired with its presence record. The refreshed Empire row must open that same outgoing flight at its funded detail URL."
+  },
+  {
+    "file": "moons.spec.ts",
+    "project": "",
+    "titlePath": [
+      "moon creation at 390px",
+      "selects a moon and inspects buildings while lunar construction stays unavailable"
+    ],
+    "risk": "Selecting a moon at shared coordinates must preserve lunar funding across Overview, facility inspection and Dispatch, without enabling planet-only construction."
+  },
+  {
+    "file": "planet-abandonment.spec.ts",
+    "project": "",
+    "titlePath": [
+      "abandonment menu, losses, cancellation, blockers and removal at 390px"
+    ],
+    "risk": "Confirmed abandonment must remove the colony, route away from its former selected body and survive reload while the historical position and report remain accessible."
+  },
+  {
+    "file": "planet-page-routing.spec.ts",
+    "project": "",
+    "titlePath": [
+      "account pages remain usable without planets and reject a foreign planet instead of falling back"
+    ],
+    "risk": "Planetless account pages must open without inventing a body, while a foreign requested body must produce a readable denied heading even at enlarged phone size."
+  },
+  {
+    "file": "planet-page-routing.spec.ts",
+    "project": "",
+    "titlePath": [
+      "public alliance entry keeps its query and hash when resolving the universe name"
+    ],
+    "risk": "A public alliance target must retain its query and fragment through the named-universe and selected-body redirects and reload into the same discovery target."
+  },
+  {
+    "file": "planet-page-routing.spec.ts",
+    "project": "",
+    "titlePath": [
+      "planet page routing at 1440px",
+      "Messages: legacy normalization, planet switching and history keep page context"
+    ],
+    "risk": "Legacy body input on Messages must normalize to a body path. Changing planets and using Back, Forward and reload must preserve the peer, fragment and visible selector state."
+  },
+  {
+    "file": "progression-cancellation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "cancellation restores eligible detail actions at 390px with old options delivered before confirmation"
+    ],
+    "risk": "During an active mine upgrade, the catalog can preview energy demand while quick build stays unavailable through pending cancellation. After confirmed cancellation the funded inspector must invalidate stale options, restore eligibility and submit the next upgrade with the new quote hash."
+  },
+  {
+    "file": "recruitment.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a public invitation resolves its token and links to the returned alliance"
+    ],
+    "risk": "A two-part public alliance invitation must load its token before private game entry and construct login\u2019s return using the alliance actually returned."
+  },
+  {
+    "file": "release-announcement.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Escape counts as seen and returns focus to the orb"
+    ],
+    "risk": "A hostile interruption must suspend the real shell announcement. When the threat clears, Escape must record the announcement as seen and return focus to the orb."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "archiving a row and restoring its detail survive authoritative reloads"
+    ],
+    "risk": "After archiving from the list, a fresh document must read back the archived row. Direct detail restore must return to a live list that still shows it after reload."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "opening a report marks it read after loading, clears the inbox badge and does not resubmit after refresh"
+    ],
+    "risk": "The actual detail read must complete before marking the report read. The shell badge must clear and re-entering the same report must not send the read again."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "the cleanup notice moves intact between Reports and the command HUD"
+    ],
+    "risk": "Moving between Reports and the HUD must preserve the same live error announcement as its notice changes host, without losing its recovery control."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "immediate retry and reload recover the original paired order at 390px"
+    ],
+    "risk": "The HUD must retry an ambiguous archive with the same paired envelope. Reload must recover that saved envelope and reconcile the original order without creating a new intention."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "detail archive returns only after acceptance with list context at 390px"
+    ],
+    "risk": "After accepting a detail archive, Back must return to its originating list filter, sort and scroll anchor. An archived-folder detail must retain its own context."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mark shown read from reports leaves unloaded and archived reports unread at 1280px"
+    ],
+    "risk": "The real Reports overflow action must submit just its displayed unread subset and reconcile the global badge while unloaded and archived reports remain unread."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "mark shown read from orb leaves unloaded and archived reports unread at 390px"
+    ],
+    "risk": "The phone HUD action must mark only its displayed intelligence buffer as read, retaining its touch controls, focus and unread count while other reports remain unread."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "report touch actions",
+      "delete edges stay independent from row navigation at 320px"
+    ],
+    "risk": "At the phone row\u2019s padded edge a touch must archive without opening its detail. A protected edge must absorb the tap and leave the neighboring navigation target usable."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "report touch actions",
+      "delete edges stay independent from row navigation at 820px"
+    ],
+    "risk": "In the tablet row arrangement, tapping the actual edge must archive only its intended report without activating the neighboring row link."
+  },
+  {
+    "file": "report-sharing.spec.ts",
+    "project": "",
+    "titlePath": [
+      "public report is readable without game initialization"
+    ],
+    "risk": "An anonymous shared report must read just its public token and render the redacted observation without initializing a private game."
+  },
+  {
+    "file": "report-sharing.spec.ts",
+    "project": "",
+    "titlePath": [
+      "touch sharing controls",
+      "list archiving keeps a shared link available after confirmed unstar and reload"
+    ],
+    "risk": "After explicitly confirming unstar, archiving from the list must preserve the unlisted link on a fresh archived-detail document without sending revoke."
+  },
+  {
+    "file": "research-network.spec.ts",
+    "project": "",
+    "titlePath": [
+      "research network preserves linked labs across submission and planet navigation at 390px"
+    ],
+    "risk": "Following a remote research contributor during a confirmed network operation must preserve the captured host/lab list and fund subsequent navigation on the correct body."
+  },
+  {
+    "file": "resources.spec.ts",
+    "project": "",
+    "titlePath": [
+      "production autosaves rapid edits after reconciliation and keeps confirmed totals"
+    ],
+    "risk": "When a production save is still in flight, editing again and remounting the panel must retain the draft and confirmed totals until the earlier save is reconciled."
+  },
+  {
+    "file": "resources.spec.ts",
+    "project": "",
+    "titlePath": [
+      "production rejection retains edits and retry preserves unrelated server changes"
+    ],
+    "risk": "A rejected production save must reach the shared shell error banner. Retrying there must submit against the latest revision without overwriting another confirmed setting."
+  },
+  {
+    "file": "resources.spec.ts",
+    "project": "",
+    "titlePath": [
+      "legacy resource catalogs retain cancellation and refresh the open upgrade after completion"
+    ],
+    "risk": "On protocol 2 the real legacy resource detail must retain cancellation and refresh the focused upgrade after confirmed work completes."
+  },
+  {
+    "file": "resources.spec.ts",
+    "project": "",
+    "titlePath": [
+      "full-storage warnings open the selected planet's matching storage at 390px"
+    ],
+    "risk": "The mobile Deuterium storage warning must open the active body\u2019s corresponding tank detail and close its popover even when navigation resolves to the same destination."
+  },
+  {
+    "file": "sensor-phalanx.spec.ts",
+    "project": "",
+    "titlePath": [
+      "phalanx at 390",
+      "explicit paid scan opens immutable receipt report"
+    ],
+    "risk": "A paid Phalanx scan must open the immutable receipt-owned report for its actual moon even after the live source observation changes."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "cold Defense navigation retains named universe and planet through preloading, switching and direct loads"
+    ],
+    "risk": "Switching worlds during cold Defense preload must preserve the named universe and new body in both the loaded catalog and a fresh detail entry."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "touch energy navigation and resource details remain usable with enlarged text"
+    ],
+    "risk": "Tapping Energy must open the funded production settings and preserve confirmed controls across reload and native Back/Forward. Enlarged text must keep the resource popover reachable."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "navigation keeps shell identity mounted through rapid route changes"
+    ],
+    "risk": "A delayed startup update must complete successfully without replacing the mounted shell or ledger during rapid changes of lazy routes."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "disconnection preserves selected world, ledger and urgent fleet navigation"
+    ],
+    "risk": "Refusing a refreshed overview must leave the selected world and ledger usable and preserve the urgent fleet route when reached through Galaxy."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "an uncertain fleet launch recovers from its committed receipt without sending twice"
+    ],
+    "risk": "A held paired launch must become actionable uncertainty after failure and accept the original receipt on Retry. The real shell must show success, clear the draft and send exactly one launch."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "legacy fleets retain trajectory, exact arrival and reviewed recall"
+    ],
+    "risk": "Protocol-2 Fleet navigation must render its route schematic and exact server arrival, open a distinct legacy recall review and let the user decline without issuing an order."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "reduced motion keeps route focus stationary through dock and sidebar navigation"
+    ],
+    "risk": "With reduced motion, real dock and desktop sidebar navigation must focus each routed heading without invoking document view transitions or moving the navigation controls."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "unread reports light the menu and report link at 390px with 100% text and reconcile"
+    ],
+    "risk": "Reading reports must update the live Menu link and its capped badge across native navigation, Back and reload, while remaining usable on both sides of the shell breakpoint."
+  },
+  {
+    "file": "shell.spec.ts",
+    "project": "",
+    "titlePath": [
+      "body selection retains its default dossier, history and reload at 390px"
+    ],
+    "risk": "Opening a named universe must select its owned homeworld and dossier. Switching the body, going Back or Forward and reloading must restore the corresponding visible dossier."
+  },
+  {
+    "file": "social.spec.ts",
+    "project": "",
+    "titlePath": [
+      "submits a direct message from its deep link and returns to the conversation list"
+    ],
+    "risk": "The selected body\u2019s Messages deep link must submit the actual DM, consume its delivered thread and return to the same body\u2019s conversation list with the fragment preserved."
+  },
+  {
+    "file": "solar-satellite.spec.ts",
+    "project": "",
+    "titlePath": [
+      "satellite production link opens the selected body\u2019s settings and Back shows the saved output"
+    ],
+    "risk": "The satellite order\u2019s production link must open the right body\u2019s settings. After saving its duty and returning with Back, the order must reflect the saved output."
+  },
+  {
+    "file": "tutorial-advisor.spec.ts",
+    "project": "",
+    "titlePath": [
+      "the Metal Mine lesson keeps the same anchored orb through catalog navigation, reload and keyboard handoff"
+    ],
+    "risk": "The same tutorial orb must stay anchored through the funded Metal Mine route. Keyboard handoff must return to the live HUD and reload must preserve the visible lesson."
+  },
+  {
+    "file": "tutorial-advisor.spec.ts",
+    "project": "",
+    "titlePath": [
+      "production review completes explicitly without changing allocations"
+    ],
+    "risk": "The Briefing\u2019s production-review action must open the funded controls and acknowledge completion explicitly, without changing allocations, before returning to its accomplished step."
+  },
+  {
+    "file": "tutorial.spec.ts",
+    "project": "",
+    "titlePath": [
+      "Empire briefing icon opens by keyboard or touch and remembers acknowledged progress at 1440px"
+    ],
+    "risk": "The desktop Empire header must fit the animated unread Briefing icon. With a personalized document, the first paint must show full navigation and Overview without a splash or separate startup reads. Keyboard entry must acknowledge the icon on the real route, preserve that state after reload and leave the full document within the viewport at peak glow without issuing an order."
+  },
+  {
+    "file": "tutorial.spec.ts",
+    "project": "",
+    "titlePath": [
+      "full experience confirmation preserves progress and rewards across reload"
+    ],
+    "risk": "After confirming the full-experience preference, a freshly bootstrapped document must restore that preference with prior tutorial progress and rewards intact. If the first guidance read fails, Retry connection must open the requested Overview."
+  },
+  {
+    "file": "vacation.spec.ts",
+    "project": "",
+    "titlePath": [
+      "vacation review, commitment, minimum and return at 390px"
+    ],
+    "risk": "Committing vacation must update the real shell through reload and its minimum interval. The return action must reconcile the same empire\u2019s status."
+  },
+  {
+    "file": "web-app.spec.ts",
+    "project": "",
+    "titlePath": [
+      "iOS installed app keeps scrolling, fixed navigation and menu taps after resizing"
+    ],
+    "risk": "Installed mobile navigation must retain its document, origin, tab count and funded paths as resizing changes scroll and dock placement and the player taps between game destinations."
+  }
+]

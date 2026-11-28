@@ -1,5 +1,9 @@
 import type { PlayerAlliances } from './player-alliance'
-import { combatOutcome, hasCombatLoot } from './combat-report-model'
+import {
+  combatOutcome,
+  combatPerspective,
+  hasCombatLoot,
+} from './combat-report-model'
 import { playerLabel, type PlayerNames } from './player-label'
 import { bodyIdentityLabel } from './body-identity-label'
 import { formatDuration } from '../client-model/duration'
@@ -61,6 +65,12 @@ export function reportPreview(preview: Preview | undefined): {
         label: 'Scan cost',
       })
       break
+    case 'MoonFleetRedirected':
+    case 'MoonTargetLost':
+      at = preview.coordinates
+      facts.push(label(preview.mission))
+      break
+    case 'MoonDestroyed':
     case 'MoonCreated':
       at = preview.coordinates
       identity = 'Moon'
@@ -127,6 +137,18 @@ export function reportPreview(preview: Preview | undefined): {
     case 'Combat':
       at = preview.target
       identity = bodyIdentityLabel(preview.target_name, preview.target_kind)
+      if (preview.moon_destruction) {
+        facts.push(
+          preview.moon_destruction.moon_destroyed
+            ? 'Moon destroyed'
+            : 'Moon survived',
+        )
+        facts.push(
+          preview.moon_destruction.fleet_lost
+            ? 'Attacking fleet lost'
+            : 'Attacking fleet escaped',
+        )
+      }
       if (preview.loot && hasCombatLoot(preview.outcome, preview.loot))
         facts.push({ resources: preview.loot, label: 'Loot' })
       if (
@@ -170,6 +192,9 @@ export function reportPreview(preview: Preview | undefined): {
       : identity,
     coordinates: at,
     ...(preview.kind === 'MoonCreated' ||
+    preview.kind === 'MoonDestroyed' ||
+    preview.kind === 'MoonFleetRedirected' ||
+    preview.kind === 'MoonTargetLost' ||
     (preview.kind === 'Returned' || preview.kind === 'Recalled'
       ? preview.origin_kind === 'Moon'
       : 'target_kind' in preview && preview.target_kind === 'Moon') ||
@@ -197,9 +222,7 @@ export function reportListTitle(report: S['ReportHeader4'], viewer?: string) {
   if (preview?.kind === 'SiteEncounter')
     return combatOutcome(preview.outcome, 'Attacker')
   if (preview?.kind === 'Combat' && preview.outcome) {
-    const side = preview.participants?.find(
-      (participant) => participant.owner === viewer,
-    )?.side
+    const { side } = combatPerspective(preview.participants, viewer)
     return combatOutcome(preview.outcome, side)
   }
   return { title: reportKindLabel(report.kind), symbol: '', tone: 'neutral' }
@@ -220,10 +243,12 @@ export function reportListIdentity(
     if (preview.target) owners = [preview.target.owner]
     body = bodyIdentityLabel(preview.target?.name, preview.target?.kind)
   } else if (preview.kind === 'Combat') {
-    const side = preview.participants?.find((p) => p.owner === viewer)?.side
-    owners = (preview.participants ?? [])
-      .filter((p) => (side ? p.side !== side : p.side === 'Defender'))
-      .map((p) => p.owner)
+    const { side, bothSides } = combatPerspective(preview.participants, viewer)
+    owners = bothSides
+      ? []
+      : (preview.participants ?? [])
+          .filter((p) => (side ? p.side !== side : p.side === 'Defender'))
+          .map((p) => p.owner)
     body = bodyIdentityLabel(preview.target_name, preview.target_kind)
   }
   return [

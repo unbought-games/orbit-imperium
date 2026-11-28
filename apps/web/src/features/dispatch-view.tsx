@@ -1,4 +1,5 @@
 import { DispatchLoot } from './dispatch-loot'
+import { quotedCargoSpace } from '../client-model/dispatch-cargo'
 import {
   DispatchCargoControls,
   DispatchFlightControls,
@@ -22,7 +23,6 @@ import { coordinateText, type LocationKind } from '../shell/location-address'
 import { DispatchReview } from './dispatch-review'
 import type { useDispatch } from './use-dispatch'
 import type { DispatchDraft } from './missions'
-import { canSubmitQuote } from '../client-model/game-projection'
 import { Button, ButtonLink } from '../ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { FleetSlots } from './fleet-slots'
@@ -38,8 +38,10 @@ import { DispatchFeedback } from './dispatch-feedback'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
 import { bodyName } from '../ui/format'
+import { formatWholeNumber } from '../ui/whole-number'
 type S = components['schemas']
 export type DispatchViewProps = {
+  embedded?: boolean
   model: Coordinator
   view: S['BoundView4']
   body: S['BodyV3']
@@ -59,6 +61,7 @@ export function DispatchView({
   universeName,
   occupiedSlots,
   recentlyCopied,
+  embedded,
   dispatch,
 }: DispatchViewProps) {
   const {
@@ -81,6 +84,7 @@ export function DispatchView({
     targetKind,
     setTargetKind,
     destination,
+    reportSalvage,
     destinationCoordinates,
     speed,
     setSpeed,
@@ -88,12 +92,14 @@ export function DispatchView({
     setShips,
     cargo,
     cargoCapacity,
+    totalCapacity,
     cargoCapacityMessage,
-    setCargo,
+    editCargo,
     addAllCargo,
     maxCargo,
     quote,
-    setQuote,
+    checkingReview,
+    entryNotice,
     error,
     busy,
     now,
@@ -101,7 +107,6 @@ export function DispatchView({
     hasShips,
     quoteRef,
     reviewButtonRef,
-    command,
     send,
     clear,
     review,
@@ -112,40 +117,75 @@ export function DispatchView({
     submittedAttempt,
     submittedCoordinates,
   } = dispatch
+  const salvageProblem =
+    mission === 'Harvest' && targetKind === 'debris' ? destination.problem : ''
+  const salvageDetail = !reportSalvage
+    ? undefined
+    : reportSalvage.available === '0'
+      ? 'No recyclers available at this origin.'
+      : reportSalvage.needed === '0'
+        ? 'Recycler capacity unavailable. Enter a count to continue.'
+        : reportSalvage.suggested !== reportSalvage.needed
+          ? `${formatWholeNumber(reportSalvage.available)} of ${formatWholeNumber(reportSalvage.needed)} recyclers available here.`
+          : `${formatWholeNumber(reportSalvage.needed)} ${reportSalvage.needed === '1' ? 'recycler' : 'recyclers'} needed to clear this field.`
+  const destinationNotice =
+    (targetProblem !== salvageProblem ? targetProblem : '') || attackWarning
+  const feedback = (
+    <DispatchFeedback
+      model={model}
+      attempt={submittedAttempt}
+      destination={submittedCoordinates}
+      origin={body.id}
+    />
+  )
   return (
     <Section className={styles.screen}>
-      <header className={styles.dispatchHeader} aria-label="Dispatch header">
-        <div className={styles.dispatchTitle}>
-          {quote ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon-small"
-              aria-label="Back to edit mission"
-              title="Back to edit mission"
-              onClick={() => setQuote(null)}
-            >
-              <ArrowLeft size={18} aria-hidden="true" />
-            </Button>
-          ) : (
-            <ButtonLink
-              variant="secondary"
-              size="icon-small"
-              aria-label="Back to fleets"
-              title="Back to fleets"
-              {...routeTarget(universeName, 'fleets', body.id)}
-            >
-              <ArrowLeft size={18} aria-hidden="true" />
-            </ButtonLink>
-          )}
-          <Heading level={2} className={styles.dispatchHeading}>
-            Dispatch
-          </Heading>
-        </div>
-        <div className={styles.dispatchHeaderActions}>
-          <FleetSlots used={occupiedSlots} total={view.missions.fleet_slots} />
-        </div>
-      </header>
+      {(!embedded || quote) && (
+        <header className={styles.dispatchHeader} aria-label="Dispatch header">
+          <div className={styles.dispatchTitle}>
+            {quote ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon-small"
+                aria-label="Back to edit mission"
+                title="Back to edit mission"
+                disabled={dispatch.sending}
+                onClick={dispatch.editReview}
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+              </Button>
+            ) : (
+              <ButtonLink
+                variant="secondary"
+                size="icon-small"
+                aria-label="Back to fleets"
+                title="Back to fleets"
+                {...routeTarget(universeName, 'fleets', body.id)}
+              >
+                <ArrowLeft size={18} aria-hidden="true" />
+              </ButtonLink>
+            )}
+            <Heading level={2} className={styles.dispatchHeading}>
+              {embedded ? 'Fleet review' : 'Dispatch'}
+            </Heading>
+          </div>
+          <div className={styles.dispatchHeaderActions}>
+            <FleetSlots
+              used={occupiedSlots}
+              total={view.missions.fleet_slots}
+            />
+          </div>
+        </header>
+      )}
+      {entryNotice && error && (
+        <Text tone="danger" role="alert">
+          {error}
+        </Text>
+      )}
+      {checkingReview && (
+        <Text role="status">Checking fleet availability…</Text>
+      )}
       {!quote && (
         <>
           {draft?.attackGroup && (
@@ -209,7 +249,8 @@ export function DispatchView({
               }
               onChange={(nextMission) => {
                 setMission(nextMission)
-                if (nextMission === 'Harvest') setTargetKind('debris')
+                if (nextMission === 'DestroyMoon') setTargetKind('moon')
+                else if (nextMission === 'Harvest') setTargetKind('debris')
                 else if (targetKind === 'debris' || nextMission === 'Colonize')
                   setTargetKind('planet')
                 clear()
@@ -286,6 +327,8 @@ export function DispatchView({
                 kind={targetKind}
                 target={target}
                 lookup={destination.lookup}
+                salvageDetail={salvageDetail}
+                salvageProblem={salvageProblem || undefined}
                 player={view.binding.player}
                 playerNames={playerNames}
                 value={destinationText}
@@ -338,13 +381,13 @@ export function DispatchView({
                 </Button>
               </Text>
             )}
-            {(targetProblem || attackWarning) && (
+            {destinationNotice && (
               <Text
                 className={styles.destinationNotice}
                 tone="danger"
                 role="status"
               >
-                {targetProblem || attackWarning}
+                {destinationNotice}
               </Text>
             )}
           </fieldset>
@@ -367,11 +410,12 @@ export function DispatchView({
           <DispatchCargoControls
             cargo={cargo}
             space={cargoCapacity}
+            total={totalCapacity}
             message={cargoCapacityMessage}
             disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
-            onNormalize={setCargo}
-            onChange={(cargo) => {
-              setCargo(cargo)
+            onNormalize={editCargo}
+            onChange={(index, value) => {
+              editCargo(index, value)
               clear()
             }}
             onFill={(resource) => {
@@ -405,7 +449,7 @@ export function DispatchView({
               message: timingMessage,
             }}
           />
-          {error && (
+          {!entryNotice && error && (
             <Text tone="danger" role="alert">
               {error}
             </Text>
@@ -437,12 +481,7 @@ export function DispatchView({
               </ButtonLink>
             </div>
           )}
-          <DispatchFeedback
-            model={model}
-            attempt={submittedAttempt}
-            destination={submittedCoordinates}
-            origin={body.id}
-          />
+          {feedback}
           <Button
             ref={reviewButtonRef}
             disabled={busy || !coordinatesValid || !!targetProblem || !hasShips}
@@ -479,8 +518,8 @@ export function DispatchView({
                     : target
                 }
                 revision={view.viewer_revision}
-                space={cargoCapacity}
-                hasShips={hasShips}
+                space={quotedCargoSpace(quote)}
+                hasShips={quote.intent.ships.length > 0}
                 universeName={universeName}
                 origin={body.id}
               />
@@ -492,9 +531,10 @@ export function DispatchView({
           }
           panelRef={quoteRef}
           onSend={() => void send()}
-          disabled={
-            !command || !canSubmitQuote(model.store.getState(), command, quote)
-          }
+          reviewState={dispatch.reviewPanel}
+          onEdit={dispatch.editReview}
+          sending={dispatch.sending}
+          disabled={!dispatch.canSend}
         />
       )}
     </Section>

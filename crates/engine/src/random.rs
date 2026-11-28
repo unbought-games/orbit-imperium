@@ -61,13 +61,24 @@ impl RandomStream {
         self.offset = offset;
         Ok(())
     }
+    fn block_bytes(&self) -> [u8; 32] {
+        block_bytes(self.keyed_block_prefix(), self.block)
+    }
+    fn keyed_block_prefix(&self) -> Hmac<Sha256> {
+        let mut prefix =
+            Hmac::<Sha256>::new_from_slice(&self.key).expect("HMAC accepts all key lengths");
+        prefix.update(b"block\0");
+        prefix
+    }
     pub fn read_byte(&mut self) -> Result<u8, InvariantError> {
         if self.offset >= 32 {
             return Err(InvariantError("invalid RNG cursor".into()));
         }
-        let mut pre = b"block\0".to_vec();
-        pre.extend(self.block.to_be_bytes());
-        let value = mac(&self.key, &pre)[usize::from(self.offset)];
+        let value = self.block_bytes()[usize::from(self.offset)];
+        self.advance_byte()?;
+        Ok(value)
+    }
+    fn advance_byte(&mut self) -> Result<(), InvariantError> {
         if self.offset == 31 {
             self.block = self
                 .block
@@ -77,7 +88,7 @@ impl RandomStream {
         } else {
             self.offset += 1;
         }
-        Ok(value)
+        Ok(())
     }
     pub fn uniform(&mut self, n: &BigUint) -> Result<BigUint, InvariantError> {
         if n.is_zero() || n.bits() > 256 {
@@ -114,6 +125,117 @@ impl RandomStream {
             Ok(true)
         } else {
             Ok(self.uniform(b)? < *a)
+        }
+    }
+}
+
+fn block_bytes(mut prefix: Hmac<Sha256>, block: u64) -> [u8; 32] {
+    prefix.update(&block.to_be_bytes());
+    prefix.finalize().into_bytes().into()
+}
+
+/// Precompute rejection sampling for bounds shared by many shots in a round.
+#[derive(Clone, Copy)]
+pub(crate) struct BattleBound {
+    n: u64,
+    bytes: u32,
+    last_accepted: u64,
+}
+
+impl BattleBound {
+    pub fn new(n: u64) -> Result<Self, InvariantError> {
+        if n == 0 {
+            return Err(InvariantError("invalid RNG bound".into()));
+        }
+        let bytes = (u64::BITS - (n - 1).leading_zeros()).div_ceil(8);
+        let range = 1u128 << (bytes * 8);
+        Ok(Self {
+            n,
+            bytes,
+            last_accepted: (range - range % u128::from(n) - 1) as u64,
+        })
+    }
+}
+
+/// A battle consumes millions of small draws. Keep one HMAC block on the stack
+/// for the duration of resolution. The stream cursor still counts consumed bytes.
+pub(crate) struct BattleDraws<'a> {
+    stream: &'a mut RandomStream,
+    prefix: Hmac<Sha256>,
+    loaded: Option<u64>,
+    bytes: [u8; 32],
+}
+
+impl<'a> BattleDraws<'a> {
+    pub fn new(stream: &'a mut RandomStream) -> Self {
+        Self {
+            prefix: stream.keyed_block_prefix(),
+            stream,
+            loaded: None,
+            bytes: [0; 32],
+        }
+    }
+
+    pub fn draw(&mut self, bound: BattleBound) -> Result<u64, InvariantError> {
+        if bound.n == 1 {
+            return Ok(0);
+        }
+        loop {
+            let mut value = 0u64;
+            for _ in 0..bound.bytes {
+                if self.loaded != Some(self.stream.block) {
+                    self.bytes = block_bytes(self.prefix.clone(), self.stream.block);
+                    self.loaded = Some(self.stream.block);
+                }
+                let byte = self
+                    .bytes
+                    .get(usize::from(self.stream.offset))
+                    .ok_or_else(|| InvariantError("invalid RNG cursor".into()))?;
+                value = (value << 8) | u64::from(*byte);
+                self.stream.advance_byte()?;
+            }
+            if value <= bound.last_accepted {
+                return Ok(value % bound.n);
+            }
+        }
+    }
+
+    pub fn bernoulli(&mut self, a: u128, b: u128) -> Result<bool, InvariantError> {
+        if let Ok(n) = u64::try_from(b)
+            && a > 0
+            && a < b
+        {
+            return Ok(u128::from(self.draw(BattleBound::new(n)?)?) < a);
+        }
+        self.stream.bernoulli(&BigUint::from(a), &BigUint::from(b))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn battle_draws_preserve_rejections_wide_probabilities_and_restored_cursors() {
+        let id = uuid::Uuid::nil();
+        let mut reference =
+            RandomStream::new(&[42; 32], UniverseId(id), Epoch(id), InputId(id), "battle").unwrap();
+        reference.restore_cursor(123, 31).unwrap();
+        let mut stream = reference.clone();
+        let mut fast = BattleDraws::new(&mut stream);
+        for _ in 0..32 {
+            for bound in [1, 2, 128, 129, 256, 257, 1250, 32769, u64::MAX] {
+                assert_eq!(
+                    fast.draw(BattleBound::new(bound).unwrap()),
+                    reference.uniform_u64(bound)
+                );
+                assert_eq!(fast.stream.cursor(), reference.cursor());
+            }
+            let denominator = 1u128 << 80;
+            assert_eq!(
+                fast.bernoulli(17, denominator),
+                reference.bernoulli(&17u32.into(), &denominator.into())
+            );
+            assert_eq!(fast.stream.cursor(), reference.cursor());
         }
     }
 }

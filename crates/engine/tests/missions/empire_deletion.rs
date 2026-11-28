@@ -92,7 +92,7 @@ fn hard_deadline_destroys_owned_flights_and_keeps_foreign_inbound() {
             .iter()
             .any(|e| matches!(e, ScheduledEvent::FleetLegDue { .. }))
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let result = run(
         &mut s,
         &r,
@@ -282,7 +282,7 @@ fn foreign_hold_returns_safely_and_its_original_departure_is_stale() {
     apply(&mut s, result);
     assert_eq!(s.bodies, before.bodies);
     assert_eq!(s.inventories, before.inventories);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]

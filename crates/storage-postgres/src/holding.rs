@@ -14,7 +14,11 @@ pub(crate) fn requires_lock(input: &Input) -> bool {
                 | WorldAction::CreateAttackGroup { .. }
                 | WorldAction::InviteAttackGroup { .. }
                 | WorldAction::RevokeAttackGroupInvitation { .. }
-                | WorldAction::LaunchFleet { .. }
+                // Contacts can gain defenders after admission. Hold the social
+                // gate while declaring or extending those participant scopes.
+                | WorldAction::LaunchFleet {
+                    intent: FleetIntent { mission: Mission::Hold | Mission::Attack | Mission::Espionage | Mission::DestroyMoon, .. }, ..
+                }
                 | WorldAction::SupplyHoldingFleet { .. }
                 | WorldAction::AbandonPlanet { .. }
                 | WorldAction::RequestEmpireDeletion

@@ -125,6 +125,7 @@ pub fn check_mission_eligibility(
             Mission::Transport | Mission::Harvest | Mission::Espionage
         ) || (mission == Mission::Hold && holding_enabled(r))
             || (mission == Mission::Attack && r.attacks())
+            || (mission == Mission::DestroyMoon && moon_destruction_enabled(r))
             || (matches!(mission, Mission::Colonize | Mission::Deploy) && r.colonization()))
     {
         return Err(GameError::UnavailableContent);
@@ -200,7 +201,10 @@ fn check_action_policy(
         if t.lifecycle == PlayerLifecycle::Removed {
             return Err(GameError::NotFound);
         }
-        if matches!(mission, None | Some(Mission::Espionage | Mission::Attack)) {
+        if matches!(
+            mission,
+            None | Some(Mission::Espionage | Mission::Attack | Mission::DestroyMoon)
+        ) {
             if actor == target {
                 return Err(GameError::InvalidInput);
             }

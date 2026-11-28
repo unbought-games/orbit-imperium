@@ -51,7 +51,7 @@ attacker-only recipients receive ContactLost; independent defender entitlement
 still permits a full report. Historical participant locations remain snapshots.
 Public report sharing excludes personal returns and private fleet identifiers.
 The simulator accepts separate allied fleets and technology assumptions on both
-sides, with its existing 2,000 combined-unit limit and independent randomness.
+sides, with its 20,000 combined-unit limit and independent randomness.
 
 ## Deployment and activation
 
@@ -83,6 +83,6 @@ arrival events for grouped members. Scenario export refuses active groups rather
 than silently converting them to independent raids. Database backups preserve them.
 
 Focused validation uses `make _db-attack_groups`, the engine mission tests,
-application simulation/projection tests and `npm run test:ui -- alliance-attacks.spec.ts`.
+application simulation/projection tests and `npm run test:components -- alliance-flight.component.spec.ts allied-return.component.spec.ts simulator-form.component.spec.ts`.
 Existing holding, rules-update, migration, bot, report and simulator suites remain
 regression coverage. No new routine full-system job or execution deadline is added.

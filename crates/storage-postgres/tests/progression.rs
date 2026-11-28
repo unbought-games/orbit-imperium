@@ -693,4 +693,93 @@ async fn competing_construction_and_dome_admissions_derive_capacity_after_restar
             .await
             .unwrap();
     assert!(table.is_none());
+    Box::pin(overdue_manufacture_stops_at_intervening_order(
+        &mut j, &pool,
+    ))
+    .await;
+}
+
+async fn overdue_manufacture_stops_at_intervening_order(j: &mut Journey, pool: &sqlx::PgPool) {
+    let item = ManufacturedItem::Defense(DefenseId::RocketLauncher);
+    j.time((j.at / 3_600_000 + 1) * 3_600_000).await;
+    let terms = j
+        .quote(QuoteRequest::Manufacture {
+            body: j.body,
+            item,
+            quantity: 4,
+        })
+        .await;
+    let (_, order) = j
+        .command(Command::StartManufacture {
+            body: j.body,
+            item,
+            quantity: 4,
+            expected_terms_hash: terms,
+        })
+        .await;
+    assert!(matches!(order.status, ReceiptStatus::Committed { .. }));
+    let batch = &j.view().await.progression.manufacturing[0];
+    assert!(batch.unit_duration_ms * 2 < 3_600_000);
+    let after_two = batch.first_start_at + 2 * batch.unit_duration_ms + 1;
+    j.store.set_test_time(after_two).await.unwrap();
+    let command = CommandEnvelopeV3 {
+        protocol: 3,
+        binding: j.binding,
+        command_id: CommandId(Uuid::new_v4()),
+        command: CommandDto3::Progression(Command::StartManufacture {
+            body: j.body,
+            item,
+            quantity: 1,
+            expected_terms_hash: Hash("0".repeat(64)),
+        }),
+    };
+    j.game
+        .progression_submit(j.principal(), command.clone())
+        .await
+        .unwrap();
+    j.store.set_test_time(batch.final_due_at).await.unwrap();
+
+    // A delayed worker has time for all four units. Its first transaction
+    // can materialize exactly two, and must preserve the third deadline.
+    let worker = WorkerId(Uuid::new_v4());
+    assert!(matches!(
+        j.game.step(j.binding.universe, worker).await.unwrap(),
+        StepOutcome::Committed { .. }
+    ));
+    let (prefix, next): (i64, i64) = sqlx::query_as(
+        "SELECT (data->>'completed_prefix')::bigint,(data->>'next_due_at')::bigint FROM manufacturing_batches WHERE id=$1",
+    ).bind(batch.id.0).fetch_one(pool).await.unwrap();
+    assert_eq!(
+        (prefix, next),
+        (2, batch.first_start_at + 3 * batch.unit_duration_ms)
+    );
+    let claim = j
+        .store
+        .claim_next(j.binding.universe, worker)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(claim.input.at, after_two);
+    let snapshot = j.store.load_claim(&claim).await.unwrap();
+    let visible = snapshot
+        .state
+        .inventories
+        .iter()
+        .find(|x| x.body == j.body && x.item == item)
+        .unwrap();
+    assert_eq!(visible.count, 2);
+    assert!(matches!(
+        j.game.resolve_claim(claim).await.unwrap(),
+        StepOutcome::Committed { .. }
+    ));
+    j.time(batch.final_due_at).await;
+    assert_eq!(
+        j.view().await.bodies[0]
+            .inventories
+            .iter()
+            .find(|x| x.item == item)
+            .unwrap()
+            .count,
+        "4"
+    );
 }

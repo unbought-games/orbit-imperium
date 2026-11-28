@@ -32,7 +32,7 @@ fn consume(
         .checked_add(1)
         .ok_or(GameError::NumericRange)?;
     c.inventories.push(next);
-    take_asset_lots(
+    take_asset_quantity(
         &mut w.lots,
         owner,
         item.catalog_key(),

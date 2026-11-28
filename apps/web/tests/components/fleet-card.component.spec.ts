@@ -34,6 +34,8 @@ for (const container of ['article', 'list'] as const) {
         .poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor))
         .not.toBe(idle.background)
       await page.mouse.down()
+      await expect(row).toHaveAttribute('data-pressed', 'true')
+      await expect(row).not.toHaveCSS('border-color', idle.border)
       const target = (await toggle.boundingBox())!
       await page.mouse.move(
         target.x + target.width / 2,

@@ -64,6 +64,10 @@ fn unit(out: &mut Vec<Patch>, kind: &str, id: &str, content: &Value) {
 pub(super) fn patches() -> Vec<Patch> {
     let mut out = Vec::new();
     out.push(Patch::field("/world/moons", json!(true)));
+    out.push(Patch::field(
+        "/world/moon_destruction",
+        json!(crate::MOON_DESTRUCTION_PROFILE),
+    ));
     // Base facilities and units predate the release content files. Reuse their
     // exact released prerequisites; do not infer them from customized live rules.
     let baseline = read(include_bytes!("../../../../rules/mvp-v1-slice-5.json"));
@@ -272,6 +276,15 @@ pub(super) fn patches() -> Vec<Patch> {
         network["research"].clone(),
         network["requirements"].clone(),
     );
+    let graviton = read(include_bytes!(
+        "../../../../rules/content/graviton-technology.json"
+    ));
+    research(
+        &mut out,
+        "GravitonTechnology",
+        graviton["research"].clone(),
+        graviton["requirements"].clone(),
+    );
     let drive = read(include_bytes!(
         "../../../../rules/content/hyperspace-drive.json"
     ));
@@ -339,6 +352,17 @@ pub(super) fn patches() -> Vec<Patch> {
         "Destroyer",
         &read(include_bytes!("../../../../rules/content/destroyer.json")),
     );
+    unit(
+        &mut out,
+        "Ship",
+        "Dreadnought",
+        &read(include_bytes!("../../../../rules/content/dreadnought.json")),
+    );
+    out.push(Patch::rapid_fire(json!({
+        "shooter": {"kind":"Ship","id":"Dreadnought"},
+        "target": {"kind":"Ship","id":"SolarSatellite"},
+        "factor": satellite["rapid_fire_from"]["Dreadnought"],
+    })));
     let depot = read(include_bytes!(
         "../../../../rules/content/alliance-depot.json"
     ));

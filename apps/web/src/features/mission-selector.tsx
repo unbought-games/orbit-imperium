@@ -1,3 +1,4 @@
+import { label } from '../ui/format'
 import { useId } from 'react'
 import {
   dispatchMissions,
@@ -42,7 +43,7 @@ export function MissionSelector({
                 />
                 <span>
                   <Icon size={18} aria-hidden="true" />
-                  {mission}
+                  {label(mission)}
                 </span>
               </label>
             )

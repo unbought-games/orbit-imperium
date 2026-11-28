@@ -826,7 +826,6 @@ for (const width of [1440, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.clock.install()
     await page.clock.pauseAt(new Date())
     await mountHud(page, mount, { reports: 1 })
     await page.getByTestId('command-orb').click()
@@ -877,7 +876,6 @@ test('background HUD refresh allows buffered entries and queues the next page at
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.clock.install()
   await page.clock.pauseAt(new Date())
   // Keep pagination gestures deterministic; native observer races have their
   // own coverage above. Only intercept the HUD scroll root.

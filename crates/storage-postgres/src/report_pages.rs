@@ -107,10 +107,10 @@ impl PgStore {
         // Materialize only recipient keys first. Sorting must not scan every other
         // player's reports, or build previews for rows outside the requested page.
         let sql = format!("WITH recipients AS MATERIALIZED (
-            SELECT report,recipient,read,hidden,starred FROM mission_report_recipients
+            SELECT report,recipient,created_revision,read,hidden,starred FROM mission_report_recipients
             WHERE recipient=$2 AND created_revision<=$3 AND ($5::boolean IS NULL OR hidden=$5) {} {}
         ), candidates AS (
-            SELECT r.id,r.kind,r.at_ms,p.read,p.hidden,p.starred,{} AS value
+            SELECT r.id,r.kind,r.at_ms,p.created_revision,p.read,p.hidden,p.starred,{} AS value
             FROM recipients p JOIN mission_reports r ON r.id=p.report
             WHERE r.universe=$1 AND ($4::text IS NULL OR r.kind=$4)
             AND ($9::uuid IS NULL OR r.data->'payloads'->(p.recipient::text)->'target'->>'body'=$9::uuid::text)
@@ -150,6 +150,15 @@ impl PgStore {
             .take(q.limit as usize)
             .map(|row| crate::world::header(row, &rules))
             .collect::<Result<Vec<_>, _>>()?;
+        let created = rows
+            .iter()
+            .take(items.len())
+            .zip(&items)
+            .map(|(row, item)| {
+                let revision: i64 = row.try_get("created_revision").map_err(db_error)?;
+                Ok((item.id, revision.to_string()))
+            })
+            .collect::<Result<_, StoreError>>()?;
         let unread_count: i64 = sqlx::query_scalar("SELECT count(*) FROM (SELECT 1 FROM mission_report_recipients p JOIN mission_reports r ON r.id=p.report WHERE p.recipient=$1 AND NOT p.hidden AND NOT p.read AND r.universe=$2 LIMIT 99) unread")
             .bind(b.player.0).bind(b.universe.0).fetch_one(&mut *tx).await.map_err(db_error)?;
         let cursor_record = if has_more {
@@ -178,6 +187,10 @@ impl PgStore {
             b.player,
             (
                 ReportsPage4 {
+                    arrivals: Some(ReportArrivals4 {
+                        through: cut.to_string(),
+                        created,
+                    }),
                     unread_count: unread_count as u32,
                     player_names: Default::default(),
                     items,

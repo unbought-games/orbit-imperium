@@ -60,6 +60,34 @@ it('uses player-facing delete and restore labels for report preferences', () => 
     ).toBe(hidden ? 'Archive report' : 'Move to inbox')
 })
 
+it('announces a moon rename using the command’s target body', () => {
+  const attempt = {
+    envelope: {
+      command_id: 'rename',
+      command: {
+        type: 'World',
+        action: { type: 'RenamePlanet', body: 'moon', name: 'Selene' },
+      },
+    },
+    status: 'committed',
+    reconciled: true,
+    receipt: null,
+  } as Attempt
+  expect(
+    changedAnnouncements(
+      new Map(),
+      [attempt],
+      [
+        { id: 'planet', kind: 'Planet' },
+        { id: 'moon', kind: 'Moon' },
+      ],
+    ).message,
+  ).toBe('Rename moon: Action confirmed.')
+  expect(
+    actionLabel(attempt.envelope.command, [{ id: 'planet', kind: 'Planet' }]),
+  ).toBe('Rename location')
+})
+
 it('keeps optimistic report actions quiet except for failure and uncertainty', () => {
   for (const status of [
     'submitting',

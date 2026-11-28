@@ -28,7 +28,7 @@ pub fn replay_legacy_debris_transition(
             }
         }
     }
-    let result = transition(&state, input, rules);
+    let result = replay_with_recall_reports(&state, input, rules);
     let mut serialized = serde_json::to_value(&result)?;
     if let TransitionResult::Applied(changes) = &result {
         // Historical fact hashes included the counter, even on no-op events.

@@ -66,12 +66,23 @@ pub(crate) async fn charge(
     id: uuid::Uuid,
     units: bool,
 ) -> Result<(), StoreError> {
-    let Some(row) = lock_bot(tx, b.universe, b.player).await? else {
+    let locked = lock_bot(tx, b.universe, b.player).await?;
+    charge_locked(tx, b, category, id, units, locked.as_ref()).await
+}
+pub(crate) async fn charge_locked(
+    tx: &mut Tx<'_>,
+    b: Binding,
+    category: &str,
+    id: uuid::Uuid,
+    units: bool,
+    locked: Option<&sqlx::postgres::PgRow>,
+) -> Result<(), StoreError> {
+    let Some(row) = locked else {
         return Ok(());
     };
     let at = now(tx).await?;
     let (_, p) = policy(tx, b.universe).await?;
-    let sleep = check(&row, &p, at)?;
+    let sleep = check(row, &p, at)?;
     if !units {
         return Ok(());
     }
@@ -97,6 +108,12 @@ pub(crate) async fn charge(
 }
 /// Read-only gate for observation transactions; technical contact never records presence.
 pub(crate) async fn observe(tx: &mut Tx<'_>, b: Binding) -> Result<(), StoreError> {
+    observation_recheck(tx, b).await.map(|_| ())
+}
+pub(crate) async fn observation_recheck(
+    tx: &mut Tx<'_>,
+    b: Binding,
+) -> Result<std::time::Duration, StoreError> {
     let row = sqlx::query("SELECT * FROM bot_participation WHERE universe=$1 AND player=$2")
         .bind(b.universe.0)
         .bind(b.player.0)
@@ -107,8 +124,10 @@ pub(crate) async fn observe(tx: &mut Tx<'_>, b: Binding) -> Result<(), StoreErro
         let (_, p) = policy(tx, b.universe).await?;
         let at = now(tx).await?;
         check(&row, &p, at)?;
+        // A sleep window can begin without a database write or notification.
+        return Ok(std::time::Duration::from_secs(1));
     }
-    Ok(())
+    Ok(std::time::Duration::from_secs(60))
 }
 pub(crate) async fn admission(tx: &mut Tx<'_>, u: UniverseId) -> Result<(), StoreError> {
     sqlx::query("SELECT universe FROM universe_policies_v2 WHERE universe=$1 FOR UPDATE")
@@ -385,6 +404,11 @@ impl PgStore {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, q.context.binding).await?;
         let bot = is_bot(&mut tx, q.context.binding).await?;
+        if !bot && let WorldQueryKind::ResolveDestination { selection } = &q.query {
+            let result = crate::destination::read(&mut tx, &q.context, selection).await?;
+            tx.commit().await.map_err(db_error)?;
+            return result.map(Some).map_err(StoreError::GameRejected);
+        }
         if !bot
             || matches!(
                 q.query,
@@ -432,75 +456,78 @@ impl PgStore {
             return row.try_get::<sqlx::types::Json<TacticalResult>,_>("response").map_err(db_error)?.0.map(Some).map_err(StoreError::GameRejected);
         }
         charge(&mut tx, b, "galaxy", q.context.request_id, true).await?;
+        let result = match &q.query {
+            WorldQueryKind::ResolveDestination { selection } => {
+                crate::destination::read(&mut tx, &q.context, selection).await?
+            }
+            WorldQueryKind::Galaxy { galaxy, system } => {
+                self.observed_galaxy(&mut tx, &q.context, *galaxy, *system)
+                    .await?
+            }
+            _ => unreachable!("only tactical queries are charged"),
+        };
+        sqlx::query("INSERT INTO bot_observations(universe,player,epoch,request_id,intent_hash,response) VALUES($1,$2,$3,$4,$5,$6)").bind(b.universe.0).bind(b.player.0).bind(b.epoch.0).bind(q.context.request_id).bind(intent).bind(sqlx::types::Json(&result)).execute(&mut *tx).await.map_err(db_error)?;
+        tx.commit().await.map_err(db_error)?;
+        result.map(Some).map_err(StoreError::GameRejected)
+    }
+    async fn observed_galaxy(
+        &self,
+        tx: &mut Tx<'_>,
+        context: &QueryContext,
+        galaxy: u32,
+        system: u32,
+    ) -> Result<TacticalResult, StoreError> {
+        let b = context.binding;
         let ReadSnapshot {
             facts: (facts, rev),
             progress,
         } = self
-            .world_snapshot_in_tx(&mut tx, b, Some(&q.query))
+            .world_snapshot_in_tx(tx, b, Some(&WorldQueryKind::Galaxy { galaxy, system }))
             .await?;
-        let data: Result<serde_json::Value, orbit_engine::GameError> = match q.query {
-            WorldQueryKind::Galaxy { galaxy, system } => match orbit_engine::galaxy_system(
-                &facts.state,
-                b.player,
-                galaxy,
-                system,
-                facts.at,
-                &facts.rules,
-            ) {
-                Ok(galaxy) => {
-                    let ids: Vec<_> = galaxy
-                        .positions
-                        .iter()
-                        .filter_map(|p| p.body.as_ref().map(|b| b.owner.0))
-                        .collect();
-                    let rows:Vec<(uuid::Uuid,String)>=sqlx::query_as("SELECT m.player,a.name FROM universe_memberships m JOIN accounts a ON a.id=m.account WHERE m.universe=$1 AND m.player=ANY($2)").bind(b.universe.0).bind(ids).fetch_all(&mut *tx).await.map_err(db_error)?;
-                    let names: PublicPlayerNames = rows
-                        .into_iter()
-                        .map(|(id, name)| (PlayerId(id), name))
-                        .collect();
-                    let mut data =
-                        serde_json::to_value(galaxy).map_err(|_| StoreError::CorruptData)?;
-                    data["player_names"] =
-                        serde_json::to_value(names).map_err(|_| StoreError::CorruptData)?;
-                    Ok(data)
-                }
-                Err(e) => Err(e),
-            },
-            WorldQueryKind::ResolveDestination { selection } => {
-                orbit_engine::resolve_destination(&facts.state, selection, &facts.rules)
-                    .map(|d| serde_json::to_value(d).expect("destination"))
+        let data = match orbit_engine::galaxy_system(
+            &facts.state,
+            b.player,
+            galaxy,
+            system,
+            facts.at,
+            &facts.rules,
+        ) {
+            Ok(galaxy) => {
+                let ids: Vec<_> = galaxy
+                    .positions
+                    .iter()
+                    .filter_map(|p| p.body.as_ref().map(|b| b.owner.0))
+                    .collect();
+                let rows:Vec<(uuid::Uuid,String)>=sqlx::query_as("SELECT m.player,a.name FROM universe_memberships m JOIN accounts a ON a.id=m.account WHERE m.universe=$1 AND m.player=ANY($2)").bind(b.universe.0).bind(ids).fetch_all(&mut **tx).await.map_err(db_error)?;
+                let names: PublicPlayerNames = rows
+                    .into_iter()
+                    .map(|(id, name)| (PlayerId(id), name))
+                    .collect();
+                let mut data = serde_json::to_value(galaxy).map_err(|_| StoreError::CorruptData)?;
+                data["player_names"] =
+                    serde_json::to_value(names).map_err(|_| StoreError::CorruptData)?;
+                Ok(data)
             }
-            WorldQueryKind::Tutorial
-            | WorldQueryKind::MissionSites
-            | WorldQueryKind::ResolveMissionSite { .. }
-            | WorldQueryKind::FleetQuote { .. }
-            | WorldQueryKind::FleetEstimate { .. }
-            | WorldQueryKind::JumpQuote { .. }
-            | WorldQueryKind::DepotSupplyQuote { .. }
-            | WorldQueryKind::MissileQuote { .. }
-            | WorldQueryKind::AbandonmentQuote { .. } => {
-                unreachable!()
-            }
+            Err(e) => Err(e),
         };
         let result: TacticalResult = data.map(|data| ReadSnapshot {
             progress,
             facts: BoundWorld {
                 protocol: 4,
                 binding: b,
-                request_id: q.context.request_id,
+                request_id: context.request_id,
                 viewer_revision: rev.to_string(),
                 sampled_at: facts.at,
                 as_of_ms: facts.at,
                 data,
             },
         });
-        sqlx::query("INSERT INTO bot_observations(universe,player,epoch,request_id,intent_hash,response) VALUES($1,$2,$3,$4,$5,$6)").bind(b.universe.0).bind(b.player.0).bind(b.epoch.0).bind(q.context.request_id).bind(intent).bind(sqlx::types::Json(&result)).execute(&mut *tx).await.map_err(db_error)?;
-        tx.commit().await.map_err(db_error)?;
-        result.map(Some).map_err(StoreError::GameRejected)
+        Ok(result)
     }
 }
 
-type TacticalResult = Result<ReadSnapshot<BoundWorld<serde_json::Value>>, orbit_engine::GameError>;
+pub(crate) type TacticalResult =
+    Result<ReadSnapshot<BoundWorld<serde_json::Value>>, orbit_engine::GameError>;
 /// Coordinate-addressed quotes must reference a previously observed destination.
 /// Otherwise colonization/harvest errors themselves become a free scanner.
 pub(crate) async fn require_destination_observation(

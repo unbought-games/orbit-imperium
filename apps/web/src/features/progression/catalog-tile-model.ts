@@ -1,14 +1,51 @@
 import type { components } from '../../contracts'
+import type { BoundProgressionOptions } from '../../client-model/commands'
 import { canAfford } from '../../client-model/resources'
 import type { ProgressionProps } from './shared'
-import type { ProgressionRequest } from './options'
+import { currentCatalogCost, type ProgressionRequest } from './options'
+import { buildingDemandChange, mineProductionSettings } from './building-energy'
 
-/** Progress, restrictions and disabled content suppress cost inspection. */
-export function catalogCostRequest(
+export function catalogPreviewRequest(
   request: ProgressionRequest | null,
-  tile: { disabled?: boolean; locked?: boolean; progress?: unknown },
+  tile: {
+    disabled?: boolean
+    locked?: boolean
+    level?: number | string
+    progress?: { direction?: 'up' | 'down'; targetLevel?: number } | null
+  },
 ) {
-  return tile.disabled || tile.locked || tile.progress ? null : request
+  if (tile.disabled || tile.locked) return null
+  if (!tile.progress) return request
+  // The running upgrade still has a demand estimate for its target level.
+  return request?.type === 'Upgrade' &&
+    mineProductionSettings[request.building] &&
+    tile.progress.direction === 'up' &&
+    tile.progress.targetLevel === Number(tile.level) + 1
+    ? request
+    : null
+}
+
+export function catalogPreview(
+  view: ProgressionProps['view'],
+  proposal: BoundProgressionOptions | null,
+) {
+  const cost = currentCatalogCost(proposal, view)
+  const terms = proposal?.terms
+  const energy = proposal?.building_energy
+  if (!cost || terms?.type !== 'Building' || !energy)
+    return { cost, energyDemand: null }
+  const setting = mineProductionSettings[terms.building]
+  if (
+    !setting ||
+    BigInt(energy.target_consumption) <= BigInt(energy.current_consumption)
+  )
+    return { cost, energyDemand: null }
+
+  const production = view.progression.production.find(
+    (entry) => entry.body === terms.body,
+  )
+  const percent = BigInt(production?.settings[setting] ?? 100)
+  return { cost, energyDemand: buildingDemandChange(energy, percent) }
 }
 
 export function catalogTileBody(

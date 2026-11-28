@@ -63,6 +63,9 @@ jobs:
           path: source
           fetch-depth: 0
           persist-credentials: false
+      - name: Require numbered release source in main history
+        working-directory: source
+        run: git merge-base --is-ancestor HEAD refs/remotes/origin/main
       - name: Select prepared release
         id: select
         working-directory: source

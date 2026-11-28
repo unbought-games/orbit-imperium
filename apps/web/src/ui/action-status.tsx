@@ -1,3 +1,4 @@
+import { FailedDispatch } from '../features/failed-dispatch'
 import { connectionStatus } from '../client-model/connection-status'
 import { ConnectionNotice } from './connection-notice'
 import styles from './action-status.module.css'
@@ -17,6 +18,7 @@ import { hasOrderNotice, type Attempt } from '../client-model/commands'
 
 export function ActionStatus({ model }: { model: Coordinator }) {
   const state = useStore(model.store)
+  const bodies = state.view?.bodies
   const connection = connectionStatus(state)
   const attempts = [...state.attempts]
     .filter(
@@ -28,13 +30,17 @@ export function ActionStatus({ model }: { model: Coordinator }) {
   const previous = useRef<Map<string, string> | null>(null)
   // Existing results are already visible on mount; announce only later changes.
   if (!previous.current)
-    previous.current = changedAnnouncements(new Map(), attempts).current
+    previous.current = changedAnnouncements(new Map(), attempts, bodies).current
   const [announcement, setAnnouncement] = useState('')
   const signature = attempts
     .map((a) => `${a.envelope.command_id}:${a.status}:${a.reconciled}`)
     .join('|')
   useEffect(() => {
-    const change = changedAnnouncements(previous.current ?? new Map(), attempts)
+    const change = changedAnnouncements(
+      previous.current ?? new Map(),
+      attempts,
+      bodies,
+    )
     previous.current = change.current
     setAnnouncement(change.message)
   }, [signature])
@@ -125,22 +131,31 @@ function OrderError({
   return (
     <div role="group" aria-label="Order status">
       <p role="alert">
-        <strong>{actionLabel(attempt.envelope.command)}</strong> ·{' '}
-        {actionMessage(attempt)}
+        <strong>
+          {actionLabel(attempt.envelope.command, state.view?.bodies)}
+        </strong>{' '}
+        · {actionMessage(attempt)}
       </p>
-      {attempt.status === 'uncertain' ? (
-        <Button
-          type="button"
-          disabled={state.now < state.retryAt}
-          onClick={() => void model.retryOrder(attempt.envelope.command_id)}
-        >
-          Retry order
-        </Button>
-      ) : (
-        <Button onClick={() => void model.dismiss(attempt.envelope.command_id)}>
-          Dismiss notice
-        </Button>
-      )}
+      <div className={styles.orderActions}>
+        {attempt.status === 'rejected' && (
+          <FailedDispatch model={model} attempt={attempt} />
+        )}
+        {attempt.status === 'uncertain' ? (
+          <Button
+            type="button"
+            disabled={state.now < state.retryAt}
+            onClick={() => void model.retryOrder(attempt.envelope.command_id)}
+          >
+            Retry order
+          </Button>
+        ) : (
+          <Button
+            onClick={() => void model.dismiss(attempt.envelope.command_id)}
+          >
+            Dismiss notice
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

@@ -429,7 +429,7 @@ pub(crate) async fn capture_report(
                 .ok_or(StoreError::CorruptData)?
                 .records
                 .lots;
-            let values = |lots: &[orbit_engine::AssetLot]| {
+            let values = |lots: &[orbit_engine::CatalogHolding]| {
                 lots.iter().filter(|l|l.owner==*recipient).map(|l|json!({"item":l.item,"quantity":l.quantity,"unit_value_micro":l.unit_value_micro,"location":l.location})).collect::<Vec<_>>()
             };
             let identities: Value = sqlx::query_scalar("SELECT COALESCE(jsonb_object_agg(player,identity),'{}'::jsonb) FROM (SELECT DISTINCT ON(player) player,identity FROM empire_identity_history WHERE player=ANY($1) AND observed_at<=$2 ORDER BY player,observed_at DESC) i")

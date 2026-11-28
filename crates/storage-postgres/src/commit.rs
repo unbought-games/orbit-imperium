@@ -1,4 +1,5 @@
 use crate::ordering::*;
+use crate::worker_observation::{self, Phase, Timer};
 use crate::*;
 use orbit_application::*;
 use orbit_engine::*;
@@ -31,10 +32,20 @@ impl PgStore {
         claim: CommitClaim<'_>,
         outcome: TransitionResult,
     ) -> Result<CommitOutcome, StoreError> {
+        let revalidation = Timer::start(Phase::Revalidation);
         let i = claim.input();
         let mut tx = self.begin_tx(self.worker_pool()?).await?;
         if matches!(claim, CommitClaim::Serial(_)) {
-            gate(&mut tx, i.universe).await?;
+            // A serial commit owns the universe ordering gate but never changes
+            // its key. A report publisher holding a recipient row must be able
+            // to create its first update head (FK KEY SHARE) before we take
+            // that recipient lock below.
+            sqlx::query("SELECT id FROM universes WHERE id=$1 FOR NO KEY UPDATE")
+                .bind(i.universe.0)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_error)?
+                .ok_or(StoreError::NotFound)?;
         }
         // Immutable admitted inputs are the retry authority. Lock the input row
         // so concurrent duplicate commits observe the first terminal receipt.
@@ -104,8 +115,20 @@ impl PgStore {
             self.observe_event(RuntimeEvent::StaleCommit);
             return Ok(CommitOutcome::StaleClaim);
         }
-        if crate::holding::requires_lock(&i.payload) {
+        let alliance_hold = if crate::holding::requires_lock(&i.payload) {
+            let wait = Timer::start(Phase::AllianceWait);
             crate::holding::lock(&mut tx, i.universe, i.epoch).await?;
+            let hold = Timer::start(Phase::AllianceHold);
+            drop(wait);
+            Some(hold)
+        } else {
+            None
+        };
+        if matches!(claim, CommitClaim::Scoped(_))
+            && let (Actor::Player(owner), Input::Command(Command::World { action })) =
+                (i.actor, &i.payload)
+        {
+            crate::scope_references::lock_fleet_dependencies(&mut tx, owner, action, true).await?;
         }
         // Sharing changes recipient protection outside the command stream. Hold
         // its row lock through fact revalidation and persistence, so no share can
@@ -121,7 +144,7 @@ impl PgStore {
             }
         }
         let rt = runtime(&mut tx, i.universe).await?;
-        let (facts, rules) = match claim {
+        let (mut facts, rules) = match claim {
             CommitClaim::Serial(_) => {
                 let at = now(&mut tx).await?;
                 let frontier: i64 = rt.try_get("frontier").map_err(db_error)?;
@@ -146,19 +169,36 @@ impl PgStore {
                 (snapshot.state, snapshot.rules)
             }
         };
+        let gesture = crate::paired_activity::project(&mut facts, i, &rules)?;
+        let lease_until = match claim {
+            CommitClaim::Serial(c) => c.lease_until,
+            CommitClaim::Scoped(c) => c.lease_until,
+        };
+        crate::facts::manufacturing_window(&mut tx, &mut facts, i, lease_until).await?;
         crate::facts::validate_rule_references(&mut tx, &facts).await?;
+        if let TransitionResult::Applied(change) = &outcome
+            && (change.input != i.id
+                || change.profile_hash != facts.profile_hash
+                || change.expected_facts_hash != hash(&facts)
+                || change.expected_collection_revisions != facts.collection_revisions)
+        {
+            return Ok(CommitOutcome::Conflict);
+        }
+        drop(revalidation);
+        let persistence = Timer::start(Phase::Persistence);
+        #[cfg(feature = "test-support")]
+        let paired = gesture.is_some();
+        let recorded_gesture = if let Some(gesture) = gesture {
+            Box::pin(gesture.save(&mut tx, i, rt.try_get("mode_generation").map_err(db_error)?))
+                .await?
+        } else {
+            false
+        };
         let mut result_ids = Vec::new();
         match &outcome {
             TransitionResult::InvalidState(_) => return Err(StoreError::CorruptData),
             TransitionResult::Rejected(_) => {}
             TransitionResult::Applied(change) => {
-                if change.input != i.id
-                    || change.profile_hash != facts.profile_hash
-                    || change.expected_facts_hash != hash(&facts)
-                    || change.expected_collection_revisions != facts.collection_revisions
-                {
-                    return Ok(CommitOutcome::Conflict);
-                }
                 match persist_changes(
                     &mut tx,
                     i,
@@ -224,10 +264,13 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
         }
-        let viewers = match &outcome {
+        let mut viewers = match &outcome {
             TransitionResult::Applied(change) => change.affected_viewers.clone(),
             _ => BTreeSet::new(),
         };
+        if recorded_gesture && let Actor::Player(player) = i.actor {
+            viewers.insert(player);
+        }
         crate::updates::append_updates(&mut tx, i, receipt.as_ref(), &viewers).await?;
         let cursor = match claim {
             CommitClaim::Serial(c) => c
@@ -247,6 +290,7 @@ impl PgStore {
                 sqlx::query("UPDATE universe_runtime SET cursor=$2,claim_input=NULL,claim_owner=NULL,claim_token=NULL,lease_until=NULL WHERE universe=$1").bind(i.universe.0).bind(cursor).execute(&mut *tx).await.map_err(db_error)?;
             }
             CommitClaim::Scoped(c) => {
+                let fence = Timer::start(Phase::ScopedFence);
                 let waiting = std::time::Instant::now();
                 crate::scoped_ordering::control(&mut tx, i.universe).await?;
                 crate::scoped_ordering::lock_scopes(&mut tx, i.universe, &c.scopes, false).await?;
@@ -257,6 +301,7 @@ impl PgStore {
                     self.observe_event(RuntimeEvent::StaleCommit);
                     return Ok(CommitOutcome::StaleClaim);
                 }
+                drop(fence);
                 sqlx::query("UPDATE execution_scopes SET claim_input=NULL,claim_owner=NULL,claim_token=NULL,lease_until=NULL,resolved_at=$3,resolved_phase=$4,resolved_ordinal=$5 WHERE universe=$1 AND key=ANY($2)")
                     .bind(i.universe.0).bind(crate::admission::scope_keys(&c.scopes)).bind(i.at).bind(i.phase).bind(i.sequence).execute(&mut *tx).await.map_err(db_error)?;
             }
@@ -270,13 +315,21 @@ impl PgStore {
         #[cfg(feature = "test-support")]
         {
             self.test_fault("before_commit").await?;
+            if paired {
+                self.test_fault("before_commit:Presence").await?;
+            }
             self.test_input_fault("before_commit", i).await?;
         }
         if matches!(&outcome, TransitionResult::Applied(_)) {
             crate::community_rewards::capture_command(&mut tx, i).await?;
         }
         let committed_at = now(&mut tx).await?;
+        drop(persistence);
+        let commit = Timer::start(Phase::Commit);
         tx.commit().await.map_err(db_error)?;
+        worker_observation::acknowledged(&outcome);
+        drop(alliance_hold);
+        drop(commit);
         drop(_final_hold);
         self.observe_event(RuntimeEvent::Committed);
         self.observer.duration(
@@ -286,6 +339,9 @@ impl PgStore {
         #[cfg(feature = "test-support")]
         {
             self.test_fault("after_commit").await?;
+            if paired {
+                self.test_fault("after_commit:Presence").await?;
+            }
             self.test_input_fault("after_commit", i).await?;
         }
         Ok(CommitOutcome::Committed {
@@ -322,7 +378,11 @@ pub(crate) async fn persist_changes(
         if updated.rows_affected() != 1 {
             return Err(StoreError::Conflict);
         }
-        for (building, level) in &body.levels {
+        for (building, level) in body
+            .levels
+            .iter()
+            .filter(|(key, level)| previous.levels.get(key) != Some(*level))
+        {
             sqlx::query("UPDATE building_levels SET level=$3 WHERE body=$1 AND building=$2")
                 .bind(body.id.0)
                 .bind(format!("{building:?}"))
@@ -375,11 +435,12 @@ pub(crate) async fn persist_changes(
                 .bind(ships.body.0).bind(ships.owner.0).bind(sqlx::types::Json(ships.item))
                 .bind(ships.count).bind(ships.revision).bind(previous.revision).bind(legacy)
                 .execute(&mut **tx).await.map_err(db_error)?;
+            worker_observation::wrote_stacks(n.rows_affected());
             if n.rows_affected() != 1 {
                 return Err(StoreError::Conflict);
             }
         } else {
-            sqlx::query(
+            let inserted = sqlx::query(
                 "INSERT INTO inventories(body,owner,item,count,revision) VALUES($1,$2,$3,$4,$5)",
             )
             .bind(ships.body.0)
@@ -390,6 +451,7 @@ pub(crate) async fn persist_changes(
             .execute(&mut **tx)
             .await
             .map_err(db_error)?;
+            worker_observation::wrote_stacks(inserted.rows_affected());
         }
         changed_collections.insert((format!("inventory:{}", ships.owner), ships.body.0));
     }
@@ -438,14 +500,28 @@ pub(crate) async fn persist_changes(
                     .map(ToString::to_string),
             );
         }
-        for fleet in world.records.fleets.values().filter(|f| {
-            f.intent.mission == Mission::Hold
-                && !facts
-                    .world
-                    .as_ref()
-                    .is_some_and(|w| w.records.fleets.contains_key(&f.id))
-        }) {
-            crate::holding::extend_pending(tx, i, fleet).await?;
+        let previous = &facts
+            .world
+            .as_ref()
+            .ok_or(StoreError::CorruptData)?
+            .records
+            .fleets;
+        for fleet in world.records.fleets.values() {
+            let old = previous.get(&fleet.id);
+            if fleet.intent.mission == Mission::Hold
+                && old.is_none_or(|f| f.intent.destination != fleet.intent.destination)
+            {
+                crate::holding::extend_pending(tx, i, fleet).await?;
+            }
+            if old.is_none()
+                && let MissionDestination::Body {
+                    id,
+                    expected_kind: BodyKind::Moon,
+                    ..
+                } = fleet.intent.destination
+            {
+                crate::moon_removal::extend_pending(tx, i, id, fleet).await?;
+            }
         }
         result_ids.extend(
             world
@@ -544,7 +620,10 @@ pub(crate) async fn persist_changes(
             crate::admission::register(tx, &next, &scopes).await?;
         }
     }
-    crate::empire_deletion::refresh_checks(tx, i.universe, &change.affected_viewers, i.id).await?;
+    if rt.try_get::<String, _>("executor_mode").map_err(db_error)? != "serial" {
+        crate::empire_deletion::refresh_checks(tx, i.universe, &change.affected_viewers, i.id)
+            .await?;
+    }
     for viewer in &change.affected_viewers {
         let updated=sqlx::query("UPDATE viewer_heads SET revision=revision+1,changed_at=$3,changed_at_generation=$4 WHERE universe=$1 AND player=$2").bind(i.universe.0).bind(viewer.0).bind(i.at).bind(rt.try_get::<i64,_>("mode_generation").map_err(db_error)?).execute(&mut **tx).await.map_err(db_error)?;
         if updated.rows_affected() != 1 {

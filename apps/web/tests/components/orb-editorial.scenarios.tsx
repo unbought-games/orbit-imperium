@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createGameStore } from '../../src/client-model/game-store'
 import { AnnouncementBubble } from '../../src/features/announcements/release-announcement'
 import { CommandOrb } from '../../src/features/command-hud/hud-controls'
@@ -7,7 +7,8 @@ import {
   type Caption,
 } from '../../src/features/command-hud/caption-engine'
 import styles from '../../src/features/command-hud/hud.module.css'
-import { longAnnouncement } from '../fixtures/editorial'
+import { announcement, longAnnouncement } from '../fixtures/editorial'
+import { useReleaseAnnouncement } from '../../src/features/announcements/use-release-announcement'
 
 const idle = {
   state: createGameStore().getInitialState(),
@@ -66,5 +67,46 @@ export function PersonalityCaptionScene() {
       text="Good thing we sent the bad one."
       category="personality"
     />
+  )
+}
+
+declare global {
+  interface Window {
+    setPublishedAnnouncement?: (visible: boolean) => void
+  }
+}
+export function AnnouncementDeliveryScene() {
+  const [feed] = useState(() => {
+    let visible = false
+    return {
+      read: async () => (visible ? [announcement] : []),
+      set: (value: boolean) => {
+        visible = value
+      },
+    }
+  })
+  useEffect(() => {
+    window.setPublishedAnnouncement = feed.set
+    return () => {
+      delete window.setPublishedAnnouncement
+    }
+  }, [feed])
+  const { announcement: current, acknowledge } = useReleaseAnnouncement(
+    'editorial-account',
+    undefined,
+    feed.read,
+  )
+  return (
+    <OrbLayer>
+      <AnnouncementBubble announcement={current} acknowledge={acknowledge}>
+        {(props, active) => (
+          <CommandOrb
+            hud={{ ...idle, caption: null }}
+            triggerProps={props}
+            showCaption={!active}
+          />
+        )}
+      </AnnouncementBubble>
+    </OrbLayer>
   )
 }

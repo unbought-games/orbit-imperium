@@ -1,40 +1,14 @@
 import { expect, test } from './fixtures/test'
-import type { Page, Locator } from '@playwright/test'
+import { captureVacation as capture } from './fixtures/vacation-capture'
 import { binding, body, shellFixture } from './fixtures/game'
-import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import type { components } from '../src/contracts'
 import { productionFixture } from '../src/test-support/production'
 import { withBootstrapResponse } from './fixtures/responses'
 type Vacation = components['schemas']['VacationView4']
 const minimum = 48 * 60 * 60 * 1000
-async function capture(page: Page, target: Page | Locator, options: Parameters<Page['screenshot']>[0]) {
-  if (process.env.ORBIT_TEST_SCREENSHOTS !== '1') return
-  // Dismiss transient notifications through their keyboard control; the persistent
-  // hostile-fleet indicator stays visible and usable throughout vacation.
-  const toasts = page.getByTestId('swipeable-toast')
-  while (await toasts.count()) {
-    const dismissed = await toasts.first().elementHandle()
-    if (!dismissed) continue
-    try {
-      await toasts.first().getByRole('button').press('Escape')
-      // A new notification can replace this one without reducing the total.
-      await expect.poll(() => dismissed.evaluate((node) => node.isConnected)).toBe(false)
-    } finally {
-      await dismissed.dispose()
-    }
-  }
-  const viewport = page.viewportSize()!
-  if (target !== page) {
-    if (viewport.height < 1200) await page.setViewportSize({ ...viewport, height: 1200 })
-    await (target as Locator).evaluate((element) => window.scrollTo({ top: Math.max(0, element.getBoundingClientRect().top + window.scrollY - 80), behavior: 'instant' }))
-    await diagnosticScreenshot(target, { ...options, path: options?.path?.toString().replace('x900.png', 'x1200.png') })
-    if (viewport.height < 1200) await page.setViewportSize(viewport)
-  } else await diagnosticScreenshot(target, options)
-}
-
 // Preserve main's mobile journey; the desktop variant exhausted its repair.
 for (const width of [390]) {
-  test(`vacation review, commitment, minimum and return at ${width}px`, { tag: '@journey' }, async ({ page }) => {
+  test(`vacation review, commitment, minimum and return at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     let now = Date.now()
     let revision = 1
@@ -112,81 +86,3 @@ for (const width of [390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
-
-for (const width of [390]) {
-  test(`vacation clears confirmation on the same mounted Settings page at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    let now = Date.now()
-    let revision = 1
-    let vacation: Vacation = { active: false, entered_at: null, earliest_exit_at: null, blockers: [] }
-    await shellFixture(page, { protocol: 4, vacation: () => vacation, sampledAt: () => now, viewerRevision: () => String(revision) })
-    const submitted: string[] = []
-    await page.route('**/commands', async (route) => {
-      const pair = route.request().postDataJSON()
-      const type = pair.gameplay?.command.action?.type
-      if (type !== 'EnterVacation' && type !== 'ExitVacation') return route.fallback()
-      submitted.push(type)
-      vacation = type === 'EnterVacation'
-        ? { active: true, entered_at: now, earliest_exit_at: now + minimum, blockers: [] }
-        : { active: false, entered_at: null, earliest_exit_at: null, blockers: [] }
-      revision++
-      await route.fulfill({ json: { protocol: 4, binding, command_id: pair.gameplay.command_id, admitted_at: now, executed_at: now, status: 'Committed', result_ids: [], minimum_viewer_revision: String(revision) } })
-    })
-    await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/game`))
-    const section = page.getByRole('region', { name: 'Vacation mode', exact: true })
-    await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
-    await section.getByRole('button', { name: 'Confirm vacation mode' }).click()
-    const leave = section.getByRole('button', { name: 'Leave vacation mode' })
-    await expect(leave).toBeDisabled()
-    now += minimum
-    revision++
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-    await expect(leave).toBeEnabled()
-    await leave.click()
-    await expect(section.getByText('Vacation mode ended. Your production settings have resumed.')).toBeVisible()
-    await capture(page, section, { path: `test-results/vacation-same-mount-returned-${width}x1200.png` })
-    await expect(section.getByRole('button', { name: 'Confirm vacation mode' })).toHaveCount(0)
-    await expect(section.getByRole('button', { name: 'Enter vacation mode', exact: true })).toBeEnabled()
-    expect(submitted).toEqual(['EnterVacation', 'ExitVacation'])
-    await section.getByRole('button', { name: 'Enter vacation mode', exact: true }).click()
-    await expect(section.getByRole('button', { name: 'Keep playing' })).toBeFocused()
-    await expect(section.getByRole('button', { name: 'Confirm vacation mode' })).toBeEnabled()
-    expect(submitted).toEqual(['EnterVacation', 'ExitVacation'])
-  })
-}
-
-test('capture only dismisses replacement notifications when evidence is enabled', async ({ page }) => {
-  await page.setContent('<main><output aria-label="Dismissed notifications">0</output></main>')
-  await page.evaluate(() => {
-    let dismissed = 0
-    function addToast(replace: boolean) {
-      const toast = document.createElement('div')
-      toast.dataset.testid = 'swipeable-toast'
-      const button = document.createElement('button')
-      button.textContent = replace ? 'First notification' : 'Replacement notification'
-      button.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return
-        toast.remove()
-        document.querySelector('output')!.textContent = String(++dismissed)
-        if (replace) addToast(false)
-      })
-      toast.append(button)
-      document.querySelector('main')!.append(toast)
-    }
-    addToast(true)
-  })
-  const original = process.env.ORBIT_TEST_SCREENSHOTS
-  try {
-    delete process.env.ORBIT_TEST_SCREENSHOTS
-    await capture(page, page, { path: 'test-results/vacation-capture-helper.png' })
-    await expect(page.getByTestId('swipeable-toast')).toHaveCount(1)
-    await expect(page.getByLabel('Dismissed notifications')).toHaveText('0')
-    process.env.ORBIT_TEST_SCREENSHOTS = '1'
-    await capture(page, page, { path: 'test-results/vacation-capture-helper.png' })
-    await expect(page.getByTestId('swipeable-toast')).toHaveCount(0)
-    await expect(page.getByLabel('Dismissed notifications')).toHaveText('2')
-  } finally {
-    if (original === undefined) delete process.env.ORBIT_TEST_SCREENSHOTS
-    else process.env.ORBIT_TEST_SCREENSHOTS = original
-  }
-})

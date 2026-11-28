@@ -6,9 +6,7 @@ description: Design, write, review, migrate, or repair Orbit Imperium tests and 
 # Test design
 
 Read the applicable [AGENTS.md](../../../AGENTS.md) and
-[testing strategy](../../../docs/architecture/testing-strategy.md). The strategy
-defines the intended layers and migration status; existing tests are evidence
-of behavior, not automatically examples of good test placement.
+[testing strategy](../../../docs/architecture/testing-strategy.md). The strategy defines the installed layers and the [journey contracts](../../../apps/web/tests/journey-contracts.json) identify the application flows required by CI.
 
 ## Choose the boundary before writing the test
 
@@ -34,9 +32,7 @@ successful command cannot prove server authorization or persistence. A static
 render cannot prove focus, event handlers, hydration, or layout.
 
 Before adding or migrating browser coverage, read
-[examples and browser contracts](references/browser-contracts.md). The intended
-small merge gate does not authorize silently deselecting existing tests. Follow
-the coverage-preserving migration in the strategy.
+[examples and browser contracts](references/browser-contracts.md). Changing an application journey requires a named regression, a matching full title in the contract list, and independent review. Verify its actual replacement before retiring any existing coverage.
 
 ## Make the test explain its failure
 
@@ -55,6 +51,14 @@ the coverage-preserving migration in the strategy.
 - Demonstrate that the assertion detects the regression when practical: run it
   against known broken behavior or make a narrow temporary fault locally, then
   restore it. Do not add mutation infrastructure for a routine change.
+
+## Require an independent adversarial review
+
+After writing or materially changing browser/e2e tests, you MUST launch a fresh
+`browser_test_reviewer` before declaring completion or publishing the final PR
+revision. Use the [launch recipe, evidence standard and migration examples](references/browser-review.md).
+Record the actual result and disposition, then repeat the fresh focused review
+after material test fixes. If the review is blocked, record why.
 
 ## Diagnose before repairing or rerunning
 
@@ -91,8 +95,7 @@ dependencies. Current entrypoints include:
 | Focused PostgreSQL binary | `make test-db DB_SUITES=<binary> DB_JOBS=2` |
 | Focused fixture browser | `npm run test:ui -- example.spec.ts -g 'scenario'` |
 | Isolated components | `npm run test:components -- example.component.spec.ts` |
-| Essential application journeys | `make test-journeys` |
-| Remaining required feature integrations | `make test-features` |
+| Application journeys | `make test-journeys` or `npm run test:journeys` |
 | Explicit acceptance | `make test-explicit SUITE=<suite>` |
 
 Commands run from the repository root. PostgreSQL and explicit suites require

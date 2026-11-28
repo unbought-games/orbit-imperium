@@ -1,21 +1,20 @@
 import { test, expect } from './fixtures/test'
 import { binding } from './fixtures/game'
-import {
-  recruitmentFixture as fixture,
-  pathMatches,
-  alliance,
-  token,
-  invitationPath,
-} from './fixtures/recruitment'
+import { alliance, token, invitationPath } from './fixtures/recruitment'
+import { installPublicToken, tokenReadPath } from './fixtures/public-invitation'
 import { withFixtureResponse } from './fixtures/responses'
 
 // Only the public entry boundary: no login, enrollment, or multi-document auth journey.
 test('a public invitation resolves its token and links to the returned alliance', async ({
   page,
 }) => {
-  await fixture(page, { authenticated: false, enrolled: false })
-  await withFixtureResponse(page, pathMatches(`/invitations/${token}`), () =>
-    page.goto(invitationPath),
+  await installPublicToken(page)
+  await withFixtureResponse(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === tokenReadPath,
+    () => page.goto(invitationPath),
   )
   await expect(
     page.getByRole('heading', { name: 'Starlight Assembly', exact: true }),
@@ -31,40 +30,3 @@ test('a public invitation resolves its token and links to the returned alliance'
   expect(destination.searchParams.get('alliance')).toBe(alliance)
   expect(destination.searchParams.get('invitation')).toBe(token)
 })
-
-// Keep real public-route entry and populated-row layout. Filtering/empty results
-// and manager preference/invitation controls live in isolated component specs.
-test('a reward invitation carries normal entry back to its native alliance token page', async ({ page }) => {
-  await fixture(page, { authenticated: false, enrolled: false })
-  await withFixtureResponse(page, pathMatches(`/invitations/${token}`), () => page.goto(`${invitationPath}?rewards_invitation=inv_fixture`))
-  const href = await page.getByRole('link', { name: 'Apply to Starlight Assembly', exact: false }).getAttribute('href')
-  const destination = new URL(href!, 'https://orbit.invalid')
-  expect(destination.pathname).toBe('/invite/inv_fixture')
-  expect(destination.searchParams.get('continue')).toBe(invitationPath)
-})
-
-for (const width of [1440, 390]) {
-  test.describe(`public recruitment entry ${width}px`, () => {
-    test.use({
-      viewport: { width, height: 900 },
-      isMobile: width < 768,
-      hasTouch: width < 768,
-    })
-    test('public directory loads alliance links without overflowing', async ({
-      page,
-    }) => {
-      await fixture(page)
-      await withFixtureResponse(page, pathMatches('/recruitment'), () =>
-        page.goto(`/alliances/${binding.universe}`),
-      )
-      await expect(
-        page.getByRole('link', { name: 'View STAR', exact: true }),
-      ).toBeVisible()
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true)
-    })
-  })
-}

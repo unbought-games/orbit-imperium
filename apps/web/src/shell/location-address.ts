@@ -7,6 +7,7 @@ export const locationMissions = [
   'Espionage',
   'Harvest',
   'Attack',
+  'DestroyMoon',
   'Colonize',
   'Deploy',
 ] as const
@@ -41,6 +42,7 @@ export function validateLocationIntent(
         )
   if (search.mission !== undefined && !mission) throw Error('Invalid mission.')
   if (
+    (mission === 'DestroyMoon' && target !== 'moon') ||
     (target === 'moon' && (mission === 'Harvest' || mission === 'Colonize')) ||
     (target === 'debris' && mission !== undefined && mission !== 'Harvest')
   )

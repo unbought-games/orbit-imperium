@@ -1977,7 +1977,7 @@ checksum = "7e036b411754132fd6b74e94b74e9a13c5cf606fa93d1885c35860d3060820b1"
 
 [[package]]
 name = "orbit-application"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "argon2",
  "chrono",
@@ -1997,7 +1997,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-engine"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "hex",
  "hmac",
@@ -2013,7 +2013,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-server"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -2040,7 +2040,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-storage-assets"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axum",
  "hex",
@@ -2056,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-storage-postgres"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axum",
  "hex",
@@ -2081,7 +2081,7 @@ dependencies = [
 
 [[package]]
 name = "orbit-transport-http"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -3042,6 +3042,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.2.17",
  "digest 0.10.7",
+ "sha2-asm",
+]
+
+[[package]]
+name = "sha2-asm"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b845214d6175804686b2bd482bcffe96651bb2d1200742b712003504a2dac1ab"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

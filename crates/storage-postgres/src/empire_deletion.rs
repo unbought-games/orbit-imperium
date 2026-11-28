@@ -189,6 +189,9 @@ impl PgStore {
                     .map_err(db_error)?,
             );
             crate::holding::lock(&mut tx, u, epoch).await?;
+            if scoped {
+                crate::scope_references::lock_fleet_owner(&mut tx, PlayerId(player)).await?;
+            }
             let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM scheduled_events WHERE universe=$1 AND event->>'type'='EmpireDeletionDue' AND event->>'player'=$2 AND NOT done AND NOT cancelled)")
                 .bind(universe).bind(player.to_string()).fetch_one(&mut *tx).await.map_err(db_error)?;
             if exists {

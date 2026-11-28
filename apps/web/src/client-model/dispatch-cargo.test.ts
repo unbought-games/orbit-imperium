@@ -1,9 +1,78 @@
 import { expect, it } from 'vitest'
 import {
-  allDispatchCargo,
+  emptyCargoDraft,
+  cargoInstruction,
+  editDispatchCargo,
+  materialCargoChanges,
+  selectDispatchCargo,
+  selectedFleetCapacity,
+  projectDispatchCargo,
+  prepareCargoFill,
   dispatchCargoCapacity,
-  maxDispatchCargo,
+  quotedCargoSpace,
+  type CargoDraft,
 } from './dispatch-cargo'
+
+type Available = Parameters<typeof projectDispatchCargo>[1]
+function allDispatchCargo(
+  available: Available,
+  maximum_payload: string,
+  fuel: string,
+  entered: string[] = [],
+) {
+  return projectDispatchCargo(
+    selectDispatchCargo({ entered, groups: [] }, 'all'),
+    available,
+    { maximum_payload, fuel },
+  )
+}
+function maxDispatchCargo(
+  available: Available,
+  maximum_payload: string,
+  fuel: string,
+  entered: string[],
+  resource: 'metal' | 'crystal' | 'deuterium',
+) {
+  const draft: CargoDraft = {
+    entered: ['0', '0', '0'].map((v, i) => entered[i] ?? v),
+    groups: [],
+  }
+  return projectDispatchCargo(selectDispatchCargo(draft, resource), available, {
+    maximum_payload,
+    fuel,
+  })
+}
+
+it('totals exact catalog capacities for the selected ships and rejects a partial total', () => {
+  const entry = (id: 'SmallCargo' | 'Recycler', capacity: string) => ({
+    key: { kind: 'Ship' as const, id },
+    body_kinds: [],
+    enabled: true,
+    mobile: true,
+    requirements: [],
+    ship_statistics: {
+      combat: null,
+      propulsion: {
+        drive: 'CombustionDrive' as const,
+        base_speed: '5000',
+        fuel_consumption: '10',
+        impulse_upgrade: null,
+        cargo_capacity: capacity,
+      },
+    },
+  })
+  const fleet = [
+    {
+      ship_type: 'SmallCargo' as const,
+      owner: 'owner',
+      count: '9007199254740993',
+    },
+    { ship_type: 'Recycler' as const, owner: 'owner', count: '2' },
+  ]
+  const catalog = [entry('SmallCargo', '7'), entry('Recycler', '13')]
+  expect(selectedFleetCapacity(catalog, fleet)).toBe(63050394783186977n)
+  expect(selectedFleetCapacity(catalog.slice(0, 1), fleet)).toBeNull()
+})
 
 it('derives empty, loaded, full and excessive cargo space from server terms', () => {
   const terms = { capacity: '5000000000', maximum_payload: '4998500000' }
@@ -35,6 +104,21 @@ it('leaves unknown or invalid cargo space unknown without hiding valid capacity'
       remaining: null,
     })
   }
+})
+
+it('deducts server-quoted cargo from payload already reduced for fuel', () => {
+  expect(
+    quotedCargoSpace({
+      maximum_payload: '188613000000',
+      intent: {
+        cargo: {
+          metal: '500000000',
+          crystal: '400000000',
+          deuterium: '100000000',
+        },
+      },
+    }),
+  ).toEqual({ remaining: 187_613n })
 })
 
 it('uses authoritative payload for fuel-only ships and preserves large exact counts', () => {
@@ -170,4 +254,58 @@ it('rejects invalid or excessive existing cargo instead of silently overwriting 
   expect(() =>
     maxDispatchCargo(stocks, '50000000', '0', ['40', '20', '0'], 'deuterium'),
   ).toThrow('capacity')
+})
+
+it('keeps a Max selection first when Add all follows, and a manual edit fixes only its resource', () => {
+  const max = selectDispatchCargo(emptyCargoDraft(), 'deuterium')
+  const all = selectDispatchCargo(max, 'all')
+  const edited = editDispatchCargo(all, 0, '5')
+  expect(cargoInstruction(edited)).toEqual({
+    minimum: { metal: '5000000', crystal: '0', deuterium: '0' },
+    groups: [['Deuterium'], ['Crystal']],
+  })
+  expect(
+    projectDispatchCargo(edited, stocks, {
+      maximum_payload: '25000000',
+      fuel: '1000000',
+    }),
+  ).toEqual(['5', '10', '10'])
+})
+it('asks again at a 10% change in either direction per resource, including a newly available resource', () => {
+  const before = { metal: '100000000', crystal: '0', deuterium: '10000000' }
+  expect(
+    materialCargoChanges(before, {
+      metal: '109999999',
+      crystal: '0',
+      deuterium: '9000001',
+    }),
+  ).toEqual([])
+  expect(
+    materialCargoChanges(before, {
+      metal: '110000000',
+      crystal: '1000000',
+      deuterium: '9000000',
+    }),
+  ).toEqual(['metal', 'crystal', 'deuterium'])
+})
+
+it('clicking Max again preserves a full shared load', () => {
+  const all = selectDispatchCargo(emptyCargoDraft(), 'all')
+  const terms = { maximum_payload: '9000000', fuel: '1000000' }
+  expect(
+    projectDispatchCargo(selectDispatchCargo(all, 'deuterium'), stocks, terms),
+  ).toEqual(['3', '3', '3'])
+})
+
+it('repeated Max keeps a valid entered floor and recovers when that stock is spent', () => {
+  const all = selectDispatchCargo(
+    { entered: ['0', '0', '7'], groups: [] },
+    'all',
+  )
+  const terms = { maximum_payload: '10000000', fuel: '1000000' }
+  const selected = prepareCargoFill(all, 'deuterium', stocks, terms)
+  expect(projectDispatchCargo(selected, stocks, terms)).toEqual(['1', '1', '8'])
+  const spent = { ...stocks, deuterium: '4000000' }
+  const recovered = prepareCargoFill(all, 'deuterium', spent, terms)
+  expect(projectDispatchCargo(recovered, spent, terms)).toEqual(['4', '3', '3'])
 })

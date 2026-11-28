@@ -1,5 +1,6 @@
 import { probePreferenceReason } from '../client-model/player-preferences'
 import { usePlayerPreferences } from '../shell/player-preferences-context'
+import { scanTargetBlocker } from './phalanx-model'
 import { PhalanxAction } from './phalanx-action'
 import { publicMoonBody } from './galaxy-body'
 import { useProfileSource } from '../shell/player-profiles-context'
@@ -16,7 +17,7 @@ import type { Coordinator } from '../client-model/coordinator'
 import type { DispatchDraft } from './missions'
 import { GalaxyHarvestAction } from './galaxy-harvest-action'
 import { MissileLaunchAction } from './missile-launch-action'
-import { GalaxyPosition } from './galaxy-position'
+import { GalaxyPosition, GalaxyPositionSkeleton } from './galaxy-position'
 import { galaxyMissionCapabilities } from './galaxy-mission-actions'
 import { colonizationStatus } from '../client-model/colonization'
 import { FleetSlots } from './fleet-slots'
@@ -66,7 +67,13 @@ export function Galaxy({
   } | null>(null)
   const harvestOpener = useRef<HTMLElement | null>(null)
   const [harvestOpen, setHarvestOpen] = useState(false)
-  const home = model.view?.bodies.find((b) => b.id === origin)?.coordinates
+  const originBody = model.view?.bodies.find((body) => body.id === origin)
+  const home = originBody?.coordinates
+  const scansEnabled = model.view?.capabilities.some(
+    (capability) =>
+      capability.capability === 'ScanPlanet' && capability.enabled,
+  )
+  const slotCount = model.settings?.positions_per_system ?? 15
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
   const galaxy = search.galaxy ?? home?.galaxy ?? 1
@@ -75,8 +82,7 @@ export function Galaxy({
   const valid =
     galaxy <= (model.settings?.galaxies ?? 1) &&
     system <= (model.settings?.systems_per_galaxy ?? 5) &&
-    (position === undefined ||
-      position <= (model.settings?.positions_per_system ?? 15))
+    (position === undefined || position <= slotCount)
   const browse = (galaxy: number, system: number) =>
     void navigate({
       ...galaxyTarget(universe, origin, { galaxy, system }),
@@ -84,9 +90,8 @@ export function Galaxy({
     })
   const [result, setResult] = useState<{
     data: System | null
-    error: string
-    loading: boolean
-  }>({ data: null, error: '', loading: true })
+    failure: { galaxy: number; system: number } | null
+  }>({ data: null, failure: null })
   const [retry, setRetry] = useState(0)
   useEffect(() => {
     if (!valid) return
@@ -98,31 +103,18 @@ export function Galaxy({
         previous.data?.galaxy === galaxy && previous.data.system === system
           ? previous.data
           : null,
-      error: '',
-      loading: true,
+      failure: null,
     }))
-    void model
-      .world({ type: 'Galaxy', galaxy, system })
-      .then((v) => {
-        if (current)
-          setResult((previous) =>
-            v && 'positions' in v
-              ? { data: v, error: '', loading: false }
-              : {
-                  ...previous,
-                  error: 'Galaxy unavailable. Try again after reconnecting.',
-                  loading: false,
-                },
-          )
-      })
-      .catch(() => {
-        if (current)
-          setResult((previous) => ({
-            ...previous,
-            error: 'Galaxy unavailable. Try again after reconnecting.',
-            loading: false,
-          }))
-      })
+    const failed = () => {
+      if (current)
+        setResult((previous) => ({ ...previous, failure: { galaxy, system } }))
+    }
+    void model.world({ type: 'Galaxy', galaxy, system }).then((value) => {
+      if (!current) return
+      if (value && 'positions' in value)
+        setResult({ data: value, failure: null })
+      else failed()
+    }, failed)
     return () => {
       current = false
     }
@@ -132,6 +124,9 @@ export function Galaxy({
     valid && result.data?.galaxy === galaxy && result.data.system === system
       ? result.data
       : null
+  const failed =
+    result.failure?.galaxy === galaxy && result.failure.system === system
+  const loading = valid && !data && !failed
   const loaded = !!data
   useEffect(() => {
     if (loaded && position !== undefined && !search.site) {
@@ -221,16 +216,16 @@ export function Galaxy({
       {!valid && (
         <p role="alert">These coordinates are outside this universe.</p>
       )}
-      {valid && result.error && (
+      {valid && failed && (
         <div className={styles.error}>
-          <p role="alert">{result.error}</p>
+          <p role="alert">Galaxy unavailable. Try again after reconnecting.</p>
           <Button variant="secondary" onClick={() => setRetry((n) => n + 1)}>
             Retry loading galaxy
           </Button>
         </div>
       )}
-      {valid && result.loading && !data && (
-        <p role="status" className={styles.loading}>
+      {loading && (
+        <p role="status" className={styles.srOnly}>
           Loading system…
         </p>
       )}
@@ -264,129 +259,148 @@ export function Galaxy({
             This personal site is not available at this location.
           </p>
         )}
-      {data && (
-        <BodyAppearanceContext.Provider value={data.body_appearances ?? {}}>
-          <section className={styles.positions} aria-label="Galaxy positions">
+      {(loading || data) && (
+        <BodyAppearanceContext.Provider value={data?.body_appearances ?? {}}>
+          <section
+            className={styles.positions}
+            aria-label="Galaxy positions"
+            aria-busy={loading}
+          >
             <ul className={styles.positionList}>
-              {data.positions.map((position) => (
-                <li
-                  id={`position-${position.coordinates.position}`}
-                  tabIndex={-1}
-                  aria-current={
-                    position.coordinates.position === search.position &&
-                    !search.site
-                      ? 'location'
-                      : undefined
+              {(data?.positions ?? Array<null>(slotCount).fill(null)).map(
+                (position, index) => {
+                  const coordinates = position?.coordinates ?? {
+                    galaxy,
+                    system,
+                    position: index + 1,
                   }
-                  className={
-                    position.coordinates.position === search.position &&
-                    !search.site
-                      ? styles.selectedPosition
-                      : undefined
-                  }
-                  key={`${data.galaxy}:${data.system}:${position.coordinates.position}`}
-                >
-                  <GalaxyPosition
-                    position={position}
-                    scanAction={
-                      model.view?.bodies.find((b) => b.id === origin)?.kind ===
-                        'Moon' &&
-                      position.body?.kind === 'Planet' &&
-                      position.body.owner !== model.binding?.player &&
-                      model.view?.capabilities.some(
-                        (c) => c.capability === 'ScanPlanet' && c.enabled,
-                      ) ? (
-                        <PhalanxAction
-                          compact
-                          key={`${origin}:${position.body.id}`}
-                          model={model}
-                          origin={origin}
+                  const selected =
+                    coordinates.position === search.position && !search.site
+                  return (
+                    <li
+                      id={`position-${coordinates.position}`}
+                      tabIndex={-1}
+                      aria-current={selected ? 'location' : undefined}
+                      className={selected ? styles.selectedPosition : undefined}
+                      key={`${galaxy}:${system}:${coordinates.position}`}
+                    >
+                      {position && data ? (
+                        <GalaxyPosition
                           position={position}
-                          universe={universe}
-                        />
-                      ) : undefined
-                    }
-                    missileAction={
-                      model.view?.bodies.find((b) => b.id === origin)?.kind ===
-                        'Planet' &&
-                      position.body &&
-                      position.body.owner !== model.binding?.player &&
-                      model.view?.capabilities.some(
-                        (c) => c.capability === 'Missiles' && c.enabled,
-                      )
-                        ? (presentation) => (
-                            <MissileLaunchAction
-                              key={`${origin}:${position.body?.id}:${position.body?.owner}`}
-                              model={model}
-                              origin={origin}
-                              position={position}
-                              {...presentation}
-                            />
-                          )
-                        : undefined
-                    }
-                    playerNames={data.player_names}
-                    playerIdentity={
-                      position.body ? (
-                        <PlayerName
-                          truncate
-                          showInsignia
-                          player={position.body.owner}
-                          names={data.player_names}
-                          fallback={playerLabel(
-                            position.body.owner,
-                            data.player_names,
+                          scanAction={
+                            scansEnabled &&
+                            position.body?.kind === 'Planet' &&
+                            position.body.owner !== model.binding?.player
+                              ? {
+                                  disabled: !!scanTargetBlocker(
+                                    originBody,
+                                    position,
+                                    model.binding?.player,
+                                  ),
+                                  render: (presentation) => (
+                                    <PhalanxAction
+                                      model={model}
+                                      origin={origin}
+                                      position={position}
+                                      universe={universe}
+                                      {...presentation}
+                                    />
+                                  ),
+                                }
+                              : undefined
+                          }
+                          missileAction={
+                            originBody?.kind === 'Planet' &&
+                            position.body &&
+                            position.body.owner !== model.binding?.player &&
+                            model.view?.capabilities.some(
+                              (c) => c.capability === 'Missiles' && c.enabled,
+                            )
+                              ? (presentation) => (
+                                  <MissileLaunchAction
+                                    key={`${origin}:${position.body?.id}:${position.body?.owner}`}
+                                    model={model}
+                                    origin={origin}
+                                    position={position}
+                                    {...presentation}
+                                  />
+                                )
+                              : undefined
+                          }
+                          playerNames={data.player_names}
+                          playerIdentity={
+                            position.body ? (
+                              <PlayerName
+                                truncate
+                                showInsignia
+                                player={position.body.owner}
+                                names={data.player_names}
+                                fallback={playerLabel(
+                                  position.body.owner,
+                                  data.player_names,
+                                )}
+                              />
+                            ) : undefined
+                          }
+                          player={model.binding?.player}
+                          missions={missions}
+                          origin={origin}
+                          colony={colonizationStatus(
+                            model.view,
+                            position.coordinates.position,
                           )}
+                          onDraft={draft}
+                          flights={galaxyFlights(espionage.state, position)}
+                          now={currentServerTime(espionage.state)}
+                          espionage={
+                            position.body
+                              ? espionage.forTarget(
+                                  position.body,
+                                  position.coordinates,
+                                )
+                              : undefined
+                          }
+                          moonEspionage={
+                            publicMoonBody(position)
+                              ? espionage.forTarget(
+                                  publicMoonBody(position)!,
+                                  position.coordinates,
+                                )
+                              : undefined
+                          }
                         />
-                      ) : undefined
-                    }
-                    player={model.binding?.player}
-                    missions={missions}
-                    origin={origin}
-                    colony={colonizationStatus(
-                      model.view,
-                      position.coordinates.position,
-                    )}
-                    onDraft={draft}
-                    flights={galaxyFlights(espionage.state, position)}
-                    now={currentServerTime(espionage.state)}
-                    espionage={
-                      position.body
-                        ? espionage.forTarget(position.body)
-                        : undefined
-                    }
-                    moonEspionage={
-                      publicMoonBody(position)
-                        ? espionage.forTarget(publicMoonBody(position)!)
-                        : undefined
-                    }
-                  />
-                  {sitesAtPosition(tutorial.data, position.coordinates).map(
-                    (site) => (
-                      <GalaxySite
-                        key={site.site.destination.selection.id}
-                        site={site}
-                        origin={origin}
-                        expanded={
-                          search.site === site.site.destination.selection.id
-                        }
-                        onToggle={() =>
-                          void navigate({
-                            ...galaxyTarget(
-                              universe,
-                              origin,
+                      ) : (
+                        <GalaxyPositionSkeleton at={coordinates} />
+                      )}
+                      {sitesAtPosition(tutorial.data, coordinates).map(
+                        (site) => (
+                          <GalaxySite
+                            key={site.site.destination.selection.id}
+                            site={site}
+                            origin={origin}
+                            expanded={
                               search.site === site.site.destination.selection.id
-                                ? { galaxy, system }
-                                : siteLocation(site),
-                            ),
-                            resetScroll: false,
-                          })
-                        }
-                      />
-                    ),
-                  )}
-                </li>
-              ))}
+                            }
+                            onToggle={() =>
+                              void navigate({
+                                ...galaxyTarget(
+                                  universe,
+                                  origin,
+                                  search.site ===
+                                    site.site.destination.selection.id
+                                    ? { galaxy, system }
+                                    : siteLocation(site),
+                                ),
+                                resetScroll: false,
+                              })
+                            }
+                          />
+                        ),
+                      )}
+                    </li>
+                  )
+                },
+              )}
             </ul>
           </section>
         </BodyAppearanceContext.Provider>

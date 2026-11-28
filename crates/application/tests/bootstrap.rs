@@ -8,7 +8,6 @@ struct Memory {
     state: Arc<Mutex<(usize, usize)>>,
     resets: usize,
     foreign: bool,
-    mismatch: bool,
 }
 #[allow(unused_variables)]
 impl GameStore for Memory {
@@ -104,14 +103,11 @@ impl GameStore for Memory {
     ) -> Result<ReadSnapshot<ViewerSnapshot>, StoreError> {
         let mut count = self.state.lock().unwrap();
         count.1 += 1;
-        if count.1.is_multiple_of(2) && count.0 <= self.resets {
+        if count.0 <= self.resets {
             return Err(StoreError::EpochChanged);
         }
         let mut f = self.facts.clone();
         f.epoch = binding.epoch;
-        if self.mismatch && count.1.is_multiple_of(2) {
-            f.rules = f.rules.with_speed(9).unwrap();
-        }
         Ok(ReadSnapshot {
             facts: f,
             progress: SnapshotProgress {
@@ -229,7 +225,6 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
             state: Arc::new(Mutex::new((0, 0))),
             resets: 0,
             foreign: false,
-            mismatch: false,
         },
         AuthenticatedSession {
             account: AccountId(Uuid::from_u128(1)),
@@ -247,11 +242,33 @@ fn setup(protocol: i32) -> (Memory, AuthenticatedSession) {
 fn initial_game_supports_each_protocol() {
     futures::executor::block_on(async {
         for protocol in [2, 3, 4] {
-            let (s, session) = setup(protocol);
-            let game = GameService::new(s);
+            let (mut s, session) = setup(protocol);
+            if protocol == 4 {
+                let mut artifact = s.facts.rules.artifact.clone();
+                let world = artifact.world.as_mut().unwrap();
+                world.combat.ship_debris_bps = 4567;
+                world.combat.deuterium_in_debris = true;
+                s.facts.rules = Ruleset::from_artifact(artifact, s.facts.rules.speed).unwrap();
+            }
+            let game = GameService::new(s.clone());
             let id = Uuid::from_u128(10);
             let result = game.initial_game(&session, id).await.unwrap().unwrap();
+            assert_eq!(*s.state.lock().unwrap(), (1, 1), "one bound world read");
             let json = serde_json::to_value(result).unwrap();
+            assert_eq!(json["view"]["speed"], json["settings"]["speed"]);
+            let debris = json["settings"].get("ship_debris");
+            if protocol == 4 {
+                assert_eq!(
+                    debris.unwrap(),
+                    &serde_json::json!({
+                        "basis_points": 4567,
+                        "deuterium_in_debris": true,
+                        "moons_enabled": false
+                    })
+                );
+            } else {
+                assert!(debris.is_none());
+            }
             assert_eq!(json["view"]["progress"]["sampled_at"], 1000);
             assert_eq!(json["view"]["progress"]["command_references"], true);
             for key in ["candidate", "view", "settings"] {
@@ -315,19 +332,17 @@ fn repeated_epoch_change_stops_after_three_attempts() {
     });
 }
 #[test]
-fn incompatible_data_is_never_published() {
+fn foreign_binding_is_rejected_before_reading_the_world() {
     futures::executor::block_on(async {
-        for foreign in [true, false] {
-            let (mut s, session) = setup(2);
-            s.foreign = foreign;
-            s.mismatch = !foreign;
-            assert!(
-                GameService::new(s)
-                    .initial_game(&session, Uuid::nil())
-                    .await
-                    .is_err()
-            );
-        }
+        let (mut s, session) = setup(2);
+        s.foreign = true;
+        assert!(matches!(
+            GameService::new(s.clone())
+                .initial_game(&session, Uuid::nil())
+                .await,
+            Err(ServiceError::InvariantFailure)
+        ));
+        assert_eq!(*s.state.lock().unwrap(), (1, 0));
     });
 }
 

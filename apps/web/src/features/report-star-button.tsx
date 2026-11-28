@@ -30,9 +30,8 @@ export function ReportStarButton({
       dialogTitle="Unstar this shared report?"
       review={
         <p>
-          Unstarring allows this report to be archived, including by bulk
-          cleanup. Archiving keeps its shared link active. Use Stop sharing to
-          revoke it.
+          Unstarring lets you archive this report from the list. Archiving from
+          the list keeps its public link active.
         </p>
       }
       confirmLabel="Unstar report"
@@ -47,8 +46,8 @@ export function ReportStarButton({
       aria-pressed={starred}
       title={
         starred
-          ? 'Protected from archiving. Unstar to allow archiving.'
-          : 'Star to protect from archiving'
+          ? 'Protected from list archiving. Unstar report.'
+          : 'Star to protect from list archiving'
       }
       disabled={
         disabled ||

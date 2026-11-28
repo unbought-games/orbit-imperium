@@ -2,6 +2,7 @@ mod ship_renderer;
 pub use ship_renderer::HttpShipRenderer;
 mod ship_appearances;
 pub use ship_appearances::ship_render_environment;
+mod dispatch_observations;
 mod request_observation;
 pub use request_observation::RequestTimingObserver;
 mod community_rewards;
@@ -100,6 +101,7 @@ struct HttpState<S> {
     public_feed_work: Arc<Semaphore>,
     public_feed_budget: Mutex<rate_limit::LoginBudget>,
     alliance_public_budget: Mutex<rate_limit::LoginBudget>,
+    dispatch_observation_budget: Mutex<rate_limit::LoginBudget>,
     login_budget: Mutex<rate_limit::LoginBudget>,
     signup_budget: Mutex<rate_limit::LoginBudget>,
     password_work: Arc<Semaphore>,
@@ -204,12 +206,17 @@ where
         public_feed_work: Arc::new(Semaphore::new(8)),
         public_feed_budget: Mutex::new(rate_limit::LoginBudget::new()),
         alliance_public_budget: Mutex::new(rate_limit::LoginBudget::new()),
+        dispatch_observation_budget: Mutex::new(rate_limit::LoginBudget::new()),
         login_budget: Mutex::new(rate_limit::LoginBudget::new()),
         signup_budget: Mutex::new(rate_limit::LoginBudget::new()),
         password_work: Arc::new(Semaphore::new(2)),
     });
     let client_build = client_build::read(&state.config.assets);
     Router::new()
+        .route(
+            "/api/v1/universes/{id}/dispatch-observations",
+            post(dispatch_observations::collect::<S>).layer(DefaultBodyLimit::max(4096)),
+        )
         .route(
             "/api/v4/empire-profiles/{player}",
             get(empire_history::profile::<S>).post(empire_history::edit::<S>),

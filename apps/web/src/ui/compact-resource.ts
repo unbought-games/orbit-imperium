@@ -27,3 +27,14 @@ export function formatCompactResource(value: string | bigint): string {
   const decimal = absolute % precision
   return `${rounded < 0n ? '-' : ''}${absolute / precision}${decimal ? `.${decimal}` : ''}${suffix}`
 }
+
+/** Quote previews round up to a whole unit, or a tenth below ten K/M/B/T. */
+export function formatCompactCost(value: string): string {
+  const whole = (BigInt(value) + scale - 1n) / scale
+  const unit = units.find(([size]) => whole >= size)
+  if (!unit) return whole.toString()
+  const [size] = unit
+  const step = whole < size * 10n ? size / 10n : size
+  const rounded = ((whole + step - 1n) / step) * step
+  return formatCompactResource(rounded * scale)
+}

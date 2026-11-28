@@ -1,3 +1,4 @@
+import { label } from '../ui/format'
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import type { GalaxyFlight } from '../client-model/galaxy-fleets'
 import { Popover } from '../ui/popover'
@@ -47,7 +48,7 @@ export function GalaxyFlightSummary({
           {flights.map((flight) => (
             <li key={flight.id}>
               <strong>
-                {flight.mission} {flight.phase}
+                {label(flight.mission)} {flight.phase}
               </strong>
               {flight.dueAt !== null && (
                 <>

@@ -99,6 +99,53 @@ pub(crate) async fn resolve_command(
     Ok((resolved, scopes))
 }
 
+/// A launch may add a participant to an already-declared deletion or lunar
+/// destruction. Pair discovery at admission with extension at launch commit.
+/// Owner and lunar endpoint keys are independent of alliance membership.
+pub(crate) async fn lock_fleet_dependencies(
+    tx: &mut Tx<'_>,
+    actor: PlayerId,
+    action: &WorldAction,
+    committing: bool,
+) -> Result<(), StoreError> {
+    let owner = match action {
+        WorldAction::EnterVacation
+        | WorldAction::ExitVacation
+        | WorldAction::RequestEmpireDeletion
+        | WorldAction::CancelEmpireDeletion => Some(actor),
+        WorldAction::LaunchFleet { .. } if committing => Some(actor),
+        _ => None,
+    };
+    if let Some(owner) = owner {
+        lock_fleet_owner(tx, owner).await?;
+    }
+    if let WorldAction::LaunchFleet { intent, .. } = action
+        && (committing || intent.mission == Mission::DestroyMoon)
+        && let MissionDestination::Body {
+            id,
+            expected_kind: BodyKind::Moon,
+            ..
+        } = intent.destination
+    {
+        // Every caller takes the owner key before the moon key.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 381431))")
+            .bind(id.to_string())
+            .execute(&mut **tx)
+            .await
+            .map_err(db_error)?;
+    }
+    Ok(())
+}
+
+pub(crate) async fn lock_fleet_owner(tx: &mut Tx<'_>, player: PlayerId) -> Result<(), StoreError> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 381430))")
+        .bind(player.to_string())
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
+    Ok(())
+}
+
 pub(crate) async fn load(
     tx: &mut Tx<'_>,
     u: UniverseId,
@@ -109,6 +156,7 @@ pub(crate) async fn load(
     let mut operation = None;
     let mut fleet = None;
     let mut holding_target = None;
+    let mut destruction_target = None;
     refs.attack_groups = crate::attack_groups::scopes(tx, u, input).await?;
     let mut field = None;
     match input {
@@ -190,9 +238,12 @@ pub(crate) async fn load(
             }
             if let MissionDestination::Body { id, .. } = intent.destination {
                 bodies.insert(id.0);
+                if intent.mission == Mission::DestroyMoon {
+                    destruction_target = Some(id);
+                }
                 if matches!(
                     intent.mission,
-                    Mission::Attack | Mission::Espionage | Mission::Hold
+                    Mission::Attack | Mission::Espionage | Mission::Hold | Mission::DestroyMoon
                 ) {
                     holding_target = Some(id);
                 }
@@ -250,9 +301,15 @@ pub(crate) async fn load(
                 })
             );
             if contact
+                && f.intent.mission == Mission::DestroyMoon
+                && let MissionDestination::Body { id, .. } = f.intent.destination
+            {
+                destruction_target = Some(id);
+            }
+            if contact
                 && matches!(
                     f.intent.mission,
-                    Mission::Attack | Mission::Espionage | Mission::Hold
+                    Mission::Attack | Mission::Espionage | Mission::Hold | Mission::DestroyMoon
                 )
                 && let MissionDestination::Body { id, .. } = f.intent.destination
             {
@@ -348,6 +405,9 @@ pub(crate) async fn load(
                     .extend(crate::holding::participant_scopes(tx, u, BodyId(moon)).await?);
             }
         }
+    }
+    if let Some(body) = destruction_target {
+        refs.moon_removal = crate::moon_removal::participant_scopes(tx, u, body).await?;
     }
     Ok(refs)
 }

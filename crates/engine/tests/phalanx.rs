@@ -27,6 +27,7 @@ fn policy(player: PlayerId) -> PlayerPolicy {
 fn fleet(mission: Mission) -> MissionFleet {
     let owner = PlayerId(Uuid::from_u128(1));
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: (mission == Mission::Hold).then_some(1),
         origin: id(10),

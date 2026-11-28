@@ -56,6 +56,9 @@
 .field input {
   width: 100%;
   min-width: 0;
+  padding-inline: 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .field label {
   overflow-wrap: anywhere;
@@ -95,14 +98,12 @@
   color: var(--text);
   font-weight: 600;
 }
-.outcomeNote {
-  min-height: 3em;
-  margin: 0 0 8px;
-  font-size: 0.75rem;
-}
 @media (max-width: 760px) {
   .fieldWithOutcome {
-    grid-template-columns: minmax(0, 1fr) 60px 80px;
+    grid-template-columns: minmax(0, 1fr) repeat(2, 4rem);
+  }
+  .fieldWithOutcome input {
+    padding-inline: 4px;
   }
 }
 @media (max-width: 620px) {
@@ -116,37 +117,47 @@
   font-size: 0.75rem;
 }
 .outcomes {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin: 12px 0;
+  --outcome-gap: clamp(var(--space-2), 2vw, var(--space-4));
+  display: flex;
+  gap: var(--outcome-gap);
+  margin-block: var(--space-4) var(--space-2);
+  font-size: 1.125rem;
+  line-height: 1.3;
 }
 .outcomes p {
   margin: 0;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+}
+.outcomes p + p {
+  position: relative;
+  padding-inline-start: var(--outcome-gap);
+}
+.outcomes p + p::before {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 50%;
+  inline-size: 1px;
+  block-size: 1em;
+  background: var(--border);
+  content: '';
+  transform: translateY(-50%);
 }
 .outcomes strong {
-  display: inline;
-  font-size: 1rem;
+  font-size: 1.375rem;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
-}
-.survivors {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-}
-.survivors dd {
-  margin: 4px 0;
 }
 @media (max-width: 620px) {
   .sides {
     grid-template-columns: 1fr;
   }
-  .outcomes {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+  .dialog .sides fieldset,
+  .dialog .contingent {
+    padding-inline: 6px;
+  }
+}
+@media (max-width: 480px) {
+  .outcomes strong {
+    display: block;
   }
 }
 
@@ -218,8 +229,7 @@
 .setupContext p {
   margin: 0 0 8px;
 }
-.importDisclosure summary,
-.resultDetails summary {
+.importDisclosure summary {
   cursor: pointer;
   padding-block: 12px;
   color: var(--champagne-light);
@@ -247,31 +257,95 @@
   border-color: var(--border-accent);
 }
 
-.planningGrid small {
-  color: var(--text-muted);
-}
 .planningGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-  margin-block: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.cargoPlanning {
+  display: grid;
+  align-items: start;
+  gap: inherit;
+  min-inline-size: 0;
+}
+.planningPanel {
+  min-inline-size: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-block-start: 2px solid var(--border-control);
+  border-radius: var(--radius-panel);
+  background-color: var(--surface);
+}
+.planningPanel[data-tone='haul'] {
+  border-block-start-color: var(--champagne);
+}
+.planningPanel[data-tone='debris'] {
+  border-block-start-color: var(--ice-shadow);
+}
+@media (min-width: 860px) {
+  .planningGrid[data-haul] {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  .planningGrid[data-haul] .cargoPlanning {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .planningGrid h4 {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
 }
 .planningGrid p {
   margin: 8px 0;
 }
-.planningGrid strong {
+.lootMetrics {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.lootMetrics > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.lootMetrics dt {
+  color: var(--text-muted);
+}
+.lootMetrics dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.resourceTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.resourceTable caption {
+  margin-bottom: var(--space-3);
+  text-align: left;
+  font-weight: 700;
+}
+.resourceTable th,
+.resourceTable td {
+  padding: 2px 0;
+}
+.resourceTable th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--text-muted);
+}
+.resourceTable td {
+  text-align: right;
+}
+.resourceTable tfoot :is(th, td) {
+  font-weight: 600;
   color: var(--text);
 }
-.resourceLine {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-.resultDetails {
+.resourceTable tfoot tr:first-child :is(th, td) {
   border-top: 1px solid var(--border);
+  padding-top: 4px;
 }
 .battleDuration {
   margin-block: 12px;
@@ -322,39 +396,71 @@
   flex: 1;
 }
 .matchup {
+  --matchup-art-size: 88px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2) clamp(var(--space-2), 2vw, var(--space-6));
+  margin-block-end: var(--space-4);
+  padding: var(--space-5) clamp(var(--space-2), 3%, var(--space-6))
+    var(--space-1);
+  border-block: 1px solid var(--border-accent);
+  background:
+    radial-gradient(
+      ellipse at 23% 32%,
+      color-mix(in srgb, var(--ice-shadow) 20%, transparent),
+      transparent 43%
+    ),
+    radial-gradient(
+      ellipse at 77% 32%,
+      color-mix(in srgb, var(--champagne-shadow) 24%, transparent),
+      transparent 43%
+    );
+}
+.matchup[data-paired] {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: start;
-  gap: 12px;
-  margin-bottom: 8px;
 }
 .versus {
-  margin-top: 10px;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
+  align-self: center;
+  color: var(--champagne-light);
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1;
+  letter-spacing: -0.07em;
+  text-shadow: 0 0 24px var(--champagne-shadow);
 }
-.reportContext {
-  grid-column: 3;
-  justify-self: end;
+.matchupLocation {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-2);
   min-width: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
-.reportLink {
-  margin-left: 18px;
+.matchupLocation .locationArt {
+  width: var(--matchup-art-size);
+  height: var(--matchup-art-size);
+  filter: drop-shadow(0 0 12px var(--planet-glow));
 }
-.reportLink > svg {
-  flex-shrink: 0;
+.matchupName {
+  display: grid;
+  place-items: center;
+  min-block-size: var(--control-size);
+  color: var(--champagne-light);
+  font-family: var(--font-editorial);
+  font-size: clamp(1.1875rem, 3.8vw, var(--font-size-3xl));
+  font-weight: 700;
+  line-height: 1.15;
+}
+.matchupCoordinates {
+  margin-block-start: var(--space-1);
+  font-size: var(--font-size-sm);
 }
 @media (max-width: 620px) {
   .matchup {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .versus {
-    margin: 0 0 0 46px;
-  }
-  .reportContext {
-    grid-column: 1;
-    justify-self: stretch;
+    --matchup-art-size: 64px;
+    padding-block-start: var(--space-4);
   }
 }
 .location {
@@ -368,15 +474,22 @@
   height: 36px;
   object-fit: contain;
 }
-.location small {
+.location small,
+.matchupLocation small {
   display: block;
   color: var(--text-muted);
 }
 .reportLink {
+  grid-column: 1 / -1;
+  justify-self: end;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.8125rem;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+}
+.reportLink > svg {
+  flex-shrink: 0;
 }
 .importDisclosure {
   position: relative;

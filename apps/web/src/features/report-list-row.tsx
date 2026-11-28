@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react'
 import { ReportPreviewFacts } from './report-preview-facts'
 import { usePlayerDisplays } from '../shell/player-profiles-context'
 import { reportMetric, type ReportSort } from './report-triage'
@@ -29,6 +30,7 @@ export function ReportListRow({
   universe,
   origin,
   now,
+  fleetEnRoute = false,
   disabled,
   selectionDisabled = disabled,
   selected,
@@ -43,6 +45,7 @@ export function ReportListRow({
   universe: string
   origin: string
   now: number
+  fleetEnRoute?: boolean
   disabled: boolean
   selectionDisabled?: boolean
   onOpen?: () => void
@@ -74,6 +77,7 @@ export function ReportListRow({
   ]
     .filter(Boolean)
     .join(' · ')
+  const fleetStatusId = `report-fleet-${report.id}`
   const checkbox = onSelect ? (
     <label className={styles.selection}>
       <input
@@ -124,6 +128,7 @@ export function ReportListRow({
           <Link
             className={styles.reportLink}
             aria-label={title}
+            aria-describedby={fleetEnRoute ? fleetStatusId : undefined}
             onClick={(event) => {
               if (desktopSelection && event.shiftKey && onSelect) {
                 event.preventDefault()
@@ -155,6 +160,12 @@ export function ReportListRow({
               >
                 {outcome?.title ?? reportKindLabel(report.kind)}
               </strong>
+              {fleetEnRoute && (
+                <span id={fleetStatusId} className={styles.fleetEnRoute}>
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                  Fleet en route
+                </span>
+              )}
               {report.hidden && <span>Archived</span>}
             </span>
           </Link>

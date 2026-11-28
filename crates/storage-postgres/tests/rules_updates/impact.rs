@@ -14,7 +14,6 @@ const GAMEPLAY_TABLES: &[&str] = &[
     "constructions",
     "research_operations",
     "manufacturing_batches",
-    "asset_lots",
     "mission_fleets",
     "missile_flights",
     "debris_fields",

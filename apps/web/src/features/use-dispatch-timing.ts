@@ -6,7 +6,11 @@ import {
   type DispatchTimingRequest,
   type DispatchTimingResult,
 } from './dispatch-reads'
-type Result = DispatchTimingResult & { key: string; model: Coordinator }
+type Result = DispatchTimingResult & {
+  key: string
+  model: Coordinator
+  revision: string
+}
 
 /** A read-only server quote; only explicit Review opens the launch confirmation. */
 export function useDispatchTiming(
@@ -27,7 +31,7 @@ export function useDispatchTiming(
         (query) => model.world(query),
         JSON.parse(key),
         estimateOnly,
-        (result) => setResult({ key, model, ...result }),
+        (result) => setResult({ key, model, revision, ...result }),
       )
     }, 250)
     return () => {

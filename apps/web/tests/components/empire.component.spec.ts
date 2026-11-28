@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixture'
+import { withFixtureResponse } from '../fixtures/responses'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 import { empireFixture, body, id, binding } from '../../src/test-support/empire'
 import type { components } from '../../src/contracts'
@@ -26,6 +27,226 @@ async function deliverEmpire(page: Page) {
     await window.empireScene.refresh()
   }, input)
 }
+test('phone balance rows keep a billion and small amounts intact in both resource panels', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const options = empireFixture()
+  const amounts = {
+    metal: '1000234567000000',
+    crystal: '45000000',
+    deuterium: '127000000',
+  }
+  await mountEmpire(page, {
+    bodies: [{ ...options.bodies[0], amounts }],
+    missions: { ...options.missions, fleets: [] },
+  })
+  const totals = ['1,000,234,567', '45', '127']
+  for (const [name, details] of [
+    [
+      'Empire resource totals',
+      [
+        ['Worlds', totals],
+        ['In flight', ['0', '0', '0']],
+      ],
+    ],
+    [
+      'Planet resources',
+      [
+        ['Capacity', ['40,000', '30,000', '15,000']],
+        ['Per hour', ['0', '37', '0']],
+      ],
+    ],
+  ] as const) {
+    const panel = page.getByLabel(name)
+    const panelBox = (await panel.boundingBox())!
+    const balances = panel.locator('strong')
+    await expect(balances).toHaveText(totals)
+    const rects = await balances.evaluateAll((balances) =>
+      balances.map((balance) => {
+        const walker = document.createTreeWalker(balance, NodeFilter.SHOW_TEXT)
+        const range = document.createRange()
+        range.selectNodeContents(walker.nextNode()!)
+        const lines = range.getClientRects()
+        const rect = range.getBoundingClientRect()
+        return {
+          lines: lines.length,
+          left: rect.left,
+          top: rect.top,
+          bottom: rect.bottom,
+          right: rect.right,
+        }
+      }),
+    )
+    const [metal, crystal, deuterium] = rects
+    expect(rects.map((r) => r.lines)).toEqual([1, 1, 1])
+    expect(crystal.left).toBeCloseTo(metal.left, 0)
+    expect(deuterium.left).toBeCloseTo(metal.left, 0)
+    expect(crystal.top).toBeGreaterThan(metal.bottom)
+    expect(deuterium.top).toBeGreaterThan(crystal.bottom)
+    for (const [index, name] of ['Metal', 'Crystal', 'Deuterium'].entries()) {
+      const label = panel.getByText(new RegExp(`^${name}$`, 'i'))
+      await expect(label).toBeVisible()
+      const labelBox = (await label.boundingBox())!
+      const amount = rects[index]
+      expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(amount.top)
+      expect(labelBox.x).toBeLessThan(amount.left)
+      if (index > 0) expect(labelBox.y).toBeGreaterThan(rects[index - 1].bottom)
+      const detailBoxes = await Promise.all(
+        details.map(async ([caption, values]) => {
+          const detail = panel.getByText(caption, { exact: true }).nth(index)
+          await expect(detail).toBeVisible()
+          const value = detail
+            .locator('..')
+            .getByText(values[index], { exact: true })
+          await expect(value).toBeVisible()
+          const box = (await value.boundingBox())!
+          expect(box.x).toBeGreaterThan(amount.right)
+          expect(box.x + box.width).toBeLessThanOrEqual(
+            panelBox.x + panelBox.width + 1,
+          )
+          return (await detail.boundingBox())!
+        }),
+      )
+      const [firstDetail, lastDetail] = detailBoxes
+      expect(Math.min(firstDetail.x, lastDetail.x)).toBeGreaterThan(
+        amount.right,
+      )
+      expect(firstDetail.y).toBeLessThan(amount.bottom)
+      expect(lastDetail.y + lastDetail.height).toBeGreaterThan(labelBox.y)
+    }
+  }
+})
+
+test('a resource update keeps the mobile overview at the player’s scroll position', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const fixture = empireFixture()
+  const planet = fixture.bodies[0]
+  planet.amounts.metal = '9999000000'
+  await mountEmpire(page, {
+    bodies: [planet],
+    missions: { ...fixture.missions, fleets: [], incoming: [] },
+  })
+  const metal = page
+    .getByRole('group', { name: 'Metal wealth' })
+    .locator('strong')
+  await expect(metal).toHaveText('9,999')
+  const position = await page
+    .getByRole('group', { name: 'Deuterium wealth' })
+    .evaluate((row) => {
+      window.scrollBy(0, row.getBoundingClientRect().top)
+      return window.scrollY
+    })
+  expect(position).toBeGreaterThan(0)
+  planet.amounts.metal = '10000000000'
+  await deliverEmpire(page)
+  await expect(metal).toHaveText('10,000')
+  expect(await page.evaluate(() => window.scrollY)).toBe(position)
+})
+
+test('resource columns respond to changing balances and panel width at a fixed viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1000, height: 900 })
+  const fixture = empireFixture()
+  const planet = fixture.bodies[0]
+  const input = {
+    bodies: [planet],
+    missions: { ...fixture.missions, fleets: [] },
+  }
+  await mountEmpire(page, input)
+  const wealth = page.getByLabel('Empire resource totals')
+  const groups = [
+    wealth.getByRole('group'),
+    page.getByLabel('Planet resources').locator(':scope > div'),
+  ]
+  type Layout = 'columns' | 'rows'
+  async function expectLayout(
+    wealthLayout: Layout,
+    planetLayout = wealthLayout,
+  ) {
+    for (const [index, resources] of groups.entries()) {
+      await expect
+        .poll(() =>
+          resources.evaluateAll((cells) => {
+            if (cells.length !== 3) return 'missing'
+            const panel = cells[0].parentElement!.getBoundingClientRect()
+            const boxes = cells.map((cell) => cell.getBoundingClientRect())
+            for (const [i, cell] of cells.entries()) {
+              const box = boxes[i]
+              const range = document.createRange()
+              range.selectNodeContents(cell)
+              if (
+                box.left < panel.left ||
+                box.right > panel.right ||
+                [...range.getClientRects()].some(
+                  (rect) =>
+                    rect.left < box.left - 1 || rect.right > box.right + 1,
+                )
+              )
+                return 'overflow'
+            }
+            const [a, b, c] = boxes
+            if (
+              a.top === b.top &&
+              b.top === c.top &&
+              a.right <= b.left &&
+              b.right <= c.left
+            )
+              return 'columns'
+            if (
+              a.left === b.left &&
+              b.left === c.left &&
+              a.bottom <= b.top &&
+              b.bottom <= c.top
+            )
+              return 'rows'
+            return 'mixed'
+          }),
+        )
+        .toBe([wealthLayout, planetLayout][index])
+    }
+  }
+  const area = page.getByRole('main')
+  await area.evaluate((el) => {
+    el.style.maxWidth = '580px'
+  })
+  await expectLayout('columns')
+
+  const original = planet.amounts
+  planet.amounts = {
+    metal: '9000000000000000000',
+    crystal: '9000000000000000000',
+    deuterium: '9000000000000000000',
+  }
+  await deliverEmpire(page)
+  await expect(wealth.locator('strong').first()).toHaveText('9,000,000,000,000')
+  await expectLayout('rows')
+  await area.evaluate((el) => {
+    el.style.maxWidth = '1000px'
+  })
+  await expectLayout('columns')
+  await area.evaluate((el) => {
+    el.style.maxWidth = '580px'
+  })
+  await expectLayout('rows')
+
+  planet.amounts = original
+  const capacity = planet.capacity
+  planet.capacity = {
+    metal: '9000000000000000000',
+    crystal: '9000000000000000000',
+    deuterium: '9000000000000000000',
+  }
+  await deliverEmpire(page)
+  await expectLayout('columns', 'rows')
+  planet.capacity = capacity
+  await deliverEmpire(page)
+  await expectLayout('columns')
+})
+
 test('each empire card centers idle construction beside Resources and Facilities', async ({
   page,
 }) => {
@@ -385,7 +606,6 @@ for (const width of [390, 1440]) {
     page,
   }) => {
     const now = new Date('2026-10-29T12:00:00Z')
-    await page.clock.install({ time: now })
     await page.clock.pauseAt(now)
     await page.setViewportSize({ width, height: 1000 })
     const options = empireFixture(now.getTime())
@@ -414,10 +634,7 @@ for (const width of [390, 1440]) {
       await expect(group.locator('svg[data-resource]')).toHaveCount(1)
       await expect(group.locator('dl svg[data-resource]')).toHaveCount(0)
       await expect(group.locator('dt > svg')).toHaveCount(2)
-      await expect(group.getByRole('term')).toHaveText([
-        'On planets and moons',
-        'On active fleets',
-      ])
+      await expect(group.getByRole('term')).toHaveText(['Worlds', 'In flight'])
       await expect(
         group.locator('[title="On planets and moons"]'),
       ).toBeVisible()
@@ -459,15 +676,12 @@ for (const width of [390, 1440]) {
         ((onWorlds + inTransit) / 1000000n).toLocaleString('en-US'),
       )
       await expect(
-        group
-          .locator('dl > div')
-          .filter({ hasText: 'On planets and moons' })
-          .locator('dd'),
+        group.locator('dl > div').filter({ hasText: 'Worlds' }).locator('dd'),
       ).toHaveText((onWorlds / 1000000n).toLocaleString('en-US'))
       await expect(
         group
           .locator('dl > div')
-          .filter({ hasText: 'On active fleets' })
+          .filter({ hasText: 'In flight' })
           .locator('dd'),
       ).toHaveText((inTransit / 1000000n).toLocaleString('en-US'))
     }
@@ -573,12 +787,9 @@ for (const width of [390, 1440]) {
     options.missions.fleets = []
     await deliverEmpire(page)
     await page.clock.runFor(1000)
-    for (const row of await ledger
-      .locator('dl > div')
-      .filter({ hasText: 'On active fleets' })
-      .all()) {
-      await expect(row.locator('dd')).toHaveText('0')
-    }
+    await expect(
+      ledger.locator('dl > div').filter({ hasText: 'In flight' }).locator('dd'),
+    ).toHaveText(['0', '0', '0'])
     await diagnosticScreenshot(ledger, {
       path: `test-results/empire-wealth-empty-${width}x1000.png`,
     })
@@ -792,39 +1003,50 @@ for (const width of [1440, 390]) {
       title_choices: [],
     }
     await page.route('**/api/v1/session', (route) =>
-      route.fulfill({
-        json: {
-          account: binding.account,
-          csrf: 'fixture',
-          expires_at: Date.now() + 3600000,
-          memberships: [],
-        },
-      }),
+      route.request().method() !== 'GET'
+        ? route.fallback()
+        : route.fulfill({
+            json: {
+              account: binding.account,
+              csrf: 'fixture',
+              expires_at: Date.now() + 3600000,
+              memberships: [],
+            },
+          }),
     )
     let release!: () => void
     const held = new Promise<void>((resolve) => {
       release = resolve
     })
-    await page.route('**/api/v4/empire-profiles/**', async (route) => {
+    const profileUrl = (url: URL) =>
+      url.pathname === `/api/v4/empire-profiles/${binding.player}` &&
+      url.searchParams.get('library') === 'false'
+    await page.route(profileUrl, async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback()
       await held
       await route.fulfill({ json: data })
     })
-    await mountEmpire(page, empireFixture())
     const pencil = page.getByRole('button', {
       name: 'Rename empire',
       exact: true,
     })
-    await pencil.click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('status')).toHaveText(
-      'Loading empire identity…',
-    )
-    const delivered = page.waitForEvent('requestfinished', {
-      predicate: (request) =>
-        request.url().includes('/api/v4/empire-profiles/'),
-    })
-    release()
-    await delivered
+    try {
+      await mountEmpire(page, empireFixture())
+      await pencil.click()
+      await expect(dialog.getByRole('status')).toHaveText(
+        'Loading empire identity…',
+      )
+      await withFixtureResponse(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          profileUrl(new URL(response.url())),
+        async () => release(),
+      )
+    } finally {
+      release()
+    }
     const input = dialog.getByRole('textbox', { name: 'Empire name' })
     await expect(input).toBeFocused()
     await expect(input).toHaveValue('Roman Empire')

@@ -178,14 +178,14 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         <p className={styles.timestamp}>
           {ranking.baselineAt != null ? (
             <>
-              Rank change since yesterday’s first snapshot (UTC day):{' '}
+              Rank change since{' '}
               <time dateTime={new Date(ranking.baselineAt).toISOString()}>
                 {baselineTime(ranking.baselineAt)}
               </time>
               . Positive means up the rankings.
             </>
           ) : (
-            'Rank changes unavailable: no snapshot from yesterday (UTC day). Daily history begins when someone opens High Scores.'
+            'Rank changes will appear when an earlier daily snapshot is available.'
           )}
         </p>
       )}
@@ -378,17 +378,15 @@ function HighScores({ model, player }: { model: Coordinator; player: string }) {
         <p>
           Alliance points sum the exact asset values of current members before
           rounding down. Average points use that exact total divided by member
-          count, then round down. Membership changes affect current totals;
-          yesterday’s ranks use yesterday’s memberships.
+          count, then round down. Each daily snapshot uses the membership at the
+          time it was taken.
         </p>
         <p>
-          Equal whole points share a rank. For example: 1, 1, 3. Search results
-          keep their universe rank and movement. Change compares shared ranks,
-          including ties, with yesterday’s first observed snapshot (UTC day).
-          New means the player or alliance was absent from that snapshot; 0
-          means unchanged. No observation yesterday means no comparison today.
-          Daily snapshots record committed updates and may include activity
-          still waiting to process.
+          Equal whole points share a rank, such as 1, 1, 3. Search results keep
+          their universe rank. Change compares the current rank with the latest
+          available snapshot from a prior UTC day. New means the player or
+          alliance joined the standings since that snapshot. Zero means the rank
+          is unchanged.
         </p>
       </details>
       {ranking.selected && (
@@ -485,10 +483,7 @@ function RankingDetails({
         Rank change: <RankMovement row={row} baselineAt={baselineAt} />
       </p>
       {baselineAt != null && (
-        <p>
-          Compared with yesterday’s first snapshot (UTC day),{' '}
-          {baselineTime(baselineAt)}.
-        </p>
+        <p>Compared with the daily snapshot from {baselineTime(baselineAt)}.</p>
       )}
       <p>From the ranking snapshot currently displayed.</p>
       <p>{scoring}</p>

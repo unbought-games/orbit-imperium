@@ -7,6 +7,7 @@ import { ResourceNumber } from '../ui/number-value'
 import { ResourceMark } from '../ui/resource-mark'
 import { label } from '../ui/format'
 import { empireTotals } from './empire-model'
+import { useResourceColumns } from './use-resource-columns'
 import styles from './empire-overview.module.css'
 
 export function EmpireWealth({
@@ -16,6 +17,7 @@ export function EmpireWealth({
   view: BoundView
   pendingCargo?: components['schemas']['Resources'][]
 }) {
+  const columns = useResourceColumns<HTMLDivElement>()
   const totals = empireTotals(view, pendingCargo)
   return (
     <div className={styles.empireLedger} aria-label="Empire resource totals">
@@ -25,58 +27,64 @@ export function EmpireWealth({
           Empire wealth<small>Worlds & owned fleet cargo</small>
         </span>
       </div>
-      {resourceNames.map((name) => (
-        <div
-          className={styles.total}
-          key={name}
-          role="group"
-          aria-label={`${label(name)} wealth`}
-        >
-          <ResourceMark resource={name} width={22} height={22} />
-          <span className={styles.totalContent}>{name}</span>
-          <strong>
-            <ResourceNumber value={totals.total[name]} />
-          </strong>
-          <dl
-            className={styles.wealthBreakdown}
-            style={
-              {
-                '--wealth-guide-color': `var(--resource-${name})`,
-              } as CSSProperties
-            }
+      <div ref={columns} className={styles.wealthResources}>
+        {resourceNames.map((name) => (
+          <div
+            className={styles.total}
+            key={name}
+            role="group"
+            aria-label={`${label(name)} wealth`}
           >
-            <div title="On planets and moons">
-              <dt>
-                <Globe2 size={14} aria-hidden="true" />
-                <span className={styles.srOnly}>On planets and moons</span>
-              </dt>
-              <dd>
-                <ResourceNumber value={totals.onWorlds[name]} />
-              </dd>
+            <div>
+              <span className={styles.resourceName}>{label(name)}</span>
+              <div className={styles.wealthAmount}>
+                <ResourceMark resource={name} width={16} height={16} />
+                <strong>
+                  <ResourceNumber value={totals.total[name]} />
+                </strong>
+              </div>
             </div>
-            <div title="On active fleets">
-              <dt>
-                <Rocket size={14} aria-hidden="true" />
-                <span className={styles.srOnly}>On active fleets</span>
-              </dt>
-              <dd>
-                <ResourceNumber value={totals.inTransit[name]} />
-              </dd>
-            </div>
-            {pendingCargo.length > 0 && (
-              <div title="Launching">
+            <dl
+              className={styles.wealthBreakdown}
+              style={
+                {
+                  '--wealth-guide-color': `var(--resource-${name})`,
+                } as CSSProperties
+              }
+            >
+              <div title="On planets and moons">
                 <dt>
-                  <Hourglass size={14} aria-hidden="true" />
-                  <span className={styles.srOnly}>Launching</span>
+                  <Globe2 size={14} aria-hidden="true" />
+                  Worlds
                 </dt>
                 <dd>
-                  <ResourceNumber value={totals.launching[name]} />
+                  <ResourceNumber value={totals.onWorlds[name]} />
                 </dd>
               </div>
-            )}
-          </dl>
-        </div>
-      ))}
+              <div title="On active fleets">
+                <dt>
+                  <Rocket size={14} aria-hidden="true" />
+                  In flight
+                </dt>
+                <dd>
+                  <ResourceNumber value={totals.inTransit[name]} />
+                </dd>
+              </div>
+              {pendingCargo.length > 0 && (
+                <div title="Launching">
+                  <dt>
+                    <Hourglass size={14} aria-hidden="true" />
+                    Launching
+                  </dt>
+                  <dd>
+                    <ResourceNumber value={totals.launching[name]} />
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

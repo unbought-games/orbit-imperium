@@ -3,6 +3,7 @@ use orbit_application::*;
 use orbit_engine::*;
 use sqlx::{Postgres, Row, Transaction};
 use uuid::Uuid;
+pub(crate) const LEASE_MS: i64 = 15_000;
 pub(crate) type Tx<'a> = Transaction<'a, Postgres>;
 pub(crate) fn decode<T: serde::de::DeserializeOwned>(
     v: serde_json::Value,
@@ -52,21 +53,24 @@ pub(crate) async fn gate(
         .ok_or(StoreError::NotFound)
 }
 pub(crate) async fn now(tx: &mut Tx<'_>) -> Result<i64, StoreError> {
+    now_on(tx).await
+}
+async fn now_on(connection: &mut sqlx::PgConnection) -> Result<i64, StoreError> {
     #[cfg(feature = "test-support")]
     {
         let exists: bool = sqlx::query_scalar("SELECT to_regclass('orbit_test_clock') IS NOT NULL")
-            .fetch_one(&mut **tx)
+            .fetch_one(&mut *connection)
             .await
             .map_err(db_error)?;
         if exists {
             return sqlx::query_scalar("SELECT at_ms FROM orbit_test_clock")
-                .fetch_one(&mut **tx)
+                .fetch_one(&mut *connection)
                 .await
                 .map_err(db_error);
         }
     }
     sqlx::query_scalar("SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint")
-        .fetch_one(&mut **tx)
+        .fetch_one(&mut *connection)
         .await
         .map_err(db_error)
 }
@@ -95,7 +99,7 @@ pub(crate) async fn head(
     u: UniverseId,
     at: i64,
 ) -> Result<Option<OrderedInput>, StoreError> {
-    let v:Option<serde_json::Value>=sqlx::query_scalar("SELECT input FROM (SELECT input,at_ms,1 AS phase,sequence FROM commands WHERE universe=$1 AND NOT done UNION ALL SELECT input,at_ms,0 AS phase,sequence FROM scheduled_events WHERE universe=$1 AND NOT done AND NOT cancelled) inputs WHERE at_ms<=$2 ORDER BY at_ms,phase,sequence LIMIT 1").bind(u.0).bind(at).fetch_optional(&mut **tx).await.map_err(db_error)?;
+    let v:Option<serde_json::Value>=sqlx::query_scalar("SELECT input FROM (SELECT input,at_ms,1 AS phase,sequence FROM commands WHERE universe=$1 AND NOT done AND NOT inline_presence UNION ALL SELECT input,at_ms,0 AS phase,sequence FROM scheduled_events WHERE universe=$1 AND NOT done AND NOT cancelled) inputs WHERE at_ms<=$2 ORDER BY at_ms,phase,sequence LIMIT 1").bind(u.0).bind(at).fetch_optional(&mut **tx).await.map_err(db_error)?;
     v.map(ordered_input).transpose()
 }
 pub(crate) async fn ensure_fresh(tx: &mut Tx<'_>, u: UniverseId) -> Result<i64, StoreError> {
@@ -350,6 +354,7 @@ impl PgStore {
             envelope.command_id,
             id,
             orbit_application::diagnostics::action(&input.payload),
+            orbit_application::diagnostics::AdmissionLog::unpaired(),
         );
         Ok(receipt)
     }
@@ -388,6 +393,50 @@ impl PgStore {
         };
         tx.commit().await.map_err(db_error)?;
         decode(value)
+    }
+    pub async fn pending_barrier(&self, universe: UniverseId) -> Result<bool, StoreError> {
+        sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM runtime_barriers WHERE universe=$1 AND NOT done)",
+        )
+        .bind(universe.0)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(db_error)
+    }
+
+    /// Borrow a worker slot only while idle. The control reservation remains
+    /// available for lease renewals and the process guard. Subscribe before
+    /// reading durable heads so an admission during handoff cannot be missed.
+    pub async fn wait_for_work(
+        &self,
+        universes: &[UniverseId],
+    ) -> Result<&'static str, StoreError> {
+        use sqlx::Acquire;
+        let mut listener = sqlx::postgres::PgListener::connect_with(self.worker_pool()?)
+            .await
+            .map_err(db_error)?;
+        listener
+            .listen("orbit_work_ready")
+            .await
+            .map_err(db_error)?;
+        let ids: Vec<_> = universes.iter().map(|u| u.0).collect();
+        let connection = listener.acquire().await.map_err(db_error)?;
+        let at = now_on(connection).await?;
+        let next: Option<i64> = sqlx::query_scalar(
+            "SELECT least((SELECT min(at_ms) FROM scheduled_events WHERE universe=ANY($1) AND NOT done AND NOT cancelled),
+                          (SELECT min(at_ms) FROM commands WHERE universe=ANY($1) AND NOT done),
+                          (SELECT min(at_ms) FROM runtime_barriers WHERE universe=ANY($1) AND NOT done))",
+        ).bind(ids).fetch_one(connection).await.map_err(db_error)?;
+        // A due input could be leased elsewhere. Reprobe at a bounded cadence
+        // even when no peer is connected to publish its completion.
+        let delay = next.map_or(
+            1000,
+            |due| if due <= at { 100 } else { (due - at).min(1000) },
+        );
+        tokio::select! {
+            notification = listener.try_recv() => { notification.map_err(db_error)?; Ok("notification") }
+            _ = tokio::time::sleep(std::time::Duration::from_millis(delay as u64)) => Ok("timer"),
+        }
     }
     pub(crate) async fn claim_head(
         &self,
@@ -461,7 +510,7 @@ impl PgStore {
             .checked_add(1)
             .ok_or(StoreError::CorruptData)?;
         let token = Uuid::new_v4();
-        let lease_until = clock.checked_add(15000).ok_or(StoreError::CorruptData)?;
+        let lease_until = clock.checked_add(LEASE_MS).ok_or(StoreError::CorruptData)?;
         sqlx::query("UPDATE universe_runtime SET frontier=$2,fence=$3,claim_input=$4,claim_owner=$5,claim_token=$6,lease_until=$7 WHERE universe=$1").bind(u.0).bind(at).bind(fence).bind(input.id.0).bind(worker.0).bind(token).bind(lease_until).execute(&mut *tx).await.map_err(db_error)?;
         let claim = Claim {
             input,
@@ -483,7 +532,7 @@ impl PgStore {
         let mut next = claim.clone();
         next.lease_until = now(&mut tx)
             .await?
-            .checked_add(15000)
+            .checked_add(LEASE_MS)
             .ok_or(StoreError::CorruptData)?;
         sqlx::query("UPDATE universe_runtime SET lease_until=$2 WHERE universe=$1")
             .bind(claim.input.universe.0)

@@ -126,3 +126,24 @@ it('keeps capacity unknown until the estimate and cargo edits are valid', () => 
       .carried,
   ).toBeNull()
 })
+
+it.each([
+  [190_000n, 153_138n, 37_988n],
+  [188_613n, 152_214n, 39_375n],
+  [227_987n, 178_463n, 1n],
+  [227_988n, 178_464n, null],
+] as const)(
+  'uses the same observed raid stock and five-pass threshold at %s available capacity',
+  (capacity, carried, shortfall) => {
+    expect(
+      observedLootPlan(
+        {
+          metal: '251040000000',
+          crystal: '97290000000',
+          deuterium: '8598000000',
+        },
+        capacity,
+      ),
+    ).toMatchObject({ total: 178_464n, required: 227_988n, carried, shortfall })
+  },
+)

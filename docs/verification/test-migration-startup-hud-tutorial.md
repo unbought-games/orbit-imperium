@@ -91,3 +91,8 @@ Browser fixtures released their preview servers and temporary bundles.
 - **07 and 08.** The alliance noticeboard's expired-cursor live region remains in the original running screen. Reports retains full reader and sharing behavior. Stream 06 retains report deletion across the Reports route and the open HUD, plus the native HUD list, retry and settled focus. [Social handoff](test-migration-social-components.md) and [reports handoff](test-migration-reports.md).
 - **09.** Live identity-provider signup, restart and recovery remain explicit-only. The scoped fixture document reset/error distinction is retained. No suite was added to routine CI.
 - **10.** Reconcile the four CSVs with the global inventory. The 59 remaining required feature cases and ten tagged journeys have individually named contracts. PR, merge-group and subsequent main run outcomes are distinct GitHub records.
+
+
+## HUD espionage dispatch fixture repair
+
+[Merge queue run 44555516134](https://github.com/unbought-games/orbit-imperium/actions/runs/44555516134) failed when Dispatch requested a fresh Galaxy observation after the HUD attack action. The intelligence fixture supplied the historical report but omitted that advisory read. This case takes its one repair. It explicitly refuses Galaxy for this scenario and waits for the target system’s response before leaving Dispatch. The real attack button, route, historical target, selected mission, dialog dismissal and full-report checks remain. This is the only intelligence-fixture caller that clicks the HUD attack action.

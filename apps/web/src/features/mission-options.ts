@@ -1,4 +1,5 @@
 import {
+  Eclipse,
   Eye,
   Flag,
   Globe2,
@@ -22,6 +23,11 @@ export const missionOptions = {
   Attack: {
     icon: Swords,
     description: 'Engage a target and raid its resources.',
+  },
+  DestroyMoon: {
+    icon: Eclipse,
+    description:
+      'Send at least one Dreadnought to destroy a hostile moon. Escorts may join your fleet.',
   },
   Harvest: {
     icon: Recycle,

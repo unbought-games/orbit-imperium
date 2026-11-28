@@ -118,6 +118,9 @@
 
 .trigger.truncate {
   display: block;
+  /* Give overhanging glyphs room at the edges of the ellipsis clip. */
+  padding-inline: 1px;
+  border-radius: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

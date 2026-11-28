@@ -103,7 +103,10 @@ async fn bombers_activate_build_and_finish_after_disable_and_restart_in_both_run
             ("100000000", "50000000", "750000000")
         );
         assert_eq!(stats.rapid_fire_against.len(), 6);
-        assert!(stats.rapid_fire_from.is_empty());
+        assert_eq!(stats.rapid_fire_from.len(), 1);
+        assert!(stats.rapid_fire_from.iter().any(|rf| rf.unit
+            == ManufacturedItem::Ship(ShipType::Dreadnought)
+            && rf.factor == "25"));
         let propulsion = entry
             .ship_statistics
             .as_ref()

@@ -10,6 +10,7 @@ import type { ProgressionProps } from './shared'
 import {
   manufacturingPreview,
   matchesManufacturingPreview,
+  maximumManufacturingQuantity,
 } from './manufacturing-preview'
 import {
   manufacturingQueue,
@@ -192,6 +193,53 @@ it.each([
   ).toBeGreaterThan(0)
 })
 
+it('fills only whole units payable on the quoted body, including above the JS integer boundary', () => {
+  const source = unitOptions()
+  if (source.terms?.type !== 'Manufacture') throw Error('fixture')
+  const current = structuredClone(view)
+  const planet = current.bodies[0]
+  const max = () => maximumManufacturingQuantity(source, planet, current)
+  source.terms.unit_cost = { metal: '4', crystal: '1', deuterium: '0' }
+  source.terms.unit_duration_ms = 1
+  planet.amounts = {
+    metal: '9007199254740995',
+    crystal: '9007199254740995',
+    deuterium: '0',
+  }
+  expect(max()).toBe(2251799813685248n)
+  planet.amounts.crystal = '17'
+  expect(max()).toBe(17n)
+  planet.amounts.metal = '3'
+  expect(max()).toBe(0n)
+  planet.amounts.metal = '4'
+  expect(max()).toBe(1n)
+  expect(
+    maximumManufacturingQuantity(source, { ...planet, id: 'other' }, current),
+  ).toBe(0n)
+  for (const code of [
+    'PrerequisiteMissing',
+    'YardLocked',
+    'QueueCapacity',
+  ] as const) {
+    source.blockers = [{ ...proposal.blockers[0], code }]
+    expect(max()).toBe(0n)
+  }
+})
+
+it('caps Max at the remaining inventory and supported completion time', () => {
+  const source = unitOptions()
+  if (source.terms?.type !== 'Manufacture') throw Error('fixture')
+  const current = structuredClone(view)
+  const planet = current.bodies[0]
+  planet.amounts = { metal: '900000000', crystal: '900000000', deuterium: '0' }
+  current.sampled_at = Number.MAX_SAFE_INTEGER - 90001
+  expect(maximumManufacturingQuantity(source, planet, current)).toBe(3n)
+  planet.inventories = [
+    { item: source.terms.item, count: '9223372036854775806' },
+  ]
+  expect(maximumManufacturingQuantity(source, planet, current)).toBe(1n)
+})
+
 it('blocks numeric overflow and shield dome capacity locally', () => {
   const source = unitOptions()
   expect(
@@ -221,6 +269,14 @@ it.each(['SmallShieldDome', 'LargeShieldDome'] as const)(
     current.bodies[0].inventories = [
       { item: { kind: 'Defense', id: other }, count: '1' },
     ]
+    current.bodies[0].amounts = {
+      metal: '900000000',
+      crystal: '900000000',
+      deuterium: '0',
+    }
+    const max = () =>
+      maximumManufacturingQuantity(source, current.bodies[0], current)
+    expect(max()).toBe(1n)
     const capacity = (quantity = '1') =>
       manufacturingPreview(source, current, quantity)!.blockers.map(
         (b) => b.code,
@@ -232,8 +288,10 @@ it.each(['SmallShieldDome', 'LargeShieldDome'] as const)(
       count: '1',
     })
     expect(capacity()).toContain('CapacityReserved')
+    expect(max()).toBe(0n)
     current.bodies[0].inventories[1].count = '0'
     expect(capacity()).not.toContain('CapacityReserved')
+    expect(max()).toBe(1n)
     current.progression.manufacturing = [
       {
         id: 'dome-batch',
@@ -253,8 +311,10 @@ it.each(['SmallShieldDome', 'LargeShieldDome'] as const)(
       },
     ]
     expect(capacity()).toContain('CapacityReserved')
+    expect(max()).toBe(0n)
     current.progression.manufacturing[0].body = 'other-planet'
     expect(capacity()).not.toContain('CapacityReserved')
+    expect(max()).toBe(1n)
     current.progression.manufacturing[0].body = body.id
     current.progression.manufacturing[0].item = { kind: 'Defense', id: other }
     expect(capacity()).not.toContain('CapacityReserved')

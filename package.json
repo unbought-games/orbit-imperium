@@ -15,6 +15,7 @@
     "test:e2e": "make test-core",
     "test:homepage-built": "node scripts/homepage-e2e.mjs",
     "test:ui": "node scripts/ui-e2e.mjs",
+    "test:journeys": "node scripts/ui-e2e.mjs",
     "lint": "eslint apps/web/src --max-warnings 0",
     "format:check": "prettier --check apps/web/src",
     "routes": "cd apps/web && tsr generate && cd ../.. && node scripts/analytics-routes.mjs",
@@ -41,7 +42,12 @@
     "art:ship-appearance": "node tools/ship-appearance/compile.mjs",
     "test:ship-appearance": "node --test tools/ship-appearance/*.test.mjs",
     "ship-renderer": "node tools/ship-appearance/server.mjs",
-    "ship-renderer:build": "node tools/ship-appearance/build.mjs"
+    "ship-renderer:build": "node tools/ship-appearance/build.mjs",
+    "art:orbit-base:proof": "node tools/ship-appearance/proof-orbit-base.mjs",
+    "art:orbit-base": "node tools/ship-appearance/compile-orbit-base.mjs",
+    "art:orbit-base-heavy-fighter": "npm run art:orbit-base -- heavy-fighter",
+    "art:orbit-base-battlecruiser": "npm run art:orbit-base -- battlecruiser",
+    "art:orbit-base-light-fighter": "node tools/ship-appearance/compile-orbit-base.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
@@ -81,5 +87,5 @@
     "vite": "7.3.7",
     "vitest": "5.0.4"
   },
-  "version": "0.7.0"
+  "version": "0.8.0"
 }

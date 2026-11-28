@@ -1,7 +1,7 @@
 use super::*;
 const DESTROYER: ManufacturedItem = ManufacturedItem::Ship(ShipType::Destroyer);
 
-fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
+fn setup(yard: u32) -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
     let (mut s, _, p, b, t) = raid_fixture();
     let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 10).unwrap();
     for body in s.bodies.values_mut() {
@@ -16,7 +16,7 @@ fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
             research.levels.entry(key).or_insert(0);
         }
     }
-    fixture_building(&mut s, &r, b, Building::Shipyard, 9);
+    fixture_building(&mut s, &r, b, Building::Shipyard, yard);
     fixture_research(&mut s, &r, p, ResearchId::HyperspaceTechnology, 5);
     fixture_research(&mut s, &r, p, ResearchId::HyperspaceDrive, 6);
     (s, r, p, b, t)
@@ -38,7 +38,7 @@ fn every_destroyer_prerequisite_blocks_both_quote_and_manufacture() {
             level: 6,
         },
     ] {
-        let (mut s, r, p, b, _) = setup();
+        let (mut s, r, p, b, _) = setup(9);
         match requirement {
             Requirement::BodyBuilding { building, level } => {
                 s.bodies
@@ -107,13 +107,61 @@ fn every_destroyer_prerequisite_blocks_both_quote_and_manufacture() {
 
 #[test]
 fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disabled() {
-    let (mut s, r, p, b, t) = setup();
+    paid_warship_roundtrip(
+        ShipType::Destroyer,
+        9,
+        [60000, 50000, 15000],
+        1_584_000,
+        14000,
+        1000,
+        2000,
+    );
+}
+
+#[test]
+fn manufactured_dreadnought_flies_fights_and_returns_after_new_production_is_disabled() {
+    paid_warship_roundtrip(
+        ShipType::Dreadnought,
+        12,
+        [5_000_000, 4_000_000, 1_000_000],
+        99_692_000,
+        310,
+        1,
+        1_000_000,
+    );
+}
+
+fn paid_warship_roundtrip(
+    ship: ShipType,
+    yard: u32,
+    cost: [i64; 3],
+    duration: i64,
+    speed: i64,
+    fuel: i64,
+    capacity: i64,
+) {
+    let (mut s, r, p, b, t) = setup(yard);
+    let item = ManufacturedItem::Ship(ship);
+    if ship == ShipType::Dreadnought {
+        s.bodies.get_mut(&b).unwrap().checkpoint.amounts = Resources::all(5_000_000 * SCALE);
+        // An established target is outside beginner protection at launch.
+        set_units(
+            &mut s,
+            &r,
+            t,
+            ManufacturedItem::Ship(ShipType::EspionageProbe),
+            10_000,
+        );
+        fixture_research(&mut s, &r, p, ResearchId::HyperspaceTechnology, 6);
+        fixture_research(&mut s, &r, p, ResearchId::HyperspaceDrive, 7);
+        fixture_research(&mut s, &r, p, ResearchId::GravitonTechnology, 1);
+    }
     let q = inspect_progression(
         &s,
         Actor::Player(p),
         &QuoteRequest::Manufacture {
             body: b,
-            item: DESTROYER,
+            item,
             quantity: 1,
         },
         0,
@@ -123,9 +171,9 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
     assert!(q.blockers.is_empty());
     assert_eq!(
         q.terms.as_ref().unwrap().paid(),
-        Resources::from_values([60000 * SCALE, 50000 * SCALE, 15000 * SCALE])
+        Resources::from_values([cost[0] * SCALE, cost[1] * SCALE, cost[2] * SCALE])
     );
-    assert_eq!(q.terms.as_ref().unwrap().duration(), 1_584_000);
+    assert_eq!(q.terms.as_ref().unwrap().duration(), duration);
     let operation = OperationId(derived_id(
         InputId(Uuid::from_u128(9910)),
         "manufacturing:0",
@@ -143,7 +191,7 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
         9910,
         Input::Command(Command::StartManufacture {
             body: b,
-            item: DESTROYER,
+            item,
             quantity: 1,
             expected_terms_hash: q.terms_hash.unwrap(),
         }),
@@ -151,21 +199,21 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
     let started = apply(&mut s, result);
     assert_eq!(
         s.bodies[&b].checkpoint.amounts.metal,
-        before.metal - 60000 * SCALE
+        before.metal - cost[0] * SCALE
     );
     assert_eq!(
         s.bodies[&b].checkpoint.amounts.crystal,
-        before.crystal - 50000 * SCALE
+        before.crystal - cost[1] * SCALE
     );
     assert_eq!(
         s.bodies[&b].checkpoint.amounts.deuterium,
-        before.deuterium - 15000 * SCALE
+        before.deuterium - cost[2] * SCALE
     );
     let mut artifact = r.artifact.clone();
     artifact
         .catalog
         .iter_mut()
-        .find(|e| e.key == CatalogKey::Ship(ShipType::Destroyer))
+        .find(|e| e.key == CatalogKey::Ship(ship))
         .unwrap()
         .enabled = false;
     let current = Ruleset::from_artifact(artifact, r.speed).unwrap();
@@ -185,18 +233,18 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
     assert_eq!(
         s.inventories
             .iter()
-            .find(|v| v.body == b && v.item == DESTROYER)
+            .find(|v| v.body == b && v.item == item)
             .unwrap()
             .count,
         1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let blocked = inspect_progression(
         &s,
         Actor::Player(p),
         &QuoteRequest::Manufacture {
             body: b,
-            item: DESTROYER,
+            item,
             quantity: 1,
         },
         due.at,
@@ -212,14 +260,14 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
     let mut request = intent(&s, p, b, t);
     request.mission = Mission::Attack;
     request.cargo = Resources::default();
-    request.ships[0].ship_type = ShipType::Destroyer;
+    request.ships[0].ship_type = ship;
     let quote = quote_fleet(&s, p, &request, due.at, &current).unwrap();
-    assert_eq!(quote.speeds, vec![(ShipType::Destroyer, "14000".into())]);
-    assert_eq!(quote.capacity, 2000 * SCALE);
+    assert_eq!(quote.speeds, vec![(ship, speed.to_string())]);
+    assert_eq!(quote.capacity, capacity * SCALE);
     assert_eq!(quote.maximum_payload, quote.capacity - quote.fuel);
     let expected = exact_flight_arithmetic(
         quote.distance,
-        &[(14000, 1000, 1)],
+        &[(speed, fuel, 1)],
         100,
         i64::from(current.speed),
     )
@@ -271,7 +319,7 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
     assert_eq!(
         s.inventories
             .iter()
-            .find(|v| v.body == b && v.item == DESTROYER)
+            .find(|v| v.body == b && v.item == item)
             .unwrap()
             .count,
         1
@@ -285,12 +333,12 @@ fn manufactured_destroyer_flies_fights_and_returns_after_new_production_is_disab
             .values()
             .all(|f| f.leg == MissionLeg::Returned)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
 fn destroyer_batch_credits_each_unit_once_and_keeps_paid_terms_after_price_change() {
-    let (mut s, r, p, b, _) = setup();
+    let (mut s, r, p, b, _) = setup(9);
     let q = inspect_progression(
         &s,
         Actor::Player(p),
@@ -398,7 +446,7 @@ fn destroyer_batch_credits_each_unit_once_and_keeps_paid_terms_after_price_chang
             settle_production(&s, &s.bodies[&b], event.at, &current).unwrap(),
             expected_resources
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         let duplicate = run(
             &mut s,
             &current,
@@ -433,7 +481,7 @@ fn destroyer_batch_credits_each_unit_once_and_keeps_paid_terms_after_price_chang
 #[test]
 fn destroyer_batch_requires_every_resource_before_payment() {
     for resource in 0..3 {
-        let (mut s, r, p, b, _) = setup();
+        let (mut s, r, p, b, _) = setup(9);
         let mut amounts = [120000 * SCALE, 100000 * SCALE, 30000 * SCALE];
         amounts[resource] -= 1;
         s.bodies.get_mut(&b).unwrap().checkpoint.amounts = Resources::from_values(amounts);

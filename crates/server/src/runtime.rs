@@ -27,6 +27,12 @@ impl Attempt {
             Self::Scoped(c) => &c.input,
         }
     }
+    fn mode(&self) -> &'static str {
+        match self {
+            Self::Serial(_) => "serial",
+            Self::Scoped(_) => "scoped",
+        }
+    }
     fn id(&self) -> InputId {
         match self {
             Self::Serial(c) => c.input.id,
@@ -62,6 +68,7 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
     mut drain: watch::Receiver<bool>,
     max_in_flight: usize,
     drain_timeout: Duration,
+    metrics: Arc<crate::metrics::RuntimeMetrics>,
 ) -> Result<(), StoreError> {
     store.ensure_empire_cleanup().await?;
     let mut universes = store.universes().await?;
@@ -80,46 +87,61 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
                 if tasks.len() >= max_in_flight || *drain.borrow() { break; }
                 let u = universes[cursor % universes.len()];
                 cursor = cursor.wrapping_add(1);
+                if active.values().any(|a| matches!(a, Attempt::Serial(c) if c.input.universe == u)) {
+                    continue;
+                }
                 match attempt_claim(&store, u, worker).await {
                     Ok(Some(claim)) => {
+                        let timing = crate::worker_metrics::ObservedClaim::new(claim.input(), claim.mode(), worker);
                         claimed_any = true;
-                        active.insert(claim.id(),claim.clone());
-                        let store=store.clone(); let executor=executor.clone();
-                        tasks.spawn(async move {
-                            let service=GameService::new(store.clone());
-                            let id=claim.id();
-                            let renew=claim.clone();
-                            let outcome=resolve_with_renewal(async {
-                                match claim {
-                                    Attempt::Serial(c)=>service.resolve_claim_with_executor(c,&executor).await,
-                                    Attempt::Scoped(c)=>service.resolve_scoped_claim(c,&executor).await,
-                                }
-                            }, move || { let store=store.clone(); let claim=renew.clone(); async move { claim.renew(&store).await; } }).await;
-                            Completed::Input(id,outcome)
-                        });
+                        active.insert(claim.id(), claim.clone());
+                        tasks.spawn(resolve_attempt(store.clone(), executor.clone(), metrics.clone(), claim, timing));
                     }
                     Ok(None) => {
-                        if !barriers.contains(&u) && tasks.len()<max_in_flight {
-                            barriers.insert(u);
-                            let store=store.clone();
-                            tasks.spawn(async move { Completed::Barrier(u,store.process_runtime_barrier(u).await) });
+                        if !active.values().any(|a| a.input().universe == u) && !barriers.contains(&u) {
+                            match store.pending_barrier(u).await {
+                                Ok(true) => {
+                                    barriers.insert(u);
+                                    let store = store.clone();
+                                    tasks.spawn(async move { Completed::Barrier(u, store.process_runtime_barrier(u).await) });
+                                }
+                                Ok(false) => {}
+                                Err(error) => claim_failure(error)?,
+                            }
                         }
                     }
                     Err(error)=>claim_failure(error)?,
                 }
             }
             if claimed_any && tasks.len() < max_in_flight { continue; }
+            let polling = std::time::Instant::now();
+            if tasks.is_empty() {
+                let reason = tokio::select! {
+                    result = store.wait_for_work(&universes) => match result {
+                        Ok(reason) => reason,
+                        Err(_) => { tokio::time::sleep(Duration::from_millis(100)).await; "timer" }
+                    },
+                    _ = wake.notified() => "notification",
+                    _ = drain.changed() => "drain",
+                };
+                metrics.worker.wait(worker, "poll_interval", 0, reason, polling.elapsed());
+                continue;
+            }
             tokio::select! {
                 changed=drain.changed()=>{ if changed.is_err() || *drain.borrow() {break;} },
                 done=tasks.join_next(), if !tasks.is_empty()=>{
                     let done=done.ok_or(StoreError::Unavailable)?.map_err(|_| StoreError::Unavailable)?;
-                    let progressed=complete(done,&mut active,&mut barriers,&store).await?;
-                    if !progressed {
-                        tokio::select! { _=tokio::time::sleep(Duration::from_millis(100))=>{}, _=wake.notified()=>{}, _=drain.changed()=>{} }
+                    let reason = match &done { Completed::Barrier(_, _) => "barrier_no_progress", Completed::Input(_, _) => "input_no_progress" };
+                    if !complete(done,&mut active,&mut barriers,&store).await? && tasks.is_empty() {
+                        let started = std::time::Instant::now();
+                        let wake_reason = tokio::select! { _=tokio::time::sleep(Duration::from_millis(100))=>"timer", _=wake.notified()=>"notification", _=drain.changed()=>"drain" };
+                        metrics.worker.wait(worker, reason, 0, wake_reason, started.elapsed());
                     }
                 },
                 _=wake.notified()=>{},
-                _=tokio::time::sleep(Duration::from_millis(25)), if tasks.len()<max_in_flight=>{},
+                _=tokio::time::sleep(Duration::from_millis(25)), if tasks.len()<max_in_flight=>{
+                    metrics.worker.wait(worker, "poll_interval", active.len(), "timer", polling.elapsed());
+                },
             }
         }
         Ok(())
@@ -165,6 +187,35 @@ pub async fn run<E: EngineExecutor + Clone + 'static>(
         }
     }
     result
+}
+async fn resolve_attempt<E: EngineExecutor>(
+    store: PgStore,
+    executor: E,
+    metrics: Arc<crate::metrics::RuntimeMetrics>,
+    claim: Attempt,
+    timing: crate::worker_metrics::ObservedClaim,
+) -> Completed {
+    let id = claim.id();
+    let service = GameService::new(store.clone());
+    let renew = claim.clone();
+    let resolution = async {
+        match claim {
+            Attempt::Serial(c) => service.resolve_claim_with_executor(c, &executor).await,
+            Attempt::Scoped(c) => service.resolve_scoped_claim(c, &executor).await,
+        }
+    };
+    let (outcome, sample) = orbit_storage_postgres::worker_observation::collect(
+        resolve_with_renewal(resolution, move || {
+            let store = store.clone();
+            let claim = renew.clone();
+            async move {
+                claim.renew(&store).await;
+            }
+        }),
+    )
+    .await;
+    timing.finish(&metrics.worker, &sample, &outcome);
+    Completed::Input(id, outcome)
 }
 // Retain the last discovered worlds on a temporary pool/network failure. Every
 // attempt, including a failed one, waits a refresh interval before trying again.
@@ -232,8 +283,9 @@ async fn complete(
             if let Some(claim) = &claim {
                 orbit_application::diagnostics::resolution(claim.input(), &outcome);
             }
+            let released = matches!(outcome, Ok(StepOutcome::Committed { .. }));
             let progressed = resolution_progress(outcome);
-            if let Some(claim) = claim {
+            if !released && let Some(claim) = claim {
                 let _ = claim.release(store).await;
             }
             progressed

@@ -97,7 +97,9 @@ pub(crate) fn technical_data(
             else {
                 return Ok(None);
             };
-            cost_scaling(&mut data, rule, research == ResearchId::Astrophysics);
+            if research != ResearchId::GravitonTechnology {
+                cost_scaling(&mut data, rule, research == ResearchId::Astrophysics);
+            }
             research_data(&mut data, research, rules);
         }
         CatalogKey::Missile(item) => {
@@ -255,6 +257,11 @@ fn research_data(data: &mut TechnicalData, research: ResearchId, rules: &Ruleset
                 }
             } else { data.fact("Colonization", "Colonization missions are unavailable in this universe."); }
         }
+        GravitonTechnology => {
+            data.fact("Power requirement", "Level 1 requires 300,000 gross energy on the initiating planet. The requirement triples each level. Mine demand and power on other planets do not affect eligibility.");
+            data.fact("Research time", "Research takes one second and uses no materials. Power is checked only at the start. Losing satellites or running short of fusion fuel afterward does not interrupt the project.");
+            data.fact("Effect", "Graviton Technology provides no per-level bonuses.");
+        }
         IntergalacticResearchNetwork => {
             data.fact("Linked laboratories", "Each completed level allows one additional owned planet’s Research Lab to contribute. The initiating lab always participates; the highest eligible remote labs are selected automatically. Every lab must independently meet the technology’s lab requirement.");
             data.fact("Research time", "Contributing levels are summed, with one +1 in the duration denominator. Only the initiating planet pays. Labs and duration are fixed at the start; researching the network itself uses its previous completed level.");
@@ -265,7 +272,6 @@ fn research_data(data: &mut TechnicalData, research: ResearchId, rules: &Ruleset
             data.fact("Counterespionage", "Higher espionage relative to the target reduces detection risk. Risk also depends on arriving probes, defending ships and a random multiplier; no fixed success percentage is guaranteed.");
         }
         EnergyTechnology | LaserTechnology | IonTechnology | PlasmaTechnology | HyperspaceTechnology => data.fact("Effect", "Prerequisite research. No additional per-level production, combat, cargo or construction bonus is implemented in this universe."),
-        _ => data.fact("Effects", "Additional technical effects are unavailable from this universe’s server."),
     }
 }
 
@@ -292,11 +298,12 @@ mod tests {
     fn hyperspace_drive_bonus_and_impulse_replacement_condition_follow_active_rules() {
         let r = standard_signup_rules(UniverseProfile::signup(1, 5).unwrap(), 5).unwrap();
         let drive = data(&r, CatalogKey::Research(ResearchId::HyperspaceDrive));
-        assert_eq!(drive.bonuses.len(), 4);
+        assert_eq!(drive.bonuses.len(), 5);
         for ship in [
             ShipType::Battleship,
             ShipType::Battlecruiser,
             ShipType::Destroyer,
+            ShipType::Dreadnought,
         ] {
             let bonus = drive
                 .bonuses

@@ -36,3 +36,30 @@ impl RuntimeStatusStore for PgStore {
         Ok(status)
     }
 }
+
+impl PgStore {
+    /// Shared by the worker and metrics scrapes. The indexed existence probe
+    /// reads only the daily key; neither standings nor asset lots are loaded.
+    pub async fn ranking_snapshot_status(&self) -> Result<Vec<(UniverseId, bool)>, StoreError> {
+        let mut tx = self.begin_unlocked(&self.pool).await?;
+        let day = now(&mut tx).await?.div_euclid(86_400_000);
+        let rows: Vec<(uuid::Uuid, bool)> = sqlx::query_as(
+            "SELECT u.id, EXISTS (
+                 SELECT 1 FROM ranking_daily_snapshots s
+                 WHERE (s.universe,s.epoch,s.day) = (u.id,u.epoch,$1)
+             )
+             FROM universes u JOIN rulesets r ON r.hash=u.profile_hash
+             WHERE jsonb_typeof(r.profile #> '{artifact,world}')='object'
+             ORDER BY u.id",
+        )
+        .bind(day)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(db_error)?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(rows
+            .into_iter()
+            .map(|(id, done)| (UniverseId(id), done))
+            .collect())
+    }
+}

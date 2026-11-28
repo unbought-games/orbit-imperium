@@ -7,12 +7,14 @@ not claims of achieved performance or permission to activate new alarms.
 
 ## Player promise and acceptance boundary
 
-For ship orders, building upgrades and fleet dispatches, distinguish four milestones:
+For ship orders, building upgrades and fleet dispatches, measure these milestones separately:
 
 1. The client starts submitting the player's action.
 2. PostgreSQL acknowledges the transaction containing its durable order.
 3. The client receives and validates the acceptance receipt.
-4. The client incorporates the authoritative game-rule outcome.
+4. The browser receives the terminal SSE event, or recovers the outcome by polling.
+5. The client applies the outcome and renders its confirmation. An outstanding
+   overview refresh can delay applying an already-received event.
 
 Milestone 2 fixes the order in the system. A Pending receipt is durable admission,
 not a promise that game-rule execution will succeed. A fleet's travel time or a
@@ -56,6 +58,7 @@ Telemetry failure must never prevent or delay command admission.
 | Durable admission | Entry to storage admission, before pool checkout | Successful commit acknowledgement | Separates database admission from authentication/response work |
 | Client acceptance | Submission begins, before local persistence | Validated receipt enters authoritative client state | Captures local storage, network, retries and API latency |
 | Client outcome | Same submission start | Terminal receipt and required authoritative revision incorporated | Explains accepted actions that still look unresolved |
+| Client event processing | Browser receives terminal SSE event, before queued processing | State incorporates outcome, then first visible confirmation | Isolates overview-refresh and rendering delays on the browser clock |
 
 API response timing ends before the socket finishes delivering the response. Keep
 proxy measurements and client timing as distinct boundaries. Server admission

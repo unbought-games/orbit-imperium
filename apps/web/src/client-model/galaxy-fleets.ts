@@ -106,7 +106,9 @@ export function probeAvailability(
       (item) => item.item.kind === 'Ship' && item.item.id === 'EspionageProbe',
     )?.count ?? '0'
   if (BigInt(count) < 1n)
-    return 'No espionage probes available on the selected planet.'
+    return body?.kind === 'Moon'
+      ? 'No espionage probes available on the selected moon.'
+      : 'No espionage probes available on the selected planet.'
   if (BigInt(count) < BigInt(requested))
     return `Not enough espionage probes: ${requested} required, ${count} available on the selected world.`
   if (

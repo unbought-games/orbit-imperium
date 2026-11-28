@@ -1,6 +1,7 @@
+import { body as parent } from '../test-support/empire'
 import { describe, expect, it } from 'vitest'
 import { readyFixture, id } from '../test-support/bootstrap'
-import { resolveShellRoute } from './shell-route'
+import { resolveShellRoute, usesVisuallyHiddenHeading } from './shell-route'
 import { withoutBodySearch } from './page-search'
 import { routeTarget } from './route-target'
 
@@ -172,4 +173,64 @@ it('retains invitation and message queries while stripping only legacy body cont
     route: { available: true, item: 'settings/identity' },
     canonicalizing: false,
   })
+})
+
+it('redirects only a destroyed moon of this membership to its still-owned parent, without making its old review available', () => {
+  const snapshot = readyFixture(4).snapshot.view
+  if (snapshot.protocol !== 4) throw Error('protocol 4 fixture required')
+  const moon = id(300)
+  const current = {
+    ...snapshot,
+    bodies: [parent],
+    destroyed_moons: [{ moon, parent: parent.id }],
+  }
+  const resolve = (
+    universe: string,
+    body: string,
+    view: typeof current = current,
+  ) => resolveShellRoute('dispatch', { universe, body }, {}, view, 'Andromeda')
+  expect(resolve('andromeda', moon)).toMatchObject({
+    parentAfterDestruction: parent.id,
+    route: { available: false },
+    body: undefined,
+  })
+  expect(resolve('foreign', moon).parentAfterDestruction).toBeUndefined()
+  expect(resolve('andromeda', id(302)).parentAfterDestruction).toBeUndefined()
+  expect(
+    resolve('andromeda', moon, { ...current, bodies: [] })
+      .parentAfterDestruction,
+  ).toBeUndefined()
+})
+
+it('retains an accessible route heading while the destination owns its visible title', () => {
+  for (const page of [
+    'overview',
+    'resources',
+    'facilities',
+    'research',
+    'shipyard',
+    'defense',
+    'fleets',
+    'galaxy',
+    'menu',
+    'rewards',
+    'settings',
+    'alliance',
+    'alliance-create',
+    'alliance-discover',
+  ] as const) {
+    for (const protocol of [2, 3, 4] as const) {
+      expect(usesVisuallyHiddenHeading(page, true, protocol), page).toBe(true)
+      expect(usesVisuallyHiddenHeading(page, false, protocol), page).toBe(false)
+    }
+  }
+  for (const page of ['reports', 'messages', 'dispatch'] as const) {
+    for (const protocol of [2, 3, 4] as const) {
+      expect(usesVisuallyHiddenHeading(page, true, protocol), page).toBe(
+        protocol === 4,
+      )
+      expect(usesVisuallyHiddenHeading(page, false, protocol), page).toBe(false)
+    }
+  }
+  expect(usesVisuallyHiddenHeading('high-scores', true, 4)).toBe(false)
 })

@@ -165,7 +165,15 @@ pub struct AttackGroupView {
     pub invitations: Option<Vec<PlayerId>>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DestroyedMoonRoute {
+    pub moon: BodyId,
+    pub parent: BodyId,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BoundView4 {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub destroyed_moons: Vec<DestroyedMoonRoute>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empire_deletion: Option<EmpireDeletionStatus>,
     #[serde(default)]
@@ -245,7 +253,15 @@ pub struct ReportDetail4 {
     pub payload: serde_json::Value,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReportArrivals4 {
+    /// Recipient creation sequence fixed by the first page's cursor.
+    pub through: String,
+    pub created: std::collections::BTreeMap<ReportId, String>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ReportsPage4 {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arrivals: Option<ReportArrivals4>,
     /// Unread Inbox count, capped at the badge limit, independent of this page.
     #[serde(default)]
     pub unread_count: u32,
@@ -507,7 +523,7 @@ impl<S: GameStore> GameService<S> {
                     .map_err(ServiceError::GameRejected)?,
             ),
             WorldQueryKind::FleetQuote { intent } => serde_json::to_value(
-                quote_fleet(&facts.state, p.player, &intent, facts.at, &facts.rules)
+                quote_fleet_with_odds(&facts.state, p.player, &intent, facts.at, &facts.rules)
                     .map_err(ServiceError::GameRejected)?,
             ),
         }
@@ -530,10 +546,17 @@ impl<S: GameStore> GameService<S> {
         p: Principal,
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView4>, ServiceError> {
-        Self::principal(p, c.binding)?;
-        self.store.bot_observe(c.binding).await?;
+        let snapshot = self.read_viewer_snapshot(p, c.binding).await?;
+        self.project_world_snapshot(p, c, snapshot).await
+    }
+
+    pub(crate) async fn project_world_snapshot(
+        &self,
+        p: Principal,
+        c: QueryContext,
+        snapshot: ReadSnapshot<ViewerSnapshot>,
+    ) -> Result<ReadSnapshot<BoundView4>, ServiceError> {
         let binding = c.binding;
-        let snapshot = self.store.bound_view(binding).await?;
         let mut projected =
             snapshot.try_map(|snapshot| projection::world_projection(&snapshot, p.player, c))?;
         // Current labels are presentation metadata; never rewrite immutable fleet terms.

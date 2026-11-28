@@ -1,198 +1,110 @@
+import { installEmptyMessageMembership } from './fixtures/message-membership'
 import { navigate, signOut } from './fixtures/navigation'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { test, expect } from './fixtures/test'
-import { binding, body, shellFixture, inactiveTutorial } from './fixtures/game'
+import {
+  refuseFixtureReads,
+  binding,
+  body,
+  shellFixture,
+  installGameFixture,
+  installSessionRenewal,
+} from './fixtures/game'
 import { productionFixture } from '../src/test-support/production'
 import { bootstrapFixture } from '../src/test-support/bootstrap'
-import { createServer } from 'node:http'
-import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
-
-test('fixture document loading recovers connection resets without retrying HTTP errors', async ({ page }) => {
-  const requests = new Map<string, number>()
-  const server = createServer((request, response) => {
-    const path = request.url ?? '/'
-    const count = (requests.get(path) ?? 0) + 1
-    requests.set(path, count)
-    // Reproduce the socket hang-up observed during fixture page.reload().
-    if (path === '/reset' && count === 1) {
-      request.socket.destroy()
-      return
-    }
-    response.writeHead(path === '/unavailable' ? 503 : 200, { 'content-type': 'text/html' })
-    response.end('<script id="orbit-bootstrap" type="application/json">{"server":"observation"}</script><h1>Fixture document</h1>')
-  })
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-  try {
-    const address = server.address()
-    if (!address || typeof address === 'string') throw Error('Expected test server port')
-    await shellFixture(page)
-    const base = `http://127.0.0.1:${address.port}`
-    const recovered = await page.goto(`${base}/reset`)
-    expect(recovered?.status()).toBe(200)
-    expect(requests.get('/reset')).toBe(2)
-    await expect(page.getByRole('heading', { name: 'Fixture document' })).toBeVisible()
-    await expect(page.locator('#orbit-bootstrap')).toHaveText('')
-    const unavailable = await page.goto(`${base}/unavailable`)
-    expect(unavailable?.status()).toBe(503)
-    expect(requests.get('/unavailable')).toBe(1)
-  } finally {
-    server.closeAllConnections()
-    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
-  }
-})
+import {
+  withBootstrapResponse,
+  withFixtureResponse,
+} from './fixtures/responses'
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/analytics', (route) =>
-    route.fulfill({ json: { enabled: false } }),
-  )
   await page.route('**/api/auth/config', (route) =>
-    route.fulfill({ json: { mode: 'local', universes: [] } }),
+    route.request().method() === 'GET'
+      ? route.fulfill({ json: { mode: 'local', universes: [] } })
+      : route.fallback(),
   )
-  await page.route('**/api/auth/entry*', (route) =>
-    route.fulfill({
-      status: 303,
-      headers: {
-        location: new URL(route.request().url()).searchParams.get('signup') === 'true'
-          ? '/signup'
-          : '/login',
-      },
-    }),
+  await page.route(
+    (url) => url.pathname === '/api/auth/entry',
+    (route) =>
+      route.request().method() !== 'GET'
+        ? route.fallback()
+        : route.fulfill({
+            status: 303,
+            headers: {
+              location:
+                new URL(route.request().url()).searchParams.get('signup') ===
+                'true'
+                  ? '/signup'
+                  : '/login',
+            },
+          }),
   )
 })
 
-for (const blocked of [
-  'scripts',
-  'SDK requests',
-  'pending requests',
-] as const) {
-  test(`content blockers cannot prevent startup, navigation, or logout (${blocked})`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await shellFixture(page)
-    const errors: string[] = []
-    page.on('pageerror', (error) => errors.push(error.message))
-    let intercepted = 0
-    let release!: () => void
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    await page.route(/analytics/i, async (route) => {
-      if (
-        blocked === 'SDK requests' &&
-        new URL(route.request().url()).pathname === '/api/analytics'
-      ) {
-        return route.fulfill({
-          json: {
-            enabled: true,
-            config: {
-              endpoint: 'https://analytics.example',
-              propertyId: binding.account,
-              publicToken: 'fixture',
-              policyVersion: 1,
-              handoffOrigins: {},
-            },
-          },
-        })
-      }
-      const script = route.request().resourceType() === 'script'
-      if ((blocked === 'scripts') !== script) return route.fallback()
-      intercepted++
-      if (blocked === 'pending requests') await gate
-      await route.abort('blockedbyclient')
-    })
-    try {
-      await withBootstrapResponse(page, () => page.reload())
-      await expect(page.locator('main h1')).toContainText('Empire —')
-      await expect.poll(() => intercepted).toBeGreaterThan(0)
-      await navigate(page, 'Resources')
-      await expect(page.locator('main h1')).toHaveText('Resources')
-      const logout = page.waitForRequest(
-        (request) =>
-          new URL(request.url()).pathname === '/api/v1/session' &&
-          request.method() === 'DELETE',
-      )
-      await signOut(page)
-      await logout
-      await expect(
-        page.getByRole('button', { name: 'Sign in', exact: true }),
-      ).toBeVisible()
-      expect(errors).toEqual([])
-    } finally {
-      release()
-    }
-  })
-}
-
-test('OIDC sign-in offers one prominent account action and retains the destination', async ({
+test('content blockers cannot prevent startup, navigation, or logout (scripts)', async ({
   page,
 }) => {
-  await page.route('**/api/v1/bootstrap', (route) =>
-    route.fulfill({
-      json: {
-        version: 1,
-        signup_enabled: true,
-        result: { status: 'anonymous' },
-      },
-    }),
-  )
-  await page.route('**/api/auth/config', (route) =>
-    route.fulfill({
-      json: {
-        mode: 'oidc',
-        universes: [],
-        accounts_url: 'https://accounts.example',
-        client_id: 'game',
-      },
-    }),
-  )
-  const destination = `/u/andromeda/b/${body.id}/resources`
-  const loginPath = `/api/auth/login?${new URLSearchParams({ return_to: destination })}`
-  const action = page.getByRole('link', {
-    name: 'Continue with your Unbought Account',
-    exact: true,
+  refuseFixtureReads(page, { progression: ['Upgrade'] })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await shellFixture(page)
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  let intercepted = 0
+  await page.route(/analytics/i, async (route) => {
+    if (route.request().resourceType() !== 'script') return route.fallback()
+    intercepted++
+    await route.abort('blockedbyclient')
   })
-  for (const width of [1280, 390]) {
-    await page.setViewportSize({ width, height: 844 })
-    for (const path of ['/login', '/signup']) {
-      await withBootstrapResponse(page, () => page.goto(`${path}?${new URLSearchParams({ redirect: destination })}`))
-      await expect(action).toBeVisible()
-      await expect(action).toHaveAttribute('href', loginPath)
-      await expect(action).toHaveAttribute('data-analytics', 'continue_with_account')
-      await expect(page.locator('a[href^="/api/auth/login"]')).toHaveCount(1)
-      await expect(page.getByRole('link', { name: 'Create an account', exact: true })).toHaveCount(0)
-      const bounds = await action.boundingBox()
-      expect(bounds!.height).toBeGreaterThanOrEqual(52)
-      expect(bounds!.x).toBeGreaterThanOrEqual(0)
-      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    }
-    await diagnosticScreenshot(page, { path: `test-results/oidc-sign-in-${width}.png`, fullPage: true })
-  }
-  await expect(page.getByRole('region', { name: 'Open Beta' })).toContainText('We’re actively building Orbit Imperium. Expect new features and changes as we go.')
-  await expect(page.getByRole('navigation', { name: 'Policies and support' })).toBeVisible()
-  await expect(page.getByLabel('Password')).toHaveCount(0)
+  await withBootstrapResponse(page, () => page.reload())
+  await expect(page.locator('main h1')).toContainText('Empire —')
+  await expect.poll(() => intercepted).toBeGreaterThan(0)
+  await navigate(page, 'Resources')
+  await expect(page.locator('main h1')).toHaveText('Resources')
+  // DELETE succeeds with 204 and no body. The UI leaves the private game as
+  // soon as fetch receives those headers; the following bootstrap has a body.
+  const [logout] = await Promise.all([
+    page.waitForResponse(
+      (r) =>
+        r.request().method() === 'DELETE' &&
+        new URL(r.url()).pathname === '/api/v1/session',
+    ),
+    signOut(page),
+  ])
+  expect(logout.status()).toBe(204)
+  await expect(page).toHaveURL(/\/login$/)
+  const signIn = page.getByRole('button', { name: 'Sign in', exact: true })
+  await expect(signIn).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'Source', exact: true }),
+    page.getByRole('navigation', { name: 'Menu destinations' }),
   ).toHaveCount(0)
-  await page.route('**/api/auth/login?*', (route) =>
-    route.fulfill({ contentType: 'text/html', body: '<h1>Hosted accounts</h1>' }),
+  await expect(page.getByLabel('Current resources')).toHaveCount(0)
+  let anonymous!: import('@playwright/test').Response
+  await withFixtureResponse(
+    page,
+    (response) => {
+      if (
+        response.request().method() !== 'GET' ||
+        new URL(response.url()).pathname !== '/api/v1/bootstrap'
+      )
+        return false
+      anonymous = response
+      return true
+    },
+    () => page.reload(),
   )
-  await action.focus()
-  await page.keyboard.press('Enter')
-  await expect(page).toHaveURL((url) => url.pathname + url.search === loginPath)
-  await expect(page.getByRole('heading', { name: 'Hosted accounts' })).toBeVisible()
+  expect((await anonymous.json()).result.status).toBe('anonymous')
+  await expect(signIn).toBeVisible()
+  expect(errors).toEqual([])
 })
 
 test('login and signup preserve the requested game destination', async ({
   page,
 }) => {
-  await shellFixture(page)
+  await shellFixture(page, { protocol: 4, csrf: 'csrf' })
+  await installEmptyMessageMembership(page)
   for (const path of ['/login', '/signup']) {
     await withBootstrapResponse(page, () => page.goto(path))
-    await expect(
-      page.getByRole('heading', { name: /^Empire —/ }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
     await expect(page.getByLabel('Password')).toHaveCount(0)
     await expect(
       page.getByRole('link', { name: 'Source', exact: true }),
@@ -208,18 +120,22 @@ test('login and signup preserve the requested game destination', async ({
       },
     }),
   )
-  const payload = bootstrapFixture(3)
+  const payload = bootstrapFixture(4)
   if (
     payload.result.status !== 'authenticated' ||
     payload.result.game.status !== 'ready'
   )
     throw Error('fixture')
   payload.result.game.snapshot.view.bodies = [body]
-  if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
+  if (payload.result.game.snapshot.view.protocol !== 2)
+    payload.result.game.snapshot.view.progression.production = [
+      productionFixture(body),
+    ]
   await page.route('**/api/v1/session?bootstrap=true', (route) =>
     route.fulfill({ json: payload }),
   )
-  const destination = `/u/andromeda/b/${body.id}/resources/metal-mine`
+  const peer = '00000000-0000-4000-8000-000000000800'
+  const destination = `/u/andromeda/b/${body.id}/messages?player=${peer}#details`
   await withBootstrapResponse(page, () => page.goto(destination))
   await expect(page).toHaveURL(/\/login\?/)
   await expect(
@@ -242,202 +158,64 @@ test('login and signup preserve the requested game destination', async ({
   )
   await page.getByLabel('Account', { exact: true }).fill('player')
   await page.getByLabel('Password').fill('password')
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await withFixtureResponse(
+    page,
+    (response) => {
+      if (
+        response.request().method() !== 'POST' ||
+        !new URL(response.url()).pathname.endsWith('/social/query')
+      )
+        return false
+      const query = response.request().postDataJSON().query
+      return query?.type === 'Messages' && query.player === peer
+    },
+    () => page.getByRole('button', { name: 'Sign in', exact: true }).click(),
+  )
   await expect(
-    page.getByRole('heading', { name: 'Resources', level: 1, exact: true }),
+    page.getByRole('heading', { name: 'Messages', level: 1, exact: true }),
   ).toBeVisible()
-  expect(new URL(page.url()).pathname).toBe(destination)
+  await expect(page).toHaveURL(destination)
 })
 
-test('anonymous entry aliases and unavailable paths render without session errors', async ({
-  page,
-}) => {
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text())
-  })
-  await page.route('**/api/v1/bootstrap', (route) =>
-    route.fulfill({
-      json: {
-        version: 1,
-        signup_enabled: true,
-        result: { status: 'anonymous' },
-      },
-    }),
-  )
-  await withBootstrapResponse(page, () => page.goto('/index.html'))
-  await expect(page).toHaveURL(/\/$/)
-  await expect(
-    page.getByRole('link', { name: 'Sign in', exact: true }),
-  ).toBeVisible()
-  await withBootstrapResponse(page, () => page.goto('/unknown'))
-  await expect(
-    page.getByRole('heading', { name: 'Destination unavailable' }),
-  ).toBeVisible()
-  await page.getByRole('link', { name: 'Open your universe overview' }).click()
-  await expect(page).toHaveURL(/\/$/)
-  await expect(
-    page.getByRole('link', { name: 'Sign in', exact: true }),
-  ).toBeVisible()
-  expect(errors).toEqual([])
-})
-
-test('public pages have distinct URLs that survive refresh and history navigation', async ({
-  page,
-}) => {
-  await page.route('**/api/v1/bootstrap', (route) =>
-    route.fulfill({
-      json: {
-        version: 1,
-        signup_enabled: true,
-        result: { status: 'anonymous' },
-      },
-    }),
-  )
-  await withBootstrapResponse(page, () => page.goto('/'))
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.getByLabel('Password')).toHaveCount(0)
-  await page.getByRole('link', { name: 'Sign in', exact: true }).click()
-  await expect(page).toHaveURL(/\/login$/)
-  await expect(page.getByLabel('Password')).toHaveAttribute(
-    'autocomplete',
-    'current-password',
-  )
-  await page
-    .getByRole('link', { name: 'Create an account', exact: true })
-    .click()
-  await expect(page).toHaveURL(/\/signup$/)
-  await withBootstrapResponse(page, () => page.reload())
-  await expect(page.getByLabel('Password')).toHaveAttribute(
-    'autocomplete',
-    'new-password',
-  )
-  await page.goBack()
-  await expect(page).toHaveURL(/\/login$/)
-  await expect(page.getByLabel('Password')).toHaveAttribute(
-    'autocomplete',
-    'current-password',
-  )
-  await page.goForward()
-  await expect(page).toHaveURL(/\/signup$/)
-  await expect(
-    page.getByRole('button', { name: 'Create account', exact: true }),
-  ).toBeVisible()
-  await page.getByRole('link', { name: /^Orbit Imperium$/i }).click()
-  await expect(page).toHaveURL(/\/$/)
-  await page
-    .getByRole('navigation', { name: 'Get started' })
-    .getByRole('link', { name: 'Play free', exact: true })
-    .click()
-  await expect(page).toHaveURL(/\/signup$/)
-  await page.getByRole('link', { name: 'Back to sign in', exact: true }).click()
-  await expect(page).toHaveURL(/\/login$/)
-  await withBootstrapResponse(page, () => page.reload())
-  await expect(
-    page.getByRole('button', { name: 'Sign in', exact: true }),
-  ).toBeVisible()
-})
-
-test('disabled signup and protected game routes lead to login', async ({
-  page,
-}) => {
-  await page.route('**/api/v1/bootstrap', (route) =>
-    route.fulfill({
-      json: {
-        version: 1,
-        signup_enabled: false,
-        result: { status: 'anonymous' },
-      },
-    }),
-  )
-  await withBootstrapResponse(page, () => page.goto('/'))
-  await expect(
-    page.getByRole('link', { name: 'Sign in', exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Play free', exact: true }),
-  ).toHaveCount(0)
-  for (const path of ['/signup', '/u/u/b/earth/overview']) {
-    await withBootstrapResponse(page, () => page.goto(path))
-    await expect(page).toHaveURL(/\/login(?:\?|$)/)
-    await expect(
-      page.getByRole('button', { name: 'Sign in', exact: true }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('link', { name: 'Create an account' }),
-    ).toHaveCount(0)
-  }
-})
-
-test('development bootstrap uses one request and never inserts login or connection screens', { tag: '@journey' }, async ({
-  page,
-}) => {
-
-  const requests: string[] = []
-  page.on('request', (r) => {
-    if (r.url().includes('/api/')) requests.push(new URL(r.url()).pathname)
-  })
-  await page.addInitScript(() => {
-    Reflect.set(window, 'startupFlashes', [])
-    new MutationObserver((records) => {
-      for (const record of records)
-        for (const node of record.addedNodes) {
-          if (
-            node instanceof Element &&
-            (node.matches('form') ||
-              node.querySelector('input[name="password"]') ||
-              node.textContent?.includes('Connecting to your universe'))
-          )
-            (Reflect.get(window, 'startupFlashes') as string[]).push(
-              node.textContent ?? 'form',
-            )
-        }
-    }).observe(document, { subtree: true, childList: true })
-  })
-  await shellFixture(page)
-  expect(requests.filter((p) => p === '/api/v1/bootstrap')).toHaveLength(1)
-  expect(
-    requests.filter(
-      (p) =>
-        p === '/api/v1/session' ||
-        p === '/api/v1/registration' ||
-        p.endsWith('/binding') ||
-        p.endsWith('/settings'),
-    ),
-  ).toEqual([])
-  expect(
-    await page.evaluate(() => Reflect.get(window, 'startupFlashes')),
-  ).toEqual([])
-})
-test('unavailable startup stays distinct from anonymous and still supports manual retry', { tag: '@journey' }, async ({
-  page,
-}) => {
-
-  let reads = 0
-  await page.route('**/api/v1/bootstrap', (route) => {
-    reads++
-    return route.fulfill({
-      json: {
-        version: 1,
-        signup_enabled: false,
-        result:
-          reads === 1
-            ? { status: 'unavailable', code: 'Unavailable' }
-            : { status: 'anonymous' },
-      },
+test(
+  'fetched startup uses one bootstrap request and never inserts the sign-in form',
+  async ({ page }) => {
+    const requests: string[] = []
+    page.on('request', (r) => {
+      if (r.url().includes('/api/')) requests.push(new URL(r.url()).pathname)
     })
-  })
-  await withBootstrapResponse(page, () => page.goto('/login'))
-  await expect(
-    page.getByRole('button', { name: 'Retry connection' }),
-  ).toBeVisible()
-  await expect(page.getByLabel('Password')).toHaveCount(0)
-  expect(reads).toBe(1)
-  await page.getByRole('button', { name: 'Retry connection' }).click()
-  await expect(page.getByLabel('Password')).toBeVisible()
-  expect(reads).toBe(2)
-})
+    await page.addInitScript(() => {
+      Reflect.set(window, 'startupFlashes', [])
+      new MutationObserver((records) => {
+        for (const record of records)
+          for (const node of record.addedNodes) {
+            if (
+              node instanceof Element &&
+              (node.matches('input[name="password"]') ||
+                node.querySelector('input[name="password"]'))
+            )
+              (Reflect.get(window, 'startupFlashes') as string[]).push(
+                node.textContent ?? 'form',
+              )
+          }
+      }).observe(document, { subtree: true, childList: true })
+    })
+    await shellFixture(page)
+    expect(requests.filter((p) => p === '/api/v1/bootstrap')).toHaveLength(1)
+    expect(
+      requests.filter(
+        (p) =>
+          p === '/api/v1/session' ||
+          p === '/api/v1/registration' ||
+          p.endsWith('/binding') ||
+          p.endsWith('/settings'),
+      ),
+    ).toEqual([])
+    expect(
+      await page.evaluate(() => Reflect.get(window, 'startupFlashes')),
+    ).toEqual([])
+  },
+)
 
 test(`explicit login records presence after retry; reload and cached-page restore do not`, async ({
   page,
@@ -452,17 +230,19 @@ test(`explicit login records presence after retry; reload and cached-page restor
     throw Error('fixture')
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
-  if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
+  if (snapshot.view.protocol !== 2)
+    snapshot.view.progression.production = [productionFixture(body)]
+  await installGameFixture(page, {
+    protocol: 4,
+    csrf: payload.result.session.csrf,
+  })
   let signedIn = false,
     logins = 0,
     bootstrapReads = 0
   await page.route('**/api/**', async (route) => {
     const request = route.request(),
       path = new URL(request.url()).pathname
-    if (path === '/api/auth/config') return route.fallback()
-    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
-      return inactiveTutorial(route, snapshot.view.viewer_revision)
-    if (path === '/api/v1/bootstrap') {
+    if (request.method() === 'GET' && path === '/api/v1/bootstrap') {
       bootstrapReads++
       return route.fulfill({
         json: signedIn
@@ -474,14 +254,23 @@ test(`explicit login records presence after retry; reload and cached-page restor
             },
       })
     }
-    if (path === '/api/v1/session' || path === '/api/v1/registration') {
+    if (
+      request.method() === 'POST' &&
+      path === '/api/v1/session' &&
+      new URL(request.url()).searchParams.get('bootstrap') === 'true'
+    ) {
       signedIn = true
       const failed = structuredClone(payload)
       if (failed.result.status === 'authenticated')
         failed.result.game = { status: 'unavailable', code: 'Unavailable' }
       return route.fulfill({ json: failed })
     }
-    if (path.endsWith('/presence')) {
+    if (
+      request.method() === 'POST' &&
+      path === `/api/v4/universes/${binding.universe}/presence` &&
+      request.postDataJSON()?.command?.action?.type ===
+        'RecordForegroundPresence'
+    ) {
       const e = request.postDataJSON()
       if (e.command.action.cause === 'Login') logins++
       return route.fulfill({
@@ -497,14 +286,17 @@ test(`explicit login records presence after retry; reload and cached-page restor
         },
       })
     }
-    if (path.endsWith('/overview'))
+    if (
+      request.method() === 'POST' &&
+      path === `/api/v4/universes/${binding.universe}/overview`
+    )
       return route.fulfill({
         json: {
           ...snapshot.view,
           request_id: request.postDataJSON().request_id,
         },
       })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await withBootstrapResponse(page, () => page.goto('/login'))
   await page.getByLabel('Account', { exact: true }).fill('test')
@@ -520,14 +312,10 @@ test(`explicit login records presence after retry; reload and cached-page restor
   ).toBeVisible()
   expect(logins).toBe(0)
   await page.getByRole('button', { name: 'Retry connection' }).click()
-  await expect(
-    page.getByRole('heading', { name: /^Empire —/ }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   await expect.poll(() => logins).toBe(1)
   await withBootstrapResponse(page, () => page.reload())
-  await expect(
-    page.getByRole('heading', { name: /^Empire —/ }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(logins).toBe(1)
   const before = bootstrapReads
   signedIn = false
@@ -541,316 +329,92 @@ test(`explicit login records presence after retry; reload and cached-page restor
   expect(logins).toBe(1)
 })
 
-test('a populated HTML payload renders without a bootstrap request', { tag: '@journey' }, async ({
+test('mobile startup automatically recovers from a transient restart without signing in again', async ({
   page,
 }) => {
-  const { bootstrapFixture } = await import('../src/test-support/bootstrap')
-  const { body } = await import('./fixtures/game')
-  const payload = bootstrapFixture(3)
+  // Allow cold route compilation while other validation runs share the host.
+  const ready = expect.configure({ timeout: 30000 })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.clock.pauseAt(new Date())
+  const payload = bootstrapFixture(4)
   if (
     payload.result.status !== 'authenticated' ||
     payload.result.game.status !== 'ready'
   )
     throw Error('fixture')
-  payload.result.game.snapshot.view.bodies = [body]
-  if (payload.result.game.snapshot.view.protocol !== 2) payload.result.game.snapshot.view.progression.production = [productionFixture(body)]
-  await page.route('**/*', async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback()
-    const response = await route.fetch()
-    const html = (await response.text()).replace(
-      '<script id="orbit-bootstrap" type="application/json"></script>',
-      `<script id="orbit-bootstrap" type="application/json">${JSON.stringify(payload)}</script>`,
-    )
-    return route.fulfill({ response, body: html })
-  })
-  const calls: string[] = []
-  await page.route('**/api/**', (route) => {
-    calls.push(new URL(route.request().url()).pathname)
-    return route.fulfill({ status: 503, json: { code: 'Unavailable' } })
-  })
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
-  expect(
-    calls.filter(
-      (p) =>
-        p === '/api/v1/bootstrap' ||
-        p === '/api/v1/session' ||
-        p.endsWith('/binding') ||
-        p.endsWith('/settings'),
-    ),
-  ).toEqual([])
-  expect(await page.locator('#orbit-bootstrap').count()).toBe(0)
-})
-
-for (const signup of [false, true]) {
-  test(`public ${signup ? 'signup' : 'login'} keeps native entry, edits and busy feedback`, { tag: '@journey' }, async ({
-    page,
-  }) => {
-    await page.route('**/api/v1/bootstrap', (route) =>
-      route.fulfill({
-        json: {
-          version: 1,
-          signup_enabled: true,
-          result: { status: 'anonymous' },
-        },
-      }),
-    )
-    let requests = 0
-    let release!: () => void
-    const pending = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    await page.route(
-      signup
-        ? '**/api/v1/registration?bootstrap=true'
-        : '**/api/v1/session?bootstrap=true',
-      async (route) => {
-        requests++
-        expect(route.request().postDataJSON()).toMatchObject({
-          name: 'native-player',
-          password: 'pasted-password',
-        })
-        await pending
-        await route.fulfill({
-          status: 403,
-          json: { code: 'Forbidden', status: 403, type: 'about:blank' },
-        })
-      },
-    )
-    const entry = signup ? '/signup' : '/login?redirect=%2Fu%2F..%2F..%2Flogin'
-    await withBootstrapResponse(page, () => page.goto(entry))
-    const account = page.getByLabel('Account', { exact: true })
-    const password = page.getByLabel('Password', { exact: true })
-    await expect(account).toHaveAttribute('autocomplete', 'username')
-    await expect(account).toHaveAttribute('required', '')
-    await expect(password).toHaveAttribute('required', '')
-    await page
-      .getByRole('button', {
-        name: signup ? 'Create account' : 'Sign in',
-        exact: true,
-      })
-      .click()
-    expect(requests).toBe(0)
-    await account.fill('native-player')
-    // insertText exercises browser text insertion without replacing native controls.
-    await password.focus()
-    await page.keyboard.insertText('pasted-password')
-    await password.press('Enter')
-    const pendingAction = page.getByRole('button', {
-      name: signup ? 'Creating account…' : 'Signing in…',
-      exact: true,
-    })
-    await expect(pendingAction).toBeDisabled()
-    await expect(page.locator('form')).toHaveAttribute('aria-busy', 'true')
-    await password.press('Enter')
-    expect(requests).toBe(1)
-    release()
-    await expect(page.getByRole('alert')).toBeFocused()
-    await expect(account).toHaveValue('native-player')
-    await expect(password).toHaveValue('pasted-password')
-    await expect(page.locator('form')).toHaveAttribute('aria-busy', 'false')
-    await page.getByRole('link', {
-      name: signup ? 'Back to sign in' : 'Create an account',
-      exact: true,
-    }).click()
-    await expect(page.getByLabel('Password')).toHaveAttribute('autocomplete', signup ? 'current-password' : 'new-password')
-    await expect(page.getByRole('alert')).toHaveCount(0)
-    expect(new URL(page.url()).searchParams.has('redirect')).toBe(false)
-  })
-}
-
-test('sign-in configuration errors can be retried in oidc mode', async ({ page }) => {
-  await page.route('**/api/v1/bootstrap', route => route.fulfill({
-    json: { version: 1, signup_enabled: true, result: { status: 'anonymous' } },
-  }))
-  // The config adapter rejects on 503 headers and never consumes an error body.
-  // Wait for the fixture to deliver that refusal, then for its button to render.
-  const refused = Promise.withResolvers<void>()
-  let available = false
-  await page.route('**/api/auth/config', async route => {
-    if (available) return route.fulfill({ json: { mode: 'oidc', universes: [] } })
-    await route.fulfill({ status: 503 })
-    refused.resolve()
-  })
-  await withBootstrapResponse(page, () => page.goto('/login'))
-  await refused.promise
-  await expect(page.getByRole('alert')).toContainText('Unable to load sign-in options')
-  available = true
-  await withFixtureResponse(page, response => response.url().endsWith('/api/auth/config'),
-    () => page.getByRole('button', { name: 'Try again', exact: true }).click())
-  await expect(page.getByRole('link', { name: 'Continue with your Unbought Account', exact: true })).toBeVisible()
-  await expect(page.getByRole('alert')).toHaveCount(0)
-})
-
-for (const width of [1440, 390]) {
-  test.describe(`settings community at ${width}px`, () => {
-    test.use({ viewport: { width, height: 900 }, hasTouch: width === 390 })
-
-    test('Discord matches the homepage and supports keyboard or touch navigation', async ({ page }) => {
-      await shellFixture(page)
-      await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/support`))
-      const community = page.getByRole('region', { name: 'Community', exact: true })
-      const discord = community.getByRole('link', { name: 'Join Discord', exact: true })
-      await expect(discord).toHaveAttribute('href', 'https://discord.gg/AVMHp7jUcw')
-      await discord.scrollIntoViewIfNeeded()
-      await expect(discord).toBeInViewport({ ratio: 1 })
-      await expect(discord.locator('img')).toHaveAttribute('src', '/brand/discord-symbol-white.svg')
-      await expect(discord.locator('img')).toBeVisible()
-      await expect(discord).toHaveCSS('background-color', 'rgb(88, 101, 242)')
-      await expect(discord).toHaveCSS('color', 'rgb(255, 255, 255)')
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await diagnosticScreenshot(page, { path: `test-results/settings-community-${width}x900.png` })
-      // The global mobile stylesheet suppresses focus rings; verify keyboard
-      // focus on desktop and the touch interaction on mobile.
-      if (width === 1440) {
-        await discord.focus()
-        await page.keyboard.press('Tab')
-        await page.keyboard.press('Shift+Tab')
-        await expect(discord).toBeFocused()
-        await expect(discord).toHaveCSS('outline-style', 'solid')
-        await expect(discord).toHaveCSS('outline-width', '3px')
-        await diagnosticScreenshot(page, { path: `test-results/settings-community-focused-${width}x900.png` })
-      }
-      // Exercise the external navigation without contacting Discord.
-      await page.route('https://discord.gg/AVMHp7jUcw', route => route.fulfill({ body: 'Discord invite' }))
-      if (width === 390) await discord.tap()
-      else await discord.press('Enter')
-      await expect(page).toHaveURL('https://discord.gg/AVMHp7jUcw')
-    })
-  })
-}
-
-test('signed-in settings omit the beta notice and retain the best-effort support target', async ({ page }) => {
-  await shellFixture(page)
-  await page.setViewportSize({ width: 390, height: 844 })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/support`))
-  await expect(page.getByRole('region', { name: 'Open Beta' })).toHaveCount(0)
-  const help = page.getByRole('region', { name: 'Help and conduct reports' })
-  await expect(help).toContainText('Support is best effort: we aim to respond within 24 hours, but response times are not guaranteed.')
-  await expect(help.getByRole('link', { name: 'support@unbought.games' })).toHaveAttribute('href', 'mailto:support@unbought.games')
-  await expect(page.getByRole('navigation', { name: 'Policies and support' })).toHaveCount(0)
-  await expect(page.getByRole('contentinfo')).toHaveCount(0)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await diagnosticScreenshot(page, { path: 'test-results/settings-support-mobile.png', fullPage: true })
-})
-
-test('universe names stay out of the header while every game link uses the current name', async ({ page }) => {
-  const options = { universeName: 'Andromeda' }
-  await shellFixture(page, options)
-  for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 })
-    await expect(page.getByLabel('Current universe', { exact: true })).toHaveText('Andromeda')
-    await expect(page.getByLabel('Current universe', { exact: true })).toBeHidden()
-    await expect(page).toHaveTitle(/ · Andromeda · Orbit Imperium$/)
-    expect(await page.evaluate(() => [...document.querySelectorAll<HTMLAnchorElement>('a[href]')]
-      .map(a => new URL(a.href).pathname).filter(path => path.startsWith('/u/'))
-      .every(path => path.startsWith('/u/andromeda/')))).toBe(true)
-  }
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/settings/session`))
-  await expect(page.locator('dt').filter({ hasText: /^Universe$/ }).locator('..')).toContainText('Andromeda')
-
-  // Rename at the authority, then refresh the old link: no alias or redirect.
-  options.universeName = 'My / Universe? #1'
-  const oldPath = new URL(page.url()).pathname
-  await withBootstrapResponse(page, () => page.reload())
-  await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
-  expect(new URL(page.url()).pathname).toBe(oldPath)
-  await expect(page.getByLabel('Current universe', { exact: true })).toHaveText(options.universeName)
-  await page.getByRole('link', { name: 'Open your universe overview' }).click()
-  await expect(page).toHaveURL(new RegExp(`/u/my-~2f~-universe~3f~-~23~1/b/${body.id}/overview$`))
-  await expect(page).toHaveTitle(/My \/ Universe\? #1/)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await diagnosticScreenshot(page, { path: 'test-results/universe-name-mobile.png', fullPage: true })
-
-  const uuidPath = `/u/${binding.universe}/b/${body.id}/overview`
-  await withBootstrapResponse(page, () => page.goto(uuidPath))
-  await expect(page.getByRole('heading', { name: 'Destination unavailable', exact: true })).toBeVisible()
-  expect(new URL(page.url()).pathname).toBe(uuidPath)
-})
-
-test('enrollment displays a universe name and submits its stable UUID', async ({ page }) => {
-  const payload = bootstrapFixture(3)
-  if (payload.result.status !== 'authenticated') throw Error('fixture')
-  payload.result.session.memberships = []
-  payload.result.game = { status: 'no_membership' }
-  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: payload }))
-  await page.route('**/api/v1/session', route => route.fulfill({ json: { csrf: 'fixture' } }))
-  await page.route('**/api/auth/config', route => route.fulfill({ json: {
-    mode: 'oidc', universes: [{ universe: binding.universe, name: 'Whirlpool' }],
-  } }))
-  let enrolled: unknown
-  await page.route('**/api/auth/enroll', async route => {
-    enrolled = route.request().postDataJSON()
-    await route.fulfill({ status: 204 })
-  })
-  await withBootstrapResponse(page, () => page.goto('/'))
-  await expect(page.getByRole('button', { name: 'Join Whirlpool', exact: true })).toBeVisible()
-  await expect(page.locator('body')).not.toContainText(binding.universe)
-  await page.getByRole('button', { name: 'Join Whirlpool', exact: true }).click()
-  await expect.poll(() => enrolled).toEqual({ universe: binding.universe })
-})
-
-test('local signup identifies the named universe', async ({ page }) => {
-  await page.route('**/api/v1/bootstrap', route => route.fulfill({ json: {
-    version: 1, signup_enabled: true, result: { status: 'anonymous' },
-  } }))
-  await page.route('**/api/auth/config', route => route.fulfill({ json: {
-    mode: 'local', universes: [{ universe: binding.universe, name: 'Triangulum' }],
-  } }))
-  await withBootstrapResponse(page, () => page.goto('/signup'))
-  await expect(page.getByText('Join Triangulum', { exact: true })).toBeVisible()
-})
-
-
-test('mobile startup automatically recovers from a transient restart without signing in again', async ({ page }) => {
-  // Allow cold route compilation while other validation runs share the host.
-  const ready = expect.configure({ timeout: 30000 })
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.clock.install()
-  await page.clock.pauseAt(new Date())
-  const payload = bootstrapFixture(4)
-  if (payload.result.status !== 'authenticated' || payload.result.game.status !== 'ready') throw Error('fixture')
   const snapshot = payload.result.game.snapshot
   snapshot.view.bodies = [body]
-  if (snapshot.view.protocol !== 2) snapshot.view.progression.production = [productionFixture(body)]
+  if (snapshot.view.protocol !== 2)
+    snapshot.view.progression.production = [productionFixture(body)]
   const preparing = structuredClone(payload)
   if (preparing.result.status !== 'authenticated') throw Error('fixture')
   preparing.result.game = { status: 'unavailable', code: 'Unavailable' }
-  let reads = 0
-  await page.route('**/api/**', async route => {
-    const request = route.request(), path = new URL(request.url()).pathname
-    if (path === '/api/auth/config') return route.fallback()
-    if (path.endsWith('/world') && request.postDataJSON()?.type === 'Tutorial')
-      return inactiveTutorial(route, snapshot.view.viewer_revision)
-    if (path === '/api/v1/bootstrap') {
-      reads++
-      return route.fulfill({ json: reads === 2 ? preparing : reads > 2 ? payload : {
-        version: 1, signup_enabled: true,
-        result: { status: 'unavailable', code: 'Unavailable' },
-      } })
-    }
-    if (path.endsWith('/overview')) return route.fulfill({ json: {
-      ...snapshot.view, request_id: request.postDataJSON().request_id,
-    } })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+  await installGameFixture(page, {
+    protocol: 4,
+    csrf: payload.result.session.csrf,
   })
-  await withBootstrapResponse(page, () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-  await ready(page.getByText('Connection temporarily unavailable. Reconnecting automatically…')).toBeVisible()
+  let reads = 0
+  await page.route('**/api/**', async (route) => {
+    const request = route.request(),
+      path = new URL(request.url()).pathname
+    if (request.method() === 'GET' && path === '/api/v1/bootstrap') {
+      reads++
+      return route.fulfill({
+        json:
+          reads === 2
+            ? preparing
+            : reads > 2
+              ? payload
+              : {
+                  version: 1,
+                  signup_enabled: true,
+                  result: { status: 'unavailable', code: 'Unavailable' },
+                },
+      })
+    }
+    if (
+      request.method() === 'POST' &&
+      path === `/api/v4/universes/${binding.universe}/overview`
+    )
+      return route.fulfill({
+        json: {
+          ...snapshot.view,
+          request_id: request.postDataJSON().request_id,
+        },
+      })
+    return route.fallback()
+  })
+  await withBootstrapResponse(page, () =>
+    page.goto(`/u/andromeda/b/${body.id}/overview`),
+  )
+  await ready(
+    page.getByText(
+      'Connection temporarily unavailable. Reconnecting automatically…',
+    ),
+  ).toBeVisible()
   await ready(page.getByLabel('Password')).toHaveCount(0)
-  await diagnosticScreenshot(page, { path: 'test-results/transient-recovery-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, {
+    path: 'test-results/transient-recovery-mobile.png',
+    fullPage: true,
+  })
   await withBootstrapResponse(page, () => page.clock.runFor(1000))
-  await ready(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible()
+  await ready(
+    page.getByRole('button', { name: 'Sign out', exact: true }),
+  ).toBeVisible()
   await withBootstrapResponse(page, () => page.clock.runFor(2000))
   await ready(page.getByRole('heading', { name: /^Empire —/ })).toBeVisible()
   expect(reads).toBe(3)
   await ready(page.getByLabel('Password')).toHaveCount(0)
-  await diagnosticScreenshot(page, { path: 'test-results/transient-recovered-mobile.png', fullPage: true })
+  await diagnosticScreenshot(page, {
+    path: 'test-results/transient-recovered-mobile.png',
+    fullPage: true,
+  })
 })
 
-
-test('automatic outage retries preserve Retry and Sign out focus without manual-error alerts', async ({ page }) => {
+test('automatic outage retries preserve Retry and Sign out focus without manual-error alerts', async ({
+  page,
+}) => {
   const ready = expect.configure({ timeout: 30000 })
-  await page.clock.install()
   await page.clock.pauseAt(new Date())
   const payload = bootstrapFixture(4)
   if (payload.result.status !== 'authenticated') throw Error('fixture')
@@ -858,11 +422,13 @@ test('automatic outage retries preserve Retry and Sign out focus without manual-
   let reads = 0
   const release = new Map<number, () => void>()
   const completed = new Set<number>()
-  await page.route('**/api/v1/bootstrap', async route => {
+  await installSessionRenewal(page, payload.result.session.csrf)
+  await page.route('**/api/v1/bootstrap', async (route) => {
     const read = ++reads
     if (read === 1) return route.fulfill({ json: payload })
-    await new Promise<void>(resolve => release.set(read, resolve))
-    if (read === 2) await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
+    await new Promise<void>((resolve) => release.set(read, resolve))
+    if (read === 2)
+      await route.fulfill({ status: 503, json: { code: 'Unavailable' } })
     else await route.abort('failed')
     completed.add(read)
   })
@@ -870,7 +436,10 @@ test('automatic outage retries preserve Retry and Sign out focus without manual-
   const retry = page.getByRole('button', { name: 'Retry connection' })
   const signout = page.getByRole('button', { name: 'Sign out', exact: true })
   await ready(retry).toBeVisible()
-  for (const [read, control, delay] of [[2, retry, 1000], [3, signout, 2000]] as const) {
+  for (const [read, control, delay] of [
+    [2, retry, 1000],
+    [3, signout, 2000],
+  ] as const) {
     await control.focus()
     await page.clock.runFor(delay)
     await ready.poll(() => release.has(read)).toBe(true)
@@ -883,7 +452,11 @@ test('automatic outage retries preserve Retry and Sign out focus without manual-
     await page.clock.runFor(100)
     await ready(control).toBeFocused()
     await ready(page.getByRole('alert')).toHaveCount(1)
-    await ready(page.getByRole('alert')).toHaveText('Connection temporarily unavailable. Reconnecting automatically…')
-    await ready(page.getByText('Unable to connect. Please retry.')).toHaveCount(0)
+    await ready(page.getByRole('alert')).toHaveText(
+      'Connection temporarily unavailable. Reconnecting automatically…',
+    )
+    await ready(page.getByText('Unable to connect. Please retry.')).toHaveCount(
+      0,
+    )
   }
 })

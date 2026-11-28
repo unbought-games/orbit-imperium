@@ -1,4 +1,5 @@
 use crate::*;
+use orbit_engine::{Ruleset, ViewerSnapshot};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -134,17 +135,28 @@ impl<S: GameStore> GameService<S> {
         p: Principal,
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView>, ServiceError> {
-        Self::principal(p, c.binding)?;
-        self.store.bot_observe(c.binding).await?;
-        let ReadSnapshot { facts, progress } = self.store.bound_view(c.binding).await?;
-        Ok(ReadSnapshot {
-            progress,
-            facts: BoundView {
-                protocol: 2,
-                binding: c.binding,
-                request_id: c.request_id,
-                view: Self::project_view(facts)?,
-            },
+        self.read_viewer_snapshot(p, c.binding)
+            .await?
+            .try_map(|facts| Self::project_bound_view(facts, c))
+    }
+    pub(crate) async fn read_viewer_snapshot(
+        &self,
+        p: Principal,
+        binding: Binding,
+    ) -> Result<ReadSnapshot<ViewerSnapshot>, ServiceError> {
+        Self::principal(p, binding)?;
+        self.store.bot_observe(binding).await?;
+        Ok(self.store.bound_view(binding).await?)
+    }
+    pub(crate) fn project_bound_view(
+        facts: ViewerSnapshot,
+        c: QueryContext,
+    ) -> Result<BoundView, ServiceError> {
+        Ok(BoundView {
+            protocol: 2,
+            binding: c.binding,
+            request_id: c.request_id,
+            view: Self::project_view(facts)?,
         })
     }
     pub async fn bound_quote(
@@ -222,6 +234,15 @@ pub struct BoundSettings {
     pub galaxies: u32,
     pub systems_per_galaxy: u32,
     pub positions_per_system: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ship_debris: Option<ShipDebrisSettings>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ShipDebrisSettings {
+    pub basis_points: u32,
+    pub deuterium_in_debris: bool,
+    pub moons_enabled: bool,
 }
 impl<S: GameStore> GameService<S> {
     pub async fn bound_settings(
@@ -232,18 +253,32 @@ impl<S: GameStore> GameService<S> {
         Self::principal(p, c.binding)?;
         // Reuse the coherent authorization/epoch gate rather than a second unchecked rules read.
         let facts = self.store.bound_view(c.binding).await?;
-        let profile = facts.rules.artifact.universe.as_ref();
-        Ok(BoundSettings {
-            protocol: facts.rules.protocol(),
+        Ok(BoundSettings::from_rules(&facts.rules, &c))
+    }
+}
+impl BoundSettings {
+    pub(crate) fn from_rules(rules: &Ruleset, c: &QueryContext) -> Self {
+        let profile = rules.artifact.universe.as_ref();
+        Self {
+            protocol: rules.protocol(),
             binding: c.binding,
             request_id: c.request_id,
-            profile_hash: facts.rules.hash.clone(),
-            profile_id: facts.rules.artifact.id.clone(),
-            speed: facts.rules.speed,
+            profile_hash: rules.hash.clone(),
+            profile_id: rules.artifact.id.clone(),
+            speed: rules.speed,
             galaxies: profile.map_or(9, |p| p.galaxies),
             systems_per_galaxy: profile.map_or(499, |p| p.systems_per_galaxy),
             positions_per_system: 15,
-        })
+            ship_debris: rules
+                .artifact
+                .world
+                .as_ref()
+                .map(|world| ShipDebrisSettings {
+                    basis_points: world.combat.ship_debris_bps,
+                    deuterium_in_debris: world.combat.deuterium_in_debris,
+                    moons_enabled: world.moons,
+                }),
+        }
     }
 }
 

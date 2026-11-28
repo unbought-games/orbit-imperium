@@ -4,12 +4,17 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
+    branches: [main, prod/S001]
 
   workflow_dispatch:
     inputs:
+      source_branch:
+        description: Branch containing the selected commit and its successful push CI
+        type: choice
+        options: [main, prod/S001]
+        default: main
       commit:
-        description: Full commit SHA in main history with successful main push CI
+        description: Full commit SHA on the selected source branch
         required: true
         type: string
 
@@ -17,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-image-${{ inputs.commit || github.event.workflow_run.head_sha }}
+  group: release-image-${{ inputs.source_branch || github.event.workflow_run.head_branch }}-${{ inputs.commit || github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -35,6 +40,7 @@ jobs:
       actions: read
     outputs:
       sha: ${{ steps.verify.outputs.sha }}
+      source_branch: ${{ steps.verify.outputs.source_branch }}
       ci_run: ${{ steps.verify.outputs.ci_run }}
       ci_attempt: ${{ steps.verify.outputs.ci_attempt }}
     steps:
@@ -42,17 +48,48 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Verify selected main-history commit and exact successful CI
+      - name: Verify source branch, selected commit and exact successful CI
         id: verify
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release-gate.mjs
 
-  publish:
+  build:
     needs: trusted
-    defaults:
-      run:
-        working-directory: source
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      ORBIT_RELEASE_SHA: ${{ needs.trusted.outputs.sha }}
+      ORBIT_RELEASE_IMAGE: orbit-release:${{ needs.trusted.outputs.sha }}
+    outputs:
+      image_artifact: ${{ steps.save.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.trusted.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build release once
+        run: |
+          test "$(git rev-parse HEAD)" = "$ORBIT_RELEASE_SHA"
+          make release-image
+      - name: Inspect source and notices in the built image
+        run: make inspect-release-image
+      - name: Export the inspected image
+        run: docker save "$ORBIT_RELEASE_IMAGE" | gzip -1 > "$RUNNER_TEMP/image.tar.gz"
+      - name: Retain the image for the publisher
+        id: save
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: image-layers-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/image.tar.gz
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+  publish:
+    needs: [trusted, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -65,31 +102,27 @@ jobs:
       ORBIT_CI_RUN_ID: ${{ needs.trusted.outputs.ci_run }}
       ORBIT_CI_RUN_ATTEMPT: ${{ needs.trusted.outputs.ci_attempt }}
       ORBIT_RELEASE_SHA: ${{ needs.trusted.outputs.sha }}
+      ORBIT_SOURCE_BRANCH: ${{ needs.trusted.outputs.source_branch }}
       ORBIT_RELEASE_IMAGE: orbit-release:${{ needs.trusted.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.trusted.outputs.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-          path: source
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
           ref: ${{ github.sha }}
           persist-credentials: false
-          path: release-tools
-      - name: Check release configuration and checkout
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.build.outputs.image_artifact }}
+          path: ${{ runner.temp }}/built-image
+          merge-multiple: true
+      - name: Load inspected image and verify its identity
         run: |
-          test "$(git rev-parse HEAD)" = "$ORBIT_RELEASE_SHA"
+          docker load --input "$RUNNER_TEMP/built-image/image.tar.gz"
+          test "$(docker inspect --type=image --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$ORBIT_RELEASE_IMAGE")" = "$ORBIT_RELEASE_SHA"
+          test "$(docker inspect --type=image --format '{{.Os}}/{{.Architecture}}' "$ORBIT_RELEASE_IMAGE")" = linux/amd64
           test "$AWS_REGION" = us-east-2
           [[ "$AWS_PUBLISH_ROLE_ARN" =~ ^arn:aws:iam::888782969020:role/.+ ]]
-          [[ "$ECR_REPOSITORY_URL" =~ ^888782969020\.dkr\.ecr\.us-east-2\.amazonaws\.com/[a-z0-9][a-z0-9/_-]*$ ]]
-      - name: Build release once
-        run: make release-image
-      - name: Inspect source and notices in the built image
-        run: make inspect-release-image
-      - name: Recheck main ancestry and pinned CI before obtaining AWS credentials
-        working-directory: release-tools
+          test "$ECR_REPOSITORY_URL" = 888782969020.dkr.ecr.us-east-2.amazonaws.com/unbought/orbit-imperium
+      - name: Recheck source ancestry and pinned CI before obtaining AWS credentials
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/release-gate.mjs
@@ -109,7 +142,7 @@ jobs:
         run: |
           registry="${ECR_REPOSITORY_URL%%/*}"
           repository="${ECR_REPOSITORY_URL#*/}"
-          tag="sha-${ORBIT_RELEASE_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          tag="sha-${ORBIT_RELEASE_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${ORBIT_SOURCE_BRANCH//\//-}"
           export DOCKER_CONFIG="$RUNNER_TEMP/release-docker"
           mkdir -p "$DOCKER_CONFIG"
           trap 'docker logout "$registry"; rm -rf "$DOCKER_CONFIG"' EXIT
@@ -119,14 +152,14 @@ jobs:
           digest=$(aws ecr describe-images --repository-name "$repository" --image-ids "imageTag=$tag" --query 'imageDetails[0].imageDigest' --output text)
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           jq -n --arg commit "$ORBIT_RELEASE_SHA" --arg image "$ECR_REPOSITORY_URL@$digest" \
-            --arg tag "$tag" --arg ci_run "$CI_RUN_ID" --arg ci_attempt "$CI_RUN_ATTEMPT" \
+            --arg source_branch "$ORBIT_SOURCE_BRANCH" --arg tag "$tag" --arg ci_run "$CI_RUN_ID" --arg ci_attempt "$CI_RUN_ATTEMPT" \
             --arg release_run "$GITHUB_RUN_ID" --arg release_attempt "$GITHUB_RUN_ATTEMPT" --arg publisher_commit "$GITHUB_SHA" \
-            '{commit: $commit, image: $image, tag: $tag, platform: "linux/amd64", ci_run: $ci_run, ci_attempt: $ci_attempt, release_run: $release_run, release_attempt: $release_attempt, publisher_commit: $publisher_commit}' > release-image.json
+            '{commit: $commit, source_branch: $source_branch, image: $image, tag: $tag, platform: "linux/amd64", ci_run: $ci_run, ci_attempt: $ci_attempt, release_run: $release_run, release_attempt: $release_attempt, publisher_commit: $publisher_commit}' > release-image.json
           cat release-image.json >> "$GITHUB_STEP_SUMMARY"
       - name: Save commit and digest record
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-image-${{ needs.trusted.outputs.sha }}-${{ github.run_attempt }}
-          path: source/release-image.json
+          path: release-image.json
           if-no-files-found: error
           retention-days: 90

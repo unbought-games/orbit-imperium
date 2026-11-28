@@ -75,41 +75,55 @@ for (const signup of [true, false]) {
         page.on('console', (message) => {
           if (message.type() === 'error') errors.push(message.text())
         })
-        await page.route('**/api/analytics', (route) =>
-          route.fulfill({ json: { enabled: false } }),
-        )
         await page.route('**/api/auth/config', (route) =>
-          route.fulfill({ json: { mode: 'local', universes: [] } }),
+          route.request().method() !== 'GET'
+            ? route.fallback()
+            : route.fulfill({ json: { mode: 'local', universes: [] } }),
         )
-        await page.route('**/api/auth/entry*', (route) =>
-          route.fulfill({
-            status: 303,
-            headers: {
-              location:
-                new URL(route.request().url()).searchParams.get('signup') ===
-                'true'
-                  ? '/signup'
-                  : '/login',
-            },
-          }),
+        await page.route(
+          (url) => url.pathname === '/api/auth/entry',
+          (route) =>
+            route.request().method() !== 'GET'
+              ? route.fallback()
+              : route.fulfill({
+                  status: 303,
+                  headers: {
+                    location:
+                      new URL(route.request().url()).searchParams.get(
+                        'signup',
+                      ) === 'true'
+                        ? '/signup'
+                        : '/login',
+                  },
+                }),
         )
         await page.route('**/api/v1/bootstrap', (route) =>
-          route.fulfill({
-            json: {
-              version: 1,
-              signup_enabled: signup,
-              result: { status: 'anonymous' },
-            },
-          }),
+          route.request().method() !== 'GET'
+            ? route.fallback()
+            : route.fulfill({
+                json: {
+                  version: 1,
+                  signup_enabled: signup,
+                  result: { status: 'anonymous' },
+                },
+              }),
         )
-        await page.route('**/', async (route) => {
-          const response = await context.request.get(`/${filename}`)
-          const html = (await response.text()).replace(
-            '<script id="orbit-bootstrap" type="application/json"></script>',
-            `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
-          )
-          await route.fulfill({ contentType: 'text/html', body: html })
-        })
+        await page.route(
+          (url) => url.pathname === '/',
+          async (route) => {
+            if (
+              route.request().method() !== 'GET' ||
+              route.request().resourceType() !== 'document'
+            )
+              return route.fallback()
+            const response = await context.request.get(`/${filename}`)
+            const html = (await response.text()).replace(
+              '<script id="orbit-bootstrap" type="application/json"></script>',
+              `<script id="orbit-bootstrap" type="application/json">${JSON.stringify({ version: 1, signup_enabled: signup, result: { status: 'anonymous' } })}</script>`,
+            )
+            await route.fulfill({ contentType: 'text/html', body: html })
+          },
+        )
         try {
           await page.goto('/')
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(
@@ -307,3 +321,88 @@ for (const signup of [true, false]) {
     }
   }
 }
+
+test('production deep links and public entries share a root-scoped installable manifest and decodable icons', async ({
+  request,
+  page,
+}) => {
+  // Inspect the document as served, before a client script can amend its head.
+  const game = await request.get(
+    '/u/andromeda/b/00000000-0000-4000-8000-000000000005/resources',
+  )
+  expect(game.ok()).toBe(true)
+  const metadata = await page.evaluate(
+    (html) => {
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      return {
+        manifest: doc
+          .querySelector('link[rel="manifest"]')
+          ?.getAttribute('href'),
+        theme: doc
+          .querySelector('meta[name="theme-color"]')
+          ?.getAttribute('content'),
+        appleCapable: doc
+          .querySelector('meta[name="apple-mobile-web-app-capable"]')
+          ?.getAttribute('content'),
+      }
+    },
+    await game.text(),
+  )
+  expect(metadata.manifest).toBe('/manifest.webmanifest')
+  const manifestURL = new URL(metadata.manifest!, game.url())
+  const response = await request.get(manifestURL.href)
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['content-type']).toContain(
+    'application/manifest+json',
+  )
+  const manifest = await response.json()
+  expect(manifest).toMatchObject({
+    id: '/',
+    name: 'Orbit Imperium',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+  })
+  expect(metadata.appleCapable).toBe('yes')
+  expect(metadata.theme).toBe(manifest.theme_color)
+  expect(manifest.icons).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        src: '/icon-1024.png',
+        sizes: '1024x1024',
+        type: 'image/png',
+      }),
+      expect.objectContaining({
+        src: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+      }),
+    ]),
+  )
+  for (const icon of manifest.icons) {
+    const url = new URL(icon.src, manifestURL)
+    expect(url.origin).toBe(manifestURL.origin)
+    const response = await request.get(url.href)
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain(icon.type)
+    const dimensions = await page.evaluate(async (src) => {
+      const image = new Image()
+      image.src = src
+      await image.decode()
+      return `${image.naturalWidth}x${image.naturalHeight}`
+    }, url.href)
+    if (icon.sizes !== 'any') expect(dimensions).toBe(icon.sizes)
+  }
+
+  for (const path of [
+    '/',
+    '/login',
+    '/signup',
+    '/homepage.html',
+    '/homepage-closed.html',
+  ]) {
+    const entry = await request.get(path)
+    expect(entry.ok()).toBe(true)
+    expect(await entry.text()).toContain('href="/manifest.webmanifest"')
+  }
+})

@@ -8,6 +8,7 @@ pub enum Mission {
     Harvest,
     Espionage,
     Attack,
+    DestroyMoon,
     Deploy,
     Colonize,
     Hold,
@@ -55,9 +56,19 @@ pub struct ManifestStack {
     #[serde(with = "decimal_wire")]
     pub count: i64,
 }
+/// Fixed whole-unit cargo (in micro-units), followed by ordered groups to fill.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FleetCargoFill {
+    #[serde(with = "resource_strings")]
+    pub minimum: Resources,
+    pub groups: Vec<Vec<ResourceKind>>,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FleetIntent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cargo_fill: Option<FleetCargoFill>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_group: Option<OperationId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -259,6 +270,10 @@ pub enum WorldAction {
         reports: Vec<ReportId>,
         hidden: bool,
     },
+    ArchiveReport {
+        report: ReportId,
+        revoke_share: bool,
+    },
     SetReportHidden {
         report: ReportId,
         hidden: bool,
@@ -269,6 +284,7 @@ impl WorldAction {
     pub fn report_ids(&self) -> Vec<ReportId> {
         match self {
             Self::MarkReportRead { report }
+            | Self::ArchiveReport { report, .. }
             | Self::SetReportHidden { report, .. }
             | Self::SetReportStarred { report, .. } => vec![*report],
             Self::MarkReportsRead { reports } | Self::SetReportsHidden { reports, .. } => reports
@@ -299,9 +315,13 @@ pub struct RecipientReportState {
     pub hidden: bool,
     #[serde(default)]
     pub starred: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub shared: bool,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldRecords {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub destroyed_moons: BTreeMap<BodyId, DestroyedMoon>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub gate_uses: BTreeMap<BodyId, GateUse>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -324,7 +344,7 @@ pub struct WorldRecords {
     pub colonies: BTreeMap<BodyId, ColonyGenesis>,
     pub policies: BTreeMap<PlayerId, PlayerPolicy>,
     pub activity: BTreeMap<BodyId, BodyActivity>,
-    pub lots: Vec<AssetLot>,
+    pub lots: Vec<CatalogHolding>,
     pub fleets: BTreeMap<FleetId, MissionFleet>,
     pub debris: BTreeMap<OperationId, DebrisField>,
     pub reports: BTreeMap<ReportId, MissionReport>,
@@ -376,6 +396,8 @@ pub struct WorldChanges {
 #[serde(deny_unknown_fields)]
 pub struct WorldRules {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moon_destruction: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jump_gates: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phalanx: Option<String>,
@@ -404,6 +426,13 @@ fn default_beginner_protection_multiplier() -> u32 {
 }
 impl WorldRules {
     pub fn validate(&self) -> Result<(), RulesError> {
+        if self
+            .moon_destruction
+            .as_deref()
+            .is_some_and(|id| id != MOON_DESTRUCTION_PROFILE)
+        {
+            return Err(RulesError::Unsupported);
+        }
         if self
             .jump_gates
             .as_deref()

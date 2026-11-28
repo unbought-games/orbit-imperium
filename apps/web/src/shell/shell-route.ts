@@ -1,4 +1,6 @@
+import { buildPages } from './navigation-model'
 import type { BoundView } from '../client-model/commands'
+import { universeSlug } from '../client-model/universe-name'
 import { bodyPages, resolveNamedDestination, type Page } from './routes'
 
 export type ShellParams = {
@@ -44,5 +46,46 @@ export function resolveShellRoute(
     !params.coordinates &&
     !!body &&
     (!params.body || search.body !== undefined || canonicalPage !== route.page)
-  return { route, body, canonicalPage, canonicalizing }
+  const lostMoon =
+    params.body &&
+    view.protocol === 4 &&
+    params.universe === universeSlug(universeName) &&
+    !route.available
+      ? view.destroyed_moons?.find(({ moon }) => moon === params.body)
+      : undefined
+  const parent =
+    lostMoon &&
+    view.bodies.find(
+      ({ id, kind }) => id === lostMoon.parent && kind === 'Planet',
+    )
+  return {
+    route,
+    body,
+    canonicalPage,
+    canonicalizing,
+    parentAfterDestruction: parent?.id,
+  }
+}
+
+/** These screens supply their own visible title. The route heading remains a focus target. */
+export function usesVisuallyHiddenHeading(
+  page: Page,
+  available: boolean,
+  protocol: BoundView['protocol'],
+) {
+  return (
+    available &&
+    (page === 'overview' ||
+      buildPages.includes(page) ||
+      page === 'galaxy' ||
+      page === 'fleets' ||
+      (page === 'dispatch' && protocol === 4) ||
+      page === 'settings' ||
+      page === 'rewards' ||
+      page === 'menu' ||
+      page === 'alliance' ||
+      page === 'alliance-create' ||
+      page === 'alliance-discover' ||
+      (protocol === 4 && (page === 'reports' || page === 'messages')))
+  )
 }

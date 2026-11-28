@@ -4,6 +4,9 @@ import { VisuallyHidden } from '../../ui/visually-hidden'
 import { Hammer, Check, Clock3, AlertTriangle } from 'lucide-react'
 import type { ProgressionProps } from './shared'
 import type { ProgressionRequest } from './options'
+import { useMobileLayout } from '../../ui/use-mobile-layout'
+import { ResourceCostPreview } from '../../ui/resource-costs'
+import type { components } from '../../contracts'
 import { Button } from '../../ui/button'
 import { useBuildingQuickBuild } from './use-building-quick-build'
 import styles from './building-quick-build.module.css'
@@ -14,13 +17,20 @@ export function BuildingQuickBuild({
   request,
   tile,
   unavailable,
+  cost,
+  showDesktopCosts,
+  energyDemand,
 }: {
   model: ProgressionProps['coordinator']
   view: ProgressionProps['view']
   request: Extract<ProgressionRequest, { type: 'Upgrade' }>
   tile: ComponentProps<typeof ImageTile>
+  cost: components['schemas']['Resources'] | null
+  showDesktopCosts: boolean
+  energyDemand: bigint | null
   unavailable: string
 }) {
+  const mobile = useMobileLayout()
   const description = useId()
   const title = tile.title
   const { proposal, reason, submit, feedback, recover } = useBuildingQuickBuild(
@@ -36,6 +46,12 @@ export function BuildingQuickBuild({
     <div>
       <ImageTile
         {...tile}
+        compactCaption={mobile}
+        summary={
+          (energyDemand !== null || (cost && (mobile || showDesktopCosts))) && (
+            <ResourceCostPreview cost={cost} energyDemand={energyDemand} />
+          )
+        }
         action={
           <div
             className={styles.action}

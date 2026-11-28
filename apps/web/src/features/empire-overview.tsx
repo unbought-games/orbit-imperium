@@ -13,7 +13,7 @@ import { MissionFleetCard } from './mission-fleet-card'
 import { EmptyState } from '../ui/empty-state'
 import { CoordinateLink } from './coordinate-link'
 import { PlanetActions } from './planet-actions'
-import { PlanetRename } from './planet-rename'
+import { BodyRename } from './body-rename'
 import { EmpireName } from './empire-name'
 import { EmpireEmblemLink } from './empire-emblem-link'
 import type { Coordinator } from '../client-model/coordinator'
@@ -57,6 +57,7 @@ import {
   storagePercent,
   type EmpireFlight,
 } from './empire-model'
+import { useResourceColumns } from './use-resource-columns'
 import styles from './empire-overview.module.css'
 
 type Body = BoundView['bodies'][number]
@@ -197,7 +198,7 @@ function FlightList({
             </span>
             <div className={styles.flightCopy}>
               <div className={styles.flightHeading}>
-                <strong>{flight.mission}</strong>
+                <strong>{label(flight.mission)}</strong>
                 <span className={styles.leg}>{flight.leg}</span>
                 <time
                   dateTime={new Date(flight.due).toISOString()}
@@ -226,7 +227,7 @@ function FlightList({
                 data-touch-control=""
                 className={styles.flightLink}
                 {...routeTarget(universeName, 'fleets', body, flight.item)}
-                aria-label={`View ${flight.mission} ${flight.leg.toLowerCase()} fleet`}
+                aria-label={`View ${label(flight.mission)} ${flight.leg.toLowerCase()} fleet`}
               >
                 <ArrowRight size={16} />
               </Link>
@@ -452,6 +453,71 @@ function PlanetClimate({
   )
 }
 
+function PlanetResources({ body, view }: { body: Body; view: BoundView }) {
+  const columns = useResourceColumns<HTMLDListElement>()
+  const rates = currentResourceRates(view, body)
+  return (
+    <dl
+      ref={columns}
+      className={styles.resources}
+      aria-label={`${body.kind} resources`}
+    >
+      {resourceNames.map((name) => {
+        const amount = body.amounts[name]
+        const capacity = body.capacity[name]
+        const percent = storagePercent(amount, capacity)
+        const full = BigInt(amount) >= BigInt(capacity)
+        return (
+          <div
+            key={name}
+            style={
+              {
+                '--resource-color': `var(--resource-${name})`,
+              } as CSSProperties
+            }
+          >
+            <dt className={styles.resourceName}>{label(name)}</dt>
+            <dd className={styles.balance}>
+              <strong>
+                <ResourceQuantity noWrap resource={name} value={amount} />
+              </strong>
+              <div className={styles.utilization}>
+                <meter
+                  min={0}
+                  max={100}
+                  value={percent}
+                  aria-label={`${name} storage utilization`}
+                />
+                <span className={full ? styles.storageFull : undefined}>
+                  {full ? 'Storage full' : `${percent}% full`}
+                </span>
+              </div>
+            </dd>
+            <dd className={styles.productionDetails}>
+              <div>
+                <span>Capacity</span>
+                <ResourceQuantity noWrap resource={name} value={capacity} />
+              </div>
+              <div>
+                <span>Per hour</span>
+                {rates ? (
+                  <ResourceQuantity
+                    noWrap
+                    resource={name}
+                    value={rates[name]}
+                  />
+                ) : (
+                  'Rate unavailable'
+                )}
+              </div>
+            </dd>
+          </div>
+        )
+      })}
+    </dl>
+  )
+}
+
 function PlanetDossier({
   model,
   view,
@@ -466,7 +532,6 @@ function PlanetDossier({
   flights: EmpireFlight[]
 }) {
   const physicalFacts = planetPhysicalFacts(body)
-  const rates = currentResourceRates(view, body)
   const traffic = bodyTraffic(flights, body.id)
   const energy = BigInt(body.energy.supply) - BigInt(body.energy.demand)
   const research =
@@ -491,8 +556,8 @@ function PlanetDossier({
               : body.kind}
             {selected && <b>Command focus</b>}
           </span>
-          {view.protocol === 4 && body.kind === 'Planet' ? (
-            <PlanetRename model={model} body={body} />
+          {view.protocol === 4 ? (
+            <BodyRename model={model} body={body} />
           ) : (
             <h3 className={styles.planetName}>{bodyName(body)}</h3>
           )}
@@ -556,45 +621,7 @@ function PlanetDossier({
             : 'Fleet operations are available. Lunar Base construction is unavailable in this universe.'}
         </p>
       )}
-      <dl className={styles.resources} aria-label={`${body.kind} resources`}>
-        {resourceNames.map((name) => (
-          <div
-            key={name}
-            style={
-              { '--resource-color': `var(--resource-${name})` } as CSSProperties
-            }
-          >
-            <dt>{label(name)}</dt>
-            <dd>
-              <strong>
-                <ResourceQuantity resource={name} value={body.amounts[name]} />
-              </strong>
-              <meter
-                min={0}
-                max={100}
-                value={storagePercent(body.amounts[name], body.capacity[name])}
-                aria-label={`${name} storage utilization`}
-              />
-              <span>
-                {rates ? (
-                  <>
-                    <ResourceQuantity resource={name} value={rates[name]} /> /h
-                  </>
-                ) : (
-                  'Rate unavailable'
-                )}
-              </span>
-              <small>
-                Cap{' '}
-                <ResourceQuantity resource={name} value={body.capacity[name]} />
-              </small>
-              {BigInt(body.amounts[name]) >= BigInt(body.capacity[name]) && (
-                <b className={styles.storageFull}>Storage full</b>
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <PlanetResources body={body} view={view} />
       <div className={styles.energyLine}>
         <span className={energy < 0n ? styles.warning : ''}>
           <ResourceMark resource="energy" width={13} height={13} />{' '}

@@ -1,4 +1,18 @@
 # PR and main test performance audit
+## November 17, 2026 — Graviton research fixture
+
+Removed the new `satellite_power_starts_graviton_and_completion_survives_restart`
+PostgreSQL test before publication. Its direct inventory and building inserts
+omitted asset valuation records, so the quote load rejected the fixture with
+`CorruptData`. The repair used the world scenario editor, which accepts mobile
+ship IDs for ship grants and rejected `SolarSatellite` before the first quote.
+Neither failure reached a player command.
+
+The Graviton progression tests cover threshold boundaries, satellite inventory,
+fuel, local laboratories, stale commands, and exactly-once completion after
+power loss. The existing PostgreSQL standard-upgrade test now asserts the new
+research row and initial level. A live browser submission on a disposable
+standard world exercised the player command, worker completion and reload.
 
 ## November 12, 2026: simulator zero-default interaction update (PR402)
 
@@ -2405,3 +2419,138 @@ so a receipt cannot reconcile against the pre-commit snapshot. The fixture's
 optional revision callback is used only by this scenario; other callers retain
 their existing behavior. This is part of the same fixture audit/repair, not a
 changed runtime ordering guarantee. The focused retained browser case passes.
+
+### Hangar reward-link popup fixture
+
+PR #457's first queue run (44223130409, integration commit `30c313af`)
+failed the locked-dye keyboard navigation case. The popup navigated to the
+correct Rewards URL, but the component gallery served its own entry point and
+threw “Unknown component scenario” before the test closed the tab. The first
+fixture repair serves a document at the exact destination path and waits for
+its heading. The test still verifies source focus, native new-tab navigation
+and the body-scoped URL including its fragment. The other component popup
+journey, for the account link, already supplies its destination this way.
+
+## November 18, 2026 — Linux database test stack exhaustion
+
+PR #483 head `c9a5b400a64dd64fc3140b99cc68334cd7ae9386`, run
+`44394859906`, aborted two PostgreSQL tests on the default Linux test thread.
+Job `135122051963` aborted the Nanite activation, restart and acceleration
+scenario in 0.612 seconds. Job `135122052097` aborted the invited attack
+group, late join, defense, battle and returns scenario in 4.351 seconds.
+Both reported SIGABRT from stack overflow. The other rules tests that ran
+before the Nanite case passed.
+
+First repair for these two cases: split each long async journey into
+heap-pinned phases. Each phase releases its local snapshots and query futures
+before the next starts. Keep the real commands, both runtime modes, restart
+and every original assertion. Compiler layout diagnostics measured the Nanite
+test future at 63,480 bytes before the change. A reduced-stack diagnostic
+localized the original Nanite overflow to its outer poll frame. A 1 MiB stress
+probe can still exhaust the stack deeper in bootstrap/deserialization, so it
+is unsuitable as a test gate. The normal runners keep their existing thread
+stack settings. Other tests using the same command helper exercise independent
+gameplay and did not exhibit these two failures in the recorded run.
+
+With the repository runner on the Mac validation machine, focused execution
+after the repair passed in 14.014 seconds for Nanite and 14.131 seconds for
+the invited group. GitHub checks exercise the default Linux stack.
+
+Both repaired cases passed on Linux at `e065ccf23d188907b0a0736b76db4953293c5117`
+in run `44397065241`. Its remaining PostgreSQL job `135129839678` subsequently
+failed in the player lookup plan test. PostgreSQL reported six bind parameters
+for the seven-parameter production fleet query. This was its only test-side
+call using the extracted SQL. Bind the optional parent ID and exercise both the
+ordinary lookup and parent lookup with the existing buffer bound. All 18
+migration tests passed locally in 10.472 seconds.
+
+## November 25, 2026 — worker timing validation
+
+On `9f7a46f0` with the worker observability changes, adding an observed
+`GameService::step` to
+`planet_names_survive_restart_publish_to_other_players_and_retry_once` exhausted
+the native test stack (SIGABRT at 2.049 s). The original fixture on the same
+application code passed in 3.222 s. Moving the extra resolution into a boxed
+helper still overflowed at 2.536 s. Removed the added timing scenario and
+retained the original planet-name regression. No timeout or stack-size change.
+
+The focused inventory transaction test in `jump_gates` covers serial/scoped
+commit phases, affected rows, rollback and replay. Separately, a disposable
+API/worker run admitted and applied four fleet dispatches across both sources
+and modes, with an independently held advisory lock. PostgreSQL confirmed a
+waiting backend before release at admission and again at worker commit. Both
+endpoints exported the separate wait and hold phases, and the admission-cohort
+report recovered all four pairs and their phase durations.
+
+### November 23, 2026 — single-read bootstrap fixture
+
+PR #500 run 45307445108 at `300b6620` failed the epoch-restart and
+incompatible-data assertions in `crates/application/tests/bootstrap.rs`.
+Both injected faults on a second world read that bootstrap no longer makes.
+The fixture now returns EpochChanged from the bound read on the selected
+attempts, retaining restart and three-attempt exhaustion coverage. Each
+protocol must use exactly one world read and return matching view/settings
+speed and profile. A foreign binding must fail before any world read.
+
+### November 25, 2026 — fleet Review and launch feedback
+
+Local validation used `71e766e94dec452fdbbc95b1cdfa75ae74155485` plus the dispatch
+performance changes. The first 85-case Dispatch component run finished with
+84 passing cases. Its coordinate-validation case expected zero quote requests
+after the player had restored a valid destination. Preparing terms for that
+valid draft is now intended. The replacement checks that no review opened
+and no launch occurred. The invalid-coordinate cases still require zero
+reads. Auditing the other quote-count assertions found cases depending on
+prefetch timing. They now check the reviewed ship manifest, destination
+identity, or the exact held request, as appropriate.
+
+Separate application coverage holds the overview at a newer revision while
+the player receives a confirmed launch. It checks the visible HUD, inline
+feedback and the observation POST for the actual command. Browser Back
+revalidates the saved review. A normal warm Review checks the original quote
+count and reuse observation. A mounted recovery case retains the next draft
+while the player reopens a rejected order. Existing uncertainty coverage
+retains its original command ID and single submission.
+
+Independent reviews identified a stale quote after an A–B–A edit/refusal
+and missing gesture timing for Galaxy quick launches. Controlled controller
+tests now exercise those paths. The mobile Harvest application test then
+recorded acceptance and receipt delivery while its confirmation visibility
+observation was missing. The Harvest sheet covered the initial paint and
+its close did not change viewport intersection. The client now checks again
+when the native dialog closes and releases fleet submission after applying
+the receipt. The unchanged case passed in 3.4 seconds, with 4.2 seconds of
+bundle preparation and 4.1 seconds of suite execution. This was a product
+failure. The test and its existing repair history were retained.
+
+The full component run took 1.4 minutes, including the failed case, after
+6.8 seconds of bundle preparation. Affected component cases and application
+journeys were run again as each fix landed. The independent moon target case
+now reviews a named second moon with its own ID. Captures cover the Dispatch
+flow and quick launches in the running application at 1440 × 900 and 390 × 844.
+
+The final focused moon review passed. Playwright reported generated line 1064.
+Its cached source map contains the exact reviewed file at source line 956,
+blob `d1e84f973aa94a98d25c6d5974cc8bf685520031`. The one-case run finished
+in 1.6 seconds. All four independent review packets were read-only. The last
+packet's SHA-256 was
+`e1b61d7f520dfaa1f5bd1c567200e5ee08ca21602a2742d17cf2ae98da8e6544`.
+
+### November 25, 2026 — idle Messages recovery
+
+On `0656fc2d`, PR 506 CI run `45626381108` attempt 1 passed 735 of
+736 component cases. The Messages screen test still expected its third
+history request at five seconds. The recipient-driven implementation correctly
+kept the count at two. Its original migration in #490 used that interval
+to check that a passive refresh preserved the thread and composer.
+
+The updated case keeps the original initial refusal, explicit retry, held
+incremental read, focus and draft assertions. It checks that idle history and inbox reads stay quiet until the two-minute fallback, drives a recipient invalidation through the coordinator, and
+exercises the two-minute fallback after a later message has no wake. PostgreSQL
+coverage checks that a send wakes exactly its participants and read receipts
+only wake their owner. Other fake-clock advances in the component suite do not
+assert this Messages polling contract. The two focused Messages cases passed
+with 3.117 s bundle preparation and 1.0 s execution. Independent review of
+patch `7064fb8e62657c9429489114a3264359fba04689ba56906598a7c6aad324eb01`
+passed both cases after tightening the idle boundary and checking both request
+counts. All eight PostgreSQL social cases passed in 19.684 s.

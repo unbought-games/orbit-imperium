@@ -23,19 +23,15 @@ fn level(
         let paid = research_terms(&s.bodies[&body], &s.research[&owner], key, r)
             .unwrap()
             .paid();
-        let id = OperationId(derived_id(InputId(owner.0), &format!("level-{key:?}-{n}")));
-        s.world.as_mut().unwrap().records.lots.push(AssetLot {
-            id,
+
+        s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+            acquisition: None,
             owner,
             item: CatalogKey::Research(key),
             level: Some(n),
             location: AssetLocation::Player,
             quantity: 1,
             unit_value_micro: paid.values().iter().sum(),
-            rules_hash: r.hash.clone(),
-            source_operation: id,
-            acquired_at: 0,
-            acquired_sequence: 0,
         });
     }
     s.research
@@ -68,19 +64,15 @@ fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
             count: 3,
             revision: 0,
         });
-        let id = OperationId(derived_id(InputId(body.0), "colony-ships"));
-        s.world.as_mut().unwrap().records.lots.push(AssetLot {
-            id,
+
+        s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+            acquisition: None,
             owner,
             item: CatalogKey::Ship(ShipType::ColonyShip),
             level: None,
             location: AssetLocation::Body(body),
             quantity: 3,
             unit_value_micro: 40000 * SCALE,
-            rules_hash: r.hash.clone(),
-            source_operation: id,
-            acquired_at: 0,
-            acquired_sequence: 0,
         });
     }
     s.world.as_mut().unwrap().planet_slots = (1..=5)
@@ -104,11 +96,12 @@ fn setup() -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
             }
         })
         .collect();
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     (s, r, p, b, t)
 }
 fn colony(p: PlayerId, b: BodyId, position: u32, ships: i64) -> FleetIntent {
     FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: b,
@@ -257,7 +250,7 @@ fn colonize_and_return(lunar: bool) {
     let stale = arrive(&mut s, &r, &f, 503);
     assert!(stale.bodies.is_empty() && stale.events.is_empty());
     arrive(&mut s, &r, &returning, 504);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     assert_eq!(
         s.inventories
             .iter()
@@ -299,7 +292,7 @@ fn single_ship_terminalizes_without_return_and_can_transport_then_deploy_to_colo
         s.inventories.iter().find(|x| x.body == id).unwrap().count,
         1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn two_arrivals_compete_for_capacity_and_full_cap_launch_returns_intact() {
@@ -380,7 +373,7 @@ fn competing_owners_and_recall_preserve_ships_cargo_and_rng() {
     assert_eq!(ret.due_at, recalled.launched_at + 200);
     arrive(&mut s, &r, &ret, 807);
     assert_eq!(owned_planet_count(&s, p).unwrap(), 2);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn launch_requires_ship_completed_position_gate_and_covered_current_empty_slot() {
@@ -660,7 +653,7 @@ fn ordinary_starter_builds_researches_manufactures_and_colonizes_without_grants(
     let c = arrive(&mut s, &r, &f, n + 2);
     assert_eq!(c.bodies.len(), 1);
     assert_eq!(owned_planet_count(&s, p).unwrap(), 2);
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -832,7 +825,7 @@ fn colony_abandonment_is_permanent_replayable_and_slot_releases_at_strict_utc_bo
         planet_slot(&s, tombstone.coordinates).unwrap().occupant,
         Some(replacement)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 #[test]
 fn abandonment_rejects_homeworld_foreign_body_changed_losses_and_dependent_flights() {
@@ -1130,7 +1123,7 @@ fn abandonment_destroys_stationed_assets_and_moon_terminalizes_queues_and_preser
         assert!(c.bodies.is_empty());
         assert!(c.inventories.is_empty());
     }
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -1200,10 +1193,22 @@ fn deployment_return_causes_survive_restart_and_legacy_journal_replay_without_re
             expected_legacy["Applied"]["expected_facts_hash"],
             serde_json::to_value(hash(&facts)).unwrap()
         );
-        assert_eq!(
-            replay_legacy_mission_transition(&facts, &input, &r).unwrap(),
-            expected_legacy
-        );
+        let mut replay = replay_legacy_mission_transition(&facts, &input, &r).unwrap();
+        if mode == 1 {
+            // The old executor also wrote a report when it scheduled the recall.
+            let id = derived_id(input.id, &format!("report:Recalled:{}", launched.id));
+            let report = replay["Applied"]["world"]["records"]["reports"]
+                .as_object_mut()
+                .unwrap()
+                .remove(&id.to_string())
+                .unwrap();
+            assert_eq!(report["kind"], "Recalled");
+            assert_eq!(
+                report["payloads"][p.to_string()]["fleet"],
+                launched.id.to_string()
+            );
+        }
+        assert_eq!(replay, expected_legacy);
         let c = apply(&mut s, outcome);
         s = serde_json::from_value(serde_json::to_value(&s).unwrap()).unwrap();
         let f = s.world.as_ref().unwrap().records.fleets[&launched.id].clone();
@@ -1252,13 +1257,13 @@ fn deployment_return_causes_survive_restart_and_legacy_journal_replay_without_re
                 validate_phalanx_scan_readiness(true, legacy_fleets.values()),
                 Ok(())
             );
-            validate_asset_lineage(&legacy_state).unwrap();
+            validate_completed_assets(&legacy_state).unwrap();
             arrive(&mut s, &r, &f, 9605);
             assert_eq!(
                 s.world.as_ref().unwrap().records.fleets[&f.id].return_reason,
                 Some(expected)
             );
         }
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
     }
 }

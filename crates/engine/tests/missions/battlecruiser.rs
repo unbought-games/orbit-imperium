@@ -195,7 +195,7 @@ fn manufactured_battlecruiser_flies_fights_and_returns_after_new_production_is_d
             .count,
         1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let blocked = inspect_progression(
         &s,
         Actor::Player(p),
@@ -293,7 +293,7 @@ fn manufactured_battlecruiser_flies_fights_and_returns_after_new_production_is_d
             .values()
             .all(|f| f.leg == MissionLeg::Returned)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -406,7 +406,7 @@ fn battlecruiser_batch_credits_each_unit_once_and_keeps_paid_terms_after_price_c
             settle_production(&s, &s.bodies[&b], event.at, &current).unwrap(),
             expected_resources
         );
-        validate_asset_lineage(&s).unwrap();
+        validate_completed_assets(&s).unwrap();
         let duplicate = run(
             &mut s,
             &current,

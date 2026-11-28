@@ -8,6 +8,7 @@ fn player(n: u128) -> PlayerId {
 
 fn fleet(n: u128, owner: PlayerId, target: PlayerId, leg: MissionLeg) -> MissionFleet {
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: BodyId(Uuid::from_u128(10)),
@@ -220,18 +221,14 @@ fn mission_projection_preserves_id_order_and_derives_owned_score_and_slots() {
     }
     records.lots = [player(1), player(2)]
         .into_iter()
-        .map(|owner| AssetLot {
-            id: OperationId::default(),
+        .map(|owner| CatalogHolding {
+            acquisition: None,
             owner,
             item: CatalogKey::Ship(ShipType::SmallCargo),
             level: None,
             location: AssetLocation::Player,
             quantity: 2,
             unit_value_micro: 17,
-            rules_hash: Hash("paid-value".into()),
-            source_operation: OperationId::default(),
-            acquired_at: 0,
-            acquired_sequence: 0,
         })
         .collect();
     let mut research = research();

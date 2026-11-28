@@ -5,16 +5,21 @@ import { dispatchFailure } from './dispatch-validation'
 import { pendingProbe, probeAvailability } from './galaxy-fleets'
 
 type S = components['schemas']
-type ProbeModel = Pick<Coordinator, 'store' | 'world' | 'send'>
+type ProbeModel = Pick<
+  Coordinator,
+  'store' | 'world' | 'send' | 'dispatchClickTime'
+>
 
 /** One explicit click, one durable departure; server quotes still validate fuel and eligibility. */
 export async function sendGalaxyProbe(
   model: ProbeModel,
   origin: string,
   target: NonNullable<S['GalaxyPosition4']['body']>,
+  coordinates: S['Coordinates'],
   current: () => boolean,
   count = '1',
 ) {
+  const clickedAt = model.dispatchClickTime()
   const state = model.store.getState()
   if (state.rateLimited) return
   const binding = state.binding
@@ -61,6 +66,7 @@ export async function sendGalaxyProbe(
       },
     },
     terms,
+    { clickedAt, coordinates },
   )
   // The shared cooldown banner owns throttled-send feedback.
   if (!commandId && model.store.getState().rateLimited) return

@@ -64,15 +64,29 @@ export function dispatchObservationError(
   destination: S['MissionDestination4'],
 ): string {
   if (
-    observation?.target?.type !== 'Body' ||
-    selection.type !== 'BodyAt' ||
-    selection.kind !== observation.target.expected_kind ||
+    !observation?.target ||
     selection.coordinates.galaxy !== observation.coordinates.galaxy ||
     selection.coordinates.system !== observation.coordinates.system ||
     selection.coordinates.position !== observation.coordinates.position
   )
     return ''
   const target = observation.target
+  if (target.type === 'Debris' && selection.type === 'DebrisAt')
+    return destination.type === 'Debris' &&
+      destination.field_identity === target.field_identity
+      ? ''
+      : 'The debris field changed. Choose a current field in Galaxy.'
+  if (target.type === 'EmptyPosition' && selection.type === 'EmptyPositionAt')
+    return destination.type === 'EmptyPosition' &&
+      destination.slot_revision === target.slot_revision
+      ? ''
+      : 'The position changed. Choose a current position in Galaxy.'
+  if (
+    target.type !== 'Body' ||
+    selection.type !== 'BodyAt' ||
+    selection.kind !== target.expected_kind
+  )
+    return ''
   return destination.type !== 'Body' ||
     destination.id !== target.id ||
     destination.expected_owner !== target.expected_owner ||
@@ -87,6 +101,13 @@ export function destinationError(
   player: string,
   origin: string,
 ): string {
+  if (
+    mission === 'DestroyMoon' &&
+    (destination.type !== 'Body' ||
+      destination.expected_kind !== 'Moon' ||
+      destination.expected_owner === player)
+  )
+    return 'Choose another player’s moon for destruction.'
   if (destination.type !== 'Body') return ''
   if (mission === 'Colonize')
     return 'This position is occupied. Choose an empty position.'
@@ -207,12 +228,13 @@ export function dispatchResourceProblem(
 ): string {
   if (BigInt(available.deuterium) < BigInt(fuel))
     return 'Not enough deuterium for fuel. Reduce the fleet or speed, or supply more deuterium at the origin.'
+  if (BigInt(cargo.deuterium) + BigInt(fuel) > BigInt(available.deuterium))
+    return 'Not enough deuterium for cargo and flight fuel. Use Max deuterium or enter a smaller deuterium cargo.'
   if (
     BigInt(cargo.metal) > BigInt(available.metal) ||
-    BigInt(cargo.crystal) > BigInt(available.crystal) ||
-    BigInt(cargo.deuterium) + BigInt(fuel) > BigInt(available.deuterium)
+    BigInt(cargo.crystal) > BigInt(available.crystal)
   )
-    return 'Not enough resources for the selected cargo after reserving deuterium for fuel. Reduce the cargo.'
+    return 'Not enough resources for the selected cargo. Reduce the metal or crystal cargo.'
   return ''
 }
 
@@ -221,7 +243,10 @@ export function observedMissionWarning(
   mission: S['Mission4'],
   target?: Pick<S['PublicBody4'], 'attack_blocker' | 'espionage_eligible'>,
 ): string {
-  if (mission === 'Attack' && target?.attack_blocker)
+  if (
+    (mission === 'Attack' || mission === 'DestroyMoon') &&
+    target?.attack_blocker
+  )
     return dispatchFailure(target.attack_blocker)
   if (mission === 'Espionage' && target && !target.espionage_eligible) {
     return target.attack_blocker &&

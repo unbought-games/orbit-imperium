@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { oidcHttp, type OidcConfig } from '../adapters/oidc'
-import { useOidcConfig } from './use-oidc'
+import { useContext, useCallback, useEffect, useRef, useState } from 'react'
+import { type OidcConfig } from '../adapters/oidc'
+import { OidcEntryApi, useOidcConfig } from './use-oidc'
 
 export function hostedJoinUniverse(pathname: string): string | undefined {
   return /^\/join\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(
@@ -29,6 +29,7 @@ export function useHostedJoin(
   destination = '/',
   automatic = false,
 ) {
+  const api = useContext(OidcEntryApi)
   const { state, retry: retryConfig } = useOidcConfig()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -53,7 +54,7 @@ export function useHostedJoin(
     setBusy(true)
     setError('')
     try {
-      await oidcHttp.enroll(target)
+      await api.enroll(target)
       window.location.replace(destination)
     } catch (cause) {
       setError(
@@ -63,7 +64,7 @@ export function useHostedJoin(
       )
       setBusy(false)
     }
-  }, [state.status, retryConfig, target, hasMembership, busy, destination])
+  }, [api, state.status, retryConfig, target, hasMembership, busy, destination])
   useEffect(() => {
     if (automatic && allowed && !hasMembership && !attempted.current) {
       attempted.current = true

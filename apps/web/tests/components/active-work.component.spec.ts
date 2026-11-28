@@ -1,3 +1,4 @@
+import { body } from '../../src/test-support/empire'
 import { test, expect } from './fixture'
 import { activeWorkFixture as fixture } from '../../src/test-support/active-work'
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
@@ -12,7 +13,6 @@ for (const width of [390, 1440]) {
     }) => {
       const height = width === 390 ? 844 : 1000
       await page.setViewportSize({ width, height })
-      await page.clock.install({ time: now })
       await page.clock.pauseAt(now)
       await page.addInitScript(
         (input) => {
@@ -152,7 +152,9 @@ for (const width of [390, 1440]) {
         })
         await summary.getByRole('link', { name: /Level 5/ }).click()
         await expect(page.getByLabel('Scene destination')).toHaveText(
-          new RegExp(`/${screen}/`),
+          screen === 'resources'
+            ? `/u/andromeda/b/${body.id}/resources/metal-mine`
+            : new RegExp(`/${screen}/`),
         )
       }
     })
@@ -164,7 +166,6 @@ test('construction without a server start time stays honest and demolition remai
   mount,
 }) => {
   await page.setViewportSize({ width: 320, height: 844 })
-  await page.clock.install({ time: now })
   await page.clock.pauseAt(now)
   const options = fixture('resources')
   delete options.constructions[0].started_at

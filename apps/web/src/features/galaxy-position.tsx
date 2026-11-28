@@ -1,4 +1,5 @@
 import { ErrorBannerMessage } from '../ui/error-banner'
+import { coordinates } from '../ui/format'
 import { CoordinateLink } from './coordinate-link'
 import { playerLabel, type PlayerNames } from './player-label'
 import type { ComponentProps, ReactNode } from 'react'
@@ -44,7 +45,7 @@ export function GalaxyPosition({
   missileAction,
   scanAction,
 }: {
-  scanAction?: ReactNode
+  scanAction?: ComponentProps<typeof GalaxyActionMenu>['scanAction']
   readOnly?: boolean
   position: components['schemas']['GalaxyPosition4']
   playerNames?: PlayerNames
@@ -122,12 +123,13 @@ export function GalaxyPosition({
                   <span className={styles.srOnly}>Actions for {target}</span>
                 </Button>
               }
-              missileIdentity={`${origin}:${body?.id}:${body?.owner}`}
+              actionIdentity={`${origin}:${body?.id}:${body?.owner}`}
               target={target}
               coordinates={coordinates}
               actions={actions}
               details={body?.name}
               missileAction={missileAction}
+              scanAction={scanAction}
               quickSpy={
                 canTarget && !owned
                   ? {
@@ -287,11 +289,42 @@ export function GalaxyPosition({
                 }
               />
             )}
-            {scanAction && (
-              <span className={styles.scanAction}>{scanAction}</span>
-            )}
           </div>
         )}
+      </div>
+    </article>
+  )
+}
+
+export function GalaxyPositionSkeleton({
+  at,
+}: {
+  at: components['schemas']['Coordinates']
+}) {
+  return (
+    <article className={styles.positionCard} aria-hidden="true">
+      <div className={styles.positionSummary}>
+        <div className={styles.planetTarget}>
+          <span
+            data-skeleton="planet"
+            className={classes(styles.planet, styles.orbitSkeleton)}
+          />
+          <div className={styles.planetInfo}>
+            <span
+              data-skeleton="planet-name"
+              className={styles.titleSkeleton}
+            />
+            <span
+              data-skeleton="player-name"
+              className={styles.playerSkeleton}
+            />
+            <span
+              className={classes(styles.coordinates, styles.pendingCoordinates)}
+            >
+              {coordinates({ coordinates: at })}
+            </span>
+          </div>
+        </div>
       </div>
     </article>
   )

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAtomValue } from 'jotai'
 import { useStore } from 'zustand'
 import type { components } from '../contracts'
@@ -7,9 +8,12 @@ import { useUniverseName } from '../shell/session-context'
 import { occupiedFleetSlots } from '../client-model/game-projection'
 import { copiedLocationAtom } from './coordinate-memory'
 import { useDispatch } from './use-dispatch'
+import type { DispatchNavigation } from './routed-dispatch'
 import { DispatchView } from './dispatch-view'
 type S = components['schemas']
 export type DispatchDraft = {
+  cargo?: import('../client-model/dispatch-cargo').CargoDraft
+  holdHours?: NonNullable<S['FleetIntent4']['hold_hours']>
   reviewOnOpen?: boolean
   attackGroup?: string
   ships?: Record<string, string>
@@ -17,15 +21,9 @@ export type DispatchDraft = {
   origin?: string
   targetKind?: LocationKind
   coordinates: S['Coordinates']
-  mission:
-    | 'Transport'
-    | 'Espionage'
-    | 'Harvest'
-    | 'Attack'
-    | 'Colonize'
-    | 'Deploy'
-    | 'Hold'
+  mission: S['Mission4']
   observedAt?: number
+  suggestRecyclers?: boolean
   target?: S['MissionDestination4']
 }
 export { MissionFleets } from './mission-fleets'
@@ -34,14 +32,18 @@ export function Dispatch(props: {
   view: S['BoundView4']
   body: S['BodyV3']
   draft: DispatchDraft | null
+  navigation?: DispatchNavigation
+  embedded?: boolean
 }) {
   const universeName = useUniverseName()
   const occupiedSlots = useStore(props.model.store, occupiedFleetSlots)
   const recentlyCopied = useAtomValue(copiedLocationAtom)
-  const dispatch = useDispatch(props)
+  const [draft] = useState(props.draft)
+  const dispatch = useDispatch({ ...props, draft })
   return (
     <DispatchView
       {...props}
+      draft={draft}
       universeName={universeName}
       occupiedSlots={occupiedSlots}
       recentlyCopied={recentlyCopied}

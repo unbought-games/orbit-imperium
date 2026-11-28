@@ -1,4 +1,6 @@
-import { useRef, useLayoutEffect, type CSSProperties } from 'react'
+import { useDispatchPaint } from '../use-dispatch-paint'
+import type { Coordinator } from '../../client-model/coordinator'
+import { useRef, useCallback, useLayoutEffect, type CSSProperties } from 'react'
 import { Check, ChevronRight } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useToastSwipe } from '../../ui/use-toast-swipe'
@@ -10,12 +12,14 @@ import { HudIconMark } from './hud-icon'
 import styles from './hud.module.css'
 
 export type HudToastsProps = {
+  model?: Coordinator
   notices: readonly HudToastView[]
   onOpen: (target: HudTarget) => void
   onDismiss: (target: HudTarget) => void
   focusFallback?: () => void
 }
 export function HudToasts({
+  model,
   notices,
   onOpen,
   onDismiss,
@@ -59,6 +63,7 @@ export function HudToasts({
           style={{ '--toast-depth': depth } as CSSProperties}
         >
           <HudToast
+            model={model}
             notice={notice}
             onOpen={() => onOpen(notice.target)}
             active={depth === 0}
@@ -77,16 +82,33 @@ export function HudToasts({
   )
 }
 function HudToast({
+  model,
   notice,
   onOpen,
   active,
   onDismiss,
 }: {
+  model?: Coordinator
   notice: HudToastView
   onOpen: () => void
   active: boolean
   onDismiss: () => void
 }) {
+  const titleRef = useRef<HTMLSpanElement>(null)
+  const attempt =
+    notice.target.kind === 'command'
+      ? model?.store.getState().attempts.get(notice.target.id)
+      : undefined
+  const commandId =
+    attempt?.envelope.command.type === 'World' &&
+    attempt.envelope.command.action.type === 'LaunchFleet'
+      ? attempt.envelope.command_id
+      : undefined
+  const confirm = useCallback(() => {
+    if (commandId)
+      model?.dispatchObservations.mark(commandId, 'confirmed_visible')
+  }, [model, commandId])
+  useDispatchPaint(titleRef, active && commandId ? confirm : undefined, true)
   const swipe = useToastSwipe(onDismiss)
   const { content, now, freeFleetSlots } = notice
   return (
@@ -103,6 +125,7 @@ function HudToast({
         type="button"
         className={styles.toast}
         data-tone={content.tone}
+        data-fleet-launch={commandId ? true : undefined}
         onClick={(event) => {
           if (swipe.canOpen(event.detail === 0 ? 'keyboard' : 'pointer'))
             onOpen()
@@ -118,7 +141,7 @@ function HudToast({
           <HudIconMark kind={content.icon} />
         </span>
         <span className={styles.toastBody}>
-          <span className={styles.toastTitle}>
+          <span ref={titleRef} className={styles.toastTitle}>
             {content.title}
             {content.tone === 'green' && <Check size={14} />}
           </span>

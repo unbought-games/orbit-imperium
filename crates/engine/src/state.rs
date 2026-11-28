@@ -47,6 +47,7 @@ pub struct PublicDestination {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstructionStatus {
     BodyAbandoned,
+    BodyDestroyed,
     Active,
     Completed,
     Cancelled,
@@ -71,6 +72,12 @@ pub struct Construction {
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FactCoverage {
+    /// Consecutive overdue units proven to precede other ordered observations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manufacturing_due_count: Option<i64>,
+    /// Complete active fleet membership at each moon being removed.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeSet::is_empty")]
+    pub moon_removal_bodies: std::collections::BTreeSet<BodyId>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeSet::is_empty")]
     pub production_bodies: std::collections::BTreeSet<BodyId>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeSet::is_empty")]
@@ -201,6 +208,18 @@ impl ChangeSet {
                 .records = w.records.clone();
         }
         if let Some(w) = &self.world {
+            for id in w
+                .records
+                .destroyed_moons
+                .values()
+                .filter(|loss| loss.input == self.input)
+                .map(|loss| &loss.body)
+            {
+                state.bodies.remove(id);
+                state.inventories.retain(|x| x.body != *id);
+                state.production_settings.remove(id);
+                state.progression_reservations.remove(id);
+            }
             for abandoned in w.records.abandonments.values() {
                 if let Some(slot) = state.world.as_mut().and_then(|w| {
                     w.planet_slots

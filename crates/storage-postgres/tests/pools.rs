@@ -120,3 +120,94 @@ async fn cancelled_begin_does_not_poison_shared_store_refresh_pool() {
     )
     .await;
 }
+
+#[tokio::test]
+async fn worker_wakes_on_remote_admission_and_recovers_a_lease_with_two_control_connections() {
+    use orbit_application::{
+        Actor, Command, CommandEnvelope, GameService, GameStore, SessionService,
+    };
+    use orbit_engine::{FleetId, UniverseId};
+    use uuid::Uuid;
+    let url = std::env::var("TEST_DATABASE_URL").unwrap();
+    let api = PgStore::connect(&url).await.unwrap();
+    api.migrate().await.unwrap();
+    let universe = UniverseId(Uuid::new_v4());
+    let passwords = [Uuid::new_v4().to_string(), Uuid::new_v4().to_string()];
+    api.seed(universe, 1000, 1, &passwords).await.unwrap();
+    api.set_test_time(1000).await.unwrap();
+    let session = SessionService::new(api.clone())
+        .login("alpha", &passwords[0], None)
+        .await
+        .unwrap();
+    let actor = Actor::Player(session.session.memberships[0].player);
+    let game = GameService::new(api.clone());
+    let epoch = game.view(actor, universe).await.unwrap().epoch;
+    let worker = PgStore::connect_with_limits(
+        &url,
+        PoolLimits {
+            control: 2,
+            reads: 0,
+            worker: 2,
+            admission: 0,
+            refresh: 0,
+        },
+    )
+    .await
+    .unwrap();
+    let _guard = worker.acquire_server_guard().await.unwrap();
+
+    // Hold just the barrier table while the idle worker subscribes. Its durable
+    // head read reaches this lock after LISTEN has completed. Command admission
+    // in the independent API pool uses neither this table nor a process wake.
+    let observer = PgPool::connect(&url).await.unwrap();
+    let mut gate = observer.begin().await.unwrap();
+    gate.execute("LOCK TABLE runtime_barriers IN ACCESS EXCLUSIVE MODE")
+        .await
+        .unwrap();
+    let blocker: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *gate)
+        .await
+        .unwrap();
+    let polling = worker.clone();
+    let wait = tokio::spawn(async move { polling.wait_for_work(&[universe]).await });
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let blocked: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='orbit-worker' AND $1=ANY(pg_blocking_pids(pid)))",
+            ).bind(blocker).fetch_one(&observer).await.unwrap();
+            if blocked { break; }
+            tokio::task::yield_now().await;
+        }
+    }).await.expect("subscribed worker must reach durable head read");
+    let owner = Uuid::new_v4().into();
+    assert!(worker.claim_next(universe, owner).await.unwrap().is_none());
+    let command = Command::RecallFleet {
+        fleet: FleetId(Uuid::new_v4()),
+    };
+    game.submit(
+        actor,
+        universe,
+        CommandEnvelope {
+            protocol: 2,
+            epoch,
+            command_id: Uuid::new_v4().into(),
+            command: command.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    gate.rollback().await.unwrap();
+    assert_eq!(wait.await.unwrap().unwrap(), "notification");
+
+    let first = worker.claim_next(universe, owner).await.unwrap().unwrap();
+    assert_eq!(first.input.payload, orbit_engine::Input::Command(command));
+    let other = Uuid::new_v4().into();
+    assert!(worker.claim_next(universe, other).await.unwrap().is_none());
+    // The first worker died silently. No new command or notification follows.
+    assert_eq!(worker.wait_for_work(&[universe]).await.unwrap(), "timer");
+    api.set_test_time(first.lease_until).await.unwrap();
+    let recovered = worker.claim_next(universe, other).await.unwrap().unwrap();
+    assert_eq!(first.input.id, recovered.input.id);
+    assert_ne!(first.token, recovered.token);
+    worker.release_serial(&recovered).await.unwrap();
+}

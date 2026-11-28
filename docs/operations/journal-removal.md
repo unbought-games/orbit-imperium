@@ -79,7 +79,11 @@ for lost later writes; it is not a table recreation or forward-history replay.
 
 Frozen input/facts/outcome fixtures and historical hash adapters remain supported
 as **supplied artifacts**. Keep their producing release, rules, original bytes,
-checksums and trusted provenance. New continuous snapshots are not generated.
+checksums and trusted provenance. Select the replay adapter by the producing
+release. For paid-asset journals from after manual recall reports ended, use
+`orbit_engine::replay_with_paid_assets`. Earlier mission and debris adapters
+also reproduce paid acquisition order, recorded prices and per-lot score
+deltas. Current saves derive catalog holdings from completed quantities.
 Ordinary info/debug logs are finite, may be suppressed or lost, and cannot prove
 commit completion, drive retry decisions, replace analytics, or reproduce full
 historical state. Legacy unknown mission returns normally settle through current

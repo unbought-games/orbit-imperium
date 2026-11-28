@@ -5,6 +5,7 @@ import type {
 } from '../../client-model/ship-appearance-types'
 import {
   acknowledgeSave,
+  groupDyesByPalette,
   hasUnsavedDraft,
   draftProblem,
   initialDraft,
@@ -61,6 +62,23 @@ function state(): ShipAppearanceState {
   }
 }
 
+it('groups interleaved dyes by palette in catalog order, preserving locked and ungrouped choices', () => {
+  const [navy, gold] = state().dyes
+  const copper = { ...gold, id: 'copper', palette_id: 'red-earth' }
+  const iron = {
+    ...navy,
+    id: 'iron',
+    palette_id: 'red-earth',
+    availability: 'locked' as const,
+  }
+  const blue = { ...navy, id: 'blue', palette_id: 'sky' }
+  expect(groupDyesByPalette([navy, copper, blue, gold, iron])).toEqual([
+    { id: undefined, title: 'Standard dyes', dyes: [navy, gold] },
+    { id: 'red-earth', title: 'Red Earth', dyes: [copper, iron] },
+    { id: 'sky', title: 'Sky', dyes: [blue] },
+  ])
+})
+
 describe('ship customization drafts', () => {
   it('starts from the equipped immutable revision, not a newer revision used elsewhere', () => {
     const snapshot = state()
@@ -93,6 +111,21 @@ describe('ship customization drafts', () => {
     })
     expect(draft.id).toBe('')
     expect(draft.revision).toBe(0)
+  })
+
+  it('opens a fresh Orbit Base in steel and gold, falling back when a dye is unavailable', () => {
+    const snapshot = state()
+    snapshot.equipment = []
+    snapshot.catalog[0].id = 'orbit-base-light-fighter'
+    const steel = { ...snapshot.dyes[0], id: 'free-steel' }
+    const gold = { ...snapshot.dyes[1], id: 'free-gold' }
+    snapshot.dyes.push(steel, gold)
+    expect(initialDraft(snapshot, 'LightFighter')?.recipe).toMatchObject({
+      primary: 'free-steel',
+      accent: 'free-gold',
+    })
+    steel.availability = 'locked'
+    expect(initialDraft(snapshot, 'LightFighter')?.recipe.primary).toBe('navy')
   })
 
   it('does not invent a default for an unsupported target or a catalog without available dyes', () => {

@@ -163,7 +163,7 @@ its category and recovery contract before being exposed to bots.
 | Binding discovery | `GET binding?request_id=UUID` | 0; available inactive |
 | Settings, topology, catalog/rules | `POST settings`, `POST catalog` | 0; available inactive; no live gameplay facts |
 | Empire, production, queues, inventories, research, incoming/own fleets | `POST overview` | 0; awake only |
-| Building/demolition/research/manufacturing and cancellations; production settings; rename planet; fleets, recalls, vacation; report read/hide/star commands | `POST machine/commands`, ordinary `CommandEnvelopeV4` | 1 at durable admission, including later engine rejection |
+| Building/demolition/research/manufacturing and cancellations; production settings; name a planet or moon (`RenamePlanet`); fleets, recalls, vacation; report read/hide/star commands | `POST machine/commands`, ordinary `CommandEnvelopeV4` | 1 at durable admission, including later engine rejection |
 | Legacy browser command pair | `POST commands` | 1 for the pair, same identity allowance |
 | Explicit foreground presence | `POST presence` | 1; awake and budget required |
 | Progression inspection and quotes | `POST progression-options`, `POST progression-options/bulk`, `POST quotes` | 0; awake only |

@@ -31,6 +31,10 @@ import { resolveDestination } from '../shell/routes'
 import { Section } from '../ui/section'
 import { Heading, Text } from '../ui/typography'
 import { ReportListRow } from './report-list-row'
+import {
+  outboundFleetTargets,
+  reportHasOutboundFleet,
+} from './report-outbound-fleets'
 import { TaskHeader } from '../ui/task-header'
 import { SegmentedControl } from '../ui/segmented-control'
 import styles from './reports.module.css'
@@ -42,6 +46,7 @@ import { ReportVisibilityButton } from './report-visibility-button'
 import { useReports } from './use-reports'
 import type { DispatchDraft } from './missions'
 import { useStore } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import { currentServerTime } from '../client-model/game-projection'
 import { Popover } from '../ui/popover'
 import { reportAge, reportKindLabel } from './report-preview'
@@ -71,6 +76,10 @@ export function Reports({
   const cleanup = useReportCleanup(model, () => setSelected(new Set()))
   const filtered = options.status !== 'all' || options.kind !== 'all'
   const now = useStore(model.store, currentServerTime)
+  const outboundTargets = useStore(
+    model.store,
+    useShallow(outboundFleetTargets),
+  )
   const {
     page,
     detail,
@@ -168,6 +177,7 @@ export function Reports({
             coordinates: combat.target,
             mission: 'Harvest',
             observedAt: detail!.header.observed_at,
+            suggestRecyclers: true,
           })
         }
       >
@@ -301,7 +311,8 @@ export function Reports({
                 compact
                 disabled={false}
                 onCommitted={reportReturn.onCommitted}
-                archiveShortcut
+                key={detail.header.id}
+                detail={{ shared: !!detail.header.shared }}
               />
             </div>
           </div>
@@ -524,6 +535,7 @@ export function Reports({
               universe={universe}
               origin={origin}
               now={now}
+              fleetEnRoute={reportHasOutboundFleet(r.preview, outboundTargets)}
               sort={options.sort}
               selected={selected.has(r.id)}
               desktopSelection={!mobile}
