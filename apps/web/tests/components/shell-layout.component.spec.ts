@@ -56,7 +56,7 @@ test('alliance pages retain a visible attack warning without the planet bar on d
     expect(edge.height).toBeLessThan(edge.barHeight)
     if (width === 768) {
       const brand = page.getByRole('link', {
-        name: 'Orbit Imperium',
+        name: 'ORBIT IMPERIUM',
         exact: true,
       })
       await expect(brand).toBeInViewport({ ratio: 1 })
