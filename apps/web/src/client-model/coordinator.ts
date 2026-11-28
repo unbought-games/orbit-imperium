@@ -1735,7 +1735,7 @@ export class Coordinator {
           [kind]: recoveredMutations[kind] + 1,
         },
       })
-      if (kind === 'social' && this.port.socialQuery) {
+      if (this.port.socialQuery) {
         try {
           await this.refreshMailbox()
         } catch (error) {

@@ -144,6 +144,10 @@ export class SocialController {
         this.store.setState({ loading: false, error: errorText(e) })
     }
   }
+  refreshList() {
+    // A known mutation supersedes any older list read, including initial load.
+    return this.list(this.query, false, true)
+  }
   pollList() {
     if (!this.expandedList && !this.store.getState().loading)
       return this.list(this.query, false, true)

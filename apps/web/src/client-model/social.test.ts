@@ -377,3 +377,24 @@ it('disposal fences a deferred social read and send without clearing a newer all
     },
   ])
 })
+
+it('a mutation refresh supersedes an initial inbox read without allowing its late result to restore stale data', async () => {
+  const pending = defer<SocialView>()
+  let reads = 0
+  const c = new SocialController({
+    read: () =>
+      ++reads === 1
+        ? pending.promise
+        : Promise.resolve(view({ next_cursor: 'fresh-cursor' })),
+    command: async () => null,
+    newId: () => 'id',
+  })
+  const initial = c.list()
+  expect(c.store.getState().loading).toBe(true)
+  await c.refreshList()
+  expect(c.store.getState().list?.next_cursor).toBe('fresh-cursor')
+  pending.resolve(view())
+  await initial
+  expect(c.store.getState().list?.next_cursor).toBe('fresh-cursor')
+  expect(reads).toBe(2)
+})
