@@ -2554,3 +2554,24 @@ with 3.117 s bundle preparation and 1.0 s execution. Independent review of
 patch `7064fb8e62657c9429489114a3264359fba04689ba56906598a7c6aad324eb01`
 passed both cases after tightening the idle boundary and checking both request
 counts. All eight PostgreSQL social cases passed in 19.684 s.
+
+### November 28, 2026 — quote refusals during Dispatch preparation
+
+PR #520 run 46149519023 attempt 1 at `50f07d9d` passed 735 of 736
+component cases. “Attack protection is checked at review and launch races
+have readable receipts” expected a beginner-protection alert. The failure
+snapshot showed a valid Attack review. The fixture had allowed preparation
+after selecting Attack, then switched its quote response to a refusal without
+changing the draft or revision. Review could reuse the earlier successful quote.
+
+This is the first recorded repair for this case. Configure the refusal before
+selecting Attack, and keep the later successful review and launch rejection.
+The same ordering issue existed in both viewport cases for “dispatch cargo
+capacity follows current estimates and edits”. Set the capacity refusal before
+entering the over-capacity amount. The other Dispatch refusal fixtures set the
+failure before changing inputs, hold preparation across a revision change, or
+quote flexible cargo on Review.
+
+The three focused mounted cases passed with 4.482 s of bundle preparation and
+7.8 s of execution. Independent review passed all three after adding specific
+capacity-error, corrected-review and retained Attack-selection assertions.
