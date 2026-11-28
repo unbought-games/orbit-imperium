@@ -149,3 +149,16 @@ test('reading the delivered conversation clears its accessible unread action and
     ),
   ).toHaveLength(1)
 })
+
+test('saved message recovery refreshes the mounted thread without losing a newer draft', async ({page}) => {
+  await page.goto('/?scenario=messages-screen&recovery=1')
+  await expect(page.locator('html')).toHaveAttribute('data-component-ready', 'messages-screen')
+  const history = page.getByLabel('Message history')
+  await expect(history.getByText('Message 2', {exact: true})).toBeVisible()
+  const draft = page.getByLabel('Message', {exact: true})
+  await draft.fill('Keep my newer draft')
+  await page.evaluate(() => window.messagesScreen.recover())
+  await expect(history.getByText('Recovered message', {exact: true})).toBeVisible()
+  await expect(draft).toHaveValue('Keep my newer draft')
+  expect(await page.evaluate(() => window.messagesScreen.commands.filter(c => c.type === 'Send'))).toHaveLength(2)
+})

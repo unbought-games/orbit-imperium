@@ -33,13 +33,14 @@ export async function socialCommand(
   binding: Binding,
   csrf: string,
   command: Omit<S['SocialCommandRequest'], 'context'>,
+  request_id: string = commandId(crypto),
 ): Promise<S['SocialCommandResult']> {
   const result = validate<S['SocialCommandResult']>(
     'SocialCommandResult',
     await request(
       `/api/v4/universes/${binding.universe}/social/commands`,
       'POST',
-      { context: { binding, request_id: commandId(crypto) }, ...command },
+      { context: { binding, request_id }, ...command },
       csrf,
     ),
   )

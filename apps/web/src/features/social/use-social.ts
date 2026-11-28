@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
-import { commandId } from '../../adapters/command-id'
 import { watchIntelligenceScope } from '../command-hud/intelligence-refresh'
 import { SocialController } from '../../client-model/social'
+import { watchRecoveredMutations } from '../../client-model/bound-command-recovery'
 import { useGameSession } from '../../shell/session-context'
 export function useSocial(player: string | undefined) {
   const { model } = useGameSession()
@@ -13,7 +13,7 @@ export function useSocial(player: string | undefined) {
         command: (q) => model.socialCommand(q),
         readAlliance: async () =>
           (await model.allianceQuery({ type: 'Mine' }))?.alliance ?? null,
-        newId: () => commandId(crypto),
+        newId: model.newCommandId,
       }),
   )
   const state = useStore(controller.store)
@@ -36,10 +36,25 @@ export function useSocial(player: string | undefined) {
       }
     }
     const stop = watchIntelligenceScope(model.store, refresh)
+    const stopRecovery = watchRecoveredMutations(model.store, 'social', () => {
+      // Recovery can settle while a newer send is pending. Reads preserve its draft.
+      void controller.history('newer')
+      void controller.refreshList()
+    })
+    const stopAllianceRecovery = watchRecoveredMutations(
+      model.store,
+      'alliance',
+      () => {
+        void controller.loadAlliance()
+        void controller.refreshList()
+      },
+    )
     const timer = setInterval(refresh, 120_000)
     window.addEventListener('focus', refresh)
     return () => {
       stop()
+      stopRecovery()
+      stopAllianceRecovery()
       clearInterval(timer)
       window.removeEventListener('focus', refresh)
     }

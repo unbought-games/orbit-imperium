@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { connectionStatus } from './connection-status'
 import { Coordinator } from './coordinator'
 import {
@@ -8,6 +8,8 @@ import {
 } from './game-projection'
 import type { Binding, BoundReceipt, BoundView, GamePort } from './commands'
 import { attemptKey } from './commands'
+import { memoryStorage } from '../test-support/bootstrap'
+import { PendingCommands } from './pending-commands'
 const id = (n: number) =>
   `00000000-0000-4000-8000-${n.toString().padStart(12, '0')}`
 const binding: Binding = {
@@ -83,7 +85,9 @@ function setup(
     },
   }
   let n = 10
+  const storage = memoryStorage()
   const c = new Coordinator(port, {
+    pendingCommands: new PendingCommands(() => storage),
     newId: () => id(n++),
     monotonicNowMs: clock,
     isOnline: () => true,
@@ -135,6 +139,113 @@ function quotedUpgrade(c: Coordinator) {
     },
   }
 }
+it('a view that retires an order during receipt reconciliation cannot release the next confirmed action', async () => {
+  const { c, port } = setup()
+  await c.connect(binding.account, binding.universe)
+  const { command, quote } = quotedUpgrade(c)
+  const original = structuredClone(c.view!)
+  const sent: import('./commands').Envelope[] = []
+  const submit = port.submit
+  port.submit = async (envelope) => {
+    sent.push(envelope)
+    return submit(envelope)
+  }
+  await c.send(command, quote)
+
+  let releaseOld!: () => void,
+    releaseFresh!: () => void,
+    rejectReceipt!: (error: unknown) => void
+  let sawRead!: () => void, sawFresh!: () => void
+  const readingReceipt = new Promise<void>((resolve) => {
+    sawRead = resolve
+  })
+  const requestedFresh = new Promise<void>((resolve) => {
+    sawFresh = resolve
+  })
+  let reads = 0
+  port.view = async ({ request_id }) => {
+    const revision = String(++reads)
+    await new Promise<void>((resolve) => {
+      if (revision === '1') releaseOld = resolve
+      else {
+        releaseFresh = resolve
+        sawFresh()
+      }
+    })
+    return { ...original, request_id, viewer_revision: revision }
+  }
+  port.receipt = () =>
+    new Promise((_, reject) => {
+      rejectReceipt = reject
+      sawRead()
+    })
+  const oldRefresh = c.refresh()
+  releaseOld()
+  await readingReceipt
+  rejectReceipt({ status: 410, code: 'COMMAND_HISTORY_EXPIRED' })
+  await requestedFresh
+
+  const next = { type: 'CancelConstruction' as const, operation: id(79) }
+  const explicit = c.send(next)
+  next.operation = id(80)
+  await oldRefresh
+  expect(c.view?.viewer_revision).toBe('0')
+  expect(sent).toHaveLength(1)
+  releaseFresh()
+  expect(await explicit).toBeDefined()
+  expect(c.view?.viewer_revision).toBe('2')
+  expect(sent.map((e) => e.command)).toEqual([
+    command,
+    { type: 'CancelConstruction', operation: id(79) },
+  ])
+  expect(reads).toBe(2)
+})
+
+it('registers the captured command and quote under their own key after a slow clock sample', async () => {
+  const wall = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+  try {
+    const { c, port } = setup()
+    await c.connect(binding.account, binding.universe)
+    const intent = quotedUpgrade(c)
+    const command = { ...intent.command },
+      quote = intent.quote
+    wall.mockReturnValue(1_100_000)
+    const releases: Array<() => void> = []
+    const discover = port.currentBinding.bind(port)
+    port.currentBinding = async (...args) => {
+      await new Promise<void>((resolve) => releases.push(resolve))
+      return discover(...args)
+    }
+    const approved = structuredClone({ command, quote })
+    const upgrade = vi.fn(),
+      recall = vi.fn()
+    const first = c.send(command, quote, upgrade)
+    const second = c.send(
+      { type: 'RecallFleet', fleet: id(41) },
+      undefined,
+      recall,
+    )
+    quote.terms_hash = 'c'.repeat(64)
+    quote.cost.metal = '100000'
+    command.body = id(99)
+    expect(upgrade).not.toHaveBeenCalled()
+    releases[1]()
+    const secondId = (await second)!
+    expect(recall).toHaveBeenCalledExactlyOnceWith(
+      attemptKey(binding, secondId),
+    )
+    releases[0]()
+    const firstId = (await first)!
+    const key = attemptKey(binding, firstId)
+    expect(upgrade).toHaveBeenCalledExactlyOnceWith(key)
+    expect(c.ledger.get(key)?.envelope.command).toEqual(approved.command)
+    expect(c.store.getState().intents.get(key)?.quote).toEqual(approved.quote)
+    expect(firstId).not.toBe(secondId)
+  } finally {
+    wall.mockRestore()
+  }
+})
+
 it('reserves payment before awaiting the server and blocks repeat or competing spending until reconciliation', async () => {
   const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
@@ -408,7 +519,11 @@ describe('R1 attempt coordinator', () => {
     stop()
   })
   it('keeps independent immutable A/B envelopes and retries only the same ID after 404', async () => {
-    const { c, sent } = setup()
+    const { c, sent, port } = setup()
+    port.submit = async (envelope) => {
+      sent.push(envelope.command_id)
+      throw Error('lost acknowledgement')
+    }
     await c.connect(binding.account, binding.universe)
     await c.send({ type: 'CancelConstruction', operation: id(40) })
     await c.send({ type: 'CancelConstruction', operation: id(41) })
@@ -440,13 +555,15 @@ describe('R1 attempt coordinator', () => {
     expect([...c.ledger.values()][0].reconciled).toBe(true)
   })
 })
-it('reconnecting drops earlier commands and never retries them', async () => {
-  const { c, sent } = setup()
+it('reconnecting restores unresolved commands and reads accepted receipts without another submission', async () => {
+  const { c, sent, receipts } = setup()
   await c.connect(binding.account, binding.universe)
   await c.send({ type: 'CancelConstruction', operation: id(40) })
   await c.send({ type: 'CancelConstruction', operation: id(41) })
+  for (const attempt of c.ledger.values())
+    receipts.set(attempt.envelope.command_id, attempt.receipt!)
   await c.connect(binding.account, binding.universe)
-  expect(c.ledger.size).toBe(0)
+  expect(c.ledger.size).toBe(2)
   expect(sent).toHaveLength(2)
   await c.poll()
   expect(sent).toHaveLength(2)
@@ -454,7 +571,7 @@ it('reconnecting drops earlier commands and never retries them', async () => {
     await c.retryOrder(attempt.envelope.command_id)
   expect(sent).toHaveLength(2)
 })
-it('dismisses an uncertain order during retry and drops it on reconnect', async () => {
+it('dismisses an uncertain order during retry and restores the unresolved order on reconnect', async () => {
   const { c, port, sent } = setup()
   await c.connect(binding.account, binding.universe)
   port.submit = async (envelope) => {
@@ -479,7 +596,9 @@ it('dismisses an uncertain order during retry and drops it on reconnect', async 
   expect(c.ledger.get(attemptKey(binding, commandId))?.status).toBe('uncertain')
   await c.connect(binding.account, binding.universe)
   expect(c.store.getState().hiddenOrderNotices.size).toBe(0)
-  expect(c.ledger.size).toBe(0)
+  expect([...c.ledger.values()].map((a) => a.envelope.command_id)).toEqual([
+    commandId,
+  ])
   expect(sent).toEqual([commandId])
   await c.send({ type: 'CancelConstruction', operation: id(41) })
   expect(c.store.getState().hiddenOrderNotices.size).toBe(0)
@@ -827,7 +946,7 @@ it('shares the in-flight Login request across repeated lifecycle starts', async 
   release({
     protocol: 4,
     binding: snapshot.candidate.binding,
-    command_id: id(90),
+    command_id: submitted[0].command_id,
     admitted_at: 1000,
     executed_at: null,
     status: 'Pending',
@@ -948,8 +1067,10 @@ it.each(['pending', 'committed', 'disposed'] as const)(
     const { session, snapshot } = readyFixture(4)
     const { port } = setup()
     let release!: (receipt: BoundReceipt) => void
-    port.submit = () =>
+    let sentId: string
+    port.submit = (envelope) =>
       new Promise((resolve) => {
+        sentId = envelope.command_id
         release = resolve
       })
     port.view = vi.fn(async (context) => ({
@@ -960,7 +1081,7 @@ it.each(['pending', 'committed', 'disposed'] as const)(
       async (): Promise<BoundReceipt> => ({
         protocol: 4,
         binding: snapshot.candidate.binding,
-        command_id: id(90),
+        command_id: sentId!,
         admitted_at: 1000,
         executed_at: null,
         status: 'Pending',
@@ -1000,7 +1121,7 @@ it.each(['pending', 'committed', 'disposed'] as const)(
           ? {
               protocol: 4,
               binding: snapshot.candidate.binding,
-              command_id: id(90),
+              command_id: sentId!,
               admitted_at: 1000,
               executed_at: null,
               status: 'Pending',
@@ -1008,7 +1129,7 @@ it.each(['pending', 'committed', 'disposed'] as const)(
           : {
               protocol: 4,
               binding: snapshot.candidate.binding,
-              command_id: id(90),
+              command_id: sentId!,
               admitted_at: 1000,
               executed_at: 1000,
               status: 'Committed',
@@ -1204,6 +1325,11 @@ it('a throttled detail archive never commits until a new gesture, then returns o
   const { session, snapshot } = readyFixture(4)
   let now = 0
   const { c, port, sent } = setup(() => now)
+  port.currentBinding = async (_, request_id) => ({
+    ...snapshot.candidate,
+    request_id,
+    sampled_at: 1000 + now,
+  })
   await c.initialize(session, snapshot)
   const report = id(700)
   const command = {
@@ -1211,8 +1337,8 @@ it('a throttled detail archive never commits until a new gesture, then returns o
     action: { type: 'ArchiveReport', report, revoke_share: false },
   } as const
   let commits = 0
-  function observe() {
-    return observeReportVisibilityCommit(c.store, report, true, () => {
+  function observe(key: string) {
+    return observeReportVisibilityCommit(c.store, key, () => {
       commits++
     })
   }
@@ -1220,9 +1346,13 @@ it('a throttled detail archive never commits until a new gesture, then returns o
     sent.push(envelope.command_id)
     throw { status: 429, retryAfterMs: 60_000 }
   }
-  const stop = observe()
-  expect(await c.send(command)).toBeUndefined()
-  stop()
+  let stop: (() => void) | undefined
+  expect(
+    await c.send(command, undefined, (key) => {
+      stop = observe(key)
+    }),
+  ).toBeUndefined()
+  stop?.()
   expect(commits).toBe(0)
   now = 60_000
   c.tick()
@@ -1265,8 +1395,7 @@ it('a throttled detail archive never commits until a new gesture, then returns o
       viewer_revision: revision,
     }
   }
-  observe()
-  const archive = c.send(command)
+  const archive = c.send(command, undefined, observe)
   expect(commits).toBe(0)
   deliverReceipt()
   try {
@@ -1416,7 +1545,7 @@ it('alliance not-found and permission errors stay local to the screen', async ()
     }
     await expect(
       c.allianceCommand({
-        command_id: id(998),
+        command_id: await c.newCommandId(),
         expected_revision: 1,
         action: { type: 'Leave', alliance: id(999) },
       }),
@@ -1710,6 +1839,10 @@ it('retains an uncertain deletion ID when a retry needs recent authentication', 
   const { readyFixture } = await import('../test-support/bootstrap')
   const { c, port, sent } = setup()
   const fixture = readyFixture(4)
+  port.currentBinding = async (_, request_id) => ({
+    ...fixture.snapshot.candidate,
+    request_id,
+  })
   await c.initialize(fixture.session, fixture.snapshot)
   port.submit = async (envelope) => {
     sent.push(envelope.command_id)

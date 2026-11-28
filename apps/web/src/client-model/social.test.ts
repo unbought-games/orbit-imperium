@@ -345,3 +345,103 @@ it('a hidden conversation leaves the inbox but opening it again reads retained h
     { type: 'Hide', player: 'peer', message: 'm2' },
   ])
 })
+
+it('disposal fences a deferred social read and send without clearing a newer allocation', async () => {
+  const before = defer<string>(),
+    after = defer<string>()
+  const requests: SocialRequest[] = []
+  let clock = before.promise
+  const c = new SocialController({
+    newId: () => clock,
+    read: async () => view(),
+    command: async (request) => {
+      requests.push(request)
+      return { command_id: request.command_id, message: null }
+    },
+  })
+  const read = c.markRead('peer', 'm1')
+  const first = c.run({ type: 'Send', player: 'peer', body: 'earlier' })
+  c.clear()
+  clock = after.promise
+  const second = c.run({ type: 'Send', player: 'peer', body: 'current' })
+  before.resolve('old')
+  expect(await read).toBe(false)
+  expect(await first).toBe(false)
+  expect(c.store.getState().busy).toBe(true)
+  after.resolve('new')
+  expect(await second).toBe(true)
+  expect(requests).toEqual([
+    {
+      command_id: 'new',
+      action: { type: 'Send', player: 'peer', body: 'current' },
+    },
+  ])
+})
+
+it('a mutation refresh supersedes an initial inbox read without allowing its late result to restore stale data', async () => {
+  const pending = defer<SocialView>()
+  const replacement = defer<SocialView>()
+  let reads = 0
+  const c = new SocialController({
+    read: () => (++reads === 1 ? pending.promise : replacement.promise),
+    command: async () => null,
+    newId: () => 'id',
+  })
+  const initial = c.list()
+  expect(c.store.getState().loading).toBe(true)
+  const refreshing = c.refreshList()
+  expect(c.store.getState().loading).toBe(true)
+  replacement.resolve(view({ next_cursor: 'fresh-cursor' }))
+  await refreshing
+  expect(c.store.getState().loading).toBe(false)
+  expect(c.store.getState().list?.next_cursor).toBe('fresh-cursor')
+  pending.resolve(view())
+  await initial
+  expect(c.store.getState().list?.next_cursor).toBe('fresh-cursor')
+  expect(reads).toBe(2)
+})
+
+it.each(['success', 'error'] as const)(
+  'a late alliance %s cannot overwrite the membership refreshed after recovery',
+  async (outcome) => {
+    const fresh: NonNullable<
+      ReturnType<SocialController['store']['getState']>['alliance']
+    > = {
+      summary: {
+        id: 'alliance',
+        universe: 'u',
+        name: 'Fresh membership',
+        tag: 'NEW',
+        member_count: 1,
+        recruitment: 'Open',
+      },
+      public_text: '',
+      revision: 2,
+      leader: 'me',
+      permissions: [],
+      grantable_permissions: [],
+    }
+    let resolve!: (value: typeof fresh | null) => void
+    let reject!: (error: Error) => void
+    const held = new Promise<typeof fresh | null>((yes, no) => {
+      resolve = yes
+      reject = no
+    })
+    let reads = 0
+    const c = new SocialController({
+      read: async () => view(),
+      command: async () => null,
+      newId: () => 'id',
+      readAlliance: () => (++reads === 1 ? held : Promise.resolve(fresh)),
+    })
+    const initial = c.loadAlliance()
+    await c.loadAlliance()
+    expect(c.store.getState().alliance?.summary.name).toBe('Fresh membership')
+    if (outcome === 'success') resolve(null)
+    else reject(Error('old read failed'))
+    await initial
+    expect(c.store.getState().alliance?.summary.name).toBe('Fresh membership')
+    c.clear()
+    expect(c.store.getState().alliance).toBeNull()
+  },
+)

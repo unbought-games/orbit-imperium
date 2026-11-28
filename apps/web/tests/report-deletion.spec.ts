@@ -595,7 +595,7 @@ test('the cleanup notice moves intact between Reports and the command HUD', asyn
 
 // The browser boundary includes the same-envelope retry through the real HTTP
 // adapter and construction of a fresh Coordinator on document reload.
-test('immediate retry works and reload discards old order recovery at 390px', async ({
+test('immediate retry and reload recover the original paired order at 390px', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 900 })
@@ -666,12 +666,14 @@ test('immediate retry works and reload discards old order recovery at 390px', as
   ).toHaveCount(1)
   expect(await announcement.evaluate((el) => !!el.closest('main'))).toBe(true)
   await expect(archive).toBeDisabled()
-  await withReportListResponse(page, () => page.reload())
-  await expect(page.getByRole('article')).toHaveCount(2)
-  await expect(archive).toBeEnabled()
+  fixture.setMode('success')
+  await withFixtureResponse(page, matchesWorldAction('SetReportHidden'), () =>
+    withReportListResponse(page, () => page.reload()),
+  )
+  await expect(page.getByRole('article')).toHaveCount(1)
   await expect(notice).toHaveCount(0)
-  await expect(page.getByTestId('order-announcement')).toBeEmpty()
-  expect(submissions).toHaveLength(2)
+  expect(submissions).toHaveLength(3)
+  expect(submissions[2]).toEqual(submissions[0])
   expect(
     await page.evaluate(() =>
       [sessionStorage, localStorage].flatMap((storage) =>

@@ -1,3 +1,4 @@
+import { commandIdAt, assertReplayResponse } from './fixtures/command-ids.mjs'
 import {cleanupAll} from './fixtures/cleanup.mjs';
 import {reserveTestPort} from './fixtures/ports.mjs';
 // Isolated prepared states; actual commands and failure paths run through HTTP and PostgreSQL.
@@ -53,7 +54,7 @@ try {
  const inspect=async(request)=>{const res=await post(a,'progression-options',{context:context(ab),request});assert.equal(res.status,200);return valid('BoundProgressionOptions',await res.json())};
  for(const request of [{type:'Upgrade',body,building:'FusionReactor'},{type:'Research',host:body,research:'ImpulseDrive'},{type:'Manufacture',body,item:{kind:'Missile',id:'AntiBallisticMissile'},quantity:'1'}])assert.equal((await inspect(request)).blockers[0].code,'UnavailableContent');
  const receipt=async(id,auth=a)=>{const res=await fetch(`${base}/api/v3/universes/${u}/commands/${id}?epoch=${ab.epoch}`,{headers:auth.headers});assert.equal(res.status,200);return valid('BoundReceipt3',await res.json())};
- const send=async(command,expected='Committed')=>{const envelope={protocol:3,binding:ab,command_id:randomUUID(),command};const res=await post(a,'commands',envelope);assert.equal(res.status,202);const r=await until(async()=>{const x=await receipt(envelope.command_id);return x.status!=='Pending'&&x},command.type);assert.equal(r.status,expected,JSON.stringify(r));return envelope};
+ const send=async(command,expected='Committed')=>{const envelope={protocol:3,binding:ab,command_id:commandIdAt(at),command};const res=await post(a,'commands',envelope);assert.equal(res.status,202);const r=await until(async()=>{const x=await receipt(envelope.command_id);return x.status!=='Pending'&&x},command.type);assert.equal(r.status,expected,JSON.stringify(r));return envelope};
  const advance=async(t)=>{assert.ok(t>=at);at=t;await client.query('UPDATE orbit_test_clock SET at_ms=$1',[at]);return fresh()};
  await stop();
  // Empty retained history cannot make a previously played fixture pristine.
@@ -73,12 +74,12 @@ try {
  const before=await until(async()=>{const v=await view();return v?.progression.manufacturing[0]?.completed_prefix==='1'&&v},'first unit');
  const rows=async()=>(await client.query("SELECT jsonb_build_object('bodies',(SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM bodies x),'inventory',(SELECT jsonb_agg(to_jsonb(x) ORDER BY body,item::text) FROM inventories x),'batches',(SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM manufacturing_batches x),'research',(SELECT jsonb_agg(to_jsonb(x) ORDER BY owner,research) FROM research_levels x),'receipts',(SELECT jsonb_agg(to_jsonb(x) ORDER BY command_id) FROM commands x)) state")).rows[0].state;
  const snapshot=await rows();await stop('SIGKILL');await start();assert.deepEqual(await rows(),snapshot);
- assert.equal((await receipt(e.command_id)).status,'Committed');assert.equal((await post(a,'commands',e)).status,202);
+ assert.equal((await receipt(e.command_id)).status,'Committed');await assertReplayResponse(await post(a,'commands',e),e.command_id,at);
  const restored=await fresh();assert.deepEqual(restored.bodies,before.bodies);assert.deepEqual(restored.progression,before.progression);
  await advance(batch.final_due_at);const done=await until(async()=>{const v=await view();return v&&v.progression.manufacturing.length===0&&v},'remaining units');
  const count=v=>BigInt(v.bodies[0].inventories.find(z=>z.item.id==='RocketLauncher').count);assert.equal(count(done),count(before)+2n);
  cli(boot);assert.deepEqual((await fresh()).bodies,done.bodies);
- assert.equal((await fetch(`${base}/api/v3/universes/${u}/commands/${e.command_id}?epoch=${ab.epoch}`,{headers:b.headers})).status,404);
+ assert.equal((await fetch(`${base}/api/v3/universes/${u}/commands/${e.command_id}?epoch=${ab.epoch}`,{headers:b.headers})).status, at - parseInt(e.command_id.replaceAll('-', '').slice(0, 12), 16) >= 900_000 ? 410 : 404);
  // Kill at both sides of the inventory/prefix/receipt transaction, then resume original work.
  await client.query("CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text,enabled boolean,seen integer)");
  for(const stage of ['before_commit','after_commit']) {
@@ -94,7 +95,7 @@ try {
   await client.query('UPDATE universe_runtime SET lease_until=0 WHERE claim_input IS NOT NULL');
   await start();
   await until(async()=>{const v=await view();return v&&count(v)===initialCount+1n},'exactly one first output after crash');
-  assert.equal((await post(a,'commands',envelope)).status,202);
+  await assertReplayResponse(await post(a,'commands',envelope),envelope.command_id,at);
   await advance(work.final_due_at);await until(async()=>{const v=await view();return v&&v.progression.manufacturing.length===0&&count(v)===initialCount+2n},'exactly two total output');
   assert.equal((await receipt(envelope.command_id)).status,'Committed');
   await client.query('DELETE FROM orbit_test_fault');

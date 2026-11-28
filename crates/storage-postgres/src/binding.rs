@@ -66,7 +66,10 @@ impl PgStore {
     ) -> Result<BoundReceipt, StoreError> {
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
         check_read(&mut tx, b).await?;
-        let v=sqlx::query_scalar("SELECT receipt FROM commands WHERE universe=$1 AND epoch=$2 AND actor=$3 AND command_id=$4").bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(id.0).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
+        let v=sqlx::query_scalar("SELECT receipt FROM commands WHERE universe=$1 AND epoch=$2 AND actor=$3 AND command_id=$4").bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(id.0).fetch_optional(&mut *tx).await.map_err(db_error)?;
+        let Some(v) = v else {
+            return Err(crate::command_window::missing(&mut tx, id.0).await);
+        };
         let receipt = crate::ordering::decode(v)?;
         let protocol = crate::facts::rules(&mut tx, b.universe).await?.protocol();
         tx.commit().await.map_err(db_error)?;

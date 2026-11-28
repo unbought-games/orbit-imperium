@@ -3,6 +3,8 @@
 Base revision: `73f5656e01427cee7518fdd05ea805efbbf6b2c3`, plus the uncommitted
 changes in this checkout. No production access, deployment, or database changes.
 
+The later [command-window migration](../operations/command-retries.md) supersedes this revision’s reload and blocked-storage behavior.
+
 ## Behavior
 
 Command attempts and optimistic inputs exist only in the current Coordinator's

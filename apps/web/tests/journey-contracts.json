@@ -13,7 +13,7 @@
     "titlePath": [
       "creates an alliance from its route and returns to membership home"
     ],
-    "risk": "Submitting the reloaded Create Alliance form must replace the create URL with the new member’s actual alliance home."
+    "risk": "Submitting the reloaded Create Alliance form must replace the create URL with the new member\u2019s actual alliance home."
   },
   {
     "file": "alliances.spec.ts",
@@ -21,7 +21,7 @@
     "titlePath": [
       "alliance presentation previews unsaved edits and publishes them through the real editor"
     ],
-    "risk": "An unsaved alliance presentation must survive the editor’s navigation guard and preview. Publishing it must change what the public recruitment page renders."
+    "risk": "An unsaved alliance presentation must survive the editor\u2019s navigation guard and preview. Publishing it must change what the public recruitment page renders."
   },
   {
     "file": "alliances.spec.ts",
@@ -38,7 +38,7 @@
       "alliance reading at 390px",
       "long pinned notices preserve reading, selection and focus through live updates"
     ],
-    "risk": "A live board refresh must preserve the phone reader’s text selection, scroll position and focused notice link while the long pinned notice remains mounted."
+    "risk": "A live board refresh must preserve the phone reader\u2019s text selection, scroll position and focused notice link while the long pinned notice remains mounted."
   },
   {
     "file": "arrival.spec.ts",
@@ -150,7 +150,7 @@
     "titlePath": [
       "offline actions and uncertain orders stay actionable after recovery (390x844)"
     ],
-    "risk": "Native offline/online events and an uncertain rename must leave the mounted editor’s draft usable through connection recovery."
+    "risk": "Native offline/online events and an uncertain rename must leave the mounted editor\u2019s draft usable through connection recovery."
   },
   {
     "file": "client-update.spec.ts",
@@ -158,7 +158,7 @@
     "titlePath": [
       "a click during quiet session recovery is explicitly refused (390x844)"
     ],
-    "risk": "During silent session reconciliation a user’s attempted command must receive an explicit refusal without losing the draft or issuing a mutation."
+    "risk": "During silent session reconciliation a user\u2019s attempted command must receive an explicit refusal without losing the draft or issuing a mutation."
   },
   {
     "file": "combat-reports.spec.ts",
@@ -198,7 +198,7 @@
     "titlePath": [
       "real quick-build only acknowledges committed orders and leaves rejection visible"
     ],
-    "risk": "Quick Build must submit the selected colony’s matched Metal Mine quote in its bound paired commands. Only a committed receipt may trigger orb acknowledgement; rejection must remain visible in the shell."
+    "risk": "Quick Build must submit the selected colony\u2019s matched Metal Mine quote in its bound paired commands. Only a committed receipt may trigger orb acknowledgement; rejection must remain visible in the shell."
   },
   {
     "file": "command-hud.spec.ts",
@@ -206,7 +206,7 @@
     "titlePath": [
       "HUD espionage attack action prepares the observed target and opens Dispatch"
     ],
-    "risk": "The HUD’s Attack action must preserve the observed body and coordinates in Dispatch even when the selected system’s current Galaxy read returns 404. The destination must show its unavailable state."
+    "risk": "The HUD\u2019s Attack action must preserve the observed body and coordinates in Dispatch even when the selected system\u2019s current Galaxy read returns 404. The destination must show its unavailable state."
   },
   {
     "file": "command-hud.spec.ts",
@@ -222,7 +222,7 @@
     "titlePath": [
       "mobile account navigation opens a reward choice and confirms permanent delivery"
     ],
-    "risk": "The mobile account Menu must open Rewards for the selected body. Confirming a choice must update the mounted player’s permanent delivery state."
+    "risk": "The mobile account Menu must open Rewards for the selected body. Confirming a choice must update the mounted player\u2019s permanent delivery state."
   },
   {
     "file": "coordinate-links.spec.ts",
@@ -318,7 +318,7 @@
     "titlePath": [
       "touch sidebar opens Settings and Facilities in the application"
     ],
-    "risk": "Tapping the wide touch sidebar’s account menu must close its portaled menu, enter Settings and leave the actual Facilities route accessible."
+    "risk": "Tapping the wide touch sidebar\u2019s account menu must close its portaled menu, enter Settings and leave the actual Facilities route accessible."
   },
   {
     "file": "desktop-navigation.spec.ts",
@@ -326,7 +326,7 @@
     "titlePath": [
       "menu page preserves tab navigation, history and settings access at 390px"
     ],
-    "risk": "The phone’s Menu key activation must focus the canonical route. Its external account link must open a separate unprivileged tab, and the HUD must leave the dock reachable below 1024px."
+    "risk": "The phone\u2019s Menu key activation must focus the canonical route. Its external account link must open a separate unprivileged tab, and the HUD must leave the dock reachable below 1024px."
   },
   {
     "file": "desktop-navigation.spec.ts",
@@ -342,7 +342,7 @@
     "titlePath": [
       "support links share a recipient-safe destination and keep game context"
     ],
-    "risk": "A support URL copied from Settings must open on a second player’s own body. The real HUD must leave its actions reachable at intermediate widths."
+    "risk": "A support URL copied from Settings must open on a second player\u2019s own body. The real HUD must leave its actions reachable at intermediate widths."
   },
   {
     "file": "dispatch-validation.spec.ts",
@@ -406,7 +406,7 @@
     "titlePath": [
       "dossier keyboard focus and orb use the same empire identity"
     ],
-    "risk": "The live HUD’s form of address and the focused Rankings dossier must use the same player’s current empire identity."
+    "risk": "The live HUD\u2019s form of address and the focused Rankings dossier must use the same player\u2019s current empire identity."
   },
   {
     "file": "empire.spec.ts",
@@ -534,7 +534,7 @@
     "titlePath": [
       "a refused bound invitation retries the original universe and opens its empire"
     ],
-    "risk": "After refusal and Retry, the invitation must enroll only its bound universe and token, bypass a different hosted default and reopen the bound empire’s actual Overview without presenting the chooser."
+    "risk": "After refusal and Retry, the invitation must enroll only its bound universe and token, bypass a different hosted default and reopen the bound empire\u2019s actual Overview without presenting the chooser."
   },
   {
     "file": "home.spec.ts",
@@ -550,7 +550,7 @@
     "titlePath": [
       "SPA navigation between authentication and home scopes metadata to home"
     ],
-    "risk": "Entering Home through the auth page’s brand link must install its canonical metadata. Returning to login must remove that metadata and restore the sign-in title."
+    "risk": "Entering Home through the auth page\u2019s brand link must install its canonical metadata. Returning to login must remove that metadata and restore the sign-in title."
   },
   {
     "file": "hosted-auth.spec.ts",
@@ -574,7 +574,7 @@
     "titlePath": [
       "hosted enrollment configuration can be retried without losing the authenticated account"
     ],
-    "risk": "After an authenticated join document receives a 503 reading hosted configuration, Try again must enter the existing member’s empire without signing out or submitting a manual or automatic enrollment."
+    "risk": "After an authenticated join document receives a 503 reading hosted configuration, Try again must enter the existing member\u2019s empire without signing out or submitting a manual or automatic enrollment."
   },
   {
     "file": "hosted-auth.spec.ts",
@@ -598,7 +598,7 @@
     "titlePath": [
       "an overview emblem opens its anchored editor and the equipped design reaches both Overview and Galaxy"
     ],
-    "risk": "The selected body’s overview emblem must anchor the actual identity editor despite late content above it. Saving must update both the overview reached by Back and the subsequently opened Galaxy row."
+    "risk": "The selected body\u2019s overview emblem must anchor the actual identity editor despite late content above it. Saving must update both the overview reached by Back and the subsequently opened Galaxy row."
   },
   {
     "file": "jump-gates.spec.ts",
@@ -607,7 +607,7 @@
       "Jump Gates at 390",
       "build, review and jump preserves moon context and both cooldowns"
     ],
-    "risk": "The moon’s Jump Gate detail must bind chosen stacks and destination to the reviewed quote. After one submission the source route must reload cooling and the destination option must show its cooldown."
+    "risk": "The moon\u2019s Jump Gate detail must bind chosen stacks and destination to the reviewed quote. After one submission the source route must reload cooling and the destination option must show its cooldown."
   },
   {
     "file": "missile-warfare.spec.ts",
@@ -673,7 +673,7 @@
     "titlePath": [
       "a public invitation resolves its token and links to the returned alliance"
     ],
-    "risk": "A two-part public alliance invitation must load its token before private game entry and construct login’s return using the alliance actually returned."
+    "risk": "A two-part public alliance invitation must load its token before private game entry and construct login\u2019s return using the alliance actually returned."
   },
   {
     "file": "release-announcement.spec.ts",
@@ -711,9 +711,9 @@
     "file": "report-deletion.spec.ts",
     "project": "",
     "titlePath": [
-      "immediate retry works and reload discards old order recovery at 390px"
+      "immediate retry and reload recover the original paired order at 390px"
     ],
-    "risk": "The HUD must retry an ambiguous archive using the original in-memory gameplay command. Reload must discard the unconfirmed recovery instead of resending it."
+    "risk": "The HUD must retry an ambiguous archive with the same paired envelope. Reload must recover that saved envelope and reconcile the original order without creating a new intention."
   },
   {
     "file": "report-deletion.spec.ts",
@@ -746,7 +746,7 @@
       "report touch actions",
       "delete edges stay independent from row navigation at 320px"
     ],
-    "risk": "At the phone row’s padded edge a touch must archive without opening its detail. A protected edge must absorb the tap and leave the neighboring navigation target usable."
+    "risk": "At the phone row\u2019s padded edge a touch must archive without opening its detail. A protected edge must absorb the tap and leave the neighboring navigation target usable."
   },
   {
     "file": "report-deletion.spec.ts",
@@ -812,7 +812,7 @@
     "titlePath": [
       "full-storage warnings open the selected planet's matching storage at 390px"
     ],
-    "risk": "The mobile Deuterium storage warning must open the active body’s corresponding tank detail and close its popover even when navigation resolves to the same destination."
+    "risk": "The mobile Deuterium storage warning must open the active body\u2019s corresponding tank detail and close its popover even when navigation resolves to the same destination."
   },
   {
     "file": "sensor-phalanx.spec.ts",
@@ -901,15 +901,15 @@
     "titlePath": [
       "submits a direct message from its deep link and returns to the conversation list"
     ],
-    "risk": "The selected body’s Messages deep link must submit the actual DM, consume its delivered thread and return to the same body’s conversation list with the fragment preserved."
+    "risk": "The selected body\u2019s Messages deep link must submit the actual DM, consume its delivered thread and return to the same body\u2019s conversation list with the fragment preserved."
   },
   {
     "file": "solar-satellite.spec.ts",
     "project": "",
     "titlePath": [
-      "satellite production link opens the selected body’s settings and Back shows the saved output"
+      "satellite production link opens the selected body\u2019s settings and Back shows the saved output"
     ],
-    "risk": "The satellite order’s production link must open the right body’s settings. After saving its duty and returning with Back, the order must reflect the saved output."
+    "risk": "The satellite order\u2019s production link must open the right body\u2019s settings. After saving its duty and returning with Back, the order must reflect the saved output."
   },
   {
     "file": "tutorial-advisor.spec.ts",
@@ -925,7 +925,7 @@
     "titlePath": [
       "production review completes explicitly without changing allocations"
     ],
-    "risk": "The Briefing’s production-review action must open the funded controls and acknowledge completion explicitly, without changing allocations, before returning to its accomplished step."
+    "risk": "The Briefing\u2019s production-review action must open the funded controls and acknowledge completion explicitly, without changing allocations, before returning to its accomplished step."
   },
   {
     "file": "tutorial.spec.ts",
@@ -949,7 +949,7 @@
     "titlePath": [
       "vacation review, commitment, minimum and return at 390px"
     ],
-    "risk": "Committing vacation must update the real shell through reload and its minimum interval. The return action must reconcile the same empire’s status."
+    "risk": "Committing vacation must update the real shell through reload and its minimum interval. The return action must reconcile the same empire\u2019s status."
   },
   {
     "file": "web-app.spec.ts",
@@ -958,5 +958,13 @@
       "iOS installed app keeps scrolling, fixed navigation and menu taps after resizing"
     ],
     "risk": "Installed mobile navigation must retain its document, origin, tab count and funded paths as resizing changes scroll and dock placement and the player taps between game destinations."
+  },
+  {
+    "file": "empire-identity.spec.ts",
+    "project": "",
+    "titlePath": [
+      "unconfirmed profile save preserves the next draft at 390px"
+    ],
+    "risk": "The mounted identity editor must preserve a later unsaved draft while an earlier save is unconfirmed, through explicit conflict refresh and dismissal. No second save is sent while unresolved."
   }
 ]

@@ -162,6 +162,7 @@ pub use startup::{ServerGuard, StartupError};
 mod audit;
 pub use audit::AuditError;
 
+mod command_window;
 mod commit;
 mod facts;
 mod ordering;

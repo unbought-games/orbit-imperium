@@ -41,7 +41,7 @@ async fn durable_upgrade_receipt_exact_deadline_and_fencing() {
         .await
         .unwrap();
     let envelope = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: command_id_at(1_000_000).into(),
         epoch: view.epoch,
         protocol: 2,
         command: Command::StartUpgrade {
@@ -157,7 +157,7 @@ async fn durable_upgrade_receipt_exact_deadline_and_fencing() {
     let operation = Uuid::parse_str(&result_ids[0]).unwrap().into();
     store.set_test_time(1_161_000).await.unwrap();
     let cancel = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: command_id_at(1_161_000).into(),
         epoch: view.epoch,
         protocol: 2,
         command: Command::CancelConstruction { operation },
@@ -192,7 +192,7 @@ async fn durable_upgrade_receipt_exact_deadline_and_fencing() {
     ));
     // Preparation is restartable while serial workers and new admissions continue.
     let mut pending = cancel.clone();
-    pending.command_id = Uuid::new_v4().into();
+    pending.command_id = command_id_at(1_161_000).into();
     service.submit(actor, u, pending.clone()).await.unwrap();
     let old = store.claim_next(u, worker).await.unwrap().unwrap();
     let old_facts = store.load_claim(&old).await.unwrap();
@@ -211,7 +211,7 @@ async fn durable_upgrade_receipt_exact_deadline_and_fencing() {
         Err(StoreError::Conflict)
     ));
     let mut later = pending.clone();
-    later.command_id = Uuid::new_v4().into();
+    later.command_id = command_id_at(1_161_000).into();
     service.submit(actor, u, later.clone()).await.unwrap();
     sqlx::query("DELETE FROM input_scopes WHERE universe=$1 AND input_id=$2")
         .bind(u.0)

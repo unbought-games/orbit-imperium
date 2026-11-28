@@ -49,7 +49,7 @@ async fn delivery_return_recall_deadline_and_private_reports() {
         .await
         .unwrap();
     let envelope = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: command_id_at(1_000_000).into(),
         epoch: av.epoch,
         protocol: 2,
         command: Command::LaunchTransport {
@@ -86,7 +86,7 @@ async fn delivery_return_recall_deadline_and_private_reports() {
     // Arrival wins over recall admitted at the exact same deadline.
     store.set_test_time(5_741_000).await.unwrap();
     let recall = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: command_id_at(5_741_000).into(),
         epoch: av.epoch,
         protocol: 2,
         command: Command::RecallFleet { fleet },

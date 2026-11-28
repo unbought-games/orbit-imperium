@@ -450,11 +450,13 @@ it.each([
   },
 )
 it.each([false, true])(
-  'tracks its synchronously registered submission while delivery is pending; edited=%s',
+  'tracks its exact delayed registration and coordinates while delivery is pending; edited=%s',
   async (edited) => {
     const requests = new DispatchRequests()
     const held = deferred<string | undefined>()
-    let attempts = new Map<string, unknown>([['older-order', {}]])
+    const register = deferred<void>()
+    const registered = deferred<void>()
+    const coordinates = { ...at }
     const quote = terms({
       origin: 'home',
       destination,
@@ -474,19 +476,28 @@ it.each([false, true])(
     const submitted = vi.fn()
     const send = vi.fn<
       import('./dispatch-requests').DispatchSubmitPorts['send']
-    >(() => {
-      attempts = new Map([...attempts, ['new-order', {}]])
+    >(async (_, __, onRegistered) => {
+      await register.promise
+      onRegistered!('new-order')
+      registered.resolve()
       return held.promise
     })
-    const pending = requests.submit(command, quote, at, {
-      attempts: () => attempts,
+    const pending = requests.submit(command, quote, coordinates, {
       send,
       submitted,
     })
+    coordinates.position = 99
+    expect(submitted).not.toHaveBeenCalled()
+    register.resolve()
+    await registered.promise
     expect(submitted.mock.calls).toEqual([
       [{ key: 'new-order', generation: 1, coordinates: at }],
     ])
-    expect(send).toHaveBeenCalledExactlyOnceWith(command, quote)
+    expect(send).toHaveBeenCalledExactlyOnceWith(
+      command,
+      quote,
+      expect.any(Function),
+    )
     if (edited) requests.invalidate()
     held.resolve('new-order')
     await pending
@@ -496,6 +507,59 @@ it.each([false, true])(
     expect(submitted).toHaveBeenCalledTimes(1)
   },
 )
+it('a late registration from an earlier launch cannot replace a newer launch or its coordinates', async () => {
+  const requests = new DispatchRequests()
+  const quote = terms({
+    origin: 'home',
+    destination,
+    mission: 'Deploy',
+    ships: [],
+    cargo: { metal: '0', crystal: '0', deuterium: '0' },
+    speed_percent: 100,
+  })
+  const command = {
+    type: 'World' as const,
+    action: {
+      type: 'LaunchFleet' as const,
+      intent: quote.intent,
+      expected_terms_hash: quote.terms_hash,
+    },
+  }
+  const first = deferred<void>(),
+    second = deferred<void>()
+  const submitted = vi.fn()
+  const submit = (gate: Promise<void>, key: string, position: number) =>
+    requests.submit(
+      command,
+      quote,
+      { ...at, position },
+      {
+        send: async (_, __, onRegistered) => {
+          await gate
+          onRegistered!(key)
+          return key
+        },
+        submitted,
+      },
+    )
+  const prior = submit(first.promise, 'first', 4),
+    current = submit(second.promise, 'second', 5)
+  second.resolve()
+  await current
+  first.resolve()
+  await prior
+  expect(submitted.mock.calls).toEqual([
+    [{ key: 'second', generation: 2, coordinates: { ...at, position: 5 } }],
+  ])
+  // Admission now confirms launch immediately (#506); the current draft resets then.
+  expect(requests.shouldResetDraft(submitted.mock.calls[0][0], 'pending')).toBe(
+    true,
+  )
+  expect(
+    requests.shouldResetDraft(submitted.mock.calls[0][0], 'committed'),
+  ).toBe(true)
+})
+
 it.each([false, true])(
   'does not clear a newer draft when a send is refused; edited=%s',
   async (edited) => {
@@ -519,7 +583,6 @@ it.each([false, true])(
     }
     const submitted = vi.fn()
     const pending = requests.submit(command, quote, at, {
-      attempts: () => new Map(),
       send: () => held.promise,
       submitted,
     })
