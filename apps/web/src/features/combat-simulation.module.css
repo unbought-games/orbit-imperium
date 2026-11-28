@@ -102,6 +102,9 @@
   .fieldWithOutcome {
     grid-template-columns: minmax(0, 1fr) repeat(2, 4rem);
   }
+  .fieldWithOutcome input {
+    padding-inline: 4px;
+  }
 }
 @media (max-width: 620px) {
   .technologyField {
