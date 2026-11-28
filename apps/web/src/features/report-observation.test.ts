@@ -98,6 +98,30 @@ it('floors combat points and resource observations while preserving unknown data
   )
   expect(text).not.toMatch(/\d\.\d/)
 })
+it.each([
+  ['Moon', 'Planet', 'from the moon at [1:19:6] to your planet at [1:1:7]'],
+  ['Planet', 'Moon', 'from the planet at [1:19:6] to your moon at [1:1:7]'],
+  [
+    undefined,
+    undefined,
+    'from the planet at [1:19:6] to your planet at [1:1:7]',
+  ],
+  [null, 'Moon', 'from [1:19:6] to your moon at [1:1:7]'],
+])(
+  'identifies spy contact endpoints for %s to %s',
+  (origin_kind, target_kind, expected) => {
+    expect(
+      render({
+        kind: 'SpyContact',
+        origin_kind,
+        target_kind,
+        origin: { galaxy: 1, system: 19, position: 6 },
+        target: { galaxy: 1, system: 1, position: 7 },
+      }),
+    ).toContain(expected)
+  },
+)
+
 it('keeps exact integer probability context alongside floored percentages', () => {
   expect(
     render({ kind: 'SpyContact', probability_ppm: 53584, detected: false }),
