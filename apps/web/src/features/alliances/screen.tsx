@@ -6,6 +6,7 @@ import {
   allianceDestinations,
   allianceSettingsDestinations,
   sameAllianceWorkspace,
+  previousAllianceAction,
 } from './navigation'
 import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
@@ -26,7 +27,7 @@ import {
   useRefreshPlayerProfiles,
 } from '../../shell/player-profiles-context'
 import { AllianceDrafts, AllianceDraftContext } from './drafts'
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import {
   Link,
@@ -146,14 +147,26 @@ function AllianceWorkspace({
     id: string
     message: string
   } | null>(null)
+  const checkedDestination = useRef<string | null>(null)
+  const destination = applicationId ?? 'workspace'
   useLayoutEffect(() => {
-    // Changing the deep link can keep the alliance workspace mounted. Read current
-    // access before showing the target. An outstanding command owns its own refresh.
-    const current = controller.store.getState()
-    if (!current.busy && !current.pending)
-      void controller.refresh({ type: 'Mine' })
-  }, [controller, applicationId])
-  useEffect(() => () => controller.clear(), [controller])
+    if (checkedDestination.current === destination) return
+    // Keep the command receipt while it is in flight or awaiting a retry.
+    // Check the new destination as soon as the previous operation settles.
+    if (state.pending || state.busy) {
+      checkedDestination.current = null
+      return
+    }
+    checkedDestination.current = destination
+    void controller.refresh({ type: 'Mine' })
+  }, [controller, destination, state.busy, state.pending])
+  useEffect(
+    () => () => {
+      checkedDestination.current = null
+      controller.clear()
+    },
+    [controller],
+  )
   const detail = state.view?.alliance
   const publicAlliance = usePublicAlliance(
     universe,
@@ -193,6 +206,9 @@ function AllianceWorkspace({
     route.item,
     detail ?? null,
   )
+  const previousAction = applicationId
+    ? previousAllianceAction(state.pending?.action, applicationId)
+    : null
   const visiblePlayers = applicationId
     ? (detail?.applications
         ?.filter((a) => a.id === applicationId)
@@ -212,7 +228,7 @@ function AllianceWorkspace({
             : active === 'Hall'
               ? (detail.posts?.map((post) => post.author) ?? [])
               : []
-  useProfilePlayers(visiblePlayers)
+  useProfilePlayers(previousAction ? [] : visiblePlayers)
   const unsavedChanges = blocker.status === 'blocked' && (
     <PresentationPreview open onClose={() => blocker.reset?.()}>
       <div className={styles.screen}>
@@ -239,7 +255,7 @@ function AllianceWorkspace({
         {unsavedChanges}
         <ApplicationReview
           applicationId={applicationId}
-          view={state.view}
+          view={previousAction ? null : state.view}
           loading={state.loading}
           busy={busy}
           run={run}
@@ -247,15 +263,39 @@ function AllianceWorkspace({
             reviewed?.id === applicationId ? reviewed.message : undefined
           }
         >
-          {state.error && state.failure && (
-            <ApplicationReviewError
-              failure={state.failure}
-              application={applicationId}
-              uncertain={!!state.pending}
-              retry={() =>
-                state.pending ? void retryCommand() : void controller.refresh()
-              }
-            />
+          {previousAction ? (
+            <>
+              <p role="status">
+                Your previous alliance action is awaiting confirmation.
+              </p>
+              <div>
+                <ButtonLink
+                  variant="secondary"
+                  {...routeTarget(
+                    universeName,
+                    'alliance',
+                    body?.id,
+                    previousAction.item,
+                  )}
+                >
+                  {previousAction.label}
+                </ButtonLink>
+              </div>
+            </>
+          ) : (
+            state.error &&
+            state.failure && (
+              <ApplicationReviewError
+                failure={state.failure}
+                application={applicationId}
+                uncertain={!!state.pending}
+                retry={() =>
+                  state.pending
+                    ? void retryCommand()
+                    : void controller.refresh()
+                }
+              />
+            )
           )}
         </ApplicationReview>
       </>

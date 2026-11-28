@@ -1,5 +1,9 @@
 import { expect, it } from 'vitest'
-import { allianceDestination, sameAllianceWorkspace } from './navigation'
+import {
+  allianceDestination,
+  sameAllianceWorkspace,
+  previousAllianceAction,
+} from './navigation'
 import type { AllianceDetail } from '../../client-model/alliances'
 
 it('derives the visible destination from the URL and current permissions', () => {
@@ -30,4 +34,21 @@ it('only keeps authored drafts when navigation retains the mounted alliance work
     '/u/andromeda/b/earth/resources',
   ])
     expect(sameAllianceWorkspace(current, path)).toBe(false)
+})
+
+it('keeps an outstanding receipt with the original action when opening another application', () => {
+  const pending = {
+    type: 'Reject',
+    alliance: 'alliance',
+    application: 'first',
+  } as const
+  expect(previousAllianceAction(pending, 'second')?.item).toBe(
+    'applications/first',
+  )
+  expect(
+    previousAllianceAction({ type: 'Leave', alliance: 'alliance' }, 'second')
+      ?.item,
+  ).toBe('hall')
+  expect(previousAllianceAction(pending, 'first')).toBeNull()
+  expect(previousAllianceAction(undefined, 'first')).toBeNull()
 })
