@@ -43,8 +43,7 @@ export function initialDraft(
   )
   const dyes = state.dyes.filter((item) => item.availability === 'available')
   if (!skin || !dyes.length) return null
-  const orbitBase =
-    skin.id === 'orbit-base-light-fighter' && skin.package_revision === 'v1'
+  const orbitBase = skin.id.startsWith('orbit-base-')
   const primary =
     (orbitBase && dyes.find((dye) => dye.id === 'free-steel')) || dyes[0]
   const accent =

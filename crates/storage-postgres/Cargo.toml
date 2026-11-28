@@ -31,7 +31,7 @@ tower.workspace = true
 http-body-util.workspace = true
 
 [features]
-test-support = []
+test-support = ["orbit-application/test-support"]
 migration-upgrade-test = ["test-support"]
 
 [[test]]
@@ -48,6 +48,14 @@ required-features = ["test-support"]
 
 [[test]]
 name = "http"
+required-features = ["test-support"]
+
+[[test]]
+name = "command_window"
+required-features = ["test-support"]
+
+[[test]]
+name = "retention"
 required-features = ["test-support"]
 
 [[test]]

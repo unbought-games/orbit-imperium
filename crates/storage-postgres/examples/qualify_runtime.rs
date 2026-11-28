@@ -141,8 +141,8 @@ async fn main() {
             .unwrap();
     }
     // Retained terminal operations live in a separate fixture universe. The
-    // recent/older split models retry saturation and a cleanup backlog, without
-    // asserting that expiry or cleanup is already implemented.
+    // recent/older split models retry saturation and a cleanup backlog, before
+    // a cleanup implementation is available.
     let retained = UniverseId(Uuid::new_v4());
     store
         .create_universe(&UniverseCreate {
@@ -190,7 +190,7 @@ async fn main() {
             }),
         };
         let receipt = Receipt {
-            command_id: Uuid::new_v4().into(),
+            command_id: orbit_application::command_id_at(at).into(),
             epoch: owner.epoch,
             admitted_at: at,
             executed_at: Some(at),
@@ -336,10 +336,8 @@ async fn main() {
             next_command = tokio::time::Instant::now() + Duration::from_millis(command_interval_ms);
             let (b, _, body) = &players[actions % players.len()];
             let (b, body) = (*b, *body);
-            store
-                .set_test_time(12 * 3_600_000 + started.elapsed().as_millis() as i64)
-                .await
-                .unwrap();
+            let command_time = 12 * 3_600_000 + started.elapsed().as_millis() as i64;
+            store.set_test_time(command_time).await.unwrap();
             pacer.wait().await;
             let quote = game
                 .progression_options(
@@ -361,7 +359,7 @@ async fn main() {
             let command = CommandEnvelopeV4 {
                 protocol: 4,
                 binding: b,
-                command_id: CommandId(Uuid::new_v4()),
+                command_id: CommandId(orbit_application::command_id_at(command_time)),
                 command: CommandDto3::Progression(Command::StartUpgrade {
                     body,
                     building: Building::MetalMine,
@@ -458,6 +456,6 @@ async fn main() {
     assert!(minimum_spacing >= Duration::from_millis(250));
     println!(
         "{}",
-        json!({"bots":bots,"action_units_per_day":allowance,"max_charged_units_per_actor":max_units,"command_interval_ms":command_interval_ms,"command_rows":command_rows,"command_classes":classes,"logical_client_requests":pacer.starts.len(),"minimum_request_spacing_ms":minimum_spacing.as_millis(),"workload_version":3,"retained_completed_pairs":history,"ships_per_player":ships_per_player,"live_state_relation_bytes":live_bytes,"completed_operation_relation_bytes":completed_bytes,"recent_completed_payload_bytes":recent_bytes,"cleanup_backlog_payload_bytes":backlog_bytes,"emitted_log_bytes":0,"provider_history_pairs":provider_history,"preparation_ms":preparation_ms,"duration_ms":started.elapsed().as_millis(),"game_iterations":requests,"latency":{"machine_auth":latency(machine_times),"bot_status":latency(status_times),"world_view":latency(read_times),"admission_settlement":latency(commit_times)},"commands_committed":committed,"commands_rejected":rejected,"auth":auth,"limitations":"direct game services without a logging subscriber (zero emitted log bytes); synthetic terminal rows, no cleanup or expiry policy; local PostgreSQL cannot certify RDS burst capacity"})
+        json!({"bots":bots,"action_units_per_day":allowance,"max_charged_units_per_actor":max_units,"command_interval_ms":command_interval_ms,"command_rows":command_rows,"command_classes":classes,"logical_client_requests":pacer.starts.len(),"minimum_request_spacing_ms":minimum_spacing.as_millis(),"workload_version":3,"retained_completed_pairs":history,"ships_per_player":ships_per_player,"live_state_relation_bytes":live_bytes,"completed_operation_relation_bytes":completed_bytes,"recent_completed_payload_bytes":recent_bytes,"cleanup_backlog_payload_bytes":backlog_bytes,"emitted_log_bytes":0,"provider_history_pairs":provider_history,"preparation_ms":preparation_ms,"duration_ms":started.elapsed().as_millis(),"game_iterations":requests,"latency":{"machine_auth":latency(machine_times),"bot_status":latency(status_times),"world_view":latency(read_times),"admission_settlement":latency(commit_times)},"commands_committed":committed,"commands_rejected":rejected,"auth":auth,"limitations":"direct game services without a logging subscriber (zero emitted log bytes); synthetic terminal rows, no command cleanup; local PostgreSQL cannot certify RDS burst capacity"})
     );
 }

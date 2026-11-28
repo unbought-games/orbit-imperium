@@ -84,7 +84,7 @@ publishes/validates returned bytes. This protocol does not stream progress event
 ## Installed package registry
 
 `ORBIT_SHIP_PACKAGES` is a data-only JSON allowlist of `{id,revision}` objects;
-its bundled default comes from the [Light Fighter skin registry](../../crates/application/assets/ship-skins.json) shared with the game API. It includes Concord and Orbit Base. An explicit allowlist replaces the bundled selection.
+its bundled default comes from the [ship skin registry](../../crates/application/assets/ship-skins.json) shared with the game API. It includes Concord and Orbit Base. An explicit allowlist replaces the bundled selection.
 Install additional approved packages beneath `ORBIT_SHIP_PACKAGE_DIRECTORY`
 (default: bundled public `art/ship-skins` directory), preserving
 `<id>/<revision>/manifest.json`. No service/math changes are required. Startup

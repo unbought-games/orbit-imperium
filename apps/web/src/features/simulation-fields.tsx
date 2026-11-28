@@ -8,6 +8,7 @@ import { label } from '../ui/format'
 import { formatWholeNumber } from '../ui/whole-number'
 import {
   simulationGroupSummary,
+  simulationUnitLimit,
   type SimulationField,
 } from './combat-simulation-model'
 import styles from './combat-simulation.module.css'
@@ -158,7 +159,7 @@ function SimulationFieldInput({
   const value = edits[field.key] ?? field.value ?? '0'
   const invalid =
     !/^(0|[1-9][0-9]*)$/.test(value || '0') ||
-    Number(value) > (field.item ? 2000 : 100)
+    Number(value) > (field.item ? simulationUnitLimit : 100)
   const changed =
     edits[field.key] !== undefined && value !== (field.value ?? '0')
   const source =

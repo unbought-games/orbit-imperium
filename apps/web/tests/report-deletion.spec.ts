@@ -595,7 +595,7 @@ test('the cleanup notice moves intact between Reports and the command HUD', asyn
 
 // The browser boundary includes the same-envelope retry through the real HTTP
 // adapter and construction of a fresh Coordinator on document reload.
-test('immediate retry works and reload discards old order recovery at 390px', async ({
+test('immediate retry and reload recover the original paired order at 390px', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 900 })
@@ -666,12 +666,14 @@ test('immediate retry works and reload discards old order recovery at 390px', as
   ).toHaveCount(1)
   expect(await announcement.evaluate((el) => !!el.closest('main'))).toBe(true)
   await expect(archive).toBeDisabled()
-  await withReportListResponse(page, () => page.reload())
-  await expect(page.getByRole('article')).toHaveCount(2)
-  await expect(archive).toBeEnabled()
+  fixture.setMode('success')
+  await withFixtureResponse(page, matchesWorldAction('SetReportHidden'), () =>
+    withReportListResponse(page, () => page.reload()),
+  )
+  await expect(page.getByRole('article')).toHaveCount(1)
   await expect(notice).toHaveCount(0)
-  await expect(page.getByTestId('order-announcement')).toBeEmpty()
-  expect(submissions).toHaveLength(2)
+  expect(submissions).toHaveLength(3)
+  expect(submissions[2]).toEqual(submissions[0])
   expect(
     await page.evaluate(() =>
       [sessionStorage, localStorage].flatMap((storage) =>
@@ -929,3 +931,60 @@ for (const [surface, width] of [
     })
   })
 }
+
+test('a reconnect reset reconciles a pending archive and resumes at the reset cursor', async ({ page }) => {
+  const fixture = await reportsFixture(page, true, 2, 50)
+  const cursor = 'retired-stream-head'
+  let release!: () => void
+  const resetReady = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/updates?epoch=*', async route => {
+    if (route.request().headers()['last-event-id'] === cursor)
+      return route.fulfill({ status: 503, body: '' })
+    await resetReady
+    return route.fulfill({
+      contentType: 'text/event-stream',
+      body: `event: game-update\nid: ${cursor}\ndata: ${JSON.stringify({binding, cursor, event: {type: 'Reset'}})}\n\n`,
+    })
+  })
+  const posted: string[] = []
+  let committed = false
+  let admittedAt = 0
+  await page.route('**/commands', route => {
+    const { gameplay } = route.request().postDataJSON()
+    posted.push(gameplay.command_id)
+    admittedAt = Date.now()
+    return route.fulfill({ json: {protocol: 4, binding, command_id: gameplay.command_id, admitted_at: admittedAt, executed_at: null, status: 'Pending'} })
+  })
+  await page.route('**/commands/*?epoch=*', route => {
+    const command = new URL(route.request().url()).pathname.split('/').pop()
+    return route.fulfill({json: {
+      protocol: 4, binding, command_id: command, admitted_at: admittedAt,
+      ...(committed ? {status: 'Committed', executed_at: Date.now(), minimum_viewer_revision: '2', result_ids: []}
+        : {status: 'Pending', executed_at: null}),
+    }})
+  })
+  try {
+    await withReportListResponse(page, () => page.reload())
+    const rows = page.locator('main article')
+    await expect(rows).toHaveCount(2)
+    const report = fixture.headers[0].id
+    await withReportResponse(page, report, () =>
+      rows.first().getByRole('link', { name: 'Espionage', exact: true }).click())
+    await withFixtureResponse(page, matchesWorldAction('ArchiveReport'), () =>
+      page.getByRole('button', {name: 'Archive report', exact: true}).click())
+    await expect(page).toHaveURL(reportPath(report))
+    expect(posted).toHaveLength(1)
+    fixture.headers[0].hidden = true
+    fixture.bumpRevision()
+    committed = true
+    const resumed = page.waitForRequest(r => r.url().includes('/updates?epoch=') && r.headers()['last-event-id'] === cursor)
+    await withFixtureResponse(page, r => new URL(r.url()).pathname.endsWith('/commands/' + posted[0]), async () => release())
+    await resumed
+    // Detail returns only on a committed receipt, not the optimistic hidden row.
+    await expect(page).toHaveURL(reportPath())
+    await expect(rows).toHaveCount(1)
+    expect(posted).toHaveLength(1)
+  } finally {
+    release()
+  }
+})

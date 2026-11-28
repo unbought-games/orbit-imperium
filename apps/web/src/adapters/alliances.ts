@@ -35,6 +35,7 @@ export async function allianceCommand(
   binding: Binding,
   csrf: string,
   command: Omit<S['AllianceCommandRequest'], 'context'>,
+  request_id: string = commandId(crypto),
 ): Promise<S['AllianceCommandResult']> {
   const authored =
     command.action.type === 'SavePresentation'
@@ -65,7 +66,7 @@ export async function allianceCommand(
     await request(
       `/api/v4/universes/${binding.universe}/alliances/commands`,
       'POST',
-      { context: { binding, request_id: commandId(crypto) }, ...authored },
+      { context: { binding, request_id }, ...authored },
       csrf,
       10000,
       { 'X-Orbit-Alliance-Presentation': '1', 'X-Orbit-Insignia': '5' },

@@ -49,6 +49,7 @@ export function GalaxyFlightSummary({
             <li key={flight.id}>
               <strong>
                 {label(flight.mission)} {flight.phase}
+                {flight.bodyKind && ` · ${flight.bodyKind}`}
               </strong>
               {flight.dueAt !== null && (
                 <>

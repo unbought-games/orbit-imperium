@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "orbit-base-cruiser",
+  "revision": "v1",
+  "renderer": "finish-decal-v1",
+  "target": {
+    "kind": "Ship",
+    "id": "Cruiser"
+  },
+  "collection_id": "orbit-standard",
+  "view": "front-three-quarter-left",
+  "channels": [
+    "primary",
+    "accent"
+  ],
+  "map_encoding": "rgba8-finish-decal-v1",
+  "color_space": "srgb",
+  "alpha": "straight-preserved",
+  "capabilities": {
+    "treatments": [
+      "none",
+      "full",
+      "layers"
+    ],
+    "placements": [
+      "near-wing",
+      "paired"
+    ]
+  },
+  "width": 1536,
+  "height": 1024,
+  "reference": [
+    "#8995ab",
+    "#e2b884"
+  ],
+  "maps": {
+    "source": {
+      "file": "source.png",
+      "sha256": "ca4af5022b3b86468f5c2325121a7e9d18078d202071c3545b0b8830ffeb5475",
+      "bytes": 1770608
+    },
+    "material": {
+      "file": "material-mask.png",
+      "sha256": "8c0d7a5edcaff6de6c9497df79c2b64d607505c363a19cec612e8e2ec4f67f7c",
+      "bytes": 89351
+    },
+    "response": {
+      "file": "response-map.png",
+      "sha256": "d26f8b4aebbff9a48335e15a68932c5e1b203b8d2c293c944d9341f9b8390dba",
+      "bytes": 542200
+    },
+    "receiver": {
+      "file": "receiver.png",
+      "sha256": "fd8e1ec951fde19a62a26055a3e87f667f55de27046c3b1b7d73cce37dd1c747",
+      "bytes": 25175
+    },
+    "decalResponse": {
+      "file": "decal-response.png",
+      "sha256": "87309a8fda05749c1cba3dcac43d21e8cafe12a60be38dcd62dc075d978cd9ae",
+      "bytes": 884340
+    }
+  },
+  "slots": [
+    {
+      "id": "near-wing",
+      "quad": [
+        [
+          1322,
+          304
+        ],
+        [
+          1351,
+          281
+        ],
+        [
+          1379,
+          303
+        ],
+        [
+          1351,
+          330
+        ]
+      ]
+    },
+    {
+      "id": "far-wing",
+      "quad": [
+        [
+          864,
+          218
+        ],
+        [
+          892,
+          195
+        ],
+        [
+          887,
+          208
+        ],
+        [
+          858,
+          233
+        ]
+      ]
+    }
+  ],
+  "paint": {
+    "opacity": 0.96,
+    "responseFloor": 0,
+    "responseCeiling": 1.5
+  },
+  "license": "CC-BY-SA-4.0 under repository artwork scope",
+  "attribution": "Orbit Imperium contributors / Unbought Games, LLC",
+  "provenance": {
+    "authoring": "tools/ship-appearance/compile-orbit-base.mjs",
+    "sourceDirectory": "art/orbit-base/ships/v1/cruiser-vents",
+    "inputs": {
+      "master.png": "ca4af5022b3b86468f5c2325121a7e9d18078d202071c3545b0b8830ffeb5475",
+      "livery.svg": "db7c732de95f7edf53fd18bf3a31c7114fc15823b0d27b2e486a135be68f4319",
+      "emblem-slots.json": "5ee70fed7f1d70dbb8d7cbfe8b36ef81b2b84ad5465587468404eeb164145995",
+      "paint.json": "e47b5f0554f8f48c7ba8bbc3f66982a3884edf0e61626839a1726fb4c0f12684"
+    },
+    "versions": {
+      "sharp": "0.35.5"
+    }
+  }
+}

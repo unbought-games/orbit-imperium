@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { Coordinator } from '../../client-model/coordinator'
-import { commandId } from '../../adapters/command-id'
 import { Markdown } from '../alliances/shared'
 import { Button, ButtonLink } from '../../ui/button'
 import { routeTarget } from '../../shell/route-target'
@@ -43,8 +42,11 @@ export function HudMessage({
     setBusy(true)
     setError('')
     try {
+      const binding = model.binding
+      const command_id = await model.newCommandId()
+      if (!binding || model.binding !== binding) return
       const result = await model.socialCommand({
-        command_id: commandId(crypto),
+        command_id,
         action: conversation
           ? {
               type: 'Read',

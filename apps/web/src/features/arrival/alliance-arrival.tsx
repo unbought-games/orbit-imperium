@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import { AlliancesController } from '../../client-model/alliances'
+import { watchRecoveredMutations } from '../../client-model/bound-command-recovery'
 import { usePublicAlliance } from '../../client-model/use-public-alliance'
 import { useGameSession } from '../../shell/session-context'
 import { useRefreshPlayerProfiles } from '../../shell/player-profiles-context'
-import { commandId } from '../../adapters/command-id'
 import { trackRecruitment } from '../../adapters/optional-services'
 import { Button } from '../../ui/button'
 import { Field, Textarea } from '../../ui/form'
@@ -35,7 +35,7 @@ export function AllianceArrival({
       new AlliancesController({
         read: (q) => model.allianceQuery(q),
         command: (r) => model.allianceCommand(r),
-        newId: () => commandId(crypto),
+        newId: model.newCommandId,
       }),
   )
   const state = useStore(controller.store)
@@ -44,6 +44,13 @@ export function AllianceArrival({
     void controller.refresh()
     return () => controller.clear()
   }, [controller])
+  useEffect(
+    () =>
+      watchRecoveredMutations(model.store, 'alliance', () => {
+        void controller.refresh()
+      }),
+    [controller, model],
+  )
   const data = publicAlliance.data,
     membership = state.view?.alliance,
     pending = state.view?.applications.some((a) => a.alliance === alliance)

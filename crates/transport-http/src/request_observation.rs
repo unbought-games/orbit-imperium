@@ -18,6 +18,16 @@ tokio::task_local! {
 /// the request being polled. Task-local scope cannot leak across concurrent calls.
 pub struct RequestTimingObserver(pub Arc<dyn RuntimeObserver>);
 impl RuntimeObserver for RequestTimingObserver {
+    fn retention(
+        &self,
+        universe: Option<UniverseId>,
+        kind: &'static str,
+        sample: (i64, i64),
+        scan_limited: bool,
+    ) {
+        self.0.retention(universe, kind, sample, scan_limited);
+    }
+
     fn request(&self, sample: RequestObservation) {
         self.0.request(sample);
     }

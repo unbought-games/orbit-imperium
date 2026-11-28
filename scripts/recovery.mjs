@@ -1,3 +1,4 @@
+import { commandIdAt } from './fixtures/command-ids.mjs'
 // Explicit-only process recovery. Uses the generous named recovery guard.
 import { cleanupAll } from './fixtures/cleanup.mjs'
 import { reserveTestPort } from './fixtures/ports.mjs'
@@ -120,8 +121,9 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
       return { reader: response.body.getReader(), buffer: '', decoder: new TextDecoder() }
     }
     if (overlap) { stream = await openStream(base); const reset = await nextUpdate(stream); assert.equal(reset.event.type, 'Reset'); resetCursor = reset.cursor }
+    let admissionTime = 1_000_000
     const submit = async command => {
-      lastEnvelope = { command_id: randomUUID(), binding: view.binding, protocol: 2, command }
+      lastEnvelope = { command_id: commandIdAt(admissionTime), binding: view.binding, protocol: 2, command }
       const response = await fetch(`${base}/api/v2/universes/${universe}/commands`, { method: 'POST', headers: a.headers, body: JSON.stringify(lastEnvelope) })
       assert.equal(response.status, 202)
     }
@@ -154,6 +156,7 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
         : null
       if (dueEvent) assert.equal(dueEvent.length, 1)
       await db.query('UPDATE orbit_test_clock SET at_ms=$1', [times[index]])
+      admissionTime = times[index]
       await actions[index]()
       if (fault) {
         await until(async () => Number((await db.query('SELECT seen FROM orbit_test_fault WHERE stage=$1', [faultStage])).rows[0].seen) > 0, 'staged fault')
@@ -161,7 +164,7 @@ async function scenario(crashIndex = null, stage = null, overlap = false) {
         await quote({ type: 'Upgrade', body: origin, building: 'MetalMine' })
         if (availabilityProbe) {
           await getView(a, peerBase)
-          const independent = { protocol: 2, binding: beta.binding, command_id: randomUUID(), command: { type: 'CancelConstruction', operation: randomUUID() } }
+          const independent = { protocol: 2, binding: beta.binding, command_id: commandIdAt(admissionTime), command: { type: 'CancelConstruction', operation: randomUUID() } }
           const admitted = await fetch(`${peerBase}/api/v2/universes/${universe}/commands`, { method: 'POST', headers: b.headers, body: JSON.stringify(independent) })
           assert.equal(admitted.status, 202, 'another API admits new work while a worker is paused')
           extra = 1

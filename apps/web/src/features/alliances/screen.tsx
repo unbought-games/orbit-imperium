@@ -20,7 +20,6 @@ import { trackRecruitment } from '../../adapters/optional-services'
 import { Recruit } from './recruit'
 import { RecruitmentDirectory } from './recruitment-directory'
 import { AllianceWelcome } from './welcome'
-import { commandId } from '../../adapters/command-id'
 import {
   useProfilePlayers,
   useRefreshPlayerProfiles,
@@ -36,6 +35,7 @@ import {
 } from '@tanstack/react-router'
 import { bindingKey } from '../../client-model/commands'
 import { AlliancesController } from '../../client-model/alliances'
+import { watchRecoveredMutations } from '../../client-model/bound-command-recovery'
 import type { Coordinator } from '../../client-model/coordinator'
 import { useGameSession } from '../../shell/session-context'
 import { Button, ButtonLink } from '../../ui/button'
@@ -131,7 +131,7 @@ function AllianceWorkspace({
       new AlliancesController({
         read: (query) => model.allianceQuery(query),
         command: (request) => model.allianceCommand(request),
-        newId: () => commandId(crypto),
+        newId: model.newCommandId,
         onAccessLost: drafts.clear,
       }),
   )
@@ -142,6 +142,13 @@ function AllianceWorkspace({
     void controller.refresh()
     return () => controller.clear()
   }, [controller])
+  useEffect(
+    () =>
+      watchRecoveredMutations(model.store, 'alliance', () => {
+        void controller.refresh()
+      }),
+    [controller, model],
+  )
   const detail = state.view?.alliance
   const publicAlliance = usePublicAlliance(
     universe,

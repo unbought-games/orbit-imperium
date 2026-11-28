@@ -89,7 +89,7 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
         assert_eq!(candidate["request_id"], request_id.to_string());
         assert_eq!(candidate["protocol"], protocol);
         let binding: Binding = serde_json::from_value(candidate["binding"].clone()).unwrap();
-        let command = Uuid::new_v4();
+        let command = orbit_application::command_id_at(1_000_000);
         let receipt = format!("commands/{command}?epoch={}", binding.epoch.0);
 
         // Query rejections are handled after authentication, and remain private JSON errors.
@@ -298,7 +298,8 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                     "player" | "epoch" => {
                         query["context"]["binding"][variant] = json!(Uuid::new_v4())
                     }
-                    "large" => query["inputs"]["attacker"]["units"][0]["count"] = json!(2001),
+                    "valid" => query["inputs"]["attacker"]["units"][0]["count"] = json!(20_000),
+                    "large" => query["inputs"]["attacker"]["units"][0]["count"] = json!(20_001),
                     "unknown" => query["inputs"]["defender"]["technology"][0] = Value::Null,
                     "target" => query["target"] = json!(Uuid::new_v4()),
                     "stock" => query["inputs"]["observed_resources"]["metal"] = json!("-1"),
@@ -334,9 +335,19 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                     assert_eq!(samples.len(), 10);
                     for sample in samples {
                         assert_eq!(sample["outcome"], "AttackerVictory");
-                        assert_eq!(sample["attacker"][0]["count"], 5);
+                        assert_eq!(
+                            sample["attacker"][0]["count"],
+                            query["inputs"]["attacker"]["units"][0]["count"]
+                        );
                         assert_eq!(sample["defender"], json!([]));
-                        assert_eq!(sample["surviving_cargo_capacity"], "250000000");
+                        assert_eq!(
+                            sample["surviving_cargo_capacity"],
+                            if variant == "valid" {
+                                "1000000000000"
+                            } else {
+                                "250000000"
+                            }
+                        );
                         assert!(sample["estimated_loot"].is_null());
                         assert_eq!(
                             sample["debris"],
@@ -354,14 +365,14 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                 .await
                 .is_err()
         );
-        let command_id = Uuid::new_v4();
+        let command_id = orbit_application::command_id_at(1_000_000);
         let gameplay = json!({
             "protocol": protocol, "binding": binding, "command_id": command_id,
             "command": {"type": "CancelConstruction", "operation": Uuid::new_v4()}
         });
         let envelope = if protocol == 4 {
             json!({"gameplay": gameplay, "presence": {
-                "protocol": 4, "binding": binding, "command_id": Uuid::new_v4(),
+                "protocol": 4, "binding": binding, "command_id": orbit_application::paired_presence_id(command_id),
                 "command": {"type": "World", "action": {
                     "type": "RecordForegroundPresence", "body": null,
                     "cause": "GameplayGesture", "paired_command_id": command_id
@@ -370,26 +381,52 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
         } else {
             gameplay
         };
-        let admitted = private_json(
-            app.clone()
-                .oneshot(
-                    Request::post(format!("{base}/commands"))
-                        .header("content-type", "application/json")
-                        .header("cookie", &cookie)
-                        .header("origin", "https://game.test")
-                        .header("x-csrf-token", &auth.session.csrf)
-                        .body(Body::from(envelope.to_string()))
-                        .unwrap(),
-                )
-                .await
-                .unwrap(),
-            202,
-        )
-        .await;
+        let submit = |body: &Value| {
+            app.clone().oneshot(
+                Request::post(format!("{base}/commands"))
+                    .header("content-type", "application/json")
+                    .header("cookie", &cookie)
+                    .header("origin", "https://game.test")
+                    .header("x-csrf-token", &auth.session.csrf)
+                    .body(Body::from(body.to_string()))
+                    .unwrap(),
+            )
+        };
+        for (id, status, code) in [
+            ("invalid-command-id", 400, "Malformed"),
+            (
+                "00000000-0000-5000-8000-000000000001",
+                426,
+                "COMMAND_ID_UNSUPPORTED",
+            ),
+        ] {
+            let mut invalid = envelope.clone();
+            if protocol == 4 {
+                invalid["gameplay"]["command_id"] = json!(id);
+                invalid["presence"]["command"]["action"]["paired_command_id"] = json!(id);
+            } else {
+                invalid["command_id"] = json!(id);
+            }
+            let problem = private_json(submit(&invalid).await.unwrap(), status).await;
+            assert_eq!(problem["code"], code);
+        }
+        let admitted = private_json(submit(&envelope).await.unwrap(), 202).await;
         assert_eq!(admitted["command_id"], command_id.to_string());
         tokio::time::timeout(std::time::Duration::ZERO, wake.notified())
             .await
             .unwrap();
+        store.set_test_time(1_900_000).await.unwrap();
+        let expired = private_json(submit(&envelope).await.unwrap(), 409).await;
+        assert_eq!(expired["code"], "COMMAND_EXPIRED");
+        let missing = Request::get(format!(
+            "{base}/commands/{command}?epoch={}",
+            binding.epoch.0
+        ))
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap();
+        let history = private_json(app.clone().oneshot(missing).await.unwrap(), 410).await;
+        assert_eq!(history["code"], "COMMAND_HISTORY_EXPIRED");
         let receipt_url = format!("{base}/commands/{command_id}?epoch={}", binding.epoch.0);
         let own_receipt = private_json(
             app.clone()
@@ -419,15 +456,16 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                 )
                 .await
                 .unwrap(),
-            404,
+            410,
         )
         .await;
-        assert_eq!(hidden["code"], "NotFound");
+        assert_eq!(hidden["code"], "COMMAND_HISTORY_EXPIRED");
         assert!(
             tokio::time::timeout(std::time::Duration::ZERO, wake.notified())
                 .await
                 .is_err()
         );
+        store.set_test_time(1_000_000).await.unwrap();
         foreign_universes.push(u);
     }
 }

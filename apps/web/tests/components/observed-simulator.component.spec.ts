@@ -158,7 +158,7 @@ for (const hidden of [false, true])
       ).toBeVisible()
       await dialog
         .getByLabel('Defender Light Fighter', { exact: true })
-        .fill('2001')
+        .fill('20001')
       await defenderShips.locator('summary').click()
       await expect(defenderShips.locator('summary')).toContainText(
         '1 invalid values',

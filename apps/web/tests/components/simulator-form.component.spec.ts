@@ -49,16 +49,16 @@ async function expectLayout(page: Page) {
   }
 }
 
-test('the phone simulator fits every digit of a four-digit Start count', async ({
+test('the phone simulator fits every digit of a five-digit Start count', async ({
   page,
   mount,
 }) => {
   await page.setViewportSize({ width: 320, height: 740 })
   await prepare(page, mount)
   const start = page.getByRole('textbox', { name: 'Defender Light Fighter' })
-  await start.fill('1000')
+  await start.fill('10000')
   await expect(start).toBeFocused()
-  await expect(start).toHaveValue('1000')
+  await expect(start).toHaveValue('10000')
   await page.evaluate(() => document.fonts.ready)
 
   const expectDigitsToFit = async () => {
@@ -82,9 +82,9 @@ test('the phone simulator fits every digit of a four-digit Start count', async (
   }
 
   await expectDigitsToFit()
-  await start.fill('2000')
+  await start.fill('20000')
   await start.blur()
-  await expect(start).toHaveValue('2000')
+  await expect(start).toHaveValue('20000')
   await expectDigitsToFit()
 })
 

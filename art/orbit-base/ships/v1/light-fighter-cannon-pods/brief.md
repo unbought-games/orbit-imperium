@@ -1,0 +1,21 @@
+# Light Fighter · underwing cannon pods
+
+Game ID `LightFighter`. Free Orbit Base study. Built-in ImageGen edit of the [compact underwing master](../light-fighter-underwing/master.png). The owner requested larger guns after reviewing the slim emitters. Both graphite pods sit below the cropped wings and project beyond the leading edges. The paint guide protects the pods, canopy and exhausts. [Thumbnail paint comparison](thumbnail-check.png).
+
+## Customizable Orbit Base skin
+
+The owner approved this hull as the Orbit Base Light Fighter. It is intended to become the app-wide default in a later artwork update. This revision is a separate free choice in the development Hangar and uses the existing named dyes and current empire emblem.
+
+The [material drawing](livery.svg) assigns the hull, wing faces and bevels to primary, and the two shoulder fairings to accent. It protects the cockpit glass and frame, underwing guns, drive housings and exhaust, intakes and nose recess. The compiler refines the traced boundaries using the frozen source pigment and retains surface wear and lighting through a linear-light response map. The [two emblem quads](emblem-slots.json) lie on the wing panels. The renderer supports near-wing or paired placements and full-badge or layers-only treatments. The Hangar exposes its existing emblem switch.
+
+Rebuild with `npm run art:orbit-base-light-fighter`. The [runtime manifest](../../../../../apps/web/public/art/ship-skins/orbit-base-light-fighter/v1/manifest.json) records source, input and map hashes, reference swatches, dimensions, license and attribution. The [palette sheet](customization-palettes.webp) uses package-rendered pixels. The initial study mask and thumbnail above are retained as creative history.
+
+## Edit prompt
+
+Precise game-art edit of the supplied Orbit Imperium Light Fighter render. Replace the two tiny projecting sticks with TWO visibly substantial, mid-sized UNDERWING pulse cannon pods, each attached to the underside halfway along the wing. The mass of the shrouded cannon should be obvious beyond the wing leading edge, a bold dark shape even in a 96-pixel thumbnail. Relative to the existing toothpick muzzles make the projecting section about three to four times as long and four times as thick. Give each pod a graphite stepped housing, thick short faceted barrel, contrasting steel rim and broad recessed dark emitter face. Approximate projected forward section per cannon is half the length of the cockpit glazing, and one quarter of its width. The guns do not project ahead of the fighter nose. Matching pair, parallel to the fuselage axis. Wings overlap and occlude the rear of both pods at their mounts; wing upper surfaces are clean, no hardware crossing over them. Preserve the exact compact wings, silhouette of the hull, blue and champagne paint panels, canopy, dual combustion exhausts, perspective, craft position and studio lighting. Original classic sci-fi game miniature in front three-quarter view. Entire craft isolated on transparent alpha in 3:2 landscape. No text, trails, firing or scenery.
+
+## Verification
+
+The original paint recipe reproduced every RGBA pixel of the approved master. In the isolated Hangar, a Navy / Copper draft selected Orbit Base, rendered the current emblem, and submitted the correct skin ID and revision at 1440 × 900 and 390 × 844. The same emblem-free colors yielded identical raw pixels through the browser package loader and the render worker's native PNG. The SHA-256 was `5ec47d7e229df9972d7ad57ce511be5605851796944b9301886a36f05e3178e1`. The local HTTP renderer also produced all eight PNG/WebP variants for both a paired full emblem and a near-wing layers-only emblem. Rebuilding reproduced every package file byte for byte.
+
+The HTTP/PostgreSQL suite saved and equipped Orbit Base and replayed the command against a disposable database. All seven cases passed in 15.6 seconds after 42 seconds of compilation. Initial Compose setup exhausted Docker's automatic address pools. The validation used a private project subnet on its second attempt and removed its container, volume and network. The 14 renderer tests, 20 client tests and targeted application recipe test passed. Final paint and emblem placement await owner visual review.

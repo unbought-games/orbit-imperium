@@ -49,7 +49,7 @@ async fn delivery_return_recall_deadline_and_private_reports() {
         .await
         .unwrap();
     let envelope = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: command_id_at(1_000_000).into(),
         epoch: av.epoch,
         protocol: 2,
         command: Command::LaunchTransport {
@@ -77,6 +77,7 @@ async fn delivery_return_recall_deadline_and_private_reports() {
     assert_eq!(launched.bodies[0].inventories[0].count, "0");
     assert_eq!(launched.fleets[0].paid_fuel, "3000000");
     let fleet = FleetId(Uuid::parse_str(&launched.fleets[0].id).unwrap());
+    assert_ne!(fleet.0, envelope.command_id.0);
     assert!(
         service
             .receipt(Actor::Player(b), u, envelope.command_id)
@@ -86,15 +87,41 @@ async fn delivery_return_recall_deadline_and_private_reports() {
     // Arrival wins over recall admitted at the exact same deadline.
     store.set_test_time(5_741_000).await.unwrap();
     let recall = CommandEnvelope {
-        command_id: Uuid::new_v4().into(),
+        command_id: command_id_at(5_741_000).into(),
         epoch: av.epoch,
         protocol: 2,
-        command: Command::RecallFleet { fleet },
+        command: Command::RecallFleet {
+            fleet: FleetId(envelope.command_id.0),
+        },
     };
     service
         .submit(Actor::Player(a), u, recall.clone())
         .await
         .unwrap();
+    // A recall naming the launch persisted the fleet identity on admission.
+    // Retire the creator before the arrival and pending recall execute.
+    let pool = sqlx::PgPool::connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE command_admission_cutover SET legacy_until_ms=0")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE commands SET retention_since=to_timestamp(0)-interval '8 days' WHERE universe=$1 AND done")
+        .bind(u.0).execute(&pool).await.unwrap();
+    sqlx::query("UPDATE game_updates SET created_at=now()-interval '8 days' WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.prune_game_updates().await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert!(matches!(
+        service
+            .receipt(Actor::Player(a), u, envelope.command_id)
+            .await,
+        Err(ServiceError::CommandTime(CommandTimeError::HistoryExpired))
+    ));
     let claim = store.claim_next(u, worker).await.unwrap().unwrap();
     let snapshot = store.load_claim(&claim).await.unwrap();
     let outcome = orbit_engine::transition(&snapshot.state, &claim.input, &snapshot.rules);
@@ -140,6 +167,23 @@ async fn delivery_return_recall_deadline_and_private_reports() {
     assert_eq!(
         service.view(Actor::Player(a), u).await.unwrap().bodies[0].inventories[0].count,
         "2"
+    );
+    // Simulate a lost acknowledgement for the return generation, then a very late
+    // retry after the event's terminal grace. Neither repeats fleet delivery.
+    let retry_result = samples.last().unwrap().2.clone();
+    assert!(matches!(
+        store
+            .commit_claim(&claim, retry_result.clone())
+            .await
+            .unwrap(),
+        CommitOutcome::Committed { .. }
+    ));
+    sqlx::query("UPDATE scheduled_events SET retention_since=to_timestamp(0)-interval '8 days' WHERE universe=$1 AND done")
+        .bind(u.0).execute(&pool).await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    assert_eq!(
+        store.commit_claim(&claim, retry_result).await.unwrap(),
+        CommitOutcome::StaleClaim
     );
     let reopened = GameService::new(
         PgStore::connect(&std::env::var("TEST_DATABASE_URL").unwrap())

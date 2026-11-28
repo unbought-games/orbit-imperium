@@ -1,3 +1,17 @@
+import { BoundCommandRecovery } from './bound-command-recovery'
+import {
+  commandWindowError,
+  definiteMutationResponse,
+  unavailableCommandAccess,
+  unknownAccessMessage,
+  futureSkewMs,
+  futureCommand,
+  futureCheckDelay,
+  presenceCommandId,
+  timestampedCommandId,
+  identityProblem,
+  withinCommandWindow,
+} from './command-window'
 import { DispatchObservations } from './dispatch-observations'
 import { matchesCargoInstruction } from './dispatch-cargo'
 import { TutorialEngine } from './tutorial-engine'
@@ -22,12 +36,14 @@ import {
   type BoundSettings,
   type ClientPlatform,
   type Command,
+  type Envelope,
   type GamePort,
   type GameUpdate,
   type GameUpdatesPort,
   type QuoteRequest,
   type QueryContext,
   attemptKey,
+  bindingKey,
   canonical,
   hasOrderNotice,
   sameBinding,
@@ -69,6 +85,8 @@ type Failure = {
   retryAfterMs?: number
 }
 const failure = (e: unknown): Failure => (e && typeof e === 'object' ? e : {})
+type OrderRefresh = { work?: Promise<void> }
+
 export class Coordinator {
   private mailboxReads = new Map<string, import('./social').SocialAction>()
   private mailboxVersion = 0
@@ -150,6 +168,62 @@ export class Coordinator {
   private get retryAt() {
     return this.store.getState().retryAt
   }
+  private readonly boundRecovery: BoundCommandRecovery
+  private restoredMutations: ReturnType<BoundCommandRecovery['restore']> = []
+  private commandClock = { server: 0, received: 0, local: 0 }
+  private needsClockRefresh = false
+  private orderRefresh: OrderRefresh | null = null
+  private resumedOrders = new Set<string>()
+  private deferredUntil = new Map<string, number>()
+  private get commandNow() {
+    return (
+      this.commandClock.server +
+      Math.max(0, this.platform.monotonicNowMs() - this.commandClock.received)
+    )
+  }
+  private sampleCommandClock(at: number) {
+    this.needsClockRefresh = false
+    this.commandClock = {
+      server: at,
+      received: this.platform.monotonicNowMs(),
+      local: Date.now(),
+    }
+  }
+  // Some mobile monotonic clocks pause during device sleep. A change in the
+  // relative clock rates requires a fresh binding sample before minting an ID.
+  private get clockNeedsSample() {
+    const elapsed = this.platform.monotonicNowMs() - this.commandClock.received
+    return (
+      this.needsClockRefresh ||
+      Math.abs(Date.now() - this.commandClock.local - elapsed) > futureSkewMs
+    )
+  }
+  private async resampleClock() {
+    const request = this.captureRequest()
+    if (!request) throw Error('Reconnect before placing an order.')
+    const { binding, request_id } = request.context
+    const sample = validate<import('./commands').BindingCandidate>(
+      'GameBindingCandidate',
+      await this.port.currentBinding(binding.universe, request_id),
+    )
+    if (
+      !this.responseMatches(request, sample) ||
+      sample.protocol !== this.protocol
+    )
+      throw Object.assign(
+        Error('Universe changed. Refresh before placing an order.'),
+        { code: 'EpochChanged' },
+      )
+    this.sampleCommandClock(sample.sampled_at)
+    return sample.sampled_at
+  }
+  newCommandId = (): string | Promise<string> =>
+    this.clockNeedsSample
+      ? this.resampleClock().then(() => this.mintCommandId())
+      : this.mintCommandId()
+  private mintCommandId() {
+    return timestampedCommandId(this.platform.newId(), this.commandNow)
+  }
   private delivery: DeliveryController | null = null
   private refreshWork: Promise<void> | null = null
   private recoveryWork: Promise<void> | null = null
@@ -179,6 +253,7 @@ export class Coordinator {
     private platform: ClientPlatform,
     private updates?: GameUpdatesPort,
   ) {
+    this.boundRecovery = new BoundCommandRecovery(platform.pendingCommands)
     this.dispatchObservations = new DispatchObservations(platform, (sample) => {
       if (this.binding)
         this.port.observeDispatch?.(this.binding.universe, sample)
@@ -207,6 +282,12 @@ export class Coordinator {
       isCurrent: () => this.ready && this.current(generation, binding),
     })
     this.delivery = delivery
+    if (
+      (this.resumedOrders.size || this.restoredMutations.length) &&
+      this.platform.isOnline() &&
+      this.platform.isVisible?.() !== false
+    )
+      void this.poll()
     this.store.setState({
       foreground: this.platform.isVisible?.() ?? true,
       online: this.platform.isOnline(),
@@ -240,6 +321,12 @@ export class Coordinator {
       this.quoteGeneration++
       this.delivery?.pause()
       return
+    }
+    if (!previous.foreground || !previous.online) {
+      for (const attempt of this.attempts.values()) {
+        if (!terminal(attempt))
+          this.resumedOrders.add(attempt.envelope.command_id)
+      }
     }
     if ((!previous.foreground || !previous.online) && this.refreshWork) {
       // Supersede a suspended snapshot without waiting for its HTTP timeout.
@@ -292,6 +379,10 @@ export class Coordinator {
     this.dispatchObservations.clear()
     this.tutorial.invalidate()
     this.reports.invalidate()
+    this.restoredMutations = []
+    this.orderRefresh = null
+    this.resumedOrders.clear()
+    this.deferredUntil.clear()
     this.mailboxReads.clear()
     this.mailboxVersion++
     this.mailboxRequest = null
@@ -420,6 +511,30 @@ export class Coordinator {
     this.protocol = candidate.protocol
     if (g !== this.generation) return
     this.binding = structuredClone(b)
+    this.sampleCommandClock(candidate.sampled_at)
+    const restored: AttemptLedger = new Map()
+    for (const envelope of this.platform.pendingCommands?.load<Envelope>(
+      'GameEnvelope',
+      bindingKey(b),
+    ) ?? []) {
+      if (
+        envelope.protocol !== this.protocol ||
+        !sameBinding(envelope.binding, b)
+      )
+        continue
+      restored.set(
+        attemptKey(b, envelope.command_id),
+        validate<Attempt>('GameAttempt', {
+          envelope,
+          status: 'uncertain',
+          receipt: null,
+          reconciled: false,
+        }),
+      )
+      this.resumedOrders.add(envelope.command_id)
+    }
+    this.attempts = restored
+    this.restoredMutations = this.boundRecovery.restore(b)
     if (next.protocol === 4 && tutorial) this.tutorial.hydrate(tutorial, next)
     this.view = next
     this.settings = settings
@@ -486,6 +601,16 @@ export class Coordinator {
   }
   async refresh(minimumViewerRevision?: string): Promise<void> {
     this.requestMinimum(minimumViewerRevision)
+    const retirement = this.orderRefresh
+    if (retirement) {
+      // Each retirement needs a view requested afterwards. All readers for
+      // that retirement share its request, even if an older one is in flight.
+      retirement.work ??= this.refreshOnce(this.pendingMinimum).finally(() => {
+        delete retirement.work
+        if (this.pendingMinimum !== undefined) this.delivery?.pending()
+      })
+      return retirement.work
+    }
     if (this.refreshWork) {
       // Revision invalidations coalesce; an explicit refresh may supersede a
       // stalled request and retains the existing request-generation fence.
@@ -505,6 +630,7 @@ export class Coordinator {
       } while (
         this.pendingMinimum !== undefined &&
         this.pendingMinimum !== minimum &&
+        !this.orderRefresh &&
         this.ready &&
         this.platform.monotonicNowMs() >= this.retryAt
       )
@@ -525,6 +651,7 @@ export class Coordinator {
       ? this.platform.monotonicNowMs()
       : null
     const q = ++this.viewGeneration
+    const retirement = this.orderRefresh
     const request = this.captureRequest()
     if (!request) return
     const { context, generation: g } = request
@@ -579,7 +706,11 @@ export class Coordinator {
         )
           return
       }
+      // Receipt reconciliation above can itself retire a command.
+      if (retirement !== this.orderRefresh || q !== this.viewGeneration) return
       const now = this.platform.monotonicNowMs()
+      if (next.progress) this.sampleCommandClock(next.progress.sampled_at)
+      this.orderRefresh = null
       this.store.setState({
         view: next,
         settings,
@@ -761,11 +892,23 @@ export class Coordinator {
     this.mailboxRequest = work
     return work
   }
-  async socialCommand(request: import('./social').SocialRequest) {
+  async socialCommand(
+    request: import('./social').SocialRequest,
+    restoring = false,
+  ) {
     const pending = this.captureRequest()
     if (!pending || !this.port.socialCommand || this.protocol !== 4) return null
     try {
-      const result = await this.port.socialCommand(pending.context, request)
+      const result = await this.boundRecovery.submit(
+        'SocialCommandRequest',
+        pending.context,
+        request,
+        this.commandNow,
+        () => this.resampleClock(),
+        ({ context, ...payload }) => this.port.socialCommand!(context, payload),
+        restoring,
+      )
+      if (!result) return null
       if (!this.current(pending.generation, pending.context.binding))
         return null
       const action = request.action
@@ -803,12 +946,25 @@ export class Coordinator {
       throw error
     }
   }
-  async allianceCommand(request: import('./alliances').AllianceRequest) {
+  async allianceCommand(
+    request: import('./alliances').AllianceRequest,
+    restoring = false,
+  ) {
     const pending = this.captureRequest()
     if (!pending || !this.port.allianceCommand || this.protocol !== 4)
       return null
     try {
-      const result = await this.port.allianceCommand(pending.context, request)
+      const result = await this.boundRecovery.submit(
+        'AllianceCommandRequest',
+        pending.context,
+        request,
+        this.commandNow,
+        () => this.resampleClock(),
+        ({ context, ...payload }) =>
+          this.port.allianceCommand!(context, payload),
+        restoring,
+      )
+      if (!result) return null
       return this.current(pending.generation, pending.context.binding)
         ? result
         : null
@@ -1059,23 +1215,66 @@ export class Coordinator {
     return this.responseMatches(pending, result) ? result : null
   }
   async send(
-    command: Command,
-    quote?: SubmittedQuote,
-    dispatch?: {
+    input: Command,
+    proposal?: SubmittedQuote,
+    registrationOrDispatch?:
+      | ((key: string) => void)
+      | {
+          clickedAt: number
+          coordinates: import('../contracts').components['schemas']['Coordinates']
+        },
+    dispatchContext?: {
       clickedAt: number
       coordinates: import('../contracts').components['schemas']['Coordinates']
     },
-  ) {
+  ): Promise<string | undefined> {
+    const onRegistered =
+      typeof registrationOrDispatch === 'function'
+        ? registrationOrDispatch
+        : undefined
+    const dispatch =
+      typeof registrationOrDispatch === 'function'
+        ? dispatchContext
+        : registrationOrDispatch
     const b = this.binding,
       g = this.generation
-    if (!b || !this.ready || !this.platform.isOnline()) {
-      this.message = 'Connect before confirming an action.'
+    const reconnect = 'Connect before confirming an action.'
+    if (!b || !this.ready) {
+      this.message = reconnect
       return
     }
-    this.tick()
-    if (this.platform.monotonicNowMs() < this.retryAt) {
-      this.explainUnsentDuringRecovery(command)
-      return
+    const canContinue = () => {
+      if (!this.current(g, b)) return false
+      if (this.platform.isOnline()) return true
+      this.message = reconnect
+      return false
+    }
+    // Capture the complete confirmed intent before any async prerequisite.
+    const command = structuredClone(input),
+      quote = structuredClone(proposal)
+    for (;;) {
+      if (!canContinue()) return
+      this.tick()
+      if (this.platform.monotonicNowMs() < this.retryAt) {
+        this.explainUnsentDuringRecovery(command)
+        return
+      }
+      if (this.clockNeedsSample) {
+        try {
+          await this.resampleClock()
+        } catch (error) {
+          if (canContinue()) await this.problem(error, g, b)
+          return
+        }
+      } else if (this.orderRefresh) {
+        const retirement: OrderRefresh = this.orderRefresh
+        await this.refresh()
+        if (!canContinue()) return
+        if (this.orderRefresh === retirement) {
+          this.message = 'Refresh your empire before confirming this action.'
+          return
+        }
+      } else break
     }
     this.message = ''
     const state = this.store.getState()
@@ -1087,7 +1286,7 @@ export class Coordinator {
     const parent = commandParent(state, command)
     if (parent && !acceptedEntityReference(state, parent)) return
     const intent: SubmittedIntent = {
-      quote: quote ? structuredClone(quote) : undefined,
+      quote,
       submittedAt: Math.floor(currentServerTime(state)),
       ...(dispatch ? { dispatchCoordinates: dispatch.coordinates } : {}),
       ...(parent ? { dependsOn: parent.envelope.command_id } : {}),
@@ -1103,7 +1302,7 @@ export class Coordinator {
         'Resolve pending actions or dismiss presented outcomes before creating more.'
       return
     }
-    const commandId = this.platform.newId()
+    const commandId = this.mintCommandId()
     const origin =
       commandBody(command, state.view) ??
       (parent ? commandBody(parent.envelope.command, state.view) : null) ??
@@ -1117,7 +1316,7 @@ export class Coordinator {
               presence: {
                 protocol: 4,
                 binding: b,
-                command_id: this.platform.newId(),
+                command_id: presenceCommandId(commandId),
                 command: {
                   type: 'World',
                   action: {
@@ -1140,7 +1339,17 @@ export class Coordinator {
         ...presence,
       }),
     )
-    validate('GameEnvelope', envelope)
+    try {
+      this.platform.pendingCommands?.save(
+        'GameEnvelope',
+        bindingKey(b),
+        envelope,
+      )
+    } catch {
+      this.message =
+        'This order could not be saved for retry. Allow browser storage and try again.'
+      return
+    }
     const a = validate<Attempt>('GameAttempt', {
         envelope,
         status: 'submitting',
@@ -1152,6 +1361,8 @@ export class Coordinator {
       attempts: new Map(this.attempts).set(key, a),
       intents: new Map(state.intents).set(key, structuredClone(intent)),
     })
+    if (!this.current(g, b)) return
+    onRegistered?.(key)
     if (!this.current(g, b)) return
     if (dispatch)
       this.dispatchObservations.start(
@@ -1168,6 +1379,7 @@ export class Coordinator {
     const current = this.attempts.get(key)
     // A receipt is stronger evidence than a conflicting transport response.
     if (!current || current.receipt || terminal(current)) return false
+    this.forgetEnvelope(a)
     this.dispatchObservations.mark(a.envelope.command_id, 'not_admitted')
     this.removeAttempt(key)
     return true
@@ -1202,6 +1414,15 @@ export class Coordinator {
       )
     } catch (e) {
       const rejected = failure(e)
+      if (futureCommand(e)) {
+        await this.deferGameOrder(a, g, true)
+        return true
+      }
+      const closed = identityProblem(e)
+      if (closed) {
+        this.retireOrder(a, g, closed)
+        return false
+      }
       if (
         rejected.status === 422 &&
         rejected.code === 'GameRejected' &&
@@ -1245,6 +1466,74 @@ export class Coordinator {
       }
     }
     return true
+  }
+  private clearClockWait(id: string) {
+    this.deferredUntil.delete(id)
+    if (
+      !this.deferredUntil.size &&
+      this.message === identityProblem({ code: 'COMMAND_IN_FUTURE' })
+    )
+      this.message = ''
+  }
+  private deferFuture(id: string) {
+    this.deferredUntil.set(
+      id,
+      this.platform.monotonicNowMs() + futureCheckDelay(id, this.commandNow),
+    )
+  }
+  private async deferGameOrder(a: Attempt, g: number, sampleClock: boolean) {
+    const { binding, command_id } = a.envelope
+    if (!this.current(g, binding)) return
+    this.resumedOrders.add(command_id)
+    this.deferFuture(command_id)
+    await this.uncertain(a, g)
+    if (sampleClock) {
+      this.needsClockRefresh = true
+      try {
+        await this.resampleClock()
+      } catch (error) {
+        await this.problem(error, g, binding)
+        return
+      }
+      if (!this.current(g, binding) || !this.resumedOrders.has(command_id))
+        return
+      this.deferFuture(command_id)
+    }
+    this.message = identityProblem({ code: 'COMMAND_IN_FUTURE' })!
+  }
+  private forgetEnvelope(a: Attempt) {
+    this.resumedOrders.delete(a.envelope.command_id)
+    this.deferredUntil.delete(a.envelope.command_id)
+    this.platform.pendingCommands?.remove(
+      'GameEnvelope',
+      bindingKey(a.envelope.binding),
+      a.envelope.command_id,
+    )
+  }
+  private retireOrder(
+    a: Attempt,
+    g: number,
+    message: string,
+    missingReceipt = false,
+  ) {
+    if (!this.current(g, a.envelope.binding)) return
+    const key = attemptKey(a.envelope.binding, a.envelope.command_id)
+    const current = this.attempts.get(key)
+    if (
+      !current ||
+      (current.receipt &&
+        !(missingReceipt && current === a && !terminal(current)))
+    )
+      return
+    this.orderRefresh = {}
+    this.viewGeneration++
+    this.forgetEnvelope(a)
+    this.removeAttempt(key)
+    this.stale = true
+    this.message = message
+    // A refresh can itself be reconciling this receipt. Queue a snapshot without
+    // waiting on our own recovery promise.
+    void this.refresh()
   }
   private async uncertain(a: Attempt, g: number) {
     if (!this.current(g, a.envelope.binding)) return
@@ -1302,6 +1591,9 @@ export class Coordinator {
       attempts: new Map(this.attempts).set(key, next),
       reportHeaders,
     })
+    this.clearClockWait(r.command_id)
+    this.resumedOrders.delete(r.command_id)
+    if (r.status !== 'Pending') this.forgetEnvelope(a)
     if (r.status === 'Pending') this.delivery?.pending()
     if (
       r.status === 'Rejected' &&
@@ -1340,7 +1632,9 @@ export class Coordinator {
     }
   }
   async recover(command_id: string, retry = false) {
-    if (this.platform.monotonicNowMs() < this.retryAt) return
+    const now = this.platform.monotonicNowMs()
+    if (now < this.retryAt || now < (this.deferredUntil.get(command_id) ?? 0))
+      return
     const b = this.binding,
       g = this.generation
     if (!b || !this.ready) return
@@ -1354,10 +1648,21 @@ export class Coordinator {
         terminal(this.attempts.get(attemptKey(b, command_id)) ?? a)
       )
         return
-      if (failure(e).status === 404) {
+      if (futureCommand(e)) return this.deferGameOrder(a, g, true)
+      const closed = identityProblem(e)
+      if (closed) {
+        this.retireOrder(a, g, closed, true)
+      } else if (failure(e).status === 404) {
         // A missing receipt is not proof an in-flight request cannot still arrive.
-        // Only the player can authorize another send, using the same ID.
-        if (!retry) return
+        // Reconfirm the exact principal, identity window and protocol. Older
+        // servers can still return 404 for an expired ID during the rollout.
+        const resume = this.resumedOrders.has(command_id)
+        if (
+          !retry &&
+          !resume &&
+          withinCommandWindow(command_id, this.commandNow)
+        )
+          return
         try {
           const request_id = this.platform.newId()
           const candidate = validate<import('./commands').BindingCandidate>(
@@ -1369,6 +1674,21 @@ export class Coordinator {
             await this.problem({ code: 'EpochChanged' }, g, b)
             return
           }
+          this.sampleCommandClock(candidate.sampled_at)
+          const code =
+            candidate.protocol !== a.envelope.protocol
+              ? 'COMMAND_ID_UNSUPPORTED'
+              : commandWindowError(command_id, candidate.sampled_at)
+          if (code === 'COMMAND_IN_FUTURE')
+            return this.deferGameOrder(a, g, false)
+          if (code) {
+            this.retireOrder(a, g, identityProblem({ code })!, true)
+            return
+          }
+          const current = this.attempts.get(attemptKey(b, command_id))
+          if (!current || current.receipt || terminal(current)) return
+          if (!retry && !this.resumedOrders.delete(command_id)) return
+          this.resumedOrders.delete(command_id)
           await this.deliver(a, g)
         } catch (error) {
           await this.problem(error, g, b)
@@ -1379,10 +1699,71 @@ export class Coordinator {
       }
     }
   }
+  private async recoverBoundMutations(binding: Binding, generation: number) {
+    for (const row of this.restoredMutations.slice()) {
+      if (!this.current(generation, binding)) return
+      const id = row.envelope.command_id
+      if (this.platform.monotonicNowMs() < (this.deferredUntil.get(id) ?? 0))
+        continue
+      try {
+        if (row.kind === 'SocialCommandRequest')
+          await this.socialCommand(row.envelope, true)
+        else await this.allianceCommand(row.envelope, true)
+      } catch (error) {
+        if (!this.current(generation, binding)) return
+        if (futureCommand(error)) {
+          this.deferFuture(id)
+          this.message = identityProblem(error)!
+          continue
+        }
+        if (!definiteMutationResponse(error)) {
+          await this.problem(error, generation, binding)
+          return
+        }
+        this.message =
+          identityProblem(error) ??
+          (unavailableCommandAccess(error)
+            ? unknownAccessMessage
+            : 'The earlier action was refused. Check the current state before trying again.')
+      }
+      if (!this.current(generation, binding)) return
+      const kind = row.kind === 'SocialCommandRequest' ? 'social' : 'alliance'
+      // A pre-recovery mailbox read cannot establish the post-recovery state.
+      this.mailboxVersion++
+      const recoveredMutations = this.store.getState().recoveredMutations
+      this.store.setState({
+        recoveredMutations: {
+          ...recoveredMutations,
+          [kind]: recoveredMutations[kind] + 1,
+        },
+      })
+      if (this.port.socialQuery) {
+        try {
+          await this.refreshMailbox()
+        } catch (error) {
+          if (!definiteMutationResponse(error))
+            await this.problem(error, generation, binding)
+        }
+      }
+      this.clearClockWait(id)
+      this.restoredMutations = this.restoredMutations.filter(
+        (saved) => saved !== row,
+      )
+    }
+  }
   async reconcilePending(): Promise<void> {
     if (this.recoveryWork) return this.recoveryWork
     const generation = this.generation
     const work = (async () => {
+      const binding = this.binding
+      if (
+        this.restoredMutations.length &&
+        binding &&
+        this.platform.isOnline() &&
+        this.platform.isVisible?.() !== false
+      ) {
+        await this.recoverBoundMutations(binding, generation)
+      }
       for (const attempt of [...this.attempts.values()]) {
         if (
           generation !== this.generation ||

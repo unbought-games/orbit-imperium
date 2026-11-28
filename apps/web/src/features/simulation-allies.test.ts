@@ -59,12 +59,16 @@ it('keeps allied technology provenance and combines result counts only', () => {
   expect(combinedSimulationUnits(result.inputs, 'attacker')[0].count).toBe(5)
 })
 it('enforces the total simulation limit across every contingent', () => {
-  const result = withSimulationAllies({ inputs, error: null }, fields, [ally], {
-    'one:attacker:w': '0',
-    'one:attacker:ship': '2000',
-  })
+  const withAlly = (count: string) =>
+    withSimulationAllies({ inputs, error: null }, fields, [ally], {
+      'one:attacker:ship': count,
+    })
+  expect(withAlly('19998').inputs?.attacking_allies?.[0].units[0].count).toBe(
+    19998,
+  )
+  const result = withAlly('19999')
   expect(result.inputs).toBeNull()
-  expect(result.error).toContain('2,000')
+  expect(result.error).toContain('20,000')
 })
 
 it.each(['attacker', 'defender'] as const)(

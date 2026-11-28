@@ -60,19 +60,15 @@ export function useBuildingQuickBuild({
       if (feedback.recoveryId) void model.recover(feedback.recoveryId)
     },
     submit: () => {
-      // send rechecks the live store and records the intent synchronously before
-      // its first await, fencing both rapid clicks and competing row actions.
       if (
         !reason &&
         feedback.phase === 'hammer' &&
         command &&
         inspection.proposal
       ) {
-        const before = model.store.getState().attempts
-        void model.send(command, inspection.proposal)
-        const after = model.store.getState()
-        const key = [...after.attempts.keys()].find((key) => !before.has(key))
-        if (key) setGesture({ key, at: after.now })
+        void model.send(command, inspection.proposal, (key) => {
+          setGesture({ key, at: model.store.getState().now })
+        })
       }
     },
   }

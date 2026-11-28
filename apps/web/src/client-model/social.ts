@@ -1,3 +1,4 @@
+import { identityProblem, futureCommand } from './command-window'
 import { createStore } from 'zustand/vanilla'
 import type { components } from '../contracts'
 type S = components['schemas']
@@ -72,6 +73,7 @@ export class SocialController {
     completed: null,
   }))
   private generation = 0
+  private allianceGeneration = 0
   private listGeneration = 0
   private historyGeneration = 0
   private player: string | null = null
@@ -89,12 +91,13 @@ export class SocialController {
         request: SocialRequest,
       ) => Promise<S['SocialCommandResult'] | null>
       readAlliance?: () => Promise<S['AllianceDetail'] | null>
-      newId: () => string
+      newId: () => string | Promise<string>
     },
   ) {}
   clear() {
     this.generation++
     this.listGeneration++
+    this.allianceGeneration++
     this.historyGeneration++
     this.player = null
     this.newerRequested = false
@@ -143,18 +146,23 @@ export class SocialController {
         this.store.setState({ loading: false, error: errorText(e) })
     }
   }
+  refreshList() {
+    // A known mutation supersedes any older list read, including initial load.
+    return this.list(this.query, false, !!this.store.getState().list)
+  }
   pollList() {
     if (!this.expandedList && !this.store.getState().loading)
       return this.list(this.query, false, true)
   }
   async loadAlliance() {
-    const gen = this.generation
+    const gen = ++this.allianceGeneration
     try {
       const alliance = await this.ports.readAlliance?.()
-      if (gen === this.generation)
+      if (gen === this.allianceGeneration)
         this.store.setState({ alliance: alliance ?? null })
     } catch {
-      if (gen === this.generation) this.store.setState({ alliance: null })
+      if (gen === this.allianceGeneration)
+        this.store.setState({ alliance: null })
     }
   }
   moreList() {
@@ -246,8 +254,10 @@ export class SocialController {
       .getState()
       .history?.messages.find((m) => m.id === message)?.sequence
     try {
+      const command_id = await this.ports.newId()
+      if (gen !== this.generation) return false
       const result = await this.ports.command({
-        command_id: this.ports.newId(),
+        command_id,
         action: { type: 'Read', player, message },
       })
       if (gen !== this.generation || result === null) return false
@@ -269,10 +279,27 @@ export class SocialController {
   async run(action: SocialAction) {
     if (this.store.getState().busy || this.store.getState().pending)
       return false
+    const captured = structuredClone(action)
+    const generation = this.generation
+    let commandId: string
+    const id = this.ports.newId()
+    if (typeof id === 'string') commandId = id
+    else {
+      this.store.setState({ busy: true })
+      try {
+        commandId = await id
+      } catch (error) {
+        if (generation === this.generation)
+          this.store.setState({ busy: false, error: errorText(error) })
+        return false
+      }
+      if (generation !== this.generation) return false
+    }
     this.store.setState({
+      busy: false,
       pending: {
-        command_id: this.ports.newId(),
-        action: structuredClone(action),
+        command_id: commandId,
+        action: captured,
       },
     })
     return this.retry()
@@ -294,6 +321,19 @@ export class SocialController {
       return true
     } catch (e) {
       if (gen !== this.generation) return false
+      const identityError = identityProblem(e)
+      if (futureCommand(e)) {
+        this.store.setState({ busy: false, error: identityError! })
+        return false
+      }
+      if (identityError) {
+        this.store.setState({ busy: false, pending: null })
+        await this.list()
+        if (this.player) await this.history('newer')
+        if (gen === this.generation)
+          this.store.setState({ error: identityError })
+        return false
+      }
       const code = status(e)
       const rejected = code >= 400 && code < 500 && code !== 408 && code !== 429
       this.store.setState({

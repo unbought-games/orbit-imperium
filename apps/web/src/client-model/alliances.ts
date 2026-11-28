@@ -1,3 +1,4 @@
+import { identityProblem, futureCommand } from './command-window'
 import { createStore } from 'zustand/vanilla'
 import type { components } from '../contracts'
 type S = components['schemas']
@@ -76,7 +77,8 @@ export class AlliancesController {
     notice: '',
     pending: null,
   }))
-  private generation = 0
+  private commandGeneration = 0
+  private readGeneration = 0
   private query: S['AllianceQuery'] = { type: 'Mine' }
   constructor(
     private readonly ports: {
@@ -84,13 +86,14 @@ export class AlliancesController {
       command: (
         request: AllianceRequest,
       ) => Promise<S['AllianceCommandResult'] | null>
-      newId: () => string
+      newId: () => string | Promise<string>
       onAccessLost?: () => void
     },
   ) {}
   clear() {
     this.ports.onAccessLost?.()
-    this.generation++
+    this.commandGeneration++
+    this.readGeneration++
     this.store.setState({
       view: null,
       directory: null,
@@ -131,7 +134,7 @@ export class AlliancesController {
     preserveBoard = false,
   ): Promise<boolean> {
     this.query = query
-    const generation = ++this.generation
+    const generation = ++this.readGeneration
     const previousView = this.store.getState().view
     const retain = append || preserveBoard
     this.store.setState({
@@ -147,7 +150,7 @@ export class AlliancesController {
       try {
         response = await this.ports.read(query)
       } catch (error) {
-        if (generation !== this.generation) return false
+        if (generation !== this.readGeneration) return false
         if (
           query.type !== 'Detail' ||
           !query.post_before ||
@@ -161,14 +164,14 @@ export class AlliancesController {
         response = await this.ports.read(query)
         recoveredCursor = true
       }
-      if (generation !== this.generation) return false
+      if (generation !== this.readGeneration) return false
       if (!response)
         throw new Error('Alliance access unavailable. Refresh your session.')
       let view =
         query.type === 'Directory'
           ? await this.ports.read({ type: 'Mine' })
           : response
-      if (generation !== this.generation) return false
+      if (generation !== this.readGeneration) return false
       if (!view)
         throw new Error('Alliance access unavailable. Refresh your session.')
       if (
@@ -206,7 +209,7 @@ export class AlliancesController {
       )
         this.ports.onAccessLost?.()
       const directoryResponse = query.type === 'Directory' ? response : null
-      if (generation !== this.generation) return false
+      if (generation !== this.readGeneration) return false
       const directory = directoryResponse
         ? {
             directory: directoryResponse.directory,
@@ -223,14 +226,17 @@ export class AlliancesController {
       })
       return true
     } catch (error) {
-      if (generation !== this.generation) return false
-      if (accessLost(error)) this.ports.onAccessLost?.()
+      if (generation !== this.readGeneration) return false
+      if (accessLost(error)) {
+        this.commandGeneration++
+        this.ports.onAccessLost?.()
+      }
       this.store.setState({
         view: append && !accessLost(error) ? previousView : null,
         directory: null,
         loading: false,
         error: errorMessage(error),
-        ...(accessLost(error) ? { pending: null } : {}),
+        ...(accessLost(error) ? { busy: false, pending: null } : {}),
       })
       return false
     }
@@ -248,26 +254,53 @@ export class AlliancesController {
       : (expectedRevision ??
         this.store.getState().view?.alliance?.revision ??
         null)
-    const pending = {
-      command_id: this.ports.newId(),
-      expected_revision: revision,
-      action: structuredClone(action),
+    const readGeneration = this.readGeneration
+    const captured = structuredClone(action)
+    const generation = this.commandGeneration
+    let commandId: string
+    const id = this.ports.newId()
+    if (typeof id === 'string') commandId = id
+    else {
+      this.store.setState({ busy: true })
+      try {
+        commandId = await id
+      } catch (error) {
+        if (generation === this.commandGeneration)
+          this.store.setState({ busy: false, error: errorMessage(error) })
+        return false
+      }
+      if (generation !== this.commandGeneration) return false
     }
-    this.store.setState({ pending })
-    return this.retry()
+    const pending = {
+      command_id: commandId,
+      expected_revision: revision,
+      action: captured,
+    }
+    this.store.setState({ busy: false, pending })
+    return this.submitPending(readGeneration)
   }
-  async retry(): Promise<boolean> {
+  retry(): Promise<boolean> {
+    return this.submitPending(this.readGeneration)
+  }
+  private async submitPending(gestureRead: number): Promise<boolean> {
     const { pending, busy, view: previousView } = this.store.getState()
     if (!pending || busy) return false
-    const generation = ++this.generation
+    const generation = ++this.commandGeneration
+    const newerRead = gestureRead !== this.readGeneration
+    const readGeneration = this.readGeneration
     this.store.setState({ busy: true, error: '', notice: '' })
     try {
       const result = await this.ports.command(pending)
-      if (generation !== this.generation) return false
+      if (generation !== this.commandGeneration) return false
       if (!result)
         throw new Error('Command status unknown. Retry to confirm the result.')
       if (['Leave', 'Disband', 'Transfer'].includes(pending.action.type))
         this.ports.onAccessLost?.()
+      if (newerRead || readGeneration !== this.readGeneration) {
+        this.store.setState({ busy: false, pending: null })
+        await this.refresh()
+        return true
+      }
       const preserveBoard = [
         'SavePresentation',
         'CreatePost',
@@ -289,11 +322,33 @@ export class AlliancesController {
       )
       return true
     } catch (error) {
-      if (generation !== this.generation) return false
+      if (generation !== this.commandGeneration) return false
+      const identityError = identityProblem(error)
+      if (futureCommand(error)) {
+        this.store.setState({ busy: false, error: identityError! })
+        return false
+      }
+      if (identityError) {
+        this.store.setState({ busy: false, pending: null })
+        if (newerRead || readGeneration !== this.readGeneration)
+          await this.refresh()
+        else await this.load({ type: 'Mine' }, previousView?.alliance)
+        if (generation === this.commandGeneration)
+          this.store.setState({ error: identityError })
+        return false
+      }
       const status = statusCode(error)
       const rejected =
         status >= 400 && status < 500 && status !== 408 && status !== 429
       const message = `${errorMessage(error)}${status === 409 ? ' Refresh the alliance and submit again.' : ''}`
+      if (newerRead || readGeneration !== this.readGeneration) {
+        this.store.setState({
+          busy: false,
+          error: message,
+          ...(rejected ? { pending: null } : {}),
+        })
+        return false
+      }
       if (status === 403 || status === 404) {
         // Missing targets and ordinary permission denials do not establish that
         // membership was lost. Hide the old view and recheck the actor's access.

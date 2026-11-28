@@ -12,19 +12,35 @@ type S = components['schemas']
 export type GalaxyFlight = {
   id: string
   mission: S['Mission4']
+  bodyKind?: 'Planet' | 'Moon'
   dueAt: number | null
   phase: 'en route' | 'returning' | 'departure pending'
 }
 
-function targets(intent: S['FleetIntent4'], position: S['GalaxyPosition4']) {
+function bodyAt(
+  position: S['GalaxyPosition4'],
+  id: string,
+): Pick<GalaxyFlight, 'bodyKind'> | null {
+  if (position.body?.id === id) return { bodyKind: position.body.kind }
+  if (position.moon?.id === id) return { bodyKind: 'Moon' }
+  return null
+}
+
+/** A coordinate destination has no body kind. A body must still occupy this slot. */
+function destinationAt(
+  intent: S['FleetIntent4'],
+  position: S['GalaxyPosition4'],
+) {
   const destination = intent.destination
-  if (destination.type === 'Site') return false
-  if (destination.type === 'Body') return destination.id === position.body?.id
+  if (destination.type === 'Site') return null
+  if (destination.type === 'Body') return bodyAt(position, destination.id)
   const a = destination.coordinates,
     b = position.coordinates
-  return (
-    a.galaxy === b.galaxy && a.system === b.system && a.position === b.position
-  )
+  return a.galaxy === b.galaxy &&
+    a.system === b.system &&
+    a.position === b.position
+    ? {}
+    : null
 }
 
 /** Direction follows the current leg; a returning fleet heads home, not at its old target. */
@@ -36,14 +52,13 @@ export function galaxyFlights(
   const confirmed = state.view.missions.fleets
   const flights: GalaxyFlight[] = confirmed.flatMap((fleet) => {
     const returning = fleet.leg === 'Returning'
-    if (
-      returning
-        ? fleet.intent.origin !== position.body?.id
-        : !targets(fleet.intent, position)
-    )
-      return []
+    const endpoint = returning
+      ? bodyAt(position, fleet.intent.origin)
+      : destinationAt(fleet.intent, position)
+    if (!endpoint) return []
     return [
       {
+        ...endpoint,
         id: fleet.id,
         dueAt: fleet.due_at,
         mission: fleet.intent.mission,
@@ -55,12 +70,11 @@ export function galaxyFlights(
     const command = pending.attempt.envelope.command
     if (command.type !== 'World' || command.action.type !== 'LaunchFleet')
       continue
-    if (
-      !targets(command.action.intent, position) ||
-      confirmed.some((fleet) => fleet.id === pending.fleetId)
-    )
+    const endpoint = destinationAt(command.action.intent, position)
+    if (!endpoint || confirmed.some((fleet) => fleet.id === pending.fleetId))
       continue
     flights.push({
+      ...endpoint,
       id: pending.attempt.envelope.command_id,
       dueAt: null,
       mission: command.action.intent.mission,

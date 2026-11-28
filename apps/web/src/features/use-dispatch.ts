@@ -465,9 +465,8 @@ export function useDispatch({
       position: Number(position),
     }
     const id = await requests.submit(command, authorization, coordinates, {
-      attempts: () => model.store.getState().attempts,
-      send: (command, quote) =>
-        model.send(command, quote, { clickedAt, coordinates }),
+      send: (command, quote, onRegistered) =>
+        model.send(command, quote, onRegistered, { clickedAt, coordinates }),
       submitted: setSubmitted,
     })
     if (!id) navigation?.open(authorization, coordinates)

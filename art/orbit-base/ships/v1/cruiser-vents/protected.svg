@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+  <path id="forward-barrel" d="M492 545 581 516 600 507 628 514 621 544 596 554 511 574 496 569Z"/>
+  <path id="aft-barrel" d="M662 441 732 419 748 412 773 418 765 444 748 447 677 461 664 457Z"/>
+  <path id="bridge-glazing" d="M855 324 Q917 347 997 312 L1010 326 Q943 377 845 351Z"/>
+  <path id="impulse" d="M1056 244 1162 249 1187 285 1177 307 1069 298 1052 276Z"/>
+  <path id="crew-ports" d="M939 393 1020 358 1024 379 940 415Z"/>
+  <path id="far-louvers" d="M640 413 679 349 804 288 797 340Z"/>
+  <path id="near-louvers" d="M1070 499 1117 423 1256 367 1271 384 1269 438Z"/>
+</svg>

@@ -1,0 +1,9 @@
+# Cruiser
+
+Game ID `Cruiser`. Fast impulse attack ship built to break fighter screens and rocket batteries.
+
+## Generation prompt
+
+Orbit Imperium, Orbit Base free fleet. Generate exactly ONE original game catalog beauty render of the specified subject, isolated on real transparent alpha. Landscape 3:2, fixed elevated front three-quarter view, bow towards viewer and lower left, stern upper right. Center entire silhouette with 8% clear margin at every edge, no cropping, no ground plane, no scenery or drop shadow. Strong readable silhouette at a 96px thumbnail. Premium photographed physical studio miniature, intentional broad planes, believable construction, restrained edge wear, maintained in everyday service. Classic, understated, imperial science fiction. Shared yard signatures: clipped panel corners, shallow recessed seams, satin ceramic-painted shell and dark inset working hardware. Clear neutral key light from upper left and ample soft fill; readable lower faces. Two independent player-dyeable finishes: primary satin muted powder-blue/slate painted surface, accent a few broad warm ochre-champagne painted panels, material boundaries follow part edges and bevels. Neither dye is bare metal. Keep windows, machinery, optics and specified exhaust physically separate, dark, fixed material. No insignia, logos, heraldry, text, markings, letters, UI, diagrams, borders, weapons firing, long exhaust trails or baked glows outside silhouette. Avoid tiny evenly distributed greebles or repeating stripes. Scale cues appropriate to this particular hull.
+
+Subject: Cruiser. A slender fast multi-deck escort with long tapered lance prow, cinched waist and two widely flared aft engine shoulders forming a swallowtail. An inset ion battery along each shoulder, tiny bridge slit high aft, blue impulse aperture. Read as a small naval vessel rather than a cockpit fighter. Accent long aft shoulder fairings.

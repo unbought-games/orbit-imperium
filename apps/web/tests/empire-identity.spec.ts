@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures/test'
-import { withFixtureResponse } from './fixtures/responses'
+import { withFixtureResponse, withFixtureResponseStatus } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import {
   binding,
@@ -117,6 +117,54 @@ async function capture(page: Page, state: string, width: number) {
     fullPage: !['orb', 'dossier'].includes(state),
   })
 }
+// The mounted editor must preserve the second text entry when the first save is uncertain.
+for (const width of [390]) {
+  test(`unconfirmed profile save preserves the next draft at ${width}px`, async ({page}, info) => {
+    await page.setViewportSize({width, height: 900})
+    const f = await setup(page)
+    let posts = 0, conflicting = false
+    await page.route('**/api/v4/empire-profiles/**', route => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      posts++
+      if (conflicting) return route.fallback()
+      return route.fulfill({status:503, json:{code:'Unavailable'}})
+    })
+    await loaded(page, () => page.goto(`/profiles/empire/${binding.player}`))
+    await page.getByRole('button', {name:'Edit identity', exact:true}).click()
+    const name = page.getByLabel('Empire name')
+    const save = page.getByRole('button', {name:'Save identity'})
+    await name.fill('First empire name')
+    await withFixtureResponseStatus(page, response => response.request().method() === 'POST' && response.url().includes('/empire-profiles/'),
+      () => save.click(), 503)
+    await expect(page.getByRole('alert')).toContainText('Your change is unconfirmed.')
+    await name.fill('Revised empire name')
+    await save.click()
+    const alert = page.getByRole('alert')
+    await expect(alert).toContainText('An earlier profile change is still unconfirmed.')
+    await expect(name).toHaveValue('Revised empire name')
+    expect(posts).toBe(1)
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      for (const captureWidth of [1280, 390]) {
+        await page.setViewportSize({ width: captureWidth, height: 900 })
+        await alert.scrollIntoViewIfNeeded()
+        await diagnosticScreenshot(page, {path:info.outputPath(`profile-save-unconfirmed-${captureWidth}x900.png`)})
+      }
+    }
+    conflicting = true
+    f.data.revision++
+    await withFixtureResponseStatus(page, response => response.request().method() === 'POST' && response.url().includes('/empire-profiles/'),
+      () => alert.getByRole('button', {name:'Refresh'}).click(), 409)
+    await expect(alert).toContainText('First empire name')
+    await expect(name).toHaveValue('Revised empire name')
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await alert.scrollIntoViewIfNeeded()
+    await diagnosticScreenshot(page, {path:info.outputPath(`profile-edit-review-${width}x900.png`)})
+    await loaded(page, () => alert.getByRole('button', {name:'Dismiss saved edit'}).click())
+    await expect(page.getByRole('alert')).toHaveCount(0)
+    await expect(name).toHaveValue('Revised empire name')
+    expect(posts).toBe(2)
+  })
+}
+
 // Desktop editor case removed after its second failure; see the PR repair record.
 for (const width of [390]) {
   test(

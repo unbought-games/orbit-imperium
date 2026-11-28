@@ -1,3 +1,4 @@
+import { commandIdAt, pairedPresenceId, assertReplayResponse } from './fixtures/command-ids.mjs'
 import {cleanupAll} from './fixtures/cleanup.mjs';
 import {reserveTestPort} from './fixtures/ports.mjs';
 // Isolated prepared states; actual commands and failure paths run through HTTP and PostgreSQL.
@@ -54,7 +55,7 @@ try {
  const inspect=async(request)=>{const res=await post(a,'progression-options',{context:context(ab),request});assert.equal(res.status,200);return valid('BoundProgressionOptions4',await res.json())};
  for(const request of [{type:'Upgrade',body,building:'FusionReactor'},{type:'Research',host:body,research:'ImpulseDrive'},{type:'Manufacture',body,item:{kind:'Missile',id:'AntiBallisticMissile'},quantity:'1'}])assert.equal((await inspect(request)).blockers[0].code,'UnavailableContent');
  const receipt=async(id,auth=a)=>{const res=await fetch(`${base}/api/v4/universes/${u}/commands/${id}?epoch=${ab.epoch}`,{headers:auth.headers});assert.equal(res.status,200);return valid('BoundReceipt4',await res.json())};
- const send=async(command,expected='Committed')=>{const gameplay={protocol:4,binding:ab,command_id:randomUUID(),command};const envelope={gameplay,presence:{protocol:4,binding:ab,command_id:randomUUID(),command:{type:'World',action:{type:'RecordForegroundPresence',body,cause:'GameplayGesture',paired_command_id:gameplay.command_id}}}};const res=await post(a,'commands',envelope);assert.equal(res.status,202);const r=await until(async()=>{const x=await receipt(envelope.gameplay.command_id);return x.status!=='Pending'&&x},command.type);assert.equal(r.status,expected,JSON.stringify(r));return envelope};
+ const send=async(command,expected='Committed')=>{const gameplay={protocol:4,binding:ab,command_id:commandIdAt(at),command};const envelope={gameplay,presence:{protocol:4,binding:ab,command_id:pairedPresenceId(gameplay.command_id),command:{type:'World',action:{type:'RecordForegroundPresence',body,cause:'GameplayGesture',paired_command_id:gameplay.command_id}}}};const res=await post(a,'commands',envelope);assert.equal(res.status,202);const r=await until(async()=>{const x=await receipt(envelope.gameplay.command_id);return x.status!=='Pending'&&x},command.type);assert.equal(r.status,expected,JSON.stringify(r));return envelope};
  const advance=async(t)=>{assert.ok(t>=at);at=t;await client.query('UPDATE orbit_test_clock SET at_ms=$1',[at]);return fresh()};
  await stop();await prepareProgression(client,u,[{player:ab.player,research:{ComputerTechnology:2},inventory:{EspionageProbe:101}},{player:bb.player,inventory:{LightFighter:21,EspionageProbe:101}}]);await start();
  const buy=async(request)=>{
@@ -64,7 +65,7 @@ try {
   const command={...request,type:{Upgrade:'StartUpgrade',Research:'StartResearch',Manufacture:'StartManufacture'}[request.type],expected_terms_hash:x.terms_hash};
   const envelope=await send(command);await advance(x.estimates.final_due_at);
   await until(async()=>{const v=await view();return v&&v.constructions.length===0&&!v.progression.research_operation&&v.progression.manufacturing.length===0},'completion');
-  assert.equal((await post(a,'commands',envelope)).status,202);return envelope;
+  await assertReplayResponse(await post(a,'commands',envelope),envelope.gameplay.command_id,at);return envelope;
  };
  const target=(await view(b,bb)).bodies[0],targetBody=target.id,targetCoords=target.coordinates;
  console.log('PASS: prepared two-player state validates through real projections; mission, privacy, atomicity and recovery checks follow.');
@@ -106,10 +107,10 @@ try {
  assert.equal((await fresh()).missions.fleets.length,0);
  const state=(await client.query('SELECT data FROM mission_fleets ORDER BY id')).rows;
  await stop('SIGKILL');await start();assert.deepEqual((await client.query('SELECT data FROM mission_fleets ORDER BY id')).rows,state);
- assert.equal((await post(a,'commands',harvest.pair)).status,202);assert.equal((await fresh()).missions.fleets.length,0);
+ await assertReplayResponse(await post(a,'commands',harvest.pair),harvest.pair.gameplay.command_id,at);assert.equal((await fresh()).missions.fleets.length,0);
 
  await client.query("CREATE TABLE IF NOT EXISTS orbit_test_fault(stage text PRIMARY KEY,mode text,enabled boolean,seen integer)");
- const pairFor=command=>{const gameplay={protocol:4,binding:ab,command_id:randomUUID(),command};return{gameplay,presence:{protocol:4,binding:ab,command_id:randomUUID(),command:{type:'World',action:{type:'RecordForegroundPresence',body,cause:'GameplayGesture',paired_command_id:gameplay.command_id}}}}};
+ const pairFor=command=>{const gameplay={protocol:4,binding:ab,command_id:commandIdAt(at),command};return{gameplay,presence:{protocol:4,binding:ab,command_id:pairedPresenceId(gameplay.command_id),command:{type:'World',action:{type:'RecordForegroundPresence',body,cause:'GameplayGesture',paired_command_id:gameplay.command_id}}}}};
  const interruptAt=async(stage,trigger)=>{
   await client.query('SELECT pg_advisory_lock(901322)');await client.query("INSERT INTO orbit_test_fault VALUES($1,'pause',true,0)",[stage]);
   const pending=trigger().catch(()=>null);

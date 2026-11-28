@@ -108,9 +108,9 @@ pub async fn ship_render_environment<S: IdentityStore>(
     ))
 }
 fn ship_skin_catalog() -> Vec<serde_json::Value> {
-    BUNDLED_LIGHT_FIGHTER_SKINS.iter().map(|skin| {
+    BUNDLED_SHIP_SKINS.iter().map(|skin| {
         let base = format!("/art/ship-skins/{}/{}", skin.id, skin.revision);
-        json!({"id":skin.id,"name":skin.name,"target":SHIP_TARGET,"package_revision":skin.revision,
+        json!({"id":skin.id,"name":skin.name,"target":skin.target,"package_revision":skin.revision,
                "package_url":format!("{base}/manifest.json"),"preview_url":format!("{base}/preview.webp"),"available":true})
     }).collect()
 }

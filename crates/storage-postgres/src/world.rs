@@ -1153,8 +1153,24 @@ impl PgStore {
                 .await?;
         }
         let locked_bot = crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
+        // V7 has one deadline for both halves. Legacy browser pairs used independent
+        // v4 IDs and legacy machine pairs used their original, stable transform.
+        let gameplay =
+            CommandIdentity::parse(pair.gameplay.command_id.0).map_err(StoreError::CommandTime)?;
+        let presence =
+            CommandIdentity::parse(pair.presence.command_id.0).map_err(StoreError::CommandTime)?;
+        let same_pair = match presence {
+            CommandIdentity::LegacyV4 => gameplay == CommandIdentity::LegacyV4,
+            CommandIdentity::V7 { .. } => {
+                paired_presence_id(pair.gameplay.command_id.0) == pair.presence.command_id.0
+            }
+        };
+        if !same_pair {
+            crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
+            return Err(StoreError::Conflict);
+        }
         let pair_hash = hash(&pair);
-        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
+        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await? {
             timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
@@ -1232,15 +1248,11 @@ impl PgStore {
         // Keep the legacy declaration for old workers during a rolling upgrade.
         // Registration expands the actor's homeworld and tutorial scopes once.
         let presence_scopes = BTreeSet::from([ScopeKey::Player(b.player)]);
-        let inherited = if indexed {
-            let (command, scopes) =
-                crate::scope_references::resolve_command(&mut tx, b.universe, b.epoch, b.player, g)
-                    .await?;
-            g = command;
-            scopes
-        } else {
-            Default::default()
-        };
+        let (command, inherited) = crate::scope_references::resolve_command(
+            &mut tx, b.universe, b.epoch, b.player, g, indexed,
+        )
+        .await?;
+        g = command;
         let mut gameplay_scopes = if indexed {
             crate::scoped_facts::select(
                 &mut tx,
@@ -1265,7 +1277,9 @@ impl PgStore {
                 self.timer(RuntimeStage::OrderingHold),
             )
         };
-        if scoped && let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair).await? {
+        if scoped
+            && let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await?
+        {
             timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
@@ -1360,6 +1374,7 @@ impl PgStore {
         sqlx::query("INSERT INTO presence_pairs(universe,presence_input,gameplay_input,data) VALUES($1,$2,$3,$4)").bind(b.universe.0).bind(pi.0).bind(gi.0).bind(sqlx::types::Json(link)).execute(&mut *tx).await.map_err(db_error)?;
         #[cfg(feature = "test-support")]
         self.test_fault("before_pair_admission").await?;
+        crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
         let commit_timing = self.timer(RuntimeStage::AdmissionCommit);
         tx.commit().await.map_err(db_error)?;
         let (gameplay_log, presence_log) =

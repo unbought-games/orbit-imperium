@@ -1,3 +1,4 @@
+import { commandIdAt } from './fixtures/command-ids.mjs'
 import assert from 'node:assert/strict';
 import {spawn, execFileSync} from 'node:child_process';
 import {randomUUID, randomBytes} from 'node:crypto';
@@ -122,7 +123,7 @@ async function rollingUpgrade() {
   assert.equal((await fetch(`${base}/health/ready`)).status,204);
   const request={type:'Upgrade',body:initial.bodies[0].id,building:'MetalMine'};
   const quote=await api('quotes',{context:{binding,request_id:randomUUID()},request});
-  const commandId=randomUUID();
+  const commandId=commandIdAt(1_000_000);
   await api('commands',{command_id:commandId,binding,protocol:2,command:{...request,type:'StartUpgrade',expected_terms_hash:quote.terms.terms_hash}});
   await until(async()=> (await api(`commands/${commandId}?epoch=${binding.epoch}`)).status==='Committed','old server commits command during migration');
   const due=(await db.query("SELECT due_at FROM constructions WHERE status='Active'")).rows[0].due_at;
