@@ -1228,11 +1228,15 @@ async fn catalog_upgrade_keeps_stationed_and_flying_counts_and_resumes_paid_work
     let snapshot = || {
         sqlx::query_scalar::<_,serde_json::Value>(
         "SELECT jsonb_build_array((SELECT to_jsonb(i) FROM inventories i),(SELECT data FROM mission_fleets),
-            (SELECT data FROM manufacturing_batches),(SELECT to_jsonb(e) FROM scheduled_events e),
+            (SELECT data FROM manufacturing_batches),(SELECT to_jsonb(e)-'retention_since' FROM scheduled_events e),
             (SELECT jsonb_build_array(command_id,input_id,intent_hash,sequence,input,receipt,done) FROM commands))")
         .fetch_one(&pool)
     };
     let before = snapshot().await.unwrap();
+    let migration_started: String = sqlx::query_scalar("SELECT clock_timestamp()::text")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     // Interrupt between transactional DDL and backfill, as during a migrator restart.
     store
         .migrate_with_for_test(&sqlx::migrate!("./migrations"))
@@ -1245,8 +1249,20 @@ async fn catalog_upgrade_keeps_stationed_and_flying_counts_and_resumes_paid_work
             .unwrap(),
         None
     );
+    // New operational metadata is initialized from wall time, independently
+    // of the retained gameplay payload, and must not restart on migration retry.
+    let stamps = || {
+        sqlx::query_scalar::<_,serde_json::Value>(
+        "SELECT jsonb_build_array((SELECT retention_since FROM commands),(SELECT retention_since FROM scheduled_events))"
+    ).fetch_one(&pool)
+    };
+    let initialized_stamps = stamps().await.unwrap();
+    assert!(sqlx::query_scalar::<_,bool>(
+        "SELECT bool_and(retention_since >= $1::text::timestamptz AND retention_since <= clock_timestamp()) FROM (SELECT retention_since FROM commands UNION ALL SELECT retention_since FROM scheduled_events) retained"
+    ).bind(&migration_started).fetch_one(&pool).await.unwrap());
     store.migrate().await.unwrap();
     store.migrate().await.unwrap();
+    assert_eq!(stamps().await.unwrap(), initialized_stamps);
     assert_eq!(snapshot().await.unwrap(), before);
     // (3 stationed + 2 returning) × 4000 + mine increments 75 and 112 + 1000 research.
     assert_eq!(
