@@ -73,6 +73,7 @@ export class SocialController {
     completed: null,
   }))
   private generation = 0
+  private allianceGeneration = 0
   private listGeneration = 0
   private historyGeneration = 0
   private player: string | null = null
@@ -96,6 +97,7 @@ export class SocialController {
   clear() {
     this.generation++
     this.listGeneration++
+    this.allianceGeneration++
     this.historyGeneration++
     this.player = null
     this.newerRequested = false
@@ -153,13 +155,14 @@ export class SocialController {
       return this.list(this.query, false, true)
   }
   async loadAlliance() {
-    const gen = this.generation
+    const gen = ++this.allianceGeneration
     try {
       const alliance = await this.ports.readAlliance?.()
-      if (gen === this.generation)
+      if (gen === this.allianceGeneration)
         this.store.setState({ alliance: alliance ?? null })
     } catch {
-      if (gen === this.generation) this.store.setState({ alliance: null })
+      if (gen === this.allianceGeneration)
+        this.store.setState({ alliance: null })
     }
   }
   moreList() {

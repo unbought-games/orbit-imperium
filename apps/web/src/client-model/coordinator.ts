@@ -1728,6 +1728,8 @@ export class Coordinator {
       }
       if (!this.current(generation, binding)) return
       const kind = row.kind === 'SocialCommandRequest' ? 'social' : 'alliance'
+      // A pre-recovery mailbox read cannot establish the post-recovery state.
+      this.mailboxVersion++
       const recoveredMutations = this.store.getState().recoveredMutations
       this.store.setState({
         recoveredMutations: {
