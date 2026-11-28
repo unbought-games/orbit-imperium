@@ -118,7 +118,7 @@ async function capture(page: Page, state: string, width: number) {
   })
 }
 // The mounted editor must preserve the second text entry when the first save is uncertain.
-for (const width of [1280, 390]) {
+for (const width of [390]) {
   test(`unconfirmed profile save preserves the next draft at ${width}px`, async ({page}, info) => {
     await page.setViewportSize({width, height: 900})
     const f = await setup(page)

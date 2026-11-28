@@ -958,5 +958,13 @@
       "iOS installed app keeps scrolling, fixed navigation and menu taps after resizing"
     ],
     "risk": "Installed mobile navigation must retain its document, origin, tab count and funded paths as resizing changes scroll and dock placement and the player taps between game destinations."
+  },
+  {
+    "file": "empire-identity.spec.ts",
+    "project": "",
+    "titlePath": [
+      "unconfirmed profile save preserves the next draft at 390px"
+    ],
+    "risk": "The mounted identity editor must preserve a later unsaved draft while an earlier save is unconfirmed, through explicit conflict refresh and dismissal. No second save is sent while unresolved."
   }
 ]
