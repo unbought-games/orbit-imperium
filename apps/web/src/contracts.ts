@@ -9409,6 +9409,7 @@ export interface components {
             type: "Circulars";
             cursor: string | null;
             limit: number;
+            include_application_notices?: boolean;
         } | {
             /** @constant */
             type: "Contacts";
@@ -9481,6 +9482,7 @@ export interface components {
             contacts: components["schemas"]["SocialContact"][];
             contact: components["schemas"]["SocialContact"] | null;
             next_cursor: string | null;
+            application_notices?: components["schemas"]["ApplicationNotice"][];
         };
         SiloCapacity4: {
             occupied: components["schemas"]["Decimal"];
@@ -11352,6 +11354,11 @@ export interface components {
             phase: "review_started_warm" | "review_started_cold" | "review_ready_reused" | "review_ready_fetched" | "send_started" | "accepted" | "outcome_received" | "confirmed_visible" | "rejected" | "uncertain" | "not_admitted";
             elapsed_ms: number;
             foreground: boolean;
+        };
+        ApplicationNotice: {
+            /** Format: uuid */
+            id: string;
+            username: string;
         };
     };
     responses: never;

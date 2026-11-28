@@ -27,6 +27,8 @@ export function isAllianceDestination(item: string) {
     extra === undefined &&
     Object.values(allianceDestinations).some((value) => value === section) &&
     (settings === undefined ||
+      (section === 'applications' &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(settings)) ||
       (section === 'settings' &&
         Object.values(allianceSettingsDestinations).some(
           (value) => value === settings,

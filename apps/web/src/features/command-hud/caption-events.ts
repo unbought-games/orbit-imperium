@@ -80,7 +80,11 @@ export function captionEvents(
         kind = kinds[content.icon as keyof typeof kinds]
     } else if (target.kind === 'incoming')
       kind = content?.icon === 'attack' ? 'attack.incoming' : 'spy.incoming'
-    else if (target.kind === 'conversation' || target.kind === 'circular')
+    else if (
+      target.kind === 'conversation' ||
+      target.kind === 'circular' ||
+      target.kind === 'application'
+    )
       kind = 'message.received'
     else if (target.kind === 'report') {
       const header = after.reportHeaders.get(target.id)?.header

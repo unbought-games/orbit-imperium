@@ -56,3 +56,21 @@ it('fetches unread conversations beyond the first page and rejects broken cursor
     readMailbox(async () => ({ ...base, next_cursor: 'loop' })),
   ).rejects.toThrow('pagination')
 })
+
+it('keeps circulars available when an older server rejects application notices', async () => {
+  const base = {
+    ...emptySocialView(),
+    binding: { account: 'a', player: 'p', universe: 'u', epoch: 'e' },
+    request_id: 'r',
+  }
+  const queries: string[] = []
+  const inbox = await readMailbox(async (query) => {
+    if (query.type === 'Circulars') {
+      queries.push(query.include_application_notices ? 'notices' : 'legacy')
+      if (query.include_application_notices) throw { code: 'Malformed' }
+    }
+    return base
+  })
+  expect(queries).toEqual(['notices', 'legacy'])
+  expect(inbox.applicationNotices).toEqual([])
+})

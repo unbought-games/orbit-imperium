@@ -436,3 +436,25 @@ it('retains the feed on an older-page transport failure but clears it on lost ac
   expect(controller.store.getState().view).toBeNull()
   expect(lost).toHaveBeenCalledOnce()
 })
+
+it('reloads current review access after another reviewer changes the alliance revision', async () => {
+  const read = vi.fn().mockResolvedValue(view)
+  const controller = new AlliancesController({
+    read,
+    command: vi.fn().mockRejectedValue({ status: 409 }),
+    newId: () => 'review',
+  })
+  await controller.refresh()
+  expect(
+    await controller.run(
+      { type: 'Accept', alliance: 'alliance', application: 'submitted' },
+      3,
+    ),
+  ).toBe(false)
+  expect(read).toHaveBeenCalledTimes(2)
+  expect(controller.store.getState()).toMatchObject({
+    view,
+    pending: null,
+    failure: { operation: 'Accept', status: 409 },
+  })
+})

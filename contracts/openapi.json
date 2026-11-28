@@ -21762,6 +21762,9 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 100
+              },
+              "include_application_notices": {
+                "type": "boolean"
               }
             }
           },
@@ -22083,6 +22086,12 @@
                 "type": "null"
               }
             ]
+          },
+          "application_notices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationNotice"
+            }
           }
         }
       },
@@ -30695,6 +30704,23 @@
           },
           "foreground": {
             "type": "boolean"
+          }
+        }
+      },
+      "ApplicationNotice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "username"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
           }
         }
       }

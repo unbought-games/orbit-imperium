@@ -159,7 +159,12 @@ impl PgStore {
             },
         )
         .await?;
+        let mut changed_viewers;
         if disbanded {
+            let recipients: Vec<Uuid> = sqlx::query_scalar(
+                "SELECT DISTINCT unnest(notified_reviewers) FROM alliance_applications WHERE alliance=$1"
+            ).bind(state.id).fetch_all(&mut *tx).await.map_err(db_error)?;
+            changed_viewers = recipients.into_iter().map(PlayerId).collect();
             sqlx::query("DELETE FROM alliances WHERE id=$1 AND universe=$2 AND epoch=$3")
                 .bind(state.id)
                 .bind(b.universe.0)
@@ -168,7 +173,7 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
         } else {
-            save(&mut tx, b, &state).await?;
+            changed_viewers = save(&mut tx, b, &state).await?;
             if matches!(q.action, AllianceAction::SavePresentation { .. }) {
                 crate::alliance_presentation::save(&mut tx, state.id, &state.presentation).await?;
             }
@@ -176,8 +181,8 @@ impl PgStore {
         if let Some(player) = joined {
             // Withdrawal affects other alliances' revisions, so an administrator
             // cannot later accept an application from a stale private view.
-            sqlx::query("WITH removed AS (DELETE FROM alliance_applications WHERE universe=$1 AND epoch=$2 AND player=$3 RETURNING alliance) UPDATE alliances SET revision=revision+1 WHERE id IN (SELECT alliance FROM removed) AND id<>$4")
-                .bind(b.universe.0).bind(b.epoch.0).bind(player.0).bind(state.id).execute(&mut *tx).await.map_err(db_error)?;
+            changed_viewers
+                .extend(withdraw_applications(&mut tx, b, player, Some(state.id)).await?);
         }
         let result = AllianceCommandResult {
             command_id: q.command_id,
@@ -199,12 +204,13 @@ impl PgStore {
             orbit_engine::InputId::default(),
         )
         .await?;
-        invalidation::leadership(
+        invalidation::viewers(
             &mut tx,
             b.universe,
             b.epoch,
             previous.as_ref().map(|state| state.leader),
             (!disbanded).then_some(state.leader),
+            changed_viewers,
         )
         .await?;
         tx.commit().await.map_err(db_error)?;

@@ -62,6 +62,7 @@ impl PgStore {
             conversations: vec![],
             messages: vec![],
             circulars: vec![],
+            application_notices: vec![],
             contacts: vec![],
             contact: None,
             next_cursor: None,
@@ -76,7 +77,14 @@ impl PgStore {
                 after,
                 ..
             } => history(&mut tx, b, player, before, after, limit, &mut view).await?,
-            SocialQuery::Circulars { cursor, .. } => {
+            SocialQuery::Circulars {
+                cursor,
+                include_application_notices,
+                ..
+            } => {
+                if include_application_notices && cursor.is_none() {
+                    view.application_notices = application_notices(&mut tx, b).await?;
+                }
                 circulars(&mut tx, b, cursor, limit, &mut view).await?
             }
             SocialQuery::Contacts { kind, cursor, .. } => {
@@ -235,4 +243,23 @@ async fn contacts(
         v.contacts.push(contact(tx, b, PlayerId(id)).await?);
     }
     Ok(())
+}
+
+async fn application_notices(
+    tx: &mut Tx<'_>,
+    b: Binding,
+) -> Result<Vec<ApplicationNotice>, StoreError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT app.id, a.name FROM alliance_memberships reviewer
+         JOIN alliance_applications app ON app.alliance = reviewer.alliance
+         JOIN universe_memberships applicant ON applicant.universe = app.universe AND applicant.player = app.player
+         JOIN accounts a ON a.id = applicant.account
+         WHERE reviewer.universe = $1 AND reviewer.epoch = $2 AND reviewer.player = $3
+           AND $3 = ANY(app.notified_reviewers)
+         ORDER BY app.created_at DESC, app.id"
+    ).bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).fetch_all(&mut **tx).await.map_err(db_error)?;
+    Ok(rows
+        .into_iter()
+        .map(|(id, username)| ApplicationNotice { id, username })
+        .collect())
 }

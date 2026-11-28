@@ -20,7 +20,13 @@ import { reportPreview } from '../report-preview'
 
 type S = components['schemas']
 export type HudTarget = {
-  kind: 'command' | 'report' | 'conversation' | 'circular' | 'incoming'
+  kind:
+    | 'command'
+    | 'report'
+    | 'conversation'
+    | 'circular'
+    | 'incoming'
+    | 'application'
   id: string
 }
 export type HudNotice = HudTarget & { shownAt: number }
@@ -71,6 +77,10 @@ export function unreadReports(state: GameState) {
 }
 export function unreadTargets(state: GameState): HudTarget[] {
   return [
+    ...(state.mailbox?.applicationNotices ?? []).map((application) => ({
+      kind: 'application' as const,
+      id: application.id,
+    })),
     ...unreadReports(state).map((report) => ({
       kind: 'report' as const,
       id: report.id,
@@ -173,6 +183,12 @@ export function changedHudTargets(
       changes.push({ kind: 'incoming', id: incomingKey(threat) })
   changes.push(...arrivingReports(before, after))
   if (before.mailbox && before.mailbox !== after.mailbox) {
+    const previousApplications = new Set(
+      before.mailbox.applicationNotices?.map((a) => a.id),
+    )
+    for (const a of [...(after.mailbox?.applicationNotices ?? [])].reverse())
+      if (!previousApplications.has(a.id))
+        changes.push({ kind: 'application', id: a.id })
     const oldMessages = new Set(
       before.mailbox.conversations.map((c) => c.latest.id),
     )
@@ -283,6 +299,19 @@ export function noticeContent(
       tone: 'champagne',
       icon: header.kind === 'SpyContact' ? 'scan' : 'report',
     }
+  }
+  if (target.kind === 'application') {
+    const application = state.mailbox?.applicationNotices?.find(
+      (a) => a.id === target.id,
+    )
+    return application
+      ? {
+          title: 'New alliance application',
+          detail: `${application.username} · Review application`,
+          tone: 'champagne',
+          icon: 'message',
+        }
+      : null
   }
   if (target.kind === 'conversation') {
     const c = state.mailbox?.conversations.find(

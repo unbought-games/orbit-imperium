@@ -51,47 +51,70 @@ export function Applications({
         </p>
       )}
       {detail.applications?.map((application) => (
-        <article className={styles.card} key={application.id}>
-          <h4>
-            <PlayerName
-              player={application.player}
-              fallback={application.username}
-              alliance={null}
-            />
-          </h4>
-          <Markdown text={application.text} />
-          {can(detail, 'ProcessApplications') && (
-            <div className={styles.actions}>
-              <Button
-                disabled={busy}
-                onClick={() =>
-                  void run({
-                    type: 'Accept',
-                    alliance: detail.summary.id,
-                    application: application.id,
-                  })
-                }
-              >
-                Accept {application.username}
-              </Button>
-              <ConfirmAction
-                label={`Reject ${application.username}`}
-                description={`Reject ${application.username}’s application?`}
-                disabled={busy}
-                onConfirm={() =>
-                  run({
-                    type: 'Reject',
-                    alliance: detail.summary.id,
-                    application: application.id,
-                  })
-                }
-              />
-            </div>
-          )}
-        </article>
+        <ApplicationCard
+          key={application.id}
+          application={application}
+          detail={detail}
+          run={run}
+          busy={busy}
+        />
       ))}
     </section>
   )
 }
 export { Settings } from './settings'
 export { Audit } from './audit'
+
+type ApplicationCardProps = {
+  detail: AllianceDetail
+  application: NonNullable<AllianceDetail['applications']>[number]
+  run: Run
+  busy: boolean
+}
+export function ApplicationCard({
+  application,
+  detail,
+  run,
+  busy,
+}: ApplicationCardProps) {
+  return (
+    <article className={styles.card}>
+      <h4>
+        <PlayerName
+          player={application.player}
+          fallback={application.username}
+          alliance={null}
+        />
+      </h4>
+      <Markdown text={application.text} />
+      {can(detail, 'ProcessApplications') && (
+        <div className={styles.actions}>
+          <Button
+            disabled={busy}
+            onClick={() =>
+              void run({
+                type: 'Accept',
+                alliance: detail.summary.id,
+                application: application.id,
+              })
+            }
+          >
+            Accept {application.username}
+          </Button>
+          <ConfirmAction
+            label={`Reject ${application.username}`}
+            description={`Reject ${application.username}’s application?`}
+            disabled={busy}
+            onConfirm={() =>
+              run({
+                type: 'Reject',
+                alliance: detail.summary.id,
+                application: application.id,
+              })
+            }
+          />
+        </div>
+      )}
+    </article>
+  )
+}

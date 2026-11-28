@@ -265,6 +265,9 @@ pub(crate) async fn remove(
     .fetch_optional(&mut **tx)
     .await
     .map_err(db_error)?;
+    let mut changed_viewers =
+        crate::alliances::persistence::withdraw_applications(tx, binding, player, None).await?;
+    let mut successor = None;
     if let Some(id) = alliance {
         let before = crate::alliances::persistence::load(tx, i.universe, i.epoch, id).await?;
         let mut after = before.clone();
@@ -288,25 +291,23 @@ pub(crate) async fn remove(
                 .await
                 .map_err(db_error)?;
         } else {
-            crate::alliances::persistence::save(tx, binding, &after).await?;
+            changed_viewers.extend(crate::alliances::persistence::save(tx, binding, &after).await?);
             let members = after.members.iter().map(|m| m.player).collect();
             refresh_checks(tx, i.universe, &members, i.id).await?;
-            if before.leader != after.leader {
-                // The removed player already receives the engine invalidation;
-                // the newly promoted leader also needs their deletion guard refreshed.
-                crate::alliances::invalidation::leadership(
-                    tx,
-                    i.universe,
-                    i.epoch,
-                    None,
-                    Some(after.leader),
-                )
-                .await?;
-            }
+            successor = (before.leader != after.leader).then_some(after.leader);
         }
     }
-    sqlx::query("WITH removed AS (DELETE FROM alliance_applications WHERE universe=$1 AND epoch=$2 AND player=$3 RETURNING alliance) UPDATE alliances SET revision=revision+1 WHERE id IN (SELECT alliance FROM removed)")
-        .bind(i.universe.0).bind(i.epoch.0).bind(player.0).execute(&mut **tx).await.map_err(db_error)?;
+    // The removed player already receives the engine invalidation.
+    changed_viewers.remove(&player);
+    crate::alliances::invalidation::viewers(
+        tx,
+        i.universe,
+        i.epoch,
+        None,
+        successor,
+        changed_viewers,
+    )
+    .await?;
     sqlx::query("DELETE FROM friend_relationships WHERE universe=$1 AND epoch=$2 AND (player_low=$3 OR player_high=$3)")
         .bind(i.universe.0).bind(i.epoch.0).bind(player.0).execute(&mut **tx).await.map_err(db_error)?;
     sqlx::query(

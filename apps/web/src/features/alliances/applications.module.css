@@ -17,3 +17,8 @@
   color: var(--text-muted);
   font-size: var(--font-size-sm);
 }
+.diagnostics {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: all;
+}

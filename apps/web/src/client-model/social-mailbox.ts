@@ -3,18 +3,48 @@ import type { SocialAction, SocialQuery, SocialView } from './social'
 type S = components['schemas']
 export type SocialMailbox = {
   conversations: S['SocialConversation'][]
+  applicationNotices?: S['ApplicationNotice'][]
   circulars: S['SocialCircular'][]
 }
+type ReadSocial = (query: SocialQuery) => Promise<SocialView | null>
+type MailboxPage = 'Conversations' | 'Circulars'
+
+async function readMailboxPage(
+  read: ReadSocial,
+  type: MailboxPage,
+  cursor: string | null,
+) {
+  if (type === 'Circulars' && cursor === null) {
+    try {
+      return await read({
+        type,
+        cursor,
+        limit: 50,
+        include_application_notices: true,
+      })
+    } catch (error) {
+      // Older servers reject the opt-in field. Keep their existing mail available.
+      if (
+        !(
+          typeof error === 'object' &&
+          error &&
+          'code' in error &&
+          error.code === 'Malformed'
+        )
+      )
+        throw error
+    }
+  }
+  return read({ type, cursor, limit: 50 })
+}
 /** Read every page: old unread mail must not disappear behind the first page. */
-export async function readMailbox(
-  read: (query: SocialQuery) => Promise<SocialView | null>,
-): Promise<SocialMailbox> {
-  async function pages(type: 'Conversations' | 'Circulars') {
+export async function readMailbox(read: ReadSocial): Promise<SocialMailbox> {
+  async function pages(type: MailboxPage) {
     const result: SocialView[] = []
     const cursors = new Set<string>()
     let cursor: string | null = null
     do {
-      const page = await read({ type, cursor, limit: 50 })
+      const page = await readMailboxPage(read, type, cursor)
       if (!page) throw new Error('Unable to confirm your inbox. Try again.')
       result.push(page)
       cursor = page.next_cursor
@@ -29,6 +59,7 @@ export async function readMailbox(
     pages('Circulars'),
   ])
   return {
+    applicationNotices: circulars[0]?.application_notices ?? [],
     conversations: [
       ...new Map(
         conversations
@@ -82,7 +113,7 @@ export function acceptMailboxAction(
 
 /** Restart an invalidated read internally; preference changes are not inbox failures. */
 export async function readStableMailbox(
-  read: (query: SocialQuery) => Promise<SocialView | null>,
+  read: ReadSocial,
   version: () => number,
   active: () => boolean,
   commit: (mailbox: SocialMailbox) => void,

@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import type { RefObject } from 'react'
 import { ExternalLink, MailCheck, MessageSquare } from 'lucide-react'
 import type { Coordinator } from '../../client-model/coordinator'
@@ -132,22 +133,46 @@ export function HudInbox({
             )
           }
           const entry = noticeContent(hud.state, target)
-          return (
-            entry && (
-              <button
-                type="button"
-                className={styles.inboxEntry}
+          if (!entry) return null
+          const label = (
+            <>
+              <HudIconMark kind={entry.icon} />
+              <span>
+                <strong>{entry.title}</strong>
+                <small>{entry.detail}</small>
+              </span>
+            </>
+          )
+          if (target.kind === 'application')
+            return (
+              <Link
+                {...routeTarget(
+                  universe,
+                  'alliance',
+                  body,
+                  `applications/${target.id}`,
+                )}
                 key={noticeKey(target)}
+                className={styles.inboxEntry}
                 data-tone={entry.tone}
-                onClick={() => onSelect(target)}
+                onClick={() => {
+                  hud.dismiss(target)
+                  close()
+                }}
               >
-                <HudIconMark kind={entry.icon} />
-                <span>
-                  <strong>{entry.title}</strong>
-                  <small>{entry.detail}</small>
-                </span>
-              </button>
+                {label}
+              </Link>
             )
+          return (
+            <button
+              type="button"
+              className={styles.inboxEntry}
+              key={noticeKey(target)}
+              data-tone={entry.tone}
+              onClick={() => onSelect(target)}
+            >
+              {label}
+            </button>
           )
         })}
       </div>

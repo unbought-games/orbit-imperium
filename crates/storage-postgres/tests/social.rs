@@ -638,6 +638,7 @@ async fn circulars_snapshot_members_and_survive_disband() {
         .unwrap();
     assert_eq!(f.store.social_command(req).await.unwrap().message, Some(id));
     let circulars = || SocialQuery::Circulars {
+        include_application_notices: false,
         cursor: None,
         limit: 30,
     };
@@ -897,7 +898,14 @@ async fn circular_permission_revocation_and_recipient_bound_paging() {
     let mut ids = vec![];
     loop {
         let page = f
-            .query(1, SocialQuery::Circulars { cursor, limit: 1 })
+            .query(
+                1,
+                SocialQuery::Circulars {
+                    include_application_notices: false,
+                    cursor,
+                    limit: 1,
+                },
+            )
             .await;
         assert_eq!(page.circulars.len(), 1);
         ids.push(page.circulars[0].id);
@@ -920,6 +928,7 @@ async fn circular_permission_revocation_and_recipient_bound_paging() {
             .social_query(SocialQueryRequest {
                 context,
                 query: SocialQuery::Circulars {
+                    include_application_notices: false,
                     cursor: Some(ids[0]),
                     limit: 1
                 }

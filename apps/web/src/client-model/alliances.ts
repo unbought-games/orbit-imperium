@@ -58,6 +58,20 @@ function accessLost(error: unknown) {
       ('code' in error && error.code === 'EpochChanged'))
   )
 }
+export type AllianceFailure = {
+  operation: string
+  status: number
+  condition: string
+}
+function allianceFailure(operation: string, error: unknown): AllianceFailure {
+  const status = statusCode(error)
+  const condition = status
+    ? `HTTP ${status}`
+    : error instanceof Error
+      ? error.name
+      : 'Missing response'
+  return { operation, status, condition }
+}
 export class AlliancesController {
   readonly store = createStore<{
     view: S['AllianceView'] | null
@@ -65,6 +79,7 @@ export class AlliancesController {
     loading: boolean
     busy: boolean
     error: string
+    failure?: AllianceFailure
     notice: string
     pending: AllianceRequest | null
   }>(() => ({
@@ -230,6 +245,7 @@ export class AlliancesController {
         directory: null,
         loading: false,
         error: errorMessage(error),
+        failure: allianceFailure(query.type, error),
         ...(accessLost(error) ? { pending: null } : {}),
       })
       return false
@@ -294,7 +310,11 @@ export class AlliancesController {
       const rejected =
         status >= 400 && status < 500 && status !== 408 && status !== 429
       const message = `${errorMessage(error)}${status === 409 ? ' Refresh the alliance and submit again.' : ''}`
-      if (status === 403 || status === 404) {
+      const failure = allianceFailure(pending.action.type, error)
+      const staleReview =
+        status === 409 &&
+        (pending.action.type === 'Accept' || pending.action.type === 'Reject')
+      if (status === 403 || status === 404 || staleReview) {
         // Missing targets and ordinary permission denials do not establish that
         // membership was lost. Hide the old view and recheck the actor's access.
         this.store.setState({
@@ -304,19 +324,20 @@ export class AlliancesController {
           directory: null,
         })
         if (await this.load({ type: 'Mine' }, previousView?.alliance))
-          this.store.setState({ error: message })
+          this.store.setState({ error: message, failure })
         return false
       }
       if (status === 409 && pending.action.type === 'SavePresentation') {
         this.store.setState({ busy: false, pending: null })
         await this.load({ type: 'Mine' }, previousView?.alliance, false, true)
-        this.store.setState({ error: message })
+        this.store.setState({ error: message, failure })
         return false
       }
       if (accessLost(error)) this.ports.onAccessLost?.()
       this.store.setState({
         busy: false,
         error: message,
+        failure,
         ...(rejected ? { pending: null } : {}),
         ...(accessLost(error) ? { view: null, directory: null } : {}),
       })

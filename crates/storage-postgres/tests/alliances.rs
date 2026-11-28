@@ -490,6 +490,27 @@ impl Fixture {
     async fn detail(&self, p: usize, alliance: Uuid) -> AllianceDetail {
         self.view(p, alliance).await.alliance.unwrap()
     }
+    async fn application_notices(&self, p: usize) -> Vec<Uuid> {
+        let view = self
+            .store
+            .social_query(SocialQueryRequest {
+                context: QueryContext {
+                    binding: self.bindings[p],
+                    request_id: Uuid::new_v4(),
+                },
+                query: SocialQuery::Circulars {
+                    cursor: None,
+                    limit: 50,
+                    include_application_notices: true,
+                },
+            })
+            .await
+            .unwrap();
+        view.application_notices
+            .into_iter()
+            .map(|notice| notice.id)
+            .collect()
+    }
     async fn update(&self, p: usize, alliance: Uuid, recruitment: AllianceRecruitment) {
         let d = self.detail(p, alliance).await;
         self.command(
@@ -761,6 +782,8 @@ async fn accept_join_create_compete_and_withdraw_all_pending() {
         .unwrap(),
         1
     );
+    assert!(f.application_notices(0).await.is_empty());
+    assert!(f.application_notices(1).await.is_empty());
     // Closed recruitment blocks new requests but retains applications for processing.
     f.command(
         3,
@@ -1521,17 +1544,46 @@ async fn delegated_access_is_revoked_immediately_and_stale_authority_cannot_muta
         Some(d.revision),
     )
     .await;
-    f.command(
+    let mut cursors = Vec::new();
+    for binding in &f.bindings[..3] {
+        let initial = f.store.read_updates(*binding, None, 64).await.unwrap();
+        cursors.push(initial.items[0].cursor.clone().unwrap());
+    }
+    let submit = f.request(
         2,
         AllianceAction::Apply {
             alliance: a,
             text: "Private application".into(),
         },
         None,
-    )
-    .await;
+    );
+    let (submitted, retry) = tokio::join!(
+        f.store.alliance_command(submit.clone()),
+        f.store.alliance_command(submit)
+    );
+    assert_eq!(submitted.unwrap().revision, retry.unwrap().revision);
+    for (index, cursor) in cursors.iter().enumerate() {
+        let updates = f
+            .store
+            .read_updates(f.bindings[index], Some(cursor), 64)
+            .await
+            .unwrap();
+        if index == 2 {
+            assert!(updates.items.is_empty(), "the applicant is not a reviewer");
+        } else {
+            let position = |value: &str| value.rsplit(':').next().unwrap().parse::<i64>().unwrap();
+            assert_eq!(updates.items.len(), 1);
+            assert_eq!(
+                position(updates.items[0].cursor.as_ref().unwrap()),
+                position(cursor) + 1
+            );
+        }
+    }
     let old = f.detail(1, a).await;
     let application = old.applications.unwrap()[0].id;
+    assert_eq!(f.application_notices(0).await, vec![application]);
+    assert_eq!(f.application_notices(1).await, vec![application]);
+    assert!(f.application_notices(2).await.is_empty());
     assert!(
         old.permissions
             .contains(&AlliancePermission::ProcessApplications)
@@ -1548,6 +1600,7 @@ async fn delegated_access_is_revoked_immediately_and_stale_authority_cannot_muta
     )
     .await;
     let revoked = f.detail(1, a).await;
+    assert!(f.application_notices(1).await.is_empty());
     assert!(revoked.applications.is_none());
     assert!(
         !revoked
@@ -1567,6 +1620,21 @@ async fn delegated_access_is_revoked_immediately_and_stale_authority_cannot_muta
         .await;
     assert!(result.is_err());
     assert_eq!(f.detail(0, a).await.applications.unwrap().len(), 1);
+    // Restoring review authority does not re-deliver this submission.
+    f.command(
+        0,
+        AllianceAction::AssignRoles {
+            alliance: a,
+            player: f.bindings[1].player,
+            roles: vec![recruiter],
+        },
+        Some(revoked.revision),
+    )
+    .await;
+    assert!(f.application_notices(1).await.is_empty());
+    f.command(2, AllianceAction::Withdraw { application }, None)
+        .await;
+    assert!(f.application_notices(0).await.is_empty());
     // Removing baseline ViewMembers immediately omits the roster on the next read.
     let d = f.detail(0, a).await;
     let default = d.roles.unwrap().into_iter().find(|r| r.is_default).unwrap();
@@ -1585,6 +1653,40 @@ async fn delegated_access_is_revoked_immediately_and_stale_authority_cannot_muta
     let limited = f.detail(1, a).await;
     assert!(limited.members.is_none());
     assert!(limited.roles.is_none());
+
+    let submit = || {
+        f.request(
+            2,
+            AllianceAction::Apply {
+                alliance: a,
+                text: "Second application".into(),
+            },
+            None,
+        )
+    };
+    f.store.alliance_command(submit()).await.unwrap();
+    assert!(f.store.alliance_command(submit()).await.is_err());
+    let second = f.detail(0, a).await.applications.unwrap()[0].id;
+    assert_ne!(second, application);
+    assert_eq!(f.application_notices(1).await, vec![second]);
+    f.command(
+        1,
+        AllianceAction::Leave { alliance: a },
+        Some(f.detail(1, a).await.revision),
+    )
+    .await;
+    assert!(f.application_notices(1).await.is_empty());
+    let leader = f.detail(0, a).await;
+    f.command(
+        0,
+        AllianceAction::Reject {
+            alliance: a,
+            application: second,
+        },
+        Some(leader.revision),
+    )
+    .await;
+    assert!(f.application_notices(0).await.is_empty());
 }
 
 #[tokio::test]

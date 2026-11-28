@@ -484,3 +484,20 @@ it.each(['research', 'defense'] as const)(
     }
   },
 )
+
+it('announces a new application once and removes its badge and card when review access ends', () => {
+  const before = { ...fixture(), mailbox: { conversations: [], circulars: [] } }
+  const notice = { id: 'application', username: 'New Pilot' }
+  const after = {
+    ...before,
+    mailbox: { ...before.mailbox, applicationNotices: [notice] },
+  }
+  const target = { kind: 'application', id: 'application' } as const
+  expect(changedHudTargets(before, after)).toEqual([target])
+  expect(
+    changedHudTargets(after, { ...after, mailbox: { ...after.mailbox } }),
+  ).toEqual([])
+  expect(unreadBadgeCount(after)).toBe(unreadBadgeCount(before) + 1)
+  expect(noticeContent(after, target)?.detail).toContain('New Pilot')
+  expect(noticeContent(before, target)).toBeNull()
+})
