@@ -1,4 +1,4 @@
-import { test, expect } from './fixture'
+import { test, expect, type Locator } from './fixture'
 
 for (const interaction of ['click', 'tap'] as const) {
   test.describe(interaction, () => {
@@ -104,6 +104,63 @@ test.describe('scheduled completion date', () => {
     await expect(details.locator('time')).toHaveAttribute(
       'datetime',
       '2027-01-02T18:00:00.000Z',
+    )
+  })
+})
+
+test.describe('numeric field paste', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] })
+
+  async function paste(input: Locator, text: string) {
+    await input.focus()
+    await input
+      .page()
+      .evaluate((value) => navigator.clipboard.writeText(value), text)
+    await input.press('ControlOrMeta+v')
+  }
+
+  test('quantity paste removes commas and preserves selection and caret editing', async ({
+    page,
+    mount,
+  }) => {
+    await mount('number-form')
+    const input = page.getByRole('textbox', { name: 'Quantity' })
+    const submitted = page.getByLabel('Submitted quantity')
+    await paste(input, '12,50')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('1250')
+    await input.press('ControlOrMeta+a')
+    await paste(input, '1,2,3.5')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('123.5')
+    await input.fill('456')
+    await input.press('ArrowLeft')
+    await input.press('Shift+ArrowLeft')
+    await paste(input, '12,500')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('4125006')
+    await input.press('7')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('41250076')
+  })
+
+  test('galaxy navigation rejects grouping commas in both coordinate fields', async ({
+    page,
+    mount,
+  }) => {
+    await mount('galaxy-navigation')
+    const fields = ['Galaxy', 'Solar system'].map((name) =>
+      page.getByRole('textbox', { name, exact: true }),
+    )
+    for (const field of fields) {
+      await paste(field, '0,003')
+      await expect(field).toHaveValue('0,003')
+    }
+    await page.getByRole('button', { name: 'Go', exact: true }).click()
+    for (const field of fields)
+      await expect(field).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Destination', { exact: true })).toHaveText(
+      '2:2',
     )
   })
 })
