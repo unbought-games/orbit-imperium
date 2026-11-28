@@ -1,4 +1,4 @@
-import { test, expect } from './fixture'
+import { test, expect, type Locator } from './fixture'
 
 for (const interaction of ['click', 'tap'] as const) {
   test.describe(interaction, () => {
@@ -108,27 +108,54 @@ test.describe('scheduled completion date', () => {
   })
 })
 
-test('pasting a grouped quantity replaces the selection and leaves the caret after the inserted digits', async ({
-  page,
-  context,
-  mount,
-}) => {
-  await mount('number-form')
-  await context.grantPermissions(['clipboard-write', 'clipboard-read'])
-  const input = page.getByRole('textbox', { name: 'Quantity' })
-  const paste = async (text: string) => {
-    await page.evaluate((value) => navigator.clipboard.writeText(value), text)
+test.describe('numeric field paste', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] })
+
+  async function paste(input: Locator, text: string) {
+    await input.focus()
+    await input
+      .page()
+      .evaluate((value) => navigator.clipboard.writeText(value), text)
     await input.press('ControlOrMeta+v')
   }
-  await input.focus()
-  await paste('12,50')
-  await expect(input).toHaveValue('12,50')
-  await input.fill('456')
-  await input.press('ArrowLeft')
-  await input.press('Shift+ArrowLeft')
-  await paste('12,500')
-  await expect(input).toHaveValue('4125006')
-  await input.press('7')
-  await input.press('Enter')
-  await expect(page.getByLabel('Submitted quantity')).toHaveText('41250076')
+
+  test('a grouped quantity replaces the selection and leaves the caret after the inserted digits', async ({
+    page,
+    mount,
+  }) => {
+    await mount('number-form')
+    const input = page.getByRole('textbox', { name: 'Quantity' })
+    const submitted = page.getByLabel('Submitted quantity')
+    await paste(input, '12,50')
+    await expect(input).toHaveValue('12,50')
+    await input.fill('456')
+    await input.press('ArrowLeft')
+    await input.press('Shift+ArrowLeft')
+    await paste(input, '12,500')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('4125006')
+    await input.press('7')
+    await input.press('Enter')
+    await expect(submitted).toHaveText('41250076')
+  })
+
+  test('galaxy navigation rejects grouping commas in both coordinate fields', async ({
+    page,
+    mount,
+  }) => {
+    await mount('galaxy-navigation')
+    const fields = ['Galaxy', 'Solar system'].map((name) =>
+      page.getByRole('textbox', { name, exact: true }),
+    )
+    for (const field of fields) {
+      await paste(field, '0,003')
+      await expect(field).toHaveValue('0,003')
+    }
+    await page.getByRole('button', { name: 'Go', exact: true }).click()
+    for (const field of fields)
+      await expect(field).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Destination', { exact: true })).toHaveText(
+      '2:2',
+    )
+  })
 })
