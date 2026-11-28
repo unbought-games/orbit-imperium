@@ -143,8 +143,13 @@ for (const width of [390]) {
     await expect(alert).toContainText('An earlier profile change is still unconfirmed.')
     await expect(name).toHaveValue('Revised empire name')
     expect(posts).toBe(1)
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await alert.scrollIntoViewIfNeeded()
-    await diagnosticScreenshot(page, {path:info.outputPath(`profile-save-unconfirmed-${width}x900.png`)})
+    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') {
+      for (const captureWidth of [1280, 390]) {
+        await page.setViewportSize({ width: captureWidth, height: 900 })
+        await alert.scrollIntoViewIfNeeded()
+        await diagnosticScreenshot(page, {path:info.outputPath(`profile-save-unconfirmed-${captureWidth}x900.png`)})
+      }
+    }
     conflicting = true
     f.data.revision++
     await withFixtureResponseStatus(page, response => response.request().method() === 'POST' && response.url().includes('/empire-profiles/'),
