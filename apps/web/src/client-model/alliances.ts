@@ -59,6 +59,7 @@ function accessLost(error: unknown) {
   )
 }
 export type AllianceFailure = {
+  application?: string
   operation: string
   status: number
   condition: string
@@ -80,6 +81,7 @@ export class AlliancesController {
     busy: boolean
     error: string
     failure?: AllianceFailure
+    lastReviewFailure?: AllianceFailure
     notice: string
     pending: AllianceRequest | null
   }>(() => ({
@@ -91,6 +93,8 @@ export class AlliancesController {
     notice: '',
     pending: null,
   }))
+  private settling: AllianceRequest | null = null
+  private workspaceRefreshQueued = false
   private generation = 0
   private query: S['AllianceQuery'] = { type: 'Mine' }
   constructor(
@@ -106,7 +110,11 @@ export class AlliancesController {
   clear() {
     this.ports.onAccessLost?.()
     this.generation++
+    this.settling = null
+    this.workspaceRefreshQueued = false
     this.store.setState({
+      failure: undefined,
+      lastReviewFailure: undefined,
       view: null,
       directory: null,
       loading: false,
@@ -115,6 +123,17 @@ export class AlliancesController {
       error: '',
       notice: '',
     })
+  }
+  /** The command owns its authoritative Mine read through the end of settlement. */
+  enterWorkspace() {
+    const { pending, loading } = this.store.getState()
+    if (this.settling || pending) {
+      this.workspaceRefreshQueued = true
+      if (!pending && loading)
+        this.store.setState({ view: null, directory: null })
+      return
+    }
+    void this.refresh({ type: 'Mine' })
   }
   refresh(query?: S['AllianceQuery']) {
     return this.load(
@@ -276,7 +295,20 @@ export class AlliancesController {
     const { pending, busy, view: previousView } = this.store.getState()
     if (!pending || busy) return false
     const generation = ++this.generation
-    this.store.setState({ busy: true, error: '', notice: '' })
+    this.settling = pending
+    const action = pending.action
+    const application =
+      action.type === 'Accept' || action.type === 'Reject'
+        ? action.application
+        : undefined
+    this.store.setState({
+      busy: true,
+      error: '',
+      notice: '',
+      ...(application &&
+        this.store.getState().lastReviewFailure?.application ===
+          application && { lastReviewFailure: undefined }),
+    })
     try {
       const result = await this.ports.command(pending)
       if (generation !== this.generation) return false
@@ -284,13 +316,15 @@ export class AlliancesController {
         throw new Error('Command status unknown. Retry to confirm the result.')
       if (['Leave', 'Disband', 'Transfer'].includes(pending.action.type))
         this.ports.onAccessLost?.()
-      const preserveBoard = [
-        'SavePresentation',
-        'CreatePost',
-        'EditPost',
-        'PinPost',
-        'DeletePost',
-      ].includes(pending.action.type)
+      const preserveBoard =
+        !this.workspaceRefreshQueued &&
+        [
+          'SavePresentation',
+          'CreatePost',
+          'EditPost',
+          'PinPost',
+          'DeletePost',
+        ].includes(pending.action.type)
       this.store.setState({
         busy: false,
         pending: null,
@@ -310,11 +344,18 @@ export class AlliancesController {
       const rejected =
         status >= 400 && status < 500 && status !== 408 && status !== 429
       const message = `${errorMessage(error)}${status === 409 ? ' Refresh the alliance and submit again.' : ''}`
-      const failure = allianceFailure(pending.action.type, error)
+      const failure = { ...allianceFailure(action.type, error), application }
+      if (rejected && application)
+        this.store.setState({ lastReviewFailure: failure })
       const staleReview =
         status === 409 &&
         (pending.action.type === 'Accept' || pending.action.type === 'Reject')
-      if (status === 403 || status === 404 || staleReview) {
+      if (
+        status === 403 ||
+        status === 404 ||
+        staleReview ||
+        (rejected && this.workspaceRefreshQueued)
+      ) {
         // Missing targets and ordinary permission denials do not establish that
         // membership was lost. Hide the old view and recheck the actor's access.
         this.store.setState({
@@ -342,6 +383,11 @@ export class AlliancesController {
         ...(accessLost(error) ? { view: null, directory: null } : {}),
       })
       return false
+    } finally {
+      if (this.settling === pending) {
+        this.settling = null
+        if (!this.store.getState().pending) this.workspaceRefreshQueued = false
+      }
     }
   }
 }

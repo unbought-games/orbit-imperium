@@ -96,19 +96,25 @@ export function ApplicationReviewError({
   retry: () => void
   uncertain: boolean
 }) {
+  const { universeName, body } = useGameScreen()
   const reading = failure.operation === 'Mine'
-  const message = reading
-    ? 'Couldn’t load this application. Try again.'
-    : uncertain
-      ? 'Your decision could not be confirmed. Retry to check the same decision.'
-      : failure.status === 409
-        ? 'The alliance changed before your decision was saved. Check the current application below.'
-        : 'Your decision could not be saved. Check your access and the current application.'
+  const previous = !reading && failure.application !== application
+  const message = previous
+    ? 'Your previous alliance action could not be completed.'
+    : reading
+      ? 'Couldn’t load this application. Try again.'
+      : uncertain
+        ? 'Your decision could not be confirmed. Retry to check the same decision.'
+        : failure.status === 409
+          ? 'The alliance changed before your decision was saved. Check the current application below.'
+          : 'Your decision could not be saved. Check your access and the current application.'
   const report = [
     `Orbit Imperium / alliance.application-review.${failure.operation}`,
     `Operation: ${failure.operation}`,
     `Condition: ${failure.condition}`,
-    `Application: ${application}`,
+    ...(failure.application || reading
+      ? [`Application: ${failure.application ?? application}`]
+      : []),
     `Build: ${import.meta.env.ORBIT_CLIENT_BUILD ?? 'development'}`,
   ].join('\n')
   return (
@@ -118,6 +124,19 @@ export function ApplicationReviewError({
         <summary>Details</summary>
         <pre className={applicationStyles.diagnostics}>{report}</pre>
       </details>
+      {previous && failure.application && (
+        <ButtonLink
+          variant="secondary"
+          {...routeTarget(
+            universeName,
+            'alliance',
+            body?.id,
+            `applications/${failure.application}`,
+          )}
+        >
+          Open previous application
+        </ButtonLink>
+      )}
       {(reading || uncertain) && (
         <Button variant="secondary" onClick={retry}>
           {uncertain ? 'Retry decision' : 'Try again'}

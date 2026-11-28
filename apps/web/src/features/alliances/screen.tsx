@@ -27,7 +27,7 @@ import {
   useRefreshPlayerProfiles,
 } from '../../shell/player-profiles-context'
 import { AllianceDrafts, AllianceDraftContext } from './drafts'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import {
   Link,
@@ -147,26 +147,10 @@ function AllianceWorkspace({
     id: string
     message: string
   } | null>(null)
-  const checkedDestination = useRef<string | null>(null)
-  const destination = applicationId ?? 'workspace'
   useLayoutEffect(() => {
-    if (checkedDestination.current === destination) return
-    // Keep the command receipt while it is in flight or awaiting a retry.
-    // Check the new destination as soon as the previous operation settles.
-    if (state.pending || state.busy) {
-      checkedDestination.current = null
-      return
-    }
-    checkedDestination.current = destination
-    void controller.refresh({ type: 'Mine' })
-  }, [controller, destination, state.busy, state.pending])
-  useEffect(
-    () => () => {
-      checkedDestination.current = null
-      controller.clear()
-    },
-    [controller],
-  )
+    controller.enterWorkspace()
+  }, [controller, applicationId])
+  useEffect(() => () => controller.clear(), [controller])
   const detail = state.view?.alliance
   const publicAlliance = usePublicAlliance(
     universe,
@@ -249,7 +233,12 @@ function AllianceWorkspace({
       </div>
     </PresentationPreview>
   )
-  if (applicationId)
+  if (applicationId) {
+    const failure = state.error
+      ? state.failure
+      : state.lastReviewFailure?.application === applicationId
+        ? state.lastReviewFailure
+        : undefined
     return (
       <>
         {unsavedChanges}
@@ -283,10 +272,9 @@ function AllianceWorkspace({
               </div>
             </>
           ) : (
-            state.error &&
-            state.failure && (
+            failure && (
               <ApplicationReviewError
-                failure={state.failure}
+                failure={failure}
                 application={applicationId}
                 uncertain={!!state.pending}
                 retry={() =>
@@ -300,6 +288,7 @@ function AllianceWorkspace({
         </ApplicationReview>
       </>
     )
+  }
   return (
     <AllianceDraftContext.Provider value={drafts}>
       {unsavedChanges}
