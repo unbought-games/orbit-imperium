@@ -11,6 +11,7 @@ import {
   readArchive,
   recoverProfile,
   profileEditReview,
+  ProfileEditNotSent,
   type EmpireProfile,
 } from './empire-history'
 
@@ -32,6 +33,35 @@ const profile: EmpireProfile = {
 }
 
 afterEach(() => vi.unstubAllGlobals())
+
+it.each(['QuotaExceededError', 'SecurityError'])(
+  'refuses a new profile edit before HTTP when retry storage throws %s',
+  async (name) => {
+    const storage = memoryStorage()
+    storage.setItem = () => {
+      throw new DOMException('private diagnostic', name)
+    }
+    vi.stubGlobal('localStorage', storage)
+    const fetcher = vi.fn(async () =>
+      Response.json(profile, { headers: { Date: new Date().toUTCString() } }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+    await readArchive('EmpireProfile', '/profile', new AbortController().signal)
+    fetcher.mockClear()
+    const error = await editProfile(profile, id(5), 'csrf', {
+      type: 'Visibility',
+      public: true,
+    }).catch((error: unknown) => error)
+    expect(error).toBeInstanceOf(ProfileEditNotSent)
+    expect((error as ProfileEditNotSent).details).toContain(
+      `Condition: ${name}`,
+    )
+    expect((error as ProfileEditNotSent).details).not.toContain(
+      'private diagnostic',
+    )
+    expect(fetcher).not.toHaveBeenCalled()
+  },
+)
 
 it('rechecks an uncertain profile edit only for its original account and preserves it through a rotated CSRF token', async () => {
   const storage = memoryStorage()
