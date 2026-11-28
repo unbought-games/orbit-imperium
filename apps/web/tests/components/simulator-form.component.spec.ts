@@ -1,4 +1,4 @@
-import { test, expect, type Page } from './fixture'
+import { test, expect, type Locator, type Page } from './fixture'
 import type { EmpireSceneInput } from './empire-runtime'
 import type {} from './empire.scenarios'
 import { body, id } from '../../src/test-support/empire'
@@ -55,37 +55,60 @@ test('the phone simulator fits every digit of a five-digit Start count', async (
 }) => {
   await page.setViewportSize({ width: 320, height: 740 })
   await prepare(page, mount)
-  const start = page.getByRole('textbox', { name: 'Defender Light Fighter' })
-  await start.fill('10000')
-  await expect(start).toBeFocused()
-  await expect(start).toHaveValue('10000')
   await page.evaluate(() => document.fonts.ready)
-
-  const expectDigitsToFit = async () => {
-    const { available, required } = await start.evaluate((input) => {
-      const style = getComputedStyle(input)
-      const text = document.createElement('span')
-      text.style.position = 'absolute'
-      text.style.font = style.font
-      text.style.fontVariantNumeric = style.fontVariantNumeric
-      text.textContent = (input as HTMLInputElement).value
-      document.body.append(text)
-      const required = text.getBoundingClientRect().width
-      text.remove()
-      const available =
-        input.clientWidth -
-        parseFloat(style.paddingLeft) -
-        parseFloat(style.paddingRight)
-      return { available, required }
-    })
+  const expectDigitsToFit = async (start: Locator, action?: Locator) => {
+    const { available, required, overlapsAction } = await start.evaluate(
+      (input, arrow) => {
+        const style = getComputedStyle(input)
+        const text = document.createElement('span')
+        text.style.position = 'absolute'
+        text.style.font = style.font
+        text.style.fontVariantNumeric = style.fontVariantNumeric
+        text.textContent = (input as HTMLInputElement).value
+        document.body.append(text)
+        const required = text.getBoundingClientRect().width
+        text.remove()
+        const textRight =
+          input.getBoundingClientRect().left +
+          input.clientLeft +
+          input.clientWidth -
+          parseFloat(style.paddingRight)
+        const available =
+          input.clientWidth -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight)
+        return {
+          available,
+          required,
+          overlapsAction: arrow
+            ? textRight > arrow.getBoundingClientRect().left
+            : false,
+        }
+      },
+      action ? await action.elementHandle() : null,
+    )
     expect(available).toBeGreaterThan(required)
+    expect(overlapsAction).toBe(false)
   }
 
-  await expectDigitsToFit()
-  await start.fill('20000')
-  await start.blur()
-  await expect(start).toHaveValue('20000')
-  await expectDigitsToFit()
+  const defender = page.getByRole('textbox', { name: 'Defender Light Fighter' })
+  await defender.fill('10000')
+  await expect(defender).toBeFocused()
+  await expect(defender).toHaveValue('10000')
+  await expectDigitsToFit(defender)
+  await defender.fill('20000')
+  await defender.blur()
+  await expect(defender).toHaveValue('20000')
+  await expectDigitsToFit(defender)
+  await defender.fill('0')
+
+  const attacker = page.getByRole('textbox', { name: 'Attacker Light Fighter' })
+  await attacker.fill('12345')
+  await expect(attacker).toHaveValue('12345')
+  await expectDigitsToFit(
+    attacker,
+    page.getByRole('button', { name: 'Add all Light Fighter', exact: true }),
+  )
 })
 
 test('adding an allied attacker preserves separate technology levels and editing it invalidates the results', async ({
