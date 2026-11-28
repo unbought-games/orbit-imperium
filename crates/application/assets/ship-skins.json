@@ -1,4 +1,32 @@
 [
-  { "id": "orbit-base-light-fighter", "revision": "v1", "name": "Orbit Base" },
-  { "id": "orbit-light-fighter", "revision": "concord-v1", "name": "Concord" }
+  {
+    "id": "orbit-base-light-fighter",
+    "revision": "v1",
+    "name": "Orbit Base",
+    "target": "LightFighter"
+  },
+  {
+    "id": "orbit-light-fighter",
+    "revision": "concord-v1",
+    "name": "Concord",
+    "target": "LightFighter"
+  },
+  {
+    "id": "orbit-base-heavy-fighter",
+    "revision": "v2",
+    "name": "Orbit Base",
+    "target": "HeavyFighter"
+  },
+  {
+    "id": "orbit-base-cruiser",
+    "revision": "v1",
+    "name": "Orbit Base",
+    "target": "Cruiser"
+  },
+  {
+    "id": "orbit-base-battlecruiser",
+    "revision": "v1",
+    "name": "Orbit Base",
+    "target": "Battlecruiser"
+  }
 ]

@@ -9,15 +9,16 @@ pub const SHIP_PACKAGE: &str = "orbit-light-fighter";
 pub const SHIP_PACKAGE_REVISION: &str = "concord-v1";
 #[derive(Deserialize)]
 pub struct BundledShipSkin {
+    pub target: String,
     pub id: String,
     pub revision: String,
     pub name: String,
 }
 
-pub static BUNDLED_LIGHT_FIGHTER_SKINS: std::sync::LazyLock<Vec<BundledShipSkin>> =
+pub static BUNDLED_SHIP_SKINS: std::sync::LazyLock<Vec<BundledShipSkin>> =
     std::sync::LazyLock::new(|| {
         serde_json::from_str(include_str!("../assets/ship-skins.json"))
-            .expect("bundled Light Fighter skin registry must be valid")
+            .expect("bundled ship skin registry must be valid")
     });
 
 pub const FREE_SHIP_DYES: &[(&str, &str, &str)] = &[
@@ -57,14 +58,15 @@ pub struct ShipDesign {
 impl ShipDesign {
     pub fn valid(&self) -> bool {
         !self.id.is_nil()
-            && self.target == SHIP_TARGET
             && self.revision >= 0
             && self.revision < i64::MAX
             && (1..=40).contains(&self.name.trim().chars().count())
             && !self.name.chars().any(char::is_control)
             && self.recipe.version == 1
-            && BUNDLED_LIGHT_FIGHTER_SKINS.iter().any(|skin| {
-                skin.id == self.recipe.skin_id && skin.revision == self.recipe.package_revision
+            && BUNDLED_SHIP_SKINS.iter().any(|skin| {
+                skin.target == self.target
+                    && skin.id == self.recipe.skin_id
+                    && skin.revision == self.recipe.package_revision
             })
             && matches!(
                 self.recipe.emblem.treatment.as_str(),

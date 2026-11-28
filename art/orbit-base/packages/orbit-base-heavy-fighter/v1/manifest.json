@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "orbit-base-heavy-fighter",
+  "revision": "v1",
+  "renderer": "finish-decal-v1",
+  "target": {
+    "kind": "Ship",
+    "id": "HeavyFighter"
+  },
+  "collection_id": "orbit-standard",
+  "view": "front-three-quarter-left",
+  "channels": [
+    "primary",
+    "accent"
+  ],
+  "map_encoding": "rgba8-finish-decal-v1",
+  "color_space": "srgb",
+  "alpha": "straight-preserved",
+  "capabilities": {
+    "treatments": [
+      "none",
+      "full",
+      "layers"
+    ],
+    "placements": [
+      "near-wing",
+      "paired"
+    ]
+  },
+  "width": 1536,
+  "height": 1024,
+  "reference": [
+    "#9297a3",
+    "#e4bb90"
+  ],
+  "maps": {
+    "source": {
+      "file": "source.png",
+      "sha256": "5d13f39523eb46ab9e59e892eeb618e61fcfc5b9db6712b83c79eca09adc5b76",
+      "bytes": 2342354
+    },
+    "material": {
+      "file": "material-mask.png",
+      "sha256": "9fc5c216f1cc6f1c00ca0ebcbf7761846fa9f94c8220cb76cda9fb2196d96096",
+      "bytes": 108284
+    },
+    "response": {
+      "file": "response-map.png",
+      "sha256": "b770a3fd1b21cf7f663f9c52970ca11ca50ed265a6336e1255cb7d6d7039af0b",
+      "bytes": 745652
+    },
+    "receiver": {
+      "file": "receiver.png",
+      "sha256": "6a45bd20eb2c38435cff10625973e51a3884ff5188c6c95f4d4b4866d13dc733",
+      "bytes": 88580
+    },
+    "decalResponse": {
+      "file": "decal-response.png",
+      "sha256": "ee6b2f49c3b61a323471326ad258d34ca2b2d14ad4d8f13fb204fd1eb4986117",
+      "bytes": 1274557
+    }
+  },
+  "slots": [
+    {
+      "id": "near-wing",
+      "quad": [
+        [
+          1154,
+          478
+        ],
+        [
+          1280,
+          482
+        ],
+        [
+          1230,
+          544
+        ],
+        [
+          1094,
+          552
+        ]
+      ]
+    },
+    {
+      "id": "far-wing",
+      "quad": [
+        [
+          280,
+          264
+        ],
+        [
+          390,
+          262
+        ],
+        [
+          337,
+          322
+        ],
+        [
+          223,
+          311
+        ]
+      ]
+    }
+  ],
+  "paint": {
+    "opacity": 0.96,
+    "responseFloor": 0,
+    "responseCeiling": 1.5
+  },
+  "license": "CC-BY-SA-4.0 under repository artwork scope",
+  "attribution": "Orbit Imperium contributors / Unbought Games, LLC",
+  "provenance": {
+    "authoring": "tools/ship-appearance/compile-orbit-base.mjs",
+    "sourceDirectory": "art/orbit-base/ships/v1/heavy-fighter-tandem",
+    "inputs": {
+      "master.png": "5d13f39523eb46ab9e59e892eeb618e61fcfc5b9db6712b83c79eca09adc5b76",
+      "livery.svg": "c1f68330561d6e91fb3b994d9dfd1c7ef8a3b750198cd2b931a7575a35281fd7",
+      "emblem-slots.json": "8a19d9cfa3ec1801e40165689684b3423ae586f579dc4b0a82a22125d1c77248",
+      "paint.json": "acdeebecfba9ad78f1273edd35cc191709c119fc5670b89d22855a6a8ec553a0"
+    },
+    "versions": {
+      "sharp": "0.35.5"
+    }
+  }
+}
