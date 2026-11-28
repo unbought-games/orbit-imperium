@@ -319,9 +319,9 @@ test('prepares an editable observed-planet attack with advisory hypothetical est
     expect(
       await dialog.locator('input[id^="simulation-"]').evaluateAll((inputs) =>
         inputs.every((input) => {
-          const label = input
-            .parentElement!.querySelector('label')!
-            .getBoundingClientRect()
+          const label = (
+            input as HTMLInputElement
+          ).labels![0].getBoundingClientRect()
           const box = input.getBoundingClientRect()
           return label.right <= box.left + 1 || label.bottom <= box.top + 1
         }),
