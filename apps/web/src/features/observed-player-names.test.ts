@@ -20,7 +20,7 @@ it('displays only the supplied name for an espionage contact and falls back to i
     ).replace(/<[^>]+>/g, '')
   }
   expect(render({ [sender]: 'Commander Vega' })).toContain(
-    'Commander Vega made espionage contact',
+    'Commander Vega sent probes',
   )
-  expect(render()).toContain('Player 00000000 made espionage contact')
+  expect(render()).toContain('Player 00000000 sent probes')
 })

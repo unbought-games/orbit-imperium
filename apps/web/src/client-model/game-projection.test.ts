@@ -1349,7 +1349,13 @@ describe('galaxy fleet actions', () => {
       v = s.view as S['BoundView4']
     v.missions.fleets = [structuredClone(fleet)]
     expect(galaxyFlights(s, at)).toEqual([
-      { id: 'fleet', mission: 'Espionage', phase: 'en route', dueAt: 31000 },
+      {
+        id: 'fleet',
+        bodyKind: 'Planet',
+        mission: 'Espionage',
+        phase: 'en route',
+        dueAt: 31000,
+      },
     ])
     expect(
       galaxyFlights(s, { ...at, body: { ...at.body!, id: 'replacement' } }),
@@ -1360,7 +1366,13 @@ describe('galaxy fleet actions', () => {
     expect(
       galaxyFlights(s, { ...at, body: { ...at.body!, id: 'body' } }),
     ).toEqual([
-      { id: 'fleet', mission: 'Espionage', phase: 'returning', dueAt: 61000 },
+      {
+        id: 'fleet',
+        bodyKind: 'Planet',
+        mission: 'Espionage',
+        phase: 'returning',
+        dueAt: 61000,
+      },
     ])
     v.missions.fleets = []
     expect(galaxyFlights(s, at)).toEqual([])
@@ -1376,6 +1388,7 @@ describe('galaxy fleet actions', () => {
         id: 'command',
         mission: 'Espionage',
         phase: 'departure pending',
+        bodyKind: 'Planet',
         dueAt: null,
       },
     ])
@@ -1390,6 +1403,64 @@ describe('galaxy fleet actions', () => {
     attempt.reconciled = true
     ;(s.view as S['BoundView4']).missions.fleets = [fleet]
     expect(galaxyFlights(s, at)).toHaveLength(1)
+  })
+
+  it('counts both probes at a shared slot through departure, arrival and a return to a moon', () => {
+    const s = spyState()
+    const view = s.view as S['BoundView4']
+    const position = { ...at, moon: { id: 'target-moon', diameter_km: 8000 } }
+    const moonIntent: S['FleetIntent4'] = {
+      ...spyIntent,
+      origin: 'home-moon',
+      destination: {
+        type: 'Body',
+        id: 'target-moon',
+        expected_kind: 'Moon',
+        expected_owner: 'enemy',
+      },
+    }
+    view.missions.fleets = [structuredClone(fleet)]
+    const pending = intent(
+      s,
+      {
+        type: 'World',
+        action: { ...command.action, intent: moonIntent },
+      },
+      { ...terms, intent: moonIntent },
+    )
+    pending.status = 'uncertain'
+    const marker = () =>
+      galaxyFlights(s, position).map((f) => [f.id, f.bodyKind, f.phase])
+    expect(marker()).toEqual([
+      ['fleet', 'Planet', 'en route'],
+      ['command', 'Moon', 'departure pending'],
+    ])
+
+    pending.status = 'committed'
+    pending.reconciled = true
+    const moonFleet = { ...fleet, id: 'lunar-flight', intent: moonIntent }
+    view.missions.fleets.push(moonFleet)
+    expect(marker()).toEqual([
+      ['fleet', 'Planet', 'en route'],
+      ['lunar-flight', 'Moon', 'en route'],
+    ])
+    expect(
+      galaxyFlights(s, {
+        ...position,
+        moon: { ...position.moon, id: 'replacement' },
+      }),
+    ).toHaveLength(1)
+    moonFleet.leg = 'Returning'
+    expect(marker()).toEqual([['fleet', 'Planet', 'en route']])
+    expect(
+      galaxyFlights(s, {
+        ...at,
+        moon: { id: 'home-moon', diameter_km: 8000 },
+        body: { ...at.body!, id: 'home-planet' },
+      }),
+    ).toMatchObject([
+      { id: 'lunar-flight', bodyKind: 'Moon', phase: 'returning' },
+    ])
   })
 
   it('matches colonization and debris destinations by complete coordinates', () => {
