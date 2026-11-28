@@ -119,10 +119,10 @@ async fn pending_child_settles_after_parent_and_delivery_retirement() {
         |v| matches!(&v.event,StreamEvent::Outcome{receipt} if receipt.command_id==start.command_id)
     ));
 
-    // A reader whose authorization snapshot preceded cleanup still sees the
+    // A reader whose recipient-head snapshot preceded cleanup still sees the
     // complete old join. A fresh read after the same two commits sees Reset.
     let mut blocker = pool.begin().await.unwrap();
-    sqlx::query("LOCK TABLE game_update_heads IN ACCESS EXCLUSIVE MODE")
+    sqlx::query("LOCK TABLE game_updates IN ACCESS EXCLUSIVE MODE")
         .execute(&mut *blocker)
         .await
         .unwrap();
@@ -133,7 +133,7 @@ async fn pending_child_settles_after_parent_and_delivery_retirement() {
     let reader = store.clone();
     let after = initial.clone();
     let reading = tokio::spawn(async move { reader.read_updates(b, after.as_deref(), 8).await });
-    while !sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)) AND query LIKE 'SELECT position,retired_through%')").bind(pid).fetch_one(&pool).await.unwrap() {
+    while !sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)) AND query LIKE 'SELECT d.position,d.kind,%')").bind(pid).fetch_one(&pool).await.unwrap() {
         assert!(!reading.is_finished());
         tokio::task::yield_now().await;
     }
