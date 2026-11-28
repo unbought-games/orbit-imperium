@@ -158,7 +158,33 @@ describe('report combat prefill', () => {
     expect(simulationInputs(fields, attacking).inputs).toBeNull()
     expect(unsupportedReportUnits(large, [])).toHaveLength(1)
   })
-  it.each(['-1', '1.5', '1e3', 'Infinity', '2001'])(
+  it('accepts exactly 20,000 combined units including report defenses and rejects one more', () => {
+    const fields = simulationFields(
+      {
+        ...report,
+        fleet: { visibility: 'Unknown' },
+        defenses: {
+          visibility: 'Known',
+          value: [
+            { item: { kind: 'Defense', id: 'RocketLauncher' }, count: '5000' },
+          ],
+        },
+      },
+      catalog,
+      [],
+    )
+    const edits = { 'attacker:Ship:LightFighter': '15000' }
+    expect(
+      simulationInputs(fields, edits).inputs?.defender.units[0].count,
+    ).toBe(5000)
+    expect(
+      simulationInputs(fields, {
+        ...edits,
+        'attacker:Ship:LightFighter': '15001',
+      }).error,
+    ).toBe('Keep both sides combined to 20,000 units or fewer.')
+  })
+  it.each(['-1', '1.5', '1e3', 'Infinity', '20001'])(
     'rejects invalid player input %s',
     (value) => {
       expect(
@@ -623,7 +649,7 @@ it('keeps unknown and invalid force values discoverable in collapsed summaries',
     invalid: 0,
   })
   expect(
-    simulationGroupSummary(fields, { [fields[0].key]: '2001' }),
+    simulationGroupSummary(fields, { [fields[0].key]: '20001' }),
   ).toMatchObject({ invalid: 1 })
   expect(
     simulationGroupSummary(fields, { [fields[0].key]: '23' }),

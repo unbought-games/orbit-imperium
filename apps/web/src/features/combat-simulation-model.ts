@@ -1,3 +1,5 @@
+import schema from '../../../../contracts/openapi.json' with { type: 'json' }
+import { formatWholeNumber } from '../ui/whole-number'
 import { compareShips } from './ship-order'
 import type { components } from '../contracts'
 import { resourceNames } from '../client-model/resources'
@@ -16,6 +18,9 @@ export type SimulationField = {
   technology?: number
   available?: string
 }
+export const simulationUnitLimit =
+  schema.components.schemas.SimulationUnit.properties.count.maximum
+export const simulationUnitLimitLabel = formatWholeNumber(simulationUnitLimit)
 export const combatTechnologies = [
   'WeaponsTechnology',
   'ShieldingTechnology',
@@ -132,21 +137,23 @@ export function simulationInputs(
     if (!/^(0|[1-9][0-9]*)$/.test(value))
       return { inputs: null, error: 'Use nonnegative whole numbers.' }
     const n = Number(value)
-    if (!Number.isSafeInteger(n) || n > (field.item ? 2000 : 100))
+    if (
+      !Number.isSafeInteger(n) ||
+      n > (field.item ? simulationUnitLimit : 100)
+    )
       return {
         inputs: null,
-        error:
-          'Simulation supports up to 2,000 units total and technology levels from 0 to 100. Report values are never truncated.',
+        error: `Simulation supports up to ${simulationUnitLimitLabel} units total and technology levels from 0 to 100. Report values are never truncated.`,
       }
     if (field.item) {
       total += n
       if (n) inputs[field.side].units.push({ item: field.item, count: n })
     } else inputs[field.side].technology[field.technology!] = n
   }
-  if (total > 2000)
+  if (total > simulationUnitLimit)
     return {
       inputs: null,
-      error: 'Keep both sides combined to 2,000 units or fewer.',
+      error: `Keep both sides combined to ${simulationUnitLimitLabel} units or fewer.`,
     }
   if (!inputs.attacker.units.length)
     return { inputs: null, error: 'Add at least one attacking ship.' }
@@ -282,7 +289,7 @@ export function simulationGroupSummary(
       continue
     }
     const count = BigInt(value)
-    if (count > 2000n) invalid++
+    if (count > simulationUnitLimit) invalid++
     else total += count
   }
   return { total, unknown, invalid }

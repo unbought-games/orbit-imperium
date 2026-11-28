@@ -298,7 +298,8 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                     "player" | "epoch" => {
                         query["context"]["binding"][variant] = json!(Uuid::new_v4())
                     }
-                    "large" => query["inputs"]["attacker"]["units"][0]["count"] = json!(2001),
+                    "valid" => query["inputs"]["attacker"]["units"][0]["count"] = json!(20_000),
+                    "large" => query["inputs"]["attacker"]["units"][0]["count"] = json!(20_001),
                     "unknown" => query["inputs"]["defender"]["technology"][0] = Value::Null,
                     "target" => query["target"] = json!(Uuid::new_v4()),
                     "stock" => query["inputs"]["observed_resources"]["metal"] = json!("-1"),
@@ -334,9 +335,19 @@ async fn versioned_binding_authorization_queries_and_response_contracts() {
                     assert_eq!(samples.len(), 10);
                     for sample in samples {
                         assert_eq!(sample["outcome"], "AttackerVictory");
-                        assert_eq!(sample["attacker"][0]["count"], 5);
+                        assert_eq!(
+                            sample["attacker"][0]["count"],
+                            query["inputs"]["attacker"]["units"][0]["count"]
+                        );
                         assert_eq!(sample["defender"], json!([]));
-                        assert_eq!(sample["surviving_cargo_capacity"], "250000000");
+                        assert_eq!(
+                            sample["surviving_cargo_capacity"],
+                            if variant == "valid" {
+                                "1000000000000"
+                            } else {
+                                "250000000"
+                            }
+                        );
                         assert!(sample["estimated_loot"].is_null());
                         assert_eq!(
                             sample["debris"],
