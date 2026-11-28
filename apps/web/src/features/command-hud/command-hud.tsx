@@ -6,7 +6,7 @@ import { ReleaseAnnouncement } from '../announcements/release-announcement'
 import type { DispatchDraft } from '../missions'
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation } from '@tanstack/react-router'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { useGameSession } from '../../shell/session-context'
 import { bindingKey } from '../../client-model/commands'
 import { useCommandHud } from './use-command-hud'
@@ -14,6 +14,7 @@ import { CommandOrb } from './hud-controls'
 import { HudToasts } from './hud-toasts'
 import { hudToastViews } from './notification-history'
 import { HudPanel } from './hud-panel'
+import { routeTarget } from '../../shell/route-target'
 import { incomingThreats } from './model'
 import styles from './hud.module.css'
 type HudProps = {
@@ -35,6 +36,7 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
   const identity = usePlayerIdentity(view.binding.player)
   const title = useIdentityTitle(identity?.title)
   const hud = useCommandHud(model)
+  const navigate = useNavigate()
   const layer = useRef<HTMLDivElement>(null)
   const href = useLocation({ select: (location) => location.href })
   useEffect(() => {
@@ -50,7 +52,19 @@ function LiveCommandHud({ body, onDraft }: HudProps) {
         <HudToasts
           model={model}
           notices={hudToastViews(hud.state, hud.toasts)}
-          onOpen={hud.select}
+          onOpen={(target) => {
+            if (target.kind === 'application') {
+              hud.dismiss(target)
+              void navigate(
+                routeTarget(
+                  universeName,
+                  'alliance',
+                  body,
+                  `applications/${target.id}`,
+                ),
+              )
+            } else hud.select(target)
+          }}
           onDismiss={hud.dismiss}
           focusFallback={() =>
             layer.current

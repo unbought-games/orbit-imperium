@@ -31,6 +31,8 @@ pub enum SocialQuery {
         limit: u32,
     },
     Circulars {
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        include_application_notices: bool,
         cursor: Option<Uuid>,
         limit: u32,
     },
@@ -106,12 +108,20 @@ pub struct SocialCircular {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct ApplicationNotice {
+    pub id: Uuid,
+    pub username: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SocialView {
     pub binding: Binding,
     pub request_id: Uuid,
     pub conversations: Vec<SocialConversation>,
     pub messages: Vec<SocialMessage>,
     pub circulars: Vec<SocialCircular>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub application_notices: Vec<ApplicationNotice>,
     pub contacts: Vec<SocialContact>,
     pub contact: Option<SocialContact>,
     pub next_cursor: Option<Uuid>,

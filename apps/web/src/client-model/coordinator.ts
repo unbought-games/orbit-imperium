@@ -795,7 +795,27 @@ export class Coordinator {
     if (!pending || !this.port.allianceQuery || this.protocol !== 4) return null
     try {
       const result = await this.port.allianceQuery(pending.context, query)
-      return this.responseMatches(pending, result) ? result : null
+      if (!this.responseMatches(pending, result)) return null
+      if (query.type === 'Mine') {
+        const notices = this.store.getState().mailbox?.applicationNotices
+        const detail = result.alliance
+        if (notices?.length) {
+          const pendingIds = new Set(
+            detail?.permissions.includes('ProcessApplications')
+              ? detail.applications?.map((a) => a.id)
+              : [],
+          )
+          if (notices.some((notice) => !pendingIds.has(notice.id))) {
+            // A review or a stale link revealed a newer snapshot. Refresh delivery
+            // from its source and invalidate any mailbox request already in flight.
+            this.mailboxVersion++
+            void this.refreshMailbox().catch(() => {
+              /* The HUD retries on its next refresh. */
+            })
+          }
+        }
+      }
+      return result
     } catch (error) {
       const f = failure(error)
       if (f.code === 'EpochChanged' || f.status === 401)

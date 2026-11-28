@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) async fn membership(
     tx: &mut Tx<'_>,
@@ -87,7 +88,11 @@ pub(super) fn recruitment(row: &PgRow) -> Result<AllianceRecruitment, StoreError
         _ => Err(StoreError::CorruptData),
     }
 }
-pub(crate) async fn save(tx: &mut Tx<'_>, b: Binding, s: &AllianceState) -> Result<(), StoreError> {
+pub(crate) async fn save(
+    tx: &mut Tx<'_>,
+    b: Binding,
+    s: &AllianceState,
+) -> Result<BTreeSet<PlayerId>, StoreError> {
     let recruitment = match s.recruitment {
         AllianceRecruitment::Open => "Open",
         AllianceRecruitment::Application => "Application",
@@ -110,16 +115,93 @@ pub(crate) async fn save(tx: &mut Tx<'_>, b: Binding, s: &AllianceState) -> Resu
     for m in &s.members {
         sqlx::query("INSERT INTO alliance_memberships(universe,epoch,player,alliance,joined_at,roles) VALUES($1,$2,$3,$4,$5,$6)").bind(b.universe.0).bind(b.epoch.0).bind(m.player.0).bind(s.id).bind(m.joined_at).bind(sqlx::types::Json(&m.roles)).execute(&mut **tx).await.map_err(db_error)?;
     }
-    sqlx::query("DELETE FROM alliance_applications WHERE alliance=$1")
-        .bind(s.id)
-        .execute(&mut **tx)
-        .await
-        .map_err(db_error)?;
-    for a in &s.applications {
-        sqlx::query("INSERT INTO alliance_applications(id,universe,epoch,alliance,player,text,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)").bind(a.id).bind(b.universe.0).bind(b.epoch.0).bind(s.id).bind(a.player.0).bind(&a.text).bind(a.created_at).execute(&mut **tx).await.map_err(db_error)?;
-    }
-    Ok(())
+    save_applications(tx, b, s).await
 }
+
+async fn save_applications(
+    tx: &mut Tx<'_>,
+    b: Binding,
+    s: &AllianceState,
+) -> Result<BTreeSet<PlayerId>, StoreError> {
+    let rows: Vec<(Uuid, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT id, notified_reviewers FROM alliance_applications WHERE alliance=$1",
+    )
+    .bind(s.id)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?;
+    let mut previous: BTreeMap<_, _> = rows.into_iter().collect();
+    let mut changed = BTreeSet::new();
+    let reviewers: BTreeSet<_> = if s.applications.is_empty() {
+        BTreeSet::new()
+    } else {
+        s.members
+            .iter()
+            .filter(|m| {
+                s.permissions(m.player)
+                    .contains(&AlliancePermission::ProcessApplications)
+            })
+            .map(|m| m.player.0)
+            .collect()
+    };
+    for application in &s.applications {
+        if let Some(mut delivered) = previous.remove(&application.id) {
+            let before = delivered.len();
+            delivered.retain(|id| {
+                if reviewers.contains(id) {
+                    return true;
+                }
+                changed.insert(PlayerId(*id));
+                false
+            });
+            if delivered.len() != before {
+                sqlx::query("UPDATE alliance_applications SET notified_reviewers=$2 WHERE id=$1")
+                    .bind(application.id)
+                    .bind(delivered)
+                    .execute(&mut **tx)
+                    .await
+                    .map_err(db_error)?;
+            }
+        } else {
+            let recipients: Vec<_> = reviewers.iter().copied().collect();
+            sqlx::query(
+                "INSERT INTO alliance_applications(id, universe, epoch, alliance, player, text, created_at, notified_reviewers)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)"
+            ).bind(application.id).bind(b.universe.0).bind(b.epoch.0).bind(s.id)
+            .bind(application.player.0).bind(&application.text).bind(application.created_at).bind(&recipients)
+            .execute(&mut **tx).await.map_err(db_error)?;
+            changed.extend(recipients.into_iter().map(PlayerId));
+        }
+    }
+    if !previous.is_empty() {
+        let removed: Vec<_> = previous.keys().copied().collect();
+        sqlx::query("DELETE FROM alliance_applications WHERE id=ANY($1)")
+            .bind(removed)
+            .execute(&mut **tx)
+            .await
+            .map_err(db_error)?;
+        changed.extend(previous.into_values().flatten().map(PlayerId));
+    }
+    Ok(changed)
+}
+
+pub(crate) async fn withdraw_applications(
+    tx: &mut Tx<'_>,
+    b: Binding,
+    player: PlayerId,
+    already_revised: Option<Uuid>,
+) -> Result<BTreeSet<PlayerId>, StoreError> {
+    let withdrawn: Vec<Uuid> = sqlx::query_scalar(
+        "WITH removed AS (
+            DELETE FROM alliance_applications WHERE universe=$1 AND epoch=$2 AND player=$3 RETURNING alliance, notified_reviewers
+         ), revised AS (
+            UPDATE alliances SET revision=revision+1 WHERE id IN (SELECT alliance FROM removed) AND id IS DISTINCT FROM $4
+         ) SELECT DISTINCT unnest(notified_reviewers) FROM removed"
+    ).bind(b.universe.0).bind(b.epoch.0).bind(player.0).bind(already_revised)
+     .fetch_all(&mut **tx).await.map_err(db_error)?;
+    Ok(withdrawn.into_iter().map(PlayerId).collect())
+}
+
 pub(crate) async fn history(
     tx: &mut Tx<'_>,
     b: Binding,

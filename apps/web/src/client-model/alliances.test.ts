@@ -436,3 +436,66 @@ it('retains the feed on an older-page transport failure but clears it on lost ac
   expect(controller.store.getState().view).toBeNull()
   expect(lost).toHaveBeenCalledOnce()
 })
+
+it('reloads current review access after another reviewer changes the alliance revision', async () => {
+  const read = vi.fn().mockResolvedValue(view)
+  const controller = new AlliancesController({
+    read,
+    command: vi.fn().mockRejectedValue({ status: 409 }),
+    newId: () => 'review',
+  })
+  await controller.refresh()
+  expect(
+    await controller.run(
+      { type: 'Accept', alliance: 'alliance', application: 'submitted' },
+      3,
+    ),
+  ).toBe(false)
+  expect(read).toHaveBeenCalledTimes(2)
+  expect(controller.store.getState()).toMatchObject({
+    view,
+    pending: null,
+    failure: { operation: 'Accept', status: 409 },
+  })
+})
+
+it('navigation during a decision and its recovery read preserves the rejection on the original application', async () => {
+  const decision = deferred<null>()
+  const recovery = deferred<typeof view>()
+  const startedRecovery = deferred<boolean>()
+  const read = vi
+    .fn()
+    .mockResolvedValueOnce(view)
+    .mockImplementationOnce(() => {
+      startedRecovery.resolve(true)
+      return recovery.promise
+    })
+    .mockResolvedValue(view)
+  const c = new AlliancesController({
+    read,
+    command: async () => {
+      await decision.promise
+      throw { status: 409 }
+    },
+    newId: () => 'review',
+  })
+  await c.refresh()
+  const first = c.run(
+    { type: 'Reject', alliance: 'alliance', application: 'first' },
+    1,
+  )
+  c.enterWorkspace()
+  decision.resolve(null)
+  await startedRecovery.promise
+  c.enterWorkspace()
+  expect(read).toHaveBeenCalledTimes(2)
+  recovery.resolve(view)
+  expect(await first).toBe(false)
+  expect(c.store.getState().error).toBeTruthy()
+  await c.refresh({ type: 'Mine' })
+  expect(c.store.getState().lastReviewFailure).toMatchObject({
+    operation: 'Reject',
+    application: 'first',
+    status: 409,
+  })
+})

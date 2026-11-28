@@ -1,4 +1,7 @@
-import type { AllianceDetail } from '../../client-model/alliances'
+import type {
+  AllianceAction,
+  AllianceDetail,
+} from '../../client-model/alliances'
 import { allianceSections } from './sections'
 
 export const allianceDestinations = {
@@ -27,6 +30,8 @@ export function isAllianceDestination(item: string) {
     extra === undefined &&
     Object.values(allianceDestinations).some((value) => value === section) &&
     (settings === undefined ||
+      (section === 'applications' &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(settings)) ||
       (section === 'settings' &&
         Object.values(allianceSettingsDestinations).some(
           (value) => value === settings,
@@ -64,4 +69,21 @@ export function sameAllianceWorkspace(current: string, next: string) {
   }
   const currentRoot = root(current)
   return currentRoot !== null && currentRoot === root(next)
+}
+
+/** Recovery belongs to the command whose receipt is outstanding. */
+export function previousAllianceAction(
+  action: AllianceAction | undefined,
+  application: string,
+) {
+  if (!action) return null
+  if (action.type === 'Accept' || action.type === 'Reject') {
+    return action.application === application
+      ? null
+      : {
+          item: `applications/${action.application}`,
+          label: 'Return to previous application',
+        }
+  }
+  return { item: 'hall', label: 'Return to alliance' }
 }

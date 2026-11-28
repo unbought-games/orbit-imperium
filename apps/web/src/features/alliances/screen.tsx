@@ -6,6 +6,7 @@ import {
   allianceDestinations,
   allianceSettingsDestinations,
   sameAllianceWorkspace,
+  previousAllianceAction,
 } from './navigation'
 import { allianceSections } from './sections'
 import { LoadingRegion } from '../../ui/loading-region'
@@ -26,7 +27,7 @@ import {
   useRefreshPlayerProfiles,
 } from '../../shell/player-profiles-context'
 import { AllianceDrafts, AllianceDraftContext } from './drafts'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import {
   Link,
@@ -41,6 +42,7 @@ import { useGameSession } from '../../shell/session-context'
 import { Button, ButtonLink } from '../../ui/button'
 import { ConfirmAction, Markdown, Summary, type Run } from './shared'
 import { usePublicAlliance } from '../../client-model/use-public-alliance'
+import { ApplicationReview, ApplicationReviewError } from './application-review'
 import { AllianceHall } from './hall'
 import { AllianceIdentityHeader } from './visual-identity'
 import { Roles } from './roles'
@@ -138,10 +140,17 @@ function AllianceWorkspace({
   const state = useStore(controller.store)
   const refreshProfiles = useRefreshPlayerProfiles()
   const selected = initialAlliance
-  useEffect(() => {
-    void controller.refresh()
-    return () => controller.clear()
-  }, [controller])
+  const applicationId = route.item?.startsWith('applications/')
+    ? route.item.split('/')[1]
+    : undefined
+  const [reviewed, setReviewed] = useState<{
+    id: string
+    message: string
+  } | null>(null)
+  useLayoutEffect(() => {
+    controller.enterWorkspace()
+  }, [controller, applicationId])
+  useEffect(() => () => controller.clear(), [controller])
   const detail = state.view?.alliance
   const publicAlliance = usePublicAlliance(
     universe,
@@ -151,6 +160,17 @@ function AllianceWorkspace({
   )
   const busy = state.busy || state.loading || !!state.pending
   const complete = (action: Parameters<Run>[0]) => {
+    if (
+      (action.type === 'Accept' || action.type === 'Reject') &&
+      action.application === applicationId
+    )
+      setReviewed({
+        id: action.application,
+        message:
+          action.type === 'Accept'
+            ? 'Application accepted.'
+            : 'Application rejected.',
+      })
     if (action.type === 'Join') trackRecruitment('joined')
     if (action.type === 'Apply') trackRecruitment('applied')
     if (identityActions.has(action.type)) refreshProfiles()
@@ -170,8 +190,14 @@ function AllianceWorkspace({
     route.item,
     detail ?? null,
   )
-  const visiblePlayers =
-    !detail || discovering || (selected && selected !== detail.summary.id)
+  const previousAction = applicationId
+    ? previousAllianceAction(state.pending?.action, applicationId)
+    : null
+  const visiblePlayers = applicationId
+    ? (detail?.applications
+        ?.filter((a) => a.id === applicationId)
+        .map((a) => a.player) ?? [])
+    : !detail || discovering || (selected && selected !== detail.summary.id)
       ? []
       : active === 'Members'
         ? (detail.members?.map((member) => member.player) ?? [])
@@ -186,29 +212,86 @@ function AllianceWorkspace({
             : active === 'Hall'
               ? (detail.posts?.map((post) => post.author) ?? [])
               : []
-  useProfilePlayers(visiblePlayers)
+  useProfilePlayers(previousAction ? [] : visiblePlayers)
+  const unsavedChanges = blocker.status === 'blocked' && (
+    <PresentationPreview open onClose={() => blocker.reset?.()}>
+      <div className={styles.screen}>
+        <h2>Leave without saving?</h2>
+        <p>Your alliance presentation has unsaved changes.</p>
+        <Button
+          variant="destructive"
+          onClick={() => {
+            drafts.clear()
+            blocker.proceed?.()
+          }}
+        >
+          Leave without saving
+        </Button>
+        <Button variant="secondary" onClick={() => blocker.reset?.()}>
+          Keep editing
+        </Button>
+      </div>
+    </PresentationPreview>
+  )
+  if (applicationId) {
+    const failure = state.error
+      ? state.failure
+      : state.lastReviewFailure?.application === applicationId
+        ? state.lastReviewFailure
+        : undefined
+    return (
+      <>
+        {unsavedChanges}
+        <ApplicationReview
+          applicationId={applicationId}
+          view={previousAction ? null : state.view}
+          loading={state.loading}
+          busy={busy}
+          run={run}
+          outcome={
+            reviewed?.id === applicationId ? reviewed.message : undefined
+          }
+        >
+          {previousAction ? (
+            <>
+              <p role="status">
+                Your previous alliance action is awaiting confirmation.
+              </p>
+              <div>
+                <ButtonLink
+                  variant="secondary"
+                  {...routeTarget(
+                    universeName,
+                    'alliance',
+                    body?.id,
+                    previousAction.item,
+                  )}
+                >
+                  {previousAction.label}
+                </ButtonLink>
+              </div>
+            </>
+          ) : (
+            failure && (
+              <ApplicationReviewError
+                failure={failure}
+                application={applicationId}
+                uncertain={!!state.pending}
+                retry={() =>
+                  state.pending
+                    ? void retryCommand()
+                    : void controller.refresh()
+                }
+              />
+            )
+          )}
+        </ApplicationReview>
+      </>
+    )
+  }
   return (
     <AllianceDraftContext.Provider value={drafts}>
-      {blocker.status === 'blocked' && (
-        <PresentationPreview open onClose={() => blocker.reset?.()}>
-          <div className={styles.screen}>
-            <h2>Leave without saving?</h2>
-            <p>Your alliance presentation has unsaved changes.</p>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                drafts.clear()
-                blocker.proceed?.()
-              }}
-            >
-              Leave without saving
-            </Button>
-            <Button variant="secondary" onClick={() => blocker.reset?.()}>
-              Keep editing
-            </Button>
-          </div>
-        </PresentationPreview>
-      )}
+      {unsavedChanges}
       <ContentColumn
         as="section"
         width={creating ? 'focused' : 'full'}
@@ -295,6 +378,7 @@ function AllianceWorkspace({
                 </Button>
               </div>
             )}
+
             {creating ? (
               state.view &&
               (detail ? (
