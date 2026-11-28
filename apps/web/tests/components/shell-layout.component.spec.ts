@@ -17,7 +17,7 @@ test('alliance pages retain a visible attack warning without the planet bar on d
     await page.setViewportSize({ width, height })
     const warning = page
       .getByRole('status')
-      .filter({ hasText: 'Incoming hostile fleet' })
+      .filter({ hasText: 'Incoming attack' })
     await expect(warning).toBeVisible()
     await expect(
       page.getByRole('group', { name: 'Planet and resources' }),
@@ -769,9 +769,9 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
         opacity: style.opacity,
       }
     })
-  await expect(bar.getByRole('status')).toHaveText(
-    'Incoming hostile fleet: attack or espionage detected.',
-  )
+  await expect(
+    bar.getByRole('status').getByText('Incoming attack', { exact: true }),
+  ).toBeVisible()
   await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(113, 50, 59)')
   expect(
     await bar.evaluate(
@@ -803,6 +803,12 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
     .toMatchObject({ animation: 'none', opacity: '0.7' })
   await page.setViewportSize({ width: 1024, height: 844 })
   expect((await overlay()).content).toBe('none')
+  await expect(
+    bar.getByText('Incoming attack', { exact: true }),
+  ).toBeInViewport({ ratio: 1 })
+  await expect(bar.getByRole('link', { name: 'View fleets' })).toBeInViewport({
+    ratio: 1,
+  })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   // Seek only after testing normal CSS lifecycle: manual playback takes ownership

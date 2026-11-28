@@ -266,9 +266,12 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
   })
   await deliver()
   await expect(orb).toHaveAttribute('data-tone', 'red')
-  await expect(bar.getByRole('status')).toHaveText(
-    'Incoming hostile fleet: attack or espionage detected.',
-  )
+  await expect(
+    bar.getByRole('status').getByText('Incoming attack', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    bar.getByRole('link', { name: 'View fleets' }),
+  ).toHaveAttribute('href', `/u/andromeda/b/${body.id}/fleets`)
   const threat = page
     .getByLabel('Recent game events')
     .getByRole('button', { name: /Hostile fleet inbound/ })
@@ -289,9 +292,9 @@ test('the mobile HUD keeps confirmed hostile traffic across fleet navigation unt
   await expect(threat).toHaveCount(0)
   await selectBody(page, id(6))
   await expect(page).toHaveURL(new RegExp(`/b/${id(6)}/overview$`))
-  await expect(bar.getByRole('status')).toHaveText(
-    'Incoming hostile fleet: attack or espionage detected.',
-  )
+  await expect(
+    bar.getByRole('status').getByText('Incoming attack', { exact: true }),
+  ).toBeVisible()
   await expect(orb).toHaveAttribute('data-tone', 'red')
   await orb.click()
   await diagnosticScreenshot(page, { path: `${output}/inbox-390x844.png` })

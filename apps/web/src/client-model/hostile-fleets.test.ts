@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { bootstrapFixture } from '../test-support/bootstrap'
-import { hasIncomingHostileFleet } from './hostile-fleets'
+import { incomingThreatKind } from './hostile-fleets'
 import type { components } from '../contracts'
 
 function fixture(protocol: 2 | 3 | 4 = 4) {
@@ -13,18 +13,19 @@ function fixture(protocol: 2 | 3 | 4 = 4) {
 it.each([2, 3, 4] as const)(
   'has no warning for an empty protocol %s view',
   (protocol) => {
-    expect(hasIncomingHostileFleet(fixture(protocol))).toBe(false)
+    expect(incomingThreatKind(fixture(protocol))).toBeNull()
   },
 )
 
 it.each([
-  ['Attack', true],
-  ['Espionage', true],
-  ['Transport', false],
-  ['Harvest', false],
-  ['Deploy', false],
-  ['Colonize', false],
-] as const)('classifies incoming %s missions', (mission, hostile) => {
+  ['Attack', 'attack'],
+  ['DestroyMoon', 'attack'],
+  ['Espionage', 'espionage'],
+  ['Transport', null],
+  ['Harvest', null],
+  ['Deploy', null],
+  ['Colonize', null],
+] as const)('classifies incoming %s missions', (mission, kind) => {
   const view = fixture()
   if (view.protocol !== 4) throw new Error('Expected protocol 4')
   view.missions.incoming = [
@@ -38,9 +39,26 @@ it.each([
     },
   ]
   // Arrival estimates and ship visibility never override confirmed threats.
-  expect(hasIncomingHostileFleet(view)).toBe(hostile)
+  expect(incomingThreatKind(view)).toBe(kind)
   view.missions.incoming = []
-  expect(hasIncomingHostileFleet(view)).toBe(false)
+  expect(incomingThreatKind(view)).toBeNull()
+})
+
+it('keeps an attack visible among probes and returns to espionage when it clears', () => {
+  const view = fixture()
+  if (view.protocol !== 4) throw new Error('Expected protocol 4')
+  const probe = {
+    sender: 'enemy',
+    origin: { galaxy: 1, system: 2, position: 3 },
+    target: 'another-owned-world',
+    mission: 'Espionage',
+    arrival_at: 0,
+    ships: { visibility: 'Unknown' },
+  } as const
+  view.missions.incoming = [probe, { ...probe, mission: 'Attack' }]
+  expect(incomingThreatKind(view)).toBe('attack')
+  view.missions.incoming = [probe]
+  expect(incomingThreatKind(view)).toBe('espionage')
 })
 
 it.each(['Outbound', 'Returning'] as const)(
@@ -76,6 +94,6 @@ it.each(['Outbound', 'Returning'] as const)(
         can_recall: false,
       }),
     )
-    expect(hasIncomingHostileFleet(view)).toBe(false)
+    expect(incomingThreatKind(view)).toBeNull()
   },
 )

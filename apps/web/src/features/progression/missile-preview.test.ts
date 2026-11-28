@@ -3,7 +3,7 @@ import { bootstrapFixture } from '../../test-support/bootstrap'
 import { manufacturingPreview } from './manufacturing-preview'
 import { technologyRequest } from './options'
 import { catalogPage } from '../../shell/catalog-routes'
-import { hasIncomingHostileFleet } from '../../client-model/hostile-fleets'
+import { incomingThreatKind } from '../../client-model/hostile-fleets'
 import { commandBody, matchesQuote } from '../../client-model/game-projection'
 import type { BoundProgressionOptions } from '../../client-model/commands'
 import type { components } from '../../contracts'
@@ -134,9 +134,9 @@ it('shows incoming missile warnings until the authoritative flight disappears', 
   }
   view.missiles = [flight]
   view.missions.incoming = []
-  expect(hasIncomingHostileFleet(view)).toBe(true)
+  expect(incomingThreatKind(view)).toBe('missile')
   view.missiles = [{ ...flight, outgoing: true }]
-  expect(hasIncomingHostileFleet(view)).toBe(false)
+  expect(incomingThreatKind(view)).toBeNull()
 })
 it('binds missile quotes and foreground gestures to the exact origin and target', () => {
   const { view, body } = fixture()
