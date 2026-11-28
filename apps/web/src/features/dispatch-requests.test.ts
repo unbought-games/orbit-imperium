@@ -648,6 +648,30 @@ it('requires a Dreadnought in a destruction draft before requesting its binding 
   ])
 })
 
+it('prepares fixed cargo in advance and quotes departure-time cargo on Review', async () => {
+  const { preparedIntent } = await import('./use-prepared-fleet-quote')
+  const quote = terms({
+    origin: 'home',
+    destination,
+    mission: 'Deploy',
+    ships: [{ owner: 'me', ship_type: 'SmallCargo', count: '1' }],
+    cargo: { metal: '0', crystal: '0', deuterium: '0' },
+    speed_percent: 100,
+  })
+  const prepare = (groups: CargoDraft['groups']) =>
+    preparedIntent(
+      quote,
+      { entered: ['42', '0', '0'], groups },
+      null,
+      at,
+      'Planet',
+      'me',
+    )
+  expect(prepare([])?.cargo.metal).toBe('42000000')
+  expect(prepare([['Deuterium']])).toBeNull()
+  expect(prepare([['Metal', 'Crystal', 'Deuterium']])).toBeNull()
+})
+
 it('a refused replacement quote cannot reopen earlier terms at the same revision', async () => {
   const { createFleetPreparation } = await import('./use-prepared-fleet-quote')
   const preparation = createFleetPreparation()

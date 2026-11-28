@@ -539,13 +539,13 @@ test('a launch-time cargo change preserves the routed review and Edit cargo reop
   await page.getByRole('radio', {name:'Deploy',exact:true}).check()
   await selectDestinationPlanet(page, id(6))
   const original = terms(3000, 'a')
+  await page.getByRole('button', {name:'Max deuterium', exact:true}).click()
+  const field = page.getByRole('textbox', {name:'Deuterium', exact:true})
+  await expect(field).toHaveValue('3121')
   state.liveQuote = original
   await withFixtureResponse(page,
     response => fleetQuote(response) && !!response.request().postDataJSON().intent.cargo_fill,
-    () => page.getByRole('button', {name:'Max deuterium', exact:true}).click())
-  const field = page.getByRole('textbox', {name:'Deuterium', exact:true})
-  await expect(field).toHaveValue('3121')
-  await review(page).click()
+    () => review(page).click())
   const panel = page.getByRole('region', {name:'Fleet quote'})
   const cargo = panel.getByRole('region', {name:'Fleet and cargo'})
   await expect(page).toHaveURL(dispatchPath + '/review')
