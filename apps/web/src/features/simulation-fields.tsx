@@ -1,6 +1,7 @@
 import { SimulationDisclosure } from './simulation-disclosure'
 import { Fragment } from 'react'
-import { FillButton } from '../ui/input-with-action'
+import { Button } from '../ui/button'
+import { FillButton, InputWithAction } from '../ui/input-with-action'
 import { NumberInput } from '../ui/form'
 import { VisuallyHidden } from '../ui/visually-hidden'
 import { shipGroup, shipGroups } from './ship-order'
@@ -116,6 +117,9 @@ function FieldGroup({
     ))
   return (
     <section
+      className={
+        fields[0].available !== undefined ? styles.stationedShips : undefined
+      }
       aria-label={`${defender ? 'Defender' : 'Attacker'} ${group.toLowerCase()}`}
     >
       {collapsible ? (
@@ -176,6 +180,20 @@ function SimulationFieldInput({
             ? 'Changed'
             : 'Your research'
           : ''
+  const available = field.available
+  const fillAvailable = () => {
+    if (available !== undefined) edit({ [field.key]: available })
+  }
+  const input = (
+    <NumberInput
+      id={`simulation-${field.key}`}
+      aria-label={`${field.side === 'attacker' ? 'Attacker' : 'Defender'} ${label(field.label)}`}
+      aria-invalid={invalid || undefined}
+      value={value}
+      placeholder="0"
+      onChange={(event) => edit({ [field.key]: event.target.value })}
+    />
+  )
   return (
     <div
       className={`${styles.field} ${outcomes !== undefined ? styles.fieldWithOutcome : ''} ${field.technology !== undefined ? styles.technologyField : ''} ${value && value !== '0' ? styles.nonzero : ''}`}
@@ -184,26 +202,34 @@ function SimulationFieldInput({
         <label htmlFor={`simulation-${field.key}`} title={source}>
           {label(field.label)}
         </label>
-        {field.available !== undefined ? (
-          <FillButton
-            visibleLabel={`${formatWholeNumber(field.available)} available`}
+        {available !== undefined ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="small"
             className={styles.available}
-            aria-label={`Use all ${formatWholeNumber(field.available)} available ${label(field.label)}`}
-            title={`Add all ${formatWholeNumber(field.available)} available ${label(field.label)}`}
-            onClick={() => edit({ [field.key]: field.available! })}
-          />
+            aria-label={`Use all ${formatWholeNumber(available)} available ${label(field.label)}`}
+            title="Fill with ships stationed at this origin"
+            onClick={fillAvailable}
+          >
+            {formatWholeNumber(available)} available
+          </Button>
         ) : (
           source && <small>{source}</small>
         )}
       </div>
-      <NumberInput
-        id={`simulation-${field.key}`}
-        aria-label={`${field.side === 'attacker' ? 'Attacker' : 'Defender'} ${label(field.label)}`}
-        aria-invalid={invalid || undefined}
-        value={value}
-        placeholder="0"
-        onChange={(event) => edit({ [field.key]: event.target.value })}
-      />
+      {available === undefined ? (
+        input
+      ) : (
+        <InputWithAction>
+          {input}
+          <FillButton
+            aria-label={`Add all ${label(field.label)}`}
+            title={`Add all ${formatWholeNumber(available)} available ${label(field.label)}`}
+            onClick={fillAvailable}
+          />
+        </InputWithAction>
+      )}
       {showOutcome && (
         <div
           className={styles.unitOutcome}

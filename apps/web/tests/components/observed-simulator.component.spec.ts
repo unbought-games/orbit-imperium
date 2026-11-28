@@ -103,18 +103,43 @@ for (const hidden of [false, true])
     const fill = dialog.getByRole('button', {
       name: 'Use all 3 available Light Fighter',
     })
-    const arrow = fill.locator('svg')
-    await expect(arrow).toBeVisible()
+    const start = dialog.getByRole('textbox', {
+      name: 'Attacker Light Fighter',
+      exact: true,
+    })
+    const arrow = dialog.getByRole('button', {
+      name: 'Add all Light Fighter',
+      exact: true,
+    })
+    await expect(fill).toHaveText('3 available')
     if (hidden) {
-      await fill.focus()
+      await start.focus()
+      await page.keyboard.press('Tab')
+      await expect(arrow).toBeFocused()
       await page.keyboard.press('Enter')
     } else {
-      await expect(fill.getByText('3 available', { exact: true })).toBeVisible()
+      // Match Dispatch: the entire arrow target belongs inside this ship's input.
+      expect(
+        await arrow.evaluate(
+          (button, input) => {
+            const target = button.getBoundingClientRect()
+            const field = input!.getBoundingClientRect()
+            return (
+              target.left >= field.left &&
+              target.right <= field.right &&
+              target.top >= field.top &&
+              target.bottom <= field.bottom
+            )
+          },
+          await start.elementHandle(),
+        ),
+      ).toBe(true)
+      await fill.click()
+      await expect(start).toHaveValue('3')
+      await start.fill('1')
       await arrow.click()
     }
-    await expect(
-      dialog.getByLabel('Attacker Light Fighter', { exact: true }),
-    ).toHaveValue('3')
+    await expect(start).toHaveValue('3')
     await expect(
       dialog.getByRole('region', {
         name: 'Attacker technologies',
@@ -241,9 +266,9 @@ for (const hidden of [false, true])
       expect(
         await dialog.locator('input[id^="simulation-"]').evaluateAll((inputs) =>
           inputs.every((input) => {
-            const label = input
-              .parentElement!.querySelector('label')!
-              .getBoundingClientRect()
+            const label = (
+              input as HTMLInputElement
+            ).labels![0].getBoundingClientRect()
             const box = input.getBoundingClientRect()
             return label.right <= box.left + 1 || label.bottom <= box.top + 1
           }),
@@ -368,9 +393,9 @@ for (const hidden of [false, true])
       expect(
         await dialog.locator('input[id^="simulation-"]').evaluateAll((inputs) =>
           inputs.every((input) => {
-            const label = input
-              .parentElement!.querySelector('label')!
-              .getBoundingClientRect()
+            const label = (
+              input as HTMLInputElement
+            ).labels![0].getBoundingClientRect()
             const box = input.getBoundingClientRect()
             return label.right <= box.left + 1 || label.bottom <= box.top + 1
           }),

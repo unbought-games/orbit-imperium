@@ -240,7 +240,9 @@ for (const width of [390, 1440])
     const draftGeometry = () =>
       page.locator('input[id^="simulation-"]').evaluateAll((inputs) =>
         inputs.map((input) => {
-          const row = input.parentElement!.getBoundingClientRect()
+          const label = (input as HTMLInputElement).labels![0]
+          const row =
+            label.parentElement!.parentElement!.getBoundingClientRect()
           const box = input.getBoundingClientRect()
           return [
             row.x,
