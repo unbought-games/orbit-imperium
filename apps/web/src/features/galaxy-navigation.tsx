@@ -91,6 +91,7 @@ export function GalaxyNavigation({
       <Field className={styles.coordinateField}>
         <span>Galaxy</span>
         <NumberInput
+          stripPastedCommas={false}
           value={galaxyText}
           aria-invalid={invalidGalaxy}
           aria-describedby={invalidGalaxy ? errorId : undefined}
@@ -120,6 +121,7 @@ export function GalaxyNavigation({
       <Field className={styles.coordinateField}>
         <span>System</span>
         <NumberInput
+          stripPastedCommas={false}
           aria-label="Solar system"
           value={systemText}
           aria-invalid={invalidSystem}

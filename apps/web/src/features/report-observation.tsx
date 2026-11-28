@@ -36,6 +36,29 @@ const record = (v: unknown): RecordValue =>
 const text = (v: unknown) =>
   typeof v === 'string' || typeof v === 'number' ? String(v) : 'Unknown'
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+// Spy Contact historically encodes planet as an omitted kind and moon explicitly.
+function SpyContactEndpoint({
+  at,
+  kind = 'Planet',
+  role,
+}: {
+  at: unknown
+  kind: unknown
+  role: 'origin' | 'target'
+}) {
+  const body = kind === 'Moon' ? 'moon' : kind === 'Planet' ? 'planet' : null
+  return (
+    <>
+      {body && `${role === 'origin' ? 'the' : 'your'} ${body} at `}
+      <CoordinateLink
+        at={at}
+        target={body ?? 'planet'}
+        label={body ? `${role} ${body}` : role}
+      />
+    </>
+  )
+}
+
 function Resources({
   value,
   debris = false,
@@ -489,18 +512,18 @@ function ReportObservationContent({
         className={styles.observation}
       >
         <Text>
-          <PlayerName player={text(payload.sender)} names={playerNames} /> made
-          espionage contact from{' '}
-          <CoordinateLink
+          <PlayerName player={text(payload.sender)} names={playerNames} /> sent
+          probes from{' '}
+          <SpyContactEndpoint
             at={payload.origin}
-            target={payload.origin_kind === 'Moon' ? 'moon' : 'planet'}
-            label="origin"
+            kind={payload.origin_kind}
+            role="origin"
           />{' '}
-          at{' '}
-          <CoordinateLink
+          to{' '}
+          <SpyContactEndpoint
             at={payload.target}
-            target={payload.target_kind === 'Moon' ? 'moon' : 'planet'}
-            label="target"
+            kind={payload.target_kind}
+            role="target"
           />
           .
         </Text>
