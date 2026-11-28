@@ -1,3 +1,5 @@
+import type { StoreApi } from 'zustand/vanilla'
+import type { GameState } from './game-store'
 import type { components } from '../contracts'
 import {
   bindingKey,
@@ -61,7 +63,20 @@ export class BoundCommandRecovery {
     } as Request<K>
     if (prior && canonical(prior) !== canonical(envelope))
       throw Error('A different order already uses this ID.')
-    if (!prior) this.storage?.save(kind, scope, envelope)
+    if (!prior) {
+      try {
+        this.storage?.save(kind, scope, envelope)
+      } catch {
+        throw Object.assign(
+          new Error(
+            'This action was not sent because it could not be saved for retry. Allow browser storage and try again.',
+          ),
+          {
+            code: 'COMMAND_RETRY_STORAGE_UNAVAILABLE',
+          },
+        )
+      }
+    }
     if (
       prior ||
       (this.storage && !withinCommandWindow(envelope.command_id, estimatedNow))
@@ -91,4 +106,19 @@ export class BoundCommandRecovery {
       throw error
     }
   }
+}
+
+/** Refresh only the mounted owner of a recovered mutation, without clearing its drafts. */
+export function watchRecoveredMutations(
+  store: StoreApi<GameState>,
+  kind: 'social' | 'alliance',
+  refresh: () => void,
+) {
+  return store.subscribe((next, previous) => {
+    if (
+      next.ready &&
+      next.recoveredMutations[kind] !== previous.recoveredMutations[kind]
+    )
+      refresh()
+  })
 }

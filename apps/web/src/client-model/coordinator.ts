@@ -287,7 +287,7 @@ export class Coordinator {
       this.platform.isOnline() &&
       this.platform.isVisible?.() !== false
     )
-      void this.reconcilePending()
+      void this.poll()
     this.store.setState({
       foreground: this.platform.isVisible?.() ?? true,
       online: this.platform.isOnline(),
@@ -1720,17 +1720,27 @@ export class Coordinator {
           await this.problem(error, generation, binding)
           return
         }
-        const message = identityProblem(error)
-        if (unavailableCommandAccess(error)) this.message = unknownAccessMessage
-        if (message) {
-          this.message = message
-          try {
-            if (row.kind === 'SocialCommandRequest') await this.refreshMailbox()
-            else await this.allianceQuery({ type: 'Mine' })
-          } catch (refreshError) {
-            if (!definiteMutationResponse(refreshError))
-              await this.problem(refreshError, generation, binding)
-          }
+        this.message =
+          identityProblem(error) ??
+          (unavailableCommandAccess(error)
+            ? unknownAccessMessage
+            : 'The earlier action was refused. Check the current state before trying again.')
+      }
+      if (!this.current(generation, binding)) return
+      const kind = row.kind === 'SocialCommandRequest' ? 'social' : 'alliance'
+      const recoveredMutations = this.store.getState().recoveredMutations
+      this.store.setState({
+        recoveredMutations: {
+          ...recoveredMutations,
+          [kind]: recoveredMutations[kind] + 1,
+        },
+      })
+      if (kind === 'social' && this.port.socialQuery) {
+        try {
+          await this.refreshMailbox()
+        } catch (error) {
+          if (!definiteMutationResponse(error))
+            await this.problem(error, generation, binding)
         }
       }
       this.clearClockWait(id)

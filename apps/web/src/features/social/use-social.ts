@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import { watchIntelligenceScope } from '../command-hud/intelligence-refresh'
 import { SocialController } from '../../client-model/social'
+import { watchRecoveredMutations } from '../../client-model/bound-command-recovery'
 import { useGameSession } from '../../shell/session-context'
 export function useSocial(player: string | undefined) {
   const { model } = useGameSession()
@@ -35,10 +36,16 @@ export function useSocial(player: string | undefined) {
       }
     }
     const stop = watchIntelligenceScope(model.store, refresh)
+    const stopRecovery = watchRecoveredMutations(model.store, 'social', () => {
+      // Recovery can settle while a newer send is pending. Reads preserve its draft.
+      void controller.history('newer')
+      void controller.pollList()
+    })
     const timer = setInterval(refresh, 120_000)
     window.addEventListener('focus', refresh)
     return () => {
       stop()
+      stopRecovery()
       clearInterval(timer)
       window.removeEventListener('focus', refresh)
     }

@@ -421,3 +421,155 @@ it.each(['social', 'alliance'] as const)(
     expect(f.storage.length).toBe(0)
   },
 )
+
+it.each(['social', 'alliance'] as const)(
+  'recovered %s refusals remain visible and refresh their mounted owner',
+  async (kind) => {
+    const { watchRecoveredMutations } = await import('./bound-command-recovery')
+    const f = recovery()
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce(Error('lost acknowledgement'))
+      .mockRejectedValue({ status: 409, code: 'Conflict' })
+    const port: GamePort = {
+      ...f.port,
+      socialCommand: run,
+      allianceCommand: run,
+    }
+    const first = new Coordinator(port, f.platform)
+    await first.initialize(f.session, f.snapshot)
+    const command_id = await first.newCommandId()
+    await expect(
+      kind === 'social'
+        ? first.socialCommand({
+            command_id,
+            action: { type: 'ReadCircular', circular: id(89) },
+          })
+        : first.allianceCommand({
+            command_id,
+            expected_revision: null,
+            action: { type: 'Join', alliance: id(88) },
+          }),
+    ).rejects.toThrow('lost acknowledgement')
+    const restored = new Coordinator(port, f.platform)
+    await restored.initialize(f.session, f.snapshot)
+    const refresh = vi.fn()
+    const unrelated = vi.fn()
+    const stop = watchRecoveredMutations(restored.store, kind, refresh)
+    const stopOther = watchRecoveredMutations(
+      restored.store,
+      kind === 'social' ? 'alliance' : 'social',
+      unrelated,
+    )
+    try {
+      await restored.poll()
+      expect(restored.message).toContain('earlier action was refused')
+      expect(refresh).toHaveBeenCalledOnce()
+      expect(unrelated).not.toHaveBeenCalled()
+      expect(f.view).toHaveBeenCalled()
+      expect(f.storage.length).toBe(0)
+      await restored.poll()
+      expect(run).toHaveBeenCalledTimes(2)
+    } finally {
+      stop()
+      stopOther()
+    }
+  },
+)
+
+it('a successful recovered alliance command refreshes the live controller and overview', async () => {
+  const { watchRecoveredMutations } = await import('./bound-command-recovery')
+  const { AlliancesController } = await import('./alliances')
+  const f = recovery()
+  let committed = false
+  const run = vi
+    .fn()
+    .mockRejectedValueOnce(Error('lost acknowledgement'))
+    .mockImplementation(async () => {
+      committed = true
+      return { status: 'ok' }
+    })
+  const port: GamePort = {
+    ...f.port,
+    allianceCommand: run,
+    allianceQuery: async (context) => ({
+      ...context,
+      sampled_at: 1000,
+      directory: [],
+      directory_count: committed ? 3 : 0,
+      alliance: null,
+      applications: [],
+    }),
+    view: async (context) => ({
+      ...f.snapshot.view,
+      request_id: context.request_id,
+      viewer_revision: committed ? '7' : '0',
+    }),
+  }
+  const first = new Coordinator(port, f.platform)
+  await first.initialize(f.session, f.snapshot)
+  await expect(
+    first.allianceCommand({
+      command_id: await first.newCommandId(),
+      expected_revision: null,
+      action: { type: 'Join', alliance: id(88) },
+    }),
+  ).rejects.toThrow()
+  const restored = new Coordinator(port, f.platform)
+  await restored.initialize(f.session, f.snapshot)
+  const controller = new AlliancesController({
+    read: (query) => restored.allianceQuery(query),
+    command: (request) => restored.allianceCommand(request),
+    newId: restored.newCommandId,
+  })
+  await controller.refresh()
+  expect(controller.store.getState().view?.directory_count).toBe(0)
+  let refreshed: Promise<boolean> | undefined
+  const stop = watchRecoveredMutations(restored.store, 'alliance', () => {
+    refreshed = controller.refresh()
+  })
+  try {
+    await restored.poll()
+    await refreshed
+    expect(controller.store.getState().view?.directory_count).toBe(3)
+    expect(restored.view?.viewer_revision).toBe('7')
+    expect(run.mock.calls[1]).toEqual(run.mock.calls[0])
+  } finally {
+    stop()
+    controller.clear()
+  }
+})
+
+it.each(['social', 'alliance'] as const)(
+  'blocked retry storage refuses %s before HTTP with a useful message',
+  async (kind) => {
+    const f = recovery()
+    f.platform.pendingCommands = new PendingCommands(() => {
+      throw Error('raw private browser storage diagnostic')
+    })
+    const run = vi.fn()
+    const model = new Coordinator(
+      { ...f.port, socialCommand: run, allianceCommand: run },
+      f.platform,
+    )
+    await model.initialize(f.session, f.snapshot)
+    const command_id = await model.newCommandId()
+    await expect(
+      kind === 'social'
+        ? model.socialCommand({
+            command_id,
+            action: { type: 'ReadCircular', circular: id(89) },
+          })
+        : model.allianceCommand({
+            command_id,
+            expected_revision: null,
+            action: { type: 'Join', alliance: id(88) },
+          }),
+    ).rejects.toMatchObject({
+      code: 'COMMAND_RETRY_STORAGE_UNAVAILABLE',
+      message:
+        'This action was not sent because it could not be saved for retry. Allow browser storage and try again.',
+    })
+    expect(run).not.toHaveBeenCalled()
+  },
+)
