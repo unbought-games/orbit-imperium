@@ -66,7 +66,6 @@ export type DispatchSubmitPorts = {
     quote: S['FleetTerms4'],
     onRegistered: (key: string) => void,
   ) => Promise<string | undefined>
-  closeReview: () => void
   submitted: (submission: DispatchSubmission | null) => void
 }
 export type DispatchCargoFill = 'all' | (typeof resourceNames)[number]
@@ -120,7 +119,6 @@ export class DispatchRequests {
   ) {
     const generation = this.invalidate()
     const destination = { ...coordinates }
-    ports.closeReview()
     const id = await ports.send(command, quote, (key) => {
       if (this.isCurrent(generation))
         ports.submitted({ key, generation, coordinates: destination })
