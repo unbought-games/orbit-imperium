@@ -106,6 +106,7 @@ function NameEditor({
     busy,
     error,
     retry,
+    dismissReview,
     save,
   } = useArchive<EmpireProfile>(
     'EmpireProfile',
@@ -125,6 +126,15 @@ function NameEditor({
           >
             Refresh
           </Button>
+          {dismissReview && (
+            <Button
+              type="button"
+              onClick={dismissReview}
+              disabled={busy || loading}
+            >
+              Dismiss saved edit
+            </Button>
+          )}
         </div>
       )}
       <LoadingRegion

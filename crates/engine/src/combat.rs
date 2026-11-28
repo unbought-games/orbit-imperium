@@ -2,6 +2,7 @@
 use crate::*;
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -259,6 +260,17 @@ pub struct CombatHit {
     pub bounced: bool,
     pub explosion: bool,
 }
+// Standard stats fit in u128. Keep exact comparisons for custom rule values
+// whose cross-products exceed that width.
+fn compare_products(x: u128, a: u64, y: u128, b: u64) -> Ordering {
+    match (x.checked_mul(a.into()), y.checked_mul(b.into())) {
+        (Some(left), Some(right)) => left.cmp(&right),
+        (None, Some(_)) => Ordering::Greater,
+        (Some(_), None) => Ordering::Less,
+        (None, None) => (BigUint::from(x) * a).cmp(&(BigUint::from(y) * b)),
+    }
+}
+
 pub fn apply_combat_hit(
     attack: u128,
     shield_max: u128,
@@ -280,7 +292,7 @@ pub fn apply_combat_hit(
         return Ok(out);
     }
     let [a, b] = r.bounce_threshold;
-    if shield > 0 && BigUint::from(attack) * b < BigUint::from(shield_max) * a {
+    if shield > 0 && compare_products(attack, b, shield_max, a).is_lt() {
         out.bounced = true;
         return Ok(out);
     }
@@ -300,33 +312,34 @@ pub fn apply_combat_hit(
     }
     let left = hull - out.hull_removed;
     let [a, b] = r.explosion_hull_threshold;
-    let lhs = BigUint::from(left) * b;
-    let rhs = BigUint::from(hull_max) * a;
-    out.explosion = left > 0 && (lhs < rhs || (r.explosion_inclusive && lhs == rhs));
+    let threshold = compare_products(left, b, hull_max, a);
+    out.explosion = left > 0 && (threshold.is_lt() || (r.explosion_inclusive && threshold.is_eq()));
     Ok(out)
 }
 fn counts<I: Copy>(units: &[Unit], p: &[BattleParticipant<I>]) -> Vec<BattleCounts<I>> {
+    let mut by_participant = vec![BTreeMap::new(); p.len()];
+    for unit in units {
+        if unit.hull > 0 {
+            *by_participant[unit.participant]
+                .entry(unit.item)
+                .or_insert(0i64) += 1;
+        }
+    }
     p.iter()
-        .enumerate()
-        .map(|(index, p)| {
-            let mut items = BTreeMap::new();
-            for u in units
-                .iter()
-                .filter(|u| u.participant == index && u.hull > 0)
-            {
-                *items.entry(u.item).or_insert(0i64) += 1;
-            }
-            BattleCounts {
-                owner: p.owner,
-                origin: p.origin,
-                side: p.side,
-                units: items.into_iter().collect(),
-            }
+        .zip(by_participant)
+        .map(|(participant, items)| BattleCounts {
+            owner: participant.owner,
+            origin: participant.origin,
+            side: participant.side,
+            units: items.into_iter().collect(),
         })
         .collect()
 }
-fn add_total(sum: &mut BigUint, n: impl Into<BigUint>) -> Result<(), InvariantError> {
-    *sum += n.into();
+fn add_total<T>(sum: &mut BigUint, n: T) -> Result<(), InvariantError>
+where
+    BigUint: std::ops::AddAssign<T>,
+{
+    *sum += n;
     if sum.bits() > 256 {
         Err(bad("combat total overflow"))
     } else {
@@ -399,47 +412,41 @@ pub fn resolve_battle<I: Copy + Ord, T>(
         .enumerate()
         .map(|(i, u)| (u.item, i))
         .collect();
-    let mut factors = vec![vec![1; indices.len()]; indices.len()];
+    let mut factors = vec![vec![BattleBound::new(1)?; indices.len()]; indices.len()];
     for pair in &r.rapid_fire {
-        factors[indices[&pair.shooter]][indices[&pair.target]] = pair.factor;
+        factors[indices[&pair.shooter]][indices[&pair.target]] = BattleBound::new(pair.factor)?;
     }
     let mut tentative = rng.clone();
     let mut draws = crate::random::BattleDraws::new(&mut tentative);
     let mut rounds = vec![];
     for number in 1..=r.max_rounds {
-        let attackers: Vec<_> = units
-            .iter()
-            .enumerate()
-            .filter(|(_, u)| p[u.participant].side == BattleSide::Attacker)
-            .map(|(i, _)| i)
-            .collect();
-        let defenders: Vec<_> = units
-            .iter()
-            .enumerate()
-            .filter(|(_, u)| p[u.participant].side == BattleSide::Defender)
-            .map(|(i, _)| i)
-            .collect();
-        if attackers.is_empty() || defenders.is_empty() {
+        // Units are expanded in side order and retain preserves that order.
+        // Both sides target their opponent's entire round-start range.
+        let split = units.partition_point(|u| p[u.participant].side == BattleSide::Attacker);
+        if split == 0 || split == units.len() {
             break;
         }
+        let attacker_bound = BattleBound::new(split as u64)?;
+        let defender_bound = BattleBound::new((units.len() - split) as u64)?;
         for u in &mut units {
             u.shield = u.shield_max;
         }
         let start = counts(&units, &p);
         let mut fire: Vec<FireCounters> = p.iter().map(|_| FireCounters::default()).collect();
         for shooter in 0..units.len() {
-            let targets = if p[units[shooter].participant].side == BattleSide::Attacker {
-                &defenders
+            let (target_start, bound) = if shooter < split {
+                (split, defender_bound)
             } else {
-                &attackers
+                (0, attacker_bound)
             };
             let attack = units[shooter].attack;
             let factors = &factors[units[shooter].rule_index];
             let counters = &mut fire[units[shooter].participant];
-            let mut shots = BigUint::default();
+            // Every extra shot consumes at least one byte of the 2^69-byte stream.
+            let mut shots = 0u128;
             loop {
-                let target = targets[draws.uniform_u64(targets.len() as u64)? as usize];
-                shots += 1u32;
+                let target = target_start + draws.draw(bound)? as usize;
+                shots += 1;
                 let u = &mut units[target];
                 if u.hull > 0 {
                     let hit =
@@ -454,11 +461,15 @@ pub fn resolve_battle<I: Copy + Ord, T>(
                     }
                 }
                 let factor = factors[u.rule_index];
-                if factor == 1 || draws.uniform_u64(factor)? == 0 {
+                if draws.draw(factor)? == 0 {
                     break;
                 }
             }
-            add_total(&mut counters.raw, &shots * attack)?;
+            if let Some(raw) = shots.checked_mul(attack) {
+                add_total(&mut counters.raw, raw)?;
+            } else {
+                add_total(&mut counters.raw, BigUint::from(shots) * attack)?;
+            }
             add_total(&mut counters.shots, shots)?;
         }
         units.retain(|u| u.hull > 0);

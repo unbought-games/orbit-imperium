@@ -62,10 +62,13 @@ impl RandomStream {
         Ok(())
     }
     fn block_bytes(&self) -> [u8; 32] {
-        let mut pre = [0; 14];
-        pre[..6].copy_from_slice(b"block\0");
-        pre[6..].copy_from_slice(&self.block.to_be_bytes());
-        mac(&self.key, &pre)
+        block_bytes(self.keyed_block_prefix(), self.block)
+    }
+    fn keyed_block_prefix(&self) -> Hmac<Sha256> {
+        let mut prefix =
+            Hmac::<Sha256>::new_from_slice(&self.key).expect("HMAC accepts all key lengths");
+        prefix.update(b"block\0");
+        prefix
     }
     pub fn read_byte(&mut self) -> Result<u8, InvariantError> {
         if self.offset >= 32 {
@@ -126,10 +129,39 @@ impl RandomStream {
     }
 }
 
+fn block_bytes(mut prefix: Hmac<Sha256>, block: u64) -> [u8; 32] {
+    prefix.update(&block.to_be_bytes());
+    prefix.finalize().into_bytes().into()
+}
+
+/// Precompute rejection sampling for bounds shared by many shots in a round.
+#[derive(Clone, Copy)]
+pub(crate) struct BattleBound {
+    n: u64,
+    bytes: u32,
+    last_accepted: u64,
+}
+
+impl BattleBound {
+    pub fn new(n: u64) -> Result<Self, InvariantError> {
+        if n == 0 {
+            return Err(InvariantError("invalid RNG bound".into()));
+        }
+        let bytes = (u64::BITS - (n - 1).leading_zeros()).div_ceil(8);
+        let range = 1u128 << (bytes * 8);
+        Ok(Self {
+            n,
+            bytes,
+            last_accepted: (range - range % u128::from(n) - 1) as u64,
+        })
+    }
+}
+
 /// A battle consumes millions of small draws. Keep one HMAC block on the stack
 /// for the duration of resolution. The stream cursor still counts consumed bytes.
 pub(crate) struct BattleDraws<'a> {
     stream: &'a mut RandomStream,
+    prefix: Hmac<Sha256>,
     loaded: Option<u64>,
     bytes: [u8; 32],
 }
@@ -137,27 +169,22 @@ pub(crate) struct BattleDraws<'a> {
 impl<'a> BattleDraws<'a> {
     pub fn new(stream: &'a mut RandomStream) -> Self {
         Self {
+            prefix: stream.keyed_block_prefix(),
             stream,
             loaded: None,
             bytes: [0; 32],
         }
     }
 
-    pub fn uniform_u64(&mut self, n: u64) -> Result<u64, InvariantError> {
-        if n == 0 {
-            return Err(InvariantError("invalid RNG bound".into()));
-        }
-        if n == 1 {
+    pub fn draw(&mut self, bound: BattleBound) -> Result<u64, InvariantError> {
+        if bound.n == 1 {
             return Ok(0);
         }
-        let count = (u64::BITS - (n - 1).leading_zeros()).div_ceil(8);
-        let range = 1u128 << (count * 8);
-        let limit = range - range % u128::from(n);
         loop {
             let mut value = 0u64;
-            for _ in 0..count {
+            for _ in 0..bound.bytes {
                 if self.loaded != Some(self.stream.block) {
-                    self.bytes = self.stream.block_bytes();
+                    self.bytes = block_bytes(self.prefix.clone(), self.stream.block);
                     self.loaded = Some(self.stream.block);
                 }
                 let byte = self
@@ -167,8 +194,8 @@ impl<'a> BattleDraws<'a> {
                 value = (value << 8) | u64::from(*byte);
                 self.stream.advance_byte()?;
             }
-            if u128::from(value) < limit {
-                return Ok(value % n);
+            if value <= bound.last_accepted {
+                return Ok(value % bound.n);
             }
         }
     }
@@ -178,7 +205,7 @@ impl<'a> BattleDraws<'a> {
             && a > 0
             && a < b
         {
-            return Ok(u128::from(self.uniform_u64(n)?) < a);
+            return Ok(u128::from(self.draw(BattleBound::new(n)?)?) < a);
         }
         self.stream.bernoulli(&BigUint::from(a), &BigUint::from(b))
     }
@@ -197,7 +224,10 @@ mod tests {
         let mut fast = BattleDraws::new(&mut stream);
         for _ in 0..32 {
             for bound in [1, 2, 128, 129, 256, 257, 1250, 32769, u64::MAX] {
-                assert_eq!(fast.uniform_u64(bound), reference.uniform_u64(bound));
+                assert_eq!(
+                    fast.draw(BattleBound::new(bound).unwrap()),
+                    reference.uniform_u64(bound)
+                );
                 assert_eq!(fast.stream.cursor(), reference.cursor());
             }
             let denominator = 1u128 << 80;

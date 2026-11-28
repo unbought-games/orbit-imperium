@@ -1,0 +1,10 @@
+{
+  "masterSha256": "021c9a16ae9dd961fd5488f74f7a07cd5667bd51edf2996f2707ed4918dfed9e",
+  "width": 1536,
+  "height": 1024,
+  "reference": [
+    "#888b9a",
+    "#d2ae8b"
+  ],
+  "backgroundAlphaFloor": 16
+}

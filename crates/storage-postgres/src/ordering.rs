@@ -230,20 +230,16 @@ impl PgStore {
                 .map_err(db_error)?
                 == "preparing";
         let mut envelope = envelope;
-        let inherited = if indexed {
-            let (command, scopes) = crate::scope_references::resolve_command(
-                &mut tx,
-                u,
-                envelope.epoch,
-                player,
-                envelope.command,
-            )
-            .await?;
-            envelope.command = command;
-            scopes
-        } else {
-            Default::default()
-        };
+        let (command, inherited) = crate::scope_references::resolve_command(
+            &mut tx,
+            u,
+            envelope.epoch,
+            player,
+            envelope.command,
+            indexed,
+        )
+        .await?;
+        envelope.command = command;
         let mut scopes = if indexed {
             crate::scoped_facts::select(
                 &mut tx,
@@ -345,6 +341,9 @@ impl PgStore {
                 .await
                 .map_err(db_error)?;
         }
+        // Every potentially blocking write is complete. An elapsed window rolls the
+        // transaction back, including bot charges, ordering, activity and delivery.
+        crate::command_window::check(&mut tx, envelope.command_id.0).await?;
         tx.commit().await.map_err(db_error)?;
         orbit_application::diagnostics::admitted(
             u,
@@ -364,16 +363,31 @@ impl PgStore {
         let Actor::Player(player) = actor else {
             return Err(StoreError::NotFound);
         };
-        let value = sqlx::query_scalar(
-            "SELECT receipt FROM commands WHERE universe=$1 AND actor=$2 AND command_id=$3",
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        // The native read has no supplied binding; scope it to the live membership and epoch.
+        let epoch: Uuid = sqlx::query_scalar(
+            "SELECT u.epoch FROM universes u JOIN universe_memberships m ON m.universe=u.id WHERE u.id=$1 AND m.player=$2",
         )
         .bind(u.0)
         .bind(player.0)
-        .bind(id.0)
-        .fetch_optional(self.read_pool()?)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(db_error)?
         .ok_or(StoreError::NotFound)?;
+        let value = sqlx::query_scalar(
+            "SELECT receipt FROM commands WHERE universe=$1 AND actor=$2 AND epoch=$3 AND command_id=$4",
+        )
+        .bind(u.0)
+        .bind(player.0)
+        .bind(epoch)
+        .bind(id.0)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_error)?;
+        let Some(value) = value else {
+            return Err(crate::command_window::missing(&mut tx, id.0).await);
+        };
+        tx.commit().await.map_err(db_error)?;
         decode(value)
     }
     pub async fn pending_barrier(&self, universe: UniverseId) -> Result<bool, StoreError> {

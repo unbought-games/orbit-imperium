@@ -147,12 +147,10 @@ pub struct BotStatus {
 /// its body inside admission; the client supplies only the gameplay envelope.
 pub fn machine_action(gameplay: CommandEnvelopeV4) -> Result<ForegroundAction, ServiceError> {
     gameplay.domain()?;
-    let mut bytes = *gameplay.command_id.0.as_bytes();
-    bytes[0] ^= 0x80;
     let presence = CommandEnvelopeV4 {
         protocol: 4,
         binding: gameplay.binding,
-        command_id: CommandId(uuid::Uuid::from_bytes(bytes)),
+        command_id: CommandId(crate::paired_presence_id(gameplay.command_id.0)),
         command: crate::CommandDto3::Progression(Command::World {
             action: orbit_engine::WorldAction::RecordForegroundPresence {
                 body: None,

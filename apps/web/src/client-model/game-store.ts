@@ -30,6 +30,7 @@ export type GameState = {
   reportInboxLoad: ReportLoad | null
   reportDetails: Map<string, ReportDetail>
   reportDetailLoads: Map<string, ReportLoad>
+  recoveredMutations: { social: number; alliance: number }
   mailbox: SocialMailbox | null
   reportHeaders: ReportHeaders
   attempts: AttemptLedger
@@ -62,6 +63,7 @@ export function createGameStore() {
     reportInboxLoad: null,
     reportDetails: new Map(),
     reportDetailLoads: new Map(),
+    recoveredMutations: { social: 0, alliance: 0 },
     mailbox: null,
     reportHeaders: new Map(),
     attempts: new Map(),

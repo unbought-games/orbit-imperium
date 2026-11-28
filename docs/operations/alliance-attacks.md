@@ -51,7 +51,7 @@ attacker-only recipients receive ContactLost; independent defender entitlement
 still permits a full report. Historical participant locations remain snapshots.
 Public report sharing excludes personal returns and private fleet identifiers.
 The simulator accepts separate allied fleets and technology assumptions on both
-sides, with its existing 2,000 combined-unit limit and independent randomness.
+sides, with its 20,000 combined-unit limit and independent randomness.
 
 ## Deployment and activation
 

@@ -1,0 +1,9 @@
+# Heavy Fighter
+
+Game ID `HeavyFighter`. Armored impulse assault raider, particularly effective against small transports.
+
+## Generation prompt
+
+Orbit Imperium, Orbit Base free fleet. Generate exactly ONE original game catalog beauty render of the specified subject, isolated on real transparent alpha. Landscape 3:2, fixed elevated front three-quarter view, bow towards viewer and lower left, stern upper right. Center entire silhouette with 8% clear margin at every edge, no cropping, no ground plane, no scenery or drop shadow. Strong readable silhouette at a 96px thumbnail. Premium photographed physical studio miniature, intentional broad planes, believable construction, restrained edge wear, maintained in everyday service. Classic, understated, imperial science fiction. Shared yard signatures: clipped panel corners, shallow recessed seams, satin ceramic-painted shell and dark inset working hardware. Clear neutral key light from upper left and ample soft fill; readable lower faces. Two independent player-dyeable finishes: primary satin muted powder-blue/slate painted surface, accent a few broad warm ochre-champagne painted panels, material boundaries follow part edges and bevels. Neither dye is bare metal. Keep windows, machinery, optics and specified exhaust physically separate, dark, fixed material. No insignia, logos, heraldry, text, markings, letters, UI, diagrams, borders, weapons firing, long exhaust trails or baked glows outside silhouette. Avoid tiny evenly distributed greebles or repeating stripes. Scale cues appropriate to this particular hull.
+
+Subject: HeavyFighter. Squared-off bulldog assault craft, blunt short cockpit pod recessed BETWEEN two projecting armored cheek nacelles, broad clipped stub wings, visibly thick transverse armored shoulders; low blue impulse apertures aft. Compact, muscular, wider than long, distinctive twin-prong bow. Accent armored nacelle caps.

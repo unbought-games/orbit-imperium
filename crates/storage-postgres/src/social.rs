@@ -113,10 +113,17 @@ impl PgStore {
         let mut tx = self.begin_tx(self.admission_pool()?).await?;
         lock(&mut tx, b).await?;
         let hash = orbit_engine::hash(&serde_json::json!({"binding":b,"action":q.action})).0;
-        if let Some(row)=sqlx::query("SELECT intent_hash,result FROM social_command_receipts WHERE universe=$1 AND epoch=$2 AND account=$3 AND player=$4 AND command_id=$5")
-            .bind(b.universe.0).bind(b.epoch.0).bind(b.account.0).bind(b.player.0).bind(q.command_id).fetch_optional(&mut *tx).await.map_err(db_error)? {
-            if row.try_get::<String,_>("intent_hash").map_err(db_error)?!=hash {return Err(StoreError::Conflict)}
-            return Ok(row.try_get::<sqlx::types::Json<SocialCommandResult>,_>("result").map_err(db_error)?.0);
+        let existing=sqlx::query("SELECT intent_hash,result FROM social_command_receipts WHERE universe=$1 AND epoch=$2 AND account=$3 AND player=$4 AND command_id=$5")
+            .bind(b.universe.0).bind(b.epoch.0).bind(b.account.0).bind(b.player.0).bind(q.command_id).fetch_optional(&mut *tx).await.map_err(db_error)?;
+        crate::command_window::check(&mut tx, q.command_id).await?;
+        if let Some(row) = existing {
+            if row.try_get::<String, _>("intent_hash").map_err(db_error)? != hash {
+                return Err(StoreError::Conflict);
+            }
+            return Ok(row
+                .try_get::<sqlx::types::Json<SocialCommandResult>, _>("result")
+                .map_err(db_error)?
+                .0);
         }
         crate::bots::charge(&mut tx, b, "social", q.command_id, true).await?;
         let at = now(&mut tx).await?;
@@ -137,6 +144,7 @@ impl PgStore {
             .execute(&mut *tx)
             .await
             .map_err(db_error)?;
+        crate::command_window::check(&mut tx, q.command_id).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(result)
     }

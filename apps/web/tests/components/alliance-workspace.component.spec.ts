@@ -300,3 +300,25 @@ test('alliance discovery keeps the targeted application after refusal and return
     })
   expect(commands[0].command_id).not.toBe(commands[1].command_id)
 })
+
+test('saved join recovery refreshes the mounted alliance workspace', async ({page}) => {
+  await page.goto('/?scenario=alliance-workspace&mode=recover-join')
+  await expect(page.locator('html')).toHaveAttribute('data-component-ready', 'alliance-workspace')
+  await expect(page.getByRole('heading', {name:'You’re not in an alliance yet.'})).toBeVisible()
+  await page.evaluate(() => window.recoverAllianceWorkspace())
+  await expect(page.getByRole('heading', {name:'Starlight Assembly',exact:true})).toBeVisible()
+  const commands = await page.evaluate(() => window.allianceWorkspaceCommands)
+  expect(commands).toHaveLength(2)
+  expect(commands[1]).toEqual(commands[0])
+})
+
+test('saved join recovery updates the mounted arrival invitation', async ({page}) => {
+  await page.route(`**/api/v4/universes/${id(3)}/alliances/${id(800)}`, route => route.fulfill({json:{summary:{id:id(800),universe:id(3),name:'Starlight Assembly',tag:'STAR',member_count:2,recruitment:'Open'},public_text:'Welcome explorers.'}}))
+  await page.goto('/?scenario=alliance-workspace&mode=recover-arrival')
+  await expect(page.locator('html')).toHaveAttribute('data-component-ready', 'alliance-workspace')
+  await expect(page.getByRole('button', {name:'Join STAR', exact:true})).toBeVisible()
+  await page.evaluate(() => window.recoverAllianceWorkspace())
+  await expect(page.getByText('You’re now part of Starlight Assembly.', {exact:false})).toBeVisible()
+  await expect(page.getByRole('button', {name:'Continue',exact:true})).toBeEnabled()
+  await expect(page.getByRole('button', {name:'Join STAR',exact:true})).toHaveCount(0)
+})

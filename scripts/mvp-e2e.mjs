@@ -1,3 +1,4 @@
+import { commandIdAt } from './fixtures/command-ids.mjs'
 import {assertStartupRefused} from './fixtures/startup.mjs';
 import {cleanupAll} from './fixtures/cleanup.mjs';
 import {reserveTestPort} from './fixtures/ports.mjs';
@@ -60,7 +61,7 @@ try {
  await start();
  const request={type:'Transport',origin,target,ships:[{owner:ab.player,ship_type:'SmallCargo',count:'2'}],cargo:{metal:'10000000',crystal:'0',deuterium:'0'},speed_percent:100};
  const quote=await(await post(a,'quotes',{context:ctx(ab),request})).json();assert.ok(quote.terms.duration>0);
- const command_id=randomUUID(),command={...request,type:'LaunchTransport',expected_terms_hash:quote.terms.terms_hash};
+ const command_id=commandIdAt(1_000_000),command={...request,type:'LaunchTransport',expected_terms_hash:quote.terms.terms_hash};
  const envelope={protocol:2,binding:ab,command_id,command};
  assert.equal((await post(b,'commands',envelope)).status,404);
  assert.equal((await post(a,'commands',envelope)).status,202);
@@ -90,7 +91,7 @@ try {
  assert.equal((await client.query('SELECT count(*) FROM fleets')).rows[0].count,'1');
  const settingsAfter=await(await post(a,'settings',ctx(ab))).json();assert.deepEqual({...settingsAfter,request_id:settings.request_id},settings);
  await client.query('UPDATE orbit_test_clock SET at_ms=at_ms+1000');
- const recall_id=randomUUID();assert.equal((await post(a,'commands',{protocol:2,binding:ab,command_id:recall_id,command:{type:'RecallFleet',fleet:old.fleets[0].id}})).status,202);
+ const recall_id=commandIdAt(1_001_000);assert.equal((await post(a,'commands',{protocol:2,binding:ab,command_id:recall_id,command:{type:'RecallFleet',fleet:old.fleets[0].id}})).status,202);
  const returning=await until(async()=>{const v=await view(a,ab);return v?.fleets[0]?.status==='Returning'&&v},'recall');
  await client.query('UPDATE orbit_test_clock SET at_ms=$1',[returning.fleets[0].due_at]);
  const returned=await until(async()=>{const v=await view(a,ab);return v?.fleets.length===0&&v},'return');

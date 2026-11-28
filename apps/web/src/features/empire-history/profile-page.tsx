@@ -6,6 +6,8 @@ import type { EmpireProfile } from '../../adapters/empire-history'
 import { useArchive } from '../../client-model/use-empire-history'
 import { universeSlug } from '../../client-model/universe-name'
 import { Button, ButtonLinkAnchor } from '../../ui/button'
+import { ErrorBannerMessage } from '../../ui/error-banner'
+import { ErrorDetails } from '../../ui/error-details'
 import { EmpireInsignia } from '../empire-insignia'
 import { SupporterIdentity } from '../supporter-identity'
 import { TimelineEntry } from './entry'
@@ -24,9 +26,11 @@ export function EmpireProfilePage({ player }: { player: string }) {
     session,
     loading,
     error,
+    errorDetails,
     busy,
     save,
     retry,
+    dismissReview,
   } = useArchive<EmpireProfile>(
     'EmpireProfile',
     `/api/v4/empire-profiles/${player}?${query}`,
@@ -46,16 +50,24 @@ export function EmpireProfilePage({ player }: { player: string }) {
         <a href="/profile">My Orbit profile</a>
       </nav>
       {error && (
-        <div className={styles.error} role="alert">
-          {error} <Button onClick={retry}>Refresh</Button>
-          {!session && (
-            <a
-              href={`/login?${new URLSearchParams({ redirect: `/profiles/empire/${player}` })}`}
-            >
-              Sign in
-            </a>
-          )}
-        </div>
+        <ErrorBannerMessage>
+          <div className={styles.error} role="alert">
+            {error} <Button onClick={retry}>Refresh</Button>
+            {dismissReview && (
+              <Button onClick={dismissReview} disabled={busy || loading}>
+                Dismiss saved edit
+              </Button>
+            )}
+            {!session && (
+              <a
+                href={`/login?${new URLSearchParams({ redirect: `/profiles/empire/${player}` })}`}
+              >
+                Sign in
+              </a>
+            )}
+            {errorDetails && <ErrorDetails report={errorDetails} />}
+          </div>
+        </ErrorBannerMessage>
       )}
       {!profile ? (
         <p role="status">

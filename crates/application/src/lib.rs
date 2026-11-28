@@ -49,11 +49,15 @@ mod scheduling;
 pub use scheduling::*;
 mod execution;
 pub use execution::*;
+mod command_window;
+pub use command_window::*;
 mod session;
 pub use ports::*;
 pub use session::*;
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
+    #[error(transparent)]
+    CommandTime(CommandTimeError),
     #[error("cosmetic access denied")]
     CosmeticDenied,
     #[error("session refresh in progress")]
@@ -95,6 +99,8 @@ pub enum StoreError {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum ServiceError {
+    #[error(transparent)]
+    CommandTime(CommandTimeError),
     #[error("session refresh in progress")]
     SessionRefreshing(u64),
     #[error(transparent)]
@@ -131,6 +137,7 @@ pub enum ServiceError {
 impl From<StoreError> for ServiceError {
     fn from(e: StoreError) -> Self {
         match e {
+            StoreError::CommandTime(e) => Self::CommandTime(e),
             StoreError::SessionRefreshing(ms) => Self::SessionRefreshing(ms),
             StoreError::GameRejected(e) => Self::GameRejected(e),
             StoreError::BotDenied(e) => Self::BotDenied(e),

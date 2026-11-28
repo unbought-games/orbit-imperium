@@ -71,7 +71,7 @@ async fn bound_foundation_identity_inventory_races_and_windows() {
     let e = CommandEnvelopeV2 {
         protocol: 2,
         binding: b,
-        command_id: CommandId(Uuid::new_v4()),
+        command_id: CommandId(command_id_at(1000)),
         command: CommandDto::StartUpgrade {
             body,
             building: Building::MetalMine,
@@ -93,7 +93,7 @@ async fn bound_foundation_identity_inventory_races_and_windows() {
         Err(ServiceError::Conflict)
     ));
     let mut second = e.clone();
-    second.command_id = CommandId(Uuid::new_v4());
+    second.command_id = CommandId(command_id_at(1000));
     service.bound_submit(p, second.clone()).await.unwrap();
     service.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
     service.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
@@ -131,7 +131,7 @@ async fn bound_foundation_identity_inventory_races_and_windows() {
     let cancel = CommandEnvelope {
         protocol: 2,
         epoch: b.epoch,
-        command_id: CommandId(Uuid::new_v4()),
+        command_id: CommandId(command_id_at(1000)),
         command: Command::CancelConstruction {
             operation: OperationId(Uuid::parse_str(&after.view.constructions[0].id).unwrap()),
         },

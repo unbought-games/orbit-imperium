@@ -1,3 +1,4 @@
+import { commandIdAt, pairedPresenceId } from './fixtures/command-ids.mjs'
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {randomUUID,randomBytes} from 'node:crypto';
@@ -64,7 +65,7 @@ try{
  if(!view.capabilities.some(c=>c.capability==='Attack'&&c.enabled))throw new Error('raids capability missing');
  const request={type:'Upgrade',body:view.bodies[0].id,building:'MetalMine'};
  const quote=await(await fetch(`${base}/api/v${protocol}/universes/${u}/quotes`,{method:'POST',headers,body:JSON.stringify({context:{binding:view.binding,request_id:randomUUID()},request})})).json();
- const id=randomUUID();const command={...request,type:'StartUpgrade',expected_terms_hash:quote.terms.terms_hash};const gameplay={command_id:id,binding:view.binding,protocol,command};const envelope={gameplay,presence:{protocol:4,binding:view.binding,command_id:randomUUID(),command:{type:'World',action:{type:'RecordForegroundPresence',body:view.bodies[0].id,cause:'GameplayGesture',paired_command_id:id}}}};const response=await fetch(`${base}/api/v${protocol}/universes/${u}/commands`,{method:'POST',headers,body:JSON.stringify(envelope)});if(response.status!==202)throw new Error('container admission failed');
+ const id=commandIdAt(Date.now());const command={...request,type:'StartUpgrade',expected_terms_hash:quote.terms.terms_hash};const gameplay={command_id:id,binding:view.binding,protocol,command};const envelope={gameplay,presence:{protocol:4,binding:view.binding,command_id:pairedPresenceId(id),command:{type:'World',action:{type:'RecordForegroundPresence',body:view.bodies[0].id,cause:'GameplayGesture',paired_command_id:id}}}};const response=await fetch(`${base}/api/v${protocol}/universes/${u}/commands`,{method:'POST',headers,body:JSON.stringify(envelope)});if(response.status!==202)throw new Error('container admission failed');
  run(['restart',name]);await ready();
  // A killed worker retains its 15-second fenced lease; allow that normal recovery window.
  let complete=false,last;for(let i=0;i<300;i++){const receipt=await(await fetch(`${base}/api/v${protocol}/universes/${u}/commands/${id}?epoch=${view.binding.epoch}`,{headers})).json();last=receipt;if(receipt.status==='Committed'){complete=true;break;}await new Promise(r=>setTimeout(r,100))}if(!complete)throw new Error(`container receipt missing after restart: ${last?.status??'unknown'} ${last?.code??''}`);

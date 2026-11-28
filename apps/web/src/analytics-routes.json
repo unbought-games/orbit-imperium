@@ -25,7 +25,6 @@
   "/u/:universe/alliance/discover",
   "/u/:universe/b/:body/alliance",
   "/u/:universe/b/:body/alliance/:item",
-  "/u/:universe/b/:body/alliance/:item/:section",
   "/u/:universe/b/:body/alliance/create",
   "/u/:universe/b/:body/alliance/discover",
   "/u/:universe/b/:body/briefing",

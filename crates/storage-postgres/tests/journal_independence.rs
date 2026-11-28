@@ -124,7 +124,7 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
                 .await
                 .unwrap();
             let envelope = CommandEnvelope {
-                command_id: Uuid::new_v4().into(),
+                command_id: orbit_application::command_id_at(1_000_000).into(),
                 epoch: view.epoch,
                 protocol: 2,
                 command: Command::StartUpgrade {
@@ -196,7 +196,7 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
             assert_eq!(effects(&pool).await, before);
             // Rejection is terminal and retains the exact original receipt.
             let rejected = CommandEnvelope {
-                command_id: Uuid::new_v4().into(),
+                command_id: orbit_application::command_id_at(1_000_000).into(),
                 command: Command::CancelConstruction {
                     operation: Uuid::new_v4().into(),
                 },
@@ -309,7 +309,7 @@ async fn immutable_terminal_rows_protect_retries_with_and_without_journal() {
                     .await
                     .unwrap();
                 let next = CommandEnvelope {
-                    command_id: Uuid::new_v4().into(),
+                    command_id: orbit_application::command_id_at(due + 16_000).into(),
                     command: Command::StartUpgrade {
                         body,
                         building: Building::MetalMine,

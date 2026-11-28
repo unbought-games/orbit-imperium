@@ -14,7 +14,7 @@ it('sends only the bound query context and simulation inputs to the universe sim
   const inputs: components['schemas']['SimulationInputs'] = {
     attacker: {
       technology: [9, 0, 0],
-      units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 2 }],
+      units: [{ item: { kind: 'Ship', id: 'LightFighter' }, count: 20_000 }],
     },
     defender: { technology: [4, 0, 0], units: [] },
   }
@@ -24,11 +24,11 @@ it('sends only the bound query context and simulation inputs to the universe sim
     loot_rules_enabled: true,
     samples: Array.from({ length: 10 }, () => ({
       outcome: 'AttackerVictory',
-      rounds: 1,
-      attacker: [],
+      rounds: 0,
+      attacker: inputs.attacker.units,
       defender: [],
       debris: { metal: '0', crystal: '0', deuterium: '0' },
-      surviving_cargo_capacity: '0',
+      surviving_cargo_capacity: '1000000000000',
       estimated_loot: null,
     })),
   }
@@ -42,6 +42,7 @@ it('sends only the bound query context and simulation inputs to the universe sim
     inputs,
   )
   expect(received.samples).toHaveLength(10)
+  expect(received.samples[0].attacker[0].count).toBe(20_000)
   expect(fetch).toHaveBeenCalledTimes(1)
   const [url, options] = fetch.mock.calls[0]
   expect(url).toBe(

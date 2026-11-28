@@ -125,6 +125,7 @@ impl AdmissionTimer {
         self.finish(match error {
             StoreError::RateLimited => AdmissionOutcome::RateLimited,
             StoreError::GameRejected(_)
+            | StoreError::CommandTime(_)
             | StoreError::Conflict
             | StoreError::EpochChanged
             | StoreError::UnsupportedProtocol

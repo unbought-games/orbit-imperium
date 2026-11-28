@@ -27,6 +27,19 @@ const problem3=ajv.compile({components:schema.components,$ref:'#/components/sche
 assert.ok(problem3({type:'about:blank',status:422,code:'GameRejected',game_code:'LabLocked'}));
 console.log('Protocol-3 route request bodies and typed rejection schemas verified.');
 
+// Only external submission identities are version-constrained. Existing receipts and
+// query/request IDs still represent historical UUIDs.
+const submissionId = ajv.compile(schema.components.schemas.CommandSubmissionId);
+assert.ok(submissionId('0000000f-4240-7123-8123-123456789abc'));
+assert.ok(submissionId(id), 'finite UUIDv4 writer bridge');
+assert.equal(submissionId('0000000f-4240-5123-8123-123456789abc'), false);
+for (const name of ['Problem', 'Problem3', 'Problem4']) {
+  const problem = ajv.compile({components:schema.components,$ref:`#/components/schemas/${name}`});
+  for (const [status, code] of [[409, 'COMMAND_EXPIRED'], [410, 'COMMAND_HISTORY_EXPIRED'], [400, 'COMMAND_IN_FUTURE'], [426, 'COMMAND_ID_UNSUPPORTED']]) {
+    assert.ok(problem({type:'about:blank', status, code}));
+  }
+}
+
 const ownMission=ajv.compile({components:schema.components,$ref:'#/components/schemas/OwnMission4'});
 const activeFleet={id,intent:{origin:id,destination:{type:'Body',id,expected_kind:'Planet',expected_owner:id},mission:'Transport',ships:[{owner:id,ship_type:'SmallCargo',count:'1'}],cargo:{metal:'0',crystal:'0',deuterium:'0'},speed_percent:100},origin:{galaxy:1,system:1,position:1},destination:{galaxy:1,system:1,position:2},leg:'Outbound',ships:[{ship_type:'SmallCargo',count:'1'}],cargo:{metal:'0',crystal:'0',deuterium:'0'},due_at:2000,launched_at:1000,duration_ms:1000,paid_fuel:'1000000',can_recall:true};
 assert.ok(ownMission(activeFleet));assert.ok(ownMission({...activeFleet,leg:'Returning',can_recall:false}));
