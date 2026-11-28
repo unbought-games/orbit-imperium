@@ -467,7 +467,6 @@ export function useDispatch({
     const id = await requests.submit(command, authorization, coordinates, {
       send: (command, quote, onRegistered) =>
         model.send(command, quote, onRegistered, { clickedAt, coordinates }),
-      closeReview: () => setQuote(null),
       submitted: setSubmitted,
     })
     if (!id) navigation?.open(authorization, coordinates)

@@ -474,7 +474,6 @@ it.each([false, true])(
       },
     }
     const submitted = vi.fn()
-    const closeReview = vi.fn()
     const send = vi.fn<
       import('./dispatch-requests').DispatchSubmitPorts['send']
     >(async (_, __, onRegistered) => {
@@ -486,7 +485,6 @@ it.each([false, true])(
     const pending = requests.submit(command, quote, coordinates, {
       send,
       submitted,
-      closeReview,
     })
     coordinates.position = 99
     expect(submitted).not.toHaveBeenCalled()
@@ -500,7 +498,6 @@ it.each([false, true])(
       quote,
       expect.any(Function),
     )
-    expect(closeReview).toHaveBeenCalledOnce()
     if (edited) requests.invalidate()
     held.resolve('new-order')
     await pending
@@ -542,7 +539,6 @@ it('a late registration from an earlier launch cannot replace a newer launch or 
           onRegistered!(key)
           return key
         },
-        closeReview: () => {},
         submitted,
       },
     )
@@ -589,7 +585,6 @@ it.each([false, true])(
     const pending = requests.submit(command, quote, at, {
       send: () => held.promise,
       submitted,
-      closeReview: () => {},
     })
     expect(submitted).not.toHaveBeenCalled()
     if (edited) requests.invalidate()
