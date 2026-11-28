@@ -5,13 +5,23 @@ import { test, expect } from './fixture'
 
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 
+function expectPulsingGradient(image: string) {
+  // Chromium omits the default downward direction when serializing a gradient.
+  expect(image).toMatch(
+    /^linear-gradient\(rgba?\([^)]+\), rgba\(0, 0, 0, 0\)\)$/,
+  )
+  expect(image).not.toMatch(/^linear-gradient\(rgba\([^)]+, 0\)/)
+}
+
 test('alliance pages retain a visible attack warning without the planet bar on desktop and mobile', async ({
   page,
   mount,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
   await mount('shell-alliance-threat')
   for (const [width, height] of [
     [1440, 1000],
+    [768, 900],
     [390, 844],
   ]) {
     await page.setViewportSize({ width, height })
@@ -31,10 +41,52 @@ test('alliance pages retain a visible attack warning without the planet bar on d
       warning.getByRole('link', { name: 'View movements' }),
     ).toHaveAttribute('href', /\/overview#fleet-movements$/)
     expect(await warning.boundingBox()).toMatchObject({ x: 0, width })
+    const edge = await warning.evaluate((element) => {
+      const pulse = getComputedStyle(element, '::after')
+      return {
+        animation: pulse.animationName,
+        image: pulse.backgroundImage,
+        height: parseFloat(pulse.height),
+        barHeight: element.clientHeight,
+      }
+    })
+    expectPulsingGradient(edge.image)
+    expect(edge.animation).toContain('hostile-pulse')
+    expect(edge.height).toBeGreaterThan(0)
+    expect(edge.height).toBeLessThan(edge.barHeight)
+    if (width === 768) {
+      const brand = page.getByRole('link', {
+        name: 'Orbit Imperium',
+        exact: true,
+      })
+      await expect(brand).toBeInViewport({ ratio: 1 })
+      await brand.click({ trial: true })
+      await warning
+        .getByRole('link', { name: 'View movements' })
+        .click({ trial: true })
+      const brandBounds = (await brand.boundingBox())!
+      const textBounds = (await warning
+        .getByText('Incoming attack')
+        .boundingBox())!
+      expect(brandBounds.x + brandBounds.width).toBeLessThanOrEqual(
+        textBounds.x,
+      )
+    }
     await diagnosticScreenshot(page, {
       path: `test-results/alliance-threat-${width}x${height}.png`,
     })
   }
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect
+    .poll(() =>
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Incoming attack' })
+        .evaluate(
+          (element) => getComputedStyle(element, '::after').animationName,
+        ),
+    )
+    .toBe('none')
 })
 
 test('mobile resource stock uses icons and compact balances with capacity details on tap', async ({
@@ -769,6 +821,7 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
       return {
         animation: style.animationName,
         duration: style.animationDuration,
+        image: style.backgroundImage,
         opacity: style.opacity,
       }
     })
@@ -783,8 +836,10 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
   ).toBe('none')
   for (const width of [320, 767, 768, 1440, 2560]) {
     await page.setViewportSize({ width, height: 844 })
-    expect((await overlay()).animation).toContain('hostile-pulse')
-    expect((await overlay()).duration).toBe('3.2s')
+    const pulse = await overlay()
+    expect(pulse.animation).toContain('hostile-pulse')
+    expect(pulse.duration).toBe('3.2s')
+    expectPulsingGradient(pulse.image)
     const geometry = await bar.evaluate((element) => {
       const top = element.getBoundingClientRect()
       const alert = element

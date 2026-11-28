@@ -462,3 +462,21 @@
     letter-spacing: 2px;
   }
 }
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header[data-warning='alliance'] .identity {
+    grid-area: world;
+    display: flex;
+    align-self: end;
+    justify-self: start;
+    margin-inline-start: var(--shell-edge);
+    min-height: var(--control-size);
+    padding: 0;
+    z-index: 1;
+  }
+  .header[data-warning='alliance'] .threatBar {
+    padding-inline-start: calc(
+      var(--shell-edge) + var(--brand-lane) + var(--space-2)
+    );
+  }
+}
