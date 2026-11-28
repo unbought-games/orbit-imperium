@@ -74,6 +74,27 @@ export class ProfileEditPending extends Error {
   }
 }
 
+export class ProfileEditNotSent extends Error {
+  readonly details: string
+  constructor(action: ProfileAction, cause: unknown) {
+    super(
+      'Your change was not sent because this browser could not save its retry record. Keep this page open, allow site storage or free some space, then save again.',
+    )
+    const condition =
+      cause instanceof DOMException &&
+      ['QuotaExceededError', 'SecurityError'].includes(cause.name)
+        ? cause.name
+        : 'Storage operation failed'
+    this.details = [
+      'Failure: PROFILE_RETRY_STORAGE_UNAVAILABLE',
+      'Operation: Save empire profile / persist retry record before POST',
+      `Action: ${action.type}`,
+      `Condition: ${condition}`,
+      'Outcome: New command was not sent; the edit remains on this page.',
+    ].join('\n')
+  }
+}
+
 function describeEdit(action: ProfileAction) {
   switch (action.type) {
     case 'Visibility':
@@ -236,6 +257,13 @@ export async function editProfile(
     expected_revision: profile.revision,
     action,
   }
-  pending.save('ProfileCommand', scope, envelope)
+  try {
+    pending.save('ProfileCommand', scope, envelope)
+  } catch (error) {
+    // An existing envelope may already have reached the server. Only a new
+    // command is known not to have been submitted when persistence fails.
+    if (!existing) throw new ProfileEditNotSent(action, error)
+    throw error
+  }
   await submitProfile(profile, account, csrf, envelope, !!existing)
 }
