@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { useRef, type ComponentPropsWithRef } from 'react'
+import { useRef, type ClipboardEvent, type ComponentPropsWithRef } from 'react'
 import { classes } from './classes'
 import styles from './form.module.css'
 export function Form({ className, ...props }: ComponentPropsWithRef<'form'>) {
@@ -38,19 +38,45 @@ export function InputAccessory({
   )
 }
 
+function pasteGroupedQuantity(event: ClipboardEvent<HTMLInputElement>) {
+  const input = event.currentTarget
+  const text = event.clipboardData.getData('text/plain')
+  if (!/^\d{1,3}(?:,\d{3})+$/.test(text)) return
+
+  // Use the native edit so selection, undo and the caller's input events
+  // behave the same as when the player types digits.
+  if (
+    input.ownerDocument.execCommand(
+      'insertText',
+      false,
+      text.replaceAll(',', ''),
+    )
+  )
+    event.preventDefault()
+}
+
 // Keep text selection and exact string values, with a numeric keyboard on mobile.
 export function NumberInput({
+  allowGroupedPaste = true,
+  onPaste,
   onFocus,
   onPointerDown,
   onClick,
   ...props
-}: Omit<ComponentPropsWithRef<'input'>, 'type'>) {
+}: Omit<ComponentPropsWithRef<'input'>, 'type'> & {
+  allowGroupedPaste?: boolean
+}) {
   const selectOnClick = useRef(false)
   return (
     <Input
       inputMode="numeric"
       {...props}
       type="text"
+      onPaste={(event) => {
+        onPaste?.(event)
+        if (allowGroupedPaste && !event.defaultPrevented)
+          pasteGroupedQuantity(event)
+      }}
       onFocus={(event) => {
         event.currentTarget.select()
         onFocus?.(event)

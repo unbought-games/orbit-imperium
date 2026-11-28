@@ -107,3 +107,28 @@ test.describe('scheduled completion date', () => {
     )
   })
 })
+
+test('pasting a grouped quantity replaces the selection and leaves the caret after the inserted digits', async ({
+  page,
+  context,
+  mount,
+}) => {
+  await mount('number-form')
+  await context.grantPermissions(['clipboard-write', 'clipboard-read'])
+  const input = page.getByRole('textbox', { name: 'Quantity' })
+  const paste = async (text: string) => {
+    await page.evaluate((value) => navigator.clipboard.writeText(value), text)
+    await input.press('ControlOrMeta+v')
+  }
+  await input.focus()
+  await paste('12,50')
+  await expect(input).toHaveValue('12,50')
+  await input.fill('456')
+  await input.press('ArrowLeft')
+  await input.press('Shift+ArrowLeft')
+  await paste('12,500')
+  await expect(input).toHaveValue('4125006')
+  await input.press('7')
+  await input.press('Enter')
+  await expect(page.getByLabel('Submitted quantity')).toHaveText('41250076')
+})
