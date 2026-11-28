@@ -36,7 +36,11 @@ export function useSocial(player: string | undefined) {
       }
     }
     const stop = watchIntelligenceScope(model.store, refresh)
-    const stopRecovery = watchRecoveredMutations(model.store, 'social', refresh)
+    const stopRecovery = watchRecoveredMutations(model.store, 'social', () => {
+      // Recovery can settle while a newer send is pending. Reads preserve its draft.
+      void controller.history('newer')
+      void controller.pollList()
+    })
     const timer = setInterval(refresh, 120_000)
     window.addEventListener('focus', refresh)
     return () => {

@@ -15,7 +15,8 @@ import { PlayerProfilesContext } from '../../src/shell/player-profiles-context'
 import { SessionContext } from '../../src/shell/session-context'
 import { ScreenContext } from '../../src/shell/screen-context'
 import { MessagesScreen } from '../../src/features/social/screen'
-import { readyFixture, id } from '../../src/test-support/bootstrap'
+import { PendingCommands } from '../../src/client-model/pending-commands'
+import { readyFixture, memoryStorage, id } from '../../src/test-support/bootstrap'
 import { body } from '../../src/test-support/empire'
 import { productionFixture } from '../../src/test-support/production'
 
@@ -58,8 +59,9 @@ async function prepare() {
   const unexpected = async (): Promise<never> => {
     throw Error('Unexpected Messages scene request')
   }
+  const recoveryMode = new URLSearchParams(location.search).has('recovery')
   const port: GamePort = {
-    currentBinding: unexpected,
+    currentBinding: async (_, request_id) => recoveryMode ? {...snapshot.candidate, request_id} : unexpected(),
     settings: unexpected,
     view: async (context) =>
       structuredClone({
@@ -125,21 +127,34 @@ async function prepare() {
         const receipt = req.action.message
         read = messages.findIndex((m) => m.id === receipt) + 1
       } else if (req.action.type === 'Hide') hidden = true
-      else return unexpected()
+      else if (recoveryMode && req.action.type === 'Send') {
+        if (commands.filter(c => c.type === 'Send').length === 1) throw {status: 503, code: 'Unavailable'}
+        messages.push({...message(messages.length + 1), sender: view.binding.player, body: req.action.body})
+      } else return unexpected()
       return { command_id: req.command_id, message: null }
     },
   }
-  const model = new Coordinator(port, {
+  const storage = memoryStorage()
+  const platform = {
+    pendingCommands: new PendingCommands(() => storage),
     newId: () => id(sequence++),
     monotonicNowMs: () => performance.now(),
     isOnline: () => true,
-  })
+  }
+  let model = new Coordinator(port, platform)
   await model.initialize(session, snapshot)
+  if (recoveryMode) {
+    try { await model.socialCommand({command_id: await model.newCommandId(), action: {type: 'Send', player: peer, body: 'Recovered message'}}) }
+    catch { /* The saved envelope survives reconstructing the coordinator. */ }
+    model = new Coordinator(port, platform)
+    await model.initialize(session, snapshot)
+  }
   return {
     model,
     view,
     requests,
     commands,
+    recover: () => model.poll(),
     async invalidate() {
       viewerRevision++
       await model.onUpdate({

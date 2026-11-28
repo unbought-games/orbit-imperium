@@ -15,7 +15,8 @@ import { ScreenContext } from '../../src/shell/screen-context'
 import { AuthContext } from '../../src/shell/auth-context'
 import { SessionContext } from '../../src/shell/session-context'
 import { useCommands } from '../../src/client-model/use-commands'
-import { readyFixture, id } from '../../src/test-support/bootstrap'
+import { PendingCommands } from '../../src/client-model/pending-commands'
+import { readyFixture, memoryStorage, id } from '../../src/test-support/bootstrap'
 import { body } from '../../src/test-support/empire'
 import { productionFixture } from '../../src/test-support/production'
 import { allianceMembershipFixture } from '../fixtures/alliance-membership'
@@ -32,7 +33,7 @@ const { alliance, applicant, member, summary, own } = allianceMembershipFixture(
 )
 const mode = new URLSearchParams(location.search).get('mode')
 const membership = own()
-let joined = !['join', 'apply', 'ordinary-apply', 'withdraw'].includes(
+let joined = !['join', 'apply', 'ordinary-apply', 'withdraw', 'recover-join'].includes(
   mode ?? '',
 )
 const applications: components['schemas']['AllianceApplication'][] = []
@@ -48,9 +49,12 @@ const unexpected = async (): Promise<never> => {
   throw Error('Unexpected alliance workspace operation')
 }
 const port: GamePort = {
-  currentBinding: unexpected,
+  currentBinding: async (universe, request_id) => {
+    if (universe !== view.binding.universe) return unexpected()
+    return {...snapshot.candidate, request_id}
+  },
   settings: unexpected,
-  view: unexpected,
+  view: async (context) => mode === 'recover-join' ? {...view, ...context} : unexpected(),
   quote: unexpected,
   submit: unexpected,
   receipt: unexpected,
@@ -86,7 +90,7 @@ const port: GamePort = {
   allianceCommand: async (context, request) => {
     const { action, command_id } = request
     const allowed =
-      mode === 'join'
+      mode === 'join' || mode === 'recover-join'
         ? ['Join']
         : mode === 'apply' || mode === 'ordinary-apply'
           ? ['Apply']
@@ -134,12 +138,21 @@ const port: GamePort = {
     return { command_id, alliance: joined ? alliance : null, revision: 1 }
   },
 }
-const model = new Coordinator(port, {
+const storage = memoryStorage()
+const platform = {
+  pendingCommands: new PendingCommands(() => storage),
   newId: () => crypto.randomUUID(),
-  monotonicNowMs: () => 0,
+  monotonicNowMs: () => performance.now(),
   isOnline: () => true,
-})
+}
+let model = new Coordinator(port, platform)
 await model.initialize(session, snapshot)
+if (mode === 'recover-join') {
+  try { await model.allianceCommand({command_id: await model.newCommandId(), expected_revision: null, action: {type: 'Join', alliance}}) }
+  catch { /* Preserve the saved request for the reconstructed coordinator. */ }
+  model = new Coordinator(port, platform)
+  await model.initialize(session, snapshot)
+}
 const profiles = new PlayerProfilesController(async (source) => {
   const players =
     source.type === 'Rankings'
@@ -178,6 +191,7 @@ const profiles = new PlayerProfilesController(async (source) => {
 })
 declare global {
   interface Window {
+    recoverAllianceWorkspace: () => Promise<void>
     allianceWorkspaceQueries: typeof queries
     allianceWorkspaceCommands: typeof commands
   }
@@ -192,6 +206,7 @@ function Surface() {
     logout: unexpected,
   }
   useEffect(() => {
+    window.recoverAllianceWorkspace = () => model.poll()
     window.allianceWorkspaceQueries = queries
     window.allianceWorkspaceCommands = commands
     const stop = profiles.start()

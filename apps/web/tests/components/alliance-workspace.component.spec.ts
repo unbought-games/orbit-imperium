@@ -300,3 +300,14 @@ test('alliance discovery keeps the targeted application after refusal and return
     })
   expect(commands[0].command_id).not.toBe(commands[1].command_id)
 })
+
+test('saved join recovery refreshes the mounted alliance workspace', async ({page}) => {
+  await page.goto('/?scenario=alliance-workspace&mode=recover-join')
+  await expect(page.locator('html')).toHaveAttribute('data-component-ready', 'alliance-workspace')
+  await expect(page.getByRole('heading', {name:'You’re not in an alliance yet.'})).toBeVisible()
+  await page.evaluate(() => window.recoverAllianceWorkspace())
+  await expect(page.getByRole('heading', {name:'Starlight Assembly',exact:true})).toBeVisible()
+  const commands = await page.evaluate(() => window.allianceWorkspaceCommands)
+  expect(commands).toHaveLength(2)
+  expect(commands[1]).toEqual(commands[0])
+})
