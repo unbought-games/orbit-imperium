@@ -426,6 +426,56 @@ async fn gameplay_activity_commits_once_without_remote_analytics_and_obeys_admis
             .await
             .unwrap();
     assert_eq!(account, login.session.account.0);
+    // A backfill reader owns the same input identity as live capture, even
+    // across source cleanup. Snapshot extraction and acknowledgement can overlap.
+    let mut extraction = pool.begin().await.unwrap();
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        .execute(&mut *extraction)
+        .await
+        .unwrap();
+    let acknowledged:Uuid=sqlx::query_scalar("SELECT c.input_id FROM commands c JOIN analytics_delivery d ON d.event_id=c.input_id WHERE c.universe=$1 AND c.input_id<>$2 LIMIT 1")
+        .bind(u.0).bind(claim.input.id.0).fetch_one(&mut *extraction).await.unwrap();
+    store
+        .acknowledge_analytics(acknowledged, "delivered", None)
+        .await
+        .unwrap();
+    store
+        .acknowledge_analytics(claim.input.id.0, "quarantined", Some("fixture"))
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE analytics_delivery SET acknowledged_at=to_timestamp(0) WHERE event_id=ANY($1)",
+    )
+    .bind(vec![acknowledged, claim.input.id.0])
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE command_admission_cutover SET legacy_until_ms=0")
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.set_test_time(9 * 86_400_000).await.unwrap();
+    store.prune_terminal_history().await.unwrap();
+    let identity: Uuid = sqlx::query_scalar(
+        "SELECT (payload->>'event_id')::uuid FROM analytics_delivery WHERE event_id=$1",
+    )
+    .bind(acknowledged)
+    .fetch_one(&mut *extraction)
+    .await
+    .unwrap();
+    assert_eq!(identity, acknowledged);
+    extraction.commit().await.unwrap();
+    sqlx::query("SELECT capture_committed_activity($1)")
+        .bind(acknowledged)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let retained: Vec<(String,i64)>=sqlx::query_as("SELECT state,count(*) FROM analytics_delivery WHERE payload#>>'{properties,world}'=$1 GROUP BY state ORDER BY state")
+        .bind(u.to_string()).fetch_all(&pool).await.unwrap();
+    assert_eq!(
+        retained,
+        vec![("pending".into(), 204), ("quarantined".into(), 1)]
+    );
     sqlx::query("DELETE FROM analytics_delivery WHERE event_id=$1")
         .bind(claim.input.id.0)
         .execute(&pool)

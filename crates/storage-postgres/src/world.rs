@@ -1248,15 +1248,11 @@ impl PgStore {
         // Keep the legacy declaration for old workers during a rolling upgrade.
         // Registration expands the actor's homeworld and tutorial scopes once.
         let presence_scopes = BTreeSet::from([ScopeKey::Player(b.player)]);
-        let inherited = if indexed {
-            let (command, scopes) =
-                crate::scope_references::resolve_command(&mut tx, b.universe, b.epoch, b.player, g)
-                    .await?;
-            g = command;
-            scopes
-        } else {
-            Default::default()
-        };
+        let (command, inherited) = crate::scope_references::resolve_command(
+            &mut tx, b.universe, b.epoch, b.player, g, indexed,
+        )
+        .await?;
+        g = command;
         let mut gameplay_scopes = if indexed {
             crate::scoped_facts::select(
                 &mut tx,

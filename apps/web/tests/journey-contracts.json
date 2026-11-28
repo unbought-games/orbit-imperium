@@ -966,5 +966,13 @@
       "unconfirmed profile save preserves the next draft at 390px"
     ],
     "risk": "The mounted identity editor must preserve a later unsaved draft while an earlier save is unconfirmed, through explicit conflict refresh and dismissal. No second save is sent while unresolved."
+  },
+  {
+    "file": "report-deletion.spec.ts",
+    "project": "",
+    "titlePath": [
+      "a reconnect reset reconciles a pending archive and resumes at the reset cursor"
+    ],
+    "risk": "A stream Reset must reconcile the original pending archive receipt, refresh the visible list and reconnect at the reset cursor without posting the order again."
   }
 ]

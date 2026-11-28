@@ -51,7 +51,7 @@ impl UpdateStore for PgStore {
         // Read the membership, epoch and recipient head in the same snapshot as
         // the page. An idle cursor needs no history or receipt lookup.
         let row = sqlx::query(
-            "SELECT u.epoch, m.player, COALESCE(h.position, 0::bigint) AS position
+            "SELECT u.epoch, m.player, COALESCE(h.position, 0::bigint) AS position, COALESCE(h.retired_through, 0::bigint) AS retired_through
              FROM universes u
              JOIN universe_memberships m ON m.universe=u.id AND m.account=$2
              LEFT JOIN game_update_heads h ON h.universe=u.id AND h.epoch=u.epoch AND h.player=m.player
@@ -70,9 +70,10 @@ impl UpdateStore for PgStore {
             return Err(StoreError::NotFound);
         }
         let head: i64 = row.try_get("position").map_err(db_error)?;
+        let retired_through: i64 = row.try_get("retired_through").map_err(db_error)?;
         let Some(after) = after
             .and_then(|value| position(b, value))
-            .filter(|value| *value <= head)
+            .filter(|value| (retired_through..=head).contains(value))
         else {
             return Ok(reset(b, head));
         };
@@ -82,16 +83,22 @@ impl UpdateStore for PgStore {
                 has_more: false,
             });
         }
-        let mut rows=sqlx::query("SELECT d.position,d.kind,d.minimum_revision,greatest(0,floor(extract(epoch FROM (clock_timestamp()-d.created_at))*1000000))::bigint AS delivery_us,c.receipt,c.input->>'protocol' AS protocol FROM game_updates d LEFT JOIN commands c ON d.kind='outcome' AND c.universe=d.universe AND c.epoch=d.epoch AND c.actor=d.player AND c.input_id=d.input_id WHERE d.universe=$1 AND d.epoch=$2 AND d.player=$3 AND d.position>$4 ORDER BY d.position LIMIT $5")
+        let mut rows=sqlx::query("SELECT d.position,d.kind,d.minimum_revision,(d.kind='outcome' AND c.input_id IS NULL) AS missing_receipt,greatest(0,floor(extract(epoch FROM (clock_timestamp()-d.created_at))*1000000))::bigint AS delivery_us,c.receipt,c.input->>'protocol' AS protocol FROM game_updates d LEFT JOIN commands c ON d.kind='outcome' AND c.universe=d.universe AND c.epoch=d.epoch AND c.actor=d.player AND c.input_id=d.input_id WHERE d.universe=$1 AND d.epoch=$2 AND d.player=$3 AND d.position>$4 ORDER BY d.position LIMIT $5")
             .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(after).bind(i64::from(limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
-        // Retention can remove the prefix of a stream while a client is away.
-        let first = rows
-            .first()
-            .map(|row| row.try_get::<i64, _>("position"))
-            .transpose()
-            .map_err(db_error)?;
-        if first != after.checked_add(1) {
+        // This also detects interior/tail holes left by pre-floor workers, and
+        // a missing outcome receipt. Validate before coalescing invalidations.
+        let expected = (head - after).min(i64::from(limit) + 1);
+        if rows.len() as i64 != expected {
             return Ok(reset(b, head));
+        }
+        for (offset, row) in rows.iter().enumerate() {
+            if row.try_get::<i64, _>("position").map_err(db_error)? != after + offset as i64 + 1
+                || row
+                    .try_get::<bool, _>("missing_receipt")
+                    .map_err(db_error)?
+            {
+                return Ok(reset(b, head));
+            }
         }
         let has_more = rows.len() > limit as usize;
         rows.truncate(limit as usize);
@@ -253,9 +260,50 @@ pub(crate) async fn append_configuration_updates(
     Ok(())
 }
 impl PgStore {
-    /// Retention does not affect receipts or idempotency. Readers detect a gap and reset.
+    /// Publish the greatest retired position and delete its delivery rows in
+    /// the same transaction. Readers take a repeatable-read snapshot of both.
     pub async fn prune_game_updates(&self) -> Result<u64, StoreError> {
-        Ok(sqlx::query("DELETE FROM game_updates WHERE ctid IN (SELECT ctid FROM game_updates WHERE created_at<clock_timestamp()-interval '7 days' ORDER BY created_at LIMIT 1000 FOR UPDATE SKIP LOCKED)")
-            .execute(self.worker_pool()?).await.map_err(db_error)?.rows_affected())
+        let mut tx = self.retention_transaction().await?;
+        let position = self.retention_positions.delivery();
+        type Sample = (
+            i64,
+            i64,
+            Option<String>,
+            Option<uuid::Uuid>,
+            Option<uuid::Uuid>,
+            Option<uuid::Uuid>,
+            Option<i64>,
+            i64,
+        );
+        let sample: Sample = sqlx::query_as(include_str!("retention/updates.sql"))
+            .bind(position.as_ref().map_or("-infinity", |p| p.stamp.as_str()))
+            .bind(position.as_ref().map_or(uuid::Uuid::nil(), |p| p.universe))
+            .bind(position.as_ref().map_or(uuid::Uuid::nil(), |p| p.epoch))
+            .bind(position.as_ref().map_or(uuid::Uuid::nil(), |p| p.player))
+            .bind(position.as_ref().map_or(0, |p| p.position))
+            .bind(position.as_ref().map(|p| p.sweep_at))
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db_error)?;
+        let next = match (&sample.2, sample.3, sample.4, sample.5, sample.6) {
+            (Some(stamp), Some(universe), Some(epoch), Some(player), Some(position)) => {
+                Some(crate::retention::DeliveryPosition {
+                    stamp: stamp.clone(),
+                    universe,
+                    epoch,
+                    player,
+                    position,
+                    sweep_at: sample.7,
+                })
+            }
+            (None, None, None, None, None) => None,
+            _ => return Err(StoreError::CorruptData),
+        };
+        tx.commit().await.map_err(db_error)?;
+        let limited = next.is_some();
+        self.retention_positions.completed_delivery(next);
+        self.observer
+            .retention(None, "delivery", (sample.0, sample.1), limited);
+        Ok(sample.0 as u64)
     }
 }

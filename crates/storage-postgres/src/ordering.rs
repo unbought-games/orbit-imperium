@@ -230,20 +230,16 @@ impl PgStore {
                 .map_err(db_error)?
                 == "preparing";
         let mut envelope = envelope;
-        let inherited = if indexed {
-            let (command, scopes) = crate::scope_references::resolve_command(
-                &mut tx,
-                u,
-                envelope.epoch,
-                player,
-                envelope.command,
-            )
-            .await?;
-            envelope.command = command;
-            scopes
-        } else {
-            Default::default()
-        };
+        let (command, inherited) = crate::scope_references::resolve_command(
+            &mut tx,
+            u,
+            envelope.epoch,
+            player,
+            envelope.command,
+            indexed,
+        )
+        .await?;
+        envelope.command = command;
         let mut scopes = if indexed {
             crate::scoped_facts::select(
                 &mut tx,

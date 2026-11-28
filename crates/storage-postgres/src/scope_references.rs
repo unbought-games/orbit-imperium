@@ -13,6 +13,7 @@ pub(crate) async fn resolve_command(
     epoch: Epoch,
     actor: PlayerId,
     command: Command,
+    indexed: bool,
 ) -> Result<(Command, BTreeSet<ScopeKey>), StoreError> {
     let (id, table) = match &command {
         Command::World {
@@ -79,6 +80,9 @@ pub(crate) async fn resolve_command(
         }
         _ => return Ok((command, BTreeSet::new())),
     };
+    if !indexed {
+        return Ok((resolved, BTreeSet::new()));
+    }
     let keys: Vec<String> = sqlx::query_scalar(
         "SELECT scope_key FROM input_scopes WHERE universe=$1 AND input_id=$2 ORDER BY scope_key",
     )
