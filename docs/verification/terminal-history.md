@@ -17,3 +17,11 @@ A separate PostgreSQL 16.10 rehearsal copied terminal command and event payloads
 A rollback-only DDL rehearsal on that populated fixture applied the migration 0053 statements against the pre-0053 column/index shape with a five-second statement timeout. Command and event counts, the v4 cutoff and both heap file identities were preserved. Every retained row got the full initial grace and all four new indexes were valid. Production upgrade rehearsal remains part of release selection.
 
 The real Accounts–Orbit–bot acceptance and the same-cutoff historical report reconciliation remain integration and deployment gates. Local tests used a dedicated disposable Compose database. No production SQL, backfill or cleanup was run.
+
+## November28 integration
+
+Integrated updated expiry work with current main, preserving shipped migrations0052–0056 and assigning incoming retention migration0058. The optimized membership/head query now includes the retired floor; history/receipt reads remain in the same repeatable-read transaction. Presence scopes expand once during registration, and dependent creator aliases still resolve in serial and scoped admission.
+
+The concurrent-reader regression blocks the delivery read after the combined head query establishes its snapshot. The historical partial-pair fixture explicitly marks pre-inline presence: current admissions now commit both halves together, so the old fixture incorrectly expected a partial pair from an ordinary step. The first failing run is retained; coverage still checks both-half protection, outcome pins, locks and rollback.
+
+Independent browser review identified optimistic-row and onConnect false positives. The stream case now archives from detail and requires receipt-driven return to the inbox; cursor and single-POST assertions remain. A deterministic coordinator test independently delivers Reset with no delivery/onConnect timers and asserts original receipt lookup, reconciled commitment and refreshed view. Disabling Reset recovery made that regression fail with zero receipt calls; the temporary fault was restored. Focused client100 tests and corrected browser case pass. Final independent source review is required before publishing this revision.

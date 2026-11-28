@@ -967,8 +967,12 @@ test('a reconnect reset reconciles a pending archive and resumes at the reset cu
     await withReportListResponse(page, () => page.reload())
     const rows = page.locator('main article')
     await expect(rows).toHaveCount(2)
-    await withFixtureResponse(page, r => r.url().endsWith('/commands'), () =>
-      rows.first().getByRole('button', {name: 'Archive report', exact: true}).click())
+    const report = fixture.headers[0].id
+    await withReportResponse(page, report, () =>
+      rows.first().getByRole('link', { name: 'Espionage', exact: true }).click())
+    await withFixtureResponse(page, matchesWorldAction('ArchiveReport'), () =>
+      page.getByRole('button', {name: 'Archive report', exact: true}).click())
+    await expect(page).toHaveURL(reportPath(report))
     expect(posted).toHaveLength(1)
     fixture.headers[0].hidden = true
     fixture.bumpRevision()
@@ -976,6 +980,8 @@ test('a reconnect reset reconciles a pending archive and resumes at the reset cu
     const resumed = page.waitForRequest(r => r.url().includes('/updates?epoch=') && r.headers()['last-event-id'] === cursor)
     await withFixtureResponse(page, r => new URL(r.url()).pathname.endsWith('/commands/' + posted[0]), async () => release())
     await resumed
+    // Detail returns only on a committed receipt, not the optimistic hidden row.
+    await expect(page).toHaveURL(reportPath())
     await expect(rows).toHaveCount(1)
     expect(posted).toHaveLength(1)
   } finally {

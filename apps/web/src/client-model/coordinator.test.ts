@@ -2223,3 +2223,41 @@ it.each(['Invalidate', 'Reset'] as const)(
     }
   },
 )
+
+it('a Reset alone reconciles the original pending receipt and refreshes without another POST', async () => {
+  const { c, port, sent } = setup()
+  await c.connect(binding.account, binding.universe)
+  const commandId = (await c.send({
+    type: 'CancelConstruction',
+    operation: id(50),
+  }))!
+  const key = attemptKey(binding, commandId)
+  expect(c.ledger.get(key)?.status).toBe('pending')
+  const lookup = vi.fn(
+    async (_: Binding, requested: string): Promise<BoundReceipt> => ({
+      protocol: 2,
+      binding,
+      command_id: requested,
+      admitted_at: 1000,
+      executed_at: 1000,
+      status: 'Committed',
+      result_ids: [],
+      minimum_viewer_revision: '2',
+    }),
+  )
+  port.receipt = lookup
+  port.view = async (context) => view(context.request_id, '2')
+  // No delivery coordinator or onConnect timer exists in this fixture.
+  await c.onUpdate({
+    binding,
+    cursor: 'retired-head',
+    event: { type: 'Reset' },
+  })
+  expect(lookup).toHaveBeenCalledExactlyOnceWith(binding, commandId)
+  expect(c.ledger.get(key)).toMatchObject({
+    status: 'committed',
+    reconciled: true,
+  })
+  expect(c.view?.viewer_revision).toBe('2')
+  expect(sent).toEqual([commandId])
+})

@@ -428,6 +428,12 @@ async fn whole_pair_lost_ack_old_machine_recovery_and_expiry_while_waiting_for_a
     ));
     // The pre-bridge high-bit presence identity still belongs to the stored
     // gameplay link. With a pending gameplay half even a retired presence is pinned.
+    // Model a pre-inline pair: current admissions complete both halves together.
+    sqlx::query("UPDATE commands SET inline_presence=false WHERE universe=$1")
+        .bind(u.0)
+        .execute(&pool)
+        .await
+        .unwrap();
     let worker = Uuid::new_v4().into();
     assert!(matches!(
         game.step(u, worker).await.unwrap(),
