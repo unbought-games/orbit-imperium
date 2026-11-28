@@ -56,15 +56,13 @@ async fn start_mine(store: &PgStore, binding: Binding) {
         })
         .await
         .unwrap();
-    for _ in 0..2 {
-        assert!(matches!(
-            GameService::new(store.clone())
-                .step(binding.universe, WorkerId(Uuid::new_v4()))
-                .await
-                .unwrap(),
-            StepOutcome::Committed { .. }
-        ));
-    }
+    assert!(matches!(
+        GameService::new(store.clone())
+            .step(binding.universe, WorkerId(Uuid::new_v4()))
+            .await
+            .unwrap(),
+        StepOutcome::Committed { .. }
+    ));
 }
 
 #[tokio::test]
@@ -91,7 +89,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             .await
             .unwrap();
     let plan = service.prepare_upgrade(universe).await.unwrap();
-    assert_eq!(plan.release, "0.16.0");
+    assert_eq!(plan.release, "0.19.0");
     assert!(
         before
             .rules
@@ -109,7 +107,8 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
             ResearchId::PlasmaTechnology,
             ResearchId::HyperspaceTechnology,
             ResearchId::HyperspaceDrive,
-            ResearchId::IntergalacticResearchNetwork
+            ResearchId::IntergalacticResearchNetwork,
+            ResearchId::GravitonTechnology,
         ]
     );
     assert_eq!(store.load_rules(universe).await.unwrap(), before.rules);
@@ -141,6 +140,7 @@ async fn standard_upgrade_retains_paid_work_and_identity_is_read_only_until_appl
     expected_research.insert(ResearchId::HyperspaceTechnology, 0);
     expected_research.insert(ResearchId::HyperspaceDrive, 0);
     expected_research.insert(ResearchId::IntergalacticResearchNetwork, 0);
+    expected_research.insert(ResearchId::GravitonTechnology, 0);
     assert_eq!(
         after.state.research[&binding.player].levels,
         expected_research

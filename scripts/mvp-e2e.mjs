@@ -3,7 +3,7 @@ import {assertStartupRefused} from './fixtures/startup.mjs';
 import {cleanupAll} from './fixtures/cleanup.mjs';
 import {reserveTestPort} from './fixtures/ports.mjs';
 // Disposable acceptance world only. Never targets a retained database.
-import {spawn,spawnSync,execFileSync} from 'node:child_process';
+import {spawn,execFileSync} from 'node:child_process';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {mkdirSync,readFileSync,writeFileSync,unlinkSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -80,9 +80,9 @@ try {
    'events',(SELECT jsonb_agg(to_jsonb(x) ORDER BY id) FROM scheduled_events x)
  ) state`)).rows[0].state;
  const beforeRefusal=await startupSnapshot();
- assertStartupRefused(spawnSync('target/debug/orbit',['serve'],{
-   env:{...env,ORBIT_SPEED:'1',ORBIT_BIND:'127.0.0.1:0'},encoding:'utf8',timeout:5000,killSignal:'SIGKILL',
- }));
+ await assertStartupRefused('target/debug/orbit',['serve'],{
+   ...env,ORBIT_SPEED:'1',ORBIT_BIND:'127.0.0.1:0',
+ },u);
  assert.deepEqual(await startupSnapshot(),beforeRefusal);
  await start();
  const restored=await view(a,ab);assert.deepEqual(restored.binding,ab);assert.equal(restored.fleets[0].due_at,old.fleets[0].due_at);

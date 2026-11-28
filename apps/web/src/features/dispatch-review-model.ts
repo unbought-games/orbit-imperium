@@ -1,3 +1,5 @@
+import { canonical } from '../client-model/commands'
+import { materialCargoChanges } from '../client-model/dispatch-cargo'
 import type { components } from '../contracts'
 import { coordinateText } from '../shell/location-address'
 import { shipManifest } from './mission-presentation'
@@ -60,6 +62,9 @@ export function dispatchSendLabel(
     return `${intent.mission} to ${destination.name} [${coordinateText(destination.coordinates)}]`
   if (intent.attack_group)
     return `Join attack with ${shipManifest(intent.ships)}`
+  const count = intent.ships.reduce((sum, ship) => sum + BigInt(ship.count), 0n)
+  if (intent.mission === 'DestroyMoon')
+    return `Attempt moon destruction with ${count} ${count === 1n ? 'ship' : 'ships'}`
   const verb = {
     Hold: 'Defend',
     Attack: 'Attack',
@@ -67,7 +72,6 @@ export function dispatchSendLabel(
     Harvest: 'Harvest',
     Colonize: 'Colonize',
   }[intent.mission]
-  const count = intent.ships.reduce((sum, ship) => sum + BigInt(ship.count), 0n)
   const manifest =
     intent.ships.length === 1 ? shipManifest(intent.ships) : `${count} ships`
   return `${verb} with ${manifest}`
@@ -90,6 +94,10 @@ export const missionReturn = {
     label: 'Return if surviving',
     note: 'Combat may destroy ships. Only surviving ships return.',
   },
+  DestroyMoon: {
+    label: 'Return if surviving',
+    note: 'Surviving ships return with their cargo and loot if the fleet escapes destruction.',
+  },
   Espionage: {
     label: 'Return if surviving',
     note: 'Espionage may enter combat. Only surviving ships return; espionage never loots.',
@@ -103,3 +111,30 @@ export const missionReturn = {
     note: 'Success consumes one Colony Ship. Escorts and extra Colony Ships return; a lone successful Colony Ship has no return leg. If colonization fails, the fleet returns.',
   },
 } satisfies Record<S['Mission4'], { label: string; note: string }>
+
+export function flightConditions(quote: S['FleetTerms4']) {
+  return {
+    ...quote,
+    terms_hash: undefined,
+    intent: { ...quote.intent, cargo: undefined },
+  }
+}
+
+export function reviewDifferences(
+  reviewed: S['FleetTerms4'],
+  latest: S['FleetTerms4'],
+) {
+  const resources = materialCargoChanges(
+    reviewed.intent.cargo,
+    latest.intent.cargo,
+  )
+  const flightChanged =
+    reviewed.terms_hash !== latest.terms_hash &&
+    canonical(flightConditions(reviewed)) !==
+      canonical(flightConditions(latest))
+  return {
+    resources,
+    flightChanged,
+    changed: !!resources.length || flightChanged,
+  }
+}

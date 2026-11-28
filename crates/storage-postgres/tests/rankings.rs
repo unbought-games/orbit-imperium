@@ -46,7 +46,7 @@ async fn request(
 }
 
 #[tokio::test]
-async fn rankings_use_committed_assets_and_current_memberships_with_bound_private_reads() {
+async fn rankings_use_committed_scores_and_current_memberships_with_bound_private_reads() {
     let url = std::env::var("TEST_DATABASE_URL").expect("use make _db-rankings");
     let store = PgStore::connect(&url).await.unwrap();
     store.migrate().await.unwrap();
@@ -226,25 +226,30 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
         .is_err()
     );
 
-    // Uncommitted valuation changes are invisible; later refresh sees the whole commit.
+    // Player reads never capture daily history. Only an explicit capture does.
+    assert!(
+        store
+            .ranking_snapshot_status()
+            .await
+            .unwrap()
+            .contains(&(universe, false))
+    );
+    let (first, second) = tokio::join!(
+        store.capture_ranking_snapshot(universe),
+        store.capture_ranking_snapshot(universe)
+    );
+    assert_ne!(first.unwrap(), second.unwrap());
+    assert!(
+        store
+            .ranking_snapshot_status()
+            .await
+            .unwrap()
+            .contains(&(universe, true))
+    );
+    // Uncommitted changes to the score are invisible to other readers.
     let mut tx = pool.begin().await.unwrap();
-    let lot = orbit_engine::AssetLot {
-        id: orbit_engine::OperationId(Uuid::new_v4()),
-        owner: binding.player,
-        item: orbit_engine::CatalogKey::Ship(orbit_engine::ShipType::SmallCargo),
-        level: None,
-        location: orbit_engine::AssetLocation::Player,
-        quantity: 2,
-        unit_value_micro: 3_000_000_000,
-        rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash.clone(),
-        source_operation: orbit_engine::OperationId(Uuid::new_v4()),
-        acquired_at: 2000,
-        acquired_sequence: 1,
-    };
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-        .bind(universe.0)
-        .bind(lot.id.to_string())
-        .bind(sqlx::types::Json(&lot))
+    sqlx::query("UPDATE players SET current_score_micro=6000000000 WHERE id=$1")
+        .bind(binding.player.0)
         .execute(&mut *tx)
         .await
         .unwrap();
@@ -307,12 +312,18 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
             .iter()
             .any(|p| p.player == other)
     );
-    // The first daily source observation is immutable despite later score and
-    // membership changes. All readers use yesterday's full roster, including
-    // departed players, to derive historical shared ranks.
+    // Already-published standings survive membership changes and same-day reruns.
+    assert!(!store.capture_ranking_snapshot(universe).await.unwrap());
     assert!(after.baseline_at.is_none());
     let day = 86_400_000;
     store.set_test_time(day + 500).await.unwrap();
+    assert!(
+        store
+            .ranking_snapshot_status()
+            .await
+            .unwrap()
+            .contains(&(universe, false))
+    );
     let (one, two) = tokio::join!(
         game.rankings(principal, context()),
         game.rankings(principal, context())
@@ -338,61 +349,71 @@ async fn rankings_use_committed_assets_and_current_memberships_with_bound_privat
         );
     }
     assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM ranking_observations WHERE universe=$1")
-            .bind(universe.0)
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        2
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM ranking_daily_snapshots WHERE universe=$1"
+        )
+        .bind(universe.0)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        1
     );
+    assert!(store.capture_ranking_snapshot(universe).await.unwrap());
     let retained: Value = sqlx::query_scalar(
-        "SELECT observation FROM ranking_observations WHERE universe=$1 AND day=0",
+        "SELECT standings FROM ranking_daily_snapshots WHERE universe=$1 AND day=0",
     )
     .bind(universe.0)
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert!(retained.get("lots").is_some());
-    assert!(retained.get("rank").is_none());
-    assert!(retained.get("points").is_none());
+    assert!(retained.get("lots").is_none());
     assert_eq!(
         retained["players"].as_array().unwrap().len(),
         accounts.len()
     );
-    store.set_test_time(2 * day + 500).await.unwrap();
+    assert!(
+        retained["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["rank"] == 1 && r["score_micro"] == 0)
+    );
+
+    // Days two and three are missed. The observed timestamp still identifies day one.
+    store.set_test_time(4 * day).await.unwrap();
     let next = game.rankings(principal, context()).await.unwrap();
     assert_eq!(next.baseline_at, Some(day + 500));
     assert!(next.players.iter().all(|p| p.previous_rank == Some(p.rank)));
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM ranking_observations WHERE universe=$1")
-            .bind(universe.0)
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        2
-    );
-    // A missed UTC day is explicitly unavailable, not an invented 24h delta.
-    store.set_test_time(4 * day).await.unwrap();
-    assert!(
-        game.rankings(principal, context())
-            .await
-            .unwrap()
-            .baseline_at
-            .is_none()
-    );
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM ranking_observations WHERE universe=$1")
-            .bind(universe.0)
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        1
-    );
+    assert!(store.capture_ranking_snapshot(universe).await.unwrap());
+    let days: Vec<i64> = sqlx::query_scalar(
+        "SELECT day FROM ranking_daily_snapshots WHERE universe=$1 ORDER BY day",
+    )
+    .bind(universe.0)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(days, [1, 4]);
+
+    // Never publish a partial leaderboard while the initial cache is filling.
+    sqlx::query("UPDATE players SET current_score_micro=NULL WHERE id=$1")
+        .bind(binding.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    store.set_test_time(5 * day).await.unwrap();
+    assert!(matches!(
+        game.rankings(principal, context()).await,
+        Err(ServiceError::Unavailable)
+    ));
+    assert!(matches!(
+        store.capture_ranking_snapshot(universe).await,
+        Err(StoreError::Unavailable)
+    ));
     pool.close().await;
 }
 
 #[tokio::test]
-async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_history() {
+async fn alliance_scores_capture_membership_and_value_together_and_keep_closing_ranks() {
     let url = std::env::var("TEST_DATABASE_URL").expect("use make _db-rankings");
     let store = PgStore::connect(&url).await.unwrap();
     store.migrate().await.unwrap();
@@ -442,27 +463,14 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
     for (index, player) in players.iter().take(3).enumerate() {
         sqlx::query("INSERT INTO alliance_memberships(universe,epoch,player,alliance,joined_at,roles) VALUES($1,$2,$3,$4,1000,'[]')")
             .bind(universe.0).bind(binding.epoch.0).bind(player).bind(if index < 2 { first } else { second }).execute(&pool).await.unwrap();
-        let lot = orbit_engine::AssetLot {
-            id: orbit_engine::OperationId(Uuid::new_v4()),
-            owner: PlayerId(*player),
-            item: orbit_engine::CatalogKey::Ship(orbit_engine::ShipType::SmallCargo),
-            level: None,
-            location: orbit_engine::AssetLocation::Player,
-            quantity: 1,
-            unit_value_micro: if index < 2 {
-                600_000_000
-            } else {
-                1_900_000_000
-            },
-            rules_hash: orbit_engine::Ruleset::mvp_fleets().unwrap().hash.clone(),
-            source_operation: orbit_engine::OperationId(Uuid::new_v4()),
-            acquired_at: 1000,
-            acquired_sequence: 1,
+        let value: i64 = if index < 2 {
+            600_000_000
+        } else {
+            1_900_000_000
         };
-        sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-            .bind(universe.0)
-            .bind(lot.id.to_string())
-            .bind(sqlx::types::Json(lot))
+        sqlx::query("UPDATE players SET current_score_micro=$2 WHERE id=$1")
+            .bind(player)
+            .bind(value)
             .execute(&pool)
             .await
             .unwrap();
@@ -536,6 +544,7 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
             .as_ref()
             .is_some_and(|a| a.id == first)
     );
+    assert!(store.capture_ranking_snapshot(universe).await.unwrap());
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("UPDATE alliance_memberships SET alliance=$1 WHERE universe=$2 AND player=$3")
         .bind(second)
@@ -545,8 +554,12 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
         .await
         .unwrap();
     // Both membership and assets remain at their old committed state until commit.
-    sqlx::query("UPDATE asset_lots SET data=jsonb_set(data,'{unit_value_micro}','3100000000') WHERE universe=$1 AND data->>'owner'=$2")
-        .bind(universe.0).bind(players[2].to_string()).execute(&mut *tx).await.unwrap();
+    sqlx::query("UPDATE players SET current_score_micro=3100000000 WHERE universe=$1 AND id=$2")
+        .bind(universe.0)
+        .bind(players[2])
+        .execute(&mut *tx)
+        .await
+        .unwrap();
     let during = game.rankings(principal, context()).await.unwrap();
     assert_eq!(
         serde_json::to_value(&before.alliances).unwrap(),
@@ -580,21 +593,16 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
             .all(|a| a.previous_rank == Some(1))
     );
     let source: Value = sqlx::query_scalar(
-        "SELECT observation FROM ranking_observations WHERE universe=$1 AND day=0",
+        "SELECT standings FROM ranking_daily_snapshots WHERE universe=$1 AND day=0",
     )
     .bind(universe.0)
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert_eq!(
-        source["alliances"][0]["members"].as_array().unwrap().len(),
-        2
-    );
-    assert_eq!(
-        source["alliances"][1]["members"].as_array().unwrap().len(),
-        1
-    );
-    assert!(source["alliances"][0].get("points").is_none());
+    assert_eq!(source["alliances"][0]["score_micro"], 1_200_000_000);
+    assert_eq!(source["alliances"][1]["score_micro"], 1_900_000_000);
+    assert_eq!(source["alliances"][0]["rank"], 1);
+    assert!(source["alliances"][0].get("members").is_none());
     // Disband removes live rows while yesterday still supplies its original rank.
     sqlx::query("DELETE FROM alliances WHERE id=$1")
         .bind(second)
@@ -613,13 +621,20 @@ async fn alliance_scores_capture_membership_and_assets_together_and_keep_source_
             .alliance
             .is_none()
     );
-    // An observation from before alliances were shipped cannot invent history.
-    sqlx::query("UPDATE ranking_observations SET observation=observation-'alliances' WHERE universe=$1 AND day=1")
-        .bind(universe.0).execute(&pool).await.unwrap();
-    store.set_test_time(2 * day + 500).await.unwrap();
-    let legacy = game.rankings(principal, context()).await.unwrap();
-    assert_eq!(legacy.baseline_at, Some(day + 500));
-    assert_eq!(legacy.alliance_baseline_at, None);
-    assert!(legacy.alliances.iter().all(|a| a.previous_rank.is_none()));
+    // The uninitialized score of a different current member suppresses ranking
+    // enrichment without denying the alliance's otherwise available summary.
+    sqlx::query("UPDATE players SET current_score_micro=NULL WHERE id=$1")
+        .bind(players[3])
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        game.public_alliance(universe, first)
+            .await
+            .unwrap()
+            .summary
+            .ranking
+            .is_none()
+    );
     pool.close().await;
 }

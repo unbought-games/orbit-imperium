@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
+import { watchIntelligenceScope } from '../command-hud/intelligence-refresh'
 import { SocialController } from '../../client-model/social'
 import { useGameSession } from '../../shell/session-context'
 export function useSocial(player: string | undefined) {
@@ -33,12 +34,14 @@ export function useSocial(player: string | undefined) {
         void controller.pollList()
       }
     }
-    const timer = setInterval(refresh, 5000)
+    const stop = watchIntelligenceScope(model.store, refresh)
+    const timer = setInterval(refresh, 120_000)
     window.addEventListener('focus', refresh)
     return () => {
+      stop()
       clearInterval(timer)
       window.removeEventListener('focus', refresh)
     }
-  }, [controller])
+  }, [controller, model])
   return { controller, state }
 }

@@ -82,6 +82,7 @@ pub(crate) fn resolve_fleet(
     i: &OrderedInput,
     r: &Ruleset,
     change: &mut ChangeSet,
+    format: TransitionFormat,
 ) -> Result<(), Fault> {
     match &i.payload {
         Input::Command(Command::LaunchTransport {
@@ -219,13 +220,15 @@ pub(crate) fn resolve_fleet(
                     fleet: fleet.id,
                     generation: original.generation,
                 });
-            change.reports.push(report(
-                i,
-                &fleet,
-                ReportKind::Recalled,
-                fleet.payload,
-                BTreeSet::from([fleet.owner]),
-            ));
+            if format == TransitionFormat::LegacyRecallReports {
+                change.reports.push(report(
+                    i,
+                    &fleet,
+                    ReportKind::Recalled,
+                    fleet.payload,
+                    BTreeSet::from([fleet.owner]),
+                ));
+            }
             if elapsed == 0 {
                 restore(s, i, r, &mut fleet, change)?
             } else {

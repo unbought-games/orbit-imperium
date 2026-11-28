@@ -128,17 +128,23 @@ pub(crate) async fn load(
         keys.push((format!("inventory:{owner}"), *id));
     }
     let mut collection_revisions = BTreeMap::new();
-    for (kind, key) in keys {
-        let revision: Option<i64> = sqlx::query_scalar(
-            "SELECT revision FROM collection_heads WHERE universe=$1 AND kind=$2 AND key=$3",
-        )
-        .bind(u.0)
-        .bind(&kind)
-        .bind(key)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(db_error)?;
-        let revision = revision
+    let (kinds, ids): (Vec<_>, Vec<_>) = keys.into_iter().unzip();
+    let rows = sqlx::query(
+        "SELECT k.kind,k.id,h.revision FROM unnest($2::text[], $3::uuid[]) AS k(kind,id)
+         LEFT JOIN collection_heads h ON h.universe=$1 AND h.kind=k.kind AND h.key=k.id",
+    )
+    .bind(u.0)
+    .bind(kinds)
+    .bind(ids)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?;
+    for row in rows {
+        let kind: String = row.try_get("kind").map_err(db_error)?;
+        let key: uuid::Uuid = row.try_get("id").map_err(db_error)?;
+        let revision = row
+            .try_get::<Option<i64>, _>("revision")
+            .map_err(db_error)?
             .filter(|x| *x >= 0)
             .ok_or(StoreError::CorruptData)?;
         let name = if let Some(owner) = kind.strip_prefix("inventory:") {

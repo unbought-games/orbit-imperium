@@ -19,6 +19,7 @@ import { ResourcesPage } from '../../src/features/progression/resources-page'
 import { TechnologyPage } from '../../src/features/progression/technology-page'
 import { Production } from '../../src/features/progression/production'
 import { catalogSlug } from '../../src/shell/catalog-routes'
+import { ErrorBannerProvider, ErrorBannerSlot } from '../../src/ui/error-banner'
 import { createResourceScene } from './resource-runtime'
 
 // Only external ports are controlled. Production components, subscriptions,
@@ -130,6 +131,13 @@ function PreparedControls({ production }: { production: boolean }) {
   const selection = useCatalogSelection()
   if (view.protocol === 2 || !body) throw Error('Prepared modern body required')
   const props = { coordinator: model, view, body, page: route.page, selection }
+  if (production && params.get('banner') === 'yes')
+    return (
+      <ErrorBannerProvider model={model}>
+        <ErrorBannerSlot model={model} />
+        <Production {...props} />
+      </ErrorBannerProvider>
+    )
   return production ? (
     <Production {...props} />
   ) : route.page === 'resources' ? (

@@ -45,7 +45,7 @@ and impact deadline; no invented ship/return/cargo fields or interception data.
 | --- | --- | --- |
 | Outbound Attack, Transport, Espionage, Hold | Expected return | Arrival |
 | Outbound Deploy | Hidden | Arrival |
-| Outbound Harvest, Colonize | Expected return | Hidden |
+| Outbound Harvest, Colonize, DestroyMoon | Expected return | Hidden |
 | Returning non-deploy | Committed return | Hidden |
 | Voluntarily recalled Deploy | Hidden | Hidden |
 | Invalid-target Deploy return | Committed return | Hidden |
@@ -64,10 +64,10 @@ while outbound/holding; returning uses the return deadline once.
 `phalanx_endpoints` resolves today's stable body bindings and preserves empty
 colonization destinations even if a colony later occupies the coordinate. Moons
 and debris never substitute their parents. Missing origin bindings fail explicitly.
-Future moon destruction must supply authoritative original/effective endpoints
-and fallback IDs to this interface. It must not change the return reason; a
-voluntarily recalled deployment remains hidden after home fallback. This increment
-does not implement destruction, abandonment redirects or any other lifecycle.
+Destruction redirects the operational home and eligible destinations to the bound
+parent. Signed launch terms preserve original endpoints. Projection reports both
+and retains the return reason, so recalled deployments remain hidden. A hostile
+wave bound to a destroyed moon has no target-side planetary observation.
 
 Before accepting a scan, part 2 must settle earlier ordered events, load complete
 relevant fleet/group/hold/missile membership and absence under stable snapshot
@@ -155,8 +155,9 @@ this activation contract without requiring new operational infrastructure.
 For journals produced before causal returns, explicitly select
 `replay_legacy_mission_transition` by producing release. It reproduces the old
 outcome shape without rewriting the saved facts or outcome. The older debris
-replay adapter also strips these newly recorded causes. Supplied current-format snapshots replay
-with ordinary `transition`. New continuous full snapshots are not generated;
+replay adapter also strips these newly recorded causes. For later snapshots that
+include causal returns but predate silent manual recalls, use
+`replay_with_recall_reports`. Current snapshots replay with ordinary `transition`. New continuous full snapshots are not generated;
 ordinary diagnostics cannot reconstruct missing facts. See [journal removal](../operations/journal-removal.md). No-op/rejected outcomes must remain absent rather
 than acquire synthetic world fields.
 
@@ -223,6 +224,6 @@ immutable report rendering and desktop/mobile visual validation. The backend
 activation path is usable now through normal custom-rules apply. Use the
 receipt's report ID directly; do not race an inbox refresh or turn route loading
 into a command. Retry uncertain delivery on the original ID; another observation
-is an explicit new paid action. Moon removal/fallback, jump gates, expeditions
-and sharing remain separate work. No production acceptance/deployment claim is
+is an explicit new paid action. See the [moon destruction guide](../operations/moon-destruction.md) for
+changes to effective endpoints after a moon is lost. No production acceptance/deployment claim is
 made by this increment.

@@ -960,6 +960,30 @@ test('quick build reserves competing rows and renders acknowledgment, countdown 
   })
   await expect(build).toBeEnabled()
   await expect(second).toBeEnabled()
+  const row = page.getByRole('link', {
+    name: 'Upgrade Solar Plant',
+    exact: true,
+  })
+  await expect(row).toHaveAccessibleDescription(
+    /Next level costs 60 Metal 15 Crystal/,
+  )
+  const title = row.getByText('Solar Plant', { exact: true })
+  const level = row.getByText('Lvl 1', { exact: true })
+  const metal = row.getByText('60', { exact: true })
+  const crystal = row.getByText('15', { exact: true })
+  for (const part of [title, level, metal, crystal])
+    await expect(part).toBeVisible()
+  // Read all rectangles together so a later layout cannot change the comparison.
+  const [nameBox, levelBox, metalBox, crystalBox] = await page.evaluate(
+    (parts) => parts.map((part) => part!.getBoundingClientRect().toJSON()),
+    await Promise.all(
+      [title, level, metal, crystal].map((part) => part.elementHandle()),
+    ),
+  )
+  expect(levelBox.left).toBeGreaterThanOrEqual(nameBox.right)
+  expect(levelBox.top).toBeLessThan(nameBox.bottom)
+  expect(metalBox.top).toBeGreaterThanOrEqual(nameBox.bottom)
+  expect(crystalBox.top).toBe(metalBox.top)
   await page.evaluate(
     ([one, two]) => {
       ;(one as HTMLElement).click()
@@ -972,16 +996,11 @@ test('quick build reserves competing rows and renders acknowledgment, countdown 
   await expect(
     page.getByRole('button', { name: 'Build Metal Mine', exact: true }),
   ).toBeDisabled()
-  const row = page.getByRole('link', {
-    name: 'Upgrade Solar Plant',
-    exact: true,
-  })
   const target = row.getByLabel('Target level 2')
-  await expect(target).toHaveText('Level 2')
+  await expect(row.getByText('Lvl 1', { exact: true })).toBeVisible()
+  await expect(target).toHaveText('Lvl 2')
   await expect(target).toHaveCSS('font-weight', '700')
-  await expect(row.getByLabel('Construction progress')).toContainText(
-    'Level 1 → Level 2',
-  )
+  await expect(row.getByLabel('Construction progress')).toContainText('→ Lvl 2')
   const titleBox = (await row
     .getByText('Solar Plant', { exact: true })
     .boundingBox())!

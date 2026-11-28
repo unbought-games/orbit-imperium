@@ -3567,3 +3567,6 @@ mod lunar_industry;
 
 #[path = "progression/research_network.rs"]
 mod research_network;
+
+#[path = "progression/graviton.rs"]
+mod graviton;

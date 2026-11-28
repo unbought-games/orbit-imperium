@@ -66,6 +66,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Ship(ShipType::Battlecruiser),
             CatalogKey::Ship(ShipType::Battleship),
             CatalogKey::Ship(ShipType::Destroyer),
+            CatalogKey::Ship(ShipType::Dreadnought),
             CatalogKey::Ship(ShipType::SolarSatellite),
             CatalogKey::Defense(DefenseId::HeavyLaser),
             CatalogKey::Defense(DefenseId::GaussCannon),
@@ -74,6 +75,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
             CatalogKey::Research(ResearchId::PlasmaTechnology),
             CatalogKey::Research(ResearchId::HyperspaceTechnology),
             CatalogKey::Research(ResearchId::IntergalacticResearchNetwork),
+            CatalogKey::Research(ResearchId::GravitonTechnology),
         ] {
             assert!(
                 next.artifact
@@ -84,6 +86,7 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
         }
         assert_eq!(next.artifact.ships[&ShipType::LargeCargo].capacity, 25000);
         assert!(next.colonization());
+        assert!(moon_destruction_enabled(&next));
         assert!(next.artifact.world.as_ref().unwrap().moons);
         for id in [
             Building::LunarBase,
@@ -106,13 +109,6 @@ fn fresh_worlds_and_every_supported_partial_release_reach_the_same_content() {
                 .unwrap()
                 .solar_satellite
                 .is_some()
-        );
-        assert!(
-            !next
-                .artifact
-                .catalog
-                .iter()
-                .any(|e| e.key == CatalogKey::Ship(ShipType::Dreadnought) && e.enabled)
         );
     }
 }

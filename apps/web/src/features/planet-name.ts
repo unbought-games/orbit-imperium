@@ -4,11 +4,11 @@ import type { Attempt } from '../client-model/commands'
 export const trimmedPlanetName = (name: string) =>
   name.replace(/^\p{White_Space}+|\p{White_Space}+$/gu, '')
 
-export function planetNameError(name: string): string {
+export function planetNameError(name: string, kind = 'Planet'): string {
   if (/\p{Cc}/u.test(name)) return 'Names cannot contain control characters.'
   const length = [...trimmedPlanetName(name)].length
   return length < 1 || length > 40
-    ? 'Use 1–40 characters for the planet name.'
+    ? `Use 1–40 characters for the ${kind.toLowerCase()} name.`
     : ''
 }
 

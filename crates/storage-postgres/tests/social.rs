@@ -323,6 +323,70 @@ async fn history_pages_retry_identity_privacy_and_retention() {
     assert!(count >= 105);
 }
 #[tokio::test]
+async fn message_wakes_both_participants_once_and_read_wakes_only_the_reader() {
+    let f = Fixture::new().await;
+    let mut cursors = Vec::new();
+    for b in &f.bindings {
+        let page = f.store.read_updates(*b, None, 64).await.unwrap();
+        cursors.push(page.items[0].cursor.clone().unwrap());
+    }
+    let order = f.social_request(
+        0,
+        SocialAction::Send {
+            player: f.bindings[1].player,
+            body: "A message".into(),
+        },
+    );
+    let message = f
+        .store
+        .social_command(order.clone())
+        .await
+        .unwrap()
+        .message
+        .unwrap();
+    f.store.social_command(order).await.unwrap();
+    for (i, b) in f.bindings.iter().enumerate() {
+        let page = f
+            .store
+            .read_updates(*b, Some(&cursors[i]), 64)
+            .await
+            .unwrap();
+        if i < 2 {
+            assert!(matches!(
+                page.items.as_slice(),
+                [GameUpdate {
+                    event: StreamEvent::Invalidate { .. },
+                    ..
+                }]
+            ));
+            // The page coalesces invalidations. Position verifies replay did not publish twice.
+            let after = page.items[0].cursor.clone().unwrap();
+            let position = |s: &str| s.rsplit(':').next().unwrap().parse::<i64>().unwrap();
+            assert_eq!(position(&after), position(&cursors[i]) + 1);
+            cursors[i] = after;
+        } else {
+            assert!(page.items.is_empty());
+        }
+    }
+    f.social(
+        1,
+        SocialAction::Read {
+            player: f.bindings[0].player,
+            message,
+        },
+    )
+    .await;
+    for (i, b) in f.bindings.iter().enumerate() {
+        let page = f
+            .store
+            .read_updates(*b, Some(&cursors[i]), 64)
+            .await
+            .unwrap();
+        assert_eq!(page.items.len(), usize::from(i == 1));
+    }
+}
+
+#[tokio::test]
 async fn read_hide_and_new_messages_are_recipient_local() {
     let f = Fixture::new().await;
     let a = f.send(0, 1, "first").await;

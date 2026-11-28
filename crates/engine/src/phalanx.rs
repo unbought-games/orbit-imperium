@@ -117,8 +117,7 @@ impl PhalanxEndpoint {
     }
 }
 /// Authoritative endpoint bindings supplied by the loader, not stored visibility.
-/// Currently original == effective. Future moon removal must explicitly supply
-/// fallback bindings without changing return_reason or rebinding by coordinates.
+/// Accepted terms preserve the original bindings when destruction redirects a flight.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PhalanxEndpoints {
@@ -128,7 +127,7 @@ pub struct PhalanxEndpoints {
     pub effective_destination: PhalanxEndpoint,
 }
 /// Resolve current bindings. Empty colonization slots never bind to later occupants.
-/// Missing bodies require a future lifecycle-aware loader, not a parent guess.
+/// The lookup uses the fleet’s current effective home.
 pub fn phalanx_endpoints(
     fleet: &MissionFleet,
     bodies: &BTreeMap<BodyId, Body>,
@@ -147,14 +146,42 @@ pub fn phalanx_endpoints_from_origin(
     if origin.body != Some(fleet.intent.origin) || origin.coordinates != fleet.origin_coordinates {
         return Err(InvariantError("phalanx origin identity mismatch".into()));
     }
-    let destination = match fleet.intent.destination {
+    let original_origin = if fleet.intent.origin == fleet.terms.intent.origin {
+        origin.clone()
+    } else {
+        // Only destruction can redirect an accepted home binding.
+        PhalanxEndpoint {
+            coordinates: fleet.origin_coordinates,
+            kind: PhalanxEndpointKind::Moon,
+            body: Some(fleet.terms.intent.origin),
+        }
+    };
+    Ok(PhalanxEndpoints {
+        original_origin,
+        effective_origin: origin,
+        original_destination: destination_endpoint(
+            &fleet.terms.intent.destination,
+            fleet.destination_coordinates,
+        )?,
+        effective_destination: destination_endpoint(
+            &fleet.intent.destination,
+            fleet.destination_coordinates,
+        )?,
+    })
+}
+
+fn destination_endpoint(
+    destination: &MissionDestination,
+    at: Coordinates,
+) -> Result<PhalanxEndpoint, InvariantError> {
+    Ok(match *destination {
         MissionDestination::Site { .. } => {
             return Err(InvariantError("private site is not scannable".into()));
         }
         MissionDestination::Body {
             id, expected_kind, ..
         } => PhalanxEndpoint {
-            coordinates: fleet.destination_coordinates,
+            coordinates: at,
             kind: match expected_kind {
                 BodyKind::Planet => PhalanxEndpointKind::Planet,
                 BodyKind::Moon => PhalanxEndpointKind::Moon,
@@ -171,12 +198,6 @@ pub fn phalanx_endpoints_from_origin(
             kind: PhalanxEndpointKind::EmptyPosition,
             body: None,
         },
-    };
-    Ok(PhalanxEndpoints {
-        original_origin: origin.clone(),
-        effective_origin: origin,
-        original_destination: destination.clone(),
-        effective_destination: destination,
     })
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -261,7 +282,10 @@ pub fn project_phalanx_fleet(
     }
     let origin = endpoints.effective_origin.planet(target);
     let destination = endpoints.effective_destination.planet(target)
-        && !matches!(f.intent.mission, Mission::Harvest | Mission::Colonize);
+        && !matches!(
+            f.intent.mission,
+            Mission::Harvest | Mission::Colonize | Mission::DestroyMoon
+        );
     let due = effective_fleet_due(world, f);
     let checked_deadline = |at, duration| {
         deadline(at, duration).map_err(|_| InvariantError("phalanx deadline overflow".into()))

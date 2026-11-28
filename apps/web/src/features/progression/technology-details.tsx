@@ -6,6 +6,9 @@ import {
 } from '../../ui/number-value'
 import { progressionCommand, technologyRequest } from './options'
 import { useId, type ReactNode } from 'react'
+import { InputWithAction, FillButton } from '../../ui/input-with-action'
+import { manufacturingOrderAvailable } from './manufacturing-order'
+import { maximumManufacturingQuantity } from './manufacturing-preview'
 import { SatelliteOutput } from './satellite-output'
 import { ManufacturingOrderSummary } from './manufacturing-order-summary'
 import { Network } from 'lucide-react'
@@ -133,6 +136,26 @@ export function TechnologyDetails({
           material.target_level,
         )
       : []
+  const supportsMax = entry.key.kind === 'Ship' || entry.key.kind === 'Defense'
+  const maximum =
+    supportsMax &&
+    !unavailable &&
+    manufacturingOrderAvailable(model, body.id, order.busy)
+      ? maximumManufacturingQuantity(proposal, body, view)
+      : 0n
+  const quantityField = (
+    <Field className={styles.quantity}>
+      <span className={styles.quantityLabel}>Qty</span>
+      <NumberInput
+        aria-label={`${orderTitle} quantity`}
+        aria-invalid={!!quantityError}
+        aria-describedby={quantityError ? quantityErrorId : undefined}
+        value={quantity}
+        onChange={(e) => onQuantity(e.target.value)}
+        required
+      />
+    </Field>
+  )
   return renderLayout({
     content: catalogContent(entry.key),
     back: props.selection.back,
@@ -233,7 +256,12 @@ export function TechnologyDetails({
               </div>
             )}
             {entry.key.kind === 'Ship' && entry.key.id === 'SolarSatellite' && (
-              <SatelliteOutput view={view} body={body} />
+              <SatelliteOutput
+                view={view}
+                body={body}
+                inventory={inventory}
+                quantity={order.preview?.terms.quantity}
+              />
             )}
             {manufacture && (
               <ManufacturingOrderSummary
@@ -262,13 +290,13 @@ export function TechnologyDetails({
                     {material.type === 'Research' &&
                       BigInt(material.required_energy) > 0n && (
                         <>
-                          <DetailRow label="Required energy">
+                          <DetailRow label="Gross energy required to start">
                             <ResourceQuantity
                               resource="energy"
                               value={material.required_energy}
                             />
                           </DetailRow>
-                          <DetailRow label="Available energy">
+                          <DetailRow label="This planet’s gross production">
                             <ResourceQuantity
                               resource="energy"
                               value={body.energy.supply}
@@ -291,12 +319,18 @@ export function TechnologyDetails({
                         ))}
                       </DetailRow>
                     )}
-                    <DecisionCosts
-                      title="Research cost"
-                      cost={material.paid}
-                      available={body.amounts}
-                      forecast={forecast!}
-                    />
+                    {material.paid.metal === '0' &&
+                    material.paid.crystal === '0' &&
+                    material.paid.deuterium === '0' ? (
+                      <DetailRow label="Research cost">No materials</DetailRow>
+                    ) : (
+                      <DecisionCosts
+                        title="Research cost"
+                        cost={material.paid}
+                        available={body.amounts}
+                        forecast={forecast!}
+                      />
+                    )}
                   </dl>
                   <ResearchLabs
                     labs={material.labs}
@@ -316,21 +350,19 @@ export function TechnologyDetails({
               className={manufacture ? styles.orderAction : undefined}
               data-order-layout={manufacture ? orderLayout : undefined}
             >
-              {manufacture && (
-                <Field className={styles.quantity}>
-                  <span className={styles.quantityLabel}>Qty</span>
-                  <NumberInput
-                    aria-label={`${orderTitle} quantity`}
-                    aria-invalid={!!quantityError}
-                    aria-describedby={
-                      quantityError ? quantityErrorId : undefined
-                    }
-                    value={quantity}
-                    onChange={(e) => onQuantity(e.target.value)}
-                    required
-                  />
-                </Field>
-              )}
+              {manufacture &&
+                (supportsMax ? (
+                  <InputWithAction>
+                    {quantityField}
+                    <FillButton
+                      aria-label={`Max ${title} quantity`}
+                      disabled={maximum === 0n}
+                      onClick={() => onQuantity(maximum.toString())}
+                    />
+                  </InputWithAction>
+                ) : (
+                  quantityField
+                ))}
               <Button
                 data-analytics="confirm_technology_action"
                 className={styles.action}

@@ -207,10 +207,17 @@ async fn bootstrap_signup_and_expiry_keep_auth_outcomes_distinct() {
         .await
         .unwrap()
         .universe;
+    let assets = std::env::temp_dir().join(format!("orbit-bootstrap-{}", Uuid::new_v4()));
+    std::fs::create_dir_all(&assets).unwrap();
+    std::fs::write(
+        assets.join("index.html"),
+        include_str!("../../../apps/web/index.html"),
+    )
+    .unwrap();
     let config = HttpConfig {
         account_url: None,
         origin: "https://game.test".into(),
-        assets: "missing".into(),
+        assets: assets.to_string_lossy().into_owned(),
         login_per_minute: 30,
         signup: Some(SignupPolicy {
             universe: u,
@@ -251,8 +258,84 @@ async fn bootstrap_signup_and_expiry_keep_auth_outcomes_distinct() {
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert_eq!(data["result"]["game"]["status"], "ready");
     assert_eq!(data["result"]["game"]["snapshot"]["view"]["protocol"], 4);
-    let pool = sqlx::PgPool::connect(&url).await.unwrap();
+    let snapshot = &data["result"]["game"]["snapshot"];
+    assert!(snapshot.get("tutorial").is_none(), "legacy JSON client");
     let account = Uuid::parse_str(data["result"]["session"]["account"].as_str().unwrap()).unwrap();
+    let first = store
+        .ensure_signup_universe(Some(Uuid::from_u128(1).into()), Default::default(), None)
+        .await
+        .unwrap();
+    store.enroll_oidc(account.into(), first).await.unwrap();
+    let slug = universe_route_key(
+        data["result"]["session"]["memberships"][0]["universe_name"]
+            .as_str()
+            .unwrap(),
+    );
+    let document = app
+        .clone()
+        .oneshot(
+            Request::get(format!("/u/{slug}/overview"))
+                .header("cookie", &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(document.status(), 200);
+    let html = String::from_utf8(
+        document
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .to_vec(),
+    )
+    .unwrap();
+    let json = html
+        .split("<script id=\"orbit-bootstrap\" type=\"application/json\">")
+        .nth(1)
+        .unwrap()
+        .split("</script>")
+        .next()
+        .unwrap();
+    let embedded: serde_json::Value = serde_json::from_str(json).unwrap();
+    assert_eq!(
+        embedded["result"]["session"]["memberships"][0]["universe"],
+        first.universe.0.to_string()
+    );
+    assert_eq!(
+        embedded["result"]["game"]["snapshot"]["view"]["binding"],
+        snapshot["view"]["binding"]
+    );
+    let tutorial = &embedded["result"]["game"]["snapshot"]["tutorial"];
+    assert_eq!(tutorial["beginner"], true);
+    assert_eq!(tutorial["homeworld"], snapshot["view"]["homeworld_id"]);
+    assert!(
+        tutorial["chapters"]
+            .as_array()
+            .is_some_and(|chapters| !chapters.is_empty())
+    );
+    let response = app
+        .clone()
+        .oneshot(
+            Request::get("/api/v1/bootstrap")
+                .header("cookie", &cookie)
+                .header("x-orbit-bootstrap-tutorial", "1")
+                .header("x-orbit-universe", &slug)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let modern: serde_json::Value =
+        serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(
+        modern["result"]["game"]["snapshot"]["tutorial"]["chapters"][0]["id"],
+        tutorial["chapters"][0]["id"]
+    );
+    std::fs::remove_dir_all(assets).unwrap();
+    let pool = sqlx::PgPool::connect(&url).await.unwrap();
     sqlx::query("DELETE FROM universe_memberships WHERE account=$1")
         .bind(account)
         .execute(&pool)

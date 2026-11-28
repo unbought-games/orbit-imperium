@@ -303,8 +303,7 @@ impl<S: GameStore> GameService<S> {
         u: UniverseId,
         protocol: i32,
     ) -> Result<(), ServiceError> {
-        self.store.current_binding(account, u).await?;
-        if self.store.load_rules(u).await?.protocol() != protocol {
+        if self.store.member_protocol(account, u).await? != protocol {
             return Err(ServiceError::UnsupportedProtocol);
         }
         Ok(())
@@ -401,9 +400,7 @@ impl<S: GameStore> GameService<S> {
         p: Principal,
         c: QueryContext,
     ) -> Result<ReadSnapshot<BoundView3>, ServiceError> {
-        Self::principal(p, c.binding)?;
-        self.store.bot_observe(c.binding).await?;
-        let facts = self.store.bound_view(c.binding).await?;
+        let facts = self.read_viewer_snapshot(p, c.binding).await?;
         if !facts.rules.progression() {
             return Err(ServiceError::UnsupportedProtocol);
         }

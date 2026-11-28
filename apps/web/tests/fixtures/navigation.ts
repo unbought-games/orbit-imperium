@@ -1,4 +1,13 @@
+import { routeTarget } from '../../src/shell/route-target'
 import { expect, type Page } from '@playwright/test'
+
+export function fixtureRoutePath(...args: Parameters<typeof routeTarget>) {
+  const target = routeTarget(...args)
+  return Object.entries(target.params).reduce(
+    (path, [key, value]) => path.replace('$' + key, encodeURIComponent(value)),
+    String(target.to),
+  )
+}
 
 async function leaveContextNavigation(page: Page) {
   const back = page

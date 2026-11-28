@@ -2,8 +2,30 @@ import type {
   SimulationField,
   SimulationInputs,
 } from './combat-simulation-model'
-import { simulationInputs } from './combat-simulation-model'
-export type SimulationAlly = { id: string; side: 'attacker' | 'defender' }
+import {
+  simulationInputs,
+  simulationUnitLimit,
+  simulationUnitLimitLabel,
+} from './combat-simulation-model'
+export type SimulationAlly = {
+  id: string
+  side: 'attacker' | 'defender'
+  slot: number
+}
+
+// Slots identify disclosure preferences across sessions. An ally keeps its slot
+// when another fleet leaves, while its unique draft ID keeps edits isolated.
+export function nextAllySlot(
+  allies: SimulationAlly[],
+  side: SimulationAlly['side'],
+) {
+  const taken = new Set(
+    allies.filter((ally) => ally.side === side).map((ally) => ally.slot),
+  )
+  let slot = 1
+  while (taken.has(slot)) slot++
+  return slot
+}
 export function allyFields(
   base: SimulationField[],
   ally: SimulationAlly,
@@ -51,11 +73,11 @@ export function withSimulationAllies(
   ]
   if (
     forces.reduce((n, f) => n + f.units.reduce((n, u) => n + u.count, 0), 0) >
-    2000
+    simulationUnitLimit
   )
     return {
       inputs: null,
-      error: 'Keep all fleets combined to 2,000 units or fewer.',
+      error: `Keep all fleets combined to ${simulationUnitLimitLabel} units or fewer.`,
     }
   return { inputs, error: null }
 }

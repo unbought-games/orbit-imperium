@@ -2,6 +2,7 @@ import { currentDispatchRead, startDispatchObservation } from './dispatch-reads'
 import { useEffect, useState } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
+import { hasHarvestableDebris } from '../client-model/galaxy-harvest'
 import type { LocationKind } from '../shell/location-address'
 import { destinationBody, ownedDestinationBodies } from './dispatch-destination'
 type S = components['schemas']
@@ -43,6 +44,7 @@ export function useDispatchDestination(
     }
   }, [model, key, galaxy, system, enabled, revision, mission])
   const currentRead = currentDispatchRead(model, enabled ? key : null, read)
+  const currentRevision = currentRead?.revision === revision
   const observation = currentRead?.observation
   const target = destinationBody(view, coordinates, kind, observation)
   const position =
@@ -52,10 +54,10 @@ export function useDispatchDestination(
         )
       : undefined
   const problem =
-    currentRead?.revision === revision && position
-      ? mission === 'Harvest' && !position.debris
+    currentRevision && observation
+      ? mission === 'Harvest' && !hasHarvestableDebris(position?.debris)
         ? 'There is no available debris field here. Choose a current debris field in Galaxy.'
-        : mission === 'Colonize' && position.body
+        : mission === 'Colonize' && position?.body
           ? 'This position is occupied. Choose an empty position.'
           : ''
       : ''
@@ -64,6 +66,8 @@ export function useDispatchDestination(
   return {
     target,
     observation,
+    currentDebris: currentRevision ? position?.debris : undefined,
+    observationSettled: currentRevision,
     problem,
     bodies,
     selectedBody,

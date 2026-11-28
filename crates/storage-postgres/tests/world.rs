@@ -201,11 +201,13 @@ async fn paired_presence_and_restart() -> RuntimeFixture {
         game.world_submit(p, pair.clone())
     );
     assert_eq!(a.unwrap().admitted_at, z.unwrap().admitted_at);
-    // Only presence executes before the process-equivalent adapter restart.
-    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+    // Both pending receipts survive a process-equivalent adapter restart.
     let reopened = PgStore::connect(&url).await.unwrap();
     let restored = GameService::new(reopened.clone());
-    restored.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+    assert!(matches!(
+        restored.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
+        StepOutcome::Committed { .. }
+    ));
     let receipt = restored
         .bound_receipt(p, b, pair.gameplay.command_id)
         .await
@@ -236,6 +238,52 @@ async fn paired_presence_and_restart() -> RuntimeFixture {
         world_facts(&final_state.state).unwrap().records.policies[&b.player].last_presence_at,
         604801000
     );
+    // An admitted pair retained from the previous binary still has two
+    // independently claimable commands. Exercise a restart between them.
+    let mut legacy = pair.clone();
+    legacy.gameplay.command_id = CommandId(Uuid::new_v4());
+    legacy.presence.command_id = CommandId(Uuid::new_v4());
+    let CommandDto3::Progression(Command::World {
+        action: WorldAction::RecordForegroundPresence {
+            paired_command_id, ..
+        },
+    }) = &mut legacy.presence.command
+    else {
+        unreachable!()
+    };
+    *paired_command_id = Some(legacy.gameplay.command_id);
+    restored.world_submit(p, legacy.clone()).await.unwrap();
+    sqlx::query("UPDATE commands SET inline_presence=false WHERE command_id=$1 AND actor=$2")
+        .bind(legacy.presence.command_id.0)
+        .bind(b.player.0)
+        .execute(&pool)
+        .await
+        .unwrap();
+    restored.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+    assert!(matches!(
+        restored
+            .bound_receipt(p, b, legacy.presence.command_id)
+            .await
+            .unwrap()
+            .status,
+        ReceiptStatus::Committed { .. }
+    ));
+    assert!(matches!(
+        restored
+            .bound_receipt(p, b, legacy.gameplay.command_id)
+            .await
+            .unwrap()
+            .status,
+        ReceiptStatus::Pending
+    ));
+    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+    assert!(matches!(
+        game.bound_receipt(p, b, legacy.gameplay.command_id)
+            .await
+            .unwrap()
+            .status,
+        ReceiptStatus::Rejected { .. }
+    ));
     let mut changed = pair;
     changed.gameplay.command_id = CommandId(Uuid::new_v4());
     assert!(restored.world_submit(p, changed).await.is_err());
@@ -260,9 +308,8 @@ async fn completed_assets_preserve_other_owners(fixture: &RuntimeFixture) -> i64
     let p = fixture.principal();
     let context = || fixture.context();
     // A local completion must never replace another owner's asset collection.
-    sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,'unrelated',$2)")
-        .bind(u.0)
-        .bind(serde_json::json!({"owner":outsider,"marker":"unrelated"}))
+    sqlx::query("UPDATE players SET current_score_micro=4321 WHERE id=$1")
+        .bind(outsider)
         .execute(&pool)
         .await
         .unwrap();
@@ -305,9 +352,7 @@ async fn completed_assets_preserve_other_owners(fixture: &RuntimeFixture) -> i64
         .world_submit(p, ForegroundAction { presence, gameplay })
         .await
         .unwrap();
-    for _ in 0..2 {
-        restored.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
-    }
+    restored.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
     let due: i64 = sqlx::query_scalar(
         "SELECT due_at FROM constructions WHERE universe=$1 AND owner=$2 AND status='Active'",
     )
@@ -321,18 +366,12 @@ async fn completed_assets_preserve_other_owners(fixture: &RuntimeFixture) -> i64
         restored.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
         StepOutcome::Committed { .. }
     ));
-    let retained: serde_json::Value =
-        sqlx::query_scalar("SELECT data FROM asset_lots WHERE universe=$1 AND key='unrelated'")
-            .bind(u.0)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(retained["marker"], "unrelated");
-    sqlx::query("DELETE FROM asset_lots WHERE universe=$1 AND key='unrelated'")
-        .bind(u.0)
-        .execute(&pool)
+    let retained: i64 = sqlx::query_scalar("SELECT current_score_micro FROM players WHERE id=$1")
+        .bind(outsider)
+        .fetch_one(&pool)
         .await
         .unwrap();
+    assert_eq!(retained, 4321);
     due
 }
 
@@ -1046,7 +1085,6 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
         .fetch_one(pool)
         .await
         .unwrap();
-    let rules = store.load_rules(u).await.unwrap();
     let target = store
         .bound_world(recipient)
         .await
@@ -1072,29 +1110,9 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
         .execute(pool)
         .await
         .unwrap();
-    let lot_id = OperationId(Uuid::new_v4());
-    let lot = AssetLot {
-        id: lot_id,
-        owner: sender.player,
-        item: CatalogKey::Ship(ShipType::SmallCargo),
-        level: None,
-        location: AssetLocation::Body(origin),
-        quantity: 1,
-        unit_value_micro: 4000 * SCALE,
-        rules_hash: rules.hash.clone(),
-        source_operation: lot_id,
-        acquired_at: at,
-        acquired_sequence: 1,
-    };
-    sqlx::query(
-        "INSERT INTO asset_lots(universe,key,data) VALUES($1,'scoped-transport-fixture',$2)",
-    )
-    .bind(u.0)
-    .bind(sqlx::types::Json(lot))
-    .execute(pool)
-    .await
-    .unwrap();
+
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin,
@@ -1151,7 +1169,24 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
             }),
         },
     };
-    let accepted = store.admit_scoped(pair).await.unwrap();
+    #[derive(Default)]
+    struct AllianceWait(std::sync::atomic::AtomicBool);
+    impl RuntimeObserver for AllianceWait {
+        fn duration(&self, stage: RuntimeStage, _: std::time::Duration) {
+            if matches!(stage, RuntimeStage::AdmissionAllianceWait) {
+                self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+        }
+        fn event(&self, _: RuntimeEvent) {}
+    }
+    let waits = std::sync::Arc::new(AllianceWait::default());
+    let accepted = store
+        .clone()
+        .with_observer(waits.clone())
+        .admit_scoped(pair)
+        .await
+        .unwrap();
+    assert!(!waits.0.load(std::sync::atomic::Ordering::Relaxed));
     let arrival = accepted.admitted_at + terms.duration_ms;
     store.set_test_time(arrival + 1).await.unwrap();
     store
@@ -1170,14 +1205,14 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
         .await
         .unwrap();
     let game = GameService::new(store.clone());
-    let presence = store
+    let launch = store
         .claim_scoped(u, WorkerId(Uuid::new_v4()))
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(presence.input.actor, Actor::Player(sender.player));
-    // The launch is not even claimed yet, but its declaration already prevents
-    // later recipient work from advancing past the arrival it will create.
+    assert_eq!(launch.input.actor, Actor::Player(sender.player));
+    // While the combined gesture and launch are claimed, the later recipient
+    // action cannot advance past the arrival this launch will schedule.
     assert!(
         store
             .claim_scoped(u, WorkerId(Uuid::new_v4()))
@@ -1185,25 +1220,24 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
             .unwrap()
             .is_none()
     );
-    assert!(matches!(
-        game.resolve_scoped_claim(presence, &InlineEngine)
-            .await
-            .unwrap(),
-        StepOutcome::Committed { .. }
-    ));
-    let launch = store
-        .claim_scoped(u, WorkerId(Uuid::new_v4()))
-        .await
-        .unwrap()
-        .unwrap();
     assert!(launch.scopes.contains(&ScopeKey::Player(recipient.player)));
+    // PostgreSQL creates a new row version even for a same-value UPDATE. Check
+    // the physical versions to catch a dispatch rewriting every building level.
+    let building_versions = || {
+        sqlx::query_as::<_, (String, String)>(
+            "SELECT building,xmin::text FROM building_levels WHERE body=$1 ORDER BY building",
+        )
+        .bind(origin.0)
+        .fetch_all(pool)
+    };
+    let levels_before = building_versions().await.unwrap();
+    assert!(!levels_before.is_empty());
     let fleet = FleetId(derived_id(launch.input.id, "mission:0"));
-    assert!(matches!(
-        game.resolve_scoped_claim(launch, &InlineEngine)
-            .await
-            .unwrap(),
-        StepOutcome::Committed { .. }
-    ));
+    Box::pin(publish_transport_during_lifecycle_admission(
+        store, pool, sender, recipient, launch,
+    ))
+    .await;
+    assert_eq!(building_versions().await.unwrap(), levels_before);
     let receipt = store.bound_receipt(sender, command_id).await.unwrap();
     assert!(
         matches!(receipt.status, ReceiptStatus::Committed { .. }),
@@ -1263,6 +1297,13 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
     game.resolve_scoped_claim(later, &InlineEngine)
         .await
         .unwrap();
+    // The sender's lifecycle order was admitted after this recipient visit.
+    assert!(matches!(
+        game.step_scoped(u, WorkerId(Uuid::new_v4()), &InlineEngine)
+            .await
+            .unwrap(),
+        StepOutcome::Committed { .. }
+    ));
     let return_at: i64 =
         sqlx::query_scalar("SELECT (data->>'due_at')::bigint FROM mission_fleets WHERE id=$1")
             .bind(fleet.0)
@@ -1296,6 +1337,89 @@ async fn scoped_transport_catches_up_before_later_recipient_work(
             .at_ms,
         arrival + 1,
         "a sender's private return must not advance the recipient's visible position"
+    );
+}
+
+// Pause a staged transport publication at its final scope fence, after it has
+// expanded any previously pending deletion checks. A concurrently admitted
+// lifecycle order must discover the transport's recipient after publication.
+async fn publish_transport_during_lifecycle_admission(
+    store: &PgStore,
+    pool: &sqlx::PgPool,
+    sender: Binding,
+    recipient: Binding,
+    launch: ScopedClaim,
+) {
+    async fn blocked_by(pool: &sqlx::PgPool, pid: i32) -> i32 {
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                let blocked: Option<i32> = sqlx::query_scalar(
+                    "SELECT pid FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)) LIMIT 1",
+                )
+                .bind(pid)
+                .fetch_optional(pool)
+                .await
+                .unwrap();
+                if let Some(blocked) = blocked {
+                    return blocked;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("expected the second transaction to reach its dependency lock")
+    }
+    let mut fence = pool.begin().await.unwrap();
+    let blocker: i32 = sqlx::query_scalar(
+        "SELECT pg_backend_pid() FROM execution_scopes WHERE universe=$1 AND key=$2 FOR NO KEY UPDATE",
+    ).bind(sender.universe.0).bind(serde_json::to_string(&ScopeKey::Player(recipient.player)).unwrap())
+        .fetch_one(&mut *fence).await.unwrap();
+    let writer = GameService::new(store.clone());
+    let running = tokio::spawn(async move {
+        orbit_storage_postgres::worker_observation::collect(
+            writer.resolve_scoped_claim(launch, &InlineEngine),
+        )
+        .await
+    });
+    let worker = blocked_by(pool, blocker).await;
+    let id = CommandId(Uuid::new_v4());
+    let envelope = |command_id, action| CommandEnvelopeV4 {
+        protocol: 4,
+        binding: sender,
+        command_id,
+        command: CommandDto3::Progression(Command::World { action }),
+    };
+    let pair = ForegroundAction {
+        gameplay: envelope(id, WorldAction::CancelEmpireDeletion),
+        presence: envelope(
+            CommandId(Uuid::new_v4()),
+            WorldAction::RecordForegroundPresence {
+                body: None,
+                cause: PresenceCause::GameplayGesture,
+                paired_command_id: Some(id),
+            },
+        ),
+    };
+    let admitting = store.clone();
+    let later = tokio::spawn(async move { admitting.admit_scoped(pair).await });
+    blocked_by(pool, worker).await;
+    fence.rollback().await.unwrap();
+    let (outcome, timings) = running.await.unwrap();
+    assert!(matches!(outcome.unwrap(), StepOutcome::Committed { .. }));
+    assert!(
+        timings
+            .duration(orbit_storage_postgres::worker_observation::Phase::AllianceWait)
+            .is_none()
+    );
+    later.await.unwrap().unwrap();
+    let includes_target: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM commands c JOIN input_scopes s ON s.input_id=c.input_id AND s.universe=c.universe
+         WHERE c.universe=$1 AND c.command_id=$2 AND s.scope_key=$3)",
+    ).bind(sender.universe.0).bind(id.0).bind(serde_json::to_string(&ScopeKey::Player(recipient.player)).unwrap())
+        .fetch_one(pool).await.unwrap();
+    assert!(
+        includes_target,
+        "lifecycle order must cover the new transport participant"
     );
 }
 
@@ -1403,6 +1527,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
         .find(|body| body.owner == b.player)
         .unwrap();
     let intent = FleetIntent {
+        cargo_fill: None,
         attack_group: None,
         hold_hours: None,
         origin: origin.id,
@@ -1529,9 +1654,7 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
         )
         .await
         .unwrap();
-        for _ in 0..2 {
-            game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
-        }
+        game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
         let receipt = game
             .bound_receipt(principal, b, gameplay.command_id)
             .await
@@ -1550,8 +1673,29 @@ async fn mission_leg_is_the_only_activity_authority_across_restart_and_recall() 
                 world_facts(&snapshot.state).unwrap().records.fleets[&fleet.id].leg,
                 MissionLeg::Returning
             );
+            let inbox = ReportsQuery4 {
+                context: QueryContext {
+                    binding: b,
+                    request_id: Uuid::new_v4(),
+                },
+                cursor: None,
+                kind: None,
+                limit: 100,
+                include_hidden: false,
+                filter: Default::default(),
+            };
+            let before_return = game.reports4(principal, inbox.clone()).await.unwrap();
+            assert!(before_return.data.items.is_empty());
+            assert_eq!(before_return.data.unread_count, 0);
+            assert!(!unread_reports(&game, b).await);
+
             store.set_test_time(2000).await.unwrap();
             game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
+            let after_return = game.reports4(principal, inbox).await.unwrap();
+            assert_eq!(after_return.data.items.len(), 1);
+            assert_eq!(after_return.data.items[0].kind, "Returned");
+            assert_eq!(after_return.data.unread_count, 1);
+            assert!(unread_reports(&game, b).await);
             let persisted: serde_json::Value =
                 sqlx::query_scalar("SELECT data FROM mission_fleets WHERE id=$1")
                     .bind(fleet.id.0)
@@ -1641,13 +1785,6 @@ async fn concurrent_report_preferences(
             })
             .await
             .unwrap();
-        let game = GameService::new(store.clone());
-        assert!(matches!(
-            game.step_scoped(a.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
-                .await
-                .unwrap(),
-            StepOutcome::Committed { .. }
-        ));
         let claim = store
             .claim_scoped(a.universe, WorkerId(Uuid::new_v4()))
             .await
@@ -1823,11 +1960,9 @@ async fn concurrent_report_preferences(
             })
             .await
             .unwrap();
-        for _ in 0..2 {
-            game.step_scoped(a.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
-                .await
-                .unwrap();
-        }
+        game.step_scoped(a.universe, WorkerId(Uuid::new_v4()), &InlineEngine)
+            .await
+            .unwrap();
         let principal = Principal {
             account: binding.account,
             player: binding.player,

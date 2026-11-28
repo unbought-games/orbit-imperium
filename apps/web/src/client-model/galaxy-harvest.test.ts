@@ -7,6 +7,8 @@ import {
   galaxyHarvest,
   harvestSuggestion,
   harvestCountError,
+  hasHarvestableDebris,
+  recyclerSuggestion,
   sendGalaxyHarvest,
 } from './galaxy-harvest'
 
@@ -83,7 +85,13 @@ function fixture(count = '5') {
     }
   })
   const send = vi.fn<Coordinator['send']>().mockResolvedValue(id(50))
-  return { store, world, send, view }
+  return {
+    store,
+    world,
+    send,
+    view,
+    dispatchClickTime: () => (world.mock.calls.length ? 500 : 10),
+  }
 }
 it('rounds up whole debris exactly and caps the suggestion by inventory', () => {
   expect(harvestSuggestion('20000', '0', '20000', '5')).toEqual({
@@ -126,6 +134,29 @@ it('derives the suggestion from the current selected planet and explains blocker
     galaxyHarvest(model.store.getState(), id(99), position).available,
   ).toBe('0')
 })
+it('sizes current deuterium-only debris from the origin’s Recycler stock', () => {
+  const { view } = fixture('2')
+  const { inventories } = view.bodies[0]
+  const debris = {
+    ...position.debris,
+    metal: '0',
+    crystal: '0',
+    deuterium: '40001',
+  }
+  expect(hasHarvestableDebris(debris)).toBe(true)
+  expect(recyclerSuggestion(view.catalog, inventories, debris)).toMatchObject({
+    needed: '3',
+    suggested: '2',
+  })
+  expect(recyclerSuggestion(view.catalog, [], debris).suggested).toBe('0')
+  for (const empty of [null, { ...debris, deuterium: '0' }]) {
+    expect(hasHarvestableDebris(empty)).toBe(false)
+    expect(recyclerSuggestion(view.catalog, inventories, empty).suggested).toBe(
+      '0',
+    )
+  }
+  expect(hasHarvestableDebris()).toBe(false)
+})
 it('rejects malformed, empty, zero and excessive edits without rounding', () => {
   for (const count of ['', '0', '-1', '1.5', '1e2', ' 2', '6'])
     expect(harvestCountError(count, '5')).not.toBeNull()
@@ -164,6 +195,7 @@ it('sends only recyclers, empty cargo and the exact debris identity after a fres
       },
     },
     expect.objectContaining({ terms_hash: 'b'.repeat(64) }),
+    { clickedAt: 10, coordinates: position.coordinates },
   )
 })
 it('rechecks ships and fleet slots after the asynchronous quote', async () => {

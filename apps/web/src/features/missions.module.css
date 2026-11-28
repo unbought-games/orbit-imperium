@@ -271,6 +271,12 @@
   box-shadow: none;
   padding: 0;
 }
+@media (max-width: 599px) {
+  /* Leave room for the floating command orb beside the confirmation. */
+  .review .sendFleet {
+    max-width: calc(100% - 88px);
+  }
+}
 .review .actions {
   justify-content: space-between;
 }
@@ -623,6 +629,9 @@
 .destinationPreview {
   margin-block: 8px;
 }
+.destinationPreview [data-salvage-unavailable] {
+  color: var(--danger);
+}
 .destinationWorld {
   width: 100%;
   height: 100%;
@@ -770,4 +779,16 @@
   color: var(--text-muted);
   margin-top: 0;
   font-size: inherit;
+}
+.lootFit small strong {
+  color: var(--text);
+}
+
+.reviewRisk {
+  padding: var(--space-3);
+  border-inline-start: 2px solid var(--warning);
+}
+
+.reviewRisk .reviewFacts > div {
+  grid-template-columns: minmax(0, 13rem) max-content;
 }

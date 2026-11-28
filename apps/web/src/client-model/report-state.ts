@@ -44,6 +44,7 @@ export function reportPreference(command: Command) {
   if (command.type !== 'World') return
   const action = command.action
   if (
+    action.type === 'ArchiveReport' ||
     action.type === 'SetReportHidden' ||
     action.type === 'SetReportsHidden' ||
     action.type === 'SetReportStarred' ||
@@ -80,9 +81,9 @@ export function acceptReportVisibility(
         ? { read: true }
         : action.type === 'SetReportStarred'
           ? { starred: action.starred }
-          : {
-              hidden: action.hidden,
-            }),
+          : action.type === 'ArchiveReport'
+            ? { hidden: true, shared: false }
+            : { hidden: action.hidden }),
     })
   }
   return updated.length
@@ -116,7 +117,7 @@ export function projectedReportHeader(
           BigInt(source.revision))
     ) {
       if (action.type === 'SetReportStarred') starred = action.starred
-      else hidden = action.hidden
+      else hidden = action.type === 'ArchiveReport' || action.hidden
     }
   }
   return hidden === source.header.hidden && starred === source.header.starred

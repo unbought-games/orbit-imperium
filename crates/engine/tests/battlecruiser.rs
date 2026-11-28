@@ -2,6 +2,9 @@ use orbit_engine::*;
 use uuid::Uuid;
 #[allow(dead_code)]
 mod common;
+#[allow(dead_code)]
+#[path = "common/prior_content.rs"]
+mod prior_content;
 
 const BATTLECRUISER: ManufacturedItem = ManufacturedItem::Ship(ShipType::Battlecruiser);
 fn rules() -> Ruleset {
@@ -140,7 +143,10 @@ fn battlecruiser_combat_derives_stats_and_applies_only_its_seven_rapid_fire_pair
             .filter(|rf| rf.target == BATTLECRUISER)
             .map(|rf| (rf.shooter, rf.factor))
             .collect::<Vec<_>>(),
-        vec![(ManufacturedItem::Ship(ShipType::Destroyer), 2)]
+        vec![
+            (ManufacturedItem::Ship(ShipType::Destroyer), 2),
+            (ManufacturedItem::Ship(ShipType::Dreadnought), 15)
+        ]
     );
 }
 
@@ -165,49 +171,10 @@ fn battlecruiser_manufacturing_charges_all_resources_but_times_only_metal_and_cr
 #[test]
 fn battlecruiser_upgrade_is_complete_idempotent_and_preserves_existing_world_data() {
     let latest = rules();
-    let mut previous = latest.artifact.clone();
-    let destroyer = ManufacturedItem::Ship(ShipType::Destroyer);
-    previous.ships.remove(&ShipType::Destroyer);
-    previous
-        .progression
-        .as_mut()
-        .unwrap()
-        .unit_costs
-        .retain(|u| u.item != destroyer);
-    let combat = &mut previous.world.as_mut().unwrap().combat;
-    combat.units.retain(|u| u.item != destroyer);
-    combat
-        .rapid_fire
-        .retain(|rf| rf.shooter != destroyer && rf.target != destroyer);
-    let entry = previous
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == destroyer.catalog_key())
-        .unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
-    entry.body_kinds = [BodyKind::Planet].into();
-
-    previous.ships.remove(&ShipType::Battlecruiser);
-    previous
-        .progression
-        .as_mut()
-        .unwrap()
-        .unit_costs
-        .retain(|u| u.item != BATTLECRUISER);
-    let combat = &mut previous.world.as_mut().unwrap().combat;
-    combat.units.retain(|u| u.item != BATTLECRUISER);
-    combat
-        .rapid_fire
-        .retain(|rf| rf.shooter != BATTLECRUISER && rf.target != BATTLECRUISER);
-    let entry = previous
-        .catalog
-        .iter_mut()
-        .find(|e| e.key == BATTLECRUISER.catalog_key())
-        .unwrap();
-    entry.enabled = false;
-    entry.requirements.clear();
-    entry.body_kinds = [BodyKind::Planet].into();
+    let previous = prior_content::without_ship(
+        prior_content::without_battlecruiser(latest.artifact.clone()),
+        ShipType::Destroyer,
+    );
     let previous = Ruleset::from_artifact(previous, latest.speed).unwrap();
     let next = upgrade_standard_rules(&previous).unwrap();
     assert_eq!(next, latest);

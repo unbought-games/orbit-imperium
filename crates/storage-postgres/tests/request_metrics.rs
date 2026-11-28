@@ -94,6 +94,10 @@ async fn admission_metrics_follow_durable_commit_not_response_success_or_retry()
     };
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
     sqlx::raw_sql("CREATE TABLE orbit_test_fault(stage text PRIMARY KEY,mode text NOT NULL,enabled boolean NOT NULL,seen bigint NOT NULL DEFAULT 0); INSERT INTO orbit_test_fault(stage,mode,enabled) VALUES('before_pair_admission','error',true)").execute(&pool).await.unwrap();
+    let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
+        .await
+        .unwrap();
+    listener.listen("orbit_work_ready").await.unwrap();
     let failed = new_pair();
     assert!(game.world_submit(actor, failed.clone()).await.is_err());
     assert!(matches!(
@@ -105,6 +109,13 @@ async fn admission_metrics_follow_durable_commit_not_response_success_or_retry()
         *recorder.0.lock().unwrap(),
         vec![(RequestAction::ShipOrder, false, AdmissionOutcome::Error)]
     );
+    // A later sentinel provides a finite, ordered boundary for the LISTEN
+    // assertions even when an implementation forgets to publish a wakeup.
+    sqlx::query("SELECT pg_notify('orbit_work_ready','after-rollback')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(listener.recv().await.unwrap().payload(), "after-rollback");
     // A response failure after the commit must remain a committed admission.
     sqlx::query("INSERT INTO orbit_test_fault(stage,mode,enabled) VALUES('after_pair_admission','error',true)").execute(&pool).await.unwrap();
     assert!(game.world_submit(actor, failed.clone()).await.is_err());
@@ -113,6 +124,13 @@ async fn admission_metrics_follow_durable_commit_not_response_success_or_retry()
             .await
             .is_ok()
     );
+    sqlx::query("SELECT pg_notify('orbit_work_ready','after-commit')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(listener.recv().await.unwrap().payload(), "");
+    assert_eq!(listener.recv().await.unwrap().payload(), "after-commit");
+    drop(listener);
     game.world_submit(actor, failed).await.unwrap();
     assert_eq!(
         *recorder.0.lock().unwrap(),

@@ -18,6 +18,7 @@ export function ActiveWorkCard({
   description,
   percent,
   progressLabel,
+  progressCycle,
   moving = true,
   progressAction,
   children,
@@ -29,6 +30,8 @@ export function ActiveWorkCard({
   description?: ReactNode
   percent: number | null
   progressLabel: string
+  /** Replace the fill when a new cycle starts so it cannot transition backward. */
+  progressCycle?: string
   moving?: boolean
   /** Compact control that ends the progress track, such as cancelling the work. */
   progressAction?: ReactNode
@@ -73,7 +76,7 @@ export function ActiveWorkCard({
               aria-valuemax={100}
               data-moving={moving && percent < 100 && percent > 0}
             >
-              <span style={{ width: `${percent}%` }} />
+              <span key={progressCycle} style={{ width: `${percent}%` }} />
             </div>
           )}
           {progressAction && (

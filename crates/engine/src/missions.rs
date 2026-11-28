@@ -290,7 +290,7 @@ pub fn quote_fleet(
     r: &Ruleset,
 ) -> Result<FleetTerms, GameError> {
     match quote_inner(s, owner, intent, at, r) {
-        Ok(q) => Ok(q),
+        Ok(q) => Ok(q.seal()),
         Err(Fault::Game(e)) => Err(e),
         Err(Fault::Invariant(_)) => Err(GameError::PolicyUnavailable),
     }
@@ -301,13 +301,13 @@ fn quote_inner(
     intent: &FleetIntent,
     at: Timestamp,
     r: &Ruleset,
-) -> Result<FleetTerms, Fault> {
+) -> Result<FleetTermsData, Fault> {
     let b = body(s, intent.origin, r)?;
     if b.owner != owner {
         return Err(GameError::NotOwned.into());
     }
     let w = world_facts(s)?;
-    validate_asset_lineage(s)?;
+    validate_completed_assets(s)?;
     if !s.coverage.inventory_owners.contains(&(b.id, owner))
         || !s.coverage.research_players.contains(&owner)
         || !w.covered_players.contains(&owner)
@@ -360,12 +360,27 @@ fn quote_inner(
             {
                 return Err(GameError::InsufficientShips.into());
             }
-            resources(
-                intent.cargo,
-                Resources::from_values([500 * SCALE, 500 * SCALE, 0]),
-                true,
-            )?;
         }
+        (
+            Mission::DestroyMoon,
+            MissionDestination::Body {
+                id,
+                expected_kind: BodyKind::Moon,
+                ..
+            },
+        ) => {
+            if !intent
+                .ships
+                .iter()
+                .any(|ship| ship.ship_type == ShipType::Dreadnought && ship.count > 0)
+            {
+                return Err(GameError::InsufficientShips.into());
+            }
+            if !w.records.moons.contains_key(id) {
+                return Err(invariant("missing destruction target genesis"));
+            }
+        }
+        (Mission::DestroyMoon, _) => return Err(GameError::BodyKindNotAllowed.into()),
         (Mission::Attack, MissionDestination::Site { .. }) => {}
         (Mission::Harvest, MissionDestination::Debris { .. })
             if intent
@@ -388,7 +403,12 @@ fn quote_inner(
         .get(&owner)
         .ok_or_else(|| invariant("missing research"))?;
     validate_research_catalog(research, r)?;
-    let mut q = fleet_terms(intent, b.coordinates, coords, research, r)?;
+    // Validate capacity against the fixed minimum before allocating variable cargo.
+    let mut manifest = intent.clone();
+    if let Some(fill) = &intent.cargo_fill {
+        manifest.cargo = fill.minimum;
+    }
+    let mut q = fleet_terms(&manifest, b.coordinates, coords, research, r)?;
     q.slot_limit = fleet_slot_limit(
         *research
             .levels
@@ -419,15 +439,26 @@ fn quote_inner(
             return Err(GameError::InsufficientShips.into());
         }
     }
+    let available = settle_production(s, b, at, r)?.amounts;
+    if let Some(fill) = &intent.cargo_fill {
+        q.intent.cargo = crate::fleet_cargo::load(fill, available, q.fuel, q.maximum_payload)?;
+    }
+    if intent.mission == Mission::Colonize {
+        resources(
+            q.intent.cargo,
+            Resources::from_values([500 * SCALE, 500 * SCALE, 0]),
+            true,
+        )?;
+    }
     let cost = resources(
-        intent.cargo,
+        q.intent.cargo,
         Resources {
             deuterium: q.fuel,
             ..Resources::default()
         },
         true,
     )?;
-    resources(settle_production(s, b, at, r)?.amounts, cost, false)?;
+    resources(available, cost, false)?;
     let arrival = deadline(at, q.duration_ms)?;
     let departure = match q.holding.as_ref().filter(|h| h.duration_ms > 0) {
         Some(h) => deadline(arrival, h.duration_ms)?,
@@ -435,7 +466,7 @@ fn quote_inner(
     };
     deadline(departure, q.duration_ms)?;
     q.group_revision = crate::attack_groups::validate_join(s, owner, intent, at, q.duration_ms, r)?;
-    Ok(q.seal())
+    Ok(q)
 }
 pub(crate) fn inventory(
     c: &mut ChangeSet,
@@ -496,6 +527,66 @@ fn credit(
     c.bodies.push(b);
     Ok(())
 }
+/// Policy and public body activity produced by one authenticated gesture.
+pub enum ForegroundActivity {
+    Recorded {
+        policy: PlayerPolicy,
+        activity: Option<BodyActivity>,
+    },
+    Rejected(GameError),
+}
+
+pub fn foreground_activity(
+    s: &GameState,
+    owner: PlayerId,
+    signal_body: Option<BodyId>,
+    id: InputId,
+    at: Timestamp,
+    rules: &Ruleset,
+) -> Result<ForegroundActivity, InvariantError> {
+    let records = &world_facts(s)?.records;
+    let mut policy = records
+        .policies
+        .get(&owner)
+        .ok_or_else(|| InvariantError("missing player policy".into()))?
+        .clone();
+    if policy.lifecycle == PlayerLifecycle::Removed {
+        return Ok(ForegroundActivity::Rejected(GameError::NotFound));
+    }
+    let mut activity = None;
+    if let Some(body) = signal_body {
+        if s.coverage.owned_body_players.contains(&owner)
+            && s.bodies.get(&body).is_none_or(|b| b.owner != owner)
+        {
+            return Ok(ForegroundActivity::Rejected(GameError::NotOwned));
+        }
+        let Some(b) = validate_body(s, body, rules)? else {
+            return Ok(ForegroundActivity::Rejected(GameError::NotFound));
+        };
+        if b.owner != owner {
+            return Ok(ForegroundActivity::Rejected(GameError::NotOwned));
+        }
+        if records
+            .activity
+            .get(&body)
+            .is_none_or(|prior| prior.last_signal_at <= at)
+        {
+            activity = Some(BodyActivity {
+                body,
+                last_signal_at: at,
+                cause: ActivityCause::Foreground,
+                input: id,
+            });
+        }
+    }
+    policy.last_presence_at = policy.last_presence_at.max(at);
+    let Some(revision) = policy.revision.checked_add(1) else {
+        return Ok(ForegroundActivity::Rejected(GameError::NumericRange));
+    };
+    policy.revision = revision;
+    Ok(ForegroundActivity::Recorded { policy, activity })
+}
+
 pub(crate) fn signal(w: &mut WorldRecords, id: BodyId, i: &OrderedInput, cause: ActivityCause) {
     if w.activity.get(&id).is_none_or(|a| a.last_signal_at <= i.at) {
         w.activity.insert(
@@ -617,7 +708,7 @@ fn terminal_return(
     credit(c, s, home.id, f.cargo, i.at, r)?;
     for x in &f.ships {
         inventory(c, s, home.id, f.owner, x.ship_type, x.count)?;
-        let lots = take_asset_lots(
+        let lots = take_asset_quantity(
             &mut w.lots,
             f.owner,
             item(x.ship_type),
@@ -645,7 +736,12 @@ fn terminal_return(
     }
     Ok(())
 }
-pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<ChangeSet, Fault> {
+pub(crate) fn resolve(
+    s: &GameState,
+    i: &OrderedInput,
+    r: &Ruleset,
+    format: TransitionFormat,
+) -> Result<ChangeSet, Fault> {
     if i.schema_version != 4
         || i.protocol != 4
         || s.universe != i.universe
@@ -672,8 +768,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
     {
         return crate::phalanx_command::resolve(s, i, r, *source_moon, *target_planet);
     }
+    let historical_prices = format != TransitionFormat::Current;
     let facts = world_facts(s)?;
-    validate_asset_lineage(s)?;
+    validate_completed_assets(s)?;
     let mut w = facts.records.clone();
     let mut c = ChangeSet::new(s, i, r);
     let mut audits = vec![];
@@ -748,6 +845,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 Command::World {
                     action: WorldAction::MarkReportRead { .. }
                         | WorldAction::MarkReportsRead { .. }
+                        | WorldAction::ArchiveReport { .. }
                         | WorldAction::SetReportHidden { .. }
                         | WorldAction::SetReportsHidden { .. }
                         | WorldAction::SetReportStarred { .. }
@@ -899,7 +997,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         Input::Command(Command::World {
             action: WorldAction::RenamePlanet { body, name },
         }) => {
-            let renamed = crate::planet_names::rename_planet(s, i.actor, *body, name)?;
+            let renamed = crate::planet_names::rename_body(s, i.actor, *body, name)?;
             c.affected_viewers.insert(renamed.owner);
             c.bodies.push(renamed);
         }
@@ -912,23 +1010,15 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             let Actor::Player(owner) = i.actor else {
                 return Err(invariant("presence actor"));
             };
-            if let Some(id) = signal_body {
-                // A complete owned-body collection proves this stale/foreign ID
-                // is not owned. It is a game rejection, not missing engine facts.
-                if s.coverage.owned_body_players.contains(&owner) && !s.bodies.contains_key(id) {
-                    return Err(GameError::NotOwned.into());
+            match foreground_activity(s, owner, *signal_body, i.id, i.at, r)? {
+                ForegroundActivity::Recorded { policy, activity } => {
+                    w.policies.insert(owner, policy);
+                    if let Some(activity) = activity {
+                        w.activity.insert(activity.body, activity);
+                    }
                 }
-                if body(s, *id, r)?.owner != owner {
-                    return Err(GameError::NotOwned.into());
-                }
-                signal(&mut w, *id, i, ActivityCause::Foreground);
+                ForegroundActivity::Rejected(error) => return Err(error.into()),
             }
-            let p = w
-                .policies
-                .get_mut(&owner)
-                .ok_or_else(|| invariant("missing player policy"))?;
-            p.last_presence_at = p.last_presence_at.max(i.at);
-            p.revision = p.revision.checked_add(1).ok_or(GameError::NumericRange)?;
             if let Some(link) = &facts.requested_pair {
                 if link.presence != i.id
                     || link.player != owner
@@ -955,9 +1045,8 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                 return Err(GameError::PresenceUnavailable.into());
             }
             let q = quote_inner(s, owner, intent, i.at, r)?;
-            if &q.terms_hash != expected_terms_hash {
-                return Err(GameError::QuoteChanged.into());
-            }
+            let q = crate::fleet_cargo::authorize(q, intent, expected_terms_hash)?;
+            let intent = &q.intent;
             let origin = body(s, intent.origin, r)?;
             let (coords, target_owner) = target(s, &intent.destination, r)?;
             let id = FleetId(derived_id(i.id, "mission:0"));
@@ -982,7 +1071,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             c.bodies.push(b);
             for x in &q.intent.ships {
                 inventory(&mut c, s, origin.id, owner, x.ship_type, -x.count)?;
-                let lots = take_asset_lots(
+                let lots = take_asset_quantity(
                     &mut w.lots,
                     owner,
                     item(x.ship_type),
@@ -1078,12 +1167,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             f.return_reason = Some(MissionReturnReason::VoluntaryRecall);
             if return_duration == 0 {
                 terminal_return(&mut c, s, &mut w, i, &mut f, r)?;
-                if is_probe_only_espionage(&f) {
-                    own_report(s, &mut w, i, &f, "Recalled");
-                }
             } else {
                 f.due_at = deadline(i.at, return_duration)?;
                 schedule(&mut c, i, &f);
+            }
+            if format == TransitionFormat::LegacyRecallReports
+                && (return_duration != 0 || is_probe_only_espionage(&f))
+            {
                 own_report(s, &mut w, i, &f, "Recalled");
             }
             c.affected_viewers.insert(f.owner);
@@ -1153,7 +1243,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                 credit(&mut c, s, id, cargo, i.at, r)?;
                                 for ship in &f.ships {
                                     inventory(&mut c, s, id, f.owner, ship.ship_type, ship.count)?;
-                                    let lots = take_asset_lots(
+                                    let lots = take_asset_quantity(
                                         &mut w.lots,
                                         f.owner,
                                         item(ship.ship_type),
@@ -1264,15 +1354,17 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                             {
                                 crate::site_encounter::arrive(s, i, &mut f, r, &mut w)?
                             }
-                            Mission::Attack => crate::encounter::attack_encounter(
-                                s,
-                                i,
-                                &mut f,
-                                r,
-                                &mut c,
-                                &mut w,
-                                &mut audits,
-                            )?,
+                            Mission::Attack | Mission::DestroyMoon => {
+                                crate::encounter::attack_encounter(
+                                    s,
+                                    i,
+                                    &mut f,
+                                    r,
+                                    &mut c,
+                                    &mut w,
+                                    &mut audits,
+                                )?
+                            }
                             Mission::Espionage => crate::encounter::spy_encounter(
                                 s,
                                 i,
@@ -1283,7 +1375,9 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                                 &mut audits,
                             )?,
                         }
-                        if let MissionDestination::Body { id, .. } = f.intent.destination {
+                        if let MissionDestination::Body { id, .. } = f.intent.destination
+                            && !w.destroyed_moons.contains_key(&id)
+                        {
                             signal(&mut w, id, i, ActivityCause::Contact);
                             if let Some(owner) = target_owner {
                                 c.affected_viewers.insert(owner);
@@ -1350,6 +1444,7 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             action:
                 action @ (WorldAction::MarkReportRead { .. }
                 | WorldAction::MarkReportsRead { .. }
+                | WorldAction::ArchiveReport { .. }
                 | WorldAction::SetReportHidden { .. }
                 | WorldAction::SetReportsHidden { .. }
                 | WorldAction::SetReportStarred { .. }),
@@ -1394,10 +1489,19 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
                         read: false,
                         hidden: false,
                         starred: false,
+                        shared: false,
                     });
                     w.report_states.len() - 1
                 };
                 match action {
+                    WorldAction::ArchiveReport { revoke_share, .. } => {
+                        let state = &mut w.report_states[idx];
+                        if state.shared && (!revoke_share || state.hidden) {
+                            return Err(GameError::InvalidInput.into());
+                        }
+                        state.hidden = true;
+                        state.shared = false;
+                    }
                     WorldAction::SetReportHidden { hidden, .. }
                     | WorldAction::SetReportsHidden { hidden, .. } => {
                         w.report_states[idx].hidden = *hidden
@@ -1412,27 +1516,29 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
         }
         _ => {
             c = crate::progression::resolve(s, i, r)?;
-            progression_valuation(s, i, &c, &mut w)?;
+            progression_valuation(s, r, &c, &mut w, historical_prices.then_some(i))?;
         }
     }
-    normalize_asset_lots(&mut w.lots)?;
-    validate_committed_value_capacity(s, &c, &w)?;
-    let mut values = std::collections::BTreeMap::<(PlayerId, OperationId), i128>::new();
+    combine_asset_quantities(&mut w.lots)?;
+    validate_committed_value_capacity(s, &c, &w, (!historical_prices).then_some(r))?;
+    let mut values = std::collections::BTreeMap::<(PlayerId, Option<OperationId>), i128>::new();
     for lot in &facts.records.lots {
-        *values.entry((lot.owner, lot.id)).or_default() -=
-            i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
+        *values
+            .entry((lot.owner, lot.acquisition.as_ref().map(|a| a.id)))
+            .or_default() -= i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
     }
     for lot in &w.lots {
-        *values.entry((lot.owner, lot.id)).or_default() +=
-            i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
+        *values
+            .entry((lot.owner, lot.acquisition.as_ref().map(|a| a.id)))
+            .or_default() += i128::from(lot.quantity) * i128::from(lot.unit_value_micro);
     }
     let mut deltas = vec![];
     for ((player, lot), delta) in values {
         if delta != 0 {
             deltas.push(ScoreLedgerDelta {
+                lot,
                 input: i.id,
                 player,
-                lot,
                 delta: i64::try_from(delta).map_err(|_| invariant("score delta overflow"))?,
                 valuation_hash: r.hash.clone(),
             });

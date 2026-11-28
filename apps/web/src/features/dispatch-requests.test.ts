@@ -1,3 +1,7 @@
+import {
+  projectDispatchCargo,
+  type CargoDraft,
+} from '../client-model/dispatch-cargo'
 import { expect, it, vi } from 'vitest'
 import type { components } from '../contracts'
 import {
@@ -70,7 +74,13 @@ function fixture() {
     world,
     origin: () => ({ amounts }),
     quote: vi.fn(),
-    cargo: vi.fn(),
+    cargo:
+      vi.fn<
+        (
+          draft: CargoDraft,
+          terms: Pick<S['FleetEstimate4'], 'fuel' | 'maximum_payload'>,
+        ) => void
+      >(),
     error: vi.fn(),
     busy: vi.fn(),
     clear: vi.fn(),
@@ -79,6 +89,7 @@ function fixture() {
   return {
     requests,
     ports,
+    amounts: () => amounts,
     setAmounts: (next: typeof amounts) => {
       amounts = next
     },
@@ -212,7 +223,7 @@ it.each([
 it.each(['all', 'deuterium'] as const)(
   'fills %s using current stocks, reserves fuel, and never opens review',
   async (fill) => {
-    const { requests, ports, setAmounts } = fixture()
+    const { requests, ports, setAmounts, amounts } = fixture()
     const held = deferred<Awaited<ReturnType<DispatchReviewPorts['world']>>>()
     const entered = deferred<void>()
     ports.world
@@ -238,7 +249,8 @@ it.each(['all', 'deuterium'] as const)(
     }
     held.resolve(terms(intent))
     await result
-    expect(ports.cargo).toHaveBeenLastCalledWith(
+    const [draft, estimate] = ports.cargo.mock.lastCall!
+    expect(projectDispatchCargo(draft, amounts(), estimate)).toEqual(
       fill === 'all' ? ['6', '4', '2'] : ['2', '0', '2'],
     )
     expect(ports.quote).not.toHaveBeenCalled()
@@ -421,7 +433,7 @@ it.each([
   'rejected',
   'committed',
 ] as const)(
-  'only a committed current submission resets the draft: %s',
+  'only a durably accepted current submission resets the draft: %s',
   (status) => {
     const requests = new DispatchRequests()
     const submitted = {
@@ -431,7 +443,7 @@ it.each([
     }
     expect(requests.shouldResetDraft(null, status)).toBe(false)
     expect(requests.shouldResetDraft(submitted, status)).toBe(
-      status === 'committed',
+      status === 'pending' || status === 'committed',
     )
     requests.invalidate()
     expect(requests.shouldResetDraft(submitted, status)).toBe(false)
@@ -543,8 +555,9 @@ it('a late registration from an earlier launch cannot replace a newer launch or 
   expect(submitted.mock.calls).toEqual([
     [{ key: 'second', generation: 2, coordinates: { ...at, position: 5 } }],
   ])
+  // Admission now confirms launch immediately (#506); the current draft resets then.
   expect(requests.shouldResetDraft(submitted.mock.calls[0][0], 'pending')).toBe(
-    false,
+    true,
   )
   expect(
     requests.shouldResetDraft(submitted.mock.calls[0][0], 'committed'),
@@ -617,7 +630,7 @@ it('occupied colony resolution stops before quote and reports an actionable erro
 it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
   'fills %s from an estimate with no fleet slot, while review still rejects',
   async (fill) => {
-    const { requests, ports } = fixture()
+    const { requests, ports, amounts } = fixture()
     ports.world.mockImplementation(async (query) => {
       if (query.type === 'ResolveDestination') return destination
       if (query.type === 'FleetQuote') throw Error('NoFleetSlot')
@@ -638,12 +651,12 @@ it.each(['all', 'metal', 'crystal', 'deuterium'] as const)(
     await requests.review(input, ports, fill)
     expect(ports.cargo).toHaveBeenCalledOnce()
     expect(ports.quote).not.toHaveBeenCalled()
+    const [draft, estimate] = ports.cargo.mock.lastCall!
+    const cargo = projectDispatchCargo(draft, amounts(), estimate)
     expect(
-      ports.cargo.mock.calls[0][0]
-        .map(BigInt)
-        .reduce((sum: bigint, n: bigint) => sum + n, 0n),
+      cargo.map(BigInt).reduce((sum: bigint, n: bigint) => sum + n, 0n),
     ).toBeLessThanOrEqual(50n)
-    expect(BigInt(ports.cargo.mock.calls[0][0][2])).toBeLessThanOrEqual(10n)
+    expect(BigInt(cargo[2])).toBeLessThanOrEqual(10n)
     await requests.review(input, ports)
     expect(ports.quote).not.toHaveBeenCalled()
     expect(ports.error).toHaveBeenLastCalledWith(
@@ -682,4 +695,47 @@ it('failed preparation refresh leaves confirmation closed with an actionable err
     expect.stringContaining('Unable to refresh your fleet'),
   )
   expect(ports.busy).toHaveBeenLastCalledWith(false)
+})
+
+it('requires a Dreadnought in a destruction draft before requesting its binding launch quote', async () => {
+  const { requests, ports } = fixture()
+  ports.world.mockResolvedValueOnce({
+    ...destination,
+    expected_kind: 'Moon',
+    expected_owner: 'other',
+  })
+  await requests.review(
+    { ...input, targetKind: 'moon', mission: 'DestroyMoon' },
+    ports,
+  )
+  expect(ports.error).toHaveBeenLastCalledWith(
+    'Select at least one Dreadnought for moon destruction.',
+  )
+  expect(ports.world.mock.calls.map(([query]) => query.type)).toEqual([
+    'ResolveDestination',
+  ])
+})
+
+it('a refused replacement quote cannot reopen earlier terms at the same revision', async () => {
+  const { createFleetPreparation } = await import('./use-prepared-fleet-quote')
+  const preparation = createFleetPreparation()
+  const valid = terms({
+    origin: 'home',
+    destination,
+    mission: 'Deploy',
+    ships: [],
+    cargo: { metal: '0', crystal: '0', deuterium: '0' },
+    speed_percent: 100,
+  })
+  await preparation.load(async () => valid)
+  expect(preparation.valid('profile')).toEqual(valid)
+  const old = deferred<S['FleetTerms4']>()
+  const outstanding = preparation.load(() => old.promise)
+  preparation.cancel()
+  await preparation.load(async () => {
+    throw Error('NoFleetSlot')
+  })
+  old.resolve(valid)
+  await outstanding
+  expect(preparation.valid('profile')).toBeNull()
 })

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0
+
+[Announcement and detailed notes](docs/news/releases/v0.8.0.md).
+
 ## 0.7.0
 
 [Announcement and detailed notes](docs/news/releases/v0.7.0.md).

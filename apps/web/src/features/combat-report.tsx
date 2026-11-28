@@ -1,4 +1,6 @@
 import { combatForceGroups } from './combat-force-groups'
+import type { components } from '../contracts'
+import { MoonDestructionOutcome } from './moon-destruction'
 import { MoonCreationSummary } from './moon-creation-summary'
 import { ResourceSummary } from '../ui/number-value'
 import type { ReactNode } from 'react'
@@ -298,6 +300,15 @@ export function CombatReport({
           </p>
         )}
       </header>
+      {payload.moon_destruction || payload.mission === 'DestroyMoon' ? (
+        <MoonDestructionOutcome
+          outcome={
+            payload.moon_destruction as
+              | components['schemas']['MoonDestructionResult4']
+              | undefined
+          }
+        />
+      ) : null}
       <MoonCreationSummary value={payload.moon_creation} />
       {actions && <div className={styles.actions}>{actions}</div>}
       <div className={styles.resources}>
@@ -320,7 +331,11 @@ export function CombatReport({
       <section aria-label="Forces and losses" className={styles.forceSection}>
         <div className={styles.sectionHeading}>
           <Heading level={3}>Forces & losses</Heading>
-          <p className={styles.note}>Lost excludes recovered defenses.</p>
+          <p className={styles.note}>
+            {payload.mission === 'DestroyMoon'
+              ? 'These counts reflect combat before the destruction attempt.'
+              : 'Lost excludes recovered defenses.'}
+          </p>
         </div>
         <div className={styles.sides}>
           {report.forces.map((force) => (

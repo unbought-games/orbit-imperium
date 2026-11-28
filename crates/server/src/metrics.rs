@@ -63,6 +63,7 @@ pub struct RuntimeMetrics {
     >,
     publication_scan_failures: AtomicU64,
     durations: [Histogram; RuntimeStage::ALL.len()],
+    pub worker: crate::worker_metrics::WorkerMetrics,
     requests: crate::request_metrics::RequestMetrics,
     events: [AtomicU64; 8],
     auth: [[Histogram; orbit_application::AuthOutcome::ALL.len()];
@@ -75,6 +76,7 @@ impl RuntimeMetrics {
             publications: Default::default(),
             retention: Default::default(),
             requests: Default::default(),
+            worker: Default::default(),
             publication_scan_failures: AtomicU64::new(0),
             durations: std::array::from_fn(|_| Histogram::default()),
             events: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -210,6 +212,7 @@ impl RuntimeMetrics {
             writeln!(text, "orbit_retention_oldest_eligible_record_age_seconds{{universe=\"{scope}\",kind=\"{kind}\"}} {}", *age as f64/1000.0).unwrap();
         }
         self.requests.render(&mut text);
+        self.worker.render(&mut text);
         text
     }
 }
@@ -297,6 +300,15 @@ async fn scrape(State(state): State<MetricsState>) -> impl IntoResponse {
                 text,
                 "orbit_blocked_scopes{{universe=\"{universe}\"}} {}",
                 status.blocked_scope_count
+            )
+            .unwrap();
+        }
+        text.push_str("# TYPE orbit_ranking_snapshot_missing gauge\n");
+        for (universe, complete) in state.store.ranking_snapshot_status().await? {
+            writeln!(
+                text,
+                "orbit_ranking_snapshot_missing{{universe=\"{universe}\"}} {}",
+                u8::from(!complete)
             )
             .unwrap();
         }

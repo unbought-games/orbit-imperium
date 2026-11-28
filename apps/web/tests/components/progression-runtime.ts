@@ -77,7 +77,9 @@ export async function createProgressionScene(params: URLSearchParams) {
   view.catalog = structuredClone(rules.catalog) as S['CatalogEntry3'][]
   view.research = [{ research: 'CombustionDrive', level: 10 }]
   const mode = params.get('mode')
-  const orderMode = mode === 'order' || mode === 'defense-content'
+  const missileInventory = mode === 'missile-inventory'
+  const orderMode =
+    mode === 'order' || mode === 'defense-content' || missileInventory
   const sent: Envelope[] = []
   const requests: S['QuoteRequest3'][] = []
   const loading = params.get('loading') === 'yes' ? deferred<void>() : null
@@ -107,6 +109,21 @@ export async function createProgressionScene(params: URLSearchParams) {
         command_references: false,
       }
     }
+  }
+  if (missileInventory) {
+    body.levels.MissileSilo = 4
+    body.levels.Shipyard = 1
+    body.silo = { occupied: '26', reserved: '2', total: '40' }
+    body.inventories = [
+      { item: { kind: 'Missile', id: 'InterplanetaryMissile' }, count: '10' },
+      { item: { kind: 'Missile', id: 'AntiBallisticMissile' }, count: '6' },
+    ]
+    view.catalog = view.catalog
+      .filter(
+        (entry) =>
+          entry.key.kind === 'Missile' || entry.key.id === 'MissileSilo',
+      )
+      .map((entry) => ({ ...entry, enabled: true }))
   }
   if (mode === 'profile') {
     const item = params.get('item') as ProfileShip
@@ -353,6 +370,12 @@ export async function createProgressionScene(params: URLSearchParams) {
               body: request.body,
               item: request.item,
               quantity: request.quantity,
+              ...(missileInventory && request.item.kind === 'Missile'
+                ? {
+                    silo_slots:
+                      request.item.id === 'InterplanetaryMissile' ? 2 : 1,
+                  }
+                : {}),
               unit_cost: paid,
               paid: {
                 metal: (
@@ -453,6 +476,24 @@ export async function createProgressionScene(params: URLSearchParams) {
     },
     submit: async (envelope): Promise<BoundReceipt> => {
       const { command, command_id } = envelope
+      if (
+        missileInventory &&
+        command.type === 'World' &&
+        command.action.type === 'ScrapMissiles'
+      ) {
+        sent.push(envelope)
+        view.viewer_revision = String(BigInt(view.viewer_revision) + 1n)
+        return {
+          protocol,
+          binding: view.binding,
+          command_id,
+          admitted_at: epoch,
+          executed_at: epoch,
+          status: 'Committed',
+          result_ids: [],
+          minimum_viewer_revision: view.viewer_revision,
+        }
+      }
       if (!orderMode || command.type !== 'StartManufacture')
         throw Error(`Unexpected progression command ${command.type}`)
       sent.push(envelope)

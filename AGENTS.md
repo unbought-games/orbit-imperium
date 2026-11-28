@@ -1,6 +1,6 @@
 # Global Rules
 
-- Never store derived state. Derived state creates a whole class of errors that can easily be avoided by deriving the values from the source of truth. This is a global pattern and should never be broken.
+- Derive state from its source of truth. High Scores has one documented exception: maintain each player’s exact completed-asset value in the inventory transaction, and publish compact standings at their daily or hourly observation boundaries. Keep the cache rebuildable from inventory quantities, active fleet manifests, completed levels and the universe catalog. See [High Scores](docs/architecture/high-scores.md).
 - React components should be light-weight with no heavy inline logic. Simple value transformations are acceptable. Heavy logic should be extracted into custom hooks and functions and thoroughly tested.
 - Server functions, API routes should be treated the same way - no heavy logic. All logic should be pulled out into functions and either thoroughly tested with unit or integration tests.
 
@@ -27,7 +27,30 @@ implementation details are needed.
 
 # Pull requests
 
-All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests are squash-merged, so the PR title becomes the commit title. Verify the title before creating or updating a PR.
+All pull request titles must follow Conventional Commits (for example, `fix: correct database initialization` or `feat: add universe seeding`). Pull requests into `main` are squash-merged, so their PR title becomes the commit title. Verify the title before creating or updating a PR.
+
+## Season branches
+
+Shared fixes and features target `main`. Andromeda campaign work branches from
+and targets `prod/S001`. Fetch the intended PR base before starting work and
+check the base again before enqueueing. Use a merge commit when bringing
+`main` into `prod/S001` so future syncs retain both parents. The season queue
+uses merge commits. Campaign code stays on its season branch for its lifetime.
+
+Once Andromeda switches to `prod/S001`, all subsequent Andromeda deployments
+use an image published from that branch. Bring shared fixes in through the sync
+PR. New universes may start on `main`. Numbered open-source releases use
+`main`. See [image releases](docs/operations/image-releases.md).
+
+During a sync, keep every migration already applied to the season database at
+its original number and checksum. If an incoming migration would collide with
+or precede the applied history, give the incoming SQL the next unused season
+version before it is applied. Preserve dependencies and include it once. Review
+and test upgrades from the last seasonal release as well as fresh installs.
+
+For player-facing campaign changes, add a build note on the season branch with
+`audience: S001` so readers see the universe and season beside the date. Shared notes
+use `audience: game` (the default) even when delivered via a seasonal build.
 
 ## Changelog
 
@@ -90,9 +113,15 @@ test fixtures/runners/CI selection, use the repository
 [test-design skill](.agents/skills/test-design/SKILL.md). Follow the
 [testing strategy](docs/architecture/testing-strategy.md): retain a small,
 deliberate browser merge gate and put most behavior at deterministic or isolated
-component boundaries. The strategy records migration status; do not assume the
-existing broad browser suite has already been replaced.
+component boundaries. Each required application journey has a named regression in the
+[journey contracts](apps/web/tests/journey-contracts.json).
 
+- After writing or materially changing browser/e2e tests, the implementer MUST
+  launch the independent `browser_test_reviewer` in fresh context before
+  declaring completion or publishing the final PR revision. Follow the
+  [invocation and disposition procedure](.agents/skills/test-design/references/browser-review.md),
+  including fresh focused review after material fixes. Record a concrete blocker
+  if independent review is unavailable.
 - Add meaningful coverage for changed behavior at the cheapest useful layer. Prefer deterministic fixtures and controlled clocks. Do not omit tests or weaken assertions to obtain a passing run.
 - Every expensive test must name the regression it catches. Delete obsolete or redundant tests with a recorded rationale; replace worthwhile coverage at a cheaper layer. Test count is not the goal.
 - Keep arithmetic, authorization, replay, idempotency, state permutations and race schedules in deterministic unit/HTTP/database tests. Browser tests earn their cost through navigation, focus, submission, responsive layout or essential browser wiring.

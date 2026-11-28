@@ -136,9 +136,11 @@ pub(super) async fn settings<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, c.binding)?;
-    Ok(no_store_json(
-        s.game.bound_settings(principal(&session, u)?, c).await?,
-    ))
+    let mut settings = s.game.bound_settings(principal(&session, u)?, c).await?;
+    if !super::bootstrap::wants_debris_settings(&h) {
+        settings.ship_debris = None;
+    }
+    Ok(no_store_json(settings))
 }
 pub(super) async fn options<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -176,6 +178,41 @@ pub(super) async fn query<S: GameStore + IdentityStore>(
         s.game.world_query(principal(&session, u)?, q).await?,
     ))
 }
+/// Earlier v4 clients validate previews with a closed field allowlist.
+fn present_report_headers(
+    request: &HeaderMap,
+    headers: &mut [ReportHeader4],
+    names: Option<&mut PublicPlayerNames>,
+) {
+    if request
+        .get("x-orbit-report-preview")
+        .is_some_and(|v| v == "1")
+    {
+        return;
+    }
+    let mut removed_sender = false;
+    for header in headers.iter_mut() {
+        if let Some(preview) = header
+            .preview
+            .as_mut()
+            .and_then(serde_json::Value::as_object_mut)
+            && preview.get("kind").and_then(serde_json::Value::as_str) == Some("SpyContact")
+        {
+            removed_sender |= preview.remove("sender").is_some();
+        }
+    }
+    // A list names only players still identified by at least one visible preview.
+    // Detail names belong to its full observation and are unchanged.
+    if removed_sender && let Some(names) = names {
+        let visible: std::collections::BTreeSet<_> = headers
+            .iter()
+            .filter_map(|header| header.preview.as_ref())
+            .flat_map(report_profile_players)
+            .collect();
+        names.retain(|player, _| visible.contains(player));
+    }
+}
+
 pub(super) async fn reports<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
     h: HeaderMap,
@@ -186,10 +223,13 @@ pub(super) async fn reports<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, q.context.binding)?;
-    Ok(super::snapshot_response(
-        &h,
-        s.game.reports4(principal(&session, u)?, q).await?,
-    ))
+    let mut snapshot = s.game.reports4(principal(&session, u)?, q).await?;
+    let page = &mut snapshot.facts.data;
+    present_report_headers(&h, &mut page.items, Some(&mut page.player_names));
+    if h.get("x-orbit-report-arrivals").is_none_or(|v| v != "1") {
+        page.arrivals = None;
+    }
+    Ok(super::snapshot_response(&h, snapshot))
 }
 pub(super) async fn report<S: GameStore + IdentityStore>(
     State(s): State<Arc<HttpState<S>>>,
@@ -201,12 +241,16 @@ pub(super) async fn report<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, c.binding)?;
-    Ok(super::snapshot_response(
+    let mut snapshot = s
+        .game
+        .report4(principal(&session, u)?, c, ReportId(report))
+        .await?;
+    present_report_headers(
         &h,
-        s.game
-            .report4(principal(&session, u)?, c, ReportId(report))
-            .await?,
-    ))
+        std::slice::from_mut(&mut snapshot.facts.data.header),
+        None,
+    );
+    Ok(super::snapshot_response(&h, snapshot))
 }
 
 pub(super) async fn presence<S: GameStore + IdentityStore>(
@@ -292,9 +336,9 @@ pub(super) async fn mark_reports_read<S: GameStore + IdentityStore>(
     let u = UniverseId(id);
     s.game.require_protocol(session.account, u, 4).await?;
     path_binding(u, q.context.binding)?;
-    Ok(no_store_json(
-        s.game.mark_reports_read(principal(&session, u)?, q).await?,
-    ))
+    let mut result = s.game.mark_reports_read(principal(&session, u)?, q).await?;
+    present_report_headers(&h, &mut result.items, None);
+    Ok(no_store_json(result))
 }
 
 pub(super) async fn shared_report<S: GameStore + IdentityStore>(
@@ -345,4 +389,60 @@ pub(super) async fn options_batch<S: GameStore + IdentityStore>(
             .progression_options_batch(principal(&session, u)?, q)
             .await?,
     ))
+}
+
+#[cfg(test)]
+mod report_preview_tests {
+    use super::*;
+    use serde_json::{Value, json};
+
+    fn header(preview: Value) -> ReportHeader4 {
+        serde_json::from_value(json!({
+            "id":uuid::Uuid::from_u128(3), "kind":preview["kind"],
+            "observed_at":0, "read":false, "hidden":false, "preview":preview,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn only_negotiated_headers_include_spy_senders_and_legacy_lists_keep_other_visible_names() {
+        let (spy, opponent) = (
+            PlayerId(uuid::Uuid::from_u128(1)),
+            PlayerId(uuid::Uuid::from_u128(2)),
+        );
+        let page = [
+            header(json!({"kind":"SpyContact","sender":spy,"detected":true})),
+            header(json!({"kind":"SpyContact","sender":opponent,"detected":false})),
+            header(json!({"kind":"Combat","participants":[{"owner":opponent,"side":"Attacker"}]})),
+        ];
+        let names = PublicPlayerNames::from([(spy, "Scout".into()), (opponent, "Opponent".into())]);
+        for version in [None, Some("0"), Some("1")] {
+            let mut h = HeaderMap::new();
+            if let Some(value) = version {
+                h.insert("x-orbit-report-preview", HeaderValue::from_static(value));
+            }
+            let mut actual = page.clone();
+            let mut visible_names = names.clone();
+            present_report_headers(&h, &mut actual, Some(&mut visible_names));
+            if version == Some("1") {
+                assert_eq!(actual[0].preview, page[0].preview);
+                assert_eq!(actual[1].preview, page[1].preview);
+                assert_eq!(visible_names, names);
+            } else {
+                assert_eq!(
+                    actual[0].preview,
+                    Some(json!({"kind":"SpyContact","detected":true}))
+                );
+                assert_eq!(
+                    actual[1].preview,
+                    Some(json!({"kind":"SpyContact","detected":false}))
+                );
+                assert_eq!(
+                    visible_names,
+                    PublicPlayerNames::from([(opponent, "Opponent".into())])
+                );
+            }
+            assert_eq!(actual[2].preview, page[2].preview);
+        }
+    }
 }

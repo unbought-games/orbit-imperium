@@ -53,6 +53,13 @@ pub(crate) async fn load_selected(
     input_id: Option<InputId>,
     selected: crate::scoped_facts::Selection,
 ) -> Result<GameState, StoreError> {
+    let launch = input_id.is_some()
+        && matches!(
+            input,
+            Input::Command(Command::World {
+                action: WorldAction::LaunchFleet { .. }
+            })
+        );
     let requested_owners: Vec<_> = selected.owners.iter().map(|p| p.0).collect();
     let owners: Vec<uuid::Uuid> =
         sqlx::query_scalar("SELECT id FROM players WHERE universe=$1 AND id=ANY($2) ORDER BY id")
@@ -184,22 +191,6 @@ pub(crate) async fn load_selected(
         .map(decode)
         .collect::<Result<_, _>>()?
     };
-    let mut lots = if selected.all {
-        records(tx, u, "asset_lots").await?
-    } else {
-        sqlx::query_scalar(
-            "SELECT data FROM asset_lots WHERE universe=$1 AND data->>'owner'=ANY($2) ORDER BY key",
-        )
-        .bind(u.0)
-        .bind(&owner_strings)
-        .fetch_all(&mut **tx)
-        .await
-        .map_err(db_error)?
-        .into_iter()
-        .map(decode)
-        .collect::<Result<Vec<AssetLot>, _>>()?
-    };
-    normalize_asset_lots(&mut lots).map_err(|_| StoreError::CorruptData)?;
     let debris: Vec<DebrisField> = if selected.all {
         records(tx, u, "debris_fields").await?
     } else {
@@ -239,13 +230,39 @@ pub(crate) async fn load_selected(
         }
         s.coverage.fleet_ids.insert(FleetId(derived));
     }
-    let attack_groups = crate::attack_groups::load(tx, u, input, &owners, selected.all).await?;
+    let attack_groups = if launch
+        && matches!(
+            input,
+            Input::Command(Command::World {
+                action: WorldAction::LaunchFleet {
+                    intent: FleetIntent {
+                        attack_group: None,
+                        ..
+                    },
+                    ..
+                }
+            })
+        ) {
+        Vec::new()
+    } else {
+        crate::attack_groups::load(tx, u, input, &owners, selected.all).await?
+    };
     let member_ids: Vec<_> = attack_groups
         .iter()
         .flat_map(|g| g.members.iter().map(|f| f.0))
         .collect();
+    // A redirected foreign transport keeps this parent in use until delivery.
+    // Read its bound flight under the parent location/owner scope for both
+    // the quote and the ordered rejection; no foreign economy is needed.
+    let abandonment_target = match input {
+        Input::Command(Command::World {
+            action: WorldAction::AbandonPlanet { body, .. },
+        }) => Some(*body),
+        _ => selected.abandonment_target,
+    };
     let mut fleets: Vec<MissionFleet> = sqlx::query_scalar::<_, serde_json::Value>(
-        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->>'leg'='Holding' AND (data->'intent'->'destination'->>'expected_owner')::uuid=ANY($4)) OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)) ORDER BY id",
+        "SELECT data FROM mission_fleets WHERE universe=$1 AND ((data->>'leg') IN ('Outbound','Holding','Returning') OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR (data->>'leg'='Holding' AND (data->'intent'->'destination'->>'expected_owner')::uuid=ANY($4)) OR (data->'intent'->'destination'->>'expected_owner'=$5 AND data->>'leg' IN ('Outbound','Holding')) OR data->'intent'->'destination'->'coordinates'=ANY($6)
+        OR (data->>'leg' IN ('Outbound','Holding') AND data->'intent'->'destination'->>'id'=$7 AND data->'terms'->'intent'->'destination'->>'id'<>$7)) ORDER BY id",
     )
     .bind(u.0)
     .bind(fleet_id)
@@ -253,6 +270,7 @@ pub(crate) async fn load_selected(
     .bind(&owners)
     .bind(selected.incoming_for.map(|p| p.to_string()))
     .bind(&coordinate_values)
+    .bind(abandonment_target.map(|id| id.to_string()))
     .fetch_all(&mut **tx)
     .await
     .map_err(db_error)?
@@ -337,13 +355,19 @@ pub(crate) async fn load_selected(
             s.coverage.bodies.insert(id);
         }
     }
+    crate::moon_removal::cover_arrival(tx, u, input, &fleets, &mut s).await?;
+    let destroyed_moons = crate::moon_removal::load(tx, u, &owners, &fleets, selected.all).await?;
     let missile_id = match input {
         Input::Event(ScheduledEvent::MissileImpact { flight, .. }) => Some(flight.0),
         _ => None,
     };
-    let missiles: Vec<MissileFlight> = sqlx::query_scalar::<_, serde_json::Value>(
+    let missiles: Vec<MissileFlight> = if launch {
+        Vec::new()
+    } else {
+        sqlx::query_scalar::<_, serde_json::Value>(
         "SELECT data FROM missile_flights WHERE universe=$1 AND (data->>'status'='InFlight' OR id=$2) AND ($3 OR owner=ANY($4) OR id=$2 OR data->'terms'->'intent'->'target'->>'expected_owner'=$5) ORDER BY id"
-    ).bind(u.0).bind(missile_id).bind(selected.all).bind(&owners).bind(selected.incoming_for.map(|p|p.to_string())).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
+    ).bind(u.0).bind(missile_id).bind(selected.all).bind(&owners).bind(selected.incoming_for.map(|p|p.to_string())).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?
+    };
     for f in &missiles {
         s.coverage.bodies.insert(f.terms.intent.target.id);
         s.coverage.bodies.insert(f.terms.interceptor_body);
@@ -375,10 +399,14 @@ pub(crate) async fn load_selected(
             reports.insert(r.id, r);
         }
         for row in sqlx::query(
-            "SELECT report,recipient,read,hidden,starred FROM mission_report_recipients WHERE report=ANY($1) AND recipient=ANY($2) ORDER BY report,recipient",
+            "SELECT p.report,p.recipient,p.read,p.hidden,p.starred,
+                    ($3 AND EXISTS(SELECT 1 FROM mission_report_shares s WHERE s.report=p.report AND s.recipient=p.recipient AND s.epoch=$4)) AS shared
+             FROM mission_report_recipients p WHERE p.report=ANY($1) AND p.recipient=ANY($2) ORDER BY p.report,p.recipient",
         )
         .bind(&ids)
         .bind(&owners)
+        .bind(matches!(input, Input::Command(Command::World { action: WorldAction::ArchiveReport { .. } })))
+        .bind(epoch.0)
         .fetch_all(&mut **tx)
         .await
         .map_err(db_error)?
@@ -389,6 +417,7 @@ pub(crate) async fn load_selected(
                 read: row.try_get("read").map_err(db_error)?,
                 hidden: row.try_get("hidden").map_err(db_error)?,
                 starred: row.try_get("starred").map_err(db_error)?,
+                shared: row.try_get("shared").map_err(db_error)?,
             });
         }
     }
@@ -431,9 +460,30 @@ pub(crate) async fn load_selected(
     }
     let mut presence = BTreeMap::new();
     let mut requested_pair = None;
-    if let Some(id) = input_id {
-        for row in sqlx::query("SELECT data,succeeded FROM presence_pairs WHERE universe=$1 AND (presence_input=$2 OR gameplay_input=$2)").bind(u.0).bind(id.0).fetch_all(&mut **tx).await.map_err(db_error)?{let p:PresenceLink=decode(row.try_get("data").map_err(db_error)?)?;if p.presence==id{requested_pair=Some(p.clone());}
-if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gameplay,p);}}
+    if let Some(id) = input_id
+        && let Some(row) = sqlx::query(
+            "SELECT p.data,p.succeeded,c.inline_presence,c.done FROM presence_pairs p
+             JOIN commands c ON c.input_id=p.presence_input
+             WHERE p.universe=$1 AND (p.presence_input=$2 OR p.gameplay_input=$2)",
+        )
+        .bind(u.0)
+        .bind(id.0)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(db_error)?
+    {
+        let link: PresenceLink = decode(row.try_get("data").map_err(db_error)?)?;
+        if link.presence == id
+            || (row
+                .try_get::<bool, _>("inline_presence")
+                .map_err(db_error)?
+                && !row.try_get::<bool, _>("done").map_err(db_error)?)
+        {
+            requested_pair = Some(link.clone());
+        }
+        if row.try_get::<bool, _>("succeeded").map_err(db_error)? {
+            presence.insert(link.gameplay, link);
+        }
     }
     let secret: Vec<u8> = sqlx::query_scalar("SELECT secret FROM mvp_bootstraps WHERE universe=$1")
         .bind(u.0)
@@ -494,17 +544,21 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     .into_iter()
     .map(decode)
     .collect::<Result<_, _>>()?;
-    let colonies: Vec<ColonyGenesis> = sqlx::query_scalar(
-        "SELECT data FROM colony_genesis WHERE universe=$1 AND id=ANY($2) ORDER BY id",
-    )
-    .bind(u.0)
-    .bind(&body_ids)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(db_error)?
-    .into_iter()
-    .map(decode)
-    .collect::<Result<_, _>>()?;
+    let colonies: Vec<ColonyGenesis> = if launch {
+        Vec::new()
+    } else {
+        sqlx::query_scalar(
+            "SELECT data FROM colony_genesis WHERE universe=$1 AND id=ANY($2) ORDER BY id",
+        )
+        .bind(u.0)
+        .bind(&body_ids)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
+        .into_iter()
+        .map(decode)
+        .collect::<Result<_, _>>()?
+    };
     let mut planet_slots = Vec::new();
     if rules
         .artifact
@@ -592,33 +646,47 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             policies.push(decode(value)?);
         }
     }
-    let holding_relationships = if holding_enabled(rules) || attack_groups_enabled(rules) {
+    let holding_relationships = if (!launch || crate::holding::requires_lock(input))
+        && (holding_enabled(rules) || attack_groups_enabled(rules))
+    {
         Some(crate::holding::relationships(tx, u, epoch, &relationship_owners).await?)
     } else {
         None
     };
-    let gate_uses: Vec<GateUse> = sqlx::query_scalar::<_, serde_json::Value>(
-        "SELECT data FROM jump_gate_uses WHERE universe=$1 AND body=ANY($2) ORDER BY body",
-    )
-    .bind(u.0)
-    .bind(&body_ids)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(db_error)?
-    .into_iter()
-    .map(decode)
-    .collect::<Result<_, _>>()?;
-    let depot_supplies: Vec<DepotSupply> = sqlx::query_scalar::<_, serde_json::Value>("SELECT s.data FROM depot_supplies s JOIN bodies b ON b.id=s.source_planet AND b.universe=s.universe WHERE s.universe=$1 AND s.source_planet=ANY($2) AND s.at_ms>b.checkpoint_at-3600000 ORDER BY s.at_ms,s.id")
-        .bind(u.0).bind(&body_ids).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?;
-    let alliance_leaders: Vec<uuid::Uuid> = sqlx::query_scalar(
-        "SELECT leader FROM alliances WHERE universe=$1 AND epoch=$2 AND leader=ANY($3)",
-    )
-    .bind(u.0)
-    .bind(epoch.0)
-    .bind(&owners)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(db_error)?;
+    let gate_uses: Vec<GateUse> = if launch {
+        Vec::new()
+    } else {
+        sqlx::query_scalar::<_, serde_json::Value>(
+            "SELECT data FROM jump_gate_uses WHERE universe=$1 AND body=ANY($2) ORDER BY body",
+        )
+        .bind(u.0)
+        .bind(&body_ids)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
+        .into_iter()
+        .map(decode)
+        .collect::<Result<_, _>>()?
+    };
+    let depot_supplies: Vec<DepotSupply> = if launch {
+        Vec::new()
+    } else {
+        sqlx::query_scalar::<_, serde_json::Value>("SELECT s.data FROM depot_supplies s JOIN bodies b ON b.id=s.source_planet AND b.universe=s.universe WHERE s.universe=$1 AND s.source_planet=ANY($2) AND s.at_ms>b.checkpoint_at-3600000 ORDER BY s.at_ms,s.id")
+        .bind(u.0).bind(&body_ids).fetch_all(&mut **tx).await.map_err(db_error)?.into_iter().map(decode).collect::<Result<_,_>>()?
+    };
+    let alliance_leaders: Vec<uuid::Uuid> = if launch {
+        Vec::new()
+    } else {
+        sqlx::query_scalar(
+            "SELECT leader FROM alliances WHERE universe=$1 AND epoch=$2 AND leader=ANY($3)",
+        )
+        .bind(u.0)
+        .bind(epoch.0)
+        .bind(&owners)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
+    };
     let objective_runs = crate::objectives::load(tx, u, epoch, &owners).await?;
     let mission_sites = crate::mission_sites::load(tx, u, epoch, &selected).await?;
     let covered_sites = selected
@@ -636,7 +704,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
     .await
     .map_err(db_error)?;
     s.world = Some(WorldFacts {
-        covered_gate_bodies: if jump_gates_enabled(rules) || !gate_uses.is_empty() {
+        covered_gate_bodies: if !launch && (jump_gates_enabled(rules) || !gate_uses.is_empty()) {
             body_ids.iter().copied().map(BodyId).collect()
         } else {
             Default::default()
@@ -653,12 +721,17 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         covered_site_players: selected.owners.clone(),
         phalanx: None,
         covered_vacation_players: owners.iter().copied().map(PlayerId).collect(),
-        alliance_leaders: Some(alliance_leaders.into_iter().map(PlayerId).collect()),
+        alliance_leaders: (!launch).then(|| alliance_leaders.into_iter().map(PlayerId).collect()),
         holding_relationships,
-        covered_depot_sources: body_ids.iter().copied().map(BodyId).collect(),
+        covered_depot_sources: if launch {
+            BTreeSet::new()
+        } else {
+            body_ids.iter().copied().map(BodyId).collect()
+        },
         homeworlds,
         planet_slots,
         records: WorldRecords {
+            destroyed_moons,
             gate_uses: gate_uses.into_iter().map(|g| (g.body, g)).collect(),
             mission_sites,
             objective_runs,
@@ -671,7 +744,7 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
             colonies: colonies.into_iter().map(|c| (c.body, c)).collect(),
             policies: policies.into_iter().map(|x| (x.player, x)).collect(),
             activity: activity.into_iter().map(|x| (x.body, x)).collect(),
-            lots,
+            lots: Vec::new(),
             fleets: fleets.into_iter().map(|x| (x.id, x)).collect(),
             debris: debris.into_iter().map(|x| (x.id, x)).collect(),
             reports,
@@ -685,10 +758,16 @@ if row.try_get::<bool,_>("succeeded").map_err(db_error)?{presence.insert(p.gamep
         requested_pair,
         revision,
     });
-    validate_asset_lineage(&s).map_err(|_| StoreError::CorruptData)?;
+    let quantities = catalog_holdings(&s, rules).map_err(|_| StoreError::CorruptData)?;
+    s.world
+        .as_mut()
+        .ok_or(StoreError::CorruptData)?
+        .records
+        .lots = quantities;
+    validate_completed_assets(&s).map_err(|_| StoreError::CorruptData)?;
     Ok(s)
 }
-async fn put<T: serde::Serialize>(
+pub(crate) async fn put<T: serde::Serialize>(
     tx: &mut Tx<'_>,
     u: UniverseId,
     table: &str,
@@ -767,10 +846,12 @@ pub(crate) async fn save(
     s: &GameState,
     c: &WorldChanges,
 ) -> Result<(), StoreError> {
-    let old = &s.world.as_ref().ok_or(StoreError::CorruptData)?.records;
+    let world = s.world.as_ref().ok_or(StoreError::CorruptData)?;
+    let old = &world.records;
     let u = i.universe;
     crate::objectives::save(tx, i, old, &c.records).await?;
     crate::tutorial::save(tx, i, old, &c.records).await?;
+    crate::moon_removal::save(tx, i, old, &c.records).await?;
     for (id, gate) in &c.records.gate_uses {
         if old.gate_uses.get(id) != Some(gate) {
             sqlx::query("INSERT INTO jump_gate_uses(universe,body,data) VALUES($1,$2,$3) ON CONFLICT(body) DO UPDATE SET data=excluded.data")
@@ -883,38 +964,20 @@ pub(crate) async fn save(
         }
     }
     if old.lots != c.records.lots {
-        let owners: Vec<_> = s
-            .world
-            .as_ref()
-            .ok_or(StoreError::CorruptData)?
+        let before =
+            value_completed_assets_by_owner(&old.lots).map_err(|_| StoreError::CorruptData)?;
+        let after = value_completed_assets_by_owner(&c.records.lots)
+            .map_err(|_| StoreError::CorruptData)?;
+        let changed = world
             .covered_players
             .iter()
-            .map(ToString::to_string)
+            .copied()
+            .filter(|owner| {
+                before.get(owner).copied().unwrap_or_default()
+                    != after.get(owner).copied().unwrap_or_default()
+            })
             .collect();
-        sqlx::query("DELETE FROM asset_lots WHERE universe=$1 AND data->>'owner'=ANY($2)")
-            .bind(u.0)
-            .bind(owners)
-            .execute(&mut **tx)
-            .await
-            .map_err(db_error)?;
-        // One round trip: a mature player holds hundreds of lots.
-        let keys: Vec<String> = (0..c.records.lots.len())
-            .map(|index| format!("{}:{index}", i.id))
-            .collect();
-        let data = c
-            .records
-            .lots
-            .iter()
-            .map(serde_json::to_value)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|_| StoreError::CorruptData)?;
-        sqlx::query("INSERT INTO asset_lots(universe,key,data) SELECT $1,k,d FROM unnest($2::text[],$3::jsonb[]) AS t(k,d)")
-            .bind(u.0)
-            .bind(keys)
-            .bind(data)
-            .execute(&mut **tx)
-            .await
-            .map_err(db_error)?;
+        crate::ranking_scores::save_scores(tx, u, &changed, &after).await?;
     }
     for (id, f) in &c.records.missiles {
         if old.missiles.get(id) != Some(f) {
@@ -986,6 +1049,27 @@ pub(crate) async fn save(
     {
         return Err(StoreError::CorruptData);
     }
+    // The command commit already holds this recipient's lock. Revocation and
+    // the visibility update below become observable with the same receipt.
+    if let Input::Command(Command::World {
+        action:
+            WorldAction::ArchiveReport {
+                report,
+                revoke_share: true,
+            },
+    }) = &i.payload
+        && let Actor::Player(recipient) = i.actor
+    {
+        sqlx::query(
+            "DELETE FROM mission_report_shares WHERE report=$1 AND recipient=$2 AND epoch=$3",
+        )
+        .bind(report.0)
+        .bind(recipient.0)
+        .bind(i.epoch.0)
+        .execute(&mut **tx)
+        .await
+        .map_err(db_error)?;
+    }
     if !changed.is_empty() {
         let reports: Vec<_> = changed.iter().map(|state| state.report.0).collect();
         let recipients: Vec<_> = changed.iter().map(|state| state.recipient.0).collect();
@@ -1054,10 +1138,21 @@ impl PgStore {
         }
         // Social actions authorize under the alliance lock before charging bot
         // participation. Fleet admission must acquire those locks in that order too.
-        if crate::holding::requires_lock(&Input::Command(g.clone())) {
+        let alliance_lock = if crate::holding::requires_lock(&Input::Command(g.clone())) {
+            let wait = self.timer(RuntimeStage::AdmissionAllianceWait);
             crate::holding::lock(&mut tx, b.universe, b.epoch).await?;
+            let hold = self.timer(RuntimeStage::AdmissionAllianceHold);
+            let elapsed = wait.elapsed();
+            drop(wait);
+            Some((elapsed, hold))
+        } else {
+            None
+        };
+        if scoped && let Command::World { action } = &g {
+            crate::scope_references::lock_fleet_dependencies(&mut tx, b.player, action, false)
+                .await?;
         }
-        crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
+        let locked_bot = crate::bots::lock_bot(&mut tx, b.universe, b.player).await?;
         // V7 has one deadline for both halves. Legacy browser pairs used independent
         // v4 IDs and legacy machine pairs used their original, stable transform.
         let gameplay =
@@ -1118,6 +1213,20 @@ impl PgStore {
         ) {
             crate::phalanx::admit(&mut tx, b.universe, jump_gates_enabled).await?;
         }
+        if matches!(
+            &g,
+            Command::World {
+                action: WorldAction::LaunchFleet {
+                    intent: FleetIntent {
+                        mission: Mission::DestroyMoon,
+                        ..
+                    },
+                    ..
+                }
+            }
+        ) {
+            crate::phalanx::admit(&mut tx, b.universe, moon_destruction_enabled).await?;
+        }
         if machine {
             let body = crate::bots::participation_body(&mut tx, b, &g).await?;
             if let Command::World {
@@ -1136,10 +1245,9 @@ impl PgStore {
                 .try_get::<String, _>("executor_mode")
                 .map_err(db_error)?
                 == "preparing";
-        let mut presence_scopes = BTreeSet::from([ScopeKey::Player(b.player)]);
-        // Presence is admitted alongside gameplay and is revalidated by the
-        // same selector; enrolled players require their homeworld here too.
-        crate::admission::expand_player_scopes(&mut tx, b.universe, &mut presence_scopes).await?;
+        // Keep the legacy declaration for old workers during a rolling upgrade.
+        // Registration expands the actor's homeworld and tutorial scopes once.
+        let presence_scopes = BTreeSet::from([ScopeKey::Player(b.player)]);
         let (command, inherited) = crate::scope_references::resolve_command(
             &mut tx, b.universe, b.epoch, b.player, g, indexed,
         )
@@ -1169,7 +1277,9 @@ impl PgStore {
                 self.timer(RuntimeStage::OrderingHold),
             )
         };
-        if let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await? {
+        if scoped
+            && let Some(receipt) = crate::admission::existing_pair(&mut tx, &pair, machine).await?
+        {
             timing.finish(AdmissionOutcome::Replay);
             return Ok(receipt);
         }
@@ -1186,7 +1296,15 @@ impl PgStore {
         if recent >= 2 * limit {
             return Err(StoreError::RateLimited);
         }
-        crate::bots::charge(&mut tx, b, "command", pair.gameplay.command_id.0, true).await?;
+        crate::bots::charge_locked(
+            &mut tx,
+            b,
+            "command",
+            pair.gameplay.command_id.0,
+            true,
+            locked_bot.as_ref(),
+        )
+        .await?;
         let pi = InputId(uuid::Uuid::new_v4());
         let gi = InputId(uuid::Uuid::new_v4());
         let body = if let Command::World {
@@ -1198,8 +1316,17 @@ impl PgStore {
             return Err(StoreError::Conflict);
         };
         let log_action = orbit_application::diagnostics::command_action(&g);
-        for (envelope, command, id) in [(&pair.presence, p, pi), (&pair.gameplay, g, gi)] {
-            let sequence = next_sequence(&mut tx, b.universe).await?;
+        let (presence_sequence, gameplay_sequence): (i64, i64) = if scoped {
+            sqlx::query_as("SELECT min(n),max(n) FROM (SELECT nextval($1::regclass) n FROM generate_series(1,2)) reserved")
+                .bind(crate::admission::sequence_name(b.universe)).fetch_one(&mut *tx).await.map_err(db_error)?
+        } else {
+            sqlx::query_as("UPDATE universe_runtime SET next_sequence=next_sequence+2,frontier=$2 WHERE universe=$1 RETURNING next_sequence-2,next_sequence-1")
+                .bind(b.universe.0).bind(at).fetch_one(&mut *tx).await.map_err(db_error)?
+        };
+        for (envelope, command, id, sequence) in [
+            (&pair.presence, p, pi, presence_sequence),
+            (&pair.gameplay, g, gi, gameplay_sequence),
+        ] {
             let input = OrderedInput {
                 schema_version: 4,
                 id,
@@ -1220,8 +1347,10 @@ impl PgStore {
                 executed_at: None,
                 status: ReceiptStatus::Pending,
             };
-            sqlx::query("INSERT INTO commands(universe,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt,epoch) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)").bind(b.universe.0).bind(b.player.0).bind(envelope.command_id.0).bind(id.0).bind(&pair_hash.0).bind(at).bind(sequence).bind(sqlx::types::Json(&input)).bind(sqlx::types::Json(receipt)).bind(b.epoch.0).execute(&mut *tx).await.map_err(db_error)?;
-            crate::activity::admit(&mut tx, id.0).await?;
+            sqlx::query("INSERT INTO commands(universe,actor,command_id,input_id,intent_hash,at_ms,sequence,input,receipt,epoch,inline_presence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)").bind(b.universe.0).bind(b.player.0).bind(envelope.command_id.0).bind(id.0).bind(&pair_hash.0).bind(at).bind(sequence).bind(sqlx::types::Json(&input)).bind(sqlx::types::Json(receipt)).bind(b.epoch.0).bind(id == pi).execute(&mut *tx).await.map_err(db_error)?;
+            if id == gi {
+                crate::activity::admit(&mut tx, id.0).await?;
+            }
             if indexed {
                 crate::admission::register(
                     &mut tx,
@@ -1243,19 +1372,17 @@ impl PgStore {
             at,
         };
         sqlx::query("INSERT INTO presence_pairs(universe,presence_input,gameplay_input,data) VALUES($1,$2,$3,$4)").bind(b.universe.0).bind(pi.0).bind(gi.0).bind(sqlx::types::Json(link)).execute(&mut *tx).await.map_err(db_error)?;
-        if !scoped {
-            sqlx::query("UPDATE universe_runtime SET frontier=$2 WHERE universe=$1")
-                .bind(b.universe.0)
-                .bind(at)
-                .execute(&mut *tx)
-                .await
-                .map_err(db_error)?;
-        }
         #[cfg(feature = "test-support")]
         self.test_fault("before_pair_admission").await?;
         crate::command_window::check(&mut tx, pair.gameplay.command_id.0).await?;
         let commit_timing = self.timer(RuntimeStage::AdmissionCommit);
         tx.commit().await.map_err(db_error)?;
+        let (gameplay_log, presence_log) =
+            orbit_application::diagnostics::AdmissionLog::pair(machine, pi, gi);
+        let gameplay_log = match alliance_lock {
+            Some((wait, hold)) => gameplay_log.with_alliance_lock(wait, hold.elapsed()),
+            None => gameplay_log,
+        };
         drop(commit_timing);
         timing.finish(AdmissionOutcome::Committed);
         orbit_application::diagnostics::admitted(
@@ -1263,12 +1390,14 @@ impl PgStore {
             pair.gameplay.command_id,
             gi,
             log_action,
+            gameplay_log,
         );
         orbit_application::diagnostics::admitted(
             b.universe,
             pair.presence.command_id,
             pi,
             "presence",
+            presence_log,
         );
         #[cfg(feature = "test-support")]
         self.test_fault("after_pair_admission").await?;
@@ -1449,7 +1578,7 @@ impl PgStore {
             )
             .await?;
         let (facts, _) = snapshot.facts;
-        let quote = quote_fleet(&facts.state, b.player, &intent, facts.at, &facts.rules)
+        let quote = quote_fleet_with_odds(&facts.state, b.player, &intent, facts.at, &facts.rules)
             .map_err(StoreError::GameRejected)?;
         tx.commit().await.map_err(db_error)?;
         serde_json::to_value(quote).map_err(|_| StoreError::CorruptData)

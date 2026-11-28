@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShipAppearancesController } from '../../src/client-model/ship-appearances'
+import skins from '../../../../crates/application/assets/ship-skins.json'
 import { HttpError } from '../../src/adapters/http'
 import type {
   ShipAppearanceAction,
@@ -47,6 +48,20 @@ function initialState(): ShipAppearanceState {
         color: '#b66f42',
         availability: 'available',
       },
+      {
+        id: 'reward-umber',
+        name: 'Reward umber',
+        color: '#694833',
+        access: 'earned',
+        availability: 'locked',
+      },
+      {
+        id: 'member-pearl',
+        name: 'Member pearl',
+        color: '#ddd9cc',
+        access: 'membership',
+        availability: 'locked',
+      },
     ],
     library: [
       {
@@ -60,7 +75,7 @@ function initialState(): ShipAppearanceState {
           package_revision: 'concord-v1',
           primary: 'porcelain',
           accent: 'navy',
-          emblem: { treatment: 'full', placement: 'paired' },
+          emblem: { treatment: 'layers', placement: 'near-wing' },
         },
       },
     ],
@@ -111,8 +126,36 @@ declare global {
 }
 
 /** Controlled external API; every observation still travels through the real controller. */
-function createScene() {
+function createScene(freshHangar: boolean) {
   let server = initialState()
+  if (freshHangar) {
+    server.catalog = skins.map(({ id, revision, name }) => ({
+      id,
+      name,
+      target: 'LightFighter',
+      available: true,
+      package_revision: revision,
+      package_url: `/art/ship-skins/${id}/${revision}/manifest.json`,
+      preview_url: `/art/ship-skins/${id}/${revision}/preview.webp`,
+    }))
+    server.equipment = []
+    server.library = []
+    server.emblem = null
+    server.dyes = [
+      ['ivory', 'Ivory', '#e5dfce'],
+      ['graphite', 'Graphite', '#30343b'],
+      ['steel', 'Steel', '#8395a6'],
+      ['blue', 'Blue', '#315caa'],
+      ['red', 'Red', '#b83535'],
+      ['gold', 'Gold', '#d5a740'],
+      ['green', 'Green', '#367d62'],
+    ].map(([id, name, color]) => ({
+      id: 'free-' + id,
+      name,
+      color,
+      availability: 'available',
+    }))
+  }
   let pending: {
     action: ShipAppearanceAction
     resolve: (value: ShipAppearanceState) => void
@@ -186,8 +229,16 @@ function createScene() {
   return { controller, control }
 }
 
-export function ShipCustomizationScenario() {
-  const [scene] = useState(createScene)
+export function FighterArrivalScenario() {
+  return <ShipCustomizationScenario freshHangar />
+}
+
+export function ShipCustomizationScenario({
+  freshHangar = false,
+}: {
+  freshHangar?: boolean
+}) {
+  const [scene] = useState(() => createScene(freshHangar))
   const [open, setOpen] = useState(false)
   useEffect(() => {
     window.shipCustomizationScene = scene.control
@@ -206,6 +257,8 @@ export function ShipCustomizationScenario() {
         {open && (
           <ShipCustomizer
             target="LightFighter"
+            emblemHref="/u/demo/b/forge/settings/identity#empire-insignia"
+            guideHref="/u/demo/b/forge/rewards#dye-unlocks"
             onClose={() => setOpen(false)}
           />
         )}

@@ -38,6 +38,9 @@ pub(crate) async fn scopes(
     u: UniverseId,
     input: &Input,
 ) -> Result<BTreeSet<ScopeKey>, StoreError> {
+    if requested(input) == (None, None) {
+        return Ok(BTreeSet::new());
+    }
     let groups = load(tx, u, input, &[], false).await?;
     let mut scopes = BTreeSet::new();
     let (_, fleet) = requested(input);

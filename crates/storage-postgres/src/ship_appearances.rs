@@ -149,10 +149,8 @@ impl PgStore {
             tx.commit().await.map_err(db_error)?;
             return Ok(());
         }
-        sqlx::query("INSERT INTO empire_ship_equipment(universe,account,target) VALUES($1,$2,$3) ON CONFLICT DO NOTHING").bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).execute(&mut *tx).await.map_err(db_error)?;
-        let revision:i64=sqlx::query_scalar("SELECT revision FROM empire_ship_equipment WHERE universe=$1 AND account=$2 AND target=$3 FOR UPDATE").bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).fetch_one(&mut *tx).await.map_err(db_error)?;
         let mut selection = None;
-        let mut force_render = false;
+        let mut force_target = None;
         let is_load = matches!(action, ShipAppearanceAction::Load);
         match action {
             ShipAppearanceAction::Load => {}
@@ -165,18 +163,28 @@ impl PgStore {
                     return Err(ServiceError::Malformed);
                 }
                 env.input(&design.recipe)?;
-                if equip && expected_equipment_revision != revision {
-                    return Err(ServiceError::Conflict);
+                if equip {
+                    check_equipment_revision(
+                        &mut tx,
+                        b,
+                        &design.target,
+                        expected_equipment_revision,
+                    )
+                    .await?;
                 }
-                let previous: Option<i64> = sqlx::query_scalar(
-                    "SELECT max(revision) FROM ship_design_revisions WHERE account=$1 AND id=$2",
+                let previous: Option<(i64, String)> = sqlx::query_as(
+                    "SELECT revision,target FROM ship_design_revisions WHERE account=$1 AND id=$2 ORDER BY revision DESC LIMIT 1",
                 )
                 .bind(b.account.0)
                 .bind(design.id)
-                .fetch_one(&mut *tx)
+                .fetch_optional(&mut *tx)
                 .await
                 .map_err(db_error)?;
-                if previous.unwrap_or(0) != design.revision {
+                if previous.as_ref().map_or(0, |(revision, _)| *revision) != design.revision
+                    || previous
+                        .as_ref()
+                        .is_some_and(|(_, target)| target != &design.target)
+                {
                     return Err(ServiceError::Conflict);
                 }
                 if previous.is_none() {
@@ -193,7 +201,7 @@ impl PgStore {
                 }
                 sqlx::query("INSERT INTO ship_design_revisions(account,id,revision,name,target,recipe) VALUES($1,$2,$3,$4,$5,$6)").bind(b.account.0).bind(design.id).bind(design.revision+1).bind(design.name.trim()).bind(&design.target).bind(Json(&design.recipe)).execute(&mut *tx).await.map_err(db_error)?;
                 if equip {
-                    selection = Some((design.id, design.revision + 1));
+                    selection = Some((design.target, design.id, design.revision + 1));
                 }
             }
             ShipAppearanceAction::Equip {
@@ -202,16 +210,16 @@ impl PgStore {
                 design_revision,
                 expected_equipment_revision,
             } => {
-                check_target_revision(&target, expected_equipment_revision, revision)?;
-                let recipe:Json<ShipPaintRecipe>=sqlx::query_scalar("SELECT recipe FROM ship_design_revisions WHERE account=$1 AND id=$2 AND revision=$3 AND target=$4").bind(b.account.0).bind(design_id).bind(design_revision).bind(target).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(ServiceError::NotFound)?;
+                check_equipment_revision(&mut tx, b, &target, expected_equipment_revision).await?;
+                let recipe:Json<ShipPaintRecipe>=sqlx::query_scalar("SELECT recipe FROM ship_design_revisions WHERE account=$1 AND id=$2 AND revision=$3 AND target=$4").bind(b.account.0).bind(design_id).bind(design_revision).bind(&target).fetch_optional(&mut *tx).await.map_err(db_error)?.ok_or(ServiceError::NotFound)?;
                 env.input(&recipe.0)?;
-                selection = Some((design_id, design_revision));
+                selection = Some((target, design_id, design_revision));
             }
             ShipAppearanceAction::Reset {
                 target,
                 expected_equipment_revision,
             } => {
-                check_target_revision(&target, expected_equipment_revision, revision)?;
+                check_equipment_revision(&mut tx, b, &target, expected_equipment_revision).await?;
                 sqlx::query("UPDATE ship_render_requests SET stage='superseded' WHERE universe=$1 AND account=$2 AND target=$3 AND stage='queued'").bind(b.universe.0).bind(b.account.0).bind(&target).execute(&mut *tx).await.map_err(db_error)?;
                 sqlx::query("UPDATE empire_ship_equipment SET revision=revision+1,design_id=NULL,design_revision=NULL,latest_request=NULL,artwork=NULL WHERE universe=$1 AND account=$2 AND target=$3").bind(b.universe.0).bind(b.account.0).bind(target).execute(&mut *tx).await.map_err(db_error)?;
             }
@@ -222,18 +230,23 @@ impl PgStore {
                 }
             }
             ShipAppearanceAction::Retry { request_id } => {
-                let input:Option<Json<Value>>=sqlx::query_scalar("SELECT r.input FROM ship_render_requests r JOIN empire_ship_equipment e ON e.latest_request=r.id WHERE r.id=$3 AND r.universe=$1 AND r.account=$2 AND r.stage IN ('failed','canceled')").bind(b.universe.0).bind(b.account.0).bind(request_id).fetch_optional(&mut *tx).await.map_err(db_error)?;
-                if input.is_none() {
-                    return Err(ServiceError::Conflict);
-                }
-                force_render = true;
+                let target:Option<String>=sqlx::query_scalar("SELECT r.target FROM ship_render_requests r JOIN empire_ship_equipment e ON e.latest_request=r.id WHERE r.id=$3 AND r.universe=$1 AND r.account=$2 AND r.stage IN ('failed','canceled')").bind(b.universe.0).bind(b.account.0).bind(request_id).fetch_optional(&mut *tx).await.map_err(db_error)?;
+                force_target = Some(target.ok_or(ServiceError::Conflict)?);
             }
         }
-        if let Some((id, rev)) = selection {
-            force_render = true;
-            sqlx::query("UPDATE empire_ship_equipment SET revision=revision+1,design_id=$3,design_revision=$4 WHERE universe=$1 AND account=$2 AND target=$5").bind(b.universe.0).bind(b.account.0).bind(id).bind(rev).bind(SHIP_TARGET).execute(&mut *tx).await.map_err(db_error)?;
+        if let Some((target, id, rev)) = selection {
+            sqlx::query("UPDATE empire_ship_equipment SET revision=revision+1,design_id=$3,design_revision=$4 WHERE universe=$1 AND account=$2 AND target=$5").bind(b.universe.0).bind(b.account.0).bind(id).bind(rev).bind(&target).execute(&mut *tx).await.map_err(db_error)?;
+            force_target = Some(target);
         }
-        refresh(&mut tx, b, &env, force_render).await?;
+        if is_load {
+            let targets: Vec<String> = sqlx::query_scalar("SELECT target FROM empire_ship_equipment WHERE universe=$1 AND account=$2 AND design_id IS NOT NULL ORDER BY target")
+                .bind(b.universe.0).bind(b.account.0).fetch_all(&mut *tx).await.map_err(db_error)?;
+            for target in targets {
+                refresh(&mut tx, b, &target, &env, false).await?;
+            }
+        } else if let Some(target) = force_target {
+            refresh(&mut tx, b, &target, &env, true).await?;
+        }
         if !is_load {
             sqlx::query("INSERT INTO ship_appearance_actions(universe,account,request_id,action) VALUES($1,$2,$3,$4)").bind(b.universe.0).bind(b.account.0).bind(request).bind(Json(value)).execute(&mut *tx).await.map_err(db_error)?;
         }
@@ -426,11 +439,18 @@ impl PgStore {
         Ok(())
     }
 }
-fn check_target_revision(target: &str, expected: i64, actual: i64) -> Result<(), ServiceError> {
-    if target != SHIP_TARGET {
+async fn check_equipment_revision(
+    connection: &mut PgConnection,
+    b: Binding,
+    target: &str,
+    expected: i64,
+) -> Result<(), ServiceError> {
+    if !BUNDLED_SHIP_SKINS.iter().any(|skin| skin.target == target) {
         return Err(ServiceError::Malformed);
     }
-    if expected != actual {
+    sqlx::query("INSERT INTO empire_ship_equipment(universe,account,target) VALUES($1,$2,$3) ON CONFLICT DO NOTHING").bind(b.universe.0).bind(b.account.0).bind(target).execute(&mut *connection).await.map_err(db_error)?;
+    let revision:i64=sqlx::query_scalar("SELECT revision FROM empire_ship_equipment WHERE universe=$1 AND account=$2 AND target=$3 FOR UPDATE").bind(b.universe.0).bind(b.account.0).bind(target).fetch_one(&mut *connection).await.map_err(db_error)?;
+    if expected != revision {
         return Err(ServiceError::Conflict);
     }
     Ok(())
@@ -438,10 +458,11 @@ fn check_target_revision(target: &str, expected: i64, actual: i64) -> Result<(),
 async fn refresh(
     tx: &mut PgConnection,
     b: Binding,
+    target: &str,
     env: &ShipRenderEnvironment,
     force: bool,
 ) -> Result<(), ServiceError> {
-    let row=sqlx::query("SELECT e.revision,r.input,r.emblem_revision,r.error,r.stage,r.epoch,r.player,d.recipe FROM empire_ship_equipment e LEFT JOIN ship_render_requests r ON r.id=e.latest_request JOIN ship_design_revisions d ON d.account=e.account AND d.id=e.design_id AND d.revision=e.design_revision WHERE e.universe=$1 AND e.account=$2 AND e.target=$3").bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).fetch_optional(&mut *tx).await.map_err(db_error)?;
+    let row=sqlx::query("SELECT e.revision,r.input,r.emblem_revision,r.error,r.stage,r.epoch,r.player,d.recipe FROM empire_ship_equipment e LEFT JOIN ship_render_requests r ON r.id=e.latest_request JOIN ship_design_revisions d ON d.account=e.account AND d.id=e.design_id AND d.revision=e.design_revision WHERE e.universe=$1 AND e.account=$2 AND e.target=$3").bind(b.universe.0).bind(b.account.0).bind(target).fetch_optional(&mut *tx).await.map_err(db_error)?;
     let Some(row) = row else {
         return Ok(());
     };
@@ -480,10 +501,10 @@ async fn refresh(
     {
         return Ok(());
     }
-    sqlx::query("UPDATE ship_render_requests SET stage='superseded' WHERE universe=$1 AND account=$2 AND target=$3 AND stage='queued'").bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).execute(&mut *tx).await.map_err(db_error)?;
+    sqlx::query("UPDATE ship_render_requests SET stage='superseded' WHERE universe=$1 AND account=$2 AND target=$3 AND stage='queued'").bind(b.universe.0).bind(b.account.0).bind(target).execute(&mut *tx).await.map_err(db_error)?;
     let id = Uuid::new_v4();
     let revision: i64 = row.try_get("revision").map_err(db_error)?;
-    sqlx::query("INSERT INTO ship_render_requests(id,universe,account,target,equipment_revision,input,emblem_revision,player,epoch,stage) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'queued')").bind(id).bind(b.universe.0).bind(b.account.0).bind(SHIP_TARGET).bind(revision).bind(Json(&input)).bind(env.emblem_revision).bind(b.player.0).bind(b.epoch.0).execute(&mut *tx).await.map_err(db_error)?;
-    sqlx::query("UPDATE empire_ship_equipment SET latest_request=$3 WHERE universe=$1 AND account=$2 AND target=$4").bind(b.universe.0).bind(b.account.0).bind(id).bind(SHIP_TARGET).execute(&mut *tx).await.map_err(db_error)?;
+    sqlx::query("INSERT INTO ship_render_requests(id,universe,account,target,equipment_revision,input,emblem_revision,player,epoch,stage) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'queued')").bind(id).bind(b.universe.0).bind(b.account.0).bind(target).bind(revision).bind(Json(&input)).bind(env.emblem_revision).bind(b.player.0).bind(b.epoch.0).execute(&mut *tx).await.map_err(db_error)?;
+    sqlx::query("UPDATE empire_ship_equipment SET latest_request=$3 WHERE universe=$1 AND account=$2 AND target=$4").bind(b.universe.0).bind(b.account.0).bind(id).bind(target).execute(&mut *tx).await.map_err(db_error)?;
     Ok(())
 }

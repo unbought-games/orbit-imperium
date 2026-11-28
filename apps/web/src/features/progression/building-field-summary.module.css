@@ -1,0 +1,4 @@
+.count {
+  gap: var(--space-1);
+  white-space: nowrap;
+}

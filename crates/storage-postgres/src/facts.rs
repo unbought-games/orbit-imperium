@@ -14,15 +14,32 @@ pub(crate) fn decode_rules(v: serde_json::Value) -> Result<Ruleset, StoreError> 
     Ok(rules)
 }
 pub(crate) async fn rules(tx: &mut Tx<'_>, u: UniverseId) -> Result<Ruleset, StoreError> {
-    let row = sqlx::query("SELECT r.profile,u.profile_hash,u.speed FROM universes u LEFT JOIN rulesets r ON r.hash=u.profile_hash WHERE u.id=$1")
+    let row = sqlx::query("SELECT r.profile::text AS profile,u.profile_hash,u.speed FROM universes u LEFT JOIN rulesets r ON r.hash=u.profile_hash WHERE u.id=$1")
         .bind(u.0).fetch_optional(&mut **tx).await.map_err(db_error)?.ok_or(StoreError::NotFound)?;
-    let profile: Option<serde_json::Value> = row.try_get("profile").map_err(db_error)?;
-    let rules = decode_rules(profile.ok_or(StoreError::CorruptData)?)?;
+    rules_from_row(&row)
+}
+
+pub(crate) fn rules_from_row(row: &sqlx::postgres::PgRow) -> Result<Ruleset, StoreError> {
+    let profile: Option<String> = row.try_get("profile").map_err(db_error)?;
+    let rules = cached_rules(profile.ok_or(StoreError::CorruptData)?)?;
     if rules.hash.0 != row.try_get::<String, _>("profile_hash").map_err(db_error)?
         || rules.speed != row.try_get::<i32, _>("speed").map_err(db_error)?
     {
         return Err(StoreError::CorruptData);
     }
+    Ok(rules)
+}
+// One validated artifact covers the usual single-universe process. Compare the
+// actual stored bytes so a corrupt row under an existing hash still fails closed.
+fn cached_rules(profile: String) -> Result<Ruleset, StoreError> {
+    static LAST: std::sync::RwLock<Option<(String, Ruleset)>> = std::sync::RwLock::new(None);
+    if let Some((previous, rules)) = LAST.read().expect("rules cache").as_ref()
+        && *previous == profile
+    {
+        return Ok(rules.clone());
+    }
+    let rules = decode_rules(serde_json::from_str(&profile).map_err(|_| StoreError::CorruptData)?)?;
+    *LAST.write().expect("rules cache") = Some((profile, rules.clone()));
     Ok(rules)
 }
 /// Historical commitments may reference earlier snapshots, but never missing ones.
@@ -63,7 +80,6 @@ pub(crate) async fn validate_rule_references(
                 x.authorization.policy_hash.0.clone(),
             ]
         }));
-        hashes.extend(w.records.lots.iter().map(|x| x.rules_hash.0.clone()));
     }
     let hashes: Vec<_> = hashes.into_iter().collect();
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM rulesets WHERE hash=ANY($1)")
@@ -251,6 +267,8 @@ pub(crate) async fn load(
         fleets,
         reports: BTreeMap::new(),
         coverage: FactCoverage {
+            manufacturing_due_count: None,
+            moon_removal_bodies: Default::default(),
             production_bodies: Default::default(),
             research_operation_ids: Default::default(),
             research_slot_players: Default::default(),
@@ -270,10 +288,52 @@ pub(crate) async fn load(
         collection_revisions,
     })
 }
+/// The claim advanced its ordering frontier before releasing the gate. A new
+/// conflicting admission cannot appear before that time. An earlier existing
+/// input could create a successor, so its own timestamp bounds this batch too.
+pub(crate) async fn manufacturing_window(
+    tx: &mut Tx<'_>,
+    state: &mut GameState,
+    input: &OrderedInput,
+    lease_until: i64,
+) -> Result<(), StoreError> {
+    let Input::Event(ScheduledEvent::ManufacturingDue { operation, .. }) = &input.payload else {
+        return Ok(());
+    };
+    let Some(batch) = state.manufacturing_batches.get(operation) else {
+        return Ok(());
+    };
+    let claimed_at = lease_until.saturating_sub(LEASE_MS);
+    if batch.status != ManufacturingStatus::Active
+        || batch.item == ManufacturedItem::Ship(ShipType::SolarSatellite)
+        || batch.consecutive_due_units(claimed_at, None) <= 1
+    {
+        return Ok(());
+    }
+    // Satellites change the production rate at each completion. Pending
+    // manufacture milestones likewise need per-unit evidence and grant times.
+    if let ManufacturedItem::Ship(ship) = batch.item
+        && state.world.as_ref().is_some_and(|w| w.records.objective_runs.values().any(|run|
+            run.beneficiary == batch.owner && run.program.objectives.iter().any(|d|
+                !run.receipts.contains_key(&d.id) && matches!(d.predicate, ObjectivePredicate::Manufacture { ship: wanted, .. } if wanted == ship)
+            ))) { return Ok(()); }
+    let player_key = serde_json::to_string(&ScopeKey::Player(batch.owner))
+        .map_err(|_| StoreError::CorruptData)?;
+    let (frontier, boundary): (i64, Option<i64>) = sqlx::query_as(
+        "SELECT CASE WHEN r.executor_mode='scoped' THEN e.frontier ELSE r.frontier END,
+                least((SELECT min(at_ms) FROM pending_inputs WHERE universe=$1 AND input_id<>$2),
+                      (SELECT min(at_ms) FROM runtime_barriers WHERE universe=$1 AND NOT done))
+         FROM universe_runtime r LEFT JOIN execution_scopes e ON e.universe=r.universe AND e.key=$3 WHERE r.universe=$1",
+    ).bind(input.universe.0).bind(input.id.0).bind(player_key).fetch_one(&mut **tx).await.map_err(db_error)?;
+    let count = batch.consecutive_due_units(claimed_at.min(frontier), boundary);
+    state.coverage.manufacturing_due_count = (count > 1).then_some(count);
+    Ok(())
+}
 impl PgStore {
     pub(crate) async fn claim_facts(&self, claim: &Claim) -> Result<ClaimSnapshot, StoreError> {
-        let mut tx = self.begin_tx(self.worker_pool()?).await?;
-        gate(&mut tx, claim.input.universe).await?;
+        // A coherent tentative read needs no ordering gate. Final commit fences
+        // the lease and revalidates against current facts under the gate.
+        let mut tx = crate::snapshots::begin(self, self.worker_pool()?).await?;
         if !valid_claim(&mut tx, claim).await? {
             return Err(StoreError::StaleClaim);
         }
@@ -288,7 +348,7 @@ impl PgStore {
         if !exists {
             return Err(StoreError::CorruptData);
         }
-        let state = if rules.world() {
+        let mut state = if rules.world() {
             let selected =
                 crate::scoped_facts::select(&mut tx, i.universe, i.actor, &i.payload).await?;
             crate::scoped_facts::load_execution_with_rules(&mut tx, i, &selected.scopes(), &rules)
@@ -305,6 +365,8 @@ impl PgStore {
             )
             .await?
         };
+        crate::paired_activity::project(&mut state, i, &rules)?;
+        manufacturing_window(&mut tx, &mut state, i, claim.lease_until).await?;
         validate_rule_references(&mut tx, &state).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(ClaimSnapshot { state, rules })

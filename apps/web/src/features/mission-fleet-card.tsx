@@ -1,3 +1,4 @@
+import { label } from '../ui/format'
 import { AttackGroupAction } from './attack-groups'
 import { useId, useState, type ReactNode } from 'react'
 import { ChevronDown, RotateCcw } from 'lucide-react'
@@ -209,25 +210,25 @@ export function MissionFleetCardPresentation({
       {...rowProps}
       className={`${fleetStyles.card} ${rowLinkStyles.row}`}
       data-flight-tone={ownFleetTone(fleet.intent.mission)}
-      aria-label={`${fleet.intent.mission} fleet`}
+      aria-label={`${label(fleet.intent.mission)} fleet`}
     >
       <header className={fleetStyles.heading}>
         <Heading
           level={3}
           className={fleetStyles.title}
-          aria-label={`${fleet.intent.mission} ${fleet.leg}`}
+          aria-label={`${label(fleet.intent.mission)} ${fleet.leg}`}
         >
           {!detail && linkEnabled ? (
             <Link
               ref={linkRef}
               className={rowLinkStyles.link}
               {...routeTarget(universeName, 'fleets', origin, fleet.id)}
-              aria-label={`View ${fleet.intent.mission} ${fleet.leg.toLowerCase()} fleet`}
+              aria-label={`View ${label(fleet.intent.mission)} ${fleet.leg.toLowerCase()} fleet`}
             >
-              {fleet.intent.mission}
+              {label(fleet.intent.mission)}
             </Link>
           ) : (
-            fleet.intent.mission
+            label(fleet.intent.mission)
           )}{' '}
           <span>{fleet.leg}</span>
         </Heading>
@@ -237,7 +238,7 @@ export function MissionFleetCardPresentation({
           className={fleetStyles.manifestToggle}
           aria-expanded={showShips}
           aria-controls={shipsId}
-          aria-label={`${fleet.intent.mission} ship composition: ${formatWholeNumber(count)} ${count === 1n ? 'ship' : 'ships'}`}
+          aria-label={`${label(fleet.intent.mission)} ship composition: ${formatWholeNumber(count)} ${count === 1n ? 'ship' : 'ships'}`}
           onClick={() => setShowShips(!showShips)}
         >
           <NumberValue value={count} /> {count === 1n ? 'ship' : 'ships'}

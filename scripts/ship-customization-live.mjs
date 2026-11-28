@@ -20,7 +20,8 @@ assert.ok(process.env.ORBIT_TEST_DB_PORT, 'Set the disposable database port')
 const started = performance.now(),
   timings = {}
 const database = `orbit_ship_${randomUUID().replaceAll('-', '')}`
-const output = resolve('test-results/ship-customization/live')
+const output = resolve('test-results/ship-customization/live', database)
+console.log('Acceptance artifacts:', output)
 const assets = await mkdtemp(join(tmpdir(), 'orbit-ship-assets-'))
 const binary = resolve(
   process.env.ORBIT_TEST_SERVER_BINARY ?? 'target/debug/orbit',
@@ -171,8 +172,10 @@ try {
     .toString()
     .trim()
   assert.match(body, /^[a-f0-9-]{36}$/)
-  const slug = membership.universe_name.toLowerCase().replaceAll(' ', '-')
-  const route = `/u/${slug}/b/${body}/shipyard/light-fighter`
+  const slugOfUniverse = membership.universe_name
+    .toLowerCase()
+    .replaceAll(' ', '-')
+  const route = `/u/${slugOfUniverse}/b/${body}/shipyard/light-fighter`
   const endpoint = `${origin}/api/v1/universes/${binding.universe}/ship-appearances`
   const headers = { Origin: origin, 'x-csrf-token': session.csrf }
   async function act(action, id = randomUUID()) {
@@ -218,9 +221,12 @@ try {
     assert.equal(response.status(), 200, await response.text())
   }
   await emblem(0, emblemRecipe)
-  async function navigate(path) {
+  async function navigate(path, quoteTarget = 'LightFighter') {
     const delivered = page.waitForResponse(
-      (r) => r.url() === endpoint && r.request().method() === 'POST',
+      (r) =>
+        r.url() === endpoint &&
+        r.request().method() === 'POST' &&
+        r.request().postDataJSON()?.action?.type === 'Load',
     )
     const options = path.includes('/shipyard/')
       ? page.waitForResponse((r) => {
@@ -232,23 +238,24 @@ try {
           const data = r.request().postDataJSON()
           return [data.request, ...(data.requests ?? [])].some(
             (request) =>
-              request?.body === body && request?.item?.id === 'LightFighter',
+              request?.body === body && request?.item?.id === quoteTarget,
           )
         })
       : null
     await page.goto(origin + path)
     const response = await delivered
     assert.equal(response.status(), 200)
-    await response.finished()
+    assert.equal(await response.finished(), null)
     if (options) {
       const quote = await options
       assert.equal(quote.status(), 200)
-      await quote.finished()
-      await expect(
-        page
-          .getByRole('region', { name: 'New order', exact: true })
-          .getByRole('button', { name: 'Build', exact: true }),
-      ).toBeEnabled()
+      assert.equal(await quote.finished(), null)
+      if (quoteTarget === 'LightFighter')
+        await expect(
+          page
+            .getByRole('region', { name: 'New order', exact: true })
+            .getByRole('button', { name: 'Build', exact: true }),
+        ).toBeEnabled()
     }
     // Dismiss the playground's existing toast stack through its keyboard action
     // before capturing this feature; this creates no gameplay command.
@@ -264,17 +271,110 @@ try {
       await notice.waitForElementState('hidden')
     }
   }
-  async function shipImageReady() {
-    const image = page
-      .getByRole('figure', { name: 'Light Fighter illustration' })
-      .locator('img')
-    await expect(image).toHaveAttribute('src', /api\/media\/ship-appearances/)
+  // Compare two paint channels and a protected part outside the emblem slots.
+  // Pass the decoded native artifact through the same ImageData conversion as
+  // the live canvas so premultiplication uses the same rounding on both sides.
+  async function comparePreview(editor, artwork, points) {
+    assert.ok(artwork.variants.length > 0)
+    const native = artwork.variants.reduce((a, b) =>
+      a.width > b.width ? a : b,
+    )
+    const media = await page.request.get(origin + native.url)
+    assert.equal(media.status(), 200)
+    const { data, info } = await sharp(await media.body())
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    assert.deepEqual(
+      [info.width, info.height, info.channels],
+      [native.width, native.height, 4],
+    )
+    const samples = points.map(([x, y]) => {
+      const i = 4 * (y * info.width + x)
+      return { x, y, rgba: [...data.subarray(i, i + 4)] }
+    })
+    const matches = await editor.locator('canvas').evaluate(
+      (canvas, { samples, width, height }) => {
+        if (canvas.width !== width || canvas.height !== height) return false
+        const live = canvas.getContext('2d')
+        const pixel = new OffscreenCanvas(1, 1).getContext('2d')
+        return samples.every(({ x, y, rgba }) => {
+          pixel.putImageData(
+            new ImageData(new Uint8ClampedArray(rgba), 1, 1),
+            0,
+            0,
+          )
+          const expected = pixel.getImageData(0, 0, 1, 1).data
+          return (
+            rgba[3] > 240 &&
+            live
+              .getImageData(x, y, 1, 1)
+              .data.every((value, c) => value === expected[c])
+          )
+        })
+      },
+      { samples, width: info.width, height: info.height },
+    )
+    assert.ok(
+      matches,
+      'Saved and preview pixels differ at the hull, accent or protected sample',
+    )
+  }
+  async function readySnapshot(target) {
+    let snapshot
+    await expect
+      .poll(
+        async () => {
+          snapshot = await act({ type: 'Load' })
+          return snapshot.equipment.find((row) => row.target === target)?.render
+            ?.stage
+        },
+        { timeout: 60_000 },
+      )
+      .toBe('ready')
+    return snapshot
+  }
+  function checkDesign(snapshot, target, slug, revision, primary, accent) {
+    const equipment = snapshot.equipment.find((row) => row.target === target)
+    const design = snapshot.library.find(
+      (row) =>
+        row.id === equipment?.design_id &&
+        row.revision === equipment.design_revision,
+    )
+    assert.ok(design, 'Expected an equipped design for ' + target)
+    assert.deepEqual(
+      [
+        design.target,
+        design.recipe.skin_id,
+        design.recipe.package_revision,
+        design.recipe.primary,
+        design.recipe.accent,
+      ],
+      [
+        target,
+        'orbit-base-' + slug,
+        revision,
+        'free-' + primary.toLowerCase(),
+        'free-' + accent.toLowerCase(),
+      ],
+    )
+  }
+  async function imageReady(image, artwork) {
+    const urls = artwork.variants.map((v) => new URL(v.url, origin).href)
     await expect
       .poll(() =>
-        image.evaluate((node) => node.complete && node.naturalWidth > 0),
+        image.evaluate(
+          (img, urls) =>
+            img.complete &&
+            img.naturalWidth > 0 &&
+            urls.includes(img.currentSrc),
+          urls,
+        ),
       )
       .toBe(true)
   }
+  const lightImage = page
+    .getByRole('figure', { name: 'Light Fighter illustration' })
+    .locator('img')
   await navigate(route)
   await page.getByRole('button', { name: 'Customize', exact: true }).click()
   const dialog = page.getByRole('dialog', {
@@ -299,10 +399,13 @@ try {
   await dialog
     .getByRole('button', { name: 'Primary: Graphite', exact: true })
     .click()
+  await dialog.getByRole('button', { name: 'Accent', exact: true }).click()
   await dialog
     .getByRole('button', { name: 'Accent: Gold', exact: true })
     .click()
-  await dialog.getByLabel('Appearance', { exact: true }).selectOption('layers')
+  await expect(
+    dialog.getByRole('switch', { name: 'Show empire emblem' }),
+  ).toBeChecked()
   const saved = page.waitForResponse(
     (r) =>
       r.url() === endpoint &&
@@ -313,20 +416,22 @@ try {
     .click()
   const response = await saved
   assert.equal(response.status(), 200)
-  await response.finished()
-  let state
-  await expect
-    .poll(
-      async () => {
-        state = await act({ type: 'Load' })
-        return state.equipment[0].render?.stage
-      },
-      { timeout: 60_000 },
-    )
-    .toBe('ready')
-  await expect(
-    dialog.getByRole('region', { name: 'Fleet appearance status' }),
-  ).toHaveCount(0)
+  assert.equal(await response.finished(), null)
+  checkDesign(
+    await response.json(),
+    'LightFighter',
+    'light-fighter',
+    'v1',
+    'Graphite',
+    'Gold',
+  )
+  let state = await readySnapshot('LightFighter')
+  await expect(dialog.locator('li[aria-current="step"]')).toHaveText('Saved')
+  await comparePreview(dialog, state.equipment[0].artwork, [
+    [1220, 505],
+    [940, 440],
+    [600, 530],
+  ])
   const firstAsset = state.equipment[0].artwork.id
   for (const variant of state.equipment[0].artwork.variants) {
     const media = await page.request.get(origin + variant.url)
@@ -344,17 +449,13 @@ try {
     .getByRole('button', { name: 'Back to Shipyard', exact: true })
     .click()
   await expect(dialog).toHaveCount(0)
-  await shipImageReady()
+  await imageReady(lightImage, state.equipment[0].artwork)
   await page.screenshot({
     path: join(output, 'shipyard-equipped-desktop-1440x1000.png'),
     fullPage: true,
   })
   await navigate(route)
-  await expect(
-    page
-      .getByRole('figure', { name: 'Light Fighter illustration' })
-      .locator('img'),
-  ).toHaveAttribute('src', /api\/media\/ship-appearances/)
+  await imageReady(lightImage, state.equipment[0].artwork)
   await stop(api)
   await apiPort.hold()
   await startApi()
@@ -387,7 +488,12 @@ try {
   ]) {
     await page.setViewportSize({ width, height })
     await navigate(route)
-    await shipImageReady()
+    await imageReady(lightImage, state.equipment[0].artwork)
+    if (width === 390)
+      await page
+        .getByRole('figure', { name: 'Light Fighter illustration' })
+        .locator('img')
+        .scrollIntoViewIfNeeded()
     await page.screenshot({
       path: join(output, `shipyard-current-emblem-${width}x${height}.png`),
       fullPage: width === 1440,
@@ -418,7 +524,7 @@ try {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     )
-    await navigate(`/u/${slug}/b/${body}/fleets`)
+    await navigate(`/u/${slugOfUniverse}/b/${body}/fleets`)
     const inventory = page.getByRole('region', {
       name: 'Stationed ships',
       exact: true,
@@ -427,15 +533,130 @@ try {
       .locator('img[src*="/api/media/ship-appearances/"]')
       .first()
     await expect(ship).toBeVisible()
-    await expect
-      .poll(() =>
-        ship.evaluate((node) => node.complete && node.naturalWidth > 0),
-      )
-      .toBe(true)
+    await imageReady(ship, state.equipment[0].artwork)
     await inventory.screenshot({
       path: join(output, `fleet-inventory-${width}x${height}.png`),
     })
   }
+  // Preserve four independent equipment selections in one empire. Each new hull
+  // goes through the real editor once. Recover its saved art from a fresh page.
+  const shipArtifacts = { LightFighter: state.equipment[0].artwork.id }
+  for (const [target, slug, name, revision, primary, accent, points] of [
+    [
+      'HeavyFighter',
+      'heavy-fighter',
+      'Heavy Fighter',
+      'v2',
+      'Blue',
+      'Ivory',
+      [
+        [1300, 444],
+        [1410, 449],
+        [700, 415],
+      ],
+    ],
+    [
+      'Cruiser',
+      'cruiser',
+      'Cruiser',
+      'v1',
+      'Red',
+      'Ivory',
+      [
+        [433, 715],
+        [1195, 366],
+        [1120, 275],
+      ],
+    ],
+    [
+      'Battlecruiser',
+      'battlecruiser',
+      'Battlecruiser',
+      'v1',
+      'Graphite',
+      'Gold',
+      [
+        [664, 623],
+        [1281, 315],
+        [589, 332],
+      ],
+    ],
+  ]) {
+    const path = `/u/${slugOfUniverse}/b/${body}/shipyard/${slug}`
+    const editor = page.getByRole('dialog', { name, exact: true })
+    const enter = page.getByRole('button', { name: 'Customize', exact: true })
+    const leave = editor.getByRole('button', {
+      name: 'Back to Shipyard',
+      exact: true,
+    })
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await navigate(path, target)
+    await enter.click()
+    await expect(editor.locator('canvas')).toHaveCSS('opacity', '1')
+    await editor
+      .getByRole('button', { name: 'Primary: ' + primary, exact: true })
+      .click()
+    await editor.getByRole('button', { name: 'Accent', exact: true }).click()
+    await editor
+      .getByRole('button', { name: 'Accent: ' + accent, exact: true })
+      .click()
+    const delivery = page.waitForResponse(
+      (r) =>
+        r.url() === endpoint &&
+        r.request().method() === 'POST' &&
+        r.request().postDataJSON()?.action?.type === 'Save' &&
+        r.request().postDataJSON().action.design.target === target,
+    )
+    await editor
+      .getByRole('button', { name: 'Save and equip', exact: true })
+      .click()
+    const saveResponse = await delivery
+    assert.equal(saveResponse.status(), 200)
+    const snapshot = await saveResponse.json()
+    checkDesign(snapshot, target, slug, revision, primary, accent)
+    const readyState = await readySnapshot(target)
+    const equipment = readyState.equipment.find((row) => row.target === target)
+    await expect(editor.locator('li[aria-current="step"]')).toHaveText('Saved')
+    shipArtifacts[target] = equipment.artwork.id
+    await comparePreview(editor, equipment.artwork, points)
+    await editor.screenshot({
+      path: join(output, `${slug}-hangar-1440x1000.png`),
+    })
+    await leave.click()
+    await expect(editor).toHaveCount(0)
+    const art = page
+      .getByRole('figure', { name: name + ' illustration' })
+      .locator('img')
+    await imageReady(art, equipment.artwork)
+    await page.screenshot({
+      path: join(output, `${slug}-shipyard-1440x1000.png`),
+    })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await navigate(path, target)
+    await imageReady(art, equipment.artwork)
+    await art.scrollIntoViewIfNeeded()
+    await page.screenshot({
+      path: join(output, `${slug}-shipyard-390x844.png`),
+    })
+    await enter.click()
+    await expect(editor.locator('canvas')).toHaveCSS('opacity', '1')
+    await expect(
+      editor.getByRole('button', { name: 'Primary: ' + primary, exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await editor.screenshot({
+      path: join(output, `${slug}-hangar-390x844.png`),
+    })
+    await leave.click()
+    await expect(editor).toHaveCount(0)
+  }
+  const final = await act({ type: 'Load' })
+  assert.deepEqual(
+    Object.fromEntries(
+      final.equipment.map((row) => [row.target, row.artwork?.id]),
+    ),
+    shipArtifacts,
+  )
+  assert.equal(new Set(Object.values(shipArtifacts)).size, 4)
   assert.deepEqual(errors, [])
   timings.acceptance_ms = Math.round(
     performance.now() - started - timings.preparation_ms,
@@ -451,6 +672,7 @@ try {
           encoding: 'utf8',
         }).trim(),
         timings,
+        ship_artifacts: shipArtifacts,
         first_asset: firstAsset,
         updated_asset: state.equipment[0].artwork.id,
         checks: [

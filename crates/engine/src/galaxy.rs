@@ -46,16 +46,73 @@ pub struct GalaxySystem {
     pub positions: Vec<GalaxyPosition>,
     pub observed_at: Timestamp,
 }
+impl DestinationSelection {
+    pub fn coordinates(&self) -> Coordinates {
+        match self {
+            Self::BodyAt { coordinates, .. }
+            | Self::EmptyPositionAt { coordinates }
+            | Self::DebrisAt { coordinates } => *coordinates,
+        }
+    }
+}
+
+/// The public identity visible at one requested coordinate in a single snapshot.
+pub enum DestinationFacts {
+    Body(BodyKind, Option<(BodyId, PlayerId)>),
+    PlanetSlot(Option<PlanetSlot>),
+    Debris(Option<OperationId>),
+}
+
+impl DestinationFacts {
+    pub fn resolve(
+        self,
+        coordinates: Coordinates,
+        r: &Ruleset,
+    ) -> Result<MissionDestination, GameError> {
+        if !r
+            .artifact
+            .universe
+            .as_ref()
+            .is_some_and(|u| u.contains(coordinates))
+        {
+            return Err(GameError::NotFound);
+        }
+        match self {
+            Self::Body(expected_kind, body) => {
+                let (id, expected_owner) = body.ok_or(GameError::NotFound)?;
+                Ok(MissionDestination::Body {
+                    id,
+                    expected_kind,
+                    expected_owner,
+                })
+            }
+            Self::Debris(field) => Ok(MissionDestination::Debris {
+                coordinates,
+                field_identity: field.ok_or(GameError::NoHarvestTarget)?,
+            }),
+            Self::PlanetSlot(slot) => {
+                if !r.colonization() {
+                    return Err(GameError::UnavailableContent);
+                }
+                let slot = slot.ok_or(GameError::PolicyUnavailable)?;
+                if slot.occupant.is_some() {
+                    return Err(GameError::PositionOccupied);
+                }
+                Ok(MissionDestination::EmptyPosition {
+                    coordinates,
+                    slot_revision: slot.revision,
+                })
+            }
+        }
+    }
+}
+
 pub fn resolve_destination(
     s: &GameState,
     selection: DestinationSelection,
     r: &Ruleset,
 ) -> Result<MissionDestination, GameError> {
-    let coords = match &selection {
-        DestinationSelection::BodyAt { coordinates, .. }
-        | DestinationSelection::EmptyPositionAt { coordinates }
-        | DestinationSelection::DebrisAt { coordinates } => *coordinates,
-    };
+    let coords = selection.coordinates();
     if !r
         .artifact
         .universe
@@ -71,41 +128,26 @@ pub fn resolve_destination(
     {
         return Err(GameError::InvalidInput);
     }
-    match selection {
+    let facts = match selection {
         DestinationSelection::EmptyPositionAt { .. } => {
-            if !r.colonization() {
-                return Err(GameError::UnavailableContent);
-            }
-            let slot = planet_slot(s, coords).map_err(|_| GameError::PolicyUnavailable)?;
-            if slot.occupant.is_some() {
-                return Err(GameError::PositionOccupied);
-            }
-            Ok(MissionDestination::EmptyPosition {
-                coordinates: coords,
-                slot_revision: slot.revision,
-            })
+            DestinationFacts::PlanetSlot(planet_slot(s, coords).ok().cloned())
         }
-        DestinationSelection::BodyAt { kind, .. } => s
-            .bodies
-            .values()
-            .find(|b| b.coordinates == coords && b.kind == kind)
-            .map(|b| MissionDestination::Body {
-                id: b.id,
-                expected_kind: b.kind,
-                expected_owner: b.owner,
-            })
-            .ok_or(GameError::NotFound),
-        DestinationSelection::DebrisAt { .. } => w
-            .records
-            .debris
-            .values()
-            .find(|f| f.coordinates == coords && f.marker_present)
-            .map(|f| MissionDestination::Debris {
-                coordinates: coords,
-                field_identity: f.id,
-            })
-            .ok_or(GameError::NoHarvestTarget),
-    }
+        DestinationSelection::BodyAt { kind, .. } => DestinationFacts::Body(
+            kind,
+            s.bodies
+                .values()
+                .find(|b| b.coordinates == coords && b.kind == kind)
+                .map(|b| (b.id, b.owner)),
+        ),
+        DestinationSelection::DebrisAt { .. } => DestinationFacts::Debris(
+            w.records
+                .debris
+                .values()
+                .find(|f| f.coordinates == coords && f.marker_present)
+                .map(|f| f.id),
+        ),
+    };
+    facts.resolve(coords, r)
 }
 pub fn galaxy_system(
     s: &GameState,

@@ -1,6 +1,6 @@
 import { it, expect, vi, afterEach } from 'vitest'
 import { gamePort, request } from './http'
-import { readyFixture } from '../test-support/bootstrap'
+import { id, readyFixture } from '../test-support/bootstrap'
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -94,7 +94,7 @@ it('requests snapshot metadata and a minimum revision while accepting an older r
 })
 
 it.each(['bootstrap', 'loginBootstrap', 'signupBootstrap'] as const)(
-  '%s opts into bootstrap progress while preserving old-server compatibility',
+  '%s requests progress and debris settings while accepting an older bootstrap',
   async (method) => {
     const { http } = await import('./http')
     const { bootstrapFixture } = await import('../test-support/bootstrap')
@@ -107,11 +107,39 @@ it.each(['bootstrap', 'loginBootstrap', 'signupBootstrap'] as const)(
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        headers: expect.objectContaining({ 'X-Orbit-View-Metadata': '1' }),
+        headers: expect.objectContaining({
+          'X-Orbit-View-Metadata': '1',
+          'X-Orbit-Debris-Settings': '1',
+        }),
       }),
     )
   },
 )
+
+it('requests and accepts the current debris rule on a world settings refresh', async () => {
+  const { session, snapshot } = readyFixture(4)
+  const settings = {
+    ...snapshot.settings,
+    ship_debris: {
+      basis_points: 4567,
+      deuterium_in_debris: true,
+      moons_enabled: false,
+    },
+  }
+  const fetch = vi.fn(async () => Response.json(settings))
+  vi.stubGlobal('fetch', fetch)
+  const result = await gamePort(session.csrf, snapshot.candidate).settings({
+    binding: settings.binding,
+    request_id: settings.request_id,
+  })
+  expect(result).toEqual(settings)
+  expect(fetch).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      headers: expect.objectContaining({ 'X-Orbit-Debris-Settings': '1' }),
+    }),
+  )
+})
 
 it.each([
   ['60', 60000],
@@ -148,4 +176,100 @@ it('classifies malformed successful JSON as unreadable data rather than a networ
     name: 'ContractDataError',
     schemaName: 'JSON',
   })
+})
+
+it('negotiates spy identity while accepting older inbox rows and mutual destruction at an NPC site', async () => {
+  const { session, snapshot } = readyFixture(4)
+  const context = {
+    binding: snapshot.candidate.binding,
+    request_id: snapshot.request_id,
+  }
+  const sender = '00000000-0000-4000-8000-000000000099'
+  const items = [
+    { kind: 'SpyContact', sender },
+    { kind: 'SpyContact' },
+    { kind: 'SiteEncounter', outcome: 'MutualDestruction' },
+  ].map((preview, i) => ({
+    id: `00000000-0000-4000-8000-00000000000${i}`,
+    kind: preview.kind,
+    preview,
+    read: false,
+    hidden: false,
+    observed_at: 1000,
+  }))
+  const fetch = vi.fn(async () =>
+    Response.json({
+      ...context,
+      protocol: 4,
+      viewer_revision: '1',
+      sampled_at: 1000,
+      as_of_ms: 1000,
+      data: { items, has_more: false, next_cursor: null, as_of_ms: 1000 },
+    }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const result = await gamePort(session.csrf, snapshot.candidate).reports!(
+    context,
+    null,
+  )
+  expect(result.data.items).toEqual(items)
+  expect(fetch).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({
+      headers: expect.objectContaining({ 'X-Orbit-Report-Preview': '1' }),
+    }),
+  )
+})
+
+it('decodes an empire deletion HTTP rejection into the reauthentication refusal consumed by the coordinator', async () => {
+  const { session, snapshot } = readyFixture(4)
+  const binding = snapshot.candidate.binding
+  const commandId = id(50)
+  const fetch = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({
+          type: 'about:blank',
+          status: 422,
+          code: 'GameRejected',
+          game_code: 'ReauthenticationRequired',
+        }),
+        {
+          status: 422,
+          headers: { 'Content-Type': 'application/problem+json' },
+        },
+      ),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const port = gamePort(session.csrf, snapshot.candidate)
+  await expect(
+    port.submit({
+      protocol: 4,
+      binding,
+      command_id: commandId,
+      command: { type: 'World', action: { type: 'RequestEmpireDeletion' } },
+      presence: {
+        protocol: 4,
+        binding,
+        command_id: id(51),
+        command: {
+          type: 'World',
+          action: {
+            type: 'RecordForegroundPresence',
+            cause: 'GameplayGesture',
+            body: null,
+            paired_command_id: commandId,
+          },
+        },
+      },
+    }),
+  ).rejects.toMatchObject({
+    status: 422,
+    code: 'GameRejected',
+    message: 'ReauthenticationRequired',
+  })
+  expect(fetch).toHaveBeenCalledWith(
+    `/api/v4/universes/${binding.universe}/commands`,
+    expect.objectContaining({ method: 'POST' }),
+  )
 })

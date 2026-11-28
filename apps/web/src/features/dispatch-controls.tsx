@@ -11,6 +11,7 @@ import styles from './missions.module.css'
 export function DispatchCargoControls({
   cargo,
   space,
+  total,
   message,
   disabled,
   onNormalize,
@@ -19,17 +20,18 @@ export function DispatchCargoControls({
 }: {
   cargo: string[]
   space: ComponentProps<typeof DispatchCargoCapacity>['space']
+  total: bigint | null
   message: string
   disabled: boolean
-  onNormalize: (cargo: string[]) => void
-  onChange: (cargo: string[]) => void
+  onNormalize: (index: number, value: string) => void
+  onChange: (index: number, value: string) => void
   onFill: (resource: 'all' | (typeof resourceNames)[number]) => void
 }) {
   return (
     <fieldset className={styles.cargoFields} aria-label="Cargo">
       <div className={styles.cargoHeader}>
         <span>Cargo</span>
-        <DispatchCargoCapacity space={space} message={message} />
+        <DispatchCargoCapacity space={space} total={total} message={message} />
       </div>
       <div className={styles.cargoInputs}>
         {resourceNames.map((resource, i) => (
@@ -41,11 +43,10 @@ export function DispatchCargoControls({
                 value={cargo[i]}
                 placeholder="0"
                 onBlur={(e) => {
-                  if (!e.target.value.trim())
-                    onNormalize(cargo.map((n, j) => (i === j ? '0' : n)))
+                  if (!e.target.value.trim()) onNormalize(i, '0')
                 }}
                 onChange={(e) => {
-                  onChange(cargo.map((n, j) => (i === j ? e.target.value : n)))
+                  onChange(i, e.target.value)
                 }}
               />
             </Field>

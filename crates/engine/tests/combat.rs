@@ -36,6 +36,26 @@ fn shield_and_inclusive_explosion_boundaries() {
     assert!(a.explosion);
 }
 #[test]
+fn explosion_threshold_remains_exact_above_native_product_width() {
+    let mut rules = CombatRules::selected();
+    let hull_max = u128::MAX / 10 * 10;
+    let threshold = hull_max / 10 * 7;
+    for (inclusive, hull, expected) in [
+        (true, threshold + 1, false),
+        (true, threshold, true),
+        (false, threshold, false),
+        (false, threshold - 1, true),
+    ] {
+        rules.explosion_inclusive = inclusive;
+        assert_eq!(
+            apply_combat_hit(0, 0, 0, hull, hull_max, &rules)
+                .unwrap()
+                .explosion,
+            expected
+        );
+    }
+}
+#[test]
 fn loaded_cargo_only_loses_overflow() {
     assert_eq!(
         retain_cargo(

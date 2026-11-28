@@ -27,10 +27,7 @@ minimum Armour 2 / Impulse 2, hull is 1,200 and speed is 14,000. The existing
 manufacturing formula applies: at Shipyard 3, one ship takes 3,600 seconds at
 1× economy speed or 360 seconds at 10×.
 
-The historical matrix also contains relationships involving Solar Satellites,
-Battlecruisers, and Dreadnoughts. Those ships remain unsupported; their eventual
-content additions must add the corresponding relationships. References to
-undefined combat units are rejected by the rules validator.
+With current standard content, Heavy Fighters also have rapid fire 5 against Solar Satellites. Battlecruisers have rapid fire 4 and Dreadnoughts have rapid fire 100 against Heavy Fighters.
 
 ## Activate an existing universe
 
@@ -82,8 +79,7 @@ activation requires a binary that understands Heavy Fighter definitions. Follow
 ## Validation
 
 `make check` covers tooling, client/server tests, lint, contracts, and the web
-build. `npm run test:ui -- heavy-fighter.spec.ts` covers fixture-based shipyard
-and dispatch behavior. Engine tests cover all three construction gates, payment
+build. `npm test -- catalog-content-migration ship-selection` checks the ship profile and dispatch selection. `npm run test:components -- progression-forms.component.spec.ts dispatch.spec.ts` exercises the production controls. Engine tests cover all three construction gates, payment
 and completion, propulsion, combat technology bonuses, rapid fire, retained
 production, combat reports, and return conservation. The preparation-script tests
 verify idempotence, preservation of custom settings, prerequisite rejection, and

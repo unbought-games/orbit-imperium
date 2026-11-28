@@ -876,6 +876,7 @@ async fn vacation_and_launch_at_same_time_have_one_serialized_winner() {
             .await
             .unwrap();
         let intent = FleetIntent {
+            cargo_fill: None,
             attack_group: None,
             hold_hours: None,
             origin: BodyId(origin),

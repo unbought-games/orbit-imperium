@@ -93,9 +93,8 @@ Use controlled clocks and deterministic fixtures, investigate slow setup, and re
 | Client | `npm test` | `apps/web/vite.config.ts` |
 | Server without PostgreSQL | `make test-server` | `.config/nextest.toml` |
 | PostgreSQL integration | `make test-db` | `.config/nextest.toml` |
-| Essential application journeys | `make test-journeys` | `playwright.config.ts`, `@journey` tag |
-| Remaining required feature integrations | `make test-features` | `playwright.config.ts` |
-| All application HTTP fixtures | `npm run test:ui` | `playwright.config.ts` |
+| Application journeys | `make test-journeys` or `npm run test:journeys` | `playwright.config.ts` and [journey contracts](../apps/web/tests/journey-contracts.json) |
+| Application compatibility command | `npm run test:ui` | Same application boundary |
 | Isolated interactive components | `npm run test:components` | `playwright.components.config.ts` |
 | Component and fixture types | `npm run test:component-types` | `apps/web/tests/components/tsconfig.json` |
 

@@ -73,7 +73,7 @@ export function GalaxyDebris({
       target={`debris at ${target}`}
       coordinates={coordinates}
       actions={[{ mission: 'Harvest' }]}
-      missileIdentity={debris.field_identity}
+      actionIdentity={debris.field_identity}
       triggerLabel={`Actions for debris at ${target}: ${resources.map((resource) => `${resource[0].toUpperCase() + resource.slice(1)} ${formatWholeNumber(debris[resource] ?? '0')}`).join(', ')}`}
       triggerElement={
         <Button

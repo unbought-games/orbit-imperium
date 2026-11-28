@@ -2,7 +2,7 @@ use super::*;
 
 const NETWORK: ResearchId = ResearchId::IntergalacticResearchNetwork;
 
-fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
+pub(super) fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     let (mut s, old, p, b) = hyperspace::hyperspace_fixture();
     let mut artifact = old.artifact.clone();
     let content: serde_json::Value = serde_json::from_slice(include_bytes!(
@@ -38,7 +38,7 @@ fn fixture() -> (GameState, Ruleset, PlayerId, BodyId) {
     (s, r, p, b)
 }
 
-fn colony(s: &mut GameState, origin: BodyId, n: u128, level: u32) -> BodyId {
+pub(super) fn colony(s: &mut GameState, origin: BodyId, n: u128, level: u32) -> BodyId {
     let mut body = s.bodies[&origin].clone();
     body.id = BodyId(uuid::Uuid::from_u128(n));
     body.coordinates.position = (n % 7 + 1) as u32;

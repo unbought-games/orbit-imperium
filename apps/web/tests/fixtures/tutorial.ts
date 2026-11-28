@@ -1,3 +1,4 @@
+import { unexpectedFixtureApi } from './api-diagnostics'
 import type { Page, Route } from '@playwright/test'
 import type { components } from '../../src/contracts'
 import {
@@ -6,7 +7,7 @@ import {
 } from '../../src/test-support/tutorial'
 import { validateTutorialFixture as validate } from '../../src/test-support/tutorial'
 import { progressionTarget } from '../../src/features/tutorial/model'
-import { installGameFixture, body, binding, id } from './game'
+import { installGameFixture, fixtureReportContext, matchesFixtureContext, matchesFixtureGameplay, body, binding, id } from './game'
 import { productionFixture } from '../../src/test-support/production'
 import { routeProgressionOptions } from './progression-options'
 type S = components['schemas']
@@ -397,8 +398,11 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
     sampled_at: Date.now(),
     as_of_ms: Date.now(),
   })
-  await page.route('**/world', async (route) => {
+  const prefix = `/api/v4/universes/${binding.universe}`
+  await page.route(`**${prefix}/world`, async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     const q = route.request().postDataJSON()
+    if (!matchesFixtureContext(q?.context)) return unexpectedFixtureApi(route)
     state.worldQueries.push(q.type)
     if (state.hold) await state.hold(route)
     if (q.type === 'Tutorial') {
@@ -447,7 +451,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
           },
         },
       })
-    return route.fulfill({ status: 404, json: { code: 'NotFound' } })
+    return route.fallback()
   })
   await routeProgressionOptions(page, (route) => {
     const { context, request } = route.request().postDataJSON()
@@ -495,9 +499,17 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
       },
     })
   })
-  await page.route('**/commands', (route) => {
+  await page.route(`**${prefix}/commands`, (route) => {
+    if (route.request().method() !== 'POST') return route.fallback()
     const pair = route.request().postDataJSON()
-    const command: S['Command4'] = pair.gameplay.command
+    if (!matchesFixtureGameplay(pair)) return unexpectedFixtureApi(route)
+    const gameplay = pair.gameplay
+    const command: S['Command4'] | undefined = gameplay.command
+    if (command?.type !== 'StartUpgrade' && !(command?.type === 'World' &&
+        ['ReviewProductionSettings', 'SetTutorialPresentation', 'OpenTutorial', 'LaunchFleet', 'MarkReportRead'].includes(command.action.type)))
+      return route.fallback()
+    if (command.type === 'World' && command.action.type === 'MarkReportRead' && command.action.report !== state.report.header.id)
+      return unexpectedFixtureApi(route)
     state.commands.push(command)
     revision++
     if (command.type === 'World') {
@@ -540,7 +552,7 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
         command_id: pair.gameplay.command_id,
         admitted_at: Date.now(),
         executed_at: Date.now(),
-        ...(state.launchError
+        ...(command.type === 'World' && command.action.type === 'LaunchFleet' && state.launchError
           ? { status: 'Rejected', code: 'InsufficientResources' }
           : {
               status: 'Committed',
@@ -550,11 +562,11 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
       },
     })
   })
-  await page.route('**/api/v4/**/reports', (route) => {
-    const q = route.request().postDataJSON()
+  await page.route(`**${prefix}/reports`, (route) => {
+    const q = fixtureReportContext(route)
     return route.fulfill({
       json: {
-        ...envelope(q.context.request_id),
+        ...envelope(q.request_id),
         data: {
           items: ['return', 'complete', 'reinvest'].includes(state.stage)
             ? [state.report.header]
@@ -566,11 +578,49 @@ export async function installTutorialFixture(page: Page, stage = 'opening') {
       },
     })
   })
-  await page.route('**/api/v4/**/reports/*', (route) => {
-    const q = route.request().postDataJSON()
+  await page.route(`**${prefix}/reports/${state.report.header.id}`, (route) => {
+    const q = fixtureReportContext(route, state.report.header.id)
     return route.fulfill({
       json: { ...envelope(q.request_id), data: state.report },
     })
   })
   return state
+}
+
+/** Serve one personalized HTML document. Other fixture navigations deliberately
+ * use the separately fetched bootstrap for older servers and recovery. */
+export async function embedTutorialOnNextReload(
+  page: Page,
+  tutorial: S['TutorialView4'],
+) {
+  const payload = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/bootstrap')
+    if (!response.ok) throw new Error('Unable to prepare the fixture snapshot')
+    return (await response.json()) as S['Bootstrap']
+  })
+  if (
+    payload.result.status !== 'authenticated' ||
+    payload.result.game.status !== 'ready'
+  )
+    throw new Error('Expected a ready game')
+  payload.result.game.snapshot.tutorial = tutorial
+  const json = JSON.stringify(payload).replaceAll('<', '\\u003c')
+  await page.route(
+    page.url(),
+    async (route) => {
+      const response = await route.fetch()
+      const html = await response.text()
+      const placeholder =
+        '<script id="orbit-bootstrap" type="application/json"></script>'
+      if (!html.includes(placeholder))
+        throw new Error('Missing document bootstrap')
+      await route.fulfill({
+        response,
+        body: html.replace(placeholder, () =>
+          placeholder.replace('</script>', () => json + '</script>'),
+        ),
+      })
+    },
+    { times: 1 },
+  )
 }

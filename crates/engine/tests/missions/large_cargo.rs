@@ -175,7 +175,7 @@ fn manufactured_large_cargo_flies_fights_and_returns_after_new_production_is_dis
             .count,
         1
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     let blocked = inspect_progression(
         &s,
         Actor::Player(p),
@@ -270,7 +270,7 @@ fn manufactured_large_cargo_flies_fights_and_returns_after_new_production_is_dis
             .values()
             .all(|f| f.leg == MissionLeg::Returned)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]
@@ -293,7 +293,7 @@ fn large_cargo_transport_delivers_once_and_returns_with_committed_terms() {
             before.deuterium - request.cargo.deuterium - quote.fuel,
         ])
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     // A subsequent propulsion change must not rewrite this accepted flight.
     let mut artifact = r.artifact.clone();
     let ship = artifact.ships.get_mut(&ShipType::LargeCargo).unwrap();
@@ -375,7 +375,7 @@ fn large_cargo_transport_delivers_once_and_returns_with_committed_terms() {
             .values()
             .all(|f| f.leg == MissionLeg::Returned)
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
 }
 
 #[test]

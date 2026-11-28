@@ -12,12 +12,15 @@ mod alliance_presentation;
 mod alliances;
 mod bots;
 mod colonization;
+mod destination;
 mod empire_deletion;
 mod holding;
 mod insignias;
+mod moon_removal;
 mod moons;
 mod public_universe;
 pub use public_universe::PublicationClaim;
+mod ranking_scores;
 mod rankings;
 mod report_sharing;
 mod social;
@@ -33,6 +36,7 @@ pub use migrations::MigrationError;
 mod activity;
 mod analytics;
 mod retention;
+pub mod worker_observation;
 pub use activity::with_activity_collection;
 mod identity;
 mod oidc;
@@ -165,6 +169,7 @@ mod command_window;
 mod commit;
 mod facts;
 mod ordering;
+mod paired_activity;
 
 impl PgStore {
     pub async fn universes(&self) -> Result<Vec<orbit_engine::UniverseId>, StoreError> {

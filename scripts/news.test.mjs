@@ -22,12 +22,28 @@ test('game updates build without Git or any Unbought service and omit drafts',()
     const note="---\nid: beta\ntitle: Beta\ndate: '2026-10-21T12:00:00Z'\n---\n<script>alert(1)</script>\n\n## Play"
     writeFileSync(join(dir,'beta.md'),note)
     writeFileSync(join(dir,'draft.md'),note.replace('id: beta','id: draft\ndraft: true'))
-    assert.equal(buildNews(root).length,1)
+    writeFileSync(join(dir,'dispatch.md'),note.replace('id: beta','id: dispatch\naudience: S001'))
+    assert.equal(buildNews(root).length,2)
+    const index=readFileSync(join(root,'apps/web/public/updates/index.html'),'utf8')
+    const dispatch=readFileSync(join(root,'apps/web/public/updates/dispatch.html'),'utf8')
+    assert.equal(index.match(/Andromeda · Season 1/g)?.length,1)
+    assert.match(dispatch,/<p class="meta">Andromeda · Season 1 · Build update/)
+
     const page=readFileSync(join(root,'apps/web/public/updates/beta.html'),'utf8')
+    assert.doesNotMatch(page,/Andromeda · Season 1/)
     assert.doesNotMatch(page,/<script>/)
     assert.match(page,/Return to Orbit Imperium/)
     assert.match(page,/href="https:\/\/github.com\/unbought-games\/orbit-imperium"/)
     assert.doesNotMatch(page,/source\.tar\.gz/)
     assert.throws(()=>readNote('no metadata'))
   }finally{rmSync(root,{recursive:true,force:true})}
+})
+
+test('seasonal build notes preserve their audience and legacy notes are general updates', () => {
+  const note = "id: mission\ntitle: First contact\ndate: '2030-01-02T00:00:00Z'"
+  const read = (extra = '') => readNote(`---\n${note}\n${extra}---\nMessage`)
+  assert.equal(read().audience, 'game')
+  assert.equal(read('audience: game\n').audience, 'game')
+  assert.equal(read('audience: S001\n').audience, 'S001')
+  assert.throws(() => read('audience: prod/S001\n'), /Invalid news audience/)
 })

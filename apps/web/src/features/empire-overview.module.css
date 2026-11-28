@@ -55,51 +55,116 @@
   margin: 13px 0 0;
   letter-spacing: 0.035em;
 }
-.empireLedger {
+.wealthResources,
+.resources {
   display: grid;
-  grid-template-columns: 1.15fr repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(max-content, 1fr));
+  container-type: inline-size;
+  font-variant-numeric: tabular-nums;
+}
+.wealthResources[data-measure-columns],
+.resources[data-measure-columns] {
+  position: absolute;
+  inset: 0 auto auto 0;
+  height: 0;
+  overflow: clip;
+  visibility: hidden;
+}
+.wealthResources[data-rows],
+.resources[data-rows] {
+  grid-template-columns: minmax(0, 1fr);
+  container-name: resource-rows;
+}
+.empireLedger {
+  container: empire-wealth / inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3.25fr);
   border: 1px solid var(--hud-border);
   background: linear-gradient(110deg, #a4dbef08, #a4dbef02);
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+}
+.empireLedger > * {
+  grid-column: 1 / -1;
 }
 .ledgerLabel {
   display: flex;
-  gap: 14px;
   align-items: center;
-  padding: 18px 24px;
-}
-.ledgerLabel {
+  gap: 9px;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--hud-border);
   color: var(--accent);
-  font-size: 0.75rem;
+  font-size: 0.9rem;
+}
+.ledgerLabel > span {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
 }
 .ledgerLabel small {
-  display: block;
-  font-size: 0.625rem;
-  margin-top: 5px;
   color: var(--hud-muted);
+  font-size: 0.69rem;
 }
 .total {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  column-gap: 14px;
-  row-gap: 3px;
-  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 18px 24px;
-  min-width: 0;
+  row-gap: 5px;
+  padding: 12px 14px;
+}
+.total > div,
+.balance {
+  flex: 47 1 0;
+  min-width: max-content;
+}
+.wealthBreakdown,
+.productionDetails {
+  flex: 53 1 0;
+  min-width: max-content;
+}
+.wealthResources:not([data-rows]) > .total {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 6px;
+}
+.wealthResources:not([data-rows]) > .total + .total {
   border-left: 1px solid var(--hud-border);
 }
-.totalContent {
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 0;
+.wealthResources[data-rows] > .total + .total,
+.resources[data-rows] > div + div {
+  border-top: 1px solid var(--hud-border);
+}
+.resourceName {
+  display: block;
+  font:
+    500 0.68rem/1.4 system-ui,
+    sans-serif;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--hud-muted);
-  font-size: 0.5625rem;
-  letter-spacing: 0.15em;
+}
+.wealthAmount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.2rem;
+}
+.wealthAmount svg {
+  flex: none;
+}
+.wealthAmount strong,
+.balance strong {
+  font:
+    500 1.125rem/1.35 system-ui,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 .wealthBreakdown {
-  --branch-inset: 17px;
+  --branch-inset: 13px;
+  --part-height: 1.42rem;
   --wealth-guide-rest: color-mix(
     in srgb,
     var(--wealth-guide-color) 30%,
@@ -107,23 +172,22 @@
   );
   position: relative;
   display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: 14px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) max-content;
   column-gap: 8px;
   color: var(--hud-muted);
-  margin: 5px 0 0 11px;
+  margin: 0 0 0 8px;
   padding-left: var(--branch-inset);
   text-transform: none;
   letter-spacing: normal;
-  font-size: 0.625rem;
+  font-size: clamp(0.75rem, 1.65cqi, 0.88rem);
 }
 /* Opt this slow resource cue into motion despite the global immediate-state reset. */
 .wealthBreakdown::before {
   content: '';
   position: absolute;
   left: 0;
-  top: -8px;
-  bottom: 12px;
+  top: calc(var(--part-height) / 2);
+  bottom: calc(var(--part-height) / 2);
   border-left: 1px solid var(--wealth-guide-rest);
   opacity: 0.65;
   animation: wealthGuideGlow 12s ease-in-out infinite !important;
@@ -132,8 +196,8 @@
   content: '';
   position: absolute;
   left: 0;
-  top: -8px;
-  bottom: 12px;
+  top: calc(var(--part-height) / 2);
+  bottom: calc(var(--part-height) / 2);
   width: 2px;
   background: linear-gradient(
       transparent,
@@ -153,16 +217,25 @@
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
   align-items: center;
-  padding: 5px 0;
+  min-height: var(--part-height);
 }
 .wealthBreakdown > div::before {
   content: '';
   position: absolute;
   left: calc(-1 * var(--branch-inset));
   top: 50%;
-  width: calc(var(--branch-inset) - 5px);
+  width: calc(var(--branch-inset) - 2px);
   border-top: 1px solid var(--wealth-guide-rest);
   opacity: 0.65;
+  animation: wealthGuideGlow 12s ease-in-out infinite !important;
+}
+.wealthBreakdown > div:first-child::after {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--branch-inset) - 8px);
+  top: 100%;
+  width: 8px;
+  border-top: 1px solid var(--wealth-guide-rest);
   animation: wealthGuideGlow 12s ease-in-out infinite !important;
 }
 @keyframes wealthGuidePulse {
@@ -196,37 +269,53 @@
 @media (prefers-reduced-motion: reduce) {
   .wealthBreakdown::before,
   .wealthBreakdown::after,
-  .wealthBreakdown > div::before {
+  .wealthBreakdown > div::before,
+  .wealthBreakdown > div:first-child::after {
     animation: none !important;
   }
 }
 .wealthBreakdown dt {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 4px;
 }
 .wealthBreakdown dd {
-  min-width: 0;
   margin: 0;
   color: var(--text);
-  overflow-wrap: anywhere;
-}
-.total > svg {
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: center;
-}
-.total strong {
-  grid-column: 2;
-  grid-row: 2;
-  display: block;
-  font:
-    400 clamp(1.2rem, 1.8vw, 2rem) / 1.3 system-ui,
-    sans-serif;
+  white-space: nowrap;
+  text-align: right;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-  color: var(--text);
-  margin: 0;
-  overflow-wrap: anywhere;
+}
+@container empire-wealth (min-width: 60rem) {
+  .wealthResources {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .ledgerLabel {
+    grid-column: 1;
+    grid-row: 1;
+    align-items: flex-start;
+    padding: 22px 18px;
+    border-bottom: 0;
+    border-right: 1px solid var(--hud-border);
+  }
+  .ledgerLabel > span,
+  .ledgerLabel small {
+    display: block;
+  }
+  .ledgerLabel small {
+    margin-top: 4px;
+  }
+}
+.wealthAmount strong {
+  font-size: clamp(1.125rem, 2.5cqi, 1.35rem);
+}
+.wealthResources:not([data-rows]) .wealthBreakdown::before,
+.wealthResources:not([data-rows]) .wealthBreakdown::after {
+  top: -6px;
+}
+.wealthResources:not([data-rows]) .wealthBreakdown > div:first-child::after {
+  content: none;
 }
 .commandDeck {
   display: grid;
@@ -700,57 +789,76 @@
   border: 1px solid var(--hud-border);
 }
 .resources {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 12px;
   margin: 0;
-  padding: 14px 0;
   border-block: 1px solid var(--hud-border);
-  gap: 14px;
 }
-.resources dt {
+.resources > div {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
-  font-size: 0.5625rem;
-  color: var(--hud-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  padding: 11px 0;
 }
-.resources dt svg {
-  color: var(--resource-color);
-  flex-shrink: 0;
+.resources .resourceName {
+  flex-basis: 100%;
+}
+.resources:not([data-rows]) > div {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+.resources:not([data-rows]) .utilization {
+  margin-right: 0;
+}
+.resources:not([data-rows]) .productionDetails {
+  grid-area: 3 / 1;
+  padding: 4px 0 0;
 }
 .resources dd {
-  margin: 6px 0 0;
+  margin: 0;
+  white-space: nowrap;
 }
-.resources strong {
-  display: block;
-  font:
-    500 clamp(0.9375rem, 1.35vw, 1.375rem) / 1.4 system-ui,
-    sans-serif;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.025em;
+.balance {
+  grid-area: 2/1;
 }
-.resources dd > span {
-  color: var(--resource-color);
-  font-size: 0.625rem;
+.balance strong {
   display: block;
-  margin-top: 7px;
+  margin: 0.1rem 0 0.25rem;
 }
-.resources small {
-  display: block;
+.utilization {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 13px;
+  min-height: 1.1rem;
   color: var(--hud-muted);
-  font-size: 0.5625rem;
-  margin-top: 4px;
+  font-size: 0.65rem;
 }
 .resources meter {
-  display: block;
-  width: 100%;
+  flex: 1;
+  width: 1rem;
+  min-width: 1rem;
+  max-width: 5.4rem;
   height: 3px;
   border: 0;
   border-radius: 0;
   background: #a4dbef16;
-  margin-top: 8px;
+}
+.productionDetails {
+  grid-area: 1/2/3/3;
+  align-self: center;
+  padding-left: 10px;
+  font-size: 0.73rem;
+}
+.productionDetails > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-height: 1.45rem;
+}
+.productionDetails > div > span:first-child {
+  color: var(--hud-muted);
 }
 .resources meter::-webkit-meter-bar {
   border: 0;
@@ -765,11 +873,47 @@
   background: var(--resource-color);
 }
 .storageFull {
-  display: block;
   color: var(--accent);
-  font-size: 0.5625rem;
-  font-weight: 400;
-  margin-top: 5px;
+}
+@container resource-rows (max-width:21rem) {
+  .wealthBreakdown {
+    --part-height: 2.2rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wealthBreakdown > div {
+    align-content: center;
+  }
+  .wealthBreakdown dd {
+    padding-left: 18px;
+    text-align: left;
+  }
+}
+@container resource-rows (max-width:19.5rem) {
+  .productionDetails > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+}
+@container resource-rows (max-width:17.5rem) {
+  .total > div,
+  .balance {
+    flex-basis: 100%;
+  }
+  .wealthBreakdown {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    --part-height: 1.65rem;
+  }
+  .wealthBreakdown dd {
+    padding-left: 0;
+    text-align: right;
+  }
+  .productionDetails {
+    padding: 0;
+  }
+  .productionDetails > div {
+    flex-direction: row;
+  }
 }
 .energyLine {
   display: flex;
@@ -909,10 +1053,6 @@
   .mapHeading > span:last-child {
     font-size: 0.5rem;
   }
-  .ledgerLabel,
-  .total {
-    padding: 16px;
-  }
   .heroArt {
     width: 240px;
     height: 240px;
@@ -951,57 +1091,6 @@
     font-size: 0.6875rem;
     max-width: 180px;
     line-height: 1.6;
-  }
-  .empireLedger {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-bottom: 16px;
-  }
-  .ledgerLabel {
-    grid-column: 1 / -1;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--hud-border);
-    gap: 8px;
-    font-size: 0.625rem;
-  }
-  .ledgerLabel > span {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .ledgerLabel small {
-    margin: 0;
-    font-size: 0.5625rem;
-  }
-  .ledgerLabel svg {
-    width: 13px;
-    height: 13px;
-  }
-  .total {
-    grid-template-columns: 14px minmax(0, 1fr);
-    padding: 12px 10px;
-    column-gap: 6px;
-  }
-  .total:nth-child(2) {
-    border-left: 0;
-  }
-  .total > svg {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-  }
-  .totalContent {
-    font-size: 0.5rem;
-    letter-spacing: 0.04em;
-    min-width: 0;
-  }
-  .wealthBreakdown {
-    --branch-inset: 9px;
-    margin-left: 7px;
-    column-gap: 6px;
-  }
-  .total strong {
-    font-size: 1.0625rem;
   }
   .commandDeck {
     display: block;
@@ -1057,12 +1146,6 @@
     height: 88px;
     margin-left: -12px;
   }
-  .resources {
-    gap: 12px;
-  }
-  .resources strong {
-    font-size: 1.125rem;
-  }
   .footer {
     margin-top: 24px;
   }
@@ -1076,18 +1159,6 @@
   }
   .dossier {
     padding-inline: 12px;
-  }
-  .total {
-    padding-inline: 7px;
-  }
-  .total strong {
-    font-size: 0.9375rem;
-  }
-  .resources {
-    gap: 8px;
-  }
-  .resources strong {
-    font-size: 1rem;
   }
 }
 

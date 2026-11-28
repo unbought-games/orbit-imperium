@@ -30,9 +30,11 @@ pub enum RuntimeStage {
     DependencyWait,
     Delivery,
     AdmissionCommit,
+    AdmissionAllianceWait,
+    AdmissionAllianceHold,
 }
 impl RuntimeStage {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 13] = [
         Self::Admission,
         Self::Read,
         Self::Settlement,
@@ -44,6 +46,8 @@ impl RuntimeStage {
         Self::DependencyWait,
         Self::Delivery,
         Self::AdmissionCommit,
+        Self::AdmissionAllianceWait,
+        Self::AdmissionAllianceHold,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -58,6 +62,8 @@ impl RuntimeStage {
             Self::DependencyWait => "dependency_wait",
             Self::Delivery => "delivery",
             Self::AdmissionCommit => "admission_commit",
+            Self::AdmissionAllianceWait => "admission_alliance_wait",
+            Self::AdmissionAllianceHold => "admission_alliance_hold",
         }
     }
 }
@@ -128,6 +134,9 @@ pub struct RuntimeTimer {
     started: Instant,
 }
 impl RuntimeTimer {
+    pub fn elapsed(&self) -> Duration {
+        self.started.elapsed()
+    }
     pub fn new(observer: Arc<dyn RuntimeObserver>, stage: RuntimeStage) -> Self {
         Self {
             observer,

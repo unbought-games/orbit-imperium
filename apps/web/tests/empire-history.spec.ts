@@ -1,3 +1,4 @@
+import { expectFleetPageFits } from './fixtures/fleet-layout'
 import type { Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { test, expect } from './fixtures/test'
@@ -216,72 +217,82 @@ const loaded = (page: Page, path: string, action: () => Promise<unknown>) =>
     action,
   )
 
-test('an empire profile keeps its loaded emblem after display observation expiry', async ({ page }) => {
-  const now = Date.now()
-  await page.clock.install({ time: new Date(now) })
-  const { data } = await fixture(page, { owner: false })
-  const asset = `/api/media/insignias/compass/${'a'.repeat(64)}.svg`
-  data.display!.insignia = {
-    recipe: { version: 1, symbol: 'compass', foreground: '#cbb68d', background: '#152b40' },
-    asset_url: asset,
-  }
-  data.display!.expires_at = Math.floor(now / 1000) + 60
-  await page.route(`**${asset}`, route => route.fulfill({ contentType: 'image/svg+xml', body: readFileSync('crates/application/assets/insignias/compass.svg') }))
-  await loaded(page, `/api/v4/empire-profiles/${player}`, () => page.goto(`/profiles/empire/${player}`))
-  const emblem = page.locator('span[style*="--insignia-foreground"]')
-  await expect(emblem).toBeVisible()
-  await diagnosticScreenshot(page, { path: 'test-results/emblem-profile-before-expiry.png' })
-  await page.clock.fastForward(61_000)
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 })
-    await expect(emblem).toBeVisible()
-    await diagnosticScreenshot(page, { path: `test-results/emblem-profile-expired-${width}x1000.png` })
-  }
-})
 async function capture(page: Page, name: string, width: number) {
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true)
+  await expectFleetPageFits(page, [390, 1440])
   await diagnosticScreenshot(page, {
     path: `test-results/history-${name}-${width}x1000.png`,
     fullPage: true,
   })
 }
-for (const width of [1440, 390]) {
-  test(`public overview and closed campaign stay readable without game bootstrap at ${width}px`, { tag: (width === 390) ? '@journey' : [] }, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    await fixture(page, { owner: false, closed: true })
-    const api: string[] = []
-    page.on('request', (r) => {
-      if (r.url().includes('/api/')) api.push(r.url())
-    })
-    await loaded(page, `/api/v4/orbit-profiles/${profile}`, () =>
-      page.goto(`/profiles/${profile}`),
-    )
-    await expect(
-      page.getByRole('heading', { name: 'Andromeda', exact: true }),
-    ).toBeVisible()
-    await capture(page, 'overview', width)
-    await loaded(page, `/api/v4/empire-profiles/${player}`, () =>
-      page.getByRole('link', { name: 'Explore this empire' }).click(),
-    )
-    await expect(
-      page.getByRole('heading', { name: /^Aurelia/, level: 1 }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: 'Choose moments' }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('link', { name: 'Message & friend options' }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('link', { name: 'Find your next universe' }),
-    ).toBeVisible()
-    expect(api.some((url) => /bootstrap|\/view|\/world/.test(url))).toBe(false)
-    await capture(page, 'closed-public', width)
-  })
+for (const width of [390]) {
+  test(
+    `public overview and closed campaign stay readable without game bootstrap at ${width}px`,
+    async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 })
+      const now = Date.now()
+      await page.clock.install({ time: now })
+      const { data } = await fixture(page, { owner: false, closed: true })
+      const asset = `/api/media/insignias/compass/${'a'.repeat(64)}.svg`
+      data.display!.insignia = {
+        recipe: {
+          version: 1,
+          symbol: 'compass',
+          foreground: '#cbb68d',
+          background: '#152b40',
+        },
+        asset_url: asset,
+      }
+      data.display!.expires_at = Math.floor(now / 1000) + 60
+      await page.route(`**${asset}`, (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          body: readFileSync('crates/application/assets/insignias/compass.svg'),
+        }),
+      )
+
+      const api: string[] = []
+      page.on('request', (r) => {
+        if (r.url().includes('/api/')) api.push(r.url())
+      })
+      await loaded(page, `/api/v4/orbit-profiles/${profile}`, () =>
+        page.goto(`/profiles/${profile}`),
+      )
+      await expect(
+        page.getByRole('heading', { name: 'Andromeda', exact: true }),
+      ).toBeVisible()
+      await capture(page, 'overview', width)
+      await loaded(page, `/api/v4/empire-profiles/${player}`, () =>
+        page.getByRole('link', { name: 'Explore this empire' }).click(),
+      )
+      await expect(
+        page.getByRole('heading', { name: /^Aurelia/, level: 1 }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Choose moments' }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole('link', { name: 'Message & friend options' }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole('link', { name: 'Find your next universe' }),
+      ).toBeVisible()
+      const emblem = page.locator('span[style*="--insignia-foreground"]')
+      await expect(emblem).toBeVisible()
+      await diagnosticScreenshot(page, {
+        path: 'test-results/emblem-profile-before-expiry.png',
+      })
+      await page.clock.fastForward(61_000)
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 1000 })
+        await expect(emblem).toBeVisible()
+        await diagnosticScreenshot(page, {
+          path: `test-results/emblem-profile-expired-${width}x1000.png`,
+        })
+      }
+      expect(api.some((url) => /bootstrap|\/view|\/world/.test(url))).toBe(
+        false,
+      )
+      await capture(page, 'closed-public', width)
+    },
+  )
 }

@@ -1,9 +1,10 @@
 import { SettingsNavigation } from './settings-navigation'
 import { useOidcConfig } from '../client-model/use-oidc'
+import { useDispatchSession } from './dispatch-session-context'
 import { GameShellFrame } from './game-shell-frame'
 import { ArrivalScene } from '../features/arrival/arrival-scene'
 import { TutorialExperienceAction } from '../features/tutorial/experience-action'
-import { TutorialSync } from '../features/tutorial/use-tutorial'
+import { ConnectionScreen } from '../features/connection-screen'
 import { VacationNotice } from '../features/vacation'
 import { EmpireDeletionNotice } from '../features/empire-deletion'
 import { ErrorBannerProvider, ErrorBannerSlot } from '../ui/error-banner'
@@ -20,7 +21,11 @@ import {
 } from '@tanstack/react-router'
 import { useGameSession } from './session-context'
 import { ScreenContext } from './screen-context'
-import { resolveShellRoute, type ShellParams } from './shell-route'
+import {
+  resolveShellRoute,
+  usesVisuallyHiddenHeading,
+  type ShellParams,
+} from './shell-route'
 import { withoutBodySearch } from './page-search'
 import { routeTarget } from './route-target'
 import styles from './game-shell.module.css'
@@ -31,12 +36,29 @@ import { StatePanel } from '../ui/state-panel'
 import type { DispatchDraft } from '../features/missions'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { bodyName, coordinates } from '../ui/format'
-import { buildPages, pageTitles } from './navigation-model'
+import { pageTitles } from './navigation-model'
 import { ArrowLeft } from 'lucide-react'
 import { developmentActivity, developmentBlockers } from './navigation-activity'
 export function GameShell() {
-  const { model, view } = useGameSession()
+  const { model, view, logout } = useGameSession()
+  const needsTutorial = view.protocol === 4 && !view.arrival_pending
+  const hasTutorial = useStore(model.store, (state) => !!state.tutorial.data)
+  const tutorialError = useStore(model.store, (state) => state.tutorial.error)
+  useEffect(() => {
+    if (needsTutorial) void model.tutorial.ensure()
+  }, [model, needsTutorial, view.viewer_revision])
+
   if (view.protocol === 4 && view.arrival_pending) return <ArrivalScene />
+  if (needsTutorial && !hasTutorial)
+    return (
+      <ConnectionScreen
+        message={
+          tutorialError ? 'Unable to load your game preferences.' : undefined
+        }
+        retry={() => void model.tutorial.ensure(true)}
+        logout={logout}
+      />
+    )
   return (
     <ErrorBannerProvider model={model}>
       <GameShellContent />
@@ -52,6 +74,7 @@ function GameShellContent() {
       : undefined
   const { commands, view, model, logout, universeName } = useGameSession()
   const unreadReports = useStore(model.store, hasUnreadReports)
+  const dispatchSession = useDispatchSession()
   const navigate = useNavigate()
   const location = useRouterState({ select: (state) => state.location })
   const matches = useMatches()
@@ -64,15 +87,30 @@ function GameShellContent() {
     invitation?: string
     player?: string
   }
-  const { route, body, canonicalPage, canonicalizing } = resolveShellRoute(
-    leaf.staticData.page ?? null,
-    params,
-    search,
-    view,
-    universeName,
-  )
+  const { route, body, canonicalPage, canonicalizing, parentAfterDestruction } =
+    resolveShellRoute(
+      leaf.staticData.page ?? null,
+      params,
+      search,
+      view,
+      universeName,
+    )
   const { page, available } = route
   const requestedBody = params.body ?? search.body
+  useEffect(() => {
+    if (parentAfterDestruction)
+      void navigate({
+        ...routeTarget(universeName, 'overview', parentAfterDestruction),
+        state: { destroyedMoon: params.body },
+        replace: true,
+      })
+  }, [navigate, parentAfterDestruction, params.body, universeName])
+  const showMoonLoss =
+    view.protocol === 4 &&
+    view.destroyed_moons?.some(
+      (lost) =>
+        lost.moon === location.state.destroyedMoon && lost.parent === body?.id,
+    )
   const abandonment = useStore(model.store, (state) =>
     [...state.attempts.values()].some((attempt) => {
       const command = attempt.envelope.command
@@ -140,9 +178,14 @@ function GameShellContent() {
       page === 'reports' &&
       /\/reports\/?$/.test(location.pathname) &&
       previousPathname.current?.startsWith(`${location.pathname}/`)
+    const withinDispatch =
+      page === 'dispatch' &&
+      previousPathname.current !== location.pathname &&
+      previousPathname.current.replace(/\/review\/?$/, '') ===
+        location.pathname.replace(/\/review\/?$/, '')
     previousPathname.current = location.pathname
     previousGalaxySite.current = location.search.site
-    if (browsingGalaxy) return
+    if (browsingGalaxy || withinDispatch) return
     // Fragment links own their scroll destination; do not pull an editor link
     // back to the page heading after the router has scrolled to its section.
     if (location.hash) {
@@ -177,12 +220,14 @@ function GameShellContent() {
       ...routeTarget(universeName, 'dispatch', origin),
       search: dispatchSearch(draft),
       state: {
+        dispatchEditor: dispatchSession.prepare(!!draft.reviewOnOpen),
+        dispatchSession: dispatchSession.id,
         dispatchObservation: {
-          reviewOnOpen: draft.reviewOnOpen,
           ships: draft.ships,
           speed: draft.speed,
           target: draft.target,
           observedAt: draft.observedAt,
+          suggestRecyclers: draft.suggestRecyclers,
         },
       },
     })
@@ -198,26 +243,25 @@ function GameShellContent() {
       ),
       ...(available
         ? {
+            ...(page === 'dispatch' && !location.state.dispatchReview
+              ? {
+                  state: {
+                    dispatchEditor:
+                      location.state.dispatchEditor ?? location.state.__TSR_key,
+                  },
+                }
+              : {}),
             search: withoutBodySearch(location.search),
             hash: location.hash,
           }
         : {}),
     })
   }
-  const hideRouteHeading =
-    available &&
-    (page === 'overview' ||
-      buildPages.includes(page) ||
-      page === 'galaxy' ||
-      page === 'fleets' ||
-      (page === 'dispatch' && view.protocol === 4) ||
-      page === 'settings' ||
-      page === 'rewards' ||
-      page === 'menu' ||
-      page === 'alliance' ||
-      page === 'alliance-create' ||
-      page === 'alliance-discover' ||
-      (view.protocol === 4 && (page === 'reports' || page === 'messages')))
+  const hideRouteHeading = usesVisuallyHiddenHeading(
+    page,
+    available,
+    view.protocol,
+  )
   const title = !available
     ? 'Destination unavailable'
     : page === 'overview'
@@ -272,7 +316,6 @@ function GameShellContent() {
       }
       footer={<CommandHud body={body?.id} onDraft={prepareDispatch} />}
     >
-      <TutorialSync />
       <ContentColumn
         as="main"
         width={
@@ -287,6 +330,11 @@ function GameShellContent() {
         className={styles['work-area']}
       >
         <ErrorBannerSlot model={model} />
+        {showMoonLoss && (
+          <Text role="status">
+            Your moon was destroyed. You are viewing its parent planet.
+          </Text>
+        )}
         {view.protocol === 4 && (
           <EmpireDeletionNotice
             deletion={view.empire_deletion}

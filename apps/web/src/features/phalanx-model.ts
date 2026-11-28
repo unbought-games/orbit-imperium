@@ -29,14 +29,13 @@ export function scanAttempts(
 export function phalanxRange(level: number) {
   return BigInt(level) ** 2n - 1n
 }
-export function scanBlocker(
-  source:
-    | Pick<S['BodyV3'], 'kind' | 'levels' | 'coordinates' | 'amounts'>
-    | undefined,
+export function scanTargetBlocker(
+  source: Pick<S['BodyV3'], 'kind' | 'levels' | 'coordinates'> | undefined,
   target: S['GalaxyPosition4'],
   player: string | undefined,
 ) {
-  if (!source || source.kind !== 'Moon' || !source.levels.SensorPhalanx)
+  if (source?.kind !== 'Moon') return 'Select a moon with a Sensor Phalanx.'
+  if (!source.levels.SensorPhalanx)
     return 'Complete Sensor Phalanx level 1 on this moon first.'
   if (!target.body || target.body.kind !== 'Planet')
     return 'Select an occupied planet.'
@@ -48,6 +47,18 @@ export function scanBlocker(
       phalanxRange(source.levels.SensorPhalanx)
   )
     return 'This planet is outside this moon’s scan range.'
+  return null
+}
+
+export function scanBlocker(
+  source:
+    | Pick<S['BodyV3'], 'kind' | 'levels' | 'coordinates' | 'amounts'>
+    | undefined,
+  target: S['GalaxyPosition4'],
+  player: string | undefined,
+) {
+  const reason = scanTargetBlocker(source, target, player)
+  if (reason || !source) return reason
   if (BigInt(source.amounts.deuterium) < BigInt(scanCost))
     return 'This moon needs 5,000 deuterium locally.'
   return null

@@ -11,8 +11,25 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.value[data-nowrap] > span {
+  white-space: nowrap;
+}
 .value svg {
   flex: 0 0 auto;
+}
+/* In prose, digits share the text baseline and marks center on capital letters. */
+.value[data-inline] {
+  display: inline;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+.value[data-inline] svg {
+  position: relative;
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: middle;
+  top: calc((1ex - 1cap) / 2);
+  margin-inline-end: 0.2em;
 }
 .summary {
   display: inline-flex;

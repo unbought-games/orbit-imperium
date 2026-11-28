@@ -2,8 +2,8 @@ import type { Page } from '@playwright/test'
 import type { EmpireProfile } from '../../src/adapters/empire-history'
 import { binding, id } from './game'
 
-export async function installEmpireIdentityFixture(page: Page) {
-  const profile: EmpireProfile = {
+export function preparedEmpireIdentity(): EmpireProfile {
+  return {
     player: binding.player,
     profile: id(80),
     universe: binding.universe,
@@ -46,6 +46,10 @@ export async function installEmpireIdentityFixture(page: Page) {
       availability: 'available' as const,
     })),
   }
+}
+
+export async function installEmpireIdentityFixture(page: Page) {
+  const profile = preparedEmpireIdentity()
   const writes: unknown[] = []
   await page.route('**/api/v4/empire-profiles/**', async (route) => {
     if (route.request().method() === 'POST') {

@@ -12,6 +12,8 @@ import {
   identityProblem,
   withinCommandWindow,
 } from './command-window'
+import { DispatchObservations } from './dispatch-observations'
+import { matchesCargoInstruction } from './dispatch-cargo'
 import { TutorialEngine } from './tutorial-engine'
 import {
   readStableMailbox,
@@ -92,6 +94,7 @@ export class Coordinator {
   readonly store = createGameStore()
   readonly tutorial = new TutorialEngine(this.store, () => this.readTutorial())
   readonly reports = new ReportEngine(this.store, {
+    monotonicNow: () => this.platform.monotonicNowMs(),
     page: (cursor, query) => this.readReportPage(cursor, false, query),
     detail: (id) => this.readReportDetail(id),
   })
@@ -232,12 +235,29 @@ export class Coordinator {
   private protocol: 2 | 3 | 4 = 2
   private loginPresenceWork: Promise<void> | null = null
   private universe = ''
+  readonly dispatchObservations: DispatchObservations
+  startReviewObservation(prepared: boolean) {
+    const id = this.platform.newId()
+    this.dispatchObservations.start(
+      id,
+      prepared ? 'review_started_warm' : 'review_started_cold',
+      this.platform.monotonicNowMs(),
+    )
+    return id
+  }
+  dispatchClickTime() {
+    return this.platform.monotonicNowMs()
+  }
   constructor(
     private port: GamePort,
     private platform: ClientPlatform,
     private updates?: GameUpdatesPort,
   ) {
     this.boundRecovery = new BoundCommandRecovery(platform.pendingCommands)
+    this.dispatchObservations = new DispatchObservations(platform, (sample) => {
+      if (this.binding)
+        this.port.observeDispatch?.(this.binding.universe, sample)
+    })
   }
   subscribe = this.store.subscribe
   startDelivery(): () => void {
@@ -249,7 +269,7 @@ export class Coordinator {
       binding,
       platform: this.platform,
       updates: this.updates,
-      onUpdate: (update) => this.onUpdate(update),
+      onUpdate: (update) => this.onUpdate(update, true),
       reconcile: () => this.poll(),
       hasPending: () =>
         [...this.attempts.values()].some(
@@ -279,11 +299,20 @@ export class Coordinator {
       if (this.delivery === delivery) this.delivery = null
     }
   }
-  resumeDelivery() {
+  resumeDelivery(refocused = false) {
     const previous = this.store.getState()
     const foreground = this.platform.isVisible?.() ?? true
     const online = this.platform.isOnline()
-    this.store.setState({ foreground, online })
+    if (!foreground) this.dispatchObservations.suspend()
+    const resumed =
+      foreground &&
+      online &&
+      (refocused || !previous.foreground || !previous.online)
+    this.store.setState({
+      foreground,
+      online,
+      ...(resumed ? { deliveryResumedAt: this.platform.monotonicNowMs() } : {}),
+    })
     if (!foreground || !online) {
       // Fence requests started before suspension/handoff. Their failures say
       // nothing about service availability after the next foreground resume.
@@ -347,6 +376,7 @@ export class Coordinator {
     )
   }
   invalidate() {
+    this.dispatchObservations.clear()
     this.tutorial.invalidate()
     this.reports.invalidate()
     this.restoredMutations = []
@@ -371,6 +401,7 @@ export class Coordinator {
       binding: null,
       view: null,
       settings: null,
+      deliveryResumedAt: null,
       reportQueries: new Map(),
       reportInbox: null,
       reportInboxLoad: null,
@@ -466,6 +497,7 @@ export class Coordinator {
       snapshot.view,
       snapshot.settings,
       this.generation,
+      snapshot.tutorial,
     )
   }
   private async activate(
@@ -473,6 +505,7 @@ export class Coordinator {
     next: BoundView,
     settings: BoundSettings,
     g: number,
+    tutorial?: InitialGameSnapshot['tutorial'],
   ) {
     const b = candidate.binding
     this.protocol = candidate.protocol
@@ -502,6 +535,7 @@ export class Coordinator {
     }
     this.attempts = restored
     this.restoredMutations = this.boundRecovery.restore(b)
+    if (next.protocol === 4 && tutorial) this.tutorial.hydrate(tutorial, next)
     this.view = next
     this.settings = settings
     await this.reconcile()
@@ -613,6 +647,9 @@ export class Coordinator {
     if (this.platform.isVisible?.() === false || !this.platform.isOnline())
       return
     if (this.platform.monotonicNowMs() < this.retryAt) return
+    const reconnectStartedAt = this.store.getState().connectionInterrupted
+      ? this.platform.monotonicNowMs()
+      : null
     const q = ++this.viewGeneration
     const retirement = this.orderRefresh
     const request = this.captureRequest()
@@ -674,7 +711,15 @@ export class Coordinator {
       const now = this.platform.monotonicNowMs()
       if (next.progress) this.sampleCommandClock(next.progress.sampled_at)
       this.orderRefresh = null
-      this.store.setState({ view: next, settings, receivedAt: now, now })
+      this.store.setState({
+        view: next,
+        settings,
+        receivedAt: now,
+        now,
+        ...(reconnectStartedAt !== null
+          ? { deliveryResumedAt: reconnectStartedAt }
+          : {}),
+      })
       if (
         this.pendingMinimum !== undefined &&
         BigInt(next.viewer_revision) >= BigInt(this.pendingMinimum)
@@ -980,6 +1025,12 @@ export class Coordinator {
     for (let attempt = 0; attempt < 3; attempt++) {
       const previous = this.view
       try {
+        if (
+          captured.type === 'FleetQuote' ||
+          captured.type === 'ResolveDestination' ||
+          captured.type === 'ResolveMissionSite'
+        )
+          this.dispatchObservations.requestedFleetTerms()
         const result = validate<import('./commands').BoundWorld>(
           'BoundWorld4',
           await this.port.world(context, captured),
@@ -1003,8 +1054,15 @@ export class Coordinator {
                   : 0,
             ),
           })
+          const fill =
+            captured.type === 'FleetQuote' && captured.intent.cargo_fill
+          if (fill && !matchesCargoInstruction(fill, result.data.intent.cargo))
+            return null
+          const expected = fill
+            ? { ...captured.intent, cargo: result.data.intent.cargo }
+            : captured.intent
           if (
-            canonical(normalize(captured.intent)) !==
+            canonical(normalize(expected)) !==
               canonical(normalize(result.data.intent)) ||
             result.data.profile_hash !== this.view?.profile_hash
           )
@@ -1159,8 +1217,25 @@ export class Coordinator {
   async send(
     input: Command,
     proposal?: SubmittedQuote,
-    onRegistered?: (key: string) => void,
+    registrationOrDispatch?:
+      | ((key: string) => void)
+      | {
+          clickedAt: number
+          coordinates: import('../contracts').components['schemas']['Coordinates']
+        },
+    dispatchContext?: {
+      clickedAt: number
+      coordinates: import('../contracts').components['schemas']['Coordinates']
+    },
   ): Promise<string | undefined> {
+    const onRegistered =
+      typeof registrationOrDispatch === 'function'
+        ? registrationOrDispatch
+        : undefined
+    const dispatch =
+      typeof registrationOrDispatch === 'function'
+        ? dispatchContext
+        : registrationOrDispatch
     const b = this.binding,
       g = this.generation
     const reconnect = 'Connect before confirming an action.'
@@ -1213,6 +1288,7 @@ export class Coordinator {
     const intent: SubmittedIntent = {
       quote,
       submittedAt: Math.floor(currentServerTime(state)),
+      ...(dispatch ? { dispatchCoordinates: dispatch.coordinates } : {}),
       ...(parent ? { dependsOn: parent.envelope.command_id } : {}),
       baseRevision: state.view?.viewer_revision ?? '0',
     }
@@ -1288,6 +1364,12 @@ export class Coordinator {
     if (!this.current(g, b)) return
     onRegistered?.(key)
     if (!this.current(g, b)) return
+    if (dispatch)
+      this.dispatchObservations.start(
+        commandId,
+        'send_started',
+        dispatch.clickedAt,
+      )
     if (!(await this.deliver(a, g, true))) return
     return commandId
   }
@@ -1298,6 +1380,7 @@ export class Coordinator {
     // A receipt is stronger evidence than a conflicting transport response.
     if (!current || current.receipt || terminal(current)) return false
     this.forgetEnvelope(a)
+    this.dispatchObservations.mark(a.envelope.command_id, 'not_admitted')
     this.removeAttempt(key)
     return true
   }
@@ -1325,6 +1408,9 @@ export class Coordinator {
         a,
         g,
         await this.port.submit(structuredClone(a.envelope)),
+        firstDelivery,
+        a.envelope.command.type === 'World' &&
+          a.envelope.command.action.type === 'LaunchFleet',
       )
     } catch (e) {
       const rejected = failure(e)
@@ -1459,10 +1545,17 @@ export class Coordinator {
       ...current,
       status: 'uncertain',
     })
+    this.dispatchObservations.mark(a.envelope.command_id, 'uncertain')
     this.saveAttempt(key, next)
     this.delivery?.pending()
   }
-  private async receive(a: Attempt, g: number, raw: BoundReceipt) {
+  private async receive(
+    a: Attempt,
+    g: number,
+    raw: BoundReceipt,
+    fromFirstSubmit = false,
+    deferSnapshot = false,
+  ) {
     const r = validate<BoundReceipt>('GameReceipt', raw),
       b = a.envelope.binding
     if (
@@ -1472,6 +1565,12 @@ export class Coordinator {
       r.protocol !== a.envelope.protocol
     )
       return
+    if (fromFirstSubmit && r.status !== 'Rejected')
+      this.dispatchObservations.mark(r.command_id, 'accepted')
+    if (r.status === 'Committed')
+      this.dispatchObservations.mark(r.command_id, 'outcome_received')
+    if (r.status === 'Rejected')
+      this.dispatchObservations.mark(r.command_id, 'rejected')
     const key = attemptKey(b, r.command_id),
       current = this.attempts.get(key)
     if (!current || terminal(current)) return
@@ -1505,7 +1604,10 @@ export class Coordinator {
     if (r.status === 'Committed') {
       if (next.reconciled) await this.pruneAttempts()
       this.requestMinimum(r.minimum_viewer_revision)
-      if (!this.refreshWork && !this.recoveryWork) await this.refresh()
+      if (!this.refreshWork && !this.recoveryWork) {
+        const refresh = this.refresh()
+        if (!deferSnapshot) await refresh
+      }
     }
   }
   /** Explicit player retry; receipt checks alone never authorize another send. */
@@ -1669,7 +1771,7 @@ export class Coordinator {
       if (this.recoveryWork === work) this.recoveryWork = null
     }
   }
-  async onUpdate(raw: GameUpdate): Promise<void> {
+  async onUpdate(raw: GameUpdate, deferSnapshot = false): Promise<void> {
     const update = validate<GameUpdate>('GameUpdate', raw)
     if (
       !this.binding ||
@@ -1678,29 +1780,42 @@ export class Coordinator {
     )
       return
     if (update.event.type === 'Reset') {
-      await this.reconcilePending()
-      await this.refresh()
+      // Reconcile missed receipts and the view on the recovery path. Keep the
+      // stream free to apply later outcomes while that HTTP work is pending.
+      const recovery = this.poll()
+      if (!deferSnapshot) await recovery
       return
     }
     if (update.event.type === 'Invalidate') {
       if (
         BigInt(update.event.minimum_viewer_revision) >
         BigInt(this.view?.viewer_revision ?? '0')
-      )
-        await this.refresh(update.event.minimum_viewer_revision)
+      ) {
+        const refresh = this.refresh(update.event.minimum_viewer_revision)
+        if (!deferSnapshot) await refresh
+      }
       return
     }
     const receipt = update.event.receipt
     const attempt = this.attempts.get(
       attemptKey(update.binding, receipt.command_id),
     )
-    if (attempt) await this.receive(attempt, this.generation, receipt)
+    if (attempt)
+      await this.receive(
+        attempt,
+        this.generation,
+        receipt,
+        false,
+        deferSnapshot,
+      )
     if (
       receipt.status === 'Committed' &&
       BigInt(receipt.minimum_viewer_revision) >
         BigInt(this.view?.viewer_revision ?? '0')
-    )
-      await this.refresh(receipt.minimum_viewer_revision)
+    ) {
+      const refresh = this.refresh(receipt.minimum_viewer_revision)
+      if (!deferSnapshot) await refresh
+    }
   }
   async poll() {
     if (this.platform.monotonicNowMs() < this.retryAt) return

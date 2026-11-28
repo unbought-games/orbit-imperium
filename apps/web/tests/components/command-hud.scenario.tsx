@@ -1,3 +1,4 @@
+import { browserDependencies } from '../../src/adapters/runtime'
 import { useEffect, useState } from 'react'
 import {
   createMemoryHistory,
@@ -27,6 +28,13 @@ import observation from '../../../../contracts/fixtures/espionage-expanded.json'
 
 type S = components['schemas']
 export type HudInput = {
+  attackGroups?: S['AttackGroup4'][]
+  bodies?: S['BodyV3'][]
+  nativeDelivery?: boolean
+  conversations?: S['SocialView']['conversations']
+  circulars?: S['SocialView']['circulars']
+  headers?: S['ReportHeader4'][]
+  pageSize?: number
   reports?: number
   invalidCursor?: boolean
   missions?: S['MissionView4']
@@ -48,20 +56,20 @@ async function prepareHud(input: HudInput = {}) {
   const { session, snapshot } = readyFixture(4)
   const view = snapshot.view
   if (view.protocol !== 4) throw Error('Expected protocol 4')
-  const headers: S['ReportHeader4'][] = Array.from(
-    { length: input.reports ?? 0 },
-    (_, index) => ({
+  const headers: S['ReportHeader4'][] =
+    input.headers ??
+    Array.from({ length: input.reports ?? 0 }, (_, index) => ({
       id: id(4000 + index),
       kind: input.kind ?? 'Espionage',
       read: false,
       hidden: false,
       observed_at: time - index,
-    }),
-  )
-  view.bodies = [{ ...body, name: input.homeName }]
+    }))
+  view.bodies = input.bodies ?? [{ ...body, name: input.homeName }]
   if (input.missions) view.missions = input.missions
+  if (input.attackGroups) view.attack_groups = input.attackGroups
   if (input.playerNames) view.player_names = input.playerNames
-  view.progression.production = [productionFixture(body)]
+  view.progression.production = view.bodies.map((b) => productionFixture(b))
   view.destinations = input.destinations ?? []
   view.has_unread_reports = headers.length > 0
   view.capabilities = [
@@ -96,21 +104,50 @@ async function prepareHud(input: HudInput = {}) {
     view: async (context) => structuredClone({ ...view, ...context }),
     quote: unexpected,
     receipt: unexpected,
-    socialQuery: async (context) => {
+    socialQuery: async (context, query) => {
       if (mailboxUnavailable) throw Error('Unavailable')
-      return { ...context, ...emptySocialView() }
+      return {
+        ...context,
+        ...emptySocialView(),
+        circulars:
+          query.type === 'Circulars'
+            ? structuredClone(input.circulars ?? [])
+            : [],
+        conversations:
+          query.type === 'Conversations'
+            ? structuredClone(input.conversations ?? [])
+            : [],
+      }
+    },
+    socialCommand: async (_context, { action, command_id }) => {
+      if (action.type === 'ReadCircular') {
+        const row = input.circulars?.find((row) => row.id === action.circular)
+        if (!row) return unexpected()
+        row.read = true
+      } else if (action.type === 'Read') {
+        const row = input.conversations?.find(
+          (row) => row.latest.id === action.message,
+        )
+        if (!row) return unexpected()
+        row.unread = false
+      } else return unexpected()
+      return { command_id, message: null }
     },
     reports: async (context, cursor, _hidden, query) => {
       calls.push(cursor)
       if (cursor === failure) throw Error('Unavailable')
       if (held?.cursor === cursor) await held.wait
       const rows = headers.filter(
-        (header) => !query?.filter.unread_only || !header.read,
+        (header) =>
+          header.hidden === (query?.filter.hidden ?? false) &&
+          (!query?.filter.unread_only || !header.read) &&
+          (!query?.filter.starred_only || header.starred) &&
+          (!query?.kind || header.kind === query.kind),
       )
       const start = cursor
         ? rows.findIndex((header) => header.id === cursor) + 1
         : 0
-      const items = rows.slice(start, start + 50)
+      const items = rows.slice(start, start + (input.pageSize ?? 50))
       const hasMore = input.invalidCursor || start + items.length < rows.length
       return structuredClone({
         ...metadata(context),
@@ -121,7 +158,7 @@ async function prepareHud(input: HudInput = {}) {
             hasMore && !input.invalidCursor ? items.at(-1)!.id : null,
           unread_count: Math.min(
             99,
-            headers.filter((header) => !header.read).length,
+            headers.filter((header) => !header.hidden && !header.read).length,
           ),
           as_of_ms: time,
         },
@@ -137,12 +174,18 @@ async function prepareHud(input: HudInput = {}) {
       }),
     submit: async (envelope) => {
       const command = envelope.command
-      if (command.type !== 'World' || command.action.type !== 'MarkReportRead')
+      if (command.type !== 'World') return unexpected()
+      const action = command.action
+      if (action.type !== 'MarkReportRead' && action.type !== 'SetReportHidden')
         return unexpected()
-      const report = command.action.report
-      headers.find((header) => header.id === report)!.read = true
+      const header = headers.find((row) => row.id === action.report)
+      if (!header) return unexpected()
+      if (action.type === 'MarkReportRead') header.read = true
+      else header.hidden = action.hidden
       view.viewer_revision = String(Number(view.viewer_revision) + 1)
-      view.has_unread_reports = headers.some((header) => !header.read)
+      view.has_unread_reports = headers.some(
+        (header) => !header.hidden && !header.read,
+      )
       return {
         protocol: 4,
         binding: view.binding,
@@ -156,15 +199,21 @@ async function prepareHud(input: HudInput = {}) {
     },
   }
   let next = 100
-  const model = new Coordinator(port, {
-    newId: () => id(next++),
-    monotonicNowMs: () => performance.now(),
-    isOnline: () => true,
-  })
+  const model = new Coordinator(
+    port,
+    input.nativeDelivery
+      ? browserDependencies().platform
+      : {
+          newId: () => id(next++),
+          monotonicNowMs: () => performance.now(),
+          isOnline: () => true,
+        },
+  )
   await model.initialize(session, structuredClone(snapshot))
   return {
     model,
     session,
+    port,
     headers,
     calls,
     view,
@@ -262,5 +311,17 @@ export function CommandHudScenario() {
         </PlayerProfilesContext.Provider>
       </SessionContext.Provider>
     </RouterContextProvider>
+  )
+}
+
+export function HudRemountScenario() {
+  const [generation, setGeneration] = useState(0)
+  return (
+    <>
+      <button onClick={() => setGeneration((value) => value + 1)}>
+        Remount command HUD
+      </button>
+      <CommandHudScenario key={generation} />
+    </>
   )
 }

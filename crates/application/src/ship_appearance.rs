@@ -7,6 +7,20 @@ use uuid::Uuid;
 pub const SHIP_TARGET: &str = "LightFighter";
 pub const SHIP_PACKAGE: &str = "orbit-light-fighter";
 pub const SHIP_PACKAGE_REVISION: &str = "concord-v1";
+#[derive(Deserialize)]
+pub struct BundledShipSkin {
+    pub target: String,
+    pub id: String,
+    pub revision: String,
+    pub name: String,
+}
+
+pub static BUNDLED_SHIP_SKINS: std::sync::LazyLock<Vec<BundledShipSkin>> =
+    std::sync::LazyLock::new(|| {
+        serde_json::from_str(include_str!("../assets/ship-skins.json"))
+            .expect("bundled ship skin registry must be valid")
+    });
+
 pub const FREE_SHIP_DYES: &[(&str, &str, &str)] = &[
     ("free-ivory", "Ivory", "#e5dfce"),
     ("free-graphite", "Graphite", "#30343b"),
@@ -44,14 +58,16 @@ pub struct ShipDesign {
 impl ShipDesign {
     pub fn valid(&self) -> bool {
         !self.id.is_nil()
-            && self.target == SHIP_TARGET
             && self.revision >= 0
             && self.revision < i64::MAX
             && (1..=40).contains(&self.name.trim().chars().count())
             && !self.name.chars().any(char::is_control)
             && self.recipe.version == 1
-            && self.recipe.skin_id == SHIP_PACKAGE
-            && self.recipe.package_revision == SHIP_PACKAGE_REVISION
+            && BUNDLED_SHIP_SKINS.iter().any(|skin| {
+                skin.target == self.target
+                    && skin.id == self.recipe.skin_id
+                    && skin.revision == self.recipe.package_revision
+            })
             && matches!(
                 self.recipe.emblem.treatment.as_str(),
                 "none" | "full" | "layers"
@@ -211,4 +227,35 @@ pub trait ShipRenderer: Send + Sync {
     ) -> ShipRenderFuture<'a, Vec<RenderedShipVariant>>;
     /// Best-effort cancellation; durable selection and lease fencing remain authoritative.
     fn cancel(&self, request: Uuid) -> ShipRenderFuture<'_, ()>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_light_fighter_recipes_pin_the_matching_revision() {
+        let mut design = ShipDesign {
+            id: Uuid::from_u128(1),
+            name: "Orbit Base".into(),
+            target: SHIP_TARGET.into(),
+            revision: 0,
+            recipe: ShipPaintRecipe {
+                version: 1,
+                skin_id: "orbit-base-light-fighter".into(),
+                package_revision: "v1".into(),
+                primary: "free-blue".into(),
+                accent: "free-gold".into(),
+                emblem: ShipEmblem {
+                    treatment: "full".into(),
+                    placement: "paired".into(),
+                },
+            },
+        };
+        assert!(design.valid());
+        design.recipe.package_revision = SHIP_PACKAGE_REVISION.into();
+        assert!(!design.valid());
+        design.recipe.skin_id = SHIP_PACKAGE.into();
+        assert!(design.valid());
+    }
 }

@@ -1,3 +1,4 @@
+import { useLocation } from '@tanstack/react-router'
 import { SettingsBackLink } from '../../shell/settings-back-link'
 import {
   DestinationLayout,
@@ -24,6 +25,9 @@ import { InvitationCode, InvitationLinks } from './invitations'
 import { AutomaticTitles, MilestoneTitles } from './automatic-titles'
 import styles from './rewards.module.css'
 export function RewardsScreen() {
+  const showDyeGuide = useLocation({
+    select: (location) => location.hash === 'dye-unlocks',
+  })
   const { owner, controller, visible, loading, busy, error, pending } =
     useCommunityRewards()
   const { universeName, view, body } = useGameScreen()
@@ -69,6 +73,28 @@ export function RewardsScreen() {
           )}
         </div>
       </header>
+      {showDyeGuide && (
+        <section aria-labelledby="dye-unlocks">
+          <h2 id="dye-unlocks" tabIndex={-1}>
+            How to unlock dyes
+          </h2>
+          <p>
+            <strong>Reward dyes.</strong> Earn Renown to reach milestones that
+            offer permanent cosmetic choices. When a dye appears under Your
+            choices, select it and confirm the claim. Each milestone offers a
+            selection from the reward pool.
+          </p>
+          <p>
+            <strong>Member dyes.</strong> Active membership gives you access to
+            member colors. A dye you claim as a permanent reward stays in your
+            collection after membership ends.
+          </p>
+          <p>
+            Inviting friends who join and reach community milestones is one way
+            to earn Renown.
+          </p>
+        </section>
+      )}
       {error && (
         <div role="alert" className={styles.notice}>
           <p>{error}</p>

@@ -114,7 +114,6 @@ export async function startGame() {
     root.render(<SharedReportPage token={shared[1]} />)
     return
   }
-  root.render(<ConnectionScreen />)
   void startAnalytics()
   // Public /invite documents deliberately embed anonymous bootstrap data.
   // The recipient route must explicitly resolve the current session after OAuth;
@@ -122,6 +121,7 @@ export async function startGame() {
   const initialRuntime = await loadInitialRuntime(
     browserDependencies(),
     /^\/invite\/[^/]+\/?$/.test(location.pathname),
+    () => root.render(<ConnectionScreen />),
   )
   const router = createAppRouter()
   root.render(

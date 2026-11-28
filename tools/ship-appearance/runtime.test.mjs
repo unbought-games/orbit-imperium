@@ -270,7 +270,11 @@ test('origin DNS policy excludes local, metadata, mapped and transition addresse
 
 test('data-only installed registry loads a second independently authored package and rejects caller paths', async () => {
   assert.deepEqual(packageSelection({}), [
+    { id: 'orbit-base-light-fighter', revision: 'v1' },
     { id: 'orbit-light-fighter', revision: 'concord-v1' },
+    { id: 'orbit-base-heavy-fighter', revision: 'v2' },
+    { id: 'orbit-base-cruiser', revision: 'v1' },
+    { id: 'orbit-base-battlecruiser', revision: 'v1' },
   ])
   for (const entries of [
     [{ id: '../escape', revision: 'v1' }],
@@ -448,3 +452,111 @@ test('fourteen native-resolution packages pass startup hashes, then load lazily 
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('Orbit Base reconstructs its approved master and dyes armor without coating functional parts', async () => {
+  const fighter = await loadPackage('orbit-base-light-fighter', 'v1')
+  assert.ok(checkSchema(fighter.manifest), JSON.stringify(checkSchema.errors))
+  const [primary, accent] = fighter.manifest.reference
+  assert.deepEqual(
+    renderShipPixels(fighter, { primary, accent }),
+    fighter.source,
+  )
+  const hull = renderShipPixels(fighter, { primary: '#ed338d', accent })
+  const trim = renderShipPixels(fighter, { primary, accent: '#00c9d2' })
+  const pixel = (bytes, x, y) => {
+    const offset = 4 * (y * fighter.manifest.width + x)
+    return bytes.slice(offset, offset + 4)
+  }
+  for (const [x, y] of [
+    [600, 530],
+    [233, 534],
+    [939, 717],
+    [948, 94],
+    [807, 625],
+  ]) {
+    assert.deepEqual(pixel(hull, x, y), pixel(fighter.source, x, y))
+    assert.deepEqual(pixel(trim, x, y), pixel(fighter.source, x, y))
+  }
+  for (const [x, y, painted, other] of [
+    [1120, 500, hull, trim],
+    [940, 440, trim, hull],
+  ]) {
+    assert.notDeepEqual(pixel(painted, x, y), pixel(fighter.source, x, y))
+    assert.deepEqual(pixel(other, x, y), pixel(fighter.source, x, y))
+  }
+})
+
+for (const [id, revision, target, protectedPoints] of [
+  [
+    'heavy-fighter',
+    'v2',
+    'HeavyFighter',
+    [
+      [700, 415],
+      [535, 590],
+      [905, 826],
+      [820, 145],
+      [1112, 196],
+    ],
+  ],
+  [
+    'cruiser',
+    'v1',
+    'Cruiser',
+    [
+      [580, 542],
+      [760, 430],
+      [946, 349],
+      [1120, 275],
+      [1200, 431],
+    ],
+  ],
+  [
+    'battlecruiser',
+    'v1',
+    'Battlecruiser',
+    [
+      [589, 332],
+      [996, 462],
+      [582, 549],
+      [716, 459],
+    ],
+  ],
+]) {
+  test(`Orbit Base ${target} binds the selected master and protects its functional materials`, async () => {
+    const ship = await loadPackage('orbit-base-' + id, revision)
+    const { manifest, source, material } = ship
+    assert.equal(manifest.target.id, target)
+    assert.ok(checkSchema(manifest), JSON.stringify(checkSchema.errors))
+    const [primary, accent] = manifest.reference
+    assert.deepEqual(renderShipPixels(ship, { primary, accent }), source)
+    if (target === 'Battlecruiser') assert.equal(source[3], 0)
+    for (const [x, y] of protectedPoints) {
+      const alpha = 4 * (y * manifest.width + x) + 3
+      assert.ok(source[alpha] > 240)
+      assert.equal(material[alpha], 0, `holdout at ${x},${y}`)
+    }
+    const hull = renderShipPixels(ship, { primary: '#d91fe3', accent })
+    const trim = renderShipPixels(ship, { primary, accent: '#09fe4e' })
+    let hullChanges = 0,
+      trimChanges = 0
+    for (let i = 0; i < source.length; i += 4) {
+      const differs = (pixels) =>
+        pixels[i] !== source[i] ||
+        pixels[i + 1] !== source[i + 1] ||
+        pixels[i + 2] !== source[i + 2]
+      const h = differs(hull),
+        t = differs(trim)
+      if (
+        hull[i + 3] !== source[i + 3] ||
+        trim[i + 3] !== source[i + 3] ||
+        (h && (!material[i + 3] || !material[i])) ||
+        (t && (!material[i + 3] || !material[i + 1]))
+      )
+        assert.fail(`paint escaped its channel at pixel ${i / 4}`)
+      hullChanges += Number(h)
+      trimChanges += Number(t)
+    }
+    assert.ok(hullChanges > 1000 && trimChanges > 1000)
+  })
+}

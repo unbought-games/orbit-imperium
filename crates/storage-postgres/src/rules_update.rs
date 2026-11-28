@@ -203,6 +203,17 @@ async fn settle_and_initialize(
                 .bind(state.universe.0).bind(research.owner.0).execute(&mut **tx).await.map_err(db_error)?;
         }
     }
+    if let Some(world) = &state.world {
+        let assets = catalog_holdings(state, next).map_err(|_| StoreError::CorruptData)?;
+        validate_catalog_capacity(state, next, &assets).map_err(StoreError::GameRejected)?;
+        crate::ranking_scores::save_current_scores(
+            tx,
+            state.universe,
+            &world.covered_players,
+            &assets,
+        )
+        .await?;
+    }
     Ok(())
 }
 

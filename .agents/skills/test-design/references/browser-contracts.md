@@ -4,8 +4,8 @@
 
 | Request | Deterministic protection | Browser protection that earns its cost |
 |---|---|---|
-| Compact toast stack | Event order, promotion, dismissal thresholds, expiry | Mount prepared notices; verify covered cards cannot intercept input, dismiss the top card, verify promotion/focus. Separately verify one application action produces a notice. |
-| Supporter badge refresh | Profile controller: expiry, unavailable refresh, changed tiers, stale response fencing | One representative identity renders in its actual consumer; viewport cases only for distinct layout behavior. |
+| Compact toast stack | Event order, promotion, dismissal thresholds, expiry | Mount prepared notices for pointer/keyboard promotion and focus. Keep one application action-to-notice check. The native swipe-then-tap sequence exhausted its repair. |
+| Supporter badge refresh | Profile controller: expiry, unavailable refresh, changed tiers, stale response fencing | Publish a changed identity into the same mounted consumer and open dossier. Two static snapshots cannot catch a broken subscription. |
 | Manufacturing affordability | Boundary arithmetic, selected body, quote validity, balance changes | Submit a representative order through actual controls; observe pending and completed states. |
 | Resource-settings navigation | Route/query normalization | Enter through the real link, verify destination and focus; retain history/reload in the scenario responsible for that contract. |
 | Unauthorized cancellation | HTTP auth and database ownership/idempotency | Browser proves the error is communicated; a fixture rejection does not prove server authorization. |

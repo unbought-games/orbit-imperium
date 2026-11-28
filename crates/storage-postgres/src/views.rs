@@ -13,23 +13,42 @@ pub(crate) async fn bodies(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     rows: Vec<PgRow>,
 ) -> Result<Vec<Body>, StoreError> {
-    let mut out = Vec::new();
-    for r in rows {
-        let id: uuid::Uuid = r.try_get("id").map_err(db_error)?;
-        let levels = sqlx::query("SELECT building,level FROM building_levels WHERE body=$1")
-            .bind(id)
-            .fetch_all(&mut **tx)
-            .await
-            .map_err(db_error)?
-            .into_iter()
-            .map(|r| {
-                Ok((
-                    enum_text(r.try_get("building").map_err(db_error)?)?,
-                    u32::try_from(r.try_get::<i64, _>("level").map_err(db_error)?)
-                        .map_err(|_| StoreError::CorruptData)?,
-                ))
-            })
-            .collect::<Result<BTreeMap<Building, u32>, StoreError>>()?;
+    if rows.is_empty() {
+        return Ok(Vec::new());
+    }
+    let ids = rows
+        .iter()
+        .map(|r| r.try_get::<uuid::Uuid, _>("id"))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(db_error)?;
+    let mut buildings: BTreeMap<uuid::Uuid, BTreeMap<Building, u32>> = BTreeMap::new();
+    for row in sqlx::query("SELECT body,building,level FROM building_levels WHERE body=ANY($1)")
+        .bind(&ids)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(db_error)?
+    {
+        buildings
+            .entry(row.try_get("body").map_err(db_error)?)
+            .or_default()
+            .insert(
+                enum_text(row.try_get("building").map_err(db_error)?)?,
+                u32::try_from(row.try_get::<i64, _>("level").map_err(db_error)?)
+                    .map_err(|_| StoreError::CorruptData)?,
+            );
+    }
+    let mut capacities: BTreeMap<_, _> = sqlx::query_as::<_, (uuid::Uuid, serde_json::Value)>(
+        "SELECT body,capacity FROM legacy_body_capacities WHERE body=ANY($1)",
+    )
+    .bind(&ids)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(db_error)?
+    .into_iter()
+    .collect();
+    let mut out = Vec::with_capacity(rows.len());
+    for (r, id) in rows.into_iter().zip(ids) {
+        let levels = buildings.remove(&id).ok_or(StoreError::CorruptData)?;
         if Building::ALL.iter().any(|b| !levels.contains_key(b)) {
             return Err(StoreError::CorruptData);
         }
@@ -43,15 +62,7 @@ pub(crate) async fn bodies(
             fields: u32::try_from(r.try_get::<i64, _>("fields").map_err(db_error)?)
                 .map_err(|_| StoreError::CorruptData)?,
             max_temperature: r.try_get("max_temperature").map_err(db_error)?,
-            retained_capacity: sqlx::query_scalar::<_, serde_json::Value>(
-                "SELECT capacity FROM legacy_body_capacities WHERE body=$1",
-            )
-            .bind(id)
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(db_error)?
-            .map(decode)
-            .transpose()?,
+            retained_capacity: capacities.remove(&id).map(decode).transpose()?,
             checkpoint: ResourceCheckpoint {
                 amounts: decode(r.try_get("amounts").map_err(db_error)?)?,
                 carry: decode(r.try_get("carry").map_err(db_error)?)?,
@@ -101,6 +112,11 @@ impl GameStore for PgStore {
         self.admit_machine(e).await
     }
 
+    async fn update_stream_recheck(&self, b: Binding) -> Result<std::time::Duration, StoreError> {
+        let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
+        crate::binding::check_read(&mut tx, b).await?;
+        crate::bots::observation_recheck(&mut tx, b).await
+    }
     async fn bot_observe(&self, b: Binding) -> Result<(), StoreError> {
         let mut tx = self.begin_tx(self.read_pool()?).await?;
         crate::binding::check_read(&mut tx, b).await?;
@@ -476,6 +492,8 @@ impl GameStore for PgStore {
         self.claim_head(u, worker).await
     }
     async fn load_claim(&self, claim: &Claim) -> Result<ClaimSnapshot, StoreError> {
+        let _facts =
+            crate::worker_observation::Timer::start(crate::worker_observation::Phase::FactLoad);
         self.claim_facts(claim).await
     }
     async fn renew_claim(&self, claim: &Claim) -> Result<Claim, StoreError> {
@@ -498,6 +516,21 @@ impl GameStore for PgStore {
         request: &QuoteRequest,
     ) -> Result<QuoteSnapshot, StoreError> {
         self.quote_facts(actor, u, request).await
+    }
+    async fn member_protocol(&self, account: AccountId, u: UniverseId) -> Result<i32, StoreError> {
+        let mut connection = self.acquire_pool(self.read_pool()?).await?;
+        let row = sqlx::query(
+            "SELECT r.profile::text AS profile,u.profile_hash,u.speed
+             FROM universe_memberships m JOIN universes u ON u.id=m.universe
+             LEFT JOIN rulesets r ON r.hash=u.profile_hash WHERE m.account=$1 AND m.universe=$2",
+        )
+        .bind(account.0)
+        .bind(u.0)
+        .fetch_optional(&mut *connection)
+        .await
+        .map_err(db_error)?
+        .ok_or(StoreError::NotFound)?;
+        Ok(crate::facts::rules_from_row(&row)?.protocol())
     }
     async fn load_rules(&self, u: UniverseId) -> Result<Ruleset, StoreError> {
         self.world_rules(u).await

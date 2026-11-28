@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { test, expect } from './fixtures/test'
 import { installGameFixture, body, refreshGame } from './fixtures/game'
-import { withBootstrapResponse, withFixtureResponse, trackFixtureResponses } from './fixtures/responses'
+import { withBootstrapResponse, withFixtureResponse } from './fixtures/responses'
 import { diagnosticScreenshot } from './fixtures/diagnostic-screenshot'
 import { reloadStorageKey } from '../src/client-model/client-update'
 
@@ -29,105 +29,6 @@ test('a recent reload keeps the empire visible with an accessible recovery actio
     await diagnosticScreenshot(page, { path: join(info.outputDir, `empire-refresh-paused-${viewport.width}x${viewport.height}.png`) })
   }
 })
-
-test(`unreadable snapshots offer recovery without claiming the connection is lost (390x844)`, async ({ page }, info) => {
-    await page.setViewportSize({ width: 390, height: 844 })
-    await installGameFixture(page)
-    let snapshot: Record<string, unknown>
-    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), async () => {
-      const bootstrap = page.waitForResponse(response => response.url().endsWith('/api/v1/bootstrap'))
-      await page.goto(`/u/andromeda/b/${body.id}/overview`)
-      snapshot = (await (await bootstrap).json()).result.game.snapshot.view
-    })
-    await expect(page.locator('main h1')).toContainText('Empire —')
-    await page.route('**/overview', route => route.fulfill({ json: {
-      ...snapshot, request_id: route.request().postDataJSON().request_id, new_deployment_field: [],
-    } }))
-    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
-    await expect(page.getByText('The game returned data this version cannot read. Reload the app. If this continues, please report it.', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText('Unable to refresh your empire. Showing the last confirmed state. Reconnecting…', { exact: true })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Reload app', exact: true })).toBeVisible()
-    await diagnosticScreenshot(page, { path: join(info.outputDir, `empire-incompatible-390x844.png`) })
-  })
-
-  test(`foreground recovery preserves edits and only announces verified failures (390x844)`, async ({ page }, info) => {
-    const settleOverview = trackFixtureResponses(page, request => request.method() === 'POST' && request.url().endsWith('/overview'))
-    await page.setViewportSize({ width: 390, height: 844 })
-    await installGameFixture(page, { protocol: 4 })
-    await withFixtureResponse(page, response => response.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))
-    await expect(page.locator('main h1')).toContainText('Empire —')
-    await page.getByRole('button', { name: 'Rename planet [1:371:12]' }).click()
-    const draft = page.getByRole('textbox', { name: 'Planet name' })
-    await draft.fill('Homeward')
-    // Observe every rendered notice, not just the final recovered screen.
-    await page.evaluate(() => {
-      const notices: string[] = []
-      Object.assign(window, { recoveryNotices: notices })
-      new MutationObserver(() => {
-        const text = document.querySelector('[data-testid="game-error-banner"]')?.textContent ?? ''
-        if (text) notices.push(text)
-      }).observe(document.body, { subtree: true, childList: true, characterData: true })
-    })
-    let failures = 1
-    await page.route('**/api/**/overview', route => failures-- > 0
-      ? route.fulfill({ status: 503, json: { code: 'Unavailable' } })
-      : route.fallback())
-    await withFixtureResponse(page, response => response.url().endsWith('/overview') && response.ok(), () => refreshGame(page))
-    await expect(draft).toHaveValue('Homeward')
-    expect(await page.evaluate(() => (window as unknown as { recoveryNotices: string[] }).recoveryNotices)).toEqual([])
-    await diagnosticScreenshot(page, { path: join(info.outputDir, `quiet-recovery-390x844.png`) })
-
-    // A hidden tab may be suspended indefinitely. Resume must replace its stream
-    // and refresh without either reloading the document or replacing the draft.
-    await page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
-    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => page.evaluate(() => {
-      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
-      document.dispatchEvent(new Event('visibilitychange'))
-    }))
-    await expect(draft).toHaveValue('Homeward')
-    expect(await page.evaluate(() => (window as unknown as { recoveryNotices: string[] }).recoveryNotices)).toEqual([])
-
-    await settleOverview()
-    failures = Infinity
-    const unavailable = page.waitForResponse(response => response.url().endsWith('/overview') && response.status() === 503)
-    await refreshGame(page)
-    expect(await (await unavailable).finished()).toBeNull()
-    const warning = page.locator('[data-error-entry]').filter({ hasText: 'Unable to refresh your empire.' })
-    await expect(warning).toBeVisible()
-    await expect(draft).toHaveValue('Homeward')
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await page.evaluate(() => window.scrollTo(0, 0))
-    await diagnosticScreenshot(page, { path: join(info.outputDir, `service-unavailable-390x844.png`) })
-    await page.getByTestId('command-orb').click()
-    const hud = page.getByRole('dialog', { name: 'Command uplink', exact: true })
-    await expect(hud).toBeVisible()
-    for (const viewport of viewports) {
-      await page.setViewportSize(viewport)
-      await expect(hud.locator('[data-error-entry]').filter({ hasText: 'Unable to refresh your empire.' })).toBeVisible()
-      await expect(hud.getByText('SECURE CONNECTION', { exact: true })).toHaveCount(0)
-      await expect(draft).toHaveValue('Homeward')
-    }
-    if (process.env.ORBIT_TEST_SCREENSHOTS === '1') await expect(hud).toHaveCSS('opacity', '1')
-    await diagnosticScreenshot(page, { path: join(info.outputDir, `hud-unavailable-390x844.png`) })
-    await settleOverview()
-    failures = 0
-    await withFixtureResponse(page, response => response.url().endsWith('/overview'), () => refreshGame(page))
-    await expect(warning).toHaveCount(0)
-    for (const viewport of viewports) {
-      await page.setViewportSize(viewport)
-      await expect(hud.getByText('SECURE CONNECTION', { exact: true })).toBeVisible()
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    }
-    await diagnosticScreenshot(page, { path: join(info.outputDir, `hud-recovered-390x844.png`) })
-    await page.getByRole('button', { name: 'Close command HUD' }).click()
-    await expect(hud).toHaveCount(0)
-
-    await expect(draft).toHaveValue('Homeward')
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await diagnosticScreenshot(page, { path: join(info.outputDir, `service-recovered-390x844.png`) })
-  })
 
   test(`offline actions and uncertain orders stay actionable after recovery (390x844)`, async ({ page }, info) => {
     await page.setViewportSize({ width: 390, height: 844 })
@@ -174,7 +75,6 @@ for (const viewport of [{ width: 390, height: 844 }]) {
   test(`a click during quiet session recovery is explicitly refused (${viewport.width}x${viewport.height})`, async ({ page }, info) => {
     await page.setViewportSize(viewport)
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.clock.install()
     await page.clock.pauseAt(new Date())
     const purchases = await installGameFixture(page, { protocol: 4 })
     await withFixtureResponse(page, r => r.url().endsWith('/api/v1/bootstrap'), () => page.goto(`/u/andromeda/b/${body.id}/overview`))

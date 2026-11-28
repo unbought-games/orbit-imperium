@@ -1,6 +1,6 @@
 # Terminal-history verification
 
-Stack base: Orbit command-admission PR #455, `fd1916580f47f9982e023d6655655b713a91ada8`. This change appends migration 0053. The [operations guide](../operations/terminal-history.md) records the R06–R11 decisions, independent ledgers, activation evidence and rollback boundary.
+Stack base: Orbit command-admission PR #455, `fd1916580f47f9982e023d6655655b713a91ada8`. This change appends migration 0058 (renumbered before publication during integration after shipped migrations0052–0056). The [operations guide](../operations/terminal-history.md) records the R06–R11 decisions, independent ledgers, activation evidence and rollback boundary.
 
 | Risk | Disposable regression |
 | --- | --- |

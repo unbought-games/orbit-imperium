@@ -29,19 +29,15 @@ fn setup(speed: i32) -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
             .unwrap()
             .levels
             .insert(Building::JumpGate, 1);
-        let lot = OperationId(derived_id(InputId(id.0), "gate"));
-        s.world.as_mut().unwrap().records.lots.push(AssetLot {
-            id: lot,
+
+        s.world.as_mut().unwrap().records.lots.push(CatalogHolding {
+            acquisition: None,
             owner: p,
             item: CatalogKey::Building(Building::JumpGate),
             level: Some(1),
             location: AssetLocation::Body(id),
             quantity: 1,
             unit_value_micro: 8_000_000 * SCALE,
-            rules_hash: r.hash.clone(),
-            source_operation: lot,
-            acquired_at: 0,
-            acquired_sequence: 0,
         });
     }
     for body in s.bodies.values() {
@@ -56,7 +52,7 @@ fn setup(speed: i32) -> (GameState, Ruleset, PlayerId, BodyId, BodyId) {
         ManufacturedItem::Ship(ShipType::SmallCargo),
         20,
     );
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     (s, r, p, source, destination)
 }
 fn selection(p: PlayerId, source: BodyId, destination: BodyId) -> JumpIntent {
@@ -119,7 +115,7 @@ fn jump_moves_inventory_and_value_without_resources_flight_events_or_score_chang
         value
     );
     assert_eq!(c.affected_viewers, BTreeSet::from([p]));
-    validate_asset_lineage(&s).unwrap();
+    validate_completed_assets(&s).unwrap();
     for body in [a, b] {
         assert_eq!(jump_gate_status(&s, body, &r).unwrap().ready_at, 3_601_000);
     }
@@ -420,4 +416,72 @@ fn construction_uses_lunar_fields_research_and_standard_costs() {
             .iter()
             .any(|b| b.code == GameError::BodyKindNotAllowed)
     );
+}
+
+#[test]
+fn lunar_dreadnoughts_require_a_local_shipyard_and_transfer_on_the_normal_gate() {
+    let (mut s, r, p, source, destination) = setup(5);
+    let item = ManufacturedItem::Ship(ShipType::Dreadnought);
+    let request = QuoteRequest::Manufacture {
+        body: source,
+        item,
+        quantity: 1,
+    };
+    s.bodies.get_mut(&source).unwrap().checkpoint.amounts = Resources::all(5_000_000 * SCALE);
+    let inspect =
+        |s: &GameState| inspect_progression(s, Actor::Player(p), &request, 0, &r).unwrap();
+    for (research, level) in [
+        (ResearchId::HyperspaceTechnology, 6),
+        (ResearchId::HyperspaceDrive, 7),
+        (ResearchId::GravitonTechnology, 1),
+    ] {
+        fixture_research(&mut s, &r, p, research, level);
+    }
+    assert!(inspect(&s).blockers.iter().any(|b| b.requirement
+        == Some(Requirement::BodyBuilding {
+            building: Building::Shipyard,
+            level: 12
+        })));
+    fixture_building(&mut s, &r, source, Building::Shipyard, 12);
+    assert!(inspect(&s).blockers.is_empty());
+    for (research, level) in [
+        (ResearchId::HyperspaceTechnology, 6),
+        (ResearchId::HyperspaceDrive, 7),
+        (ResearchId::GravitonTechnology, 1),
+    ] {
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(research, level - 1);
+        assert!(
+            inspect(&s)
+                .blockers
+                .iter()
+                .any(|b| b.requirement == Some(Requirement::PlayerResearch { research, level }))
+        );
+        s.research
+            .get_mut(&p)
+            .unwrap()
+            .levels
+            .insert(research, level);
+    }
+    set_units(&mut s, &r, source, item, 1);
+    let mut selection = selection(p, source, destination);
+    selection.ships.push(ManifestStack {
+        owner: p,
+        ship_type: ShipType::Dreadnought,
+        count: 1,
+    });
+    let result = jump(&mut s, &r, p, selection, 0, 91400);
+    apply(&mut s, result);
+    assert_eq!(
+        s.inventories
+            .iter()
+            .filter(|i| i.item == item && i.count > 0)
+            .map(|i| (i.body, i.count))
+            .collect::<Vec<_>>(),
+        [(destination, 1)]
+    );
+    validate_completed_assets(&s).unwrap();
 }

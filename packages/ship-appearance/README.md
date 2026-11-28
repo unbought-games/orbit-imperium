@@ -45,8 +45,7 @@ reference primary/accent colors, SHA-256 and byte counts for five RGBA8 PNG maps
 convex decal quads, bounded paint response, attribution and source provenance.
 Map roles: `source`, `material`, `response`, `receiver`, `decalResponse`.
 No manifest scripts, shaders, fetch URLs, CSS or player-supplied geometry execute.
-Only trusted authoring installs packages. The first worker installs
-`orbit-light-fighter/concord-v1`; additional packages use the service’s bounded data-only
+Only trusted authoring installs packages. The worker and game API share the [bundled ship registry](../../crates/application/assets/ship-skins.json). Additional packages use the service’s bounded data-only
 `ORBIT_SHIP_PACKAGES` registry and installed package directory without code changes.
 
 The accepted source is the owner's supplied AI-finished Concord derivative; its

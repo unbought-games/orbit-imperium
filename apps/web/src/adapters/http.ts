@@ -1,3 +1,4 @@
+import { dispatchObservationPort } from './dispatch-observations'
 import { bootstrapTarget } from '../client-model/bootstrap-target'
 import { progressionOptionsLoader } from './progression-options'
 import { checkClientBuild } from './client-update'
@@ -78,6 +79,12 @@ export async function request(
     throw error
   }
 }
+const bootstrapHeaders = {
+  'X-Orbit-Bootstrap-Tutorial': '1',
+  'X-Orbit-View-Metadata': '1',
+  'X-Orbit-Debris-Settings': '1',
+}
+
 export const http = {
   async bootstrap() {
     const target =
@@ -87,7 +94,7 @@ export const http = {
     return validate<Bootstrap>(
       'Bootstrap',
       await request('/api/v1/bootstrap', 'GET', undefined, undefined, 10000, {
-        'X-Orbit-View-Metadata': '1',
+        ...bootstrapHeaders,
         ...(target ? { 'X-Orbit-Universe': target } : {}),
       }),
     )
@@ -102,7 +109,7 @@ export const http = {
         { name, password },
         undefined,
         20000,
-        { 'X-Orbit-View-Metadata': '1' },
+        bootstrapHeaders,
       ),
     )
   },
@@ -119,7 +126,7 @@ export const http = {
         { name, password, ...(recruitment ? { recruitment } : {}) },
         undefined,
         20000,
-        { 'X-Orbit-View-Metadata': '1' },
+        bootstrapHeaders,
       ),
     )
   },
@@ -152,6 +159,8 @@ export const http = {
     await request('/api/v1/session', 'DELETE', undefined, csrf)
   },
 }
+
+const reportPreviewHeaders = { 'X-Orbit-Report-Preview': '1' }
 
 export function gamePort(
   csrf: string,
@@ -194,6 +203,7 @@ export function gamePort(
     },
   )
   return {
+    observeDispatch: dispatchObservationPort(csrf),
     socialQuery: (context, query) =>
       socialQuery(context.binding, csrf, query, context.request_id),
     socialCommand: (context, command) =>
@@ -253,6 +263,13 @@ export function gamePort(
             include_hidden: includeHidden || query?.filter.hidden === true,
           },
           csrf,
+          10000,
+          {
+            ...reportPreviewHeaders,
+            ...(query?.filter.unread_only
+              ? { 'X-Orbit-Report-Arrivals': '1' }
+              : {}),
+          },
         ),
       )
     },
@@ -264,6 +281,8 @@ export function gamePort(
           'POST',
           { context, reports },
           csrf,
+          10000,
+          reportPreviewHeaders,
         ),
       )
     },
@@ -275,6 +294,8 @@ export function gamePort(
           'POST',
           context,
           csrf,
+          10000,
+          reportPreviewHeaders,
         ),
       )
     },
@@ -322,6 +343,8 @@ export function gamePort(
           'POST',
           context,
           csrf,
+          10000,
+          { 'X-Orbit-Debris-Settings': '1' },
         ),
       )
     },

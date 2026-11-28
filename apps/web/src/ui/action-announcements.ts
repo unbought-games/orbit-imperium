@@ -1,4 +1,4 @@
-import type { Attempt, Command } from '../client-model/commands'
+import type { Attempt, BoundView, Command } from '../client-model/commands'
 import { dispatchFailure } from '../client-model/dispatch-validation'
 import { label } from './format'
 // Report preferences update optimistically; only failures need announcement.
@@ -9,7 +9,8 @@ export function visibleAction(a: Attempt): boolean {
   const command = a.envelope.command
   if (
     command.type === 'World' &&
-    (command.action.type === 'SetReportHidden' ||
+    (command.action.type === 'ArchiveReport' ||
+      command.action.type === 'SetReportHidden' ||
       command.action.type === 'SetReportsHidden' ||
       command.action.type === 'SetReportStarred')
   )
@@ -20,7 +21,19 @@ export function visibleAction(a: Attempt): boolean {
     a.status === 'rejected'
   )
 }
-export function actionLabel(command: Command): string {
+type ActionBody = Pick<BoundView['bodies'][number], 'id' | 'kind'>
+
+export function actionLabel(
+  command: Command,
+  bodies?: readonly ActionBody[],
+): string {
+  if (command.type === 'World' && command.action.type === 'RenamePlanet') {
+    const { body } = command.action
+    const kind = bodies?.find((entry) => entry.id === body)?.kind
+    return `Rename ${kind?.toLowerCase() ?? 'location'}`
+  }
+  if (command.type === 'World' && command.action.type === 'ArchiveReport')
+    return 'Archive report'
   if (command.type === 'World' && command.action.type === 'SetReportStarred')
     return command.action.starred ? 'Star report' : 'Unstar report'
   if (command.type === 'World' && command.action.type === 'SetReportsHidden')
@@ -83,13 +96,14 @@ export function actionMessage(a: Attempt): string {
 export function changedAnnouncements(
   previous: Map<string, string>,
   attempts: Attempt[],
+  bodies?: readonly ActionBody[],
 ): { current: Map<string, string>; message: string } {
   const current = new Map(
     attempts
       .filter(visibleAction)
       .map((a) => [
         a.envelope.command_id,
-        `${actionLabel(a.envelope.command)}: ${actionMessage(a)}`,
+        `${actionLabel(a.envelope.command, bodies)}: ${actionMessage(a)}`,
       ]),
   )
   return {

@@ -1,5 +1,5 @@
 import { commandId } from '../adapters/command-id'
-import type { SimulationAlly } from './simulation-allies'
+import { nextAllySlot, type SimulationAlly } from './simulation-allies'
 import { replaceDefenderEdits } from './simulation-import'
 import { useEffect, useRef, useState } from 'react'
 import type { Coordinator } from '../client-model/coordinator'
@@ -66,7 +66,14 @@ export function useCombatSimulation(model: Coordinator, scope: string) {
         previous.filter((a) => a.side === side).length >=
         (side === 'attacker' ? 15 : 16)
           ? previous
-          : [...previous, { id: commandId(crypto), side }],
+          : [
+              ...previous,
+              {
+                id: commandId(crypto),
+                side,
+                slot: nextAllySlot(previous, side),
+              },
+            ],
       )
     },
     removeAlly: (id: string) => {

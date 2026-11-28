@@ -4,6 +4,7 @@ import { routeTarget } from '../shell/route-target'
 import { useGameScreen } from '../shell/screen-context'
 import { CoordinateLink } from './coordinate-link'
 import { BodyIdentity } from './body-identity'
+import { bodyIdentityLabel } from './body-identity-label'
 import { BodyIllustration } from './body-illustration'
 import { PlayerName } from './player-name'
 import { bodyName } from '../ui/format'
@@ -18,19 +19,37 @@ export function SimulationLocation({
   owner,
   owned = false,
   label,
+  featured = false,
 }: {
   body: Body
   owner: string
   owned?: boolean
   label: string
+  featured?: boolean
 }) {
   const { universeName, view } = useGameScreen()
+  const ownedName = (
+    <Link {...routeTarget(universeName, 'overview', body.id)}>
+      {bodyName(body)}
+    </Link>
+  )
+  const coordinate = (
+    <CoordinateLink
+      at={body.coordinates}
+      target={body.kind === 'Moon' ? 'moon' : 'planet'}
+      label={label.toLowerCase()}
+    />
+  )
   return (
-    <div className={styles.location} role="group" aria-label={label}>
+    <div
+      className={featured ? styles.matchupLocation : styles.location}
+      role="group"
+      aria-label={label}
+    >
       <BodyIllustration
         body={body}
         className={styles.locationArt}
-        sizes="36px"
+        sizes={featured ? '(max-width: 620px) 64px, 88px' : '36px'}
       />
       <div>
         <small>
@@ -41,30 +60,29 @@ export function SimulationLocation({
             fallback={owned ? 'You' : undefined}
           />
         </small>
-        <div>
-          {owned && (
-            <>
-              <Link {...routeTarget(universeName, 'overview', body.id)}>
-                {bodyName(body)}
-              </Link>
-              {' · '}
-            </>
-          )}
-          {owned ? (
-            <CoordinateLink
-              at={body.coordinates}
-              target={body.kind === 'Moon' ? 'moon' : 'planet'}
-              label={label.toLowerCase()}
-            />
-          ) : (
-            <BodyIdentity
-              name={body.name}
-              kind={body.kind}
-              at={body.coordinates}
-              label={label.toLowerCase()}
-            />
-          )}
-        </div>
+        {featured ? (
+          <>
+            <div className={styles.matchupName}>
+              {owned ? ownedName : bodyIdentityLabel(body.name, body.kind)}
+            </div>
+            <div className={styles.matchupCoordinates}>{coordinate}</div>
+          </>
+        ) : (
+          <div>
+            {owned ? (
+              <>
+                {ownedName} · {coordinate}
+              </>
+            ) : (
+              <BodyIdentity
+                name={body.name}
+                kind={body.kind}
+                at={body.coordinates}
+                label={label.toLowerCase()}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

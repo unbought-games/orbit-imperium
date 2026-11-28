@@ -33,6 +33,7 @@
   "/u/:universe/b/:body/defense",
   "/u/:universe/b/:body/defense/:item",
   "/u/:universe/b/:body/dispatch",
+  "/u/:universe/b/:body/dispatch/review",
   "/u/:universe/b/:body/facilities",
   "/u/:universe/b/:body/facilities/:item",
   "/u/:universe/b/:body/fleets",

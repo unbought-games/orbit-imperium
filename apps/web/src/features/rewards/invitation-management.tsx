@@ -26,7 +26,7 @@ export function InvitationManagementPage() {
     </CommunityRewardsProvider>
   )
 }
-function InvitationManagement({
+export function InvitationManagement({
   memberships,
 }: {
   memberships: { universe: string; universe_name: string }[]

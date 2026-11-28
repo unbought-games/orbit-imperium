@@ -17,8 +17,16 @@ export function useReportVisibility(
   const pending = pendingReportVisibility(state.attempts.values(), report)
   return {
     disabled: !state.ready || !!pending,
-    change: async (hidden: boolean) => {
-      if (!state.ready || pending) return
+    change: async (
+      hidden: boolean,
+      detailArchive?: { revokeShare: boolean },
+    ) => {
+      const current = model.store.getState()
+      if (
+        !current.ready ||
+        pendingReportVisibility(current.attempts.values(), report)
+      )
+        return
       observation.current?.()
       let active = true
       let stop: (() => void) | undefined
@@ -31,7 +39,13 @@ export function useReportVisibility(
         const submitted = await model.send(
           {
             type: 'World',
-            action: { type: 'SetReportHidden', report, hidden },
+            action: detailArchive
+              ? {
+                  type: 'ArchiveReport',
+                  report,
+                  revoke_share: detailArchive.revokeShare,
+                }
+              : { type: 'SetReportHidden', report, hidden },
           },
           undefined,
           (key) => {

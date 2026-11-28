@@ -1,6 +1,6 @@
 # Bounded runtime history
 
-The worker can retire gameplay receipts, event generations and acknowledged committed-activity delivery. `ORBIT_PRUNE_TERMINAL_HISTORY=1` on the worker enables the additional work. The default is off. The existing seven-day game-update cleanup continues on both settings. Installation of migration 0053 alone retains the command, event and activity histories.
+The worker can retire gameplay receipts, event generations and acknowledged committed-activity delivery. `ORBIT_PRUNE_TERMINAL_HISTORY=1` on the worker enables the additional work. The default is off. The existing seven-day game-update cleanup continues on both settings. Installation of migration 0058 alone retains the command, event and activity histories.
 
 ## Eligibility and consumers
 

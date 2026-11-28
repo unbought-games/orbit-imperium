@@ -506,6 +506,9 @@ pub fn inspect_progression(
     }
     if let ProgressionMaterial::Building {
         required_energy, ..
+    }
+    | ProgressionMaterial::Research {
+        required_energy, ..
     } = &terms
         && *required_energy > 0
     {
@@ -1194,7 +1197,13 @@ pub(crate) fn resolve(s: &GameState, i: &OrderedInput, r: &Ruleset) -> Result<Ch
             {
                 return Err(invariant("manufacturing ordering mismatch"));
             }
-            c = complete_manufacturing(s, i, r, original, 1)?;
+            c = complete_manufacturing(
+                s,
+                i,
+                r,
+                original,
+                s.coverage.manufacturing_due_count.unwrap_or(1),
+            )?;
         }
         _ => return Err(GameError::UnavailableContent.into()),
     }
@@ -1242,7 +1251,12 @@ pub(crate) fn complete_manufacturing(
     if op.completed_prefix == op.quantity {
         op.status = ManufacturingStatus::Completed;
     } else {
-        op.next_due_at = deadline(i.at, op.unit_duration_ms)?;
+        op.next_due_at = deadline(
+            i.at,
+            op.unit_duration_ms
+                .checked_mul(count)
+                .ok_or(GameError::NumericRange)?,
+        )?;
         event(
             &mut c,
             i,

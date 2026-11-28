@@ -1,33 +1,35 @@
 # Trusted image releases
 
-The `Release image` workflow builds a selected commit from `main` history after
-that exact revision's push-triggered `CI` run succeeds. A read-only gate verifies
-the repository ID, workflow identity, run attempt, commit and successful
-`Build, lint and unit tests` aggregate check through the GitHub API. It verifies
-that the selected commit remains an ancestor of current `main`; it does not
-require the selected commit to be the newest one. PR/fork CI, unmerged commits,
-failed/cancelled checks and incomplete evidence cannot publish.
+The `Release image` workflow publishes commits from two protected source
+branches. `main` carries shared game development and `prod/S001` carries
+Andromeda's ending. The publisher always runs from trusted `main` tooling.
+Push CI must pass on the exact source branch and commit. The gate checks the
+repository ID, workflow, run attempt, successful aggregate job, and ancestry
+against the current tip of that branch. A commit present on both branches needs
+independent push CI and publication evidence for each.
 
-A successful main CI completion publishes its own revision automatically. To
-publish or republish an older reviewed revision, dispatch the publisher **from
-main**, supplying the full source commit:
+Successful push CI on either branch triggers image publication. To republish a
+reviewed commit from a source branch, dispatch on `main` and supply that branch
+and the full commit SHA. Omitting `source_branch` selects `main`.
 
 ```sh
 gh workflow run release-image.yml --repo unbought-games/orbit-imperium \
-  --ref main -f commit=<full-main-history-commit>
+  --ref main -f source_branch=prod/S001 -f commit=<full-season-commit>
 ```
 
-Manual publication discovers successful main push CI for that exact commit and
-pins its run/attempt before building. If the commit's CI was cancelled or failed,
-rerun that original main CI run and require it to pass first; a PR check is not a
-substitute. The gate rechecks the same run/attempt and main ancestry before AWS
-authentication. New merges during either stage do not change or cancel the selected
-release. A changed CI attempt or removed ancestry fails closed.
+Manual publication discovers and pins the successful push CI run and attempt.
+Failed or cancelled CI requires a successful rerun of that branch's push CI.
+The publisher rechecks the same CI evidence and the selected branch's ancestry
+before AWS authentication. New pushes leave the pinned revision intact.
+PR updates cancel superseded checks for that PR. Image publication and push CI
+use separate concurrency groups for each source branch and commit.
 
-CI concurrency is isolated by commit for main pushes and manual CI runs, so newer
-main commits do not cancel earlier validation. PR updates still cancel superseded
-checks for that PR. Image publication is isolated by source commit without
-cancelling an active build. Neither workflow dispatches a production deployment.
+The build job checks out the selected source and runs its build and inspection
+on a read-only runner. The OIDC-enabled publishing job runs on a separate runner,
+checks out only the trusted publisher revision, loads the inspected image using
+the build job's artifact ID, and verifies its revision and platform. Build
+artifacts are retained for one day. Rerun all jobs to rebuild an expired image.
+Publishing an image leaves the deployment decision to the operator.
 
 GitHub's [workflow_run security guidance](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run)
 explains why privileged follow-up workflows must validate their triggering run.
@@ -58,7 +60,7 @@ ORBIT_RELEASE_IMAGE=orbit-check:local ORBIT_RELEASE_SHA=$(git rev-parse HEAD) ma
 
 The image job has read-only repository access and no registry credentials. It
 neither publishes nor starts the image. Full-system/container acceptance remains
-explicit. The trusted publisher still rebuilds every selected main revision; it
+explicit. The trusted publisher still rebuilds every selected revision; it
 does not consume PR-produced images or caches. Native checks and these packaging
 checks do not promise to detect every production-only compilation difference.
 
@@ -107,9 +109,10 @@ This inspection is a packaging check, not the full production-container or
 full-system acceptance suites. Those remain in `Explicit tests`, triggered only
 by `workflow_dispatch`; release publication never dispatches them.
 
-ECR receives a unique `sha-COMMIT-RUN-ATTEMPT` tag. The workflow reads the registry
+ECR receives a unique `sha-COMMIT-RUN-ATTEMPT-BRANCH` tag, with the branch
+encoded as `main` or `prod-S001`. The workflow reads the registry
 digest after push and saves `release-image.json` in its run summary and a 90-day
-Actions artifact. The record includes commit, `repository@sha256:...`, platform,
+Actions artifact. The record includes `source_branch`, commit, `repository@sha256:...`, platform,
 CI run/attempt, release run/attempt and `publisher_commit`. The publisher revision
 is the trusted workflow/gate revision on main; it may differ from the selected
 application source. Source and release tooling use separate checkouts so historical
@@ -125,7 +128,7 @@ databases. Deployment tooling must retain the release record alongside its
 current and compatible rollback digests beyond the Actions artifact lifetime.
 
 If a release fails, fix its cause and rerun or dispatch that same selected source
-revision after confirming its successful CI and main ancestry. Newer commits do
+revision after confirming its successful push CI and source-branch ancestry. Newer commits do
 not require changing the selected release. Reruns may create different digests
 for identical source; retain the exact artifact from the successful attempt and
 deploy that digest explicitly.

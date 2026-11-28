@@ -26,12 +26,12 @@ const BOUNDS: [(u64, &str); 14] = [
 const MAX_SERIES: usize = 4096;
 const MAX_RECENT: usize = 64;
 #[derive(Clone, Default)]
-struct Histogram {
+pub(super) struct Histogram {
     buckets: [u64; BOUNDS.len()],
     sum: f64,
 }
 impl Histogram {
-    fn observe(&mut self, elapsed: Duration) {
+    pub(super) fn observe(&mut self, elapsed: Duration) {
         self.sum += elapsed.as_secs_f64();
         for ((bound, _), count) in BOUNDS.iter().zip(&mut self.buckets) {
             if *bound == u64::MAX || elapsed.as_nanos() <= u128::from(*bound) * 1000 {
@@ -39,7 +39,7 @@ impl Histogram {
             }
         }
     }
-    fn render(&self, text: &mut String, name: &str, labels: &str) {
+    pub(super) fn render(&self, text: &mut String, name: &str, labels: &str) {
         for ((_, bound), count) in BOUNDS.iter().zip(self.buckets) {
             writeln!(text, "{name}_bucket{{{labels},le=\"{bound}\"}} {count}").unwrap();
         }

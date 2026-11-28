@@ -38,7 +38,10 @@ export interface paths {
                     /** @description Return Bootstrap on success when true; otherwise retain Session. */
                     bootstrap?: boolean;
                 };
-                header?: never;
+                header?: {
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -2717,7 +2720,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
+                };
                 path: {
                     universe: string;
                 };
@@ -3120,6 +3126,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: {
+                    "X-Orbit-Report-Arrivals"?: "1";
                     "X-Orbit-View-Metadata"?: "1";
                     "X-Orbit-Minimum-Revision"?: components["schemas"]["Decimal"];
                 };
@@ -3542,7 +3549,10 @@ export interface paths {
                     /** @description Return Bootstrap on success when true; otherwise retain Session. */
                     bootstrap?: boolean;
                 };
-                header?: never;
+                header?: {
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3636,6 +3646,8 @@ export interface paths {
                 header?: {
                     /** @description Opt in to nonsecret identity expiry and refresh generation for the authenticated OIDC cookie session. */
                     "X-Orbit-Auth-Metadata"?: "1";
+                    /** @description Set to 1 to include active ship debris rules in returned world settings. */
+                    "X-Orbit-Debris-Settings"?: components["parameters"]["DebrisSettings"];
                 };
                 path?: never;
                 cookie?: never;
@@ -6317,6 +6329,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/universes/{universe}/dispatch-observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record bounded browser timing milestones for the signed-in universe member. Requires a same-origin session and CSRF token. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    universe: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        observations: components["schemas"]["DispatchObservation"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description Timings received */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7396,7 +7450,7 @@ export interface components {
             game_code: components["schemas"]["GameError3"];
         };
         /** @enum {string} */
-        Mission4: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize" | "Hold";
+        Mission4: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize" | "Hold" | "DestroyMoon";
         /** @enum {string} */
         MissionLeg4: "Outbound" | "Returning" | "Returned" | "Destroyed" | "Colonized" | "Deployed" | "Holding";
         MissionDestination4: {
@@ -7462,6 +7516,7 @@ export interface components {
             hold_hours?: 0 | 1 | 2 | 4 | 8 | 16 | 32;
             /** Format: uuid */
             attack_group?: string;
+            cargo_fill?: components["schemas"]["FleetCargoFill4"];
         };
         FleetTerms4: {
             intent: components["schemas"]["FleetIntent4"];
@@ -7479,6 +7534,7 @@ export interface components {
             terms_hash: string;
             holding?: components["schemas"]["HoldingTerms4"];
             group_revision?: number;
+            moon_destruction?: components["schemas"]["MoonDestructionOdds4"];
         };
         WorldAction4: {
             /** @constant */
@@ -7506,6 +7562,12 @@ export interface components {
             /** @constant */
             type: "MarkReportsRead";
             reports: string[];
+        } | {
+            /** @constant */
+            type: "ArchiveReport";
+            /** Format: uuid */
+            report: string;
+            revoke_share: boolean;
         } | {
             /** @constant */
             type: "SetReportHidden";
@@ -7689,6 +7751,12 @@ export interface components {
             systems_per_galaxy: number;
             /** @constant */
             positions_per_system: 15;
+            /** @description Active ship-loss rules. Included in embedded bootstrap and on JSON reads that request debris settings. Older servers omit this field. */
+            ship_debris?: {
+                basis_points: number;
+                deuterium_in_debris: boolean;
+                moons_enabled: boolean;
+            };
         };
         BoundQuote4: {
             /** @constant */
@@ -7834,17 +7902,23 @@ export interface components {
             /** @description Original enrollment time; omitted when unknown. */
             joined_at_ms?: number;
             body_appearances?: components["schemas"]["BodyAppearances"];
+            destroyed_moons?: {
+                /** Format: uuid */
+                moon: string;
+                /** Format: uuid */
+                parent: string;
+            }[];
         };
         CapabilityState4: {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet" | "JumpShips";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet" | "JumpShips" | "DestroyMoon";
             /** @constant */
             enabled: true;
             /** @constant */
             reason: "Available";
         } | {
             /** @enum {unknown} */
-            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet" | "JumpShips";
+            capability: "Construction" | "Transport" | "Research" | "Manufacturing" | "Production" | "Demolition" | "Galaxy" | "Fleets" | "Espionage" | "Harvest" | "Reports" | "Attack" | "Colonize" | "Deploy" | "Missiles" | "Hold" | "AllianceAttacks" | "ScanPlanet" | "JumpShips" | "DestroyMoon";
             /** @constant */
             enabled: false;
             /** @constant */
@@ -8028,6 +8102,13 @@ export interface components {
             shared?: boolean;
         };
         ReportsPage4: {
+            /** @description Recipient report creation sequence at the cursor cut and for each returned report. Sent to clients requesting X-Orbit-Report-Arrivals: 1. */
+            arrivals?: {
+                through: components["schemas"]["Decimal"];
+                created: {
+                    [key: string]: components["schemas"]["Decimal"];
+                };
+            };
             items: components["schemas"]["ReportHeader4"][];
             next_cursor: string | null;
             has_more: boolean;
@@ -8269,7 +8350,7 @@ export interface components {
             permanent_losses?: components["schemas"]["BattleCounts4"][];
             return_at?: number | null;
             /** @enum {unknown} */
-            mission?: "Attack" | "Espionage";
+            mission?: "Attack" | "Espionage" | "DestroyMoon";
             /** @description Body name observed at combat time. Older reports may omit it. */
             target_name?: string | null;
             /**
@@ -8285,6 +8366,7 @@ export interface components {
                 loot: components["schemas"]["Resources"];
             }[];
             moon_creation?: components["schemas"]["MoonCreation4"];
+            moon_destruction?: components["schemas"]["MoonDestructionResult4"];
         };
         ContactLostPayload4: {
             /** @constant */
@@ -8296,7 +8378,7 @@ export interface components {
             /** @enum {unknown} */
             target_kind?: "Planet" | "Moon" | null;
         };
-        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"] | components["schemas"]["PhalanxPayload4"] | components["schemas"]["SiteEncounterPayload4"];
+        ReportPayload4: components["schemas"]["EspionagePayload4"] | components["schemas"]["SpyContactPayload4"] | components["schemas"]["DeliveredPayload4"] | components["schemas"]["MissionOutcomePayload4"] | components["schemas"]["CombatPayload4"] | components["schemas"]["ContactLostPayload4"] | components["schemas"]["ColonizedPayload4"] | components["schemas"]["ColonizationFailedPayload4"] | components["schemas"]["MissileImpactPayload4"] | components["schemas"]["PlanetAbandonedPayload4"] | components["schemas"]["MoonCreatedPayload4"] | components["schemas"]["PhalanxPayload4"] | components["schemas"]["SiteEncounterPayload4"] | components["schemas"]["MoonDestroyedPayload4"] | components["schemas"]["MoonFleetRedirectedPayload4"] | components["schemas"]["MoonTargetLostPayload4"];
         Problem4: {
             /** @constant */
             type: "about:blank";
@@ -8319,6 +8401,7 @@ export interface components {
             request_id: string;
             candidate: components["schemas"]["GameBindingCandidate"];
             view: components["schemas"]["GameView"];
+            tutorial?: components["schemas"]["TutorialView4"];
             settings: components["schemas"]["GameSettings"];
         };
         BootstrapGame: {
@@ -8599,6 +8682,11 @@ export interface components {
         } | {
             /** @constant */
             kind: "SpyContact";
+            /**
+             * Format: uuid
+             * @description Sender recorded in the recipient's spy contact. Sent to clients requesting X-Orbit-Report-Preview: 1.
+             */
+            sender?: string;
             origin?: components["schemas"]["Coordinates"];
             target?: components["schemas"]["Coordinates"];
             detected?: boolean;
@@ -8642,7 +8730,7 @@ export interface components {
             loot?: components["schemas"]["Resources"];
             debris?: components["schemas"]["Resources"];
             /** @enum {unknown} */
-            mission?: "Attack" | "Espionage";
+            mission?: "Attack" | "Espionage" | "DestroyMoon";
             participants?: {
                 /** Format: uuid */
                 owner: string;
@@ -8656,6 +8744,7 @@ export interface components {
              * @enum {string}
              */
             target_kind?: "Planet" | "Moon";
+            moon_destruction?: components["schemas"]["MoonDestructionResult4"];
         } | {
             /** @constant */
             kind: "ContactLost";
@@ -8724,7 +8813,24 @@ export interface components {
             cargo?: components["schemas"]["Resources"];
             at?: number;
             /** @enum {string} */
-            outcome?: "AttackerVictory" | "DefenderVictory" | "Draw";
+            outcome?: "AttackerVictory" | "DefenderVictory" | "MutualDestruction" | "Draw";
+        } | {
+            /** @constant */
+            kind: "MoonDestroyed";
+            coordinates: components["schemas"]["Coordinates"];
+            diameter_km: number;
+        } | {
+            /** @constant */
+            kind: "MoonFleetRedirected";
+            mission: components["schemas"]["Mission4"];
+            coordinates: components["schemas"]["Coordinates"];
+            due_at: number;
+        } | {
+            /** @constant */
+            kind: "MoonTargetLost";
+            mission: components["schemas"]["Mission4"];
+            coordinates: components["schemas"]["Coordinates"];
+            due_at: number;
         };
         RankingPlayer: {
             /** Format: uuid */
@@ -9858,8 +9964,7 @@ export interface components {
             /** @constant */
             kind: "Fleet";
             owner: components["schemas"]["PhalanxOwner4"];
-            /** @enum {unknown} */
-            mission: "Transport" | "Harvest" | "Espionage" | "Attack" | "Deploy" | "Colonize" | "Hold";
+            mission: components["schemas"]["Mission4"];
             /** @enum {unknown} */
             phase: "Outbound" | "Holding" | "Returning";
             endpoints: components["schemas"]["PhalanxEndpoints4"];
@@ -11127,6 +11232,8 @@ export interface components {
             color: string;
             palette_id?: string;
             /** @enum {string} */
+            access?: "free" | "membership" | "earned";
+            /** @enum {string} */
             availability: "available" | "locked" | "unavailable";
         };
         ShipDesign: {
@@ -11217,9 +11324,86 @@ export interface components {
          * @description Generate UUIDv7 once from server wall time for a new intention. Submit the exact same envelope until its 15-minute deadline. UUIDv4 is accepted only during the finite legacy writer transition.
          */
         CommandSubmissionId: string;
+        MoonDestructionOdds4: {
+            diameter_km: number;
+            moon_chance_ppm: number;
+            fleet_loss_ppm: number;
+        };
+        MoonDestructionResult4: {
+            diameter_km: number;
+            moon_chance_ppm: number;
+            fleet_loss_ppm: number;
+            surviving_dreadnoughts: components["schemas"]["Decimal"];
+            moon_destroyed: boolean;
+            fleet_lost: boolean;
+        };
+        MoonDestroyedPayload4: {
+            /** @constant */
+            kind: "MoonDestroyed";
+            at: number;
+            /** Format: uuid */
+            body: string;
+            /** Format: uuid */
+            parent: string;
+            coordinates: components["schemas"]["Coordinates"];
+            diameter_km: number;
+            name: string | null;
+            losses: components["schemas"]["AbandonmentLoss4"];
+        };
+        MoonFleetRedirectedPayload4: {
+            /** @constant */
+            kind: "MoonFleetRedirected";
+            mission: components["schemas"]["Mission4"];
+            /** @enum {unknown} */
+            leg: "Outbound" | "Holding" | "Returning";
+            /** Format: uuid */
+            fleet: string;
+            /** Format: uuid */
+            body: string;
+            /** Format: uuid */
+            parent: string;
+            coordinates: components["schemas"]["Coordinates"];
+            home_redirected: boolean;
+            destination_redirected: boolean;
+            due_at: number;
+            at: number;
+        };
+        MoonTargetLostPayload4: {
+            /** @constant */
+            kind: "MoonTargetLost";
+            mission: components["schemas"]["Mission4"];
+            /** @enum {unknown} */
+            leg: "Outbound" | "Holding" | "Returning";
+            /** Format: uuid */
+            fleet: string;
+            /** Format: uuid */
+            body: string;
+            /** Format: uuid */
+            parent: string;
+            coordinates: components["schemas"]["Coordinates"];
+            home_redirected: boolean;
+            destination_redirected: boolean;
+            due_at: number;
+            at: number;
+        };
+        FleetCargoFill4: {
+            minimum: components["schemas"]["WholeResources"];
+            groups: ("Metal" | "Crystal" | "Deuterium")[][];
+        };
+        DispatchObservation: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            phase: "review_started_warm" | "review_started_cold" | "review_ready_reused" | "review_ready_fetched" | "send_started" | "accepted" | "outcome_received" | "confirmed_visible" | "rejected" | "uncertain" | "not_admitted";
+            elapsed_ms: number;
+            foreground: boolean;
+        };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Set to 1 to include active ship debris rules in returned world settings. */
+        DebrisSettings: "1";
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;

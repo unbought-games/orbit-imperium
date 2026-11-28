@@ -19,6 +19,39 @@ fn request(b: Binding, action: ReportShareAction) -> ReportShareRequest {
         action,
     }
 }
+fn preference(binding: Binding, action: WorldAction) -> ForegroundAction {
+    let envelope = |command_id, action| CommandEnvelopeV4 {
+        protocol: 4,
+        binding,
+        command_id,
+        command: CommandDto3::Progression(Command::World { action }),
+    };
+    let command_id = CommandId(Uuid::new_v4());
+    ForegroundAction {
+        gameplay: envelope(command_id, action),
+        presence: envelope(
+            CommandId(Uuid::new_v4()),
+            WorldAction::RecordForegroundPresence {
+                body: None,
+                cause: PresenceCause::GameplayGesture,
+                paired_command_id: Some(command_id),
+            },
+        ),
+    }
+}
+
+async fn run_preference(game: &GameService<PgStore>, pair: ForegroundAction) -> ReceiptStatus {
+    let actor = pair.gameplay.binding;
+    let id = pair.gameplay.command_id;
+    game.world_submit(principal(actor), pair).await.unwrap();
+    game.step(actor.universe, WorkerId(Uuid::new_v4()))
+        .await
+        .unwrap();
+    game.bound_receipt(principal(actor), actor, id)
+        .await
+        .unwrap()
+        .status
+}
 // Wait for an actual database lock boundary, not an arbitrary sleep. The
 // disposable database runs this binary serially, so no unrelated query matches.
 async fn wait_for_lock(pool: &sqlx::PgPool, query: &str) {
@@ -145,7 +178,6 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
     )
     .await
     .unwrap();
-    game.step(u, WorkerId(Uuid::new_v4())).await.unwrap();
     let claim = store
         .claim_next(u, WorkerId(Uuid::new_v4()))
         .await
@@ -606,6 +638,134 @@ async fn shares_are_explicit_recipient_scoped_revocable_historical_and_preserved
             .token,
         None
     );
+    // A link created between computation and commit must never be revoked by
+    // an archive gesture made on an unshared report, even if already starred.
+    let archive = |revoke_share| WorldAction::ArchiveReport {
+        report: id,
+        revoke_share,
+    };
+    let restore = || WorldAction::SetReportHidden {
+        report: id,
+        hidden: false,
+    };
+    assert!(matches!(
+        run_preference(
+            &game,
+            preference(
+                a,
+                WorldAction::SetReportStarred {
+                    report: id,
+                    starred: true
+                }
+            )
+        )
+        .await,
+        ReceiptStatus::Committed { .. }
+    ));
+    let unconfirmed = preference(a, archive(false));
+    game.world_submit(principal(a), unconfirmed.clone())
+        .await
+        .unwrap();
+    let claim = store
+        .claim_next(u, WorkerId(Uuid::new_v4()))
+        .await
+        .unwrap()
+        .unwrap();
+    let before_share = store.load_claim(&claim).await.unwrap();
+    let computed = transition(&before_share.state, &claim.input, &before_share.rules);
+    assert!(matches!(computed, TransitionResult::Applied(_)));
+    let link = game
+        .report_share(principal(a), id, request(a, create.clone()))
+        .await
+        .unwrap()
+        .token
+        .unwrap();
+    assert_eq!(
+        store.commit_claim(&claim, computed).await.unwrap(),
+        CommitOutcome::Conflict
+    );
+    game.resolve_claim(claim).await.unwrap();
+    assert_eq!(
+        game.bound_receipt(principal(a), a, unconfirmed.gameplay.command_id)
+            .await
+            .unwrap()
+            .status,
+        ReceiptStatus::Rejected {
+            code: GameError::InvalidInput
+        }
+    );
+    assert!(
+        !store
+            .world_report(a, id)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .header
+            .hidden
+    );
+    assert!(game.shared_report(link).await.is_ok());
+
+    assert_eq!(
+        run_preference(&game, preference(outsider, archive(true))).await,
+        ReceiptStatus::Rejected {
+            code: GameError::NotFound
+        }
+    );
+    let confirmed = preference(a, archive(true));
+    assert!(matches!(
+        run_preference(&game, confirmed.clone()).await,
+        ReceiptStatus::Committed { .. }
+    ));
+    let header = store.world_report(a, id).await.unwrap().facts.0.header;
+    assert!(header.hidden && header.starred && header.read && !header.shared);
+    assert!(matches!(
+        game.shared_report(link).await,
+        Err(ServiceError::NotFound)
+    ));
+    assert!(game.shared_report(other_token).await.is_ok());
+    assert!(matches!(
+        run_preference(&game, preference(a, restore())).await,
+        ReceiptStatus::Committed { .. }
+    ));
+    assert!(matches!(
+        game.shared_report(link).await,
+        Err(ServiceError::NotFound)
+    ));
+    // Unshared starred reports can also be archived without confirmation.
+    assert!(matches!(
+        run_preference(&game, preference(a, archive(false))).await,
+        ReceiptStatus::Committed { .. }
+    ));
+    let header = store.world_report(a, id).await.unwrap().facts.0.header;
+    assert!(header.hidden && header.starred && !header.shared);
+    assert!(matches!(
+        run_preference(&game, preference(a, restore())).await,
+        ReceiptStatus::Committed { .. }
+    ));
+    let replacement = game
+        .report_share(principal(a), id, request(a, create.clone()))
+        .await
+        .unwrap()
+        .token
+        .unwrap();
+    assert_ne!(replacement, link);
+    assert!(matches!(
+        run_preference(&game, confirmed).await,
+        ReceiptStatus::Committed { .. }
+    ));
+    assert!(game.shared_report(replacement).await.is_ok());
+    assert!(
+        !store
+            .world_report(a, id)
+            .await
+            .unwrap()
+            .facts
+            .0
+            .header
+            .hidden
+    );
+
     sqlx::query("DELETE FROM mission_report_recipients WHERE report=$1 AND recipient=$2")
         .bind(id.0)
         .bind(b.player.0)

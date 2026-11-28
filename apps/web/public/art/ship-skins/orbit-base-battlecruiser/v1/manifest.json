@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "orbit-base-battlecruiser",
+  "revision": "v1",
+  "renderer": "finish-decal-v1",
+  "target": {
+    "kind": "Ship",
+    "id": "Battlecruiser"
+  },
+  "collection_id": "orbit-standard",
+  "view": "front-three-quarter-left",
+  "channels": [
+    "primary",
+    "accent"
+  ],
+  "map_encoding": "rgba8-finish-decal-v1",
+  "color_space": "srgb",
+  "alpha": "straight-preserved",
+  "capabilities": {
+    "treatments": [
+      "none",
+      "full",
+      "layers"
+    ],
+    "placements": [
+      "near-wing",
+      "paired"
+    ]
+  },
+  "width": 1536,
+  "height": 1024,
+  "reference": [
+    "#888b9a",
+    "#d2ae8b"
+  ],
+  "maps": {
+    "source": {
+      "file": "source.png",
+      "sha256": "1fd993e60b92540a8dc1a4417d707c0375be53211cfe4bf234533bdb21e3858d",
+      "bytes": 1423966
+    },
+    "material": {
+      "file": "material-mask.png",
+      "sha256": "1047f983fdea1d30a71aeb668573f1c05e4b1b0287264b68101031b9e1e165bf",
+      "bytes": 123759
+    },
+    "response": {
+      "file": "response-map.png",
+      "sha256": "98d818be552c76010795e66851e071aea05401d4a02001b95f4295c739f691c7",
+      "bytes": 564311
+    },
+    "receiver": {
+      "file": "receiver.png",
+      "sha256": "c96225fcf1c538c44991f21c632abe2386374f4e99e6254426912db9d419de77",
+      "bytes": 32348
+    },
+    "decalResponse": {
+      "file": "decal-response.png",
+      "sha256": "d03b299965560dbfee4ca2cc652eee7958f8df9e3323e10bcd56442b6be831cb",
+      "bytes": 923329
+    }
+  },
+  "slots": [
+    {
+      "id": "near-wing",
+      "quad": [
+        [
+          1380,
+          293
+        ],
+        [
+          1415,
+          279
+        ],
+        [
+          1407,
+          319
+        ],
+        [
+          1367,
+          331
+        ]
+      ]
+    },
+    {
+      "id": "far-wing",
+      "quad": [
+        [
+          881,
+          230
+        ],
+        [
+          906,
+          229
+        ],
+        [
+          882,
+          254
+        ],
+        [
+          858,
+          257
+        ]
+      ]
+    }
+  ],
+  "paint": {
+    "opacity": 0.96,
+    "responseFloor": 0,
+    "responseCeiling": 1.5
+  },
+  "license": "CC-BY-SA-4.0 under repository artwork scope",
+  "attribution": "Orbit Imperium contributors / Unbought Games, LLC",
+  "provenance": {
+    "authoring": "tools/ship-appearance/compile-orbit-base.mjs",
+    "sourceDirectory": "art/orbit-base/ships/v1/battlecruiser-foredeck-battery",
+    "inputs": {
+      "master.png": "021c9a16ae9dd961fd5488f74f7a07cd5667bd51edf2996f2707ed4918dfed9e",
+      "livery.svg": "981d20243c79b4a37d3571704121568e28300f7ae6675d70a26bf10068c16afa",
+      "emblem-slots.json": "c2539d512240897ab79a6197350b069e60cf03308fe8055af8b3811810d98a27",
+      "paint.json": "0a0c5ce766f743e749d933b8d1bc1df1f9a2dff1b63fb221c5b32041b45b3b02"
+    },
+    "versions": {
+      "sharp": "0.35.5"
+    }
+  }
+}

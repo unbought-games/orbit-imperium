@@ -1,8 +1,8 @@
-import { createIntelligenceRefresh } from './intelligence-refresh'
 import {
-  reportLoad,
-  reportRequestScope,
-} from '../../client-model/report-engine'
+  createIntelligenceRefresh,
+  watchIntelligenceScope,
+} from './intelligence-refresh'
+import { reportLoad } from '../../client-model/report-engine'
 import { useOrbCaption } from './use-orb-caption'
 import { useEffect, useRef, useState, useReducer } from 'react'
 import { useStore } from 'zustand'
@@ -50,14 +50,8 @@ export function useCommandHud(model: Coordinator) {
     const load = () => void controller.refresh()
     refresh.current = load
     load()
-    let scope = reportRequestScope(model.store.getState())
-    const stop = model.subscribe((next) => {
-      if (reportRequestScope(next) !== scope) {
-        scope = reportRequestScope(next)
-        void load()
-      }
-    })
-    const timer = window.setInterval(() => void load(), 15000)
+    const stop = watchIntelligenceScope(model.store, load)
+    const timer = window.setInterval(() => void load(), 120_000)
     const wake = () => void load()
     window.addEventListener('focus', wake)
     document.addEventListener('visibilitychange', wake)

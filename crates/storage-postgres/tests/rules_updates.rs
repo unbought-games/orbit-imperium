@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 #[path = "rules_updates/fusion.rs"]
 mod fusion;
-#[path = "rules_updates/gameplay.rs"]
+#[path = "support/gameplay.rs"]
 mod gameplay;
 #[path = "rules_updates/hyperspace.rs"]
 mod hyperspace;
@@ -557,12 +557,10 @@ async fn pending_construction(legacy: bool) {
         },
     };
     store.bound_admit4(pair).await.unwrap();
-    for _ in 0..2 {
-        assert!(matches!(
-            game.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
-            StepOutcome::Committed { .. }
-        ));
-    }
+    assert!(matches!(
+        game.step(u, WorkerId(Uuid::new_v4())).await.unwrap(),
+        StepOutcome::Committed { .. }
+    ));
     let before: (i64, serde_json::Value, String) =
         sqlx::query_as("SELECT due_at,paid,profile_hash FROM constructions WHERE universe=$1")
             .bind(u.0)
@@ -963,42 +961,13 @@ async fn astrophysics_activation_is_additive_idempotent_and_preserves_research_o
     let saved = store.load_rules(universe).await.unwrap();
     drop(store.server_guard_config(None).await.unwrap());
     assert_eq!(store.load_rules(universe).await.unwrap(), saved);
-    // Disposable completed-research fixture includes the mandatory paid-value
-    // lineage for each level; a bare level edit is correctly rejected as corrupt.
+    // A completed level keeps its catalog value after new orders are disabled.
     let mut transaction = pool.begin().await.unwrap();
     sqlx::query("UPDATE research_levels SET level=5 WHERE owner=$1 AND research='Astrophysics'")
         .bind(binding.player.0)
         .execute(&mut *transaction)
         .await
         .unwrap();
-    let mut lots = Vec::new();
-    for (index, paid) in [16_000, 28_000, 49_100, 85_700, 150_000]
-        .into_iter()
-        .enumerate()
-    {
-        let id = OperationId(Uuid::new_v4());
-        let lot = AssetLot {
-            id,
-            owner: binding.player,
-            item: CatalogKey::Research(ResearchId::Astrophysics),
-            level: Some(index as u32 + 1),
-            location: AssetLocation::Player,
-            quantity: 1,
-            unit_value_micro: paid * SCALE,
-            rules_hash: saved.hash.clone(),
-            source_operation: id,
-            acquired_at: 1000,
-            acquired_sequence: index as i64,
-        };
-        sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-            .bind(universe.0)
-            .bind(id.to_string())
-            .bind(sqlx::types::Json(&lot))
-            .execute(&mut *transaction)
-            .await
-            .unwrap();
-        lots.push(lot);
-    }
     transaction.commit().await.unwrap();
     let (completed, _) = store.bound_world(binding).await.unwrap().facts;
     assert_eq!(
@@ -1027,10 +996,13 @@ async fn astrophysics_activation_is_additive_idempotent_and_preserves_research_o
     assert_eq!(levels, vec![5]);
     let (disabled_snapshot, _) = store.bound_world(binding).await.unwrap().facts;
     let actual_lots = &disabled_snapshot.state.world.as_ref().unwrap().records.lots;
-    assert_eq!(actual_lots.len(), lots.len());
-    for lot in lots {
-        assert!(actual_lots.contains(&lot));
-    }
+    assert_eq!(
+        actual_lots
+            .iter()
+            .map(|asset| asset.unit_value_micro / SCALE)
+            .collect::<Vec<_>>(),
+        [16_000, 28_000, 49_100, 85_700, 150_000]
+    );
     let mut destructive = service.export(universe).await.unwrap();
     destructive.artifact = before.artifact.clone();
     assert!(service.diff(&destructive).await.is_err());
@@ -1404,78 +1376,31 @@ async fn defense_activation_preserves_paid_work(defense: DefenseId) {
         .await
         .unwrap();
 
-    // Completed facility/research fixtures need one paid-value lot per level.
-    // A bare level edit is correctly rejected by the world lineage invariant.
     let levels = match defense {
         DefenseId::IonCannon => vec![
-            (
-                CatalogKey::Building(Building::Shipyard),
-                AssetLocation::Body(body),
-                700,
-                4,
-            ),
-            (
-                CatalogKey::Research(ResearchId::IonTechnology),
-                AssetLocation::Player,
-                1400,
-                4,
-            ),
+            (CatalogKey::Building(Building::Shipyard), 4),
+            (CatalogKey::Research(ResearchId::IonTechnology), 4),
         ],
         DefenseId::HeavyLaser => vec![
-            (
-                CatalogKey::Building(Building::Shipyard),
-                AssetLocation::Body(body),
-                700,
-                4,
-            ),
-            (
-                CatalogKey::Research(ResearchId::LaserTechnology),
-                AssetLocation::Player,
-                300,
-                6,
-            ),
-            (
-                CatalogKey::Research(ResearchId::EnergyTechnology),
-                AssetLocation::Player,
-                1200,
-                3,
-            ),
+            (CatalogKey::Building(Building::Shipyard), 4),
+            (CatalogKey::Research(ResearchId::LaserTechnology), 6),
+            (CatalogKey::Research(ResearchId::EnergyTechnology), 3),
         ],
         DefenseId::GaussCannon => vec![
-            (
-                CatalogKey::Building(Building::Shipyard),
-                AssetLocation::Body(body),
-                700,
-                6,
-            ),
-            (
-                CatalogKey::Research(ResearchId::EnergyTechnology),
-                AssetLocation::Player,
-                1200,
-                6,
-            ),
-            (
-                CatalogKey::Research(ResearchId::WeaponsTechnology),
-                AssetLocation::Player,
-                1000,
-                3,
-            ),
-            (
-                CatalogKey::Research(ResearchId::ShieldingTechnology),
-                AssetLocation::Player,
-                800,
-                1,
-            ),
+            (CatalogKey::Building(Building::Shipyard), 6),
+            (CatalogKey::Research(ResearchId::EnergyTechnology), 6),
+            (CatalogKey::Research(ResearchId::WeaponsTechnology), 3),
+            (CatalogKey::Research(ResearchId::ShieldingTechnology), 1),
         ],
         _ => unreachable!(),
     };
-    for (item, location, base_value, target_level) in levels {
+    for (item, target_level) in levels {
         match item {
             CatalogKey::Building(building) => {
                 sqlx::query("UPDATE building_levels SET level=$3 WHERE body=$1 AND building=$2")
                     .bind(body.0)
                     .bind(serde_json::to_value(building).unwrap().as_str().unwrap())
-                    .bind(target_level as i32)
+                    .bind(target_level)
                     .execute(&pool)
                     .await
                     .unwrap();
@@ -1484,35 +1409,12 @@ async fn defense_activation_preserves_paid_work(defense: DefenseId) {
                 sqlx::query("UPDATE research_levels SET level=$3 WHERE owner=$1 AND research=$2")
                     .bind(binding.player.0)
                     .bind(serde_json::to_value(research).unwrap().as_str().unwrap())
-                    .bind(target_level as i32)
+                    .bind(target_level)
                     .execute(&pool)
                     .await
                     .unwrap();
             }
             _ => unreachable!(),
-        }
-        for level in 1..=target_level {
-            let id = OperationId(Uuid::new_v4());
-            let lot = AssetLot {
-                id,
-                owner: binding.player,
-                item,
-                level: Some(level),
-                location: location.clone(),
-                quantity: 1,
-                unit_value_micro: base_value * (1i64 << (level - 1)) * SCALE,
-                rules_hash: snapshot.rules.hash.clone(),
-                source_operation: id,
-                acquired_at: 1000,
-                acquired_sequence: i64::from(level),
-            };
-            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-                .bind(universe.0)
-                .bind(id.to_string())
-                .bind(sqlx::types::Json(lot))
-                .execute(&pool)
-                .await
-                .unwrap();
         }
     }
 
@@ -1903,36 +1805,14 @@ async fn satellites_settle_inventory_at_completions_and_rules_boundaries_in_both
         service.apply(&doc).await.unwrap();
         let (snapshot, _) = store.bound_world(binding).await.unwrap().facts;
         let body = *snapshot.state.bodies.keys().next().unwrap();
-        // Deterministic completed industry fixture, with matching authoritative value lots.
-        for (building, cost) in [
-            (Building::Shipyard, 700),
-            (Building::MetalMine, 90),
-            (Building::CrystalMine, 72),
+        for building in [
+            Building::Shipyard,
+            Building::MetalMine,
+            Building::CrystalMine,
         ] {
             sqlx::query("UPDATE building_levels SET level=1 WHERE body=$1 AND building=$2")
                 .bind(body.0)
                 .bind(format!("{building:?}"))
-                .execute(&pool)
-                .await
-                .unwrap();
-            let id = OperationId(Uuid::new_v4());
-            let lot = AssetLot {
-                id,
-                owner: binding.player,
-                item: CatalogKey::Building(building),
-                level: Some(1),
-                location: AssetLocation::Body(body),
-                quantity: 1,
-                unit_value_micro: cost * SCALE,
-                rules_hash: snapshot.rules.hash.clone(),
-                source_operation: id,
-                acquired_at: 1000,
-                acquired_sequence: 0,
-            };
-            sqlx::query("INSERT INTO asset_lots(universe,key,data) VALUES($1,$2,$3)")
-                .bind(universe.0)
-                .bind(id.to_string())
-                .bind(sqlx::types::Json(lot))
                 .execute(&pool)
                 .await
                 .unwrap();
@@ -2089,7 +1969,7 @@ async fn satellites_settle_inventory_at_completions_and_rules_boundaries_in_both
             .unwrap(),
             2
         );
-        validate_asset_lineage(&completed.state).unwrap();
+        validate_completed_assets(&completed.state).unwrap();
         let view = GameService::new(restarted)
             .world_view(
                 Principal {
@@ -2136,3 +2016,6 @@ mod destroyer;
 
 #[path = "rules_updates/compatibility.rs"]
 mod compatibility;
+
+#[path = "rules_updates/dreadnought.rs"]
+mod dreadnought;

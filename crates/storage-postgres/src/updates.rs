@@ -48,23 +48,41 @@ impl UpdateStore for PgStore {
             return Err(StoreError::Conflict);
         }
         let mut tx = crate::snapshots::begin(self, self.read_pool()?).await?;
-        crate::binding::check_read(&mut tx, b).await?;
-        let head: Option<(i64, i64)> = sqlx::query_as(
-            "SELECT position,retired_through FROM game_update_heads WHERE universe=$1 AND epoch=$2 AND player=$3",
+        // Read the membership, epoch and recipient head in the same snapshot as
+        // the page. An idle cursor needs no history or receipt lookup.
+        let row = sqlx::query(
+            "SELECT u.epoch, m.player, COALESCE(h.position, 0::bigint) AS position, COALESCE(h.retired_through, 0::bigint) AS retired_through
+             FROM universes u
+             JOIN universe_memberships m ON m.universe=u.id AND m.account=$2
+             LEFT JOIN game_update_heads h ON h.universe=u.id AND h.epoch=u.epoch AND h.player=m.player
+             WHERE u.id=$1",
         )
         .bind(b.universe.0)
-        .bind(b.epoch.0)
-        .bind(b.player.0)
+        .bind(b.account.0)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(db_error)?;
-        let (head, retired_through) = head.unwrap_or_default();
+        .map_err(db_error)?
+        .ok_or(StoreError::NotFound)?;
+        if row.try_get::<uuid::Uuid, _>("epoch").map_err(db_error)? != b.epoch.0 {
+            return Err(StoreError::EpochChanged);
+        }
+        if row.try_get::<uuid::Uuid, _>("player").map_err(db_error)? != b.player.0 {
+            return Err(StoreError::NotFound);
+        }
+        let head: i64 = row.try_get("position").map_err(db_error)?;
+        let retired_through: i64 = row.try_get("retired_through").map_err(db_error)?;
         let Some(after) = after
             .and_then(|value| position(b, value))
             .filter(|value| (retired_through..=head).contains(value))
         else {
             return Ok(reset(b, head));
         };
+        if after == head {
+            return Ok(UpdatePage {
+                items: Vec::new(),
+                has_more: false,
+            });
+        }
         let mut rows=sqlx::query("SELECT d.position,d.kind,d.minimum_revision,(d.kind='outcome' AND c.input_id IS NULL) AS missing_receipt,greatest(0,floor(extract(epoch FROM (clock_timestamp()-d.created_at))*1000000))::bigint AS delivery_us,c.receipt,c.input->>'protocol' AS protocol FROM game_updates d LEFT JOIN commands c ON d.kind='outcome' AND c.universe=d.universe AND c.epoch=d.epoch AND c.actor=d.player AND c.input_id=d.input_id WHERE d.universe=$1 AND d.epoch=$2 AND d.player=$3 AND d.position>$4 ORDER BY d.position LIMIT $5")
             .bind(b.universe.0).bind(b.epoch.0).bind(b.player.0).bind(after).bind(i64::from(limit)+1).fetch_all(&mut *tx).await.map_err(db_error)?;
         // This also detects interior/tail holes left by pre-floor workers, and
@@ -147,48 +165,39 @@ pub(crate) async fn append_updates(
     for player in recipients {
         sqlx::query("INSERT INTO game_update_heads(universe,epoch,player) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
             .bind(input.universe.0).bind(input.epoch.0).bind(player.0).execute(&mut **tx).await.map_err(db_error)?;
-        let mut position:i64=sqlx::query_scalar("SELECT position FROM game_update_heads WHERE universe=$1 AND epoch=$2 AND player=$3 FOR UPDATE")
+        let position:i64=sqlx::query_scalar("SELECT position FROM game_update_heads WHERE universe=$1 AND epoch=$2 AND player=$3 FOR UPDATE")
             .bind(input.universe.0).bind(input.epoch.0).bind(player.0).fetch_one(&mut **tx).await.map_err(db_error)?;
-        let mut kinds = Vec::new();
-        if input.actor == Actor::Player(player) && receipt.is_some() {
-            kinds.push(("outcome", None));
-        }
-        if viewers.contains(&player) {
-            let revision: i64 = sqlx::query_scalar(
-                "SELECT revision FROM viewer_heads WHERE universe=$1 AND player=$2",
-            )
-            .bind(input.universe.0)
-            .bind(player.0)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(db_error)?;
-            kinds.push(("invalidate", Some(revision)));
-        }
-        for (kind, revision) in kinds {
-            let exists:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM game_updates WHERE universe=$1 AND epoch=$2 AND player=$3 AND input_id=$4 AND kind=$5)")
-                .bind(input.universe.0).bind(input.epoch.0).bind(player.0).bind(input.id.0).bind(kind).fetch_one(&mut **tx).await.map_err(db_error)?;
-            if exists {
-                continue;
-            }
-            position = position.checked_add(1).ok_or(StoreError::CorruptData)?;
-            sqlx::query("INSERT INTO game_updates(universe,epoch,player,position,input_id,kind,minimum_revision) VALUES($1,$2,$3,$4,$5,$6,$7)")
-                .bind(input.universe.0).bind(input.epoch.0).bind(player.0).bind(position).bind(input.id.0).bind(kind).bind(revision).execute(&mut **tx).await.map_err(db_error)?;
-        }
+        // After locking the head, a new statement sees publications from the
+        // previous holder. Allocate contiguous positions only to missing kinds.
+        let outcome = receipt.is_some() && input.actor == Actor::Player(player);
         sqlx::query(
-            "UPDATE game_update_heads SET position=$4 WHERE universe=$1 AND epoch=$2 AND player=$3",
+            "WITH requested(kind,ordinal) AS (
+                SELECT 'outcome',1 WHERE $5 UNION ALL SELECT 'invalidate',2 WHERE $6
+             ), fresh AS (
+                SELECT kind, $7::bigint + row_number() OVER (ORDER BY ordinal) AS position
+                FROM requested k WHERE NOT EXISTS (
+                    SELECT 1 FROM game_updates d WHERE d.universe=$1 AND d.epoch=$2
+                    AND d.player=$3 AND d.input_id=$4 AND d.kind=k.kind)
+             ), inserted AS (
+                INSERT INTO game_updates(universe,epoch,player,position,input_id,kind,minimum_revision)
+                SELECT $1,$2,$3,position,$4,kind,CASE WHEN kind='invalidate' THEN
+                    COALESCE((SELECT revision FROM viewer_heads WHERE universe=$1 AND player=$3),-1)
+                END FROM fresh RETURNING position
+             ), advanced AS (
+                UPDATE game_update_heads SET position=(SELECT max(position) FROM inserted)
+                WHERE universe=$1 AND epoch=$2 AND player=$3 AND EXISTS(SELECT 1 FROM inserted)
+                RETURNING position
+             ) SELECT pg_notify('orbit_game_updates',$8) FROM advanced",
         )
         .bind(input.universe.0)
         .bind(input.epoch.0)
         .bind(player.0)
+        .bind(input.id.0)
+        .bind(outcome)
+        .bind(viewers.contains(&player))
         .bind(position)
-        .execute(&mut **tx)
-        .await
-        .map_err(db_error)?;
-        sqlx::query("SELECT pg_notify('orbit_game_updates',$1)")
-            .bind(format!("{}.{}.{}", input.universe, input.epoch, player))
-            .execute(&mut **tx)
-            .await
-            .map_err(db_error)?;
+        .bind(format!("{}.{}.{}", input.universe, input.epoch, player))
+        .execute(&mut **tx).await.map_err(db_error)?;
     }
     Ok(())
 }
@@ -200,6 +209,18 @@ pub(crate) async fn append_report_share_update(
     revision: i64,
 ) -> Result<(), StoreError> {
     append_view_invalidation(tx, b.universe, b.epoch, b.player, revision).await
+}
+/// Advance the viewer revision and wake each recipient inside the source transaction.
+pub(crate) async fn invalidate_viewer(
+    tx: &mut Tx<'_>,
+    universe: UniverseId,
+    epoch: Epoch,
+    player: PlayerId,
+) -> Result<(), StoreError> {
+    let revision = sqlx::query_scalar(
+        "UPDATE viewer_heads SET revision=revision+1 WHERE universe=$1 AND player=$2 RETURNING revision",
+    ).bind(universe.0).bind(player.0).fetch_one(&mut **tx).await.map_err(db_error)?;
+    append_view_invalidation(tx, universe, epoch, player, revision).await
 }
 /// Publish a source change outside the gameplay command stream to every tab.
 pub(crate) async fn append_view_invalidation(

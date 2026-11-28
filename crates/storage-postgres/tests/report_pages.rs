@@ -1,6 +1,9 @@
+use axum::{body::Body, http::Request};
+use http_body_util::BodyExt;
 use orbit_application::*;
 use orbit_storage_postgres::{MvpAccount, PgStore};
 use serde_json::json;
+use tower::ServiceExt;
 use uuid::Uuid;
 
 // Regression: filters must run before LIMIT; archived/read rows and other players'
@@ -73,8 +76,56 @@ async fn filtered_pages_are_bounded_ordered_private_and_cursor_scoped() {
         .facts
         .data;
     assert_eq!(first.items.len(), 50);
+    let arrivals = first.arrivals.as_ref().unwrap();
+    assert_eq!(arrivals.through, "600");
+    assert_eq!(arrivals.created.len(), first.items.len());
+    for item in &first.items {
+        assert_eq!(arrivals.created[&item.id], item.id.0.as_u128().to_string());
+    }
     assert!(first.items.iter().all(|h| !h.hidden));
     assert_eq!(first.unread_count, 99);
+    // Older clients validate report pages strictly. Only an opted-in request
+    // may see the additional fields, including on the same server revision.
+    let app = orbit_transport_http::router(
+        store.clone(),
+        orbit_transport_http::HttpConfig {
+            account_url: None,
+            signup: None,
+            signup_per_minute: 5,
+            legacy_signup_enabled: false,
+            origin: "http://localhost".into(),
+            assets: "/absent".into(),
+            login_per_minute: 30,
+            wake: None,
+            observer: None,
+        },
+    );
+    for negotiated in [false, true] {
+        let mut req = Request::post(format!("/api/v4/universes/{u}/reports"))
+            .header("content-type", "application/json")
+            .header("origin", "http://localhost")
+            .header("cookie", format!("orbit_session={}", auth.token))
+            .header("x-csrf-token", &auth.session.csrf);
+        if negotiated {
+            req = req.header("x-orbit-report-arrivals", "1");
+        }
+        let response = app
+            .clone()
+            .oneshot(
+                req.body(Body::from(serde_json::to_vec(&query).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let page: serde_json::Value =
+            serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes())
+                .unwrap();
+        assert_eq!(
+            page["data"].get("arrivals").cloned(),
+            negotiated.then(|| json!(arrivals))
+        );
+    }
     assert!(first.has_more);
     let mut next = query.clone();
     next.cursor = first.next_cursor.clone();

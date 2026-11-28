@@ -11,6 +11,15 @@ export type HarvestPosition = Pick<
   'coordinates' | 'debris'
 >
 
+export function hasHarvestableDebris(debris?: HarvestPosition['debris']) {
+  return (
+    !!debris &&
+    (BigInt(debris.metal) > 0n ||
+      BigInt(debris.crystal) > 0n ||
+      BigInt(debris.deuterium ?? '0') > 0n)
+  )
+}
+
 /** Galaxy debris and catalog cargo capacity are whole units, not micro-units. */
 export function harvestSuggestion(
   metal: string,
@@ -32,22 +41,43 @@ export function harvestSuggestion(
   }
 }
 
+export function recyclerSuggestion(
+  catalog: S['CatalogEntry3'][],
+  inventories: S['BodyV3']['inventories'],
+  debris: HarvestPosition['debris'],
+) {
+  const available =
+    inventories.find(
+      (entry) => entry.item.kind === 'Ship' && entry.item.id === 'Recycler',
+    )?.count ?? '0'
+  const capacity =
+    catalog.find(
+      (entry) => entry.key.kind === 'Ship' && entry.key.id === 'Recycler',
+    )?.ship_statistics?.propulsion?.cargo_capacity ?? '0'
+  return {
+    available,
+    capacity,
+    ...harvestSuggestion(
+      debris?.metal ?? '0',
+      debris?.crystal ?? '0',
+      capacity,
+      available,
+      debris?.deuterium ?? '0',
+    ),
+  }
+}
+
 export function galaxyHarvest(
   state: GameState,
   origin: string,
   position: HarvestPosition,
 ) {
   const body = projectGameView(state)?.bodies.find((body) => body.id === origin)
-  const available =
-    body?.inventories.find(
-      (entry) => entry.item.kind === 'Ship' && entry.item.id === 'Recycler',
-    )?.count ?? '0'
-  const capacity =
-    state.view?.protocol === 4
-      ? state.view.catalog.find(
-          (entry) => entry.key.kind === 'Ship' && entry.key.id === 'Recycler',
-        )?.ship_statistics?.propulsion?.cargo_capacity
-      : undefined
+  const { available, capacity, needed, suggested } = recyclerSuggestion(
+    state.view?.protocol === 4 ? state.view.catalog : [],
+    body?.inventories ?? [],
+    position.debris,
+  )
   const blockers: string[] = []
   if (
     !state.ready ||
@@ -68,26 +98,13 @@ export function galaxyHarvest(
     BigInt(occupiedFleetSlots(state)) >= BigInt(state.view.missions.fleet_slots)
   )
     blockers.push('No fleet slots available. Wait for a fleet to return.')
-  if (
-    !position.debris ||
-    BigInt(position.debris.metal) +
-      BigInt(position.debris.crystal) +
-      BigInt(position.debris.deuterium ?? '0') ===
-      0n
-  )
+  if (!hasHarvestableDebris(position.debris))
     blockers.push('There is no debris left to collect.')
-  if (!capacity || BigInt(capacity) <= 0n)
+  if (BigInt(capacity) <= 0n)
     blockers.push(
       'Recycler capacity is unavailable. Use Customize to prepare this mission.',
     )
-  const suggestion = harvestSuggestion(
-    position.debris?.metal ?? '0',
-    position.debris?.crystal ?? '0',
-    capacity ?? '0',
-    available,
-    position.debris?.deuterium ?? '0',
-  )
-  return { available, ...suggestion, blockers }
+  return { available, needed, suggested, blockers }
 }
 
 export function harvestCountError(count: string, available: string) {
@@ -100,12 +117,13 @@ export function harvestCountError(count: string, available: string) {
 
 /** Quote on the explicit Send gesture, then recheck inventory, slots, context and binding. */
 export async function sendGalaxyHarvest(
-  model: Pick<Coordinator, 'store' | 'world' | 'send'>,
+  model: Pick<Coordinator, 'store' | 'world' | 'send' | 'dispatchClickTime'>,
   origin: string,
   position: HarvestPosition,
   count: string,
   current: () => boolean,
 ) {
+  const clickedAt = model.dispatchClickTime()
   const state = model.store.getState(),
     binding = state.binding
   if (state.rateLimited) return
@@ -152,6 +170,7 @@ export async function sendGalaxyHarvest(
       },
     },
     terms,
+    { coordinates: position.coordinates, clickedAt },
   )
   // The shared cooldown banner owns throttled-send feedback.
   if (!id && model.store.getState().rateLimited) return

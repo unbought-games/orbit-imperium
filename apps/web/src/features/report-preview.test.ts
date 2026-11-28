@@ -414,6 +414,25 @@ it('uses the viewer participant for report titles and preserves historical uncer
       ],
     },
   }
+  for (const participants of [
+    [
+      { owner: 'viewer', side: 'Attacker' },
+      { owner: 'viewer', side: 'Defender' },
+    ],
+    [
+      { owner: 'viewer', side: 'Defender' },
+      { owner: 'viewer', side: 'Attacker' },
+    ],
+  ] as const) {
+    const preview = { ...report.preview, participants: [...participants] }
+    expect(reportListTitle({ ...report, preview }, 'viewer')).toMatchObject({
+      title: 'Attacker victory',
+      tone: 'neutral',
+    })
+    expect(
+      reportListIdentity(preview, 'viewer', { viewer: 'Your empire' }),
+    ).toBe('')
+  }
   expect(reportListTitle(report, 'viewer')).toMatchObject({
     title: 'Defeat',
     tone: 'loss',

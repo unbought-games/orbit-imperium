@@ -22,6 +22,10 @@ export type BoundReports = Schemas['BoundReports4']
 export type BoundReport = Schemas['BoundReport4']
 export type Rankings = Schemas['Rankings']
 export interface GamePort {
+  observeDispatch?(
+    universe: string,
+    sample: import('./dispatch-observations').DispatchObservation,
+  ): void
   socialQuery?(
     context: QueryContext,
     query: Schemas['SocialQuery'],

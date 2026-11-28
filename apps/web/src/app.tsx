@@ -1,3 +1,4 @@
+import { DispatchSessionProvider } from './shell/dispatch-session-context'
 import { archivePath } from './client-model/empire-history-navigation'
 import { RecruitmentEntryPage } from './features/alliances/recruitment-entry'
 import { recruitmentEntry } from './client-model/recruitment'
@@ -84,7 +85,9 @@ export function App() {
               key={runtime.session.csrf}
               csrf={runtime.session.csrf}
             >
-              <Outlet />
+              <DispatchSessionProvider>
+                <Outlet />
+              </DispatchSessionProvider>
             </PlayerProfilesProvider>
           </Provider>
         </SessionContext.Provider>

@@ -59,14 +59,16 @@ impl ProgressionRules {
                         | ResearchId::HyperspaceDrive
                         | ResearchId::Astrophysics
                         | ResearchId::IntergalacticResearchNetwork
+                        | ResearchId::GravitonTechnology
                 )
             {
                 return Err(RulesError::InvalidReference);
             }
-            let growth = if k == ResearchId::Astrophysics {
-                [7, 4]
-            } else {
-                [2, 1]
+            let growth = match k {
+                ResearchId::Astrophysics => [7, 4],
+                ResearchId::GravitonTechnology if r.base == [0; 3] => [GRAVITON_ENERGY_GROWTH, 1],
+                ResearchId::GravitonTechnology => return Err(RulesError::Range),
+                _ => [2, 1],
             };
             if r.base.iter().any(|v| *v < 0) || r.growth != growth {
                 return Err(RulesError::Range);
@@ -123,6 +125,7 @@ impl ProgressionRules {
                     | ShipType::Battlecruiser
                     | ShipType::Battleship
                     | ShipType::Destroyer
+                    | ShipType::Dreadnought
                     | ShipType::Recycler
                     | ShipType::EspionageProbe
             ) {
@@ -409,12 +412,12 @@ pub fn building_terms(
         .buildings
         .get(&building)
         .ok_or(GameError::UnavailableContent)?;
-    let growth = if target == 0 {
-        ratio(r.growth[1], r.growth[0])?
+    let raw = if target == 0 {
+        let inverse = ratio(r.growth[1], r.growth[0])?;
+        std::array::from_fn(|i| integer(r.base[i]) * inverse.clone())
     } else {
-        power(ratio(r.growth[0], r.growth[1])?, target - 1)?
+        level_cost(r, target)?
     };
-    let raw: [Rational; 3] = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
     let robotics = level(body, Building::RoboticsFactory)?;
     let nanite = nanite_level(body, rules)?;
     let b = floor(
@@ -474,31 +477,103 @@ fn astrophysics_payment(raw: &[Rational; 3]) -> Result<Resources, GameError> {
     Ok(Resources::from_values(values))
 }
 
+/// Price an owned asset even when its catalog entry is disabled for new orders.
+pub fn catalog_asset_value(
+    rules: &Ruleset,
+    item: CatalogKey,
+    level: Option<u32>,
+) -> Result<i64, GameError> {
+    let progression = rules
+        .artifact
+        .progression
+        .as_ref()
+        .ok_or(GameError::UnavailableContent)?;
+    let cost = match (item, level) {
+        (CatalogKey::Building(building), Some(level)) => {
+            let terms = rules
+                .artifact
+                .buildings
+                .get(&building)
+                .ok_or(GameError::UnavailableContent)?;
+            paid(&level_cost(terms, level)?)?
+        }
+        (CatalogKey::Research(research), Some(level)) => {
+            research_level_payment(progression, research, level)?
+        }
+        (_, None) => {
+            let cost = progression
+                .unit_costs
+                .iter()
+                .find(|u| u.item.catalog_key() == item)
+                .ok_or(GameError::UnavailableContent)?
+                .cost;
+            return cost
+                .values()
+                .into_iter()
+                .try_fold(0i64, add)?
+                .checked_mul(SCALE)
+                .ok_or(GameError::NumericRange);
+        }
+        _ => return Err(GameError::InvalidInput),
+    };
+    cost.values().into_iter().try_fold(0i64, add)
+}
+fn level_cost(terms: &BuildingRule, level: u32) -> Result<[Rational; 3], GameError> {
+    let source = level.checked_sub(1).ok_or(GameError::InvalidInput)?;
+    let growth = power(ratio(terms.growth[0], terms.growth[1])?, source)?;
+    Ok(std::array::from_fn(|i| {
+        integer(terms.base[i]) * growth.clone()
+    }))
+}
+fn research_level_payment(
+    progression: &ProgressionRules,
+    research: ResearchId,
+    level: u32,
+) -> Result<Resources, GameError> {
+    let terms = progression
+        .research
+        .get(&research)
+        .ok_or(GameError::UnavailableContent)?;
+    let raw = level_cost(terms, level)?;
+    if research == ResearchId::Astrophysics {
+        astrophysics_payment(&raw)
+    } else {
+        paid(&raw)
+    }
+}
+
 /// The payment depends only on completed research and the saved rules, never labs.
 pub fn research_payment(
     levels: &ResearchLevels,
     research: ResearchId,
     rules: &Ruleset,
 ) -> Result<Resources, GameError> {
+    Ok(research_requirements(levels, research, rules)?.0)
+}
+
+fn research_requirements(
+    levels: &ResearchLevels,
+    research: ResearchId,
+    rules: &Ruleset,
+) -> Result<(Resources, i64), GameError> {
     enabled(rules, CatalogKey::Research(research))?;
     let source = *levels
         .levels
         .get(&research)
         .ok_or(GameError::InvalidInput)?;
     source.checked_add(1).ok_or(GameError::NumericRange)?;
-    let r = &rules
+    if research == ResearchId::GravitonTechnology {
+        return Ok((Resources::default(), graviton_required_energy(source)?));
+    }
+    let progression = rules
         .artifact
         .progression
         .as_ref()
-        .ok_or(GameError::UnavailableContent)?
-        .research[&research];
-    let growth = power(ratio(r.growth[0], r.growth[1])?, source)?;
-    let raw = std::array::from_fn(|i| integer(r.base[i]) * growth.clone());
-    if research == ResearchId::Astrophysics {
-        astrophysics_payment(&raw)
-    } else {
-        paid(&raw)
-    }
+        .ok_or(GameError::UnavailableContent)?;
+    Ok((
+        research_level_payment(progression, research, source + 1)?,
+        0,
+    ))
 }
 
 /// Single-lab formula primitive for legacy formula fixtures. Gameplay must select
@@ -528,7 +603,7 @@ pub fn research_terms_with_labs(
     rules: &Ruleset,
     labs: Vec<LabTerm>,
 ) -> Result<ProgressionMaterial, GameError> {
-    let cost = research_payment(levels, research, rules)?;
+    let (cost, required_energy) = research_requirements(levels, research, rules)?;
     let source = levels.levels[&research];
     let target = source.checked_add(1).ok_or(GameError::NumericRange)?;
     let effective_lab = labs
@@ -560,7 +635,7 @@ pub fn research_terms_with_labs(
         .into(),
         labs,
         effective_lab,
-        required_energy: 0,
+        required_energy,
     })
 }
 pub fn manufacture_terms(

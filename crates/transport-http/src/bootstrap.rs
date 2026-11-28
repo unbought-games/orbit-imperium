@@ -140,6 +140,14 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
     s: &HttpState<S>,
     h: &HeaderMap,
 ) -> Bootstrap {
+    prepare_bootstrap_for(s, h, None).await
+}
+
+pub(super) async fn prepare_bootstrap_for<S: GameStore + IdentityStore>(
+    s: &HttpState<S>,
+    h: &HeaderMap,
+    document_universe: Option<&str>,
+) -> Bootstrap {
     let deadline = Deadline::now() + BUDGET;
     let target = h
         .get("x-orbit-universe")
@@ -158,9 +166,12 @@ pub(super) async fn prepare_bootstrap<S: GameStore + IdentityStore>(
                 if s.oidc.is_some() {
                     let _ = s.updates.capture_community_history(session.account).await;
                 }
+                let target = document_universe
+                    .filter(|slug| session.memberships.iter().any(|m| m.matches_universe(slug)))
+                    .or(target.as_deref());
                 read_game_when_available(|| {
                     s.game
-                        .initial_game_for(&session, uuid::Uuid::new_v4(), target.as_deref())
+                        .initial_game_for(&session, uuid::Uuid::new_v4(), target)
                 })
                 .await
             },
@@ -213,11 +224,34 @@ pub(super) async fn prepare_authenticated_bootstrap<S: GameStore + IdentityStore
     result.signup_enabled = enabled;
     result
 }
+pub(super) fn wants_debris_settings(headers: &HeaderMap) -> bool {
+    headers
+        .get("x-orbit-debris-settings")
+        .is_some_and(|value| value == "1")
+}
+
 pub(super) fn private_response(headers: &HeaderMap, value: impl serde::Serialize) -> Response {
     let mut value = match serde_json::to_value(value) {
         Ok(value) => value,
         Err(_) => return Problem(ServiceError::InvariantFailure).into_response(),
     };
+    if headers
+        .get("x-orbit-bootstrap-tutorial")
+        .and_then(|h| h.to_str().ok())
+        != Some("1")
+        && let Some(snapshot) = value
+            .pointer_mut("/result/game/snapshot")
+            .and_then(|v| v.as_object_mut())
+    {
+        snapshot.remove("tutorial");
+    }
+    if !wants_debris_settings(headers)
+        && let Some(settings) = value
+            .pointer_mut("/result/game/snapshot/settings")
+            .and_then(|v| v.as_object_mut())
+    {
+        settings.remove("ship_debris");
+    }
     if headers
         .get("x-orbit-auth-metadata")
         .and_then(|h| h.to_str().ok())
@@ -402,6 +436,30 @@ mod tests {
                 assert_eq!(metadata["identity_valid_until"], 123);
                 assert_eq!(metadata["refresh_generation"], "opaque-generation");
             }
+        }
+    }
+    #[tokio::test]
+    async fn json_bootstrap_exposes_debris_settings_only_to_clients_that_request_them() {
+        let rule = serde_json::json!({"basis_points": 5000, "deuterium_in_debris": false, "moons_enabled": true});
+        for requested in [false, true] {
+            let mut headers = HeaderMap::new();
+            headers.insert("x-orbit-view-metadata", "1".parse().unwrap());
+            if requested {
+                headers.insert("x-orbit-debris-settings", "1".parse().unwrap());
+            }
+            let response = private_response(
+                &headers,
+                serde_json::json!({
+                    "result": {"game": {"snapshot": {"settings": {"protocol": 4, "ship_debris": rule}}}}
+                }),
+            );
+            let bytes = axum::body::to_bytes(response.into_body(), 65536)
+                .await
+                .unwrap();
+            let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            let settings = &value["result"]["game"]["snapshot"]["settings"];
+            assert_eq!(settings["protocol"], 4);
+            assert_eq!(settings.get("ship_debris"), requested.then_some(&rule));
         }
     }
     #[tokio::test]

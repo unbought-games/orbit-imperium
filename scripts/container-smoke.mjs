@@ -19,6 +19,30 @@ const project=JSON.parse(compose('config','--format','json').toString()).name;
 const image=process.env.ORBIT_TEST_IMAGE??'orbit-imperium:dev';
 const common=['--network',`${project}_default`,'--env-file',envFile];
 const ready=async()=>{for(let i=0;i<100;i++){try{if((await fetch(base+'/health/ready')).ok)return;}catch{}await new Promise(r=>setTimeout(r,100))}throw new Error('container readiness timeout')};
+// The Rust server can fall back to index.html when a packaged homepage is
+// missing. Check the document and its emitted assets through the running image.
+async function shippedHomepage() {
+ const response = await fetch(base);
+ assert.equal(response.status, 200);
+ const html = await response.text();
+ assert.match(html, /<div id="root">[\s\S]*?<h1\b/);
+ assert.ok(html.includes('href="/api/auth/entry"'), 'missing prerendered login link');
+ for (const [tag, attribute, mime] of [
+  [/<script\b[^>]*type="module"[^>]*>/g, 'src', /javascript/],
+  [/<link\b[^>]*rel="stylesheet"[^>]*>/g, 'href', /text\/css/],
+ ]) {
+  const elements = html.match(tag) ?? [];
+  assert.ok(elements.length, 'missing homepage ' + attribute);
+  for (const element of elements) {
+   const path = element.match(new RegExp(attribute + '="(/assets/[^"]+)"'))?.[1];
+   assert.ok(path, 'missing built asset in ' + element);
+   const asset = await fetch(base + path);
+   assert.equal(asset.status, 200, path);
+   assert.match(asset.headers.get('content-type') ?? '', mime, path);
+   assert.ok((await asset.arrayBuffer()).byteLength > 0, path);
+  }
+ }
+}
 try{
  compose('exec','-T','db','createdb','-U','orbit',db);
  writeFileSync(envFile,`DATABASE_URL=postgres://orbit:${encodeURIComponent(process.env.ORBIT_DB_PASSWORD || 'orbit')}@db:5432/${db}\nORBIT_ORIGIN=${base}\nORBIT_ALLOW_INSECURE_HTTP=1\n`,{mode:0o600});
@@ -29,6 +53,7 @@ try{
 
 
  await ready();
+ await shippedHomepage();
  const empty=compose('exec','-T','db','psql','-U','orbit','-d',db,'-Atc','SELECT count(*) FROM accounts').toString().trim();
  assert.equal(empty,'0','container startup must not create accounts');
  const applied=compose('exec','-T','db','psql','-U','orbit','-d',db,'-Atc','SELECT version FROM _sqlx_migrations ORDER BY version').toString().trim();

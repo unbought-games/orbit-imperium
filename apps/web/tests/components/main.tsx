@@ -60,12 +60,50 @@ function LoadingExample() {
 }
 
 const scenarios: Record<string, () => Promise<ComponentType>> = {
+  'insignia-editor': async () =>
+    (await import('./insignia.scenario')).InsigniaScenario,
+  rankings: async () => (await import('./rankings.scenario')).RankingsScenario,
   'orb-personality': async () =>
     (await import('./orb-editorial.scenarios')).PersonalityCaptionScene,
   'orb-refresh': async () =>
     (await import('./orb-editorial.scenarios')).RefreshCaptionScene,
   'orb-announcement': async () =>
     (await import('./orb-editorial.scenarios')).AnnouncementScene,
+  'published-report': async () =>
+    (await import('./published-report.scenario')).PublishedReportScenario,
+  'rewards-screen': async () =>
+    (await import('./rewards.scenario')).RewardsScenario,
+  invitation: async () =>
+    (await import('./invitation.scenario')).InvitationScenario,
+  'shell-coordinates': async () =>
+    (await import('./shell-coordinate.scenario')).ShellCoordinates,
+  'allied-return-reader': async () =>
+    (await import('./allied-return.scenario')).AlliedReturnScenario,
+  'galaxy-screen': async () =>
+    (await import('./galaxy-screen.scenario')).GalaxyScreenScenario,
+  'alliance-workspace': async () =>
+    (await import('./alliance-workspace.scenario')).AllianceWorkspaceScenario,
+  'announcement-delivery': async () =>
+    (await import('./orb-editorial.scenarios')).AnnouncementDeliveryScene,
+  'held-directory': async () =>
+    (await import('./held-directory.scenario')).HeldDirectory,
+  'support-contacts': async () =>
+    (await import('../../src/features/settings')).SupportContacts,
+  'supporter-preview': async () =>
+    (await import('../../src/features/supporter-preview')).SupporterPreview,
+  'messages-screen': async () =>
+    (await import('./messages-screen.scenario')).MessagesScenario,
+  'hud-remount': async () =>
+    (await import('./command-hud.scenario')).HudRemountScenario,
+  'rankings-history': async () => (await import('./rankings.scenario')).RankingsHistoryScenario,
+  'rewards-sidebar': async () => (await import('./rewards.scenario')).RewardsSidebar,
+  'recruitment-token': async () => (await import('./recruitment-token.scenario')).RecruitmentToken,
+  'profile-editor': async () => (await import('./profile-editor.scenario')).ProfileEditorScenario,
+  'arrival-feature': async () => (await import('./arrival.scenario')).ArrivalScenario,
+  authentication: async () =>
+    (await import('./authentication.scenario')).AuthenticationScenario,
+  'installed-viewport': async () =>
+    (await import('./installed-viewport.scenario')).InstalledViewport,
   'public-entry': async () => (await import('./public-entry')).PublicEntry,
   'command-hud': async () =>
     (await import('./command-hud.scenario')).CommandHudScenario,
@@ -73,12 +111,22 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
     (await import('../../src/dev/hud/hud-playground')).HudPlayground,
   'tutorial-briefing': async () =>
     (await import('./tutorial-briefing.scenario')).TutorialBriefingScenario,
+  'fighter-arrival': async () =>
+    (await import('./ship-customization.scenarios')).FighterArrivalScenario,
   'ship-customization': async () =>
     (await import('./ship-customization.scenarios')).ShipCustomizationScenario,
   shipyard: async () => (await import('./shipyard.scenarios')).ShipyardScenario,
   empire: async () => (await import('./empire.scenarios')).EmpireScenario,
-  'report-readability': async () =>
-    (await import('./report-readability.scenario')).ReportReadabilityScenario,
+  'report-triage': async () =>
+    (await import('./report-triage.scenario')).ReportTriageScenario,
+  'large-combat-reader': async () =>
+    (await import('./report-reader.scenarios')).LargeCombatReader,
+  'long-espionage-reader': async () =>
+    (await import('./report-reader.scenarios')).LongEspionageReader,
+  'published-espionage-reader': async () =>
+    (await import('./report-reader.scenarios')).PublishedEspionageReader,
+  'report-sharing-controls': async () =>
+    (await import('./report-sharing-controls.scenario')).SharingControls,
   'galaxy-navigation': async () =>
     (await import('./galaxy-navigation.scenario')).GalaxyNavigationScenario,
   'cosmetic-treatments': async () =>
@@ -103,6 +151,7 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
   'shell-wide-coordinates': async () =>
     (await import('./shell.story')).ShellWideCoordinates,
   'shell-default': async () => (await import('./shell.story')).ShellDefault,
+  'shell-world-bar-threat': async () => (await import('./shell.story')).ShellWorldBarThreat,
   'shell-alliance-threat': async () =>
     (await import('./shell.story')).ShellAllianceThreat,
   'shell-named': async () => (await import('./shell.story')).ShellNamed,
@@ -184,6 +233,7 @@ const scenarios: Record<string, () => Promise<ComponentType>> = {
 }
 const paths: Record<string, string> = {
   '/detail-playground': 'detail',
+  '/hud-playground': 'hud-playground',
   '/identity-playground': 'identity',
 }
 const name =

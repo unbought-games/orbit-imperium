@@ -97,7 +97,7 @@ test('spy contacts are regular unread notifications and only active attacks make
     page
       .getByRole('dialog')
       .getByRole('button', { name: /Spy Contact report/ }),
-  ).toHaveAttribute('data-tone', 'champagne')
+  ).toHaveCSS('color', 'rgb(148, 191, 229)')
   await diagnosticScreenshot(page, {
     path: `${output}/spy-unread-inbox-390x844.png`,
   })
@@ -169,7 +169,6 @@ for (const [width, height] of [
   }) => {
     await page.setViewportSize({ width, height })
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.clock.install({ time: baseTime })
     await page.clock.pauseAt(baseTime)
     const origin: S['Destination'] = {
       id: id(98),
@@ -242,7 +241,6 @@ test('enemy attacks open above fleets, use red, keep hidden intelligence hidden,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.clock.install({ time: baseTime })
   await page.clock.pauseAt(baseTime)
   const ships: S['PublicShip4'][] = [
     { ship_type: 'Cruiser', count: '1200' },
@@ -440,4 +438,60 @@ test('enemy attacks open above fleets, use red, keep hidden intelligence hidden,
   await diagnosticScreenshot(page, {
     path: `${output}/enemy-attacks-cleared-320x740.png`,
   })
+})
+
+test('a three-resource harvest keeps its label and yields on one baseline in the narrow uplink', async ({
+  page,
+  mount,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await mountHud(page, mount, {
+    headers: [
+      {
+        id: id(870),
+        kind: 'Harvested',
+        observed_at: baseTime - 180 * 60000,
+        read: false,
+        hidden: false,
+        preview: {
+          kind: 'Harvested',
+          destination_coordinates: { galaxy: 1, system: 23, position: 7 },
+          harvested: {
+            metal: '12000000000',
+            crystal: '4800000000',
+            deuterium: '750000000',
+          },
+        },
+      },
+    ],
+  })
+  await page.getByTestId('command-orb').click()
+  const row = page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Harvested/ })
+  for (const name of ['Metal', 'Crystal', 'Deuterium'])
+    await expect(row.getByRole('img', { name, exact: true })).toBeVisible()
+  await expect(row.locator('time')).toHaveText('3h')
+  const measures = await row.evaluate((button) => {
+    const bounds = button.getBoundingClientRect()
+    const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT)
+    const labels = new Set(['Harvested', '12K', '4.8K', '750'])
+    const positions = []
+    while (walker.nextNode()) {
+      if (!labels.has(walker.currentNode.textContent?.trim() ?? '')) continue
+      const range = document.createRange()
+      range.selectNodeContents(walker.currentNode)
+      const rect = range.getBoundingClientRect()
+      positions.push({
+        y: rect.bottom,
+        inside: rect.right <= bounds.right && rect.left >= bounds.left,
+      })
+    }
+    return positions
+  })
+  expect(measures).toHaveLength(4)
+  expect(measures.every((p) => p.inside)).toBe(true)
+  const bottoms = measures.map((p) => p.y)
+  expect(Math.max(...bottoms) - Math.min(...bottoms)).toBeLessThan(1)
 })

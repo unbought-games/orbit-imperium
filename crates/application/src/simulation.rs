@@ -10,7 +10,7 @@ use orbit_engine::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-pub const SIMULATION_UNIT_LIMIT: u32 = 2000;
+pub const SIMULATION_UNIT_LIMIT: u32 = 20_000;
 pub const SIMULATION_SAMPLES: usize = 10;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -354,6 +354,140 @@ mod tests {
     }
 
     #[test]
+    fn dreadnought_losses_use_active_debris_rules_and_surviving_cargo_in_every_sample() {
+        let standard = orbit_engine::standard_signup_rules(
+            orbit_engine::UniverseProfile::signup(1, 5).unwrap(),
+            5,
+        )
+        .unwrap();
+        for deuterium in [false, true] {
+            let mut artifact = standard.artifact.clone();
+            artifact.world.as_mut().unwrap().combat.deuterium_in_debris = deuterium;
+            let rules = Ruleset::from_artifact(artifact, standard.speed).unwrap();
+            let mut inputs = inputs();
+            let item = ManufacturedItem::Ship(ShipType::Dreadnought);
+            inputs.attacker.units = vec![SimulationUnit { item, count: 10 }];
+            inputs.defender.units = vec![SimulationUnit { item, count: 1 }];
+            let response = SimulationJob {
+                context: context(),
+                rules,
+                inputs,
+            }
+            .run([13; 32])
+            .unwrap();
+            assert_eq!(response.samples.len(), SIMULATION_SAMPLES);
+            for sample in response.samples {
+                assert_eq!(sample.outcome, orbit_engine::BattleOutcome::AttackerVictory);
+                assert_eq!(sample.debris.metal, "1500000000000");
+                assert_eq!(sample.debris.crystal, "1200000000000");
+                assert_eq!(
+                    sample.debris.deuterium,
+                    if deuterium { "300000000000" } else { "0" }
+                );
+                assert_eq!(sample.moon_chance_percent, 20);
+                assert_eq!(sample.surviving_cargo_capacity, "10000000000000");
+            }
+        }
+    }
+
+    // Opt-in release measurements use the same seed for a full battle report
+    // and the first of the ten samples returned by the interactive simulator.
+    fn measure_fleets(
+        inputs: SimulationInputs,
+    ) -> (orbit_engine::BattleResult, SimulationResponse) {
+        let rules = orbit_engine::standard_signup_rules(
+            orbit_engine::UniverseProfile::signup(1, 100).unwrap(),
+            5,
+        )
+        .unwrap();
+        let world = rules.artifact.world.as_ref().unwrap();
+        validate_simulation(&inputs, &world.combat).unwrap();
+        let context = context();
+        let input = BattleInput {
+            encounter_id: InputId(context.request_id),
+            at: 0,
+            target: BodyId(uuid::Uuid::from_u128(2)),
+            rules_hash: rules.hash.clone(),
+            participants: simulation_participants(&inputs),
+        };
+        let seed = [42; 32];
+        let mut rng = RandomStream::new(
+            &seed,
+            context.binding.universe,
+            context.binding.epoch,
+            input.encounter_id,
+            "battle",
+        )
+        .unwrap();
+        let start = std::time::Instant::now();
+        let result = resolve_battle(&input, &world.combat, &mut rng).unwrap();
+        eprintln!(
+            "battle {:?}, shots {}, cursor {:?}",
+            start.elapsed(),
+            result.rounds[0].fire[0].shots,
+            rng.cursor()
+        );
+        let start = std::time::Instant::now();
+        let response = SimulationJob {
+            context,
+            rules,
+            inputs,
+        }
+        .run(seed)
+        .unwrap();
+        eprintln!("ten samples {:?}", start.elapsed());
+        assert_eq!(response.samples.len(), SIMULATION_SAMPLES);
+        (result, response)
+    }
+
+    #[test]
+    #[ignore = "release measurement for ten samples with factor-1,250 rapid fire"]
+    fn measure_dreadnought_rapid_fire_at_simulation_limit() {
+        let mut draft = inputs();
+        draft.attacker.units = vec![SimulationUnit {
+            item: ManufacturedItem::Ship(ShipType::Dreadnought),
+            count: 19_000,
+        }];
+        draft.defender.units = vec![SimulationUnit {
+            item: ManufacturedItem::Ship(ShipType::SolarSatellite),
+            count: 1_000,
+        }];
+        let (result, response) = measure_fleets(draft);
+        assert_eq!(result.rounds[0].fire[0].shots, "23645300");
+        assert_eq!(result.rng_cursor, (2980057, 26));
+        assert_eq!(result.rounds.len(), 1);
+        assert_eq!(result.outcome, orbit_engine::BattleOutcome::AttackerVictory);
+        for sample in response.samples {
+            assert_eq!(sample.attacker[0].count, 19_000);
+            assert!(sample.defender.is_empty());
+            assert_eq!(
+                sample.debris.crystal,
+                (600_000 * orbit_engine::SCALE).to_string()
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "release measurement for a six-round fleet engagement"]
+    fn measure_balanced_fleets_at_simulation_limit() {
+        let mut draft = inputs();
+        draft.attacker.units[0].count = 10_000;
+        draft.defender = draft.attacker.clone();
+        let (battle, response) = measure_fleets(draft);
+        assert_eq!(battle.rng_cursor, (10676, 2));
+        assert_eq!(battle.rounds.len(), 6);
+        assert_eq!(battle.rounds[0].fire[0].shots, "10000");
+        assert_eq!(battle.outcome, orbit_engine::BattleOutcome::Draw);
+        for sample in response.samples {
+            assert_eq!(sample.rounds, 6);
+            assert_eq!(sample.outcome, orbit_engine::BattleOutcome::Draw);
+            for side in [sample.attacker, sample.defender] {
+                assert_eq!(side.len(), 1);
+                assert!((1..10_000).contains(&side[0].count));
+            }
+        }
+    }
+    #[test]
     fn planning_metadata_uses_active_moon_and_harvest_rules() {
         for (moons, capacity, expected_capacity) in [
             (false, 50_000, "20000000000"),
@@ -552,7 +686,7 @@ mod tests {
             ManufacturedItem::Defense(DefenseId::RocketLauncher);
         assert!(validate_simulation(&draft, &CombatRules::selected()).is_err());
         draft.defending_allies.clear();
-        draft.attacking_allies[0].units[0].count = 2000;
+        draft.attacking_allies[0].units[0].count = 20_000;
         assert!(validate_simulation(&draft, &CombatRules::selected()).is_err());
     }
     #[test]
@@ -560,7 +694,16 @@ mod tests {
         let rules = CombatRules::selected();
         assert!(validate_simulation(&inputs(), &rules).is_ok());
         let mut q = inputs();
-        q.attacker.units[0].count = 2001;
+        q.attacker.units[0].count = 19_999;
+        q.defender.units.push(SimulationUnit {
+            item: ManufacturedItem::Defense(DefenseId::RocketLauncher),
+            count: 1,
+        });
+        assert!(validate_simulation(&q, &rules).is_ok());
+        q.attacker.units[0].count += 1;
+        assert!(validate_simulation(&q, &rules).is_err());
+        q = inputs();
+        q.attacker.units[0].count = 20_001;
         assert!(validate_simulation(&q, &rules).is_err());
         q.attacker.units[0].count = 0;
         assert!(validate_simulation(&q, &rules).is_err());

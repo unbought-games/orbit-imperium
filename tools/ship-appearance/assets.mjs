@@ -1,4 +1,5 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { lookup } from 'node:dns/promises'
@@ -218,10 +219,18 @@ export async function resolveEmblemAssets(appearance, bundled, config, signal) {
   return assets
 }
 
+const bundledSkins = JSON.parse(
+  readFileSync(
+    new URL('../../crates/application/assets/ship-skins.json', import.meta.url),
+    'utf8',
+  ),
+)
+const bundledSelection = JSON.stringify(
+  bundledSkins.map(({ id, revision }) => ({ id, revision })),
+)
+
 export function packageSelection(env = process.env) {
-  const text =
-    env.ORBIT_SHIP_PACKAGES ??
-    '[{"id":"orbit-light-fighter","revision":"concord-v1"}]'
+  const text = env.ORBIT_SHIP_PACKAGES ?? bundledSelection
   if (text.length > 16384) throw Error('Installed package registry too large')
   const entries = JSON.parse(text)
   if (!Array.isArray(entries) || !entries.length || entries.length > 32)

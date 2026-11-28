@@ -1,4 +1,5 @@
-import { Fragment, useState } from 'react'
+import { SimulationDisclosure } from './simulation-disclosure'
+import { Fragment } from 'react'
 import { Button } from '../ui/button'
 import { NumberInput } from '../ui/form'
 import { VisuallyHidden } from '../ui/visually-hidden'
@@ -7,12 +8,14 @@ import { label } from '../ui/format'
 import { formatWholeNumber } from '../ui/whole-number'
 import {
   simulationGroupSummary,
+  simulationUnitLimit,
   type SimulationField,
 } from './combat-simulation-model'
 import styles from './combat-simulation.module.css'
 import type { SimulationUnitOutcomes } from './simulation-unit-outcomes'
 
 type Props = {
+  allySlot?: number
   fields: SimulationField[]
   edits: Record<string, string>
   edit: (values: Record<string, string>) => void
@@ -42,11 +45,36 @@ function FieldGroup({
   edit,
   outcomes,
   group,
+  allySlot,
 }: Props & { group: string }) {
   const defender = fields[0].side === 'defender'
   const collapsible = defender && group !== 'Technologies'
-  const [expanded, setExpanded] = useState(true)
-  const summary = simulationGroupSummary(fields, edits)
+  const summary =
+    group === 'Technologies' ? null : simulationGroupSummary(fields, edits)
+  const heading = (
+    <>
+      {group}
+      {summary && (
+        <>
+          {' '}
+          <span className={styles.groupSummary}>
+            {formatWholeNumber(summary.total)}{' '}
+            {summary.total === 1n ? 'unit' : 'units'}
+            {summary.unknown > 0 && (
+              <span> · {summary.unknown} not observed; assumed zero</span>
+            )}
+            {summary.invalid > 0 && (
+              <strong role="alert">
+                {' '}
+                · {summary.invalid} invalid values
+                {collapsible && ' — expand to edit'}
+              </strong>
+            )}
+          </span>
+        </>
+      )}
+    </>
+  )
   const groups =
     group === 'Ships'
       ? shipGroups.map((name) => ({
@@ -91,32 +119,23 @@ function FieldGroup({
       aria-label={`${defender ? 'Defender' : 'Attacker'} ${group.toLowerCase()}`}
     >
       {collapsible ? (
-        <details
-          open={expanded}
-          onToggle={(event) => setExpanded(event.currentTarget.open)}
+        <SimulationDisclosure
+          section={
+            allySlot
+              ? `allied-fleet-${allySlot}-ships`
+              : group === 'Ships'
+                ? 'defender-ships'
+                : 'defender-defenses'
+          }
           className={styles.fieldGroup}
+          summaryClassName={styles.groupHeading}
+          summary={heading}
         >
-          <summary className={styles.groupHeading}>
-            {group}
-            <span className={styles.groupSummary}>
-              {formatWholeNumber(summary.total)} units · {summary.types}{' '}
-              {summary.types === 1 ? 'type' : 'types'}
-              {summary.unknown > 0 && (
-                <span> · {summary.unknown} not observed; assumed zero</span>
-              )}
-              {summary.invalid > 0 && (
-                <strong role="alert">
-                  {' '}
-                  · {summary.invalid} invalid values — expand to edit
-                </strong>
-              )}
-            </span>
-          </summary>
           {contents}
-        </details>
+        </SimulationDisclosure>
       ) : (
         <>
-          <h3 className={styles.groupHeading}>{group}</h3>
+          <h3 className={styles.groupHeading}>{heading}</h3>
           {contents}
         </>
       )}
@@ -140,7 +159,7 @@ function SimulationFieldInput({
   const value = edits[field.key] ?? field.value ?? '0'
   const invalid =
     !/^(0|[1-9][0-9]*)$/.test(value || '0') ||
-    Number(value) > (field.item ? 2000 : 100)
+    Number(value) > (field.item ? simulationUnitLimit : 100)
   const changed =
     edits[field.key] !== undefined && value !== (field.value ?? '0')
   const source =

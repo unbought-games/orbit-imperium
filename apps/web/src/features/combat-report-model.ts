@@ -36,6 +36,19 @@ const countOf = (counts: Observation | undefined, key: string) => {
   return unit ? combatInteger(unit.count) : 0n
 }
 
+/** An empire supporting both forces has no single side for the reported result. */
+export function combatPerspective(
+  participants: readonly Observation[] = [],
+  viewer?: string,
+) {
+  const own = viewer ? participants.filter((p) => p.owner === viewer) : []
+  const attacking = own.some((p) => p.side === 'Attacker')
+  const defending = own.some((p) => p.side === 'Defender')
+  const side =
+    attacking === defending ? undefined : attacking ? 'Attacker' : 'Defender'
+  return { side, bothSides: attacking && defending } as const
+}
+
 export function combatOutcome(outcome: unknown, side?: string) {
   if (outcome === 'Draw')
     return {
@@ -152,17 +165,7 @@ export function combatReportModel(
   shared = false,
 ) {
   const participants = records(payload.participants)
-  const ownSides = new Set(
-    participants.filter((p) => p.owner === viewer).map((p) => p.side),
-  )
-  const bothSides = ownSides.has('Attacker') && ownSides.has('Defender')
-  const side = bothSides
-    ? undefined
-    : ownSides.has('Attacker')
-      ? 'Attacker'
-      : ownSides.has('Defender')
-        ? 'Defender'
-        : undefined
+  const { side, bothSides } = combatPerspective(participants, viewer)
   const name = (p: Observation) =>
     p.owner === viewer ? 'You' : playerLabel(p.owner, playerNames)
   const forces = participants.map((p) => ({

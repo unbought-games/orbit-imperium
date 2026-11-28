@@ -21,7 +21,7 @@ rules. Execution revalidates ownership, complete inventory and gate coverage,
 completed levels, current readiness and player vacation/deletion policy.
 
 The pure resolver changes source and destination inventories, relocates their
-original asset lots, and records both gate uses in the same changeset. Asset
+selected ship quantities, and records both gate uses in the same changeset. Asset
 valuation and score are conserved. Player and both location scopes order jumps
 against launches, combat and removal. Existing fact-hash validation rechecks the
 snapshot before commit; due events retain normal scheduler precedence. The

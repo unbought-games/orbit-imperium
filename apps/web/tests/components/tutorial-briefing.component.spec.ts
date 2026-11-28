@@ -17,15 +17,15 @@ async function prepare(page: Page, input: Omit<TutorialSceneInput, 'body'>) {
   )
 }
 
-function earned(id: string) {
-  const data = structuredClone(initial)
+function earned(id: string, previous = initial) {
+  const data = structuredClone(previous)
   const objective = data.chapters
     .flatMap((c) => c.objectives)
     .find((o) => o.id === id)!
   objective.completed = true
   objective.inspection = null
   objective.next_action = null
-  data.receipts = [completed.receipts.find((r) => r.objective === id)!]
+  data.receipts.push(completed.receipts.find((r) => r.objective === id)!)
   return data
 }
 
@@ -33,26 +33,29 @@ async function deliver(page: Page, data: TutorialData) {
   await page.evaluate((data) => window.deliverTutorial!(data), data)
 }
 
-test('a briefing opened while loading acknowledges its delivered objectives and leaves later progress unread', async ({
+test('an open briefing acknowledges newly delivered objectives and leaves later progress unread', async ({
   page,
   mount,
 }) => {
-  await prepare(page, { page: 'overview', data: null })
+  await prepare(page, {
+    page: 'overview',
+    data: { ...initial, beginner: false },
+  })
   await mount('tutorial-briefing')
-  await page.getByRole('link', { name: 'Open briefing', exact: true }).click()
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Receiving your briefing' }),
-  ).toBeVisible()
-  const data = { ...initial, beginner: false }
-  await deliver(page, data)
+  await page.getByRole('link', { name: /^Open briefing/ }).click()
   await expect(
     page.getByRole('region', { name: 'Recommended next action' }),
   ).toBeVisible()
+  const solar = { ...earned('solar-1'), beginner: false }
+  await deliver(page, solar)
+  await expect(
+    page.getByRole('dialog', { name: 'Nicely done!' }),
+  ).toContainText('Solar Plant')
   await page.getByRole('link', { name: 'Return to overview' }).click()
   await expect(
     page.getByRole('link', { name: 'Open briefing', exact: true }),
   ).toHaveAttribute('data-attention', 'false')
-  await deliver(page, { ...earned('metal-1'), beginner: false })
+  await deliver(page, earned('metal-1', solar))
   await expect(
     page.getByRole('link', { name: 'Open briefing — unread updates' }),
   ).toHaveAttribute('data-attention', 'true')
@@ -217,3 +220,74 @@ for (const width of [1440, 390]) {
     await expect(facilities).toHaveAttribute('aria-current', 'page')
   })
 }
+
+for (const width of [1100, 390]) {
+  test(`More opens deferred destinations and promotes routes after a private site arrives at ${width}px`, async ({
+    page,
+    mount,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    const data = structuredClone(initial)
+    await prepare(page, { page: 'menu', data })
+    await mount('tutorial-briefing')
+    const navigation =
+      width >= 1024
+        ? page.getByLabel('Game navigation', { exact: true })
+        : page.getByRole('navigation', {
+            name: 'Menu destinations',
+            exact: true,
+          })
+    const disclosure = navigation.locator('summary').filter({ hasText: 'More' })
+    await expect(disclosure).toBeVisible()
+    const messages = navigation.getByRole('link', {
+      name: 'Messages',
+      exact: true,
+    })
+    await expect(messages).not.toBeVisible()
+    await disclosure.press('Enter')
+    const more = navigation.getByRole('navigation', {
+      name: 'More navigation',
+      exact: true,
+    })
+    const alliance = more.getByRole('link', { name: 'Alliance', exact: true })
+    await expect(alliance).toHaveAttribute('href', base + '/alliance')
+    await expect(
+      more.getByRole('link', { name: 'Messages', exact: true }),
+    ).toHaveAttribute('href', base + '/messages')
+    await expect(
+      more.getByRole('link', { name: 'Reports', exact: true }),
+    ).toBeVisible()
+    data.sites = structuredClone(completed.sites)
+    const directive = data.chapters
+      .flatMap((c) => c.objectives)
+      .find((o) => o.id === 'deuterium-1')!
+    directive.completed = true
+    directive.next_action = null
+    directive.inspection = null
+    await deliver(page, data)
+    await expect(
+      navigation.getByRole('link', { name: 'Reports', exact: true }),
+    ).toBeVisible()
+    await expect(
+      more.getByRole('link', { name: 'Reports', exact: true }),
+    ).toHaveCount(0)
+  })
+}
+
+test('briefing retry after a failed refresh keeps the current chapter until completed progress arrives', async ({
+  page,
+  mount,
+}) => {
+  await prepare(page, { page: 'briefing', data: initial, retryData: completed })
+  await mount('tutorial-briefing')
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Unable to load guidance.')
+  await expect(
+    page.getByRole('region', { name: 'Recommended next action' }),
+  ).toContainText('Build Solar Plant level 1')
+  await alert.getByRole('button', { name: 'Retry guidance' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'An empire of your own' }),
+  ).toBeVisible()
+  await expect(alert).toHaveCount(0)
+})

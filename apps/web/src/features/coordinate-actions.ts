@@ -32,6 +32,13 @@ export function coordinateMissions(
           : known?.empty && kind === 'planet'
             ? ['Colonize']
             : ['Attack', 'Espionage', 'Transport']
+  if (
+    kind === 'moon' &&
+    owner &&
+    owner !== view.binding.player &&
+    !known?.abandoned
+  )
+    missions.push('DestroyMoon')
   if (known?.debris && kind !== 'debris') missions.push('Harvest')
   return missions.filter((m) =>
     view.capabilities.some((c) => c.capability === m && c.enabled),

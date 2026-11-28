@@ -51,7 +51,16 @@ export const originBody: S['BodyV3'] = {
 }
 export type DispatchFixtureOptions = {
   resourceVisibility?: 'Known' | 'Unknown' | 'Missing' | 'Error'
-  launchOutcome?: 'Committed' | 'Pending' | 'Rejected'
+  liveQuote?: {
+    cargo: S['Resources']
+    hash: string
+    capacity?: string
+    maximumPayload?: string
+  }
+  launchOutcome?: 'Committed' | 'Pending' | 'Rejected' | 'RateLimited'
+  rejectionCode?: S['GameError4']
+  missileRules?: S['MissileRules4']
+  observedMoon?: boolean
   blocker: S['GameError4'] | null
   estimateError: S['GameError4'] | null
   resolveError?: S['GameError4']
@@ -129,7 +138,16 @@ export function dispatchData() {
         ? {}
         : {
             ship_statistics: {
-              propulsion: null,
+              propulsion:
+                id === 'SmallCargo'
+                  ? {
+                      cargo_capacity: '5000',
+                      base_speed: '5000',
+                      fuel_consumption: '10',
+                      drive: 'CombustionDrive',
+                      impulse_upgrade: null,
+                    }
+                  : null,
               combat: null,
               cost: catalogCosts[id],
             },

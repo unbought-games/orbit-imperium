@@ -1,10 +1,11 @@
+import { Button } from '../ui/button'
 import { groupFlightSchedule } from './attack-group-model'
 import { useProfileSource } from '../shell/player-profiles-context'
 import { missionOptions } from './mission-options'
 import type { Ref, ReactNode } from 'react'
 import type { components } from '../contracts'
 import { flightDuration, flightSchedule } from '../client-model/dispatch-timing'
-import { bodyName } from '../ui/format'
+import { bodyName, label } from '../ui/format'
 import { Heading, Text } from '../ui/typography'
 import {
   NumberValue,
@@ -23,6 +24,7 @@ import {
   type DispatchTarget,
 } from './dispatch-review-model'
 import { FleetRouteTrack } from './fleet-flight-route'
+import { destructionChance } from './moon-destruction'
 import { fleetShipCount } from './command-hud/fleet-summary'
 import { ShipComposition } from './ship-composition'
 import styles from './missions.module.css'
@@ -40,6 +42,9 @@ export function DispatchReview({
   raidPlanning,
   colonyWarning,
   disabled,
+  reviewState,
+  sending,
+  onEdit,
   panelRef,
   onSend,
 }: {
@@ -54,6 +59,9 @@ export function DispatchReview({
   raidPlanning?: ReactNode
   colonyWarning?: string | null
   disabled: boolean
+  sending: boolean
+  onEdit: () => void
+  reviewState: ReturnType<typeof import('./use-fleet-review').useFleetReview>
   panelRef: Ref<HTMLElement>
   onSend: () => void
 }) {
@@ -113,7 +121,7 @@ export function DispatchReview({
         <Heading level={2} className={styles.reviewHeading}>
           <strong data-mission={mission}>
             <Icon aria-hidden="true" />
-            {mission}
+            {label(mission)}
           </strong>
         </Heading>
         <span>
@@ -188,6 +196,39 @@ export function DispatchReview({
           </div>
         </div>
       </div>
+      {quote.moon_destruction && (
+        <section
+          className={styles.reviewRisk}
+          aria-label="Moon destruction odds"
+        >
+          <Heading level={3} className={styles.reviewGroupHeading}>
+            Moon destruction odds
+          </Heading>
+          <dl className={styles.reviewFacts}>
+            <div>
+              <dt>
+                Destroy the{' '}
+                {quote.moon_destruction.diameter_km.toLocaleString()} km moon
+              </dt>
+              <dd>
+                {destructionChance(quote.moon_destruction.moon_chance_ppm)}
+              </dd>
+            </div>
+            <div>
+              <dt>Lose the entire fleet</dt>
+              <dd>
+                {destructionChance(quote.moon_destruction.fleet_loss_ppm)}
+              </dd>
+            </div>
+          </dl>
+          <Text className={styles.reviewNote}>
+            These odds assume victory with every selected Dreadnought surviving
+            combat. Fewer survivors reduce the chance to destroy the moon. The
+            entire fleet, including escorts and cargo, can be lost whether the
+            moon survives or falls.
+          </Text>
+        </section>
+      )}
       <div className={styles.reviewGroups}>
         <section aria-label="Fleet and cargo">
           <Heading level={3} className={styles.reviewGroupHeading}>
@@ -271,9 +312,67 @@ export function DispatchReview({
       {mission === 'Espionage' && (
         <Text className={styles.reviewNote}>Probes carry fuel only.</Text>
       )}
-      <QuoteAction disabled={disabled} onClick={onSend}>
-        {dispatchSendLabel(quote.intent, destination)}
-      </QuoteAction>
+      {reviewState.differences?.changed && reviewState.state && (
+        <div role="status">
+          {reviewState.differences.resources.map((resource) => (
+            <Text key={resource}>
+              {resource[0].toUpperCase() + resource.slice(1)} cargo changed from{' '}
+              <ResourceQuantity
+                resource={resource}
+                value={reviewState.state!.reviewed.intent.cargo[resource]}
+              />{' '}
+              to{' '}
+              <ResourceQuantity
+                resource={resource}
+                value={quote.intent.cargo[resource]}
+              />
+              .
+            </Text>
+          ))}
+          {reviewState.differences.flightChanged && (
+            <Text>Flight terms changed. Review the updated flight.</Text>
+          )}
+        </div>
+      )}
+      {reviewState.state?.problem && (
+        <Text role="alert" tone="danger">
+          {reviewState.state.problem}{' '}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void reviewState.refresh()}
+          >
+            Refresh review
+          </Button>
+        </Text>
+      )}
+      <div
+        className={styles.actions}
+        role={sending ? 'group' : undefined}
+        aria-label={sending ? 'Fleet dispatch result' : undefined}
+      >
+        <QuoteAction
+          className={styles.sendFleet}
+          disabled={disabled}
+          onClick={onSend}
+        >
+          {sending
+            ? 'Sending fleet order…'
+            : reviewState.differences?.changed
+              ? 'Confirm changes and launch'
+              : dispatchSendLabel(quote.intent, destination)}
+        </QuoteAction>
+        {reviewState.differences?.changed && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={sending}
+            onClick={onEdit}
+          >
+            Edit cargo
+          </Button>
+        )}
+      </div>
     </QuotePanel>
   )
 }

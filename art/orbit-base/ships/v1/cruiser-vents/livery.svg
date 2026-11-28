@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 768 512">
+  <!-- Two-channel armor over the reviewed louvered-shoulder master. -->
+  <rect width="768" height="512" fill="red"/>
+  <g fill="#00ff00">
+    <path d="M303 195 329 158 427 103 519 32 533 27 541 31 418 136 408 173 328 205 313 219Z"/>
+    <path d="M478 240 537 191 630 153 Q663 137 695 81 L710 56 721 52 729 59 719 170 669 220 638 231 632 187 626 182 560 206 529 254 486 263Z"/>
+    <path d="M157 428 219 393 247 400 223 412 155 445Z"/>
+  </g>
+  <g fill="black">
+    <path d="M484 111 Q492 72 532 71 Q557 71 570 105 L538 125 509 134 483 127Z M599 137 Q612 96 641 88 Q665 84 677 104 L650 128 617 148Z"/>
+    <path d="M462 144 467 135 469 106 474 104 476 133 482 141 478 147Z"/>
+    <path d="M258 405 279 390 328 371 321 396 265 422Z M351 351 382 342 376 367 353 376Z M400 294 448 278 506 263 493 305 468 317 424 328 392 346Z"/>
+    <path d="M154 447 198 426 227 415 224 430 197 443Z"/>
+    <path d="M301 282 Q326 294 353 269 L353 276 Q335 294 303 290Z M367 228 Q395 238 414 217 L414 224 Q396 240 365 235Z"/>
+  </g>
+  <!-- Hard holdouts protect ion barrels, crew lighting, recessed louvers and impulse drive. -->
+  <g fill="blue" transform="scale(.5)">
+  <path id="forward-barrel" d="M492 545 581 516 600 507 628 514 621 544 596 554 511 574 496 569Z"/>
+  <path id="aft-barrel" d="M662 441 732 419 748 412 773 418 765 444 748 447 677 461 664 457Z"/>
+  <path id="bridge-glazing" d="M855 324 Q917 347 997 312 L1010 326 Q943 377 845 351Z"/>
+  <path id="impulse" d="M1056 244 1162 249 1187 285 1177 307 1069 298 1052 276Z"/>
+  <path id="crew-ports" d="M939 393 1020 358 1024 379 940 415Z"/>
+  <path id="far-louvers" d="M640 413 679 349 804 288 797 340Z"/>
+  <path id="near-louvers" d="M1070 499 1117 423 1256 367 1271 384 1269 438Z"/>
+  </g>
+</svg>

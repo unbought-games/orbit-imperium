@@ -104,19 +104,9 @@ async fn deliver<S: GameStore + IdentityStore + UpdateStore + Send + Sync + 'sta
         {
             return;
         }
-        let Ok(current) = s
-            .game
-            .current_binding(session.account, binding.universe, uuid::Uuid::new_v4())
-            .await
-        else {
+        let Ok(recheck) = s.updates.update_stream_recheck(binding).await else {
             return;
         };
-        if current.binding != binding {
-            return;
-        }
-        if s.updates.bot_observe(binding).await.is_err() {
-            return;
-        }
         for update in page.items {
             if s.updates.bot_observe(binding).await.is_err() {
                 return;
@@ -139,7 +129,9 @@ async fn deliver<S: GameStore + IdentityStore + UpdateStore + Send + Sync + 'sta
                 _=draining(&mut drain)=>return,
                 _=sender.closed()=>return,
                 _=watcher.changed()=>{},
-                _=tokio::time::sleep(Duration::from_secs(1))=>{},
+                // LISTEN wakes changes and revocations immediately. Replay also
+                // repairs missed notifications and checks a silent session for expiry.
+                _=tokio::time::sleep(recheck)=>{},
             }
         }
         page = match s.updates.read_updates(binding, cursor.as_deref(), 64).await {
