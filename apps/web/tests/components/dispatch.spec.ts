@@ -1962,11 +1962,13 @@ for (const width of [390, 1440]) {
 
     await metal.fill('4999')
     await expect(capacity).toContainText('0 remaining')
+    await configure(page, { quoteError: 'CargoCapacity' })
     await metal.fill('5001')
     await expect(capacity).toContainText('2 over capacity')
-    await configure(page, { quoteError: 'CargoCapacity' })
     await review(page).click()
-    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('alert')).toContainText(
+      'The fleet cannot carry this cargo and fuel.',
+    )
     await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(
       0,
     )
@@ -1980,6 +1982,15 @@ for (const width of [390, 1440]) {
     )
     await expect(capacity).not.toContainText('remaining')
     await metal.fill('100')
+    await expect(page.getByRole('alert')).toHaveCount(0)
+    await expect(capacity).toContainText('4,899 remaining')
+    if (width === 390) {
+      await review(page).click()
+      const cargo = page.getByRole('region', { name: 'Fleet and cargo' })
+      await expect(cargo.getByText('100', { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: 'Back to edit mission' }).click()
+      await expect(metal).toHaveValue('100')
+    }
 
     // A different ship selection invalidates the old advisory result immediately.
     const before = (await counts(page)).estimates
@@ -2096,6 +2107,7 @@ test('attack protection is checked at review and launch races have readable rece
   )
   await configure(page, {
     blocker: 'BeginnerProtected',
+    quoteError: 'BeginnerProtected',
     launchOutcome: 'Rejected',
   })
   await page.getByRole('radio', { name: 'Attack', exact: true }).check()
@@ -2108,7 +2120,6 @@ test('attack protection is checked at review and launch races have readable rece
   expect((await counts(page)).launches).toBe(0)
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 900 })
-  await configure(page, { quoteError: 'BeginnerProtected' })
   await review(page).click()
   await expect(
     page.getByRole('alert').filter({ hasText: 'Beginner protection prevents' }),
@@ -2119,15 +2130,12 @@ test('attack protection is checked at review and launch races have readable rece
   await page.getByRole('textbox', { name: 'Metal', exact: true }).fill('42')
   await review(page).click()
   await expect(page.getByRole('region', { name: 'Fleet quote' })).toBeVisible()
-  await page
-    .getByRole('button', {
-      name: /^(Attack with|Spy with|Harvest with|Colonize with|Transport to|Deploy to) /,
-    })
-    .click()
+  await page.getByRole('button', { name: /^Attack with/ }).click()
   await expect(
     page.getByRole('complementary', { name: 'Action needs attention' }),
   ).toContainText('Fleet not sent: Beginner protection prevents')
   expect((await counts(page)).launches).toBe(1)
+  await expect(page.getByRole('radio', { name: 'Attack', exact: true })).toBeChecked()
   await expect(page.getByLabel('Small Cargo · 2 available')).toHaveValue('1')
   await expect(
     page.getByRole('textbox', { name: 'Metal', exact: true }),

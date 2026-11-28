@@ -1,11 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import type { components } from '../contracts'
 import type { Coordinator } from '../client-model/coordinator'
-import {
-  cargoAmounts,
-  cargoInstruction,
-  type CargoDraft,
-} from '../client-model/dispatch-cargo'
+import { cargoAmounts, type CargoDraft } from '../client-model/dispatch-cargo'
 import {
   destinationError,
   dispatchObservationError,
@@ -24,7 +20,9 @@ export function preparedIntent(
   kind: 'Moon' | 'Planet',
   player: string,
 ) {
-  if (!estimate || !coordinates) return null
+  // Production can change a Max load without advancing the viewer revision.
+  // Quote that cargo when the player opens Review.
+  if (!estimate || !coordinates || draft.groups.length) return null
   const { intent } = estimate
   if (
     destinationError(
@@ -43,11 +41,9 @@ export function preparedIntent(
   )
     return null
   try {
-    const fill = cargoInstruction(draft)
     return {
       ...intent,
       cargo: cargoAmounts(draft.entered),
-      ...(fill ? { cargo_fill: fill } : {}),
     }
   } catch {
     return null
