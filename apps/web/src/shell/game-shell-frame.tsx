@@ -86,7 +86,13 @@ export function GameShellFrame({
       data-has-command-hud={view.protocol === 4 || undefined}
     >
       <div className={styles['shell-columns']} ref={pinned.columns}>
-        <div className={styles.header} ref={pinned.header}>
+        <div
+          className={styles.header}
+          ref={pinned.header}
+          data-warning={
+            showWarning ? (allianceArea ? 'alliance' : 'world') : undefined
+          }
+        >
           <header className={styles.identity} data-touch-control="">
             <Brand
               className={styles.brand}

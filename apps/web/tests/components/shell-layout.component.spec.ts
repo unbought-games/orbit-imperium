@@ -30,9 +30,7 @@ test('alliance pages retain a visible attack warning without the planet bar on d
     await expect(
       warning.getByRole('link', { name: 'View movements' }),
     ).toHaveAttribute('href', /\/overview#fleet-movements$/)
-    const bounds = await warning.boundingBox()
-    expect(bounds!.x).toBeGreaterThanOrEqual(0)
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+    expect(await warning.boundingBox()).toMatchObject({ x: 0, width })
     await diagnosticScreenshot(page, {
       path: `test-results/alliance-threat-${width}x${height}.png`,
     })
@@ -764,13 +762,13 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await mount('shell-world-bar-threat')
   const bar = page.getByRole('group', { name: 'Planet and resources' })
+  const warning = bar.getByRole('status')
   const overlay = () =>
     bar.evaluate((element) => {
       const style = getComputedStyle(element, '::after')
       return {
         animation: style.animationName,
         duration: style.animationDuration,
-        content: style.content,
         opacity: style.opacity,
       }
     })
@@ -783,10 +781,29 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
       (element) => getComputedStyle(element, '::after').boxShadow,
     ),
   ).toBe('none')
-  for (const width of [320, 390, 767]) {
+  for (const width of [320, 767, 768, 1440, 2560]) {
     await page.setViewportSize({ width, height: 844 })
     expect((await overlay()).animation).toContain('hostile-pulse')
     expect((await overlay()).duration).toBe('3.2s')
+    const geometry = await bar.evaluate((element) => {
+      const top = element.getBoundingClientRect()
+      const alert = element
+        .querySelector('[role="status"]')!
+        .getBoundingClientRect()
+      const pulse = getComputedStyle(element, '::after')
+      return {
+        alertLeft: alert.left,
+        alertRight: alert.right,
+        pulseWidth: parseFloat(pulse.width),
+        seamGap: alert.top - top.top - parseFloat(pulse.height),
+      }
+    })
+    expect(geometry).toMatchObject({
+      alertLeft: 0,
+      alertRight: width,
+      pulseWidth: width,
+    })
+    expect(Math.abs(geometry.seamGap)).toBeLessThan(1)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -807,7 +824,18 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
     .poll(overlay)
     .toMatchObject({ animation: 'none', opacity: '0.7' })
   await page.setViewportSize({ width: 1024, height: 844 })
-  expect((await overlay()).content).toBe('none')
+  await expect
+    .poll(overlay)
+    .toMatchObject({ animation: 'none', opacity: '0.7' })
+  const solidColor = await warning.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  )
+  await expect(warning).toHaveCSS('background-image', 'none')
+  expect(
+    await bar.evaluate(
+      (element) => getComputedStyle(element, '::before').backgroundImage,
+    ),
+  ).toContain(`${solidColor})`)
   await expect(
     bar.getByText('Incoming attack', { exact: true }),
   ).toBeInViewport({ ratio: 1 })

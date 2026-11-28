@@ -182,7 +182,7 @@
   }
   .sidebar {
     position: fixed;
-    inset-block: 0;
+    inset-block: var(--sidebar-top, 0) 0;
     left: max(0px, calc((100vw - var(--shell-max-width)) / 2));
     width: var(--shell-sidebar-width);
     display: flex;
@@ -198,6 +198,7 @@
     flex-shrink: 0;
   }
   .sidebarIdentity {
+    display: var(--sidebar-brand-display, block);
     padding: 0 10px 16px;
   }
   .sidebarBrand {

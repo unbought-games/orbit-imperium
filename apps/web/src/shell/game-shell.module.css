@@ -1,5 +1,6 @@
 .game-shell {
   --shell-sidebar-width: 224px;
+  --attack-surface: #81313c;
   --shell-hud-space: 0px;
   max-width: var(--shell-max-width);
   min-height: 100dvh;
@@ -83,14 +84,12 @@
   align-items: center;
   gap: 8px;
   min-height: var(--control-size);
-  padding-inline: 12px;
-  border-inline-start: 3px solid var(--danger);
-  background: color-mix(in srgb, #71323b 36%, var(--surface-page));
+  padding-inline: var(--shell-inline-gutter);
+  background: var(--attack-surface);
   color: var(--text);
   font-size: var(--font-size-sm);
 }
 .threatBar[data-threat='espionage'] {
-  border-color: var(--border-control);
   background: var(--surface);
 }
 .threatBar[data-threat='espionage'] > svg {
@@ -213,6 +212,32 @@
     scroll-margin-top: calc(54px + env(safe-area-inset-top));
   }
 }
+/* The pulse only paints the resource row. Its lower edge always meets the
+   solid warning color, including at the dimmest point of the cycle. */
+.header[data-warning='world'] .worldBar {
+  position: relative;
+  isolation: isolate;
+}
+.header[data-warning='world'] .worldBar::before,
+.header[data-warning='world'] .worldBar::after {
+  content: '';
+  position: absolute;
+  grid-row-end: 2;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.header[data-warning='world'] .worldBar::before {
+  background: linear-gradient(
+    to bottom,
+    var(--surface-page),
+    var(--attack-surface)
+  );
+}
+.header[data-warning='world'] .worldBar::after {
+  background: linear-gradient(to bottom, rgb(210 62 72 / 45%), transparent);
+  animation: hostile-pulse 3.2s ease-in-out infinite !important;
+}
 @keyframes hostile-pulse {
   0%,
   100% {
@@ -222,8 +247,9 @@
     opacity: 1;
   }
 }
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  .worldBar.hostile::after {
+@media (prefers-reduced-motion: reduce) {
+  .worldBar.hostile::after,
+  .header[data-warning='world'] .worldBar::after {
     animation: none !important;
     opacity: 0.7;
   }
@@ -370,5 +396,59 @@
   .worldBar {
     grid-template-columns: minmax(0, 144px) minmax(0, 1fr);
     grid-template-areas: 'context resources';
+  }
+}
+
+@media (min-width: 768px) {
+  /* Keep the controls aligned with the centered shell while both warning
+     rows span the viewport, including the sidebar and command-orb lanes. */
+  .header[data-warning] {
+    --shell-edge: max(
+      var(--shell-inline-gutter),
+      calc((100% - var(--shell-max-width)) / 2 + var(--shell-inline-gutter))
+    );
+    --brand-lane: var(--control-size);
+    --sidebar-top: var(--shell-header-height);
+    inset-inline: 0;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'world' 'secondary';
+  }
+  .header[data-warning] .identity {
+    display: none;
+  }
+  .header[data-warning='world'] .identity {
+    position: absolute;
+    inset-inline-start: var(--shell-edge);
+    top: 0;
+    z-index: 1;
+    display: flex;
+  }
+  .header[data-warning='world'] .worldBar {
+    grid-template-columns:
+      calc(var(--shell-edge) + var(--brand-lane))
+      minmax(0, var(--body-control-width, 144px)) minmax(0, 1fr)
+      calc(var(--shell-edge) + var(--shell-hud-space));
+    grid-template-areas: '. context resources .';
+    column-gap: 0;
+  }
+  .header[data-warning] .threatBar {
+    padding-inline: var(--shell-edge);
+  }
+}
+@media (min-width: 1024px) {
+  .header[data-warning='world'] {
+    --brand-lane: var(--shell-sidebar-width);
+    --body-control-width: 240px;
+    --sidebar-brand-display: none;
+  }
+  .header[data-warning='world'] .brand {
+    --brand-mark-size: 30px;
+    --brand-gap: 12px;
+    max-width: calc(var(--brand-lane) - var(--space-4));
+    font-size: 1.0625rem;
+    letter-spacing: 2px;
   }
 }
