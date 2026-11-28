@@ -1,6 +1,7 @@
+import { ShieldAlert, ArrowRight, Radar } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { BoundView } from '../client-model/commands'
-import { hasIncomingHostileFleet } from '../client-model/hostile-fleets'
+import { incomingThreatKind } from '../client-model/hostile-fleets'
 import { ResourceStrip } from '../ui/resource-strip'
 import { Brand } from '../ui/brand'
 import { Link } from '../ui/link'
@@ -11,6 +12,13 @@ import { routeTarget } from './route-target'
 import { catalogSlug } from './catalog-routes'
 import { usePinnedHeader } from './use-pinned-header'
 import styles from './game-shell.module.css'
+
+const threatMessages = {
+  attack: 'Incoming attack',
+  espionage: 'Incoming espionage fleet',
+  missile:
+    'Incoming missile attack. Interceptors defend automatically at impact.',
+}
 
 /** Persistent shell presentation, composed independently of route loading and session effects. */
 export function GameShellFrame({
@@ -45,13 +53,34 @@ export function GameShellFrame({
   sidebar?: ReactNode
 }) {
   const pinned = usePinnedHeader()
-  const incomingHostile = hasIncomingHostileFleet(view)
-  const hostileMessage = incomingHostile
-    ? view.protocol === 4 && view.missiles?.some((f) => !f.outgoing)
-      ? 'Incoming missile attack. Interceptors defend automatically at impact.'
-      : 'Incoming hostile fleet: attack or espionage detected.'
-    : ''
+  const threat = incomingThreatKind(view)
   const allianceArea = page.startsWith('alliance')
+  const attack = threat === 'attack' || threat === 'missile'
+  const showWarning = attack || (allianceArea && threat === 'espionage')
+  const ThreatIcon = threat === 'espionage' ? Radar : ShieldAlert
+  const warning = (
+    <div
+      className={showWarning ? styles.threatBar : styles.hostileStatus}
+      data-threat={threat ?? undefined}
+      data-attack-pulse={(allianceArea && attack) || undefined}
+      role="status"
+    >
+      {threat && (
+        <>
+          {showWarning && <ThreatIcon size={20} aria-hidden="true" />}
+          <strong>{threatMessages[threat]}</strong>
+          {showWarning && body && (
+            <Link
+              {...routeTarget(universeName, 'overview', body.id)}
+              hash="fleet-movements"
+            >
+              View movements <ArrowRight size={15} aria-hidden="true" />
+            </Link>
+          )}
+        </>
+      )}
+    </div>
+  )
   return (
     <div
       className={styles['game-shell']}
@@ -59,7 +88,13 @@ export function GameShellFrame({
       data-has-command-hud={view.protocol === 4 || undefined}
     >
       <div className={styles['shell-columns']} ref={pinned.columns}>
-        <div className={styles.header} ref={pinned.header}>
+        <div
+          className={styles.header}
+          ref={pinned.header}
+          data-warning={
+            showWarning ? (allianceArea ? 'alliance' : 'world') : undefined
+          }
+        >
           <header className={styles.identity} data-touch-control="">
             <Brand
               className={styles.brand}
@@ -83,16 +118,17 @@ export function GameShellFrame({
           >
             {(navigation) =>
               allianceArea ? (
-                navigation
+                <>
+                  {navigation}
+                  {warning}
+                </>
               ) : (
                 <div
-                  className={`${styles.worldBar} ${incomingHostile ? styles.hostile : ''}`}
+                  className={`${styles.worldBar} ${threat ? styles.hostile : ''}`}
+                  data-attack-pulse={attack || undefined}
                   role="group"
                   aria-label="Planet and resources"
                 >
-                  <span className={styles.hostileStatus} role="status">
-                    {hostileMessage}
-                  </span>
                   <div className={styles['mobile-context']}>
                     <BodySelector
                       bodies={view.bodies}
@@ -154,24 +190,13 @@ export function GameShellFrame({
                       <span />
                     )}
                   </div>
+                  {warning}
                 </div>
               )
             }
           </Navigation>
         </div>
-        <div className={styles.center}>
-          {allianceArea && incomingHostile && (
-            <div className={styles.allianceThreat} role="status">
-              <span>{hostileMessage}</span>
-              {body && (
-                <Link {...routeTarget(universeName, 'fleets', body.id)}>
-                  View fleets
-                </Link>
-              )}
-            </div>
-          )}
-          {children}
-        </div>
+        <div className={styles.center}>{children}</div>
       </div>
       {footer}
     </div>

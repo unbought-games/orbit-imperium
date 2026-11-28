@@ -5,33 +5,90 @@ import { test, expect } from './fixture'
 
 import { diagnosticScreenshot } from '../fixtures/diagnostic-screenshot'
 
+function expectPulsingGradient(image: string) {
+  // Chromium omits the default downward direction when serializing a gradient.
+  expect(image).toMatch(
+    /^linear-gradient\(rgba?\([^)]+\), rgba\(0, 0, 0, 0\)\)$/,
+  )
+  expect(image).not.toMatch(/^linear-gradient\(rgba\([^)]+, 0\)/)
+}
+
 test('alliance pages retain a visible attack warning without the planet bar on desktop and mobile', async ({
   page,
   mount,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
   await mount('shell-alliance-threat')
   for (const [width, height] of [
     [1440, 1000],
+    [768, 900],
     [390, 844],
   ]) {
     await page.setViewportSize({ width, height })
     const warning = page
       .getByRole('status')
-      .filter({ hasText: 'Incoming hostile fleet' })
-    await expect(warning).toBeVisible()
+      .filter({ hasText: 'Incoming attack' })
+    await expect(warning.getByText('Incoming attack')).toBeInViewport({
+      ratio: 1,
+    })
+    await expect(
+      warning.getByRole('link', { name: 'View movements' }),
+    ).toBeInViewport({ ratio: 1 })
     await expect(
       page.getByRole('group', { name: 'Planet and resources' }),
     ).toHaveCount(0)
     await expect(
-      warning.getByRole('link', { name: 'View fleets' }),
-    ).toHaveAttribute('href', /\/fleets$/)
-    const bounds = await warning.boundingBox()
-    expect(bounds!.x).toBeGreaterThanOrEqual(0)
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+      warning.getByRole('link', { name: 'View movements' }),
+    ).toHaveAttribute('href', /\/overview#fleet-movements$/)
+    expect(await warning.boundingBox()).toMatchObject({ x: 0, width })
+    const edge = await warning.evaluate((element) => {
+      const pulse = getComputedStyle(element, '::after')
+      return {
+        animation: pulse.animationName,
+        image: pulse.backgroundImage,
+        top: pulse.top,
+        height: parseFloat(pulse.height),
+        barHeight: element.clientHeight,
+      }
+    })
+    expectPulsingGradient(edge.image)
+    expect(edge.animation).toContain('hostile-pulse')
+    expect(edge.top).toBe('0px')
+    expect(edge.height).toBeGreaterThan(0)
+    expect(edge.height).toBeLessThan(edge.barHeight)
+    if (width === 768) {
+      const brand = page.getByRole('link', {
+        name: 'ORBIT IMPERIUM',
+        exact: true,
+      })
+      await expect(brand).toBeInViewport({ ratio: 1 })
+      await brand.click({ trial: true })
+      await warning
+        .getByRole('link', { name: 'View movements' })
+        .click({ trial: true })
+      const brandBounds = (await brand.boundingBox())!
+      const textBounds = (await warning
+        .getByText('Incoming attack')
+        .boundingBox())!
+      expect(brandBounds.x + brandBounds.width).toBeLessThanOrEqual(
+        textBounds.x,
+      )
+    }
     await diagnosticScreenshot(page, {
       path: `test-results/alliance-threat-${width}x${height}.png`,
     })
   }
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect
+    .poll(() =>
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Incoming attack' })
+        .evaluate(
+          (element) => getComputedStyle(element, '::after').animationName,
+        ),
+    )
+    .toBe('none')
 })
 
 test('mobile resource stock uses icons and compact balances with capacity details on tap', async ({
@@ -759,29 +816,51 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await mount('shell-world-bar-threat')
   const bar = page.getByRole('group', { name: 'Planet and resources' })
+  const warning = bar.getByRole('status')
   const overlay = () =>
     bar.evaluate((element) => {
       const style = getComputedStyle(element, '::after')
       return {
         animation: style.animationName,
         duration: style.animationDuration,
-        content: style.content,
+        image: style.backgroundImage,
         opacity: style.opacity,
       }
     })
-  await expect(bar.getByRole('status')).toHaveText(
-    'Incoming hostile fleet: attack or espionage detected.',
-  )
+  await expect(
+    bar.getByRole('status').getByText('Incoming attack', { exact: true }),
+  ).toBeVisible()
   await expect(bar).toHaveCSS('border-bottom', '1px solid rgb(113, 50, 59)')
   expect(
     await bar.evaluate(
       (element) => getComputedStyle(element, '::after').boxShadow,
     ),
   ).toBe('none')
-  for (const width of [320, 390, 767]) {
+  for (const width of [320, 767, 768, 1440, 2560]) {
     await page.setViewportSize({ width, height: 844 })
-    expect((await overlay()).animation).toContain('hostile-pulse')
-    expect((await overlay()).duration).toBe('3.2s')
+    const pulse = await overlay()
+    expect(pulse.animation).toContain('hostile-pulse')
+    expect(pulse.duration).toBe('3.2s')
+    expectPulsingGradient(pulse.image)
+    const geometry = await bar.evaluate((element) => {
+      const top = element.getBoundingClientRect()
+      const alert = element
+        .querySelector('[role="status"]')!
+        .getBoundingClientRect()
+      const pulse = getComputedStyle(element, '::after')
+      return {
+        alertLeft: alert.left,
+        alertRight: alert.right,
+        pulseWidth: parseFloat(pulse.width),
+        seamGap: alert.top - top.top - parseFloat(pulse.height),
+      }
+    })
+    expect(geometry).toMatchObject({
+      alertLeft: 0,
+      alertRight: width,
+      pulseWidth: width,
+    })
+    expect(Math.abs(geometry.seamGap)).toBeLessThan(1)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -802,7 +881,26 @@ test('a hostile world-bar pulse preserves readable resource controls and respect
     .poll(overlay)
     .toMatchObject({ animation: 'none', opacity: '0.7' })
   await page.setViewportSize({ width: 1024, height: 844 })
-  expect((await overlay()).content).toBe('none')
+  await expect
+    .poll(overlay)
+    .toMatchObject({ animation: 'none', opacity: '0.7' })
+  const solidColor = await warning.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  )
+  await expect(warning).toHaveCSS('background-image', 'none')
+  expect(
+    await bar.evaluate(
+      (element) => getComputedStyle(element, '::before').backgroundImage,
+    ),
+  ).toContain(`${solidColor})`)
+  await expect(
+    bar.getByText('Incoming attack', { exact: true }),
+  ).toBeInViewport({ ratio: 1 })
+  await expect(
+    bar.getByRole('link', { name: 'View movements' }),
+  ).toBeInViewport({
+    ratio: 1,
+  })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   // Seek only after testing normal CSS lifecycle: manual playback takes ownership

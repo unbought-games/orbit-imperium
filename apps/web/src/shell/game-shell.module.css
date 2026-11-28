@@ -1,5 +1,6 @@
 .game-shell {
   --shell-sidebar-width: 224px;
+  --attack-surface: #81313c;
   --shell-hud-space: 0px;
   max-width: var(--shell-max-width);
   min-height: 100dvh;
@@ -61,7 +62,12 @@
   display: contents;
 }
 .hostileStatus {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .masthead {
   grid-area: resources;
@@ -72,16 +78,34 @@
 .center {
   grid-area: content;
 }
-.allianceThreat {
+.threatBar {
+  grid-area: world;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
-  margin-block: 16px;
-  padding: 12px 16px;
-  border-inline-start: 3px solid #db777d;
-  background: color-mix(in srgb, #71323b 24%, var(--surface-page));
+  gap: 8px;
+  min-height: var(--control-size);
+  padding-inline: var(--shell-inline-gutter);
+  background: var(--attack-surface);
   color: var(--text);
+  font-size: var(--font-size-sm);
+}
+.threatBar[data-threat='espionage'] {
+  background: var(--surface);
+}
+.threatBar[data-threat='espionage'] > svg {
+  color: var(--text-muted);
+}
+.worldBar > .threatBar {
+  grid-area: auto / 1 / auto / -1;
+}
+.threatBar > svg {
+  flex: none;
+  color: var(--danger);
+}
+.threatBar > a {
+  flex: none;
+  gap: 6px;
+  margin-inline-start: auto;
 }
 .work-area {
   container-type: inline-size;
@@ -167,14 +191,9 @@
     /* Deliberate threat signal: override the global ban on UI animations. */
     animation: hostile-pulse 3.2s ease-in-out infinite !important;
   }
-  .hostileStatus {
-    display: block;
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  .worldBar > .threatBar {
+    margin-inline: calc(-1 * var(--shell-inline-gutter));
+    padding-inline: var(--shell-inline-gutter);
   }
   .mobile-context {
     display: contents;
@@ -193,6 +212,42 @@
     scroll-margin-top: calc(54px + env(safe-area-inset-top));
   }
 }
+/* Both layers finish at the solid warning color throughout the pulse. */
+.header [data-attack-pulse] {
+  position: relative;
+  isolation: isolate;
+}
+.header [data-attack-pulse]::before,
+.header [data-attack-pulse]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.worldBar[data-attack-pulse]::before,
+.worldBar[data-attack-pulse]::after {
+  grid-row-end: 2;
+}
+/* Alliance pages omit resources. Keep the pulse along the warning's upper edge. */
+.threatBar[data-attack-pulse] {
+  padding-block-start: var(--space-3);
+}
+.threatBar[data-attack-pulse]::before,
+.threatBar[data-attack-pulse]::after {
+  height: var(--space-3);
+}
+.header [data-attack-pulse]::before {
+  background: linear-gradient(
+    to bottom,
+    var(--surface-page),
+    var(--attack-surface)
+  );
+}
+.header [data-attack-pulse]::after {
+  background: linear-gradient(to bottom, rgb(210 62 72 / 45%), transparent);
+  animation: hostile-pulse 3.2s ease-in-out infinite !important;
+}
 @keyframes hostile-pulse {
   0%,
   100% {
@@ -202,8 +257,9 @@
     opacity: 1;
   }
 }
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  .worldBar.hostile::after {
+@media (prefers-reduced-motion: reduce) {
+  .worldBar.hostile::after,
+  .header [data-attack-pulse]::after {
     animation: none !important;
     opacity: 0.7;
   }
@@ -330,7 +386,7 @@
   .worldBar {
     grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
     grid-template-areas: 'context resources';
-    gap: 24px;
+    gap: 0 24px;
   }
   .masthead {
     justify-self: end;
@@ -350,5 +406,77 @@
   .worldBar {
     grid-template-columns: minmax(0, 144px) minmax(0, 1fr);
     grid-template-areas: 'context resources';
+  }
+}
+
+@media (min-width: 768px) {
+  /* Keep the controls aligned with the centered shell while both warning
+     rows span the viewport, including the sidebar and command-orb lanes. */
+  .header[data-warning] {
+    --shell-edge: max(
+      var(--shell-inline-gutter),
+      calc((100% - var(--shell-max-width)) / 2 + var(--shell-inline-gutter))
+    );
+    --brand-lane: var(--control-size);
+    --sidebar-top: var(--shell-header-height);
+    inset-inline: 0;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'world' 'secondary';
+  }
+  .header[data-warning] .identity {
+    display: none;
+  }
+  .header[data-warning='world'] .identity {
+    position: absolute;
+    inset-inline-start: var(--shell-edge);
+    top: 0;
+    z-index: 1;
+    display: flex;
+  }
+  .header[data-warning='world'] .worldBar {
+    grid-template-columns:
+      calc(var(--shell-edge) + var(--brand-lane))
+      minmax(0, var(--body-control-width, 144px)) minmax(0, 1fr)
+      calc(var(--shell-edge) + var(--shell-hud-space));
+    grid-template-areas: '. context resources .';
+    column-gap: 0;
+  }
+  .header[data-warning] .threatBar {
+    padding-inline: var(--shell-edge);
+  }
+}
+@media (min-width: 1024px) {
+  .header[data-warning='world'] {
+    --brand-lane: var(--shell-sidebar-width);
+    --body-control-width: 240px;
+    --sidebar-brand-display: none;
+  }
+  .header[data-warning='world'] .brand {
+    --brand-mark-size: 30px;
+    --brand-gap: 12px;
+    max-width: calc(var(--brand-lane) - var(--space-4));
+    font-size: 1.0625rem;
+    letter-spacing: 2px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header[data-warning='alliance'] .identity {
+    grid-area: world;
+    display: flex;
+    align-self: end;
+    justify-self: start;
+    margin-inline-start: var(--shell-edge);
+    min-height: var(--control-size);
+    padding: 0;
+    z-index: 1;
+  }
+  .header[data-warning='alliance'] .threatBar {
+    padding-inline-start: calc(
+      var(--shell-edge) + var(--brand-lane) + var(--space-2)
+    );
   }
 }

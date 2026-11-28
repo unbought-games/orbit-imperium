@@ -359,7 +359,12 @@ function FleetBoard({
     view,
   ).available
   return (
-    <section className={styles.fleetBoard} aria-label="Fleet movements">
+    <section
+      id="fleet-movements"
+      tabIndex={-1}
+      className={styles.fleetBoard}
+      aria-label="Fleet movements"
+    >
       <div className={styles.panelHeading}>
         <div>
           <p className={styles.eyebrow}>The Bridge</p>

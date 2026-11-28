@@ -190,7 +190,7 @@
     "titlePath": [
       "the mobile HUD keeps confirmed hostile traffic across fleet navigation until the server clears it"
     ],
-    "risk": "A confirmed Attack must reach both the mobile HUD and world bar. Dismissing its toast, switching planets and following the HUD to Fleets must preserve urgency until a refreshed server view clears both surfaces."
+    "risk": "A confirmed Attack must reach both the mobile HUD and world bar. Dismissing its toast, switching planets and following the HUD to Fleets must preserve urgency. The header must reveal the attack even when the fleet filter hides it, until the server clears both warnings."
   },
   {
     "file": "command-hud.spec.ts",
