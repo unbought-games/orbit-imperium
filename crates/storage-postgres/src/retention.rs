@@ -22,11 +22,32 @@ type Batch = (i64, i64, Option<String>, Option<Uuid>);
 /// A continuation only avoids revisiting a protected prefix. Losing it during
 /// restart repeats eligibility checks; it never establishes permission to delete.
 #[derive(Default)]
-pub(crate) struct ScanPositions(Mutex<BTreeMap<ScanKey, Position>>);
+pub(crate) struct ScanPositions {
+    inputs: Mutex<BTreeMap<ScanKey, Position>>,
+    delivery: Mutex<Option<DeliveryPosition>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct DeliveryPosition {
+    pub stamp: String,
+    pub universe: Uuid,
+    pub epoch: Uuid,
+    pub player: Uuid,
+    pub position: i64,
+    pub sweep_at: i64,
+}
 
 impl ScanPositions {
+    pub(crate) fn delivery(&self) -> Option<DeliveryPosition> {
+        self.delivery.lock().unwrap().clone()
+    }
+
+    pub(crate) fn completed_delivery(&self, next: Option<DeliveryPosition>) {
+        *self.delivery.lock().unwrap() = next;
+    }
+
     fn start(&self, key: ScanKey, now: i64) -> Position {
-        self.0
+        self.inputs
             .lock()
             .unwrap()
             .get(&key)
@@ -43,7 +64,7 @@ impl ScanPositions {
         if batch.0 == 128 {
             return;
         }
-        let mut positions = self.0.lock().unwrap();
+        let mut positions = self.inputs.lock().unwrap();
         if let (Some(stamp), Some(id)) = (&batch.2, batch.3) {
             positions.insert(
                 key,

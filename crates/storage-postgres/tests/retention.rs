@@ -146,6 +146,12 @@ async fn pending_child_settles_after_parent_and_delivery_retirement() {
     .await
     .unwrap();
     let (removed, _): (i64, i64) = sqlx::query_as(include_str!("../src/retention/updates.sql"))
+        .bind("-infinity")
+        .bind(Uuid::nil())
+        .bind(Uuid::nil())
+        .bind(Uuid::nil())
+        .bind(0_i64)
+        .bind(None::<i64>)
         .fetch_one(&mut *blocker)
         .await
         .unwrap();
@@ -586,6 +592,134 @@ async fn a_busy_presence_partner_does_not_spend_a_batch_slot() {
             &pool,
             "SELECT count(*) FROM presence_pairs WHERE universe=$1",
             u
+        )
+        .await,
+        0
+    );
+}
+
+#[tokio::test]
+async fn locked_delivery_head_does_not_abort_other_recipients_cleanup() {
+    let (store, pool, b) = setup().await;
+    let other: Uuid =
+        sqlx::query_scalar("SELECT id FROM players WHERE universe=$1 AND id<>$2 LIMIT 1")
+            .bind(b.universe.0)
+            .bind(b.player.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    for player in [b.player.0, other] {
+        sqlx::query(
+            "INSERT INTO game_update_heads(universe,epoch,player,position) VALUES($1,$2,$3,1)",
+        )
+        .bind(b.universe.0)
+        .bind(b.epoch.0)
+        .bind(player)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO game_updates(universe,epoch,player,position,input_id,kind,minimum_revision,created_at) VALUES($1,$2,$3,1,$4,'invalidate',0,clock_timestamp()-interval '8 days')")
+            .bind(b.universe.0).bind(b.epoch.0).bind(player).bind(Uuid::new_v4()).execute(&pool).await.unwrap();
+    }
+    let mut publishing = pool.begin().await.unwrap();
+    sqlx::query(
+        "SELECT position FROM game_update_heads WHERE universe=$1 AND player=$2 FOR UPDATE",
+    )
+    .bind(b.universe.0)
+    .bind(b.player.0)
+    .fetch_one(&mut *publishing)
+    .await
+    .unwrap();
+    assert_eq!(store.prune_game_updates().await.unwrap(), 1);
+    let retained: Vec<Uuid> =
+        sqlx::query_scalar("SELECT player FROM game_updates WHERE universe=$1")
+            .bind(b.universe.0)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(retained, vec![b.player.0]);
+    let floors: Vec<(Uuid, i64)> =
+        sqlx::query_as("SELECT player,retired_through FROM game_update_heads WHERE universe=$1")
+            .bind(b.universe.0)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert!(floors.contains(&(b.player.0, 0)));
+    assert!(floors.contains(&(other, 1)));
+    publishing.commit().await.unwrap();
+    assert_eq!(store.prune_game_updates().await.unwrap(), 1);
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM game_updates WHERE universe=$1",
+            b.universe
+        )
+        .await,
+        0
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM game_update_heads WHERE universe=$1 AND retired_through=1",
+            b.universe
+        )
+        .await,
+        2
+    );
+}
+
+#[tokio::test]
+async fn locked_delivery_prefix_does_not_hide_other_recipients_or_starve_released_heads() {
+    let (store, pool, b) = setup().await;
+    let other: Uuid =
+        sqlx::query_scalar("SELECT id FROM players WHERE universe=$1 AND id<>$2 LIMIT 1")
+            .bind(b.universe.0)
+            .bind(b.player.0)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    for (player, size, age) in [(b.player.0, 1000_i64, 9_i32), (other, 1_i64, 8_i32)] {
+        sqlx::query(
+            "INSERT INTO game_update_heads(universe,epoch,player,position) VALUES($1,$2,$3,$4)",
+        )
+        .bind(b.universe.0)
+        .bind(b.epoch.0)
+        .bind(player)
+        .bind(size)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO game_updates(universe,epoch,player,position,input_id,kind,minimum_revision,created_at) SELECT $1,$2,$3,n,gen_random_uuid(),'invalidate',0,statement_timestamp()-make_interval(days=>$5) FROM generate_series(1,$4::bigint) n")
+            .bind(b.universe.0).bind(b.epoch.0).bind(player).bind(size).bind(age).execute(&pool).await.unwrap();
+    }
+    let mut publishing = pool.begin().await.unwrap();
+    sqlx::query(
+        "SELECT position FROM game_update_heads WHERE universe=$1 AND player=$2 FOR UPDATE",
+    )
+    .bind(b.universe.0)
+    .bind(b.player.0)
+    .fetch_one(&mut *publishing)
+    .await
+    .unwrap();
+    assert_eq!(store.prune_game_updates().await.unwrap(), 0);
+    assert_eq!(store.prune_game_updates().await.unwrap(), 1);
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM game_updates WHERE universe=$1",
+            b.universe
+        )
+        .await,
+        1000
+    );
+    publishing.commit().await.unwrap();
+    assert_eq!(store.prune_game_updates().await.unwrap(), 1000);
+    assert_eq!(store.prune_game_updates().await.unwrap(), 0);
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM game_updates WHERE universe=$1",
+            b.universe
         )
         .await,
         0

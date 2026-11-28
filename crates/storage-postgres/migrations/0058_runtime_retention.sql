@@ -32,3 +32,8 @@ RETURNS bigint LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
         THEN (('x' || left(replace(identity::text,'-',''),12))::bit(48)::bigint) + 900000
         ELSE legacy_until END
 $$;
+
+-- Preserve the existing age prefix while supporting a bounded, resumable sweep
+-- past recipients whose publication head is temporarily locked.
+DROP INDEX game_updates_retention;
+CREATE INDEX game_updates_retention ON game_updates(created_at,universe,epoch,player,position);

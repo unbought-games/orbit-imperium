@@ -264,13 +264,46 @@ impl PgStore {
     /// the same transaction. Readers take a repeatable-read snapshot of both.
     pub async fn prune_game_updates(&self) -> Result<u64, StoreError> {
         let mut tx = self.retention_transaction().await?;
-        let sample: (i64, i64) = sqlx::query_as(include_str!("retention/updates.sql"))
+        let position = self.retention_positions.delivery();
+        type Sample = (
+            i64,
+            i64,
+            Option<String>,
+            Option<uuid::Uuid>,
+            Option<uuid::Uuid>,
+            Option<uuid::Uuid>,
+            Option<i64>,
+            i64,
+        );
+        let sample: Sample = sqlx::query_as(include_str!("retention/updates.sql"))
+            .bind(position.as_ref().map_or("-infinity", |p| p.stamp.as_str()))
+            .bind(position.as_ref().map_or(uuid::Uuid::nil(), |p| p.universe))
+            .bind(position.as_ref().map_or(uuid::Uuid::nil(), |p| p.epoch))
+            .bind(position.as_ref().map_or(uuid::Uuid::nil(), |p| p.player))
+            .bind(position.as_ref().map_or(0, |p| p.position))
+            .bind(position.as_ref().map(|p| p.sweep_at))
             .fetch_one(&mut *tx)
             .await
             .map_err(db_error)?;
+        let next = match (&sample.2, sample.3, sample.4, sample.5, sample.6) {
+            (Some(stamp), Some(universe), Some(epoch), Some(player), Some(position)) => {
+                Some(crate::retention::DeliveryPosition {
+                    stamp: stamp.clone(),
+                    universe,
+                    epoch,
+                    player,
+                    position,
+                    sweep_at: sample.7,
+                })
+            }
+            (None, None, None, None, None) => None,
+            _ => return Err(StoreError::CorruptData),
+        };
         tx.commit().await.map_err(db_error)?;
+        let limited = next.is_some();
+        self.retention_positions.completed_delivery(next);
         self.observer
-            .retention(None, "delivery", sample, sample.0 == 1000);
+            .retention(None, "delivery", (sample.0, sample.1), limited);
         Ok(sample.0 as u64)
     }
 }
